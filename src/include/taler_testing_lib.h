@@ -1130,6 +1130,42 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
                                   const char *amount,
                                   ...);
 
+/**
+ * Create an age-withdraw command, letting the caller specify
+ * the maximum agend and desired amounts as string.  Takes a variable,
+ * non-empty list of the denomination amounts via VARARGS, similar to
+ * #TALER_TESTING_cmd_withdraw_amount(), just using a batch withdraw.
+ *
+ * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
+ * @param max_age maximum allowed age, same for each coin
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ * @param amount how much we withdraw for the first coin
+ * @param ... NULL-terminated list of additional amounts to withdraw (one per coin)
+ * @return the withdraw command to be executed by the interpreter.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_age_withdraw (const char *label,
+                                const char *reserve_reference,
+                                uint8_t max_age,
+                                unsigned int expected_response_code,
+                                const char *amount,
+                                ...);
+
+/**
+ * Create a "age-withdraw reveal" command.
+ *
+ * @param label command label.
+ * @param age_withdraw_reference reference to a "age-withdraw" command.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_age_withdraw_reveal (
+  const char *label,
+  const char *age_withdraw_reference,
+  unsigned int expected_response_code);
 
 /**
  * Create a withdraw command, letting the caller specify

@@ -32,6 +32,7 @@ CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
   OUT balance_ok BOOLEAN,
   OUT age_ok BOOLEAN,
   OUT required_age INT2, -- in years ϵ [0,1..)
+  OUT reserve_birthday INT4,
   OUT conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -39,7 +40,6 @@ DECLARE
   reserve_gc INT8;
   reserve_val INT8;
   reserve_frac INT4;
-  reserve_birthday INT4;
   not_before date;
   earliest_date date;
 BEGIN
@@ -64,23 +64,20 @@ SELECT
 
 IF NOT FOUND
 THEN
-  -- reserve unknown
   reserve_found=FALSE;
-  balance_ok=FALSE;
-  age_ok=FALSE;
-  required_age=0;
+  age_ok = FALSE;
+  required_age=-1;
   conflict=FALSE;
+  balance_ok=FALSE;
   RETURN;
 END IF;
 
+reserve_found = TRUE;
+conflict=FALSE;  -- not really yet determined
 
 -- Check age requirements
-IF ((maximum_age_committed = 0) OR (reserve_birthday = 0))
+IF (reserve_birthday <> 0)
 THEN
-  -- No commitment to a non-zero age was provided or the reserve is marked as
-  -- having no age restriction. We can simply pass.
-  age_ok = OK;
-ELSE 
   not_before=date '1970-01-01' + reserve_birthday;
   earliest_date = current_date - make_interval(maximum_age_committed);
   --
@@ -95,13 +92,17 @@ ELSE
   --
   IF (earliest_date < not_before)
   THEN
-    reserve_found = TRUE;
-    balance_ok = FALSE;
+    required_age = extract(year from age(current_date, not_before));
     age_ok = FALSE;
-    required_age = extract(year from age(not_before, current_date)) + 1;
+    balance_ok=TRUE; -- NOT REALLY
     RETURN;
   END IF;
 END IF;
+
+age_ok = TRUE;
+required_age=0;
+
+
 
 -- Check reserve balance is sufficient.
 IF (reserve_val > amount_val)
@@ -125,6 +126,8 @@ ELSE
   END IF;
 END IF;
 
+balance_ok=TRUE;
+
 -- Calculate new expiration dates.
 min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
 
@@ -136,9 +139,6 @@ UPDATE reserves SET
 WHERE
   reserves.reserve_pub=rpub;
 
-reserve_found=TRUE;
-balance_ok=TRUE;
-
 -- Write the commitment into the age-withdraw table
 INSERT INTO exchange.age_withdraw
   (h_commitment
@@ -146,7 +146,7 @@ INSERT INTO exchange.age_withdraw
   ,reserve_pub
   ,reserve_sig
   ,noreveal_index
-  ,denomination_serials
+  ,denom_serials
   ,h_blind_evs
   ,denom_sigs)
 VALUES

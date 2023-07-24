@@ -2966,6 +2966,7 @@ struct TALER_EXCHANGE_AgeWithdrawBlindedHandle;
  * @param curl_ctx The curl context to use
  * @param exchange_url The base-URL of the exchange
  * @param keys The /keys material from the exchange
+ * @param max_age The maximum age that the coins are committed to.
  * @param num_input number of entries in the @a blinded_input array
  * @param blinded_input array of planchet details of the planchet to withdraw
  * @param reserve_priv private key of the reserve to withdraw from
@@ -2981,6 +2982,7 @@ TALER_EXCHANGE_age_withdraw_blinded (
   struct TALER_EXCHANGE_Keys *keys,
   const char *exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
+  uint8_t max_age,
   unsigned int num_input,
   const struct TALER_EXCHANGE_AgeWithdrawBlindedInput blinded_input[static
                                                                     num_input],

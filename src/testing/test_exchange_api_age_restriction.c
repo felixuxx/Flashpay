@@ -284,6 +284,18 @@ run (void *cls,
                                        "EUR:10",
                                        0, /* age restriction off */
                                        MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_age_withdraw ("age-withdraw-coin-1-too-low",
+                                    "create-reserve-kyc-1",
+                                    18, /* Too high */
+                                    MHD_HTTP_CONFLICT,
+                                    "EUR:10",
+                                    NULL),
+    TALER_TESTING_cmd_age_withdraw ("age-withdraw-coin-1",
+                                    "create-reserve-kyc-1",
+                                    8,
+                                    MHD_HTTP_OK,
+                                    "EUR:10",
+                                    NULL),
     TALER_TESTING_cmd_end (),
   };
 

@@ -29,12 +29,14 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include <sys/wait.h>
 #include "taler_curl_lib.h"
+#include "taler_error_codes.h"
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
+#include "taler_util.h"
 
 /**
  * A CoinCandidate is populated from a master secret
@@ -315,12 +317,13 @@ reserve_age_withdraw_ok (
   };
   struct TALER_ExchangeSignatureP exchange_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_uint8 ("noreaveal_index",
+    GNUNET_JSON_spec_uint8 ("noreveal_index",
                             &response.details.ok.noreveal_index),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                  &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                 &response.details.ok.exchange_pub)
+                                 &response.details.ok.exchange_pub),
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK!=
@@ -538,6 +541,14 @@ handle_reserve_age_withdraw_blinded_finished (
     awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   case MHD_HTTP_CONFLICT:
+    /* The age requirements might not have been met */
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    if (TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE == awbr.hr.ec)
+    {
+      awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
+      break;
+    }
+
     /* The exchange says that the reserve has insufficient funds;
        check the signatures in the history... */
     if (GNUNET_OK !=
@@ -611,6 +622,9 @@ perform_protocol (
   json_t *j_request_body = NULL;
   CURL *curlh = NULL;
 
+  GNUNET_assert (0 < awbh->num_input);
+  awbh->age_mask = awbh->blinded_input[0].denom_pub->key.age_mask;
+
   FAIL_IF (GNUNET_OK !=
            TALER_amount_set_zero (awbh->keys->currency,
                                   &awbh->amount_with_fee));
@@ -649,12 +663,17 @@ perform_protocol (
   {
     /* Build the denomination array */
     {
-      const struct TALER_EXCHANGE_DenomPublicKey *denom =
+      const struct TALER_EXCHANGE_DenomPublicKey *denom_pub =
         awbh->blinded_input[i].denom_pub;
-      json_t *jdenom = GNUNET_JSON_PACK (
-        TALER_JSON_pack_denom_pub (NULL,
-                                   &denom->key));
+      const struct TALER_DenominationHashP *denom_h = &denom_pub->h_key;
+      json_t *jdenom;
 
+      /* The mask must be the same for all coins */
+      FAIL_IF (awbh->age_mask.bits != denom_pub->key.age_mask.bits);
+
+      jdenom = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto (NULL,
+                                    denom_h));
       FAIL_IF (NULL == jdenom);
       FAIL_IF (0 < json_array_append_new (j_denoms,
                                           jdenom));
@@ -686,6 +705,9 @@ perform_protocol (
                                            &bch,
                                            sizeof(bch));
         }
+
+        FAIL_IF (0 < json_array_append_new (j_array_candidates,
+                                            j_can));
       }
     }
   }
@@ -702,9 +724,17 @@ perform_protocol (
                                   awbh->reserve_priv,
                                   &awbh->reserve_sig);
 
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_wallet_age_withdraw_verify (&awbh->h_commitment,
+                                                   &awbh->amount_with_fee,
+                                                   &awbh->age_mask,
+                                                   awbh->max_age,
+                                                   &awbh->reserve_pub,
+                                                   &awbh->reserve_sig));
+
   /* Initiate the POST-request */
   j_request_body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_array_steal ("denoms_h", j_denoms),
+    GNUNET_JSON_pack_array_steal ("denom_hs", j_denoms),
     GNUNET_JSON_pack_array_steal ("blinded_coin_evs", j_array_candidates),
     GNUNET_JSON_pack_uint64 ("max_age", awbh->max_age),
     GNUNET_JSON_pack_data_auto ("reserve_sig", &awbh->reserve_sig));
@@ -813,6 +843,7 @@ call_age_withdraw_blinded (
       awh->keys,
       awh->exchange_url,
       awh->reserve_priv,
+      awh->max_age,
       awh->num_coins,
       blinded_input,
       copy_results,
@@ -1064,7 +1095,7 @@ prepare_coins (
               &cd->denom_pub,
               &planchet->blinded_planchet.details.cs_blinded_planchet.nonce,
               &csr_withdraw_done,
-              &cls);
+              cls);
           FAIL_IF (NULL == cls->csr_withdraw_handle);
 
           awh->csr.pending++;
@@ -1163,6 +1194,7 @@ TALER_EXCHANGE_age_withdraw_blinded (
   struct TALER_EXCHANGE_Keys *keys,
   const char *exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
+  uint8_t max_age,
   unsigned int num_input,
   const struct TALER_EXCHANGE_AgeWithdrawBlindedInput blinded_input[static
                                                                     num_input],
@@ -1179,6 +1211,7 @@ TALER_EXCHANGE_age_withdraw_blinded (
   awbh->reserve_priv = reserve_priv;
   awbh->callback = res_cb;
   awbh->callback_cls = res_cb_cls;
+  awbh->max_age = max_age;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&awbh->reserve_priv->eddsa_priv,
                                       &awbh->reserve_pub.eddsa_pub);

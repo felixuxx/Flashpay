@@ -113,7 +113,7 @@ free_age_withdraw_context_resources (struct AgeWithdrawContext *awc)
 static enum GNUNET_GenericReturnValue
 parse_age_withdraw_json (
   struct MHD_Connection *connection,
-  const json_t *j_denoms_h,
+  const json_t *j_denom_hs,
   const json_t *j_blinded_coin_evs,
   struct AgeWithdrawContext *awc,
   MHD_RESULT *mhd_ret)
@@ -135,9 +135,9 @@ parse_age_withdraw_json (
 
   /* Verify JSON-structure consistency */
   {
-    uint32_t num_coins = json_array_size (j_denoms_h);
+    uint32_t num_coins = json_array_size (j_denom_hs);
 
-    if (! json_is_array (j_denoms_h))
+    if (! json_is_array (j_denom_hs))
       error = "denoms_h must be an array";
     else if (! json_is_array (j_blinded_coin_evs))
       error = "coin_evs must be an array";
@@ -168,7 +168,7 @@ parse_age_withdraw_json (
   awc->denom_hs = GNUNET_new_array (awc->num_coins,
                                     struct TALER_DenominationHashP);
 
-  json_array_foreach (j_denoms_h, idx, value) {
+  json_array_foreach (j_denom_hs, idx, value) {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto (NULL, &awc->denom_hs[idx]),
       GNUNET_JSON_spec_end ()
@@ -196,24 +196,17 @@ parse_age_withdraw_json (
 
   /* Parse blinded envelopes. */
   json_array_foreach (j_blinded_coin_evs, idx, value) {
-    const json_t *j_kappa_coin_evs;
-    struct GNUNET_JSON_Specification aspec[] = {
-      GNUNET_JSON_spec_array_const (NULL, &j_kappa_coin_evs),
-      GNUNET_JSON_spec_end ()
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (value, aspec, NULL, NULL))
+    const json_t *j_kappa_coin_evs = value;
+    if (! json_is_array (j_kappa_coin_evs))
     {
       GNUNET_snprintf (buf,
                        sizeof(buf),
-                       "couldn't parse entry no. %d in array coin_evs",
+                       "enxtry %d in array blinded_coin_evs is not an array",
                        idx + 1);
       error = buf;
       goto EXIT;
     }
-
-    if (TALER_CNC_KAPPA != json_array_size (j_kappa_coin_evs))
+    else if (TALER_CNC_KAPPA != json_array_size (j_kappa_coin_evs))
     {
       GNUNET_snprintf (buf,
                        sizeof(buf),
@@ -223,26 +216,45 @@ parse_age_withdraw_json (
       goto EXIT;
     }
 
-    /* Now parse the individual kappa envelopes */
+    /* Now parse the individual kappa envelopes and calculate the hash of
+     * the commitment along the way. */
     {
       size_t off = idx * TALER_CNC_KAPPA;
-      size_t kappa = 0;
+      unsigned int kappa = 0;
+      enum GNUNET_GenericReturnValue ret;
+      struct GNUNET_HashContext *hash_context;
+
+      hash_context = GNUNET_CRYPTO_hash_context_start ();
 
       json_array_foreach (j_kappa_coin_evs, kappa, value) {
         struct GNUNET_JSON_Specification spec[] = {
-          GNUNET_JSON_spec_fixed_auto (NULL, &awc->coin_evs[off + kappa]),
+          TALER_JSON_spec_blinded_planchet (NULL, &awc->coin_evs[off + kappa]),
           GNUNET_JSON_spec_end ()
         };
-
         if (GNUNET_OK !=
             GNUNET_JSON_parse (value, spec, NULL, NULL))
         {
           GNUNET_snprintf (buf,
                            sizeof(buf),
-                           "couldn't parse array no. %d in coin_evs",
+                           "couldn't parse array no. %d in blinded_coin_evs[%d]",
+                           kappa + 1,
                            idx + 1);
           error = buf;
           goto EXIT;
+        }
+
+        /* Continue to hash of the coin candidates */
+        {
+          struct TALER_BlindedCoinHashP bch;
+          ret = TALER_coin_ev_hash (&awc->coin_evs[off + kappa],
+                                    &awc->denom_hs[idx],
+                                    &bch);
+
+          GNUNET_assert (GNUNET_OK == ret);
+
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           &bch,
+                                           sizeof(bch));
         }
 
         /* Check for duplicate planchets
@@ -258,38 +270,14 @@ parse_age_withdraw_json (
           }
         }
       }
+
+      /* Finally, calculate the h_commitment from all blinded envelopes */
+      GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                         &awc->commitment.h_commitment.hash);
     }
   }; /* json_array_foreach over j_blinded_coin_evs */
 
-  /* We successfully parsed denoms_h and blinded_coins_evs */
   GNUNET_assert (NULL == error);
-
-  /* Finally, calculate the h_commitment from all blinded envelopes */
-  {
-    enum GNUNET_GenericReturnValue ret;
-    struct GNUNET_HashContext *hash_context;
-
-    hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-    for (size_t c = 0;
-         c < TALER_CNC_KAPPA * awc->num_coins;
-         c++)
-    {
-      struct TALER_BlindedCoinHashP bch;
-
-      ret = TALER_coin_ev_hash (&awc->coin_evs[c],
-                                &awc->denom_hs[c],
-                                &bch);
-
-      GNUNET_assert (GNUNET_OK == ret);
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &bch,
-                                       sizeof(bch));
-    }
-
-    GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                       &awc->commitment.h_commitment.hash);
-  }
 
 
 EXIT:
@@ -513,7 +501,6 @@ verify_reserve_signature (
   const struct TALER_EXCHANGEDB_AgeWithdraw *commitment,
   enum MHD_Result *mhd_ret)
 {
-
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_age_withdraw_verify (&commitment->h_commitment,
@@ -741,6 +728,7 @@ age_withdraw_transaction (void *cls,
     bool age_ok = false;
     bool conflict = false;
     uint16_t allowed_maximum_age = 0;
+    uint32_t reserve_birthday = 0;
 
     qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
                                       &awc->commitment,
@@ -749,7 +737,29 @@ age_withdraw_transaction (void *cls,
                                       &balance_ok,
                                       &age_ok,
                                       &allowed_maximum_age,
+                                      &reserve_birthday,
                                       &conflict);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "XXXXXXX got from do_age_withdraw:"
+                "\n\tqs: %d"
+                "\n\tcommitment: %s"
+                "\n\tmax_age: %d"
+                "\n\tfound: %d"
+                "\n\tbalance_ok: %d"
+                "\n\tage_ok: %d"
+                "\n\tallowed_maximum_age: %d"
+                "\n\treserve_birthday: %d"
+                "\n\tconflict: %d\n",
+                qs,
+                GNUNET_h2s (&awc->commitment.h_commitment.hash),
+                awc->commitment.max_age,
+                found,
+                balance_ok,
+                age_ok,
+                allowed_maximum_age,
+                reserve_birthday,
+                conflict);
+
     if (0 > qs)
     {
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -765,6 +775,23 @@ age_withdraw_transaction (void *cls,
                                           NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+    else if (! age_ok)
+    {
+      enum TALER_ErrorCode ec =
+        TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE;
+
+      *mhd_ret =
+        TALER_MHD_REPLY_JSON_PACK (
+          connection,
+          MHD_HTTP_CONFLICT,
+          TALER_MHD_PACK_EC (ec),
+          GNUNET_JSON_pack_uint64 ("allowed_maximum_age",
+                                   allowed_maximum_age),
+          GNUNET_JSON_pack_uint64 ("reserve_birthday",
+                                   reserve_birthday));
+
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
     else if (! balance_ok)
     {
       TEH_plugin->rollback (TEH_plugin->cls);
@@ -774,21 +801,6 @@ age_withdraw_transaction (void *cls,
         TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
         &awc->commitment.amount_with_fee,
         &awc->commitment.reserve_pub);
-
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    else if (! age_ok)
-    {
-      enum TALER_ErrorCode ec =
-        TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE;
-
-      *mhd_ret =
-        TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          TALER_ErrorCode_get_http_status_safe (ec),
-          TALER_MHD_PACK_EC (ec),
-          GNUNET_JSON_pack_uint64 ("allowed_maximum_age",
-                                   allowed_maximum_age));
 
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
@@ -802,6 +814,7 @@ age_withdraw_transaction (void *cls,
       GNUNET_assert (ok);
       return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
+    *mhd_ret = -1;
   }
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
@@ -842,10 +855,11 @@ sign_and_do_age_withdraw (
   awc->now = GNUNET_TIME_timestamp_get ();
 
   /* Pick the challenge */
-  awc->commitment.noreveal_index =
-    noreveal_index =
-      GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
-                                TALER_CNC_KAPPA);
+  noreveal_index =
+    GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
+                              TALER_CNC_KAPPA);
+
+  awc->commitment.noreveal_index = noreveal_index;
 
   /* Choose and sign the coins */
   {
@@ -893,21 +907,11 @@ sign_and_do_age_withdraw (
                                 result,
                                 &age_withdraw_transaction,
                                 awc);
-
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (0);
-    *result = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_GENERIC_UNEXPECTED_REQUEST_ERROR,
-                                          NULL);
-  }
-
   /* Free resources */
-  awc->commitment.h_coin_evs = NULL;
-  awc->commitment.denom_sigs = NULL;
   for (unsigned int i = 0; i<awc->num_coins; i++)
     TALER_blinded_denom_sig_free (&denom_sigs[i]);
+  awc->commitment.h_coin_evs = NULL;
+  awc->commitment.denom_sigs = NULL;
   return ret;
 }
 
@@ -918,14 +922,14 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
                           const json_t *root)
 {
   MHD_RESULT mhd_ret;
-  const json_t *j_denoms_h;
-  const json_t *j_blinded_coins_evs;
+  const json_t *j_denom_hs;
+  const json_t *j_blinded_coin_evs;
   struct AgeWithdrawContext awc = {0};
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_array_const ("denoms_h",
-                                  &j_denoms_h),
-    GNUNET_JSON_spec_array_const ("blinded_coins_evs",
-                                  &j_blinded_coins_evs),
+    GNUNET_JSON_spec_array_const ("denom_hs",
+                                  &j_denom_hs),
+    GNUNET_JSON_spec_array_const ("blinded_coin_evs",
+                                  &j_blinded_coin_evs),
     GNUNET_JSON_spec_uint16 ("max_age",
                              &awc.commitment.max_age),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
@@ -957,8 +961,8 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
     /* Parse denoms_h and blinded_coins_evs, partially fill awc */
     if (GNUNET_OK !=
         parse_age_withdraw_json (rc->connection,
-                                 j_denoms_h,
-                                 j_blinded_coins_evs,
+                                 j_denom_hs,
+                                 j_blinded_coin_evs,
                                  &awc,
                                  &mhd_ret))
       break;

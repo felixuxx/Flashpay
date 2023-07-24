@@ -36,6 +36,7 @@
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] age_ok set to true if no age requirements are present on the reserve
  * @param[out] required_age if @e age_ok is false, set to the maximum allowed age when withdrawing from this reserve
+ * @param[out] reserve_birthday if @e age_ok is false, set to the birthday of the reserve
  * @param[out] conflict set to true if there already is an entry in the database for the given pair (h_commitment, reserve_pub)
  * @return query execution status
  */
@@ -48,6 +49,7 @@ TEH_PG_do_age_withdraw (
   bool *balance_ok,
   bool *age_ok,
   uint16_t *required_age,
+  uint32_t *reserve_birthday,
   bool *conflict);
 
 #endif

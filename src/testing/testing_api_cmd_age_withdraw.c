@@ -209,21 +209,15 @@ age_withdraw_cb (
     break;
   case MHD_HTTP_CONFLICT:
     /* TODO[oec]: Add this to the response-type and handle it here */
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Age withdraw test command does not YET support status code %u\n",
-                response->hr.http_status);
     break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
-    /* TODO[oec]: Add this to response-type and handle it here  */
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Age withdraw test command does not YET support status code %u\n",
-                response->hr.http_status);
-    break;
   default:
     /* Unsupported status code (by test harness) */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Age withdraw test command does not support status code %u\n",
-                response->hr.http_status);
+                "test command for age-withdraw not support status code %u, body:\n"
+                ">>%s<<\n",
+                response->hr.http_status,
+                json_dumps (response->hr.reply, JSON_INDENT (2)));
     GNUNET_break (0);
     break;
   }
@@ -366,12 +360,13 @@ age_withdraw_cleanup (
     struct TALER_EXCHANGE_AgeWithdrawCoinInput *in = &aws->coin_inputs[n];
     struct CoinOutputState *out = &aws->coin_outputs[n];
 
-    if (NULL != in->denom_pub)
+    if (NULL != in && NULL != in->denom_pub)
     {
       TALER_EXCHANGE_destroy_denomination_key (in->denom_pub);
       in->denom_pub = NULL;
     }
-    TALER_age_commitment_proof_free (&out->details.age_commitment_proof);
+    if (NULL != out)
+      TALER_age_commitment_proof_free (&out->details.age_commitment_proof);
   }
   GNUNET_free (aws->coin_inputs);
   GNUNET_free (aws->coin_outputs);
@@ -490,10 +485,10 @@ TALER_TESTING_cmd_age_withdraw (const char *label,
                   label);
       GNUNET_assert (0);
     }
+    /* move on to next vararg! */
+    amount = va_arg (ap, const char *);
   }
 
-  /* move on to next vararg! */
-  amount = va_arg (ap, const char *);
   GNUNET_assert (NULL == amount);
   va_end (ap);
 

@@ -38,8 +38,8 @@ TEH_PG_do_age_withdraw (
   bool *balance_ok,
   bool *age_ok,
   uint16_t *required_age,
-  bool *conflict,
-  uint64_t *ruuid)
+  uint32_t *reserve_birthday,
+  bool *conflict)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
@@ -72,10 +72,10 @@ TEH_PG_do_age_withdraw (
                                 age_ok),
     GNUNET_PQ_result_spec_uint16 ("required_age",
                                   required_age),
+    GNUNET_PQ_result_spec_uint32 ("reserve_birthday",
+                                  reserve_birthday),
     GNUNET_PQ_result_spec_bool ("conflict",
                                 conflict),
-    GNUNET_PQ_result_spec_uint64 ("ruuid",
-                                  ruuid),
     GNUNET_PQ_result_spec_end
   };
 
@@ -93,9 +93,9 @@ TEH_PG_do_age_withdraw (
            ",balance_ok"
            ",age_ok"
            ",required_age"
+           ",reserve_birthday"
            ",conflict"
-           ",ruuid"
-           " FROM exchange_do_batch_withdraw"
+           " FROM exchange_do_age_withdraw"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_age_withdraw",
