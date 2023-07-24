@@ -294,7 +294,7 @@ age_withdraw_run (
     if (NULL == dpk)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to determine denomination key at %s\n",
+                  "Failed to determine denomination key for amount at %s\n",
                   (NULL != cmd) ? cmd->label : "<retried command>");
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);

@@ -35,6 +35,7 @@
 #include "taler-exchange-httpd_age-withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keys.h"
+#include "taler_util.h"
 
 
 /**
@@ -104,7 +105,7 @@ free_age_withdraw_context_resources (struct AgeWithdrawContext *awc)
  * Parse the denominations and blinded coin data of an '/age-withdraw' request.
  *
  * @param connection The MHD connection to handle
- * @param j_denoms_h Array of n hashes of the denominations for the withdrawal, in JSON format
+ * @param j_denom_hs Array of n hashes of the denominations for the withdrawal, in JSON format
  * @param j_blinded_coin_evs Array of n arrays of kappa blinded envelopes of in JSON format for the coins.
  * @param[out] awc The context of the operation, only partially built at call time
  * @param[out] mhd_ret The result if a reply is queued for MHD
@@ -122,6 +123,7 @@ parse_age_withdraw_json (
   const char *error = NULL;
   unsigned int idx = 0;
   json_t *value = NULL;
+  struct GNUNET_HashContext *hash_context;
 
 
   /* The age value MUST be on the beginning of an age group */
@@ -160,6 +162,7 @@ parse_age_withdraw_json (
       goto EXIT;
 
     awc->num_coins =  num_coins;
+    awc->commitment.num_coins = num_coins;
   }
 
   /* Continue parsing the parts */
@@ -194,6 +197,9 @@ parse_age_withdraw_json (
   awc->coin_evs = GNUNET_new_array (awc->num_coins * TALER_CNC_KAPPA,
                                     struct TALER_BlindedPlanchet);
 
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_assert (NULL != hash_context);
+
   /* Parse blinded envelopes. */
   json_array_foreach (j_blinded_coin_evs, idx, value) {
     const json_t *j_kappa_coin_evs = value;
@@ -222,9 +228,6 @@ parse_age_withdraw_json (
       size_t off = idx * TALER_CNC_KAPPA;
       unsigned int kappa = 0;
       enum GNUNET_GenericReturnValue ret;
-      struct GNUNET_HashContext *hash_context;
-
-      hash_context = GNUNET_CRYPTO_hash_context_start ();
 
       json_array_foreach (j_kappa_coin_evs, kappa, value) {
         struct GNUNET_JSON_Specification spec[] = {
@@ -271,11 +274,12 @@ parse_age_withdraw_json (
         }
       }
 
-      /* Finally, calculate the h_commitment from all blinded envelopes */
-      GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                         &awc->commitment.h_commitment.hash);
     }
   }; /* json_array_foreach over j_blinded_coin_evs */
+
+  /* Finally, calculate the h_commitment from all blinded envelopes */
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &awc->commitment.h_commitment.hash);
 
   GNUNET_assert (NULL == error);
 
@@ -739,27 +743,6 @@ age_withdraw_transaction (void *cls,
                                       &allowed_maximum_age,
                                       &reserve_birthday,
                                       &conflict);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "XXXXXXX got from do_age_withdraw:"
-                "\n\tqs: %d"
-                "\n\tcommitment: %s"
-                "\n\tmax_age: %d"
-                "\n\tfound: %d"
-                "\n\tbalance_ok: %d"
-                "\n\tage_ok: %d"
-                "\n\tallowed_maximum_age: %d"
-                "\n\treserve_birthday: %d"
-                "\n\tconflict: %d\n",
-                qs,
-                GNUNET_h2s (&awc->commitment.h_commitment.hash),
-                awc->commitment.max_age,
-                found,
-                balance_ok,
-                age_ok,
-                allowed_maximum_age,
-                reserve_birthday,
-                conflict);
-
     if (0 > qs)
     {
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)

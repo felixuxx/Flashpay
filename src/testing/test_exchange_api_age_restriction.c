@@ -258,10 +258,10 @@ run (void *cls,
    */
   struct TALER_TESTING_Command age_withdraw[] = {
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-kyc-1",
-                              "EUR:20.02"),
+                              "EUR:30.02"),
     TALER_TESTING_cmd_check_bank_admin_transfer (
       "check-create-reserve-1",
-      "EUR:20.02",
+      "EUR:30.02",
       cred.user42_payto,
       cred.exchange_payto,
       "create-reserve-kyc-1"),
@@ -295,6 +295,8 @@ run (void *cls,
                                     8,
                                     MHD_HTTP_OK,
                                     "EUR:10",
+                                    "EUR:5",
+                                    "EUR:5",
                                     NULL),
     TALER_TESTING_cmd_end (),
   };

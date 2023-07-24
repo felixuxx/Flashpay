@@ -724,14 +724,6 @@ perform_protocol (
                                   awbh->reserve_priv,
                                   &awbh->reserve_sig);
 
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_wallet_age_withdraw_verify (&awbh->h_commitment,
-                                                   &awbh->amount_with_fee,
-                                                   &awbh->age_mask,
-                                                   awbh->max_age,
-                                                   &awbh->reserve_pub,
-                                                   &awbh->reserve_sig));
-
   /* Initiate the POST-request */
   j_request_body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("denom_hs", j_denoms),
