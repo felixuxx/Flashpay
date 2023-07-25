@@ -59,17 +59,17 @@ LIBEUFIN_SETTLE_TIME=1
 function stop_libeufin()
 {
     echo -n "Stopping libeufin... "
-    if test -f ${MY_TMP_DIR:-/}/libeufin-sandbox.pid
+    if test -f "${MY_TMP_DIR:-/}/libeufin-sandbox.pid"
     then
-        PID=$(cat ${MY_TMP_DIR}/libeufin-sandbox.pid 2> /dev/null)
+        PID=$(cat "${MY_TMP_DIR}/libeufin-sandbox.pid" 2> /dev/null)
         echo "Killing libeufin sandbox $PID"
         rm "${MY_TMP_DIR}/libeufin-sandbox.pid"
         kill "$PID" 2> /dev/null || true
         wait "$PID" || true
     fi
-    if test -f ${MY_TMP_DIR:-/}/libeufin-nexus.pid
+    if test -f "${MY_TMP_DIR:-/}/libeufin-nexus.pid"
     then
-        PID=$(cat ${MY_TMP_DIR}/libeufin-nexus.pid 2> /dev/null)
+        PID=$(cat "${MY_TMP_DIR}/libeufin-nexus.pid" 2> /dev/null)
         echo "Killing libeufin nexus $PID"
         rm "${MY_TMP_DIR}/libeufin-nexus.pid"
         kill "$PID" 2> /dev/null || true
@@ -2238,7 +2238,6 @@ function check_with_database()
 {
     BASEDB="$1"
     CONF="$1.conf"
-    ORIGIN=$(pwd)
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE="${BASEDB}.mpriv"
     taler-config \
@@ -2344,7 +2343,7 @@ export PGHOST
 MYDIR="${MY_TMP_DIR}/basedb"
 mkdir -p "${MYDIR}"
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-auditor-basedb.sh "$MYDIR/$DB"
+if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/$DB"
 then
     echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
     dropdb "auditor-basedb" >/dev/null 2>/dev/null || true

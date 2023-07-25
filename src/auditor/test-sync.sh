@@ -1,8 +1,7 @@
 #!/bin/bash
-
 #
 #  This file is part of TALER
-#  Copyright (C) 2014-2021 Taler Systems SA
+#  Copyright (C) 2014-2023 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -15,6 +14,7 @@
 #  You should have received a copy of the GNU General Public License along with
 #  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/license>
 #
+# shellcheck disable=SC2317
 
 set -eu
 
@@ -32,13 +32,13 @@ function exit_fail() {
 
 # Cleanup to run whenever we exit
 function cleanup() {
-    if test ! -z "${POSTGRES_PATH:-}"
+    if [ -n "${POSTGRES_PATH:-}" ]
     then
-        ${POSTGRES_PATH}/pg_ctl -D $TMPDIR stop &> /dev/null || true
+        "${POSTGRES_PATH}/pg_ctl" -D "$TMPDIR" stop &> /dev/null || true
     fi
-    for n in `jobs -p`
+    for n in $(jobs -p)
     do
-        kill $n 2> /dev/null || true
+        kill "$n" 2> /dev/null || true
     done
     wait
 }
@@ -59,19 +59,25 @@ function check_with_database()
 
     taler-exchange-dbinit -c test-sync-out.conf
     echo -n "."
-    psql -Aqt talercheck-in -q -1 -f $1.sql >/dev/null || exit_skip "Failed to load database"
+    psql -Aqt talercheck-in \
+         -q -1 \
+         -f "$1.sql" \
+         >/dev/null \
+        || exit_skip "Failed to load database"
 
     echo -n "."
-    taler-auditor-sync -s test-sync-in.conf -d test-sync-out.conf -t
+    taler-auditor-sync \
+        -s test-sync-in.conf \
+        -d test-sync-out.conf -t
 
     # cs_nonce_locks excluded: no point
     for table in denominations denomination_revocations wire_targets reserves reserves_in reserves_close reserves_out auditors auditor_denom_sigs exchange_sign_keys signkey_revocations extensions policy_details policy_fulfillments known_coins refresh_commitments refresh_revealed_coins refresh_transfer_keys deposits refunds wire_out aggregation_tracking wire_fee recoup recoup_refresh
     do
         echo -n "."
-        CIN=`echo "SELECT COUNT(*) FROM exchange.$table" | psql talercheck-in -Aqt`
-        COUT=`echo "SELECT COUNT(*) FROM exchange.$table" | psql talercheck-out -Aqt`
+        CIN=$(echo "SELECT COUNT(*) FROM exchange.$table" | psql talercheck-in -Aqt)
+        COUT=$(echo "SELECT COUNT(*) FROM exchange.$table" | psql talercheck-out -Aqt)
 
-        if test ${CIN} != ${COUT}
+        if [ "${CIN}" != "${COUT}" ]
         then
             dropdb talercheck-in
             dropdb talercheck-out
@@ -88,14 +94,6 @@ function check_with_database()
     fail=0
 }
 
-
-
-# Postgres database to use
-DB=auditor-basedb
-
-# Configuration file to use
-CONF=${DB}.conf
-
 # test required commands exist
 echo "Testing for jq"
 jq -h > /dev/null || exit_skip "jq required"
@@ -111,23 +109,25 @@ taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet
 echo -n "Testing for Postgres"
 # Available directly in path?
 INITDB_BIN=$(command -v initdb) || true
-if [[ ! -z "$INITDB_BIN" ]]; then
-  echo " FOUND (in path) at" $INITDB_BIN
+if [[ -n "$INITDB_BIN" ]]; then
+  echo " FOUND (in path) at $INITDB_BIN"
 else
-  HAVE_INITDB=`find /usr -name "initdb" | head -1 2> /dev/null | grep postgres` || exit_skip " MISSING"
-  echo " FOUND at" `dirname $HAVE_INITDB`
-  INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
+  HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
+  echo " FOUND at " "$(dirname "$HAVE_INITDB")"
+  INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
 fi
 echo -n "Setting up Postgres DB"
-POSTGRES_PATH=`dirname $INITDB_BIN`
-MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
+POSTGRES_PATH=$(dirname "$INITDB_BIN")
+MYDIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
 TMPDIR="$MYDIR/postgres/"
-mkdir -p $TMPDIR
-$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > ${MYDIR}/postgres-dbinit.log 2> ${MYDIR}/postgres-dbinit.err
+mkdir -p "$TMPDIR"
+"$INITDB_BIN" --no-sync --auth=trust -D "${TMPDIR}" \
+            > "${MYDIR}/postgres-dbinit.log" \
+            2> "${MYDIR}/postgres-dbinit.err"
 echo " DONE"
-mkdir ${TMPDIR}/sockets
+mkdir "${TMPDIR}/sockets"
 echo -n "Launching Postgres service"
-cat - >> $TMPDIR/postgresql.conf <<EOF
+cat - >> "$TMPDIR/postgresql.conf" <<EOF
 unix_socket_directories='${TMPDIR}/sockets'
 fsync=off
 max_wal_senders=0
@@ -135,23 +135,30 @@ synchronous_commit=off
 wal_level=minimal
 listen_addresses=''
 EOF
-cat $TMPDIR/pg_hba.conf | grep -v host > $TMPDIR/pg_hba.conf.new
-mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
-${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > ${MYDIR}/postgres-start.log 2> ${MYDIR}/postgres-start.err
+grep -v host \
+     < "$TMPDIR/pg_hba.conf" \
+     > "$TMPDIR/pg_hba.conf.new"
+mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
+"${POSTGRES_PATH}/pg_ctl" \
+    -D "$TMPDIR" \
+    -l /dev/null \
+    start \
+    > "${MYDIR}/postgres-start.log" \
+    2> "${MYDIR}/postgres-start.err"
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/auditor-basedb
+if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/auditor-basedb"
 then
-    check_with_database $MYDIR/auditor-basedb
-    if test x$fail != x0
+    check_with_database "$MYDIR/auditor-basedb"
+    if [ x$fail != x0 ]
     then
-        exit $fail
+        exit "$fail"
     else
         echo "Cleaning up $MYDIR..."
-        rm -rf $MYDIR || echo "Removing $MYDIR failed"
+        rm -rf "$MYDIR" || echo "Removing $MYDIR failed"
     fi
 else
     echo "Generation failed"
