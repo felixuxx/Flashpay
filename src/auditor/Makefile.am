@@ -207,12 +207,12 @@ taler_auditor_sync_CPPFLAGS = \
 
 check_SCRIPTS = \
   test-auditor.sh \
+  test-kyc.sh \
   test-revocation.sh \
   test-sync.sh
 
 .NOTPARALLEL:
-# revocation test disabled for now: need working wallet first!
-TESTS = $(check_SCRIPTS)
+# TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \
   taler-auditor.in \
@@ -223,5 +223,6 @@ EXTRA_DIST = \
   test-sync-out.conf \
   generate-auditor-basedb.sh \
   generate-auditor-basedb.conf \
+  generate-kyc-basedb.conf \
   generate-revoke-basedb.sh \
   $(check_SCRIPTS)

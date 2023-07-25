@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This file is in the public domain
 
 # Script to be inlined into the main test scripts. Defines function 'setup()'
@@ -69,4 +69,79 @@ function get_bankaccount_transactions() {
     export LIBEUFIN_SANDBOX_PASSWORD=$2
     export LIBEUFIN_SANDBOX_URL="http://localhost:18082"
     libeufin-cli sandbox demobank list-transactions --bank-account $1
+}
+
+
+# Stop libeufin sandbox and nexus (if running)
+function stop_libeufin()
+{
+    echo -n "Stopping libeufin... "
+    if [ -f "${MY_TMP_DIR:-/}/libeufin-sandbox.pid" ]
+    then
+        PID=$(cat "${MY_TMP_DIR}/libeufin-sandbox.pid" 2> /dev/null)
+        echo "Killing libeufin sandbox $PID"
+        rm "${MY_TMP_DIR}/libeufin-sandbox.pid"
+        kill "$PID" 2> /dev/null || true
+        wait "$PID" || true
+    fi
+    if [ -f "${MY_TMP_DIR:-/}/libeufin-nexus.pid" ]
+    then
+        PID=$(cat "${MY_TMP_DIR}/libeufin-nexus.pid" 2> /dev/null)
+        echo "Killing libeufin nexus $PID"
+        rm "${MY_TMP_DIR}/libeufin-nexus.pid"
+        kill "$PID" 2> /dev/null || true
+        wait "$PID" || true
+    fi
+    echo "DONE"
+}
+
+
+function launch_libeufin () {
+# shellcheck disable=SC2016
+    export LIBEUFIN_SANDBOX_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
+    libeufin-sandbox serve \
+                     --no-auth \
+                     --port 18082 \
+                     > "${MY_TMP_DIR}/libeufin-sandbox-stdout.log" \
+                     2> "${MY_TMP_DIR}/libeufin-sandbox-stderr.log" &
+    echo $! > "${MY_TMP_DIR}/libeufin-sandbox.pid"
+# shellcheck disable=SC2016
+    export LIBEUFIN_NEXUS_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
+    libeufin-nexus serve \
+                   --port 8082 \
+                   2> "${MY_TMP_DIR}/libeufin-nexus-stderr.log" \
+                   > "${MY_TMP_DIR}/libeufin-nexus-stdout.log" &
+    echo $! > "${MY_TMP_DIR}/libeufin-nexus.pid"
+}
+
+
+
+# Downloads new transactions from the bank.
+function nexus_fetch_transactions () {
+    export LIBEUFIN_NEXUS_USERNAME="exchange"
+    export LIBEUFIN_NEXUS_PASSWORD="x"
+    export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
+    libeufin-cli accounts \
+                 fetch-transactions \
+                 --range-type since-last \
+                 --level report \
+                 exchange-nexus > /dev/null
+    unset LIBEUFIN_NEXUS_USERNAME
+    unset LIBEUFIN_NEXUS_PASSWORD
+    unset LIBEUFIN_NEXUS_URL
+}
+
+
+# Instruct Nexus to all the prepared payments (= those
+# POSTed to /transfer by the exchange).
+function nexus_submit_to_sandbox () {
+    export LIBEUFIN_NEXUS_USERNAME="exchange"
+    export LIBEUFIN_NEXUS_PASSWORD="x"
+    export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
+    libeufin-cli accounts \
+                 submit-payments\
+                 exchange-nexus
+    unset LIBEUFIN_NEXUS_USERNAME
+    unset LIBEUFIN_NEXUS_PASSWORD
+    unset LIBEUFIN_NEXUS_URL
 }

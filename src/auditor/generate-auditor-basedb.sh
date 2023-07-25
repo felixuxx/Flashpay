@@ -38,7 +38,7 @@ while getopts ':c:d:h' OPTION; do
 done
 
 # Where do we write the result?
-if [ -z ${BASEDB:+} ]
+if [ ! -v BASEDB ]
 then
     exit_fail "-d option required"
 fi
