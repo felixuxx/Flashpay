@@ -157,13 +157,13 @@ function get_payto_uri() {
 }
 
 function launch_libeufin () {
-    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${DB}-nexus.sqlite3"
+    export LIBEUFIN_SANDBOX_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
     libeufin-nexus serve \
                    --port 8082 \
                    2> "${MYDIR}/libeufin-nexus-stderr.log" \
                    > "${MYDIR}/libeufin-nexus-stdout.log" &
     echo $! > "${MYDIR}/libeufin-nexus.pid"
-    export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${DB}-sandbox.sqlite3"
+    export LIBEUFIN_NEXUS_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
     libeufin-sandbox serve \
                      --no-auth \
                      --port 18082 \
