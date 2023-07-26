@@ -152,10 +152,10 @@ parse_age_withdraw_reveal_json (
 
       json_array_foreach (array, k, value)
       {
-        struct TALER_PlanchetMasterSecretP *sec =
+        struct TALER_PlanchetMasterSecretP *secret =
           &actx->disclosed_coin_secrets[2 * idx + k];
         struct GNUNET_JSON_Specification spec[] = {
-          GNUNET_JSON_spec_fixed_auto (NULL, sec),
+          GNUNET_JSON_spec_fixed_auto (NULL, secret),
           GNUNET_JSON_spec_end ()
         };
 
@@ -312,10 +312,10 @@ calculate_blinded_hash (
 
   /* Next: calculate planchet */
   {
-    struct TALER_CoinPubHashP c_hash;
-    struct TALER_PlanchetDetail detail;
-    struct TALER_CoinSpendPrivateKeyP coin_priv;
-    union TALER_DenominationBlindingKeyP bks;
+    struct TALER_CoinPubHashP c_hash = {0};
+    struct TALER_PlanchetDetail detail = {0};
+    struct TALER_CoinSpendPrivateKeyP coin_priv = {0};
+    union TALER_DenominationBlindingKeyP bks = {0};
     struct TALER_ExchangeWithdrawValues alg_values = {
       .cipher = denom_key->denom_pub.cipher,
     };
@@ -324,24 +324,23 @@ calculate_blinded_hash (
     {
       struct TALER_CsNonce nonce;
 
-      TALER_cs_withdraw_nonce_derive (
-        secret,
-        &nonce);
+      TALER_cs_withdraw_nonce_derive (secret,
+                                      &nonce);
 
       {
-        enum TALER_ErrorCode ec;
         struct TEH_CsDeriveData cdd = {
           .h_denom_pub = &denom_key->h_denom_pub,
           .nonce = &nonce,
         };
 
-        ec = TEH_keys_denomination_cs_r_pub (&cdd,
-                                             false,
-                                             &alg_values.details.
-                                             cs_values);
-        /* FIXME Handle error? */
-        GNUNET_assert (TALER_EC_NONE == ec);
+        GNUNET_assert (TALER_EC_NONE ==
+                       TEH_keys_denomination_cs_r_pub (
+                         &cdd,
+                         false,
+                         &alg_values.details.cs_values));
       }
+
+      detail.blinded_planchet.details.cs_blinded_planchet.nonce = nonce;
     }
 
     TALER_planchet_blinding_secret_create (secret,
@@ -374,6 +373,7 @@ calculate_blinded_hash (
     ret = TALER_coin_ev_hash (&detail.blinded_planchet,
                               &denom_key->h_denom_pub,
                               bch);
+
     GNUNET_assert (GNUNET_OK == ret);
   }
 
@@ -504,7 +504,7 @@ verify_commitment_and_max_age (
     }
 
   }
-  return ret;
+  return GNUNET_OK;
 }
 
 
@@ -526,7 +526,7 @@ reply_age_withdraw_reveal_success (
   for (unsigned int i = 0; i < commitment->num_coins; i++)
   {
     json_t *obj = GNUNET_JSON_PACK (
-      TALER_JSON_pack_blinded_denom_sig ("ev_sig",
+      TALER_JSON_pack_blinded_denom_sig (NULL,
                                          &commitment->denom_sigs[i]));
     GNUNET_assert (0 ==
                    json_array_append_new (list,

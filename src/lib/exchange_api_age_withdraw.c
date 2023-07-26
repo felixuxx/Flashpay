@@ -346,6 +346,7 @@ reserve_age_withdraw_ok (
     return GNUNET_SYSERR;
 
   }
+
   awbh->callback (awbh->callback_cls,
                   &response);
   /* make sure the callback isn't called again */
@@ -780,7 +781,7 @@ copy_results (
   const struct TALER_EXCHANGE_AgeWithdrawBlindedResponse *awbr)
 {
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh = cls;
-  uint8_t idx =  awbr->details.ok.noreveal_index;
+  uint8_t k =  awbr->details.ok.noreveal_index;
   struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails details[awh->num_coins];
   struct TALER_BlindedCoinHashP blinded_coin_hs[awh->num_coins];
   struct TALER_EXCHANGE_AgeWithdrawResponse resp = {
@@ -797,9 +798,9 @@ copy_results (
 
   for (size_t n = 0; n< awh->num_coins; n++)
   {
-    details[n] = awh->coin_data[n].coin_candidates[idx].details;
-    details[n].planchet = awh->coin_data[n].planchet_details[idx];
-    blinded_coin_hs[n] = awh->coin_data[n].coin_candidates[idx].blinded_coin_h;
+    details[n] = awh->coin_data[n].coin_candidates[k].details;
+    details[n].planchet = awh->coin_data[n].planchet_details[k];
+    blinded_coin_hs[n] = awh->coin_data[n].coin_candidates[k].blinded_coin_h;
   }
 
   awh->callback (awh->callback_cls,
@@ -824,9 +825,9 @@ call_age_withdraw_blinded (
   for (size_t n = 0; n < awh->num_coins; n++)
   {
     blinded_input[n].denom_pub = &awh->coin_data[n].denom_pub;
-    for (uint8_t i = 0; i < TALER_CNC_KAPPA; i++)
-      blinded_input[n].planchet_details[i] =
-        awh->coin_data[n].planchet_details[i];
+    for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
+      blinded_input[n].planchet_details[k] =
+        awh->coin_data[n].planchet_details[k];
   }
 
   awh->procotol_handle =
@@ -918,6 +919,8 @@ csr_withdraw_done (
       bool success = false;
       /* Complete the initialization of the coin with CS denomination */
       can->details.alg_values = csrr->details.ok.alg_values;
+      GNUNET_assert (can->details.alg_values.cipher
+                     == TALER_DENOMINATION_CS);
       TALER_planchet_setup_coin_priv (&can->secret,
                                       &can->details.alg_values,
                                       &can->details.coin_priv);
@@ -950,7 +953,6 @@ csr_withdraw_done (
           TALER_EXCHANGE_age_withdraw_cancel (awh);
           break;
         }
-
         success = true;
       } while(0);
 
@@ -1023,7 +1025,6 @@ prepare_coins (
       struct TALER_PlanchetDetail *planchet = &cd->planchet_details[k];
 
       can->secret = input->secrets[k];
-
       /* Derive the age restriction from the given secret and
        * the maximum age */
       FAIL_IF (GNUNET_OK !=
@@ -1063,6 +1064,8 @@ prepare_coins (
         }
       case TALER_DENOMINATION_CS:
         {
+          can->details.alg_values.cipher = TALER_DENOMINATION_CS;
+
           struct CSRClosure *cls = &cd->csr_cls[k];
           /**
            * Save the handler and the denomination for the callback

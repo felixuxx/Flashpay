@@ -876,7 +876,7 @@ sign_and_do_age_withdraw (
   /* Prepare the hashes of the coins for insertion */
   for (uint32_t i = 0; i<awc->num_coins; i++)
   {
-    TALER_coin_ev_hash (&awc->coin_evs[i],
+    TALER_coin_ev_hash (&awc->coin_evs[TALER_CNC_KAPPA * i + noreveal_index],
                         &awc->denom_hs[i],
                         &h_coin_evs[i]);
   }

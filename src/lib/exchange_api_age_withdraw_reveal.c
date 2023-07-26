@@ -118,17 +118,18 @@ age_withdraw_reveal_ok (
 
   {
     struct TALER_BlindedDenominationSignature denom_sigs[awrh->num_coins];
+    json_t *j_sig;
+    size_t n;
 
     /* Reconstruct the coins and unblind the signatures */
-    for (size_t n = 0; n < awrh->num_coins; n++)
+    json_array_foreach (j_sigs, n, j_sig)
     {
-      json_t *j_sig = json_array_get (j_sigs, n);
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("", &denom_sigs[n]),
+        TALER_JSON_spec_blinded_denom_sig (NULL,
+                                           &denom_sigs[n]),
         GNUNET_JSON_spec_end ()
       };
 
-      GNUNET_assert (NULL != j_sig);
       if (GNUNET_OK != GNUNET_JSON_parse (j_sig,
                                           spec,
                                           NULL, NULL))
@@ -136,6 +137,7 @@ age_withdraw_reveal_ok (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+
     }
 
     response.details.ok.num_sigs = awrh->num_coins;
