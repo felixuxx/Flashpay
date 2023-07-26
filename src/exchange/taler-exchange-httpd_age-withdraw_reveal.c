@@ -71,7 +71,7 @@ struct AgeRevealContext
    * The data from the original age-withdraw.  Will be retrieved from
    * the DB via @a ach and @a reserve_pub.
    */
-  struct TALER_EXCHANGEDB_AgeWithdraw *commitment;
+  struct TALER_EXCHANGEDB_AgeWithdraw commitment;
 };
 
 
@@ -106,11 +106,8 @@ parse_age_withdraw_reveal_json (
       error = "disclosed_coin_secrets must be an array";
     else if (num_entries == 0)
       error = "disclosed_coin_secrets must not be empty";
-    else if (num_entries > TALER_MAX_FRESH_COINS * (TALER_CNC_KAPPA - 1))
+    else if (num_entries > TALER_MAX_FRESH_COINS)
       error = "maximum number of coins that can be withdrawn has been exceeded";
-    else if (0 != num_entries % (TALER_CNC_KAPPA - 1))
-      error = "the size of disclosed_coin_secrets must be a multiple of "
-              TALER_CNC_KAPPA_MINUS_ONE_STR;
 
     if (NULL != error)
     {
@@ -120,29 +117,26 @@ parse_age_withdraw_reveal_json (
       return GNUNET_SYSERR;
     }
 
-    actx->num_secrets = num_entries;
-    actx->num_coins = num_entries / (TALER_CNC_KAPPA - 1);
+    actx->num_secrets = num_entries * (TALER_CNC_KAPPA - 1);
+    actx->num_coins = num_entries;
 
   }
 
   /* Continue parsing the parts */
   {
     unsigned int idx = 0;
+    unsigned int k = 0;
+    json_t *array = NULL;
     json_t *value = NULL;
 
     /* Parse diclosed keys */
     actx->disclosed_coin_secrets =
-      GNUNET_new_array (num_entries,
+      GNUNET_new_array (actx->num_secrets,
                         struct TALER_PlanchetMasterSecretP);
 
-    json_array_foreach (j_disclosed_coin_secrets, idx, value) {
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL, &actx->disclosed_coin_secrets[idx]),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (value, spec, NULL, NULL))
+    json_array_foreach (j_disclosed_coin_secrets, idx, array) {
+      if (! json_is_array (array) ||
+          (TALER_CNC_KAPPA - 1 != json_array_size (array)))
       {
         char msg[256] = {0};
         GNUNET_snprintf (msg,
@@ -153,6 +147,32 @@ parse_age_withdraw_reveal_json (
                                             TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                             msg);
         goto EXIT;
+
+      }
+
+      json_array_foreach (array, k, value)
+      {
+        struct TALER_PlanchetMasterSecretP *sec =
+          &actx->disclosed_coin_secrets[2 * idx + k];
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_fixed_auto (NULL, sec),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (value, spec, NULL, NULL))
+        {
+          char msg[256] = {0};
+          GNUNET_snprintf (msg,
+                           sizeof(msg),
+                           "couldn't parse entry no. %d in array disclosed_coin_secrets[%d]",
+                           k + 1,
+                           idx + 1);
+          *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                              TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                              msg);
+          goto EXIT;
+        }
       }
     };
   }
@@ -182,7 +202,7 @@ find_original_commitment (
   struct MHD_Connection *connection,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct TALER_EXCHANGEDB_AgeWithdraw **commitment,
+  struct TALER_EXCHANGEDB_AgeWithdraw *commitment,
   MHD_RESULT *result)
 {
   enum GNUNET_DB_QueryStatus qs;
@@ -192,7 +212,7 @@ find_original_commitment (
     qs = TEH_plugin->get_age_withdraw (TEH_plugin->cls,
                                        reserve_pub,
                                        h_commitment,
-                                       *commitment);
+                                       commitment);
     switch (qs)
     {
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -262,7 +282,13 @@ calculate_blinded_hash (
                                                         connection,
                                                         result);
   if (NULL == denom_key)
+  {
+    GNUNET_break_op (0);
+    *result = TALER_MHD_reply_with_ec (connection,
+                                       TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                       NULL);
     return GNUNET_SYSERR;
+  }
 
   /* calculate age commitment hash */
   {
@@ -351,7 +377,7 @@ calculate_blinded_hash (
     GNUNET_assert (GNUNET_OK == ret);
   }
 
-  return GNUNET_SYSERR;
+  return ret;
 }
 
 
@@ -417,9 +443,9 @@ verify_commitment_and_max_age (
   {
     size_t i = 0; /* either 0 or 1, to index into coin_evs */
 
-    for (size_t gamma = 0; gamma<TALER_CNC_KAPPA; gamma++)
+    for (size_t k = 0; k<TALER_CNC_KAPPA; k++)
     {
-      if (gamma == (size_t) commitment->noreveal_index)
+      if (k == (size_t) commitment->noreveal_index)
       {
         GNUNET_CRYPTO_hash_context_read (hash_context,
                                          &commitment->h_coin_evs[coin_idx],
@@ -432,7 +458,7 @@ verify_commitment_and_max_age (
         const struct TALER_PlanchetMasterSecretP *secret;
         struct TALER_BlindedCoinHashP bch;
 
-        GNUNET_assert (i<2);
+        GNUNET_assert (2>i);
         GNUNET_assert ((TALER_CNC_KAPPA - 1) * num_coins  > j);
 
         secret = &disclosed_coin_secrets[j];
@@ -478,7 +504,6 @@ verify_commitment_and_max_age (
     }
 
   }
-
   return ret;
 }
 
@@ -572,7 +597,7 @@ TEH_handler_age_withdraw_reveal (
     if (GNUNET_OK !=
         verify_commitment_and_max_age (
           rc->connection,
-          actx.commitment,
+          &actx.commitment,
           actx.disclosed_coin_secrets,
           actx.num_coins,
           &result))
@@ -580,7 +605,7 @@ TEH_handler_age_withdraw_reveal (
 
     /* Finally, return the signatures */
     result = reply_age_withdraw_reveal_success (rc->connection,
-                                                actx.commitment);
+                                                &actx.commitment);
 
   } while(0);
 

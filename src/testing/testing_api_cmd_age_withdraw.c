@@ -629,8 +629,8 @@ age_withdraw_reveal_run (
    * Get the command and state for the previous call to "age witdraw"
    */
   age_withdraw_cmd  =
-    TALER_TESTING_interpreter_get_command (is,
-                                           awrs->age_withdraw_reference);
+    TALER_TESTING_interpreter_lookup_command (is,
+                                              awrs->age_withdraw_reference);
   if (NULL == age_withdraw_cmd)
   {
     GNUNET_break (0);
@@ -649,6 +649,7 @@ age_withdraw_reveal_run (
       aws->coin_inputs,
       aws->noreveal_index,
       &aws->h_commitment,
+      &aws->reserve_pub,
       age_withdraw_reveal_cb,
       awrs);
 }

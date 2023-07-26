@@ -52,26 +52,25 @@ TEH_PG_get_age_withdraw (
                                  &aw->amount_with_fee),
     GNUNET_PQ_result_spec_uint16 ("noreveal_index",
                                   &aw->noreveal_index),
-    GNUNET_PQ_result_spec_array_fixed_size (
+    TALER_PQ_result_spec_array_blinded_coin_hash (
       pg->conn,
-      "h_coin_evs",
-      sizeof(struct TALER_BlindedPlanchet),
+      "h_blind_evs",
       &aw->num_coins,
-      (void **) &aw->h_coin_evs),
-    GNUNET_PQ_result_spec_array_fixed_size (
+      &aw->h_coin_evs),
+    TALER_PQ_result_spec_array_blinded_denom_sig (
       pg->conn,
       "denom_sigs",
-      sizeof(struct TALER_DenominationSignature),
-      NULL,
-      (void **) &aw->denom_sigs),
-    GNUNET_PQ_result_spec_array_fixed_size (
+      NULL, /* we assume that this is the same size as h_coin_evs */
+      &aw->denom_sigs),
+    TALER_PQ_result_spec_array_denom_hash (
       pg->conn,
       "denom_pub_hashes",
-      sizeof(struct TALER_DenominationHashP),
-      NULL,
-      (void **) &aw->denom_pub_hashes),
+      NULL, /* we assume that this is the same size as h_coin_evs */
+      &aw->denom_pub_hashes),
     GNUNET_PQ_result_spec_end
   };
+
+  GNUNET_assert (NULL != aw);
 
   /* Used in #postgres_get_age_withdraw() to
      locate the response for a /reserve/$RESERVE_PUB/age-withdraw request
@@ -87,12 +86,12 @@ TEH_PG_get_age_withdraw (
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",noreveal_index"
-           ",h_coin_evs"
+           ",h_blind_evs"
            ",denom_sigs"
            ",ARRAY("
            "  SELECT denominations.denom_pub_hash FROM ("
-           "    SELECT UNNEST(denomination_serials) AS id,"
-           "           generate_subscripts(denominations_serials, 1) AS nr" /* for order */
+           "    SELECT UNNEST(denom_serials) AS id,"
+           "           generate_subscripts(denom_serials, 1) AS nr" /* for order */
            "  ) AS denoms"
            "  LEFT JOIN denominations ON denominations.denominations_serial=denoms.id"
            ") AS denom_pub_hashes"

@@ -143,6 +143,8 @@ WHERE
 INSERT INTO exchange.age_withdraw
   (h_commitment
   ,max_age
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
   ,reserve_pub
   ,reserve_sig
   ,noreveal_index
@@ -152,6 +154,8 @@ INSERT INTO exchange.age_withdraw
 VALUES
   (h_commitment
   ,maximum_age_committed
+  ,amount_val
+  ,amount_frac
   ,rpub
   ,rsig
   ,noreveal_index

@@ -3066,6 +3066,7 @@ typedef void
  * @param coin_inputs The input for the coins to withdraw, same as in the previous call to /age-withdraw
  * @param noreveal_index The index into each of the kappa coin candidates, that should not be revealed to the exchange
  * @param h_commitment The commmitment from the previous call to /age-withdraw
+ * @param reserve_pub The public key of the reserve the original call to /age-withdraw was made to
  * @param res_cb A callback for the result, maybe NULL
  * @param res_cb_cls A closure for @e res_cb, maybe NULL
  * @return a handle for this request; NULL if the argument was invalid.
@@ -3080,6 +3081,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
                                                                num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   TALER_EXCHANGE_AgeWithdrawRevealCallback res_cb,
   void *res_cb_cls);
 

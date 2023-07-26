@@ -47,6 +47,9 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
   /* The age-withdraw commitment */
   struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
+  /* The reserve's public key */
+  const struct TALER_ReservePublicKeyP *reserve_pub;
+
   /* Number of coins */
   size_t num_coins;
 
@@ -231,7 +234,7 @@ handle_age_withdraw_reveal_finished (
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, the exchange basically just says
-       that it doesn't know this age-withraw commitment. */
+       that it doesn't know this age-withdraw commitment. */
     awr.hr.ec = TALER_JSON_get_error_code (j_response);
     awr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
@@ -299,7 +302,7 @@ prepare_url (
   *end = '\0';
   GNUNET_snprintf (arg_str,
                    sizeof (arg_str),
-                   "age-withraw/%s/reveal",
+                   "age-withdraw/%s/reveal",
                    pub_str);
 
   awrh->request_url = TALER_url_join (exchange_url,
@@ -343,6 +346,9 @@ perform_protocol (
     } \
   } while(0)
 
+  j_array_of_secrets = json_array ();
+  FAIL_IF (NULL == j_array_of_secrets);
+
   for (size_t n = 0; n < awrh->num_coins; n++)
   {
     const struct TALER_PlanchetMasterSecretP *secrets =
@@ -369,6 +375,8 @@ perform_protocol (
                                         j_secrets));
   }
   j_request_body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                awrh->reserve_pub),
     GNUNET_JSON_pack_array_steal ("disclosed_coin_secrets",
                                   j_array_of_secrets));
   FAIL_IF (NULL == j_request_body);
@@ -418,6 +426,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
                                                                num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   TALER_EXCHANGE_AgeWithdrawRevealCallback reveal_cb,
   void *reveal_cb_cls)
 {
@@ -429,6 +438,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   awrh->coins_input = coins_input;
   awrh->callback = reveal_cb;
   awrh->callback_cls = reveal_cb_cls;
+  awrh->reserve_pub = reserve_pub;
 
   if (GNUNET_OK !=
       prepare_url (exchange_url,

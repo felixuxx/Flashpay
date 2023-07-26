@@ -52,15 +52,15 @@ TEH_PG_do_age_withdraw (
     GNUNET_PQ_query_param_auto_from_type (&commitment->h_commitment),
     GNUNET_PQ_query_param_uint16 (&commitment->max_age),
     GNUNET_PQ_query_param_uint16 (&commitment->noreveal_index),
-    GNUNET_PQ_query_param_array_auto_from_type (commitment->num_coins,
-                                                commitment->h_coin_evs,
-                                                pg->conn),
+    TALER_PQ_query_param_array_blinded_coin_hash (commitment->num_coins,
+                                                  commitment->h_coin_evs,
+                                                  pg->conn),
     GNUNET_PQ_query_param_array_uint64 (commitment->num_coins,
                                         commitment->denom_serials,
                                         pg->conn),
-    GNUNET_PQ_query_param_array_auto_from_type (commitment->num_coins,
-                                                commitment->denom_sigs,
-                                                pg->conn),
+    TALER_PQ_query_param_array_blinded_denom_sig (commitment->num_coins,
+                                                  commitment->denom_sigs,
+                                                  pg->conn),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
