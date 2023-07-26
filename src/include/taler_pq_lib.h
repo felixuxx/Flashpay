@@ -259,7 +259,7 @@ TALER_PQ_result_spec_json (const char *name,
 /**
  * Array of blinded denomination signature expected
  *
- * @parma db context of the database connection
+ * @param db context of the database connection
  * @param name name of the field in the table
  * @param[out] num number of elements in @e denom_sigs
  * @param[out] denom_sigs where to store the result
@@ -275,7 +275,7 @@ TALER_PQ_result_spec_array_blinded_denom_sig (
 /**
  * Array of blinded hashes of coin envelopes
  *
- * @parma db context of the database connection
+ * @param db context of the database connection
  * @param name name of the field in the table
  * @param[out] num number of elements in @e denom_sigs
  * @param[out] h_coin_evs where to store the result
@@ -291,7 +291,7 @@ TALER_PQ_result_spec_array_blinded_coin_hash (
 /**
  * Array of hashes of denominations
  *
- * @parma db context of the database connection
+ * @param db context of the database connection
  * @param name name of the field in the table
  * @param[out] num number of elements in @e denom_sigs
  * @param[out] denom_hs where to store the result
