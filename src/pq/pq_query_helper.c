@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_pq_lib.h"
+#include "pq_common.h"
 
 
 /**
@@ -671,4 +672,388 @@ TALER_PQ_query_param_json (const json_t *x)
 }
 
 
+/** ------------------- Array support  -----------------------------------**/
+
+/**
+ * Closure for the array type handlers.
+ *
+ * May contain sizes information for the data, given (and handled) by the
+ * caller.
+ */
+struct qconv_array_cls
+{
+  /**
+   * If not null, contains the array of sizes (the size of the array is the
+   * .size field in the ambient GNUNET_PQ_QueryParam struct). We do not free
+   * this memory.
+   *
+   * If not null, this value has precedence over @a sizes, which MUST be NULL */
+  const size_t *sizes;
+
+  /**
+   * If @a size and @a c_sizes are NULL, this field defines the same size
+   * for each element in the array.
+   */
+  size_t same_size;
+
+  /**
+   * If true, the array parameter to the data pointer to the qconv_array is a
+   * continuous byte array of data, either with @a same_size each or sizes
+   * provided bytes by @a sizes;
+   */
+  bool continuous;
+
+  /**
+   * Type of the array elements
+   */
+  enum TALER_PQ_ArrayType typ;
+
+  /**
+   * Oid of the array elements
+   */
+  Oid oid;
+};
+
+/**
+ * Callback to cleanup a qconv_array_cls to be used during
+ * GNUNET_PQ_cleanup_query_params_closures
+ */
+static void
+qconv_array_cls_cleanup (void *cls)
+{
+  GNUNET_free (cls);
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters for arrays
+ *
+ * Note: the format for the encoding of arrays for libpq is not very well
+ * documented.  We peeked into various sources (postgresql and libpqtypes) for
+ * guidance.
+ *
+ * @param cls Closure of type struct qconv_array_cls*
+ * @param data Pointer to first element in the array
+ * @param data_len Number of _elements_ in array @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_array (
+  void *cls,
+  const void *data,
+  size_t data_len,
+  void *param_values[],
+  int param_lengths[],
+  int param_formats[],
+  unsigned int param_length,
+  void *scratch[],
+  unsigned int scratch_length)
+{
+  struct qconv_array_cls *meta = cls;
+  size_t num = data_len;
+  size_t total_size;
+  const size_t *sizes;
+  bool same_sized;
+  void *elements = NULL;
+  bool noerror = true;
+  /* needed to capture the encoded rsa signatures */
+  void **buffers = NULL;
+  size_t *buffer_lengths = NULL;
+
+  (void) (param_length);
+  (void) (scratch_length);
+
+  GNUNET_assert (NULL != meta);
+  GNUNET_assert (num < INT_MAX);
+
+  sizes = meta->sizes;
+  same_sized = (0 != meta->same_size);
+
+#define RETURN_UNLESS(cond) \
+  do { \
+    if (! (cond)) \
+    { \
+      GNUNET_break ((cond)); \
+      noerror = false; \
+      goto DONE; \
+    } \
+  } while(0)
+
+  /* Calculate sizes and check bounds */
+  {
+    /* num * length-field */
+    size_t x = sizeof(uint32_t);
+    size_t y = x * num;
+    RETURN_UNLESS ((0 == num) || (y / num == x));
+
+    /* size of header */
+    total_size  = x = sizeof(struct TALER_PQ_ArrayHeader);
+    total_size += y;
+    RETURN_UNLESS (total_size >= x);
+
+    /* sizes of elements */
+    if (same_sized)
+    {
+      x = num * meta->same_size;
+      RETURN_UNLESS ((0 == num) || (x / num == meta->same_size));
+
+      y = total_size;
+      total_size += x;
+      RETURN_UNLESS (total_size >= y);
+    }
+    else  /* sizes are different per element */
+    {
+
+      switch (meta->typ)
+      {
+      case TALER_PQ_array_of_blinded_denom_sig:
+        {
+          const struct TALER_BlindedDenominationSignature *denom_sigs = data;
+          size_t len;
+
+          buffers  = GNUNET_new_array (num, void *);
+          buffer_lengths  = GNUNET_new_array (num, size_t);
+
+          for (size_t i = 0; i<num; i++)
+          {
+            switch (denom_sigs[i].cipher)
+            {
+            case TALER_DENOMINATION_RSA:
+              len = GNUNET_CRYPTO_rsa_signature_encode (
+                denom_sigs[i].details.blinded_rsa_signature,
+                &buffers[i]);
+              RETURN_UNLESS (len != 0);
+              break;
+            case TALER_DENOMINATION_CS:
+              len = sizeof (denom_sigs[i].details.blinded_cs_answer);
+              break;
+            default:
+              GNUNET_assert (0);
+            }
+
+            /* for the cipher and marker */
+            len += 2 * sizeof(uint32_t);
+            buffer_lengths[i] = len;
+
+            y = total_size;
+            total_size += len;
+            RETURN_UNLESS (total_size >= y);
+          }
+          sizes = buffer_lengths;
+          break;
+        }
+      default:
+        GNUNET_assert (0);
+      }
+    }
+
+    RETURN_UNLESS (INT_MAX > total_size);
+    RETURN_UNLESS (0 != total_size);
+
+    elements = GNUNET_malloc (total_size);
+  }
+
+  /* Write data */
+  {
+    char *out = elements;
+    struct TALER_PQ_ArrayHeader h = {
+      .ndim = htonl (1),        /* We only support one-dimensional arrays */
+      .has_null = htonl (0),    /* We do not support NULL entries in arrays */
+      .lbound = htonl (1),      /* Default start index value */
+      .dim = htonl (num),
+      .oid = htonl (meta->oid),
+    };
+
+    /* Write header */
+    GNUNET_memcpy (out, &h, sizeof(h));
+    out += sizeof(h);
+
+
+    /* Write elements */
+    for (size_t i = 0; i < num; i++)
+    {
+      size_t sz = same_sized ? meta->same_size : sizes[i];
+
+      *(uint32_t *) out = htonl (sz);
+      out += sizeof(uint32_t);
+
+      switch (meta->typ)
+      {
+      case TALER_PQ_array_of_blinded_denom_sig:
+        {
+          const struct TALER_BlindedDenominationSignature *denom_sigs = data;
+
+          uint32_t be[2];
+          be[0] = htonl ((uint32_t) denom_sigs[i].cipher);
+          be[1] = htonl (0x01);     /* magic margker: blinded */
+          GNUNET_memcpy (out,
+                         &be,
+                         sizeof(be));
+          out += sizeof(be);
+          sz -= sizeof(be);
+
+          switch (denom_sigs[i].cipher)
+          {
+          case TALER_DENOMINATION_RSA:
+            {
+              void *buf = buffers[i];
+
+              GNUNET_memcpy (out,
+                             buf,
+                             sz);
+              break;
+            }
+          case TALER_DENOMINATION_CS:
+            GNUNET_memcpy (out,
+                           &denom_sigs[i].details.blinded_cs_answer,
+                           sz);
+            break;
+          default:
+            GNUNET_assert (0);
+          }
+          break;
+        }
+      case TALER_PQ_array_of_blinded_coin_hash:
+        {
+          const struct TALER_BlindedCoinHashP *coin_hs = data;
+          GNUNET_memcpy (out,
+                         &coin_hs[i],
+                         sizeof(struct TALER_BlindedCoinHashP));
+
+          break;
+        }
+      case TALER_PQ_array_of_denom_hash:
+        {
+          const struct TALER_DenominationHashP *denom_hs = data;
+          GNUNET_memcpy (out,
+                         &denom_hs[i],
+                         sizeof(struct TALER_DenominationHashP));
+          break;
+        }
+      default:
+        {
+          GNUNET_assert (0);
+          break;
+        }
+      }
+      out += sz;
+    }
+  }
+
+  param_values[0] = elements;
+  param_lengths[0] = total_size;
+  param_formats[0] = 1;
+  scratch[0] = elements;
+
+DONE:
+  if (NULL != buffers)
+  {
+    for (size_t i = 0; i<num; i++)
+      GNUNET_free (buffers[i]);
+    GNUNET_free (buffers);
+  }
+  GNUNET_free (buffer_lengths);
+
+  if (noerror)
+    return 1;
+
+  return -1;
+}
+
+
+/**
+ * Function to genreate a typ specific query parameter and corresponding closure
+ *
+ * @param num Number of elements in @a elements
+ * @param continuous If true, @a elements is an continuous array of data
+ * @param elements Array of @a num elements, either continuous or pointers
+ * @param sizes Array of @a num sizes, one per element, may be NULL
+ * @param same_size If not 0, all elements in @a elements have this size
+ * @param typ Supported internal type of each element in @a elements
+ * @param oid Oid of the type to be used in Postgres
+ * @return Query parameter
+ */
+static struct GNUNET_PQ_QueryParam
+query_param_array_generic (
+  unsigned int num,
+  bool continuous,
+  const void *elements,
+  const size_t *sizes,
+  size_t same_size,
+  enum TALER_PQ_ArrayType typ,
+  Oid oid)
+{
+  struct qconv_array_cls *meta = GNUNET_new (struct qconv_array_cls);
+  meta->typ = typ;
+  meta->oid = oid;
+  meta->sizes = sizes;
+  meta->same_size = same_size;
+  meta->continuous = continuous;
+
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = qconv_array,
+    .conv_cls = meta,
+    .conv_cls_cleanup = qconv_array_cls_cleanup,
+    .data = elements,
+    .size = num,
+    .num_params = 1,
+  };
+
+  return res;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_blinded_denom_sig (
+  size_t num,
+  const struct TALER_BlindedDenominationSignature *denom_sigs,
+  const struct GNUNET_PQ_Context *db)
+{
+  return query_param_array_generic (num,
+                                    true,
+                                    denom_sigs,
+                                    NULL,
+                                    0,
+                                    TALER_PQ_array_of_blinded_denom_sig,
+                                    GNUNET_PQ_get_oid (db,
+                                                       GNUNET_PQ_DATATYPE_BYTEA));
+};
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_blinded_coin_hash (
+  size_t num,
+  const struct TALER_BlindedCoinHashP *coin_hs,
+  const struct GNUNET_PQ_Context *db)
+{
+  return query_param_array_generic (num,
+                                    true,
+                                    coin_hs,
+                                    NULL,
+                                    sizeof(struct TALER_BlindedCoinHashP),
+                                    TALER_PQ_array_of_blinded_coin_hash,
+                                    GNUNET_PQ_get_oid (db,
+                                                       GNUNET_PQ_DATATYPE_BYTEA));
+};
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_denom_hash (
+  size_t num,
+  const struct TALER_DenominationHashP *denom_hs,
+  const struct GNUNET_PQ_Context *db)
+{
+  return query_param_array_generic (num,
+                                    true,
+                                    denom_hs,
+                                    NULL,
+                                    sizeof(struct TALER_DenominationHashP),
+                                    TALER_PQ_array_of_denom_hash,
+                                    GNUNET_PQ_get_oid (db,
+                                                       GNUNET_PQ_DATATYPE_BYTEA));
+};
 /* end of pq/pq_query_helper.c */

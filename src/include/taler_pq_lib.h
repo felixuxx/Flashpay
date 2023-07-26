@@ -127,6 +127,33 @@ TALER_PQ_query_param_json (const json_t *x);
 
 
 /**
+ * Generate query parameter for an array of blinded denomination signatures
+ *
+ * @param num number of elements in @e denom_sigs
+ * @param denom_sigs array of blinded denomination signatures
+ * @param db context for the db-connection
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_blinded_denom_sig (
+  size_t num,
+  const struct TALER_BlindedDenominationSignature *denom_sigs,
+  const struct GNUNET_PQ_Context *db
+  );
+
+/**
+ * Generate query parameter for an array of blinded hashes of coin envelopes
+ *
+ * @param num number of elements in @e denom_sigs
+ * @param coin_evs array of blinded hashes of coin envelopes
+ * @param db context for the db-connection
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_blinded_coin_hash (
+  size_t num,
+  const struct TALER_BlindedCoinHashP *coin_evs,
+  const struct GNUNET_PQ_Context *db);
+
+/**
  * Currency amount expected.
  *
  * @param name name of the field in the table
@@ -228,6 +255,54 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_json (const char *name,
                            json_t **jp);
 
+
+/**
+ * Array of blinded denomination signature expected
+ *
+ * @parma db context of the database connection
+ * @param name name of the field in the table
+ * @param[out] num number of elements in @e denom_sigs
+ * @param[out] denom_sigs where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_blinded_denom_sig (
+  const struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct TALER_BlindedDenominationSignature **denom_sigs);
+
+/**
+ * Array of blinded hashes of coin envelopes
+ *
+ * @parma db context of the database connection
+ * @param name name of the field in the table
+ * @param[out] num number of elements in @e denom_sigs
+ * @param[out] h_coin_evs where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_blinded_coin_hash (
+  const struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct TALER_BlindedCoinHashP **h_coin_evs);
+
+/**
+ * Array of hashes of denominations
+ *
+ * @parma db context of the database connection
+ * @param name name of the field in the table
+ * @param[out] num number of elements in @e denom_sigs
+ * @param[out] denom_hs where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_denom_hash (
+  const struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct TALER_DenominationHashP **denom_hs);
 
 #endif  /* TALER_PQ_LIB_H_ */
 

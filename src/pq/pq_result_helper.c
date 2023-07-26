@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include "pq_common.h"
 #include "taler_pq_lib.h"
 
 
@@ -973,6 +974,307 @@ TALER_PQ_result_spec_exchange_withdraw_values (
 
   return res;
 }
+
+
+/**
+ * Closure for the array result specifications.  Contains type information
+ * for the generic parser extract_array_generic and out-pointers for the results.
+ */
+struct ArrayResultCls
+{
+  /* Oid of the expected type, must match the oid in the header of the PQResult struct */
+  Oid oid;
+
+  /* Target type */
+  enum TALER_PQ_ArrayType typ;
+
+  /* If not 0, defines the expected size of each entry */
+  size_t same_size;
+
+  /* Out-pointer to write the number of elements in the array */
+  size_t *num;
+
+  /* Out-pointer. If @a typ is TALER_PQ_array_of_byte and @a same_size is 0,
+   * allocate and put the array of @a num sizes here. NULL otherwise */
+  size_t **sizes;
+};
+
+/**
+ * Extract data from a Postgres database @a result as array of a specific type
+ * from row @a row.  The type information and optionally additional
+ * out-parameters are given in @a cls which is of type array_result_cls.
+ *
+ * @param cls closure of type array_result_cls
+ * @param result where to extract data from
+ * @param row row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
+ */
+static enum GNUNET_GenericReturnValue
+extract_array_generic (
+  void *cls,
+  PGresult *result,
+  int row,
+  const char *fname,
+  size_t *dst_size,
+  void *dst)
+{
+  const struct ArrayResultCls *info = cls;
+  int data_sz;
+  char *data;
+  void *out = NULL;
+  struct TALER_PQ_ArrayHeader header;
+  int col_num;
+
+  GNUNET_assert (NULL != dst);
+  *((void **) dst) = NULL;
+
+  #define FAIL_IF(cond) \
+  do { \
+    if ((cond)) \
+    { \
+      GNUNET_break (! (cond)); \
+      goto FAIL; \
+    } \
+  } while(0)
+
+  col_num = PQfnumber (result, fname);
+  FAIL_IF (0 > col_num);
+
+  data_sz = PQgetlength (result, row, col_num);
+  FAIL_IF (0 > data_sz);
+  FAIL_IF (sizeof(header) > (size_t) data_sz);
+
+  data = PQgetvalue (result, row, col_num);
+  FAIL_IF (NULL == data);
+
+  {
+    struct TALER_PQ_ArrayHeader *h =
+      (struct TALER_PQ_ArrayHeader *) data;
+
+    header.ndim = ntohl (h->ndim);
+    header.has_null = ntohl (h->has_null);
+    header.oid = ntohl (h->oid);
+    header.dim = ntohl (h->dim);
+    header.lbound = ntohl (h->lbound);
+
+    FAIL_IF (1 != header.ndim);
+    FAIL_IF (INT_MAX <= header.dim);
+    FAIL_IF (0 != header.has_null);
+    FAIL_IF (1 != header.lbound);
+    FAIL_IF (info->oid != header.oid);
+  }
+
+  if (NULL != info->num)
+    *info->num = header.dim;
+
+  {
+    char *in = data + sizeof(header);
+
+    switch (info->typ)
+    {
+    case TALER_PQ_array_of_denom_hash:
+      if (NULL != dst_size)
+        *dst_size = sizeof(struct TALER_DenominationHashP) * (header.dim);
+      out = GNUNET_new_array (header.dim, struct TALER_DenominationHashP);
+      *((void **) dst) = out;
+      for (uint32_t i = 0; i < header.dim; i++)
+      {
+        size_t sz =  ntohl (*(uint32_t *) in);
+        FAIL_IF (sz != sizeof(struct TALER_DenominationHashP));
+        in += sizeof(uint32_t);
+        *(struct TALER_DenominationHashP *) out =
+          *(struct TALER_DenominationHashP *) in;
+        in += sz;
+        out += sz;
+      }
+      return GNUNET_OK;
+
+    case TALER_PQ_array_of_blinded_coin_hash:
+      if (NULL != dst_size)
+        *dst_size = sizeof(struct TALER_BlindedCoinHashP) * (header.dim);
+      out = GNUNET_new_array (header.dim, struct TALER_BlindedCoinHashP);
+      *((void **) dst) = out;
+      for (uint32_t i = 0; i < header.dim; i++)
+      {
+        size_t sz =  ntohl (*(uint32_t *) in);
+        FAIL_IF (sz != sizeof(struct TALER_BlindedCoinHashP));
+        in += sizeof(uint32_t);
+        *(struct TALER_BlindedCoinHashP *) out =
+          *(struct TALER_BlindedCoinHashP *) in;
+        in += sz;
+        out += sz;
+      }
+      return GNUNET_OK;
+
+    case TALER_PQ_array_of_blinded_denom_sig:
+      {
+        struct TALER_BlindedDenominationSignature *denom_sigs;
+        if (0 == header.dim)
+        {
+          if (NULL != dst_size)
+            *dst_size = 0;
+          break;
+        }
+
+        denom_sigs = GNUNET_new_array (header.dim,
+                                       struct TALER_BlindedDenominationSignature);
+        *((void **) dst) = denom_sigs;
+
+        /* copy data */
+        for (uint32_t i = 0; i < header.dim; i++)
+        {
+          struct TALER_BlindedDenominationSignature *denom_sig = &denom_sigs[i];
+          uint32_t be[2];
+          size_t sz =  ntohl (*(uint32_t *) in);
+          in += sizeof(uint32_t);
+
+          FAIL_IF (sizeof(be) > sz);
+          GNUNET_memcpy (&be,
+                         in,
+                         sizeof(be));
+          FAIL_IF (0x01 != ntohl (be[1]));  /* magic marker: blinded */
+
+          in += sizeof(be);
+          sz -= sizeof(be);
+
+          denom_sig->cipher = ntohl (be[0]);
+          switch (denom_sig->cipher)
+          {
+          case TALER_DENOMINATION_RSA:
+            denom_sig->details.blinded_rsa_signature =
+              GNUNET_CRYPTO_rsa_signature_decode (in,
+                                                  sz);
+            FAIL_IF (NULL == denom_sig->details.blinded_rsa_signature);
+            break;
+
+          case TALER_DENOMINATION_CS:
+            FAIL_IF (sizeof(denom_sig->details.blinded_cs_answer) != sz);
+            GNUNET_memcpy (&denom_sig->details.blinded_cs_answer,
+                           in,
+                           sz);
+            break;
+
+          default:
+            FAIL_IF (true);
+          }
+
+          in += sz;
+        }
+        return GNUNET_OK;
+      }
+    default:
+      FAIL_IF (true);
+    }
+  }
+
+FAIL:
+  GNUNET_free (*(void **) dst);
+  return GNUNET_SYSERR;
+  #undef FAIL_IF
+
+}
+
+
+/**
+ * Cleanup of the data and closure of an array spec.
+ */
+static void
+array_cleanup (void *cls,
+               void *rd)
+{
+
+  struct ArrayResultCls *info = cls;
+  void **dst = rd;
+
+  if ((0 == info->same_size) &&
+      (NULL != info->sizes))
+    GNUNET_free (*(info->sizes));
+
+  GNUNET_free (cls);
+  GNUNET_free (*dst);
+  *dst = NULL;
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_blinded_denom_sig (
+  const struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct TALER_BlindedDenominationSignature **denom_sigs)
+{
+  struct ArrayResultCls *info = GNUNET_new (struct ArrayResultCls);
+
+  info->num = num;
+  info->typ = TALER_PQ_array_of_blinded_denom_sig;
+  info->oid = GNUNET_PQ_get_oid (db,
+                                 GNUNET_PQ_DATATYPE_BYTEA);
+
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = extract_array_generic,
+    .cleaner = array_cleanup,
+    .dst = (void *) denom_sigs,
+    .fname = name,
+    .cls = info
+  };
+  return res;
+
+};
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_blinded_coin_hash (
+  const struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct TALER_BlindedCoinHashP **h_coin_evs)
+{
+  struct ArrayResultCls *info = GNUNET_new (struct ArrayResultCls);
+
+  info->num = num;
+  info->typ = TALER_PQ_array_of_blinded_coin_hash;
+  info->oid = GNUNET_PQ_get_oid (db,
+                                 GNUNET_PQ_DATATYPE_BYTEA);
+
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = extract_array_generic,
+    .cleaner = array_cleanup,
+    .dst = (void *) h_coin_evs,
+    .fname = name,
+    .cls = info
+  };
+  return res;
+
+};
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_denom_hash (
+  const struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct TALER_DenominationHashP **denom_hs)
+{
+  struct ArrayResultCls *info = GNUNET_new (struct ArrayResultCls);
+
+  info->num = num;
+  info->typ = TALER_PQ_array_of_denom_hash;
+  info->oid = GNUNET_PQ_get_oid (db,
+                                 GNUNET_PQ_DATATYPE_BYTEA);
+
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = extract_array_generic,
+    .cleaner = array_cleanup,
+    .dst = (void *) denom_hs,
+    .fname = name,
+    .cls = info
+  };
+  return res;
+
+};
 
 
 /* end of pq_result_helper.c */
