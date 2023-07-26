@@ -499,6 +499,8 @@ kyc_satisfied (struct AggregationUnit *au_active)
   char *requirement;
   enum GNUNET_DB_QueryStatus qs;
 
+  if (kyc_off)
+    return true;
   qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
     &au_active->h_payto,

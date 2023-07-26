@@ -12,16 +12,41 @@
 #
 set -eu
 
-# Where do we write the result?
-BASEDB="$1"
-
 . setup.sh
+
+CONF="generate-auditor-basedb.conf"
+# Parse command-line options
+while getopts ':c:d:h' OPTION; do
+    case "$OPTION" in
+        c)
+            CONF="$OPTARG"
+            ;;
+        d)
+            BASEDB="$OPTARG"
+            ;;
+        h)
+            echo 'Supported options:'
+# shellcheck disable=SC2016
+            echo '  -c $CONF     -- set configuration'
+# shellcheck disable=SC2016
+            echo '  -d $DB       -- set database name'
+            ;;
+        ?)
+        exit_fail "Unrecognized command line option"
+        ;;
+    esac
+done
+
+# Where do we write the result?
+if [ ! -v BASEDB ]
+then
+    exit_fail "-d option required"
+fi
 
 echo -n "Testing for curl ..."
 curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
-CONF="generate-auditor-basedb.conf"
 
 # reset database
 echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
