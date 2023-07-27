@@ -51,6 +51,19 @@ TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x);
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount (const struct TALER_Amount *x);
 
+/**
+ * Generate query parameter (as record tuple) for an amount, consisting
+ * of the two components "value" and "fraction" in this order. The
+ * types must be a 64-bit integer and a 32-bit integer
+ * respectively. The currency is dropped.
+ *
+ * @param db The database context for OID lookup
+ * @param amount pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_amount_tuple (
+  const struct GNUNET_PQ_Context *db,
+  const struct TALER_Amount *amount);
 
 /**
  * Generate query parameter for a denomination public
@@ -180,6 +193,18 @@ TALER_PQ_result_spec_amount (const char *name,
                              const char *currency,
                              struct TALER_Amount *amount);
 
+/**
+ * Currency amount expected, from a record-field of (DB) taler_amount type
+ *
+ * @param name name of the field in the table
+ * @param currency currency to use for @a amount
+ * @param[out] amount where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_amount_tuple (const char *name,
+                                   const char *currency,
+                                   struct TALER_Amount *amount);
 
 /**
  * Denomination public key expected.

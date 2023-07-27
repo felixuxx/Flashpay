@@ -265,6 +265,145 @@ TALER_PQ_result_spec_amount (const char *name,
 
 
 /**
+ * Extract an amount from a tuple from a Postgres database @a result at row @a row.
+ *
+ * @param cls closure, a `const char *` giving the currency
+ * @param result where to extract data from
+ * @param row row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_NO if at least one result was NULL
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field)
+ */
+static enum GNUNET_GenericReturnValue
+extract_amount_tuple (void *cls,
+                      PGresult *result,
+                      int row,
+                      const char *fname,
+                      size_t *dst_size,
+                      void *dst)
+{
+  struct TALER_Amount *r_amount = dst;
+  const char *currency = cls;
+  int col;
+  int len;
+
+  if (sizeof (struct TALER_Amount) != *dst_size)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* Set return value to invalid in case we don't finish */
+  memset (r_amount,
+          0,
+          sizeof (struct TALER_Amount));
+  col = PQfnumber (result,
+                   fname);
+  if (col < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Field `%s' does not exist in result\n",
+                fname);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+                   row,
+                   col))
+  {
+    return GNUNET_NO;
+  }
+
+  /* Parse the tuple */
+  {
+    char *in;
+    uint32_t num;
+    struct TALER_PQ_Amount_P ap;
+    int size;
+    const static int expected_size = sizeof(uint32_t) /* length */
+                                     + sizeof(struct TALER_PQ_Amount_P);
+
+    size = PQgetlength (result,
+                        row,
+                        col);
+
+    if (expected_size != size)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Incorrect size of binary field `%s' (got %d, expected %d)\n",
+                  fname,
+                  size,
+                  expected_size);
+      return GNUNET_SYSERR;
+    }
+
+    in = PQgetvalue (result,
+                     row,
+                     col);
+
+    num = ntohl (*(uint32_t *) in);
+    if (2 != num)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Incorrect number of elements in tuple-field `%s'\n",
+                  fname);
+      return GNUNET_SYSERR;
+    }
+    in += sizeof(uint32_t);
+    ap = *(struct TALER_PQ_Amount_P *) in;
+
+    /* TODO[oec]: OID-checks? */
+
+    r_amount->value = GNUNET_ntohll (ap.v);
+    r_amount->fraction = ntohl (ap.f);
+  }
+
+  if (r_amount->value >= TALER_AMOUNT_MAX_VALUE)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Value in field `%s' exceeds legal range\n",
+                fname);
+    return GNUNET_SYSERR;
+  }
+  if (r_amount->fraction >= TALER_AMOUNT_FRAC_BASE)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fraction in field `%s' exceeds legal range\n",
+                fname);
+    return GNUNET_SYSERR;
+  }
+
+  len = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
+                    strlen (currency));
+
+  GNUNET_memcpy (r_amount->currency,
+                 currency,
+                 len);
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_amount_tuple (const char *name,
+                                   const char *currency,
+                                   struct TALER_Amount *amount)
+{
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_amount_tuple,
+    .cls = (void *) currency,
+    .dst = (void *) amount,
+    .dst_size = sizeof (*amount),
+    .fname = name
+  };
+
+  return res;
+}
+
+
+/**
  * Extract data from a Postgres database @a result at row @a row.
  *
  * @param cls closure
@@ -1027,7 +1166,7 @@ extract_array_generic (
   int data_sz;
   char *data;
   void *out = NULL;
-  struct TALER_PQ_ArrayHeader header;
+  struct TALER_PQ_ArrayHeader_P header;
   int col_num;
 
   GNUNET_assert (NULL != dst);
@@ -1053,8 +1192,8 @@ extract_array_generic (
   FAIL_IF (NULL == data);
 
   {
-    struct TALER_PQ_ArrayHeader *h =
-      (struct TALER_PQ_ArrayHeader *) data;
+    struct TALER_PQ_ArrayHeader_P *h =
+      (struct TALER_PQ_ArrayHeader_P *) data;
 
     header.ndim = ntohl (h->ndim);
     header.has_null = ntohl (h->has_null);

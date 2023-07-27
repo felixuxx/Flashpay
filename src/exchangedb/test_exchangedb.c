@@ -1421,6 +1421,8 @@ run (void *cls)
     bool found;
     bool nonce_ok;
     bool balance_ok;
+    bool age_ok;
+    uint16_t maximum_age;
     uint64_t ruuid;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1428,9 +1430,12 @@ run (void *cls)
                                  NULL,
                                  &cbc,
                                  now,
+                                 false,
                                  &found,
                                  &balance_ok,
                                  &nonce_ok,
+                                 &age_ok,
+                                 &maximum_age,
                                  &ruuid));
     GNUNET_assert (found);
     GNUNET_assert (nonce_ok);

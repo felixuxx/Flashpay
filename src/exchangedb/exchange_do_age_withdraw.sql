@@ -16,8 +16,7 @@
 -- @author Özgür Kesim
 
 CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
-  IN amount_val INT8,
-  IN amount_frac INT4,
+  IN amount_with_fee TALER_AMOUNT,
   IN rpub BYTEA,
   IN rsig BYTEA,
   IN now INT8,
@@ -38,8 +37,9 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   reserve_gc INT8;
-  reserve_val INT8;
-  reserve_frac INT4;
+  difference RECORD;
+  balance  TALER_AMOUNT;
+  new_balance TALER_AMOUNT;
   not_before date;
   earliest_date date;
 BEGIN
@@ -55,8 +55,8 @@ SELECT
   ,gc_date
   ,birthday
  INTO
-   reserve_val
-  ,reserve_frac
+   balance.val
+  ,balance.frac
   ,reserve_gc
   ,reserve_birthday
   FROM exchange.reserves
@@ -102,31 +102,23 @@ END IF;
 age_ok = TRUE;
 required_age=0;
 
-
-
 -- Check reserve balance is sufficient.
-IF (reserve_val > amount_val)
-THEN
-  IF (reserve_frac >= amount_frac)
-  THEN
-    reserve_val=reserve_val - amount_val;
-    reserve_frac=reserve_frac - amount_frac;
-  ELSE
-    reserve_val=reserve_val - amount_val - 1;
-    reserve_frac=reserve_frac + 100000000 - amount_frac;
-  END IF;
-ELSE
-  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
-  THEN
-    reserve_val=0;
-    reserve_frac=reserve_frac - amount_frac;
-  ELSE
-    balance_ok=FALSE;
-    RETURN;
-  END IF;
+SELECT *
+INTO 
+  difference
+FROM 
+  amount_left_minus_right(
+     balance
+    ,amount_with_fee);
+
+balance_ok = difference.ok;
+
+IF NOT balance_ok
+THEN 
+  RETURN;
 END IF;
 
-balance_ok=TRUE;
+new_balance = difference.diff;
 
 -- Calculate new expiration dates.
 min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
@@ -134,8 +126,8 @@ min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
 -- Update reserve balance.
 UPDATE reserves SET
   gc_date=min_reserve_gc
- ,current_balance_val=reserve_val
- ,current_balance_frac=reserve_frac
+ ,current_balance_val=new_balance.val
+ ,current_balance_frac=new_balance.frac
 WHERE
   reserves.reserve_pub=rpub;
 
@@ -143,8 +135,7 @@ WHERE
 INSERT INTO exchange.age_withdraw
   (h_commitment
   ,max_age
-  ,amount_with_fee_val
-  ,amount_with_fee_frac
+  ,amount_with_fee
   ,reserve_pub
   ,reserve_sig
   ,noreveal_index
@@ -154,8 +145,7 @@ INSERT INTO exchange.age_withdraw
 VALUES
   (h_commitment
   ,maximum_age_committed
-  ,amount_val
-  ,amount_frac
+  ,amount_with_fee
   ,rpub
   ,rsig
   ,noreveal_index
@@ -176,6 +166,6 @@ END IF;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_age_withdraw(INT8, INT4, BYTEA, BYTEA, INT8, INT8, BYTEA, INT2, INT2, BYTEA[], INT8[], BYTEA[])
+COMMENT ON FUNCTION exchange_do_age_withdraw(TALER_AMOUNT, BYTEA, BYTEA, INT8, INT8, BYTEA, INT2, INT2, BYTEA[], INT8[], BYTEA[])
   IS 'Checks whether the reserve has sufficient balance for an age-withdraw operation (or the request is repeated and was previously approved) and that age requirements are met. If so updates the database with the result. Includes storing the blinded planchets and denomination signatures, or signaling conflict';
 

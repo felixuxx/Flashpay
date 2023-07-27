@@ -137,6 +137,97 @@ COMMENT ON FUNCTION comment_partitioned_column
   IS 'Generic function to create a comment on column of a table that is partitioned.';
 
 
+--------------------------------------------------------------
+-- Taler amounts and helper functiosn
+-------------------------------------------------------------
+
+DO $$
+BEGIN
+  CREATE TYPE TALER_AMOUNT
+    AS (val  INT8
+       ,frac INT4);
+
+  COMMENT ON TYPE TALER_AMOUNT
+    IS 'Type to store a TALER-amount as (val, frac) pair.';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END
+$$;
+
+CREATE PROCEDURE amount_normalize(
+    IN amount TALER_AMOUNT
+  ,OUT normalized TALER_AMOUNT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  normalized.val = amount.val + amount.frac / 100000000;
+  normalized.frac = amount.frac % 100000000;
+END $$;
+
+COMMENT ON PROCEDURE amount_normalize
+  IS 'Returns the normalized amount by adding to the .val the value of (.frac / 100000000) and removing the modulus 100000000 from .frac.';
+
+CREATE PROCEDURE amount_add(
+   IN a TALER_AMOUNT
+  ,IN b TALER_AMOUNT
+  ,OUT sum TALER_AMOUNT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  sum = (a.val + b.val, a.frac + b.frac);
+  CALL amount_normalize(sum ,sum);
+
+  IF (sum.val > (1<<52))
+  THEN
+    RAISE EXCEPTION 'addition overflow';
+  END IF;
+END $$;
+
+COMMENT ON PROCEDURE amount_add
+  IS 'Returns the normalized sum of two amounts. It raises an exception when the resulting .val is larger than 2^52';
+
+CREATE FUNCTION amount_left_minus_right(
+  IN  l TALER_AMOUNT
+ ,IN  r TALER_AMOUNT
+ ,OUT diff TALER_AMOUNT
+ ,OUT ok BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+IF (l.val > r.val)
+THEN
+  ok = TRUE;
+  IF (l.frac >= r.frac)
+  THEN
+    diff.val  = l.val  - r.val;
+    diff.frac = l.frac - r.frac;
+  ELSE
+    diff.val  = l.val  - r.val - 1;
+    diff.frac = l.frac + 100000000 - r.frac;
+  END IF;
+ELSE
+  IF (l.val = r.val) AND (l.frac >= r.frac)
+  THEN
+    diff.val  = 0;
+    diff.frac = l.frac - r.frac;
+    ok = TRUE;
+  ELSE
+    diff = (-1, -1);
+    ok = FALSE;
+  END IF;
+END IF;
+
+RETURN;
+END $$;
+
+COMMENT ON FUNCTION amount_left_minus_right
+  IS 'Subtracts the right amount from the left and returns the difference and TRUE, if the left amount is larger than the right, or an invalid amount and FALSE otherwise.';
+
+
 ---------------------------------------------------------------------------
 --                   Main DB setup loop
 ---------------------------------------------------------------------------

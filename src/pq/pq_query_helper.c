@@ -21,6 +21,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <gnunet/gnunet_common.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_pq_lib.h"
@@ -143,6 +144,84 @@ TALER_PQ_query_param_amount (const struct TALER_Amount *x)
     .data = x,
     .size = sizeof (*x),
     .num_params = 2
+  };
+
+  return res;
+}
+
+
+/**
+ * Function called to convert input amount into SQL parameter as tuple.
+ *
+ * @param cls closure
+ * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_amount_tuple (void *cls,
+                    const void *data,
+                    size_t data_len,
+                    void *param_values[],
+                    int param_lengths[],
+                    int param_formats[],
+                    unsigned int param_length,
+                    void *scratch[],
+                    unsigned int scratch_length)
+{
+  const struct GNUNET_PQ_Context *db = cls;
+  const struct TALER_Amount *amount = data;
+  size_t sz;
+
+  GNUNET_assert (NULL != db);
+  GNUNET_assert (NULL != amount);
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (1 <= scratch_length);
+  GNUNET_assert (sizeof (struct TALER_Amount) == data_len);
+  GNUNET_static_assert (sizeof(uint32_t) == sizeof(Oid));
+
+  {
+    char *out;
+    struct TALER_PQ_Amount_P d = MAKE_TALER_PQ_AMOUNT_P (db, amount);
+
+    sz = sizeof(uint32_t); /* number of elements in tuple */
+    sz += sizeof(d);
+
+    out = GNUNET_malloc (sz);
+    scratch[0] = out;
+
+    *(uint32_t *) out = htonl (2);
+    out += sizeof(uint32_t);
+
+    *(struct TALER_PQ_Amount_P*) out = d;
+
+  }
+
+  param_values[0] = scratch[0];
+  param_lengths[0] = sz;
+  param_formats[0] = 1;
+
+  return 1;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_amount_tuple (
+  const struct GNUNET_PQ_Context *db,
+  const struct TALER_Amount *amount)
+{
+  struct GNUNET_PQ_QueryParam res = {
+    .conv_cls = (void *) db,
+    .conv = &qconv_amount_tuple,
+    .data = amount,
+    .size = sizeof (*amount),
+    .num_params = 1,
   };
 
   return res;
@@ -793,7 +872,7 @@ qconv_array (
     RETURN_UNLESS ((0 == num) || (y / num == x));
 
     /* size of header */
-    total_size  = x = sizeof(struct TALER_PQ_ArrayHeader);
+    total_size  = x = sizeof(struct TALER_PQ_ArrayHeader_P);
     total_size += y;
     RETURN_UNLESS (total_size >= x);
 
@@ -862,7 +941,7 @@ qconv_array (
   /* Write data */
   {
     char *out = elements;
-    struct TALER_PQ_ArrayHeader h = {
+    struct TALER_PQ_ArrayHeader_P h = {
       .ndim = htonl (1),        /* We only support one-dimensional arrays */
       .has_null = htonl (0),    /* We do not support NULL entries in arrays */
       .lbound = htonl (1),      /* Default start index value */
