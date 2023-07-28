@@ -24,3 +24,5 @@ taler-auditor-test.sqlite3
 libeufin-nexus.pid
 libeufin-sandbox.pid
 taler-helper-auditor-purses
+generate-kyc-basedb.conf.edited
+generate-auditor-basedb.conf.edited
