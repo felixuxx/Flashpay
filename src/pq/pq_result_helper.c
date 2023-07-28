@@ -1166,7 +1166,7 @@ extract_array_generic (
   int data_sz;
   char *data;
   void *out = NULL;
-  struct TALER_PQ_ArrayHeader_P header;
+  struct GNUNET_PQ_ArrayHeader_P header;
   int col_num;
 
   GNUNET_assert (NULL != dst);
@@ -1192,8 +1192,8 @@ extract_array_generic (
   FAIL_IF (NULL == data);
 
   {
-    struct TALER_PQ_ArrayHeader_P *h =
-      (struct TALER_PQ_ArrayHeader_P *) data;
+    struct GNUNET_PQ_ArrayHeader_P *h =
+      (struct GNUNET_PQ_ArrayHeader_P *) data;
 
     header.ndim = ntohl (h->ndim);
     header.has_null = ntohl (h->has_null);

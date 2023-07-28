@@ -19,14 +19,41 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #ifndef TALER_PQ_LIB_H_
 #define TALER_PQ_LIB_H_
 
 #include <libpq-fe.h>
 #include <jansson.h>
+#include <gnunet/gnunet_common.h>
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_util.h"
+
+/**
+ * Enumerates the composite types that Taler defines in Postgres.
+ * The corresponding OIDs (which are assigned by postgres at time of
+ * declaration) are stored in TALER_PQ_CompositeOIDs.
+ */
+enum TALER_PQ_CompositeType
+{
+  TALER_PQ_CompositeAmount,
+  TALER_PQ_CompositeMAX /* MUST be last */
+};
+
+/**
+ * The correspondence of the Composite types and their OID in Postgres
+ */
+extern Oid TALER_PQ_CompositeOIDs[TALER_PQ_CompositeMAX];
+
+/**
+ * Initialize the list of OIDs in TALER_PQ_CompositeOIDs.  MUST be called
+ * before any composite type is used in arrays-specs/-params.
+ *
+ * @return GNUNET_SYSERR on failure
+ */
+enum GNUNET_GenericReturnValue
+TALER_PQ_load_oids_for_composite_types (struct GNUNET_PQ_Context *db);
 
 /**
  * Generate query parameter for a currency, consisting of the three

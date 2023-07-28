@@ -194,6 +194,16 @@ main (int argc,
     GNUNET_PQ_disconnect (conn);
     return 1;
   }
+
+  ret = TALER_PQ_load_oids_for_composite_types (conn);
+  if (GNUNET_OK != ret)
+  {
+    fprintf (stderr,
+             "Failed to load oids for composites\n");
+    GNUNET_PQ_disconnect (conn);
+    return 1;
+  }
+
   ret = run_queries (conn);
   {
     struct GNUNET_PQ_ExecuteStatement ds[] = {

@@ -293,6 +293,15 @@ TEH_PG_internal_setup (struct PostgresClosure *pg)
                                           NULL);
     if (NULL == db_conn)
       return GNUNET_SYSERR;
+
+    if (GNUNET_OK != TALER_PQ_load_oids_for_composite_types (db_conn))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to load OIDs for composite types\n");
+      GNUNET_PQ_disconnect (db_conn);
+      return GNUNET_SYSERR;
+    }
+
     pg->prep_gen++;
     pg->conn = db_conn;
   }
