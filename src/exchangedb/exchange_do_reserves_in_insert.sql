@@ -966,21 +966,6 @@ END $$;
 
 
 
-
-
-
-
-DO $$
-BEGIN
-  CREATE TYPE exchange_do_array_reserve_insert_return_type
-    AS
-    (transaction_duplicate BOOLEAN
-    ,ruuid INT8);
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END
-$$;
-
 CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN in_gc_date INT8,
   IN in_reserve_expiration INT8,
@@ -1019,7 +1004,7 @@ BEGIN
      ,UNNEST (ina_payto_uri) AS payto_uri
   ON CONFLICT DO NOTHING;
 
-  FOR i IN 
+  FOR i IN
     SELECT
       reserve_pub
      ,wire_ref

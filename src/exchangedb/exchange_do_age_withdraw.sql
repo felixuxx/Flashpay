@@ -16,7 +16,7 @@
 -- @author Özgür Kesim
 
 CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
-  IN amount_with_fee TALER_AMOUNT,
+  IN amount_with_fee taler_amount,
   IN rpub BYTEA,
   IN rsig BYTEA,
   IN now INT8,
@@ -38,8 +38,8 @@ AS $$
 DECLARE
   reserve_gc INT8;
   difference RECORD;
-  balance  TALER_AMOUNT;
-  new_balance TALER_AMOUNT;
+  balance  taler_amount;
+  new_balance taler_amount;
   not_before date;
   earliest_date date;
 BEGIN
@@ -104,9 +104,9 @@ required_age=0;
 
 -- Check reserve balance is sufficient.
 SELECT *
-INTO 
+INTO
   difference
-FROM 
+FROM
   amount_left_minus_right(
      balance
     ,amount_with_fee);
@@ -114,7 +114,7 @@ FROM
 balance_ok = difference.ok;
 
 IF NOT balance_ok
-THEN 
+THEN
   RETURN;
 END IF;
 
@@ -166,6 +166,5 @@ END IF;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_age_withdraw(TALER_AMOUNT, BYTEA, BYTEA, INT8, INT8, BYTEA, INT2, INT2, BYTEA[], INT8[], BYTEA[])
+COMMENT ON FUNCTION exchange_do_age_withdraw(taler_amount, BYTEA, BYTEA, INT8, INT8, BYTEA, INT2, INT2, BYTEA[], INT8[], BYTEA[])
   IS 'Checks whether the reserve has sufficient balance for an age-withdraw operation (or the request is repeated and was previously approved) and that age requirements are met. If so updates the database with the result. Includes storing the blinded planchets and denomination signatures, or signaling conflict';
-

@@ -29,7 +29,6 @@ BEGIN
       ',h_payto BYTEA PRIMARY KEY CHECK (LENGTH(h_payto)=32)'
       ',kyc_prox BYTEA NOT NULL CHECK (LENGTH(kyc_prox)=32)'
       ',provider VARCHAR NOT NULL'
-      ',birthdate VARCHAR'
       ',collection_time INT8 NOT NULL'
       ',expiration_time INT8 NOT NULL'
       ',encrypted_attributes BYTEA NOT NULL'
