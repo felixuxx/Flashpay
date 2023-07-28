@@ -109,11 +109,8 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   curs_reserve_exist REFCURSOR;
-DECLARE
   k INT8;
-DECLARE
   curs_transaction_exist REFCURSOR;
-DECLARE
   i RECORD;
 BEGIN
   transaction_duplicate0 = TRUE;
@@ -295,11 +292,8 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   curs_reserve_exist REFCURSOR;
-DECLARE
   k INT8;
-DECLARE
   curs_transaction_exist REFCURSOR;
-DECLARE
   i RECORD;
 BEGIN
   transaction_duplicate0=TRUE;
@@ -587,13 +581,9 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   curs_reserve_exist REFCURSOR;
-DECLARE
   k INT8;
-DECLARE
   curs_transaction_exist REFCURSOR;
-DECLARE
   i RECORD;
-DECLARE
   r RECORD;
 
 BEGIN
@@ -949,13 +939,9 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   curs REFCURSOR;
-DECLARE
   conflict BOOL;
-DECLARE
   dup BOOL;
-DECLARE
   uuid INT8;
-DECLARE
   i RECORD;
 BEGIN
 

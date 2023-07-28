@@ -33,6 +33,8 @@ DECLARE
   my_purse_fee taler_amount;
   my_partner_serial_id INT8;
   my_in_reserve_quota BOOLEAN;
+  reserve RECORD;
+  balance taler_amount;
 BEGIN
 
 
@@ -195,20 +197,27 @@ ELSE
   my_amount.val = my_amount.val + my_amount.frac / 100000000;
   my_amount.frac = my_amount.frac % 100000000;
 
+  SELECT *
+   INTO reserve
+   FROM exchange.reserves
+  WHERE reserve_pub=in_reserve_pub;
+
+  balance = reserve.current_balance;
+  balance.frac=balance.frac+my_amount.frac
+     - CASE
+       WHEN balance.frac + my_amount.frac >= 100000000
+       THEN 100000000
+       ELSE 0
+       END;
+  balance.val=balance.val+my_amount.val
+     + CASE
+       WHEN balance.frac + my_amount.frac >= 100000000
+       THEN 1
+       ELSE 0
+       END;
+
   UPDATE exchange.reserves
-  SET
-    current_balance.frac=current_balance.frac+my_amount.frac
-       - CASE
-         WHEN current_balance.frac + my_amount.frac >= 100000000
-         THEN 100000000
-         ELSE 0
-         END,
-    current_balance.val=current.balance_val+my.amount_val
-       + CASE
-         WHEN current_balance.frac + my_amount.frac >= 100000000
-         THEN 1
-         ELSE 0
-         END
+  SET current_balance=balance
   WHERE reserve_pub=in_reserve_pub;
 
 END IF;

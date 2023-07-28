@@ -44,20 +44,26 @@ TEH_PG_do_reserve_open (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    TALER_PQ_query_param_amount (total_paid),
-    TALER_PQ_query_param_amount (reserve_payment),
+    TALER_PQ_query_param_amount_tuple (
+      pg->conn,
+      total_paid),
+    TALER_PQ_query_param_amount_tuple (
+      pg->conn,
+      reserve_payment),
     GNUNET_PQ_query_param_uint32 (&min_purse_limit),
     GNUNET_PQ_query_param_uint32 (&pg->def_purse_limit),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_timestamp (&desired_expiration),
     GNUNET_PQ_query_param_relative_time (&pg->legal_reserve_expiration_time),
     GNUNET_PQ_query_param_timestamp (&now),
-    TALER_PQ_query_param_amount (open_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       open_fee),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("out_open_cost",
-                                 open_cost),
+    TALER_PQ_result_spec_amount_tuple ("out_open_cost",
+                                       pg->currency,
+                                       open_cost),
     GNUNET_PQ_result_spec_timestamp ("out_final_expiration",
                                      final_expiration),
     GNUNET_PQ_result_spec_bool ("out_no_funds",
@@ -68,12 +74,11 @@ TEH_PG_do_reserve_open (
   PREPARE (pg,
            "do_reserve_open",
            "SELECT "
-           " out_open_cost_val"
-           ",out_open_cost_frac"
+           " out_open_cost"
            ",out_final_expiration"
            ",out_no_funds"
            " FROM exchange_do_reserve_open"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "do_reserve_open",
                                                    params,

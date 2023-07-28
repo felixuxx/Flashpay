@@ -30,9 +30,8 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  reserve_gc INT8;
-  reserve taler_amount;
-  reserve_birthday INT4;
+  reserve RECORD;
+  balance taler_amount;
   not_before date;
 BEGIN
 -- Shards: reserves by reserve_pub (SELECT)
@@ -42,18 +41,8 @@ BEGIN
 --         wire_targets by wire_target_h_payto
 
 
-SELECT
-   current_balance.val
-  ,current_balance.frac
-  ,gc_date
-  ,birthday
-  ,reserve_uuid
- INTO
-   reserve.val
-  ,reserve.frac
-  ,reserve_gc
-  ,reserve_birthday
-  ,ruuid
+SELECT *
+  INTO reserve
   FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
 
@@ -68,9 +57,10 @@ THEN
   RETURN;
 END IF;
 
+ruuid = reserve.reserve_uuid;
 
 -- Check if age requirements are present
-IF ((NOT do_age_check) OR (reserve_birthday = 0))
+IF ((NOT do_age_check) OR (reserve.birthday = 0))
 THEN
   age_ok = TRUE;
   allowed_maximum_age = -1;
@@ -80,7 +70,7 @@ ELSE
   -- birthday set (reserve_birthday != 0), but the client called the
   -- batch-withdraw endpoint instead of the age-withdraw endpoint, which it
   -- should have.
-  not_before=date '1970-01-01' + reserve_birthday;
+  not_before=date '1970-01-01' + reserve.birthday;
   allowed_maximum_age = extract(year from age(current_date, not_before));
 
   reserve_found=TRUE;
@@ -89,22 +79,24 @@ ELSE
   RETURN;
 END IF;
 
+balance = reserve.current_balance;
+
 -- Check reserve balance is sufficient.
-IF (reserve.val > amount.val)
+IF (balance.val > amount.val)
 THEN
-  IF (reserve.frac >= amount.frac)
+  IF (balance.frac >= amount.frac)
   THEN
-    reserve.val=reserve.val - amount.val;
-    reserve.frac=reserve.frac - amount.frac;
+    balance.val=balance.val - amount.val;
+    balance.frac=balance.frac - amount.frac;
   ELSE
-    reserve.val=reserve.val - amount.val - 1;
-    reserve.frac=reserve.frac + 100000000 - amount.frac;
+    balance.val=balance.val - amount.val - 1;
+    balance.frac=balance.frac + 100000000 - amount.frac;
   END IF;
 ELSE
-  IF (reserve.val = amount.val) AND (reserve.frac >= amount.frac)
+  IF (balance.val = amount.val) AND (balance.frac >= amount.frac)
   THEN
-    reserve.val=0;
-    reserve.frac=reserve.frac - amount.frac;
+    balance.val=0;
+    balance.frac=balance.frac - amount.frac;
   ELSE
     balance_ok=FALSE;
     RETURN;
@@ -112,12 +104,12 @@ ELSE
 END IF;
 
 -- Calculate new expiration dates.
-min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+min_reserve_gc=GREATEST(min_reserve_gc,reserve.gc_date);
 
 -- Update reserve balance.
 UPDATE reserves SET
   gc_date=min_reserve_gc
- ,current_balance=reserve
+ ,current_balance=balance
 WHERE
   reserves.reserve_pub=rpub;
 

@@ -19,12 +19,15 @@ CREATE OR REPLACE FUNCTION exchange_do_history_request(
   IN in_reserve_pub BYTEA,
   IN in_reserve_sig BYTEA,
   IN in_request_timestamp INT8,
-  IN in_history_fee_val INT8,
-  IN in_history_fee_frac INT4,
+  IN in_history_fee taler_amount,
   OUT out_balance_ok BOOLEAN,
   OUT out_idempotent BOOLEAN)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  reserve RECORD;
+  balance taler_amount;
+  new_balance taler_amount;
 BEGIN
 
   -- Insert and check for idempotency.
@@ -38,8 +41,8 @@ BEGIN
   (in_reserve_pub
   ,in_request_timestamp
   ,in_reserve_sig
-  ,in_history_fee_val
-  ,in_history_fee_frac)
+  ,in_history_fee.val
+  ,in_history_fee.frac)
   ON CONFLICT DO NOTHING;
 
   IF NOT FOUND
@@ -51,35 +54,51 @@ BEGIN
 
   out_idempotent=FALSE;
 
-  -- Update reserve balance.
-  UPDATE exchange.reserves
-   SET
-    current_balance.frac=current_balance.frac-in_history_fee_frac
-       + CASE
-         WHEN current_balance.frac < in_history_fee_frac
-         THEN 100000000
-         ELSE 0
-         END,
-    current_balance.val=current_balance.val-in_history_fee_val
-       - CASE
-         WHEN current_balance.frac < in_history_fee_frac
-         THEN 1
-         ELSE 0
-         END
-  WHERE
-    reserve_pub=in_reserve_pub
-    AND ( (current_balance.val > in_history_fee_val) OR
-          ( (current_balance.frac >= in_history_fee_frac) AND
-            (current_balance.val >= in_history_fee_val) ) );
+  SELECT *
+    INTO reserve
+    FROM exchange.reserves
+   WHERE reserve_pub=in_reserve_pub;
 
   IF NOT FOUND
   THEN
-    -- Either reserve does not exist, or balance insufficient.
-    -- Both we treat the same here as balance insufficient.
+    -- Reserve does not exist, we treat it the same here
+    -- as balance insufficient.
     out_balance_ok=FALSE;
     RETURN;
   END IF;
 
+  balance = reserve.current_balance;
+
+  -- check balance
+  IF ( (balance.val <= in_history_fee.val) AND
+       ( (balance.frac < in_history_fee.frac) OR
+         (balance.val < in_history_fee.val) ) )
+  THEN
+    out_balance_ok=FALSE;
+    RETURN;
+  END IF;
+
+  new_balance.frac=balance.frac-in_history_fee.frac
+     + CASE
+       WHEN balance.frac < in_history_fee.frac
+       THEN 100000000
+       ELSE 0
+       END;
+  new_balance.val=balance.val-in_history_fee.val
+     - CASE
+       WHEN balance.frac < in_history_fee.frac
+       THEN 1
+       ELSE 0
+       END;
+
+  -- Update reserve balance.
+  UPDATE exchange.reserves
+     SET current_balance=new_balance
+   WHERE reserve_pub=in_reserve_pub;
+
+  ASSERT FOUND, 'reserve suddenly disappeared';
+
   out_balance_ok=TRUE;
+
 END $$;
 

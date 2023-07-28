@@ -16,8 +16,7 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw_insert(
   IN cs_nonce BYTEA,
-  IN amount_val INT8,
-  IN amount_frac INT4,
+  IN amount taler_amount,
   IN h_denom_pub BYTEA, -- FIXME: denom_serials should really be a parameter to this FUNCTION.
   IN ruuid INT8,
   IN reserve_sig BYTEA,
@@ -74,8 +73,8 @@ VALUES
   ,ruuid
   ,reserve_sig
   ,now
-  ,amount_val
-  ,amount_frac)
+  ,amount.val
+  ,amount.frac)
 ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -119,6 +118,6 @@ END IF;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_batch_withdraw_insert(BYTEA, INT8, INT4, BYTEA, INT8, BYTEA, BYTEA, BYTEA, INT8)
+COMMENT ON FUNCTION exchange_do_batch_withdraw_insert(BYTEA, taler_amount, BYTEA, INT8, BYTEA, BYTEA, BYTEA, INT8)
   IS 'Stores information about a planchet for a batch withdraw operation. Checks if the planchet already exists, and in that case indicates a conflict';
 

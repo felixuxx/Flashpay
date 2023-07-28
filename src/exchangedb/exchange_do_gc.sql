@@ -37,8 +37,7 @@ DELETE FROM exchange.wire_fee
 -- TODO: use closing fee as threshold?
 DELETE FROM exchange.reserves
   WHERE gc_date < in_now
-    AND current_balance.val = 0
-    AND current_balance.frac = 0;
+    AND current_balance = (0, 0);
 
 SELECT
      reserve_out_serial_id

@@ -43,7 +43,8 @@ TEH_PG_do_batch_withdraw (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (amount),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       amount),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_timestamp (&gc),
@@ -80,7 +81,7 @@ TEH_PG_do_batch_withdraw (
            ",allowed_maximum_age"
            ",ruuid"
            " FROM exchange_do_batch_withdraw"
-           " ($1,$2,$3,$4,$5,$6);");
+           " ($1,$2,$3,$4,$5);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_batch_withdraw",
                                                    params,

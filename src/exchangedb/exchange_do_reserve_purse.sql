@@ -117,22 +117,22 @@ ELSE
   ELSE
     UPDATE exchange.reserves
       SET
-        current_balance.frac=current_balance.frac-in_purse_fee.frac
+        current_balance.frac=(current_balance).frac-in_purse_fee.frac
          + CASE
-         WHEN current_balance.frac < in_purse_fee.frac
+         WHEN (current_balance).frac < in_purse_fee.frac
          THEN 100000000
          ELSE 0
          END,
-       current_balance.val=current_balance.val-in_purse_fee.val
+       current_balance.val=(current_balance).val-in_purse_fee.val
          - CASE
-         WHEN current_balance.frac < in_purse_fee.frac
+         WHEN (current_balance).frac < in_purse_fee.frac
          THEN 1
          ELSE 0
          END
       WHERE reserve_pub=in_reserve_pub
-        AND ( (current_balance.val > in_purse_fee.val) OR
-              ( (current_balance.frac >= in_purse_fee.frac) AND
-                (current_balance.val >= in_purse_fee.val) ) );
+        AND ( ((current_balance).val > in_purse_fee.val) OR
+              ( ((current_balance).frac >= in_purse_fee.frac) AND
+                ((current_balance).val >= in_purse_fee.val) ) );
     IF NOT FOUND
     THEN
       out_no_funds=TRUE;

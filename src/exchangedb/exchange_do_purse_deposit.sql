@@ -17,12 +17,10 @@
 CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   IN in_partner_id INT8,
   IN in_purse_pub BYTEA,
-  IN in_amount_with_fee_val INT8,
-  IN in_amount_with_fee_frac INT4,
+  IN in_amount_with_fee taler_amount,
   IN in_coin_pub BYTEA,
   IN in_coin_sig BYTEA,
-  IN in_amount_without_fee_val INT8,
-  IN in_amount_without_fee_frac INT4,
+  IN in_amount_without_fee taler_amount,
   IN in_reserve_expiration INT8,
   IN in_now INT8,
   OUT out_balance_ok BOOLEAN,
@@ -51,8 +49,8 @@ INSERT INTO exchange.purse_deposits
   (in_partner_id
   ,in_purse_pub
   ,in_coin_pub
-  ,in_amount_with_fee_val
-  ,in_amount_with_fee_frac
+  ,in_amount_with_fee.val
+  ,in_amount_with_fee.frac
   ,in_coin_sig)
   ON CONFLICT DO NOTHING;
 
@@ -100,22 +98,22 @@ END IF;
 -- Check and update balance of the coin.
 UPDATE known_coins
   SET
-    remaining_frac=remaining_frac-in_amount_with_fee_frac
+    remaining_frac=remaining_frac-in_amount_with_fee.frac
        + CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN remaining_frac < in_amount_with_fee.frac
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val-in_amount_with_fee_val
+    remaining_val=remaining_val-in_amount_with_fee.val
        - CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN remaining_frac < in_amount_with_fee.frac
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_amount_with_fee_val) OR
-          ( (remaining_frac >= in_amount_with_fee_frac) AND
-            (remaining_val >= in_amount_with_fee_val) ) );
+    AND ( (remaining_val > in_amount_with_fee.val) OR
+          ( (remaining_frac >= in_amount_with_fee.frac) AND
+            (remaining_val >= in_amount_with_fee.val) ) );
 
 IF NOT FOUND
 THEN
@@ -130,15 +128,15 @@ END IF;
 -- Credit the purse.
 UPDATE purse_requests
   SET
-    balance_frac=balance_frac+in_amount_without_fee_frac
+    balance_frac=balance_frac+in_amount_without_fee.frac
        - CASE
-         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         WHEN balance_frac+in_amount_without_fee.frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    balance_val=balance_val+in_amount_without_fee_val
+    balance_val=balance_val+in_amount_without_fee.val
        + CASE
-         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         WHEN balance_frac+in_amount_without_fee.frac >= 100000000
          THEN 1
          ELSE 0
          END
@@ -239,15 +237,15 @@ ELSE
     -- Reserve existed, thus UPDATE instead of INSERT.
     UPDATE reserves
       SET
-       current_balance.frac=current_balance.frac+my_amount.frac
+       current_balance.frac=(current_balance).frac+my_amount.frac
         - CASE
-          WHEN current_balance.frac + my_amount.frac >= 100000000
+          WHEN (current_balance).frac + my_amount.frac >= 100000000
             THEN 100000000
           ELSE 0
           END
-      ,current_balance.val=current.balance_val+my_amount.val
+      ,current_balance.val=(current_balance).val+my_amount.val
         + CASE
-          WHEN current_balance.frac + my_amount.frac >= 100000000
+          WHEN (current_balance).frac + my_amount.frac >= 100000000
             THEN 1
           ELSE 0
           END

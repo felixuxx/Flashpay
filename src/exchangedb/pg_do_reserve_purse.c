@@ -74,9 +74,10 @@ TEH_PG_do_reserve_purse (
     GNUNET_PQ_query_param_timestamp (&reserve_gc),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_bool (NULL == purse_fee),
-    TALER_PQ_query_param_amount (NULL == purse_fee
-                                 ? &zero_fee
-                                 : purse_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       NULL == purse_fee
+                                        ? &zero_fee
+                                        : purse_fee),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_end
@@ -111,7 +112,7 @@ TEH_PG_do_reserve_purse (
            ",out_no_reserve AS no_reserve"
            ",out_conflict AS conflict"
            " FROM exchange_do_reserve_purse"
-           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
+           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_reserve_purse",

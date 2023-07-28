@@ -37,25 +37,15 @@ DECLARE
   my_years_tmp INT4;
   my_years INT4;
   my_needs_update BOOL;
-  my_purses_allowed INT8;
   my_expiration_date INT8;
-  my_reserve_expiration INT8;
+  reserve RECORD;
 BEGIN
 
 -- FIXME: use SELECT FOR UPDATE?
-SELECT
-  purses_allowed
- ,expiration_date
- ,current_balance.val
- ,current_balance.frac
-INTO
-  my_purses_allowed
- ,my_reserve_expiration
- ,my_balance.val
- ,my_balance.frac
-FROM reserves
-WHERE
-  reserve_pub=in_reserve_pub;
+SELECT *
+  INTO reserve
+  FROM reserves
+ WHERE reserve_pub=in_reserve_pub;
 
 IF NOT FOUND
 THEN
@@ -64,12 +54,14 @@ THEN
   RETURN;
 END IF;
 
+my_balance = reserve.current_balance;
+
 -- Do not allow expiration time to start in the past already
-IF (my_reserve_expiration < in_now)
+IF (reserve.expiration_date < in_now)
 THEN
   my_expiration_date = in_now;
 ELSE
-  my_expiration_date = my_reserve_expiration;
+  my_expiration_date = reserve.expiration_date;
 END IF;
 
 my_cost.val = 0;
@@ -81,18 +73,18 @@ my_years = 0;
 IF (my_expiration_date < in_desired_expiration)
 THEN
   my_years = (31535999999999 + in_desired_expiration - my_expiration_date) / 31536000000000;
-  my_purses_allowed = in_default_purse_limit;
+  reserve.purses_allowed = in_default_purse_limit;
   my_expiration_date = my_expiration_date + 31536000000000 * my_years;
 END IF;
 
 -- Increase years based on purses requested
-IF (my_purses_allowed < in_min_purse_limit)
+IF (reserve.purses_allowed < in_min_purse_limit)
 THEN
   my_years = (31535999999999 + in_desired_expiration - in_now) / 31536000000000;
   my_expiration_date = in_now + 31536000000000 * my_years;
-  my_years_tmp = (in_min_purse_limit + in_default_purse_limit - my_purses_allowed - 1) / in_default_purse_limit;
+  my_years_tmp = (in_min_purse_limit + in_default_purse_limit - reserve.purses_allowed - 1) / in_default_purse_limit;
   my_years = my_years + my_years_tmp;
-  my_purses_allowed = my_purses_allowed + (in_default_purse_limit * my_years_tmp);
+  reserve.purses_allowed = reserve.purses_allowed + (in_default_purse_limit * my_years_tmp);
 END IF;
 
 
@@ -118,7 +110,7 @@ END IF;
 -- check if we actually have something to do
 IF NOT my_needs_update
 THEN
-  out_final_expiration = my_reserve_expiration;
+  out_final_expiration = reserve.expiration_date;
   out_open_cost.val = 0;
   out_open_cost.frac = 0;
   out_no_funds=FALSE;
@@ -136,7 +128,7 @@ THEN
   out_no_funds=FALSE;
   -- We must return a failure, which is indicated by
   -- the expiration being below the desired expiration.
-  IF (my_reserve_expiration >= in_desired_expiration)
+  IF (reserve.expiration_date >= in_desired_expiration)
   THEN
     -- This case is relevant especially if the purse
     -- count was to be increased and the payment was
@@ -144,7 +136,7 @@ THEN
     RAISE NOTICE 'forcing low expiration time';
     out_final_expiration = 0;
   ELSE
-    out_final_expiration = my_reserve_expiration;
+    out_final_expiration = reserve.expiration_date;
   END IF;
   RAISE NOTICE 'amount paid too low';
   RETURN;
@@ -167,7 +159,7 @@ ELSE
     my_balance.val=0;
     my_balance.frac=my_balance.frac - in_reserve_payment.frac;
   ELSE
-    out_final_expiration = my_reserve_expiration;
+    out_final_expiration = reserve.expiration_date;
     out_open_cost.val = my_cost.val;
     out_open_cost.frac = my_cost.frac;
     out_no_funds=TRUE;
@@ -178,9 +170,9 @@ END IF;
 
 UPDATE reserves SET
   current_balance=my_balance
- ,gc_date=my_reserve_expiration + in_reserve_gc_delay
+ ,gc_date=reserve.expiration_date + in_reserve_gc_delay
  ,expiration_date=my_expiration_date
- ,purses_allowed=my_purses_allowed
+ ,purses_allowed=reserve.purses_allowed
 WHERE
  reserve_pub=in_reserve_pub;
 

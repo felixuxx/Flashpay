@@ -32,6 +32,9 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   tmp taler_amount; -- amount recouped
+  balance taler_amount; -- current balance of the reserve
+  new_balance taler_amount; -- new balance of the reserve
+  reserve RECORD;
 BEGIN
 -- Shards: SELECT known_coins (by coin_pub)
 --         SELECT recoup      (by coin_pub)
@@ -81,22 +84,31 @@ UPDATE known_coins
     ,remaining_val=0
   WHERE coin_pub=in_coin_pub;
 
+-- Get current balance
+SELECT *
+  INTO reserve
+  FROM reserves
+ WHERE reserve_pub=in_reserve_pub;
+
+balance = reserve.current_balance;
+new_balance.frac=balance.frac+tmp.frac
+   - CASE
+     WHEN balance.frac+tmp.frac >= 100000000
+     THEN 100000000
+     ELSE 0
+     END;
+
+new_balance.val=balance.val+tmp.val
+   + CASE
+     WHEN balance.frac+tmp.frac >= 100000000
+     THEN 1
+     ELSE 0
+     END;
 
 -- Credit the reserve and update reserve timers.
 UPDATE reserves
   SET
-    current_balance.frac=current_balance.frac+tmp.frac
-       - CASE
-         WHEN current_balance.frac+tmp.frac >= 100000000
-         THEN 100000000
-         ELSE 0
-         END,
-    current_balance.val=current_balance.val+tmp.val
-       + CASE
-         WHEN current_balance.frac+tmp.frac >= 100000000
-         THEN 1
-         ELSE 0
-         END,
+    current_balance = new_balance,
     gc_date=GREATEST(gc_date, in_reserve_gc),
     expiration_date=GREATEST(expiration_date, in_reserve_expiration)
   WHERE reserve_pub=in_reserve_pub;

@@ -138,7 +138,7 @@ TEH_PG_get_expired_reserves (void *cls,
            " SELECT * "
            " FROM reserves "
            " WHERE expiration_date <= $1 "
-           "   AND (current_balance.val != 0 OR current_balance.frac != 0) "
+           "   AND ((current_balance).val != 0 OR (current_balance).frac != 0) "
            " ORDER BY expiration_date ASC "
            " LIMIT 1 "
            ") "
