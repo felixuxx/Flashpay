@@ -86,5 +86,14 @@ COMMENT ON TYPE exchange_do_array_reserve_insert_return_type
 #include "0002-revolving_work_shards.sql"
 #include "0002-partners.sql"
 #include "0002-partner_accounts.sql"
+#include "0002-purse_actions.sql"
+#include "0002-purse_deletion.sql"
+#include "0002-kyc_attributes.sql"
+#include "0002-aml_status.sql"
+#include "0002-aml_staff.sql"
+#include "0002-aml_history.sql"
+#include "0002-age_withdraw.sql"
+
+
 
 COMMIT;

@@ -19,6 +19,9 @@ CREATE TABLE wire_accounts
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
   ,is_active BOOLEAN NOT NULL
   ,last_change INT8 NOT NULL
+  ,conversion_url VARCHAR DEFAULT (NULL)
+  ,debit_restrictions VARCHAR DEFAULT (NULL)
+  ,credit_restrictions VARCHAR DEFAULT (NULL)
   );
 COMMENT ON TABLE wire_accounts
   IS 'Table with current and historic bank accounts of the exchange. Entries never expire as we need to remember the last_change column indefinitely.';
@@ -30,5 +33,13 @@ COMMENT ON COLUMN wire_accounts.is_active
   IS 'true if we are currently supporting the use of this account.';
 COMMENT ON COLUMN wire_accounts.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';
+COMMENT ON COLUMN wire_accounts.conversion_url
+  IS 'URL of a currency conversion service if conversion is needed when this account is used; NULL if there is no conversion.';
+COMMENT ON COLUMN wire_accounts.debit_restrictions
+  IS 'JSON array describing restrictions imposed when debiting this account. Empty for no restrictions, NULL if account was migrated from previous database revision or account is disabled.';
+COMMENT ON COLUMN wire_accounts.credit_restrictions
+  IS 'JSON array describing restrictions imposed when crediting this account. Empty for no restrictions, NULL if account was migrated from previous database revision or account is disabled.';
+
+
 -- "wire_accounts" has no sequence because it is a 'mutable' table
 --            and is of no concern to the auditor
