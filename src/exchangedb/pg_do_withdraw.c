@@ -46,7 +46,8 @@ TEH_PG_do_withdraw (
     NULL == nonce
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (nonce),
-    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &collectable->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
@@ -83,7 +84,7 @@ TEH_PG_do_withdraw (
            ",allowed_maximum_age"
            ",ruuid"
            " FROM exchange_do_withdraw"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));

@@ -29,17 +29,12 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  my_amount_val INT8;
-DECLARE
-  my_amount_frac INT4;
-DECLARE
-  my_purse_fee_val INT8;
-DECLARE
-  my_purse_fee_frac INT4;
-DECLARE
+  my_amount taler_amount;
+  my_purse_fee taler_amount;
   my_partner_serial_id INT8;
-DECLARE
   my_in_reserve_quota BOOLEAN;
+  reserve RECORD;
+  balance taler_amount;
 BEGIN
 
 
@@ -72,10 +67,10 @@ SELECT amount_with_fee_val
       ,purse_fee_val
       ,purse_fee_frac
       ,in_reserve_quota
-  INTO my_amount_val
-      ,my_amount_frac
-      ,my_purse_fee_val
-      ,my_purse_fee_frac
+  INTO my_amount.val
+      ,my_amount.frac
+      ,my_purse_fee.val
+      ,my_purse_fee.frac
       ,my_in_reserve_quota
   FROM exchange.purse_requests
   WHERE purse_pub=in_purse_pub
@@ -196,26 +191,33 @@ ELSE
   -- This is a local reserve, update reserve balance immediately.
 
   -- Refund the purse fee, by adding it to the purse value:
-  my_amount_val = my_amount_val + my_purse_fee_val;
-  my_amount_frac = my_amount_frac + my_purse_fee_frac;
+  my_amount.val = my_amount.val + my_purse_fee.val;
+  my_amount.frac = my_amount.frac + my_purse_fee.frac;
   -- normalize result
-  my_amount_val = my_amount_val + my_amount_frac / 100000000;
-  my_amount_frac = my_amount_frac % 100000000;
+  my_amount.val = my_amount.val + my_amount.frac / 100000000;
+  my_amount.frac = my_amount.frac % 100000000;
+
+  SELECT *
+   INTO reserve
+   FROM exchange.reserves
+  WHERE reserve_pub=in_reserve_pub;
+
+  balance = reserve.current_balance;
+  balance.frac=balance.frac+my_amount.frac
+     - CASE
+       WHEN balance.frac + my_amount.frac >= 100000000
+       THEN 100000000
+       ELSE 0
+       END;
+  balance.val=balance.val+my_amount.val
+     + CASE
+       WHEN balance.frac + my_amount.frac >= 100000000
+       THEN 1
+       ELSE 0
+       END;
 
   UPDATE exchange.reserves
-  SET
-    current_balance_frac=current_balance_frac+my_amount_frac
-       - CASE
-         WHEN current_balance_frac + my_amount_frac >= 100000000
-         THEN 100000000
-         ELSE 0
-         END,
-    current_balance_val=current_balance_val+my_amount_val
-       + CASE
-         WHEN current_balance_frac + my_amount_frac >= 100000000
-         THEN 1
-         ELSE 0
-         END
+  SET current_balance=balance
   WHERE reserve_pub=in_reserve_pub;
 
 END IF;

@@ -36,16 +36,16 @@ TEH_PG_get_reserve_balance (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
-                                 balance),
+    TALER_PQ_result_spec_amount_tuple ("current_balance",
+                                       pg->currency,
+                                       balance),
     GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
            "get_reserve_balance",
            "SELECT"
-           " current_balance_val"
-           ",current_balance_frac"
+           " current_balance"
            " FROM reserves"
            " WHERE reserve_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

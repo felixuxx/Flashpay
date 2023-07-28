@@ -18,8 +18,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_update(
   IN in_reserve_pub BYTEA,
   IN in_expiration_date INT8,
   IN in_wire_ref INT8,
-  IN in_credit_val INT8,
-  IN in_credit_frac INT4,
+  IN in_credit taler_amount,
   IN in_exchange_account_name VARCHAR,
   IN in_wire_source_h_payto BYTEA,
   IN in_notify text,
@@ -38,8 +37,8 @@ BEGIN
     VALUES
     (in_reserve_pub
     ,in_wire_ref
-    ,in_credit_val
-    ,in_credit_frac
+    ,in_credit.val
+    ,in_credit.frac
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_expiration_date)
@@ -50,15 +49,15 @@ BEGIN
     out_duplicate = FALSE;
     UPDATE reserves
       SET
-         current_balance_frac = current_balance_frac+in_credit_frac
+         current_balance.frac = current_balance.frac+in_credit.frac
            - CASE
-             WHEN current_balance_frac + in_credit_frac >= 100000000
+             WHEN current_balance.frac + in_credit.frac >= 100000000
                THEN 100000000
              ELSE 1
              END
-            ,current_balance_val = current_balance_val+in_credit_val
+            ,current_balance.val = current_balance.val+in_credit.val
            + CASE
-             WHEN current_balance_frac + in_credit_frac >= 100000000
+             WHEN current_balance.frac + in_credit.frac >= 100000000
                THEN 1
              ELSE 0
              END

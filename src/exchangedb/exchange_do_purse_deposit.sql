@@ -17,12 +17,10 @@
 CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   IN in_partner_id INT8,
   IN in_purse_pub BYTEA,
-  IN in_amount_with_fee_val INT8,
-  IN in_amount_with_fee_frac INT4,
+  IN in_amount_with_fee taler_amount,
   IN in_coin_pub BYTEA,
   IN in_coin_sig BYTEA,
-  IN in_amount_without_fee_val INT8,
-  IN in_amount_without_fee_frac INT4,
+  IN in_amount_without_fee taler_amount,
   IN in_reserve_expiration INT8,
   IN in_now INT8,
   OUT out_balance_ok BOOLEAN,
@@ -32,17 +30,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   was_merged BOOLEAN;
-DECLARE
   psi INT8; -- partner's serial ID (set if merged)
-DECLARE
-  my_amount_val INT8; -- total in purse
-DECLARE
-  my_amount_frac INT4; -- total in purse
-DECLARE
+  my_amount taler_amount; -- total in purse
   was_paid BOOLEAN;
-DECLARE
   my_in_reserve_quota BOOLEAN;
-DECLARE
   my_reserve_pub BYTEA;
 BEGIN
 
@@ -58,8 +49,8 @@ INSERT INTO exchange.purse_deposits
   (in_partner_id
   ,in_purse_pub
   ,in_coin_pub
-  ,in_amount_with_fee_val
-  ,in_amount_with_fee_frac
+  ,in_amount_with_fee.val
+  ,in_amount_with_fee.frac
   ,in_coin_sig)
   ON CONFLICT DO NOTHING;
 
@@ -107,22 +98,22 @@ END IF;
 -- Check and update balance of the coin.
 UPDATE known_coins
   SET
-    remaining_frac=remaining_frac-in_amount_with_fee_frac
+    remaining_frac=remaining_frac-in_amount_with_fee.frac
        + CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN remaining_frac < in_amount_with_fee.frac
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val-in_amount_with_fee_val
+    remaining_val=remaining_val-in_amount_with_fee.val
        - CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN remaining_frac < in_amount_with_fee.frac
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_amount_with_fee_val) OR
-          ( (remaining_frac >= in_amount_with_fee_frac) AND
-            (remaining_val >= in_amount_with_fee_val) ) );
+    AND ( (remaining_val > in_amount_with_fee.val) OR
+          ( (remaining_frac >= in_amount_with_fee.frac) AND
+            (remaining_val >= in_amount_with_fee.val) ) );
 
 IF NOT FOUND
 THEN
@@ -137,15 +128,15 @@ END IF;
 -- Credit the purse.
 UPDATE purse_requests
   SET
-    balance_frac=balance_frac+in_amount_without_fee_frac
+    balance_frac=balance_frac+in_amount_without_fee.frac
        - CASE
-         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         WHEN balance_frac+in_amount_without_fee.frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    balance_val=balance_val+in_amount_without_fee_val
+    balance_val=balance_val+in_amount_without_fee.val
        + CASE
-         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         WHEN balance_frac+in_amount_without_fee.frac >= 100000000
          THEN 1
          ELSE 0
          END
@@ -174,8 +165,8 @@ SELECT
    ,amount_with_fee_frac
    ,in_reserve_quota
   INTO
-    my_amount_val
-   ,my_amount_frac
+    my_amount.val
+   ,my_amount.frac
    ,my_in_reserve_quota
   FROM exchange.purse_requests
   WHERE (purse_pub=in_purse_pub)
@@ -231,14 +222,12 @@ ELSE
   -- This is a local reserve, update balance immediately.
   INSERT INTO reserves
     (reserve_pub
-    ,current_balance_frac
-    ,current_balance_val
+    ,current_balance
     ,expiration_date
     ,gc_date)
   VALUES
     (my_reserve_pub
-    ,my_amount_frac
-    ,my_amount_val
+    ,my_amount
     ,in_reserve_expiration
     ,in_reserve_expiration)
   ON CONFLICT DO NOTHING;
@@ -248,15 +237,15 @@ ELSE
     -- Reserve existed, thus UPDATE instead of INSERT.
     UPDATE reserves
       SET
-       current_balance_frac=current_balance_frac+my_amount_frac
+       current_balance.frac=(current_balance).frac+my_amount.frac
         - CASE
-          WHEN current_balance_frac + my_amount_frac >= 100000000
+          WHEN (current_balance).frac + my_amount.frac >= 100000000
             THEN 100000000
           ELSE 0
           END
-      ,current_balance_val=current_balance_val+my_amount_val
+      ,current_balance.val=(current_balance).val+my_amount.val
         + CASE
-          WHEN current_balance_frac + my_amount_frac >= 100000000
+          WHEN (current_balance).frac + my_amount.frac >= 100000000
             THEN 1
           ELSE 0
           END

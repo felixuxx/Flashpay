@@ -41,7 +41,8 @@ TEH_PG_insert_history_request (
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount (history_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       history_fee),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -58,7 +59,7 @@ TEH_PG_insert_history_request (
            "  out_balance_ok AS balance_ok"
            " ,out_idempotent AS idempotent"
            " FROM exchange_do_history_request"
-           "  ($1, $2, $3, $4, $5)");
+           "  ($1, $2, $3, $4)");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_history_request",
                                                    params,

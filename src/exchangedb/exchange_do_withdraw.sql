@@ -17,8 +17,7 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   IN cs_nonce BYTEA,
-  IN amount_val INT8,
-  IN amount_frac INT4,
+  IN amount taler_amount,
   IN h_denom_pub BYTEA,
   IN rpub BYTEA,
   IN reserve_sig BYTEA,
@@ -36,11 +35,9 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  reserve_gc INT8;
+  reserve RECORD;
   denom_serial INT8;
-  reserve_val INT8;
-  reserve_frac INT4;
-  reserve_birthday INT4;
+  balance taler_amount;
   not_before date;
 BEGIN
 -- Shards: reserves by reserve_pub (SELECT)
@@ -67,18 +64,8 @@ THEN
 END IF;
 
 
-SELECT
-   current_balance_val
-  ,current_balance_frac
-  ,gc_date
-  ,birthday
-  ,reserve_uuid
- INTO
-   reserve_val
-  ,reserve_frac
-  ,reserve_gc
-  ,reserve_birthday
-  ,ruuid
+SELECT *
+  INTO reserve
   FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
 
@@ -94,8 +81,11 @@ THEN
   RETURN;
 END IF;
 
+balance = reserve.current_balance;
+ruuid = reserve.reserve_uuid;
+
 -- Check if age requirements are present
-IF ((NOT do_age_check) OR (reserve_birthday = 0))
+IF ((NOT do_age_check) OR (reserve.birthday = 0))
 THEN
   age_ok = TRUE;
   allowed_maximum_age = -1;
@@ -105,7 +95,7 @@ ELSE
   -- birthday set (reserve_birthday != 0), but the client called the
   -- batch-withdraw endpoint instead of the age-withdraw endpoint, which it
   -- should have.
-  not_before=date '1970-01-01' + reserve_birthday;
+  not_before=date '1970-01-01' + reserve.birthday;
   allowed_maximum_age = extract(year from age(current_date, not_before));
 
   reserve_found=TRUE;
@@ -133,8 +123,8 @@ VALUES
   ,ruuid
   ,reserve_sig
   ,now
-  ,amount_val
-  ,amount_frac)
+  ,amount.val
+  ,amount.frac)
 ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -147,21 +137,21 @@ THEN
 END IF;
 
 -- Check reserve balance is sufficient.
-IF (reserve_val > amount_val)
+IF (balance.val > amount.val)
 THEN
-  IF (reserve_frac >= amount_frac)
+  IF (balance.frac >= amount.frac)
   THEN
-    reserve_val=reserve_val - amount_val;
-    reserve_frac=reserve_frac - amount_frac;
+    balance.val=balance.val - amount.val;
+    balance.frac=balance.frac - amount.frac;
   ELSE
-    reserve_val=reserve_val - amount_val - 1;
-    reserve_frac=reserve_frac + 100000000 - amount_frac;
+    balance.val=balance.val - amount.val - 1;
+    balance.frac=balance.frac + 100000000 - amount.frac;
   END IF;
 ELSE
-  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
+  IF (balance.val = amount.val) AND (balance.frac >= amount.frac)
   THEN
-    reserve_val=0;
-    reserve_frac=reserve_frac - amount_frac;
+    balance.val=0;
+    balance.frac=balance.frac - amount.frac;
   ELSE
     reserve_found=TRUE;
     nonce_ok=TRUE; -- we do not really know
@@ -171,13 +161,12 @@ ELSE
 END IF;
 
 -- Calculate new expiration dates.
-min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+min_reserve_gc=GREATEST(min_reserve_gc,reserve.gc_date);
 
 -- Update reserve balance.
 UPDATE reserves SET
   gc_date=min_reserve_gc
- ,current_balance_val=reserve_val
- ,current_balance_frac=reserve_frac
+ ,current_balance=balance
 WHERE
   reserves.reserve_pub=rpub;
 
@@ -222,7 +211,6 @@ END IF;
 
 END $$;
 
-
-COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8, BOOLEAN)
+COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, taler_amount, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8, BOOLEAN)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if the age requirements are formally met.  If so updates the database with the result';
 

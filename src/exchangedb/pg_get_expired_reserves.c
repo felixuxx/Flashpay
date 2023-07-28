@@ -84,8 +84,9 @@ reserve_expired_cb (void *cls,
                                     &account_details),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
-                                   &remaining_balance),
+      TALER_PQ_result_spec_amount_tuple ("current_balance",
+                                         pg->currency,
+                                         &remaining_balance),
       GNUNET_PQ_result_spec_end
     };
 
@@ -137,7 +138,7 @@ TEH_PG_get_expired_reserves (void *cls,
            " SELECT * "
            " FROM reserves "
            " WHERE expiration_date <= $1 "
-           "   AND (current_balance_val != 0 OR current_balance_frac != 0) "
+           "   AND ((current_balance).val != 0 OR (current_balance).frac != 0) "
            " ORDER BY expiration_date ASC "
            " LIMIT 1 "
            ") "
@@ -145,8 +146,7 @@ TEH_PG_get_expired_reserves (void *cls,
            " ed.expiration_date "
            " ,payto_uri AS account_details "
            " ,ed.reserve_pub "
-           " ,current_balance_val "
-           " ,current_balance_frac "
+           " ,current_balance "
            "FROM ( "
            " SELECT "
            "  * "

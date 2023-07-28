@@ -47,10 +47,14 @@ TEH_PG_do_purse_deposit (
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_uint64 (&partner_id),
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    TALER_PQ_query_param_amount (amount),
+    TALER_PQ_query_param_amount_tuple (
+      pg->conn,
+      amount),
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
-    TALER_PQ_query_param_amount (amount_minus_fee),
+    TALER_PQ_query_param_amount_tuple (
+      pg->conn,
+      amount_minus_fee),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_end
@@ -77,7 +81,7 @@ TEH_PG_do_purse_deposit (
            ",out_conflict AS conflict"
            ",out_late AS too_late"
            " FROM exchange_do_purse_deposit"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8);");
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_purse_deposit",

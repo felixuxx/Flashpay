@@ -36,10 +36,9 @@ CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  reserve_gc INT8;
+  reserve RECORD;
   difference RECORD;
   balance  taler_amount;
-  new_balance taler_amount;
   not_before date;
   earliest_date date;
 BEGIN
@@ -49,16 +48,8 @@ BEGIN
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_h_payto
 
-SELECT
-   current_balance_val
-  ,current_balance_frac
-  ,gc_date
-  ,birthday
- INTO
-   balance.val
-  ,balance.frac
-  ,reserve_gc
-  ,reserve_birthday
+SELECT *
+  INTO reserve
   FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
 
@@ -75,10 +66,13 @@ END IF;
 reserve_found = TRUE;
 conflict=FALSE;  -- not really yet determined
 
+balance = reserve.current_balance;
+reserve_birthday = reserve.birthday;
+
 -- Check age requirements
-IF (reserve_birthday <> 0)
+IF (reserve.birthday <> 0)
 THEN
-  not_before=date '1970-01-01' + reserve_birthday;
+  not_before=date '1970-01-01' + reserve.birthday;
   earliest_date = current_date - make_interval(maximum_age_committed);
   --
   -- 1970-01-01 + birthday == not_before                 now
@@ -104,12 +98,9 @@ required_age=0;
 
 -- Check reserve balance is sufficient.
 SELECT *
-INTO
-  difference
-FROM
-  amount_left_minus_right(
-     balance
-    ,amount_with_fee);
+INTO difference
+FROM amount_left_minus_right(balance
+                            ,amount_with_fee);
 
 balance_ok = difference.ok;
 
@@ -118,16 +109,15 @@ THEN
   RETURN;
 END IF;
 
-new_balance = difference.diff;
+balance = difference.diff;
 
 -- Calculate new expiration dates.
-min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+min_reserve_gc=GREATEST(min_reserve_gc,reserve.gc_date);
 
 -- Update reserve balance.
 UPDATE reserves SET
   gc_date=min_reserve_gc
- ,current_balance_val=new_balance.val
- ,current_balance_frac=new_balance.frac
+ ,current_balance=balance
 WHERE
   reserves.reserve_pub=rpub;
 
