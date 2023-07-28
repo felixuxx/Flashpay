@@ -41,7 +41,8 @@ TEH_PG_do_batch_withdraw_insert (
     NULL == nonce
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (nonce),
-    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &collectable->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
     GNUNET_PQ_query_param_uint64 (&ruuid),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
@@ -69,7 +70,7 @@ TEH_PG_do_batch_withdraw_insert (
            ",out_conflict AS conflict"
            ",out_nonce_reuse AS nonce_reuse"
            " FROM exchange_do_batch_withdraw_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_batch_withdraw_insert",
                                                    params,

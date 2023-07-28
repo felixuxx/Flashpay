@@ -31,9 +31,7 @@ CREATE OR REPLACE FUNCTION exchange_do_recoup_to_reserve(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  tmp_val INT8; -- amount recouped
-DECLARE
-  tmp_frac INT8; -- amount recouped
+  tmp taler_amount; -- amount recouped
 BEGIN
 -- Shards: SELECT known_coins (by coin_pub)
 --         SELECT recoup      (by coin_pub)
@@ -49,8 +47,8 @@ SELECT
    remaining_frac
   ,remaining_val
  INTO
-   tmp_frac
-  ,tmp_val
+   tmp.frac
+  ,tmp.val
 FROM exchange.known_coins
   WHERE coin_pub=in_coin_pub;
 
@@ -61,7 +59,7 @@ THEN
   RETURN;
 END IF;
 
-IF tmp_val + tmp_frac = 0
+IF tmp.val + tmp.frac = 0
 THEN
   -- Check for idempotency
   SELECT
@@ -87,15 +85,15 @@ UPDATE known_coins
 -- Credit the reserve and update reserve timers.
 UPDATE reserves
   SET
-    current_balance_frac=current_balance_frac+tmp_frac
+    current_balance.frac=current_balance.frac+tmp.frac
        - CASE
-         WHEN current_balance_frac+tmp_frac >= 100000000
+         WHEN current_balance.frac+tmp.frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    current_balance_val=current_balance_val+tmp_val
+    current_balance.val=current_balance.val+tmp.val
        + CASE
-         WHEN current_balance_frac+tmp_frac >= 100000000
+         WHEN current_balance.frac+tmp.frac >= 100000000
          THEN 1
          ELSE 0
          END,
@@ -126,8 +124,8 @@ VALUES
   (in_coin_pub
   ,in_coin_sig
   ,in_coin_blind
-  ,tmp_val
-  ,tmp_frac
+  ,tmp.val
+  ,tmp.frac
   ,in_recoup_timestamp
   ,in_reserve_out_serial_id);
 

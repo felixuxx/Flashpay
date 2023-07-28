@@ -32,17 +32,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   was_merged BOOLEAN;
-DECLARE
   psi INT8; -- partner's serial ID (set if merged)
-DECLARE
-  my_amount_val INT8; -- total in purse
-DECLARE
-  my_amount_frac INT4; -- total in purse
-DECLARE
+  my_amount taler_amount; -- total in purse
   was_paid BOOLEAN;
-DECLARE
   my_in_reserve_quota BOOLEAN;
-DECLARE
   my_reserve_pub BYTEA;
 BEGIN
 
@@ -174,8 +167,8 @@ SELECT
    ,amount_with_fee_frac
    ,in_reserve_quota
   INTO
-    my_amount_val
-   ,my_amount_frac
+    my_amount.val
+   ,my_amount.frac
    ,my_in_reserve_quota
   FROM exchange.purse_requests
   WHERE (purse_pub=in_purse_pub)
@@ -231,14 +224,12 @@ ELSE
   -- This is a local reserve, update balance immediately.
   INSERT INTO reserves
     (reserve_pub
-    ,current_balance_frac
-    ,current_balance_val
+    ,current_balance
     ,expiration_date
     ,gc_date)
   VALUES
     (my_reserve_pub
-    ,my_amount_frac
-    ,my_amount_val
+    ,my_amount
     ,in_reserve_expiration
     ,in_reserve_expiration)
   ON CONFLICT DO NOTHING;
@@ -248,15 +239,15 @@ ELSE
     -- Reserve existed, thus UPDATE instead of INSERT.
     UPDATE reserves
       SET
-       current_balance_frac=current_balance_frac+my_amount_frac
+       current_balance.frac=current_balance.frac+my_amount.frac
         - CASE
-          WHEN current_balance_frac + my_amount_frac >= 100000000
+          WHEN current_balance.frac + my_amount.frac >= 100000000
             THEN 100000000
           ELSE 0
           END
-      ,current_balance_val=current_balance_val+my_amount_val
+      ,current_balance.val=current.balance_val+my_amount.val
         + CASE
-          WHEN current_balance_frac + my_amount_frac >= 100000000
+          WHEN current_balance.frac + my_amount.frac >= 100000000
             THEN 1
           ELSE 0
           END

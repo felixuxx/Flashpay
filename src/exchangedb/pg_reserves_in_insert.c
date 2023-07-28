@@ -100,7 +100,7 @@ struct ReserveRecord
 #define RR_QUERY_PARAM(rr,index) \
   GNUNET_PQ_query_param_auto_from_type (rr[index].reserve->reserve_pub),    \
   GNUNET_PQ_query_param_uint64 (&rr[index].reserve->wire_reference),        \
-  TALER_PQ_query_param_amount (rr[index].reserve->balance),                 \
+  TALER_PQ_query_param_amount_tuple (pg->conn, rr[index].reserve->balance), \
   GNUNET_PQ_query_param_string (rr[index].reserve->exchange_account_name),  \
   GNUNET_PQ_query_param_timestamp (&rr[index].reserve->execution_time),     \
   GNUNET_PQ_query_param_auto_from_type (&rr[index].h_payto),                \
@@ -154,7 +154,7 @@ insert1 (struct PostgresClosure *pg,
            " transaction_duplicate0 AS transaction_duplicate0"
            ",ruuid0 AS reserve_uuid0"
            " FROM exchange_do_batch_reserves_in_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch1_reserve_create",
                                                  params,
@@ -214,7 +214,7 @@ insert2 (struct PostgresClosure *pg,
            ",ruuid0 AS reserve_uuid0"
            ",ruuid1 AS reserve_uuid1"
            " FROM exchange_do_batch2_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch2_reserve_create",
                                                  params,
@@ -285,7 +285,7 @@ insert4 (struct PostgresClosure *pg,
            ",ruuid2 AS reserve_uuid2"
            ",ruuid3 AS reserve_uuid3"
            " FROM exchange_do_batch4_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch4_reserve_create",
                                                  params,
@@ -373,7 +373,7 @@ insert8 (struct PostgresClosure *pg,
            ",ruuid6 AS reserve_uuid6"
            ",ruuid7 AS reserve_uuid7"
            " FROM exchange_do_batch8_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71,$72,$73,$74);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66);");
 
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch8_reserve_create",
@@ -537,7 +537,8 @@ transact (
         GNUNET_PQ_query_param_auto_from_type (rr[i].reserve->reserve_pub),
         GNUNET_PQ_query_param_timestamp (&reserve_expiration),
         GNUNET_PQ_query_param_uint64 (&rr[i].reserve->wire_reference),
-        TALER_PQ_query_param_amount (rr[i].reserve->balance),
+        TALER_PQ_query_param_amount_tuple (pg->conn,
+                                           rr[i].reserve->balance),
         GNUNET_PQ_query_param_string (rr[i].reserve->exchange_account_name),
         GNUNET_PQ_query_param_auto_from_type (&rr[i].h_payto),
         GNUNET_PQ_query_param_string (rr[i].notify_s),
@@ -859,7 +860,8 @@ TEH_PG_reserves_in_insertN (
         GNUNET_PQ_query_param_auto_from_type (reserve_pubs[i]),
         GNUNET_PQ_query_param_timestamp (&reserve_expiration),
         GNUNET_PQ_query_param_uint64 (&wire_reference[i]),
-        TALER_PQ_query_param_amount (balances[i]),
+        TALER_PQ_query_param_amount_tuple (pg->conn,
+                                           balances[i]),
         GNUNET_PQ_query_param_string (exchange_account_names[i]),
         GNUNET_PQ_query_param_auto_from_type (h_paytos[i]),
         GNUNET_PQ_query_param_string (notify_s[i]),

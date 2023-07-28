@@ -19,8 +19,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_in_insert(
   IN in_reserve_expiration INT8,
   IN in_reserve_pub BYTEA,
   IN in_wire_ref INT8,
-  IN in_credit_val INT8,
-  IN in_credit_frac INT4,
+  IN in_credit taler_amount,
   IN in_exchange_account_name VARCHAR,
   IN in_execution_date INT8,
   IN in_wire_source_h_payto BYTEA,
@@ -42,14 +41,12 @@ BEGIN
 
   INSERT INTO reserves
     (reserve_pub
-    ,current_balance_val
-    ,current_balance_frac
+    ,current_balance
     ,expiration_date
     ,gc_date)
     VALUES
     (in_reserve_pub
-    ,in_credit_val
-    ,in_credit_frac
+    ,in_credit
     ,in_reserve_expiration
     ,in_gc_date)
   ON CONFLICT DO NOTHING
@@ -67,8 +64,8 @@ BEGIN
     VALUES
     (in_reserve_pub
     ,in_wire_ref
-    ,in_credit_val
-    ,in_credit_frac
+    ,in_credit.val
+    ,in_credit.frac
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_execution_date)
@@ -90,8 +87,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in_reserve_expiration INT8,
   IN in0_reserve_pub BYTEA,
   IN in0_wire_ref INT8,
-  IN in0_credit_val INT8,
-  IN in0_credit_frac INT4,
+  IN in0_credit taler_amount,
   IN in0_exchange_account_name VARCHAR,
   IN in0_execution_date INT8,
   IN in0_wire_source_h_payto BYTEA,
@@ -99,8 +95,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in0_notify TEXT,
   IN in1_reserve_pub BYTEA,
   IN in1_wire_ref INT8,
-  IN in1_credit_val INT8,
-  IN in1_credit_frac INT4,
+  IN in1_credit taler_amount,
   IN in1_exchange_account_name VARCHAR,
   IN in1_execution_date INT8,
   IN in1_wire_source_h_payto BYTEA,
@@ -138,19 +133,16 @@ BEGIN
   WITH reserve_changes AS (
     INSERT INTO reserves
       (reserve_pub
-      ,current_balance_val
-      ,current_balance_frac
+      ,current_balance
       ,expiration_date
       ,gc_date)
       VALUES
       (in0_reserve_pub
-      ,in0_credit_val
-      ,in0_credit_frac
+      ,in0_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in1_reserve_pub
-      ,in1_credit_val
-      ,in1_credit_frac
+      ,in1_credit
       ,in_reserve_expiration
       ,in_gc_date)
     ON CONFLICT DO NOTHING
@@ -200,15 +192,15 @@ BEGIN
       VALUES
       (in0_reserve_pub
       ,in0_wire_ref
-      ,in0_credit_val
-      ,in0_credit_frac
+      ,in0_credit.val
+      ,in0_credit.frac
       ,in0_exchange_account_name
       ,in0_wire_source_h_payto
       ,in0_execution_date),
       (in1_reserve_pub
       ,in1_wire_ref
-      ,in1_credit_val
-      ,in1_credit_frac
+      ,in1_credit.val
+      ,in1_credit.frac
       ,in1_exchange_account_name
       ,in1_wire_source_h_payto
       ,in1_execution_date)
@@ -261,8 +253,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in_reserve_expiration INT8,
   IN in0_reserve_pub BYTEA,
   IN in0_wire_ref INT8,
-  IN in0_credit_val INT8,
-  IN in0_credit_frac INT4,
+  IN in0_credit taler_amount,
   IN in0_exchange_account_name VARCHAR,
   IN in0_execution_date INT8,
   IN in0_wire_source_h_payto BYTEA,
@@ -270,8 +261,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in0_notify TEXT,
   IN in1_reserve_pub BYTEA,
   IN in1_wire_ref INT8,
-  IN in1_credit_val INT8,
-  IN in1_credit_frac INT4,
+  IN in1_credit taler_amount,
   IN in1_exchange_account_name VARCHAR,
   IN in1_execution_date INT8,
   IN in1_wire_source_h_payto BYTEA,
@@ -279,8 +269,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in1_notify TEXT,
   IN in2_reserve_pub BYTEA,
   IN in2_wire_ref INT8,
-  IN in2_credit_val INT8,
-  IN in2_credit_frac INT4,
+  IN in2_credit taler_amount,
   IN in2_exchange_account_name VARCHAR,
   IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,
@@ -288,8 +277,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in2_notify TEXT,
   IN in3_reserve_pub BYTEA,
   IN in3_wire_ref INT8,
-  IN in3_credit_val INT8,
-  IN in3_credit_frac INT4,
+  IN in3_credit taler_amount,
   IN in3_exchange_account_name VARCHAR,
   IN in3_execution_date INT8,
   IN in3_wire_source_h_payto BYTEA,
@@ -337,29 +325,24 @@ BEGIN
   WITH reserve_changes AS (
     INSERT INTO reserves
       (reserve_pub
-      ,current_balance_val
-      ,current_balance_frac
+      ,current_balance
       ,expiration_date
       ,gc_date)
       VALUES
       (in0_reserve_pub
-      ,in0_credit_val
-      ,in0_credit_frac
+      ,in0_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in1_reserve_pub
-      ,in1_credit_val
-      ,in1_credit_frac
+      ,in1_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in2_reserve_pub
-      ,in2_credit_val
-      ,in2_credit_frac
+      ,in2_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in3_reserve_pub
-      ,in3_credit_val
-      ,in3_credit_frac
+      ,in3_credit
       ,in_reserve_expiration
       ,in_gc_date)
     ON CONFLICT DO NOTHING
@@ -425,29 +408,29 @@ BEGIN
       VALUES
       (in0_reserve_pub
       ,in0_wire_ref
-      ,in0_credit_val
-      ,in0_credit_frac
+      ,in0_credit.val
+      ,in0_credit.frac
       ,in0_exchange_account_name
       ,in0_wire_source_h_payto
       ,in0_execution_date),
       (in1_reserve_pub
       ,in1_wire_ref
-      ,in1_credit_val
-      ,in1_credit_frac
+      ,in1_credit.val
+      ,in1_credit.frac
       ,in1_exchange_account_name
       ,in1_wire_source_h_payto
       ,in1_execution_date),
       (in2_reserve_pub
       ,in2_wire_ref
-      ,in2_credit_val
-      ,in2_credit_frac
+      ,in2_credit.val
+      ,in2_credit.frac
       ,in2_exchange_account_name
       ,in2_wire_source_h_payto
       ,in2_execution_date),
       (in3_reserve_pub
       ,in3_wire_ref
-      ,in3_credit_val
-      ,in3_credit_frac
+      ,in3_credit.val
+      ,in3_credit.frac
       ,in3_exchange_account_name
       ,in3_wire_source_h_payto
       ,in3_execution_date)
@@ -522,8 +505,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in_reserve_expiration INT8,
   IN in0_reserve_pub BYTEA,
   IN in0_wire_ref INT8,
-  IN in0_credit_val INT8,
-  IN in0_credit_frac INT4,
+  IN in0_credit taler_amount,
   IN in0_exchange_account_name VARCHAR,
   IN in0_execution_date INT8,
   IN in0_wire_source_h_payto BYTEA,
@@ -531,8 +513,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in0_notify TEXT,
   IN in1_reserve_pub BYTEA,
   IN in1_wire_ref INT8,
-  IN in1_credit_val INT8,
-  IN in1_credit_frac INT4,
+  IN in1_credit taler_amount,
   IN in1_exchange_account_name VARCHAR,
   IN in1_execution_date INT8,
   IN in1_wire_source_h_payto BYTEA,
@@ -540,8 +521,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in1_notify TEXT,
   IN in2_reserve_pub BYTEA,
   IN in2_wire_ref INT8,
-  IN in2_credit_val INT8,
-  IN in2_credit_frac INT4,
+  IN in2_credit taler_amount,
   IN in2_exchange_account_name VARCHAR,
   IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,
@@ -549,8 +529,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in2_notify TEXT,
   IN in3_reserve_pub BYTEA,
   IN in3_wire_ref INT8,
-  IN in3_credit_val INT8,
-  IN in3_credit_frac INT4,
+  IN in3_credit taler_amount,
   IN in3_exchange_account_name VARCHAR,
   IN in3_execution_date INT8,
   IN in3_wire_source_h_payto BYTEA,
@@ -558,8 +537,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in3_notify TEXT,
   IN in4_reserve_pub BYTEA,
   IN in4_wire_ref INT8,
-  IN in4_credit_val INT8,
-  IN in4_credit_frac INT4,
+  IN in4_credit taler_amount,
   IN in4_exchange_account_name VARCHAR,
   IN in4_execution_date INT8,
   IN in4_wire_source_h_payto BYTEA,
@@ -567,8 +545,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in4_notify TEXT,
   IN in5_reserve_pub BYTEA,
   IN in5_wire_ref INT8,
-  IN in5_credit_val INT8,
-  IN in5_credit_frac INT4,
+  IN in5_credit taler_amount,
   IN in5_exchange_account_name VARCHAR,
   IN in5_execution_date INT8,
   IN in5_wire_source_h_payto BYTEA,
@@ -576,8 +553,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in5_notify TEXT,
   IN in6_reserve_pub BYTEA,
   IN in6_wire_ref INT8,
-  IN in6_credit_val INT8,
-  IN in6_credit_frac INT4,
+  IN in6_credit taler_amount,
   IN in6_exchange_account_name VARCHAR,
   IN in6_execution_date INT8,
   IN in6_wire_source_h_payto BYTEA,
@@ -585,8 +561,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in6_notify TEXT,
   IN in7_reserve_pub BYTEA,
   IN in7_wire_ref INT8,
-  IN in7_credit_val INT8,
-  IN in7_credit_frac INT4,
+  IN in7_credit taler_amount,
   IN in7_exchange_account_name VARCHAR,
   IN in7_execution_date INT8,
   IN in7_wire_source_h_payto BYTEA,
@@ -657,49 +632,40 @@ BEGIN
   WITH reserve_changes AS (
     INSERT INTO reserves
       (reserve_pub
-      ,current_balance_val
-      ,current_balance_frac
+      ,current_balance
       ,expiration_date
       ,gc_date)
       VALUES
       (in0_reserve_pub
-      ,in0_credit_val
-      ,in0_credit_frac
+      ,in0_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in1_reserve_pub
-      ,in1_credit_val
-      ,in1_credit_frac
+      ,in1_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in2_reserve_pub
-      ,in2_credit_val
-      ,in2_credit_frac
+      ,in2_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in3_reserve_pub
-      ,in3_credit_val
-      ,in3_credit_frac
+      ,in3_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in4_reserve_pub
-      ,in4_credit_val
-      ,in4_credit_frac
+      ,in4_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in5_reserve_pub
-      ,in5_credit_val
-      ,in5_credit_frac
+      ,in5_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in6_reserve_pub
-      ,in6_credit_val
-      ,in6_credit_frac
+      ,in6_credit
       ,in_reserve_expiration
       ,in_gc_date),
       (in7_reserve_pub
-      ,in7_credit_val
-      ,in7_credit_frac
+      ,in7_credit
       ,in_reserve_expiration
       ,in_gc_date)
     ON CONFLICT DO NOTHING
@@ -802,57 +768,57 @@ BEGIN
       VALUES
       (in0_reserve_pub
       ,in0_wire_ref
-      ,in0_credit_val
-      ,in0_credit_frac
+      ,in0_credit.val
+      ,in0_credit.frac
       ,in0_exchange_account_name
       ,in0_wire_source_h_payto
       ,in0_execution_date),
       (in1_reserve_pub
       ,in1_wire_ref
-      ,in1_credit_val
-      ,in1_credit_frac
+      ,in1_credit.val
+      ,in1_credit.frac
       ,in1_exchange_account_name
       ,in1_wire_source_h_payto
       ,in1_execution_date),
       (in2_reserve_pub
       ,in2_wire_ref
-      ,in2_credit_val
-      ,in2_credit_frac
+      ,in2_credit.val
+      ,in2_credit.frac
       ,in2_exchange_account_name
       ,in2_wire_source_h_payto
       ,in2_execution_date),
       (in3_reserve_pub
       ,in3_wire_ref
-      ,in3_credit_val
-      ,in3_credit_frac
+      ,in3_credit.val
+      ,in3_credit.frac
       ,in3_exchange_account_name
       ,in3_wire_source_h_payto
       ,in3_execution_date),
       (in4_reserve_pub
       ,in4_wire_ref
-      ,in4_credit_val
-      ,in4_credit_frac
+      ,in4_credit.val
+      ,in4_credit.frac
       ,in4_exchange_account_name
       ,in4_wire_source_h_payto
       ,in4_execution_date),
       (in5_reserve_pub
       ,in5_wire_ref
-      ,in5_credit_val
-      ,in5_credit_frac
+      ,in5_credit.val
+      ,in5_credit.frac
       ,in5_exchange_account_name
       ,in5_wire_source_h_payto
       ,in5_execution_date),
       (in6_reserve_pub
       ,in6_wire_ref
-      ,in6_credit_val
-      ,in6_credit_frac
+      ,in6_credit.val
+      ,in6_credit.frac
       ,in6_exchange_account_name
       ,in6_wire_source_h_payto
       ,in6_execution_date),
       (in7_reserve_pub
       ,in7_wire_ref
-      ,in7_credit_val
-      ,in7_credit_frac
+      ,in7_credit.val
+      ,in7_credit.frac
       ,in7_exchange_account_name
       ,in7_wire_source_h_payto
       ,in7_execution_date)

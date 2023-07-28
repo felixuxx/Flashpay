@@ -22,8 +22,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_reserve_gc INT8,
   IN in_reserve_sig BYTEA,
   IN in_reserve_quota BOOLEAN,
-  IN in_purse_fee_val INT8,
-  IN in_purse_fee_frac INT4,
+  IN in_purse_fee taler_amount,
   IN in_reserve_pub BYTEA,
   IN in_wallet_h_payto BYTEA,
   OUT out_no_funds BOOLEAN,
@@ -101,8 +100,8 @@ ELSE
   --  UPDATE reserves balance (and check if balance is enough to pay the fee)
   IF (out_no_reserve)
   THEN
-    IF ( (0 != in_purse_fee_val) OR
-         (0 != in_purse_fee_frac) )
+    IF ( (0 != in_purse_fee.val) OR
+         (0 != in_purse_fee.frac) )
     THEN
       out_no_funds=TRUE;
       RETURN;
@@ -118,22 +117,22 @@ ELSE
   ELSE
     UPDATE exchange.reserves
       SET
-        current_balance_frac=current_balance_frac-in_purse_fee_frac
+        current_balance.frac=current_balance.frac-in_purse_fee.frac
          + CASE
-         WHEN current_balance_frac < in_purse_fee_frac
+         WHEN current_balance.frac < in_purse_fee.frac
          THEN 100000000
          ELSE 0
          END,
-       current_balance_val=current_balance_val-in_purse_fee_val
+       current_balance.val=current_balance.val-in_purse_fee.val
          - CASE
-         WHEN current_balance_frac < in_purse_fee_frac
+         WHEN current_balance.frac < in_purse_fee.frac
          THEN 1
          ELSE 0
          END
       WHERE reserve_pub=in_reserve_pub
-        AND ( (current_balance_val > in_purse_fee_val) OR
-              ( (current_balance_frac >= in_purse_fee_frac) AND
-                (current_balance_val >= in_purse_fee_val) ) );
+        AND ( (current_balance.val > in_purse_fee.val) OR
+              ( (current_balance.frac >= in_purse_fee.frac) AND
+                (current_balance.val >= in_purse_fee.val) ) );
     IF NOT FOUND
     THEN
       out_no_funds=TRUE;
@@ -159,5 +158,5 @@ INSERT INTO exchange.account_merges
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, INT8, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA)
+COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, INT8, INT8, BYTEA, BOOLEAN, taler_amount, BYTEA, BYTEA)
   IS 'Create a purse for a reserve.';

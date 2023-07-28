@@ -16,45 +16,29 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_reserve_open(
   IN in_reserve_pub BYTEA,
-  IN in_total_paid_val INT8,
-  IN in_total_paid_frac INT4,
-  IN in_reserve_payment_val INT8,
-  IN in_reserve_payment_frac INT4,
+  IN in_total_paid taler_amount,
+  IN in_reserve_payment taler_amount,
   IN in_min_purse_limit INT4,
   IN in_default_purse_limit INT4,
   IN in_reserve_sig BYTEA,
   IN in_desired_expiration INT8,
   IN in_reserve_gc_delay INT8,
   IN in_now INT8,
-  IN in_open_fee_val INT8,
-  IN in_open_fee_frac INT4,
-  OUT out_open_cost_val INT8,
-  OUT out_open_cost_frac INT4,
+  IN in_open_fee taler_amount,
+  OUT out_open_cost taler_amount,
   OUT out_final_expiration INT8,
   OUT out_no_funds BOOLEAN)
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  my_balance_val INT8;
-DECLARE
-  my_balance_frac INT4;
-DECLARE
-  my_cost_val INT8;
-DECLARE
+  my_balance taler_amount;
+  my_cost taler_amount;
   my_cost_tmp INT8;
-DECLARE
-  my_cost_frac INT4;
-DECLARE
   my_years_tmp INT4;
-DECLARE
   my_years INT4;
-DECLARE
   my_needs_update BOOL;
-DECLARE
   my_purses_allowed INT8;
-DECLARE
   my_expiration_date INT8;
-DECLARE
   my_reserve_expiration INT8;
 BEGIN
 
@@ -62,13 +46,13 @@ BEGIN
 SELECT
   purses_allowed
  ,expiration_date
- ,current_balance_val
- ,current_balance_frac
+ ,current_balance.val
+ ,current_balance.frac
 INTO
   my_purses_allowed
  ,my_reserve_expiration
- ,my_balance_val
- ,my_balance_frac
+ ,my_balance.val
+ ,my_balance.frac
 FROM reserves
 WHERE
   reserve_pub=in_reserve_pub;
@@ -88,8 +72,8 @@ ELSE
   my_expiration_date = my_reserve_expiration;
 END IF;
 
-my_cost_val = 0;
-my_cost_frac = 0;
+my_cost.val = 0;
+my_cost.frac = 0;
 my_needs_update = FALSE;
 my_years = 0;
 
@@ -115,19 +99,19 @@ END IF;
 -- Compute cost based on annual fees
 IF (my_years > 0)
 THEN
-  my_cost_val = my_years * in_open_fee_val;
-  my_cost_tmp = my_years * in_open_fee_frac / 100000000;
-  IF (CAST (my_cost_val + my_cost_tmp AS INT8) < my_cost_val)
+  my_cost.val = my_years * in_open_fee.val;
+  my_cost_tmp = my_years * in_open_fee.frac / 100000000;
+  IF (CAST (my_cost.val + my_cost_tmp AS INT8) < my_cost.val)
   THEN
-    out_open_cost_val=9223372036854775807;
-    out_open_cost_frac=2147483647;
+    out_open_cost.val=9223372036854775807;
+    out_open_cost.frac=2147483647;
     out_final_expiration=my_expiration_date;
     out_no_funds=FALSE;
     RAISE NOTICE 'arithmetic issue computing amount';
   RETURN;
   END IF;
-  my_cost_val = CAST (my_cost_val + my_cost_tmp AS INT8);
-  my_cost_frac = my_years * in_open_fee_frac % 100000000;
+  my_cost.val = CAST (my_cost.val + my_cost_tmp AS INT8);
+  my_cost.frac = my_years * in_open_fee.frac % 100000000;
   my_needs_update = TRUE;
 END IF;
 
@@ -135,20 +119,20 @@ END IF;
 IF NOT my_needs_update
 THEN
   out_final_expiration = my_reserve_expiration;
-  out_open_cost_val = 0;
-  out_open_cost_frac = 0;
+  out_open_cost.val = 0;
+  out_open_cost.frac = 0;
   out_no_funds=FALSE;
   RAISE NOTICE 'no change required';
   RETURN;
 END IF;
 
 -- Check payment (coins and reserve) would be sufficient.
-IF ( (in_total_paid_val < my_cost_val) OR
-     ( (in_total_paid_val = my_cost_val) AND
-       (in_total_paid_frac < my_cost_frac) ) )
+IF ( (in_total_paid.val < my_cost.val) OR
+     ( (in_total_paid.val = my_cost.val) AND
+       (in_total_paid.frac < my_cost.frac) ) )
 THEN
-  out_open_cost_val = my_cost_val;
-  out_open_cost_frac = my_cost_frac;
+  out_open_cost.val = my_cost.val;
+  out_open_cost.frac = my_cost.frac;
   out_no_funds=FALSE;
   -- We must return a failure, which is indicated by
   -- the expiration being below the desired expiration.
@@ -167,25 +151,25 @@ THEN
 END IF;
 
 -- Check reserve balance is sufficient.
-IF (my_balance_val > in_reserve_payment_val)
+IF (my_balance.val > in_reserve_payment.val)
 THEN
-  IF (my_balance_frac >= in_reserve_payment_frac)
+  IF (my_balance.frac >= in_reserve_payment.frac)
   THEN
-    my_balance_val=my_balance_val - in_reserve_payment_val;
-    my_balance_frac=my_balance_frac - in_reserve_payment_frac;
+    my_balance.val=my_balance.val - in_reserve_payment.val;
+    my_balance.frac=my_balance.frac - in_reserve_payment.frac;
   ELSE
-    my_balance_val=my_balance_val - in_reserve_payment_val - 1;
-    my_balance_frac=my_balance_frac + 100000000 - in_reserve_payment_frac;
+    my_balance.val=my_balance.val - in_reserve_payment.val - 1;
+    my_balance.frac=my_balance.frac + 100000000 - in_reserve_payment.frac;
   END IF;
 ELSE
-  IF (my_balance_val = in_reserve_payment_val) AND (my_balance_frac >= in_reserve_payment_frac)
+  IF (my_balance.val = in_reserve_payment.val) AND (my_balance.frac >= in_reserve_payment.frac)
   THEN
-    my_balance_val=0;
-    my_balance_frac=my_balance_frac - in_reserve_payment_frac;
+    my_balance.val=0;
+    my_balance.frac=my_balance.frac - in_reserve_payment.frac;
   ELSE
     out_final_expiration = my_reserve_expiration;
-    out_open_cost_val = my_cost_val;
-    out_open_cost_frac = my_cost_frac;
+    out_open_cost.val = my_cost.val;
+    out_open_cost.frac = my_cost.frac;
     out_no_funds=TRUE;
     RAISE NOTICE 'reserve balance too low';
   RETURN;
@@ -193,8 +177,7 @@ ELSE
 END IF;
 
 UPDATE reserves SET
-  current_balance_val=my_balance_val
- ,current_balance_frac=my_balance_frac
+  current_balance=my_balance
  ,gc_date=my_reserve_expiration + in_reserve_gc_delay
  ,expiration_date=my_expiration_date
  ,purses_allowed=my_purses_allowed
@@ -202,8 +185,7 @@ WHERE
  reserve_pub=in_reserve_pub;
 
 out_final_expiration=my_expiration_date;
-out_open_cost_val = my_cost_val;
-out_open_cost_frac = my_cost_frac;
+out_open_cost = my_cost;
 out_no_funds=FALSE;
 RETURN;
 

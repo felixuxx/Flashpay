@@ -54,23 +54,23 @@ BEGIN
   -- Update reserve balance.
   UPDATE exchange.reserves
    SET
-    current_balance_frac=current_balance_frac-in_history_fee_frac
+    current_balance.frac=current_balance.frac-in_history_fee_frac
        + CASE
-         WHEN current_balance_frac < in_history_fee_frac
+         WHEN current_balance.frac < in_history_fee_frac
          THEN 100000000
          ELSE 0
          END,
-    current_balance_val=current_balance_val-in_history_fee_val
+    current_balance.val=current_balance.val-in_history_fee_val
        - CASE
-         WHEN current_balance_frac < in_history_fee_frac
+         WHEN current_balance.frac < in_history_fee_frac
          THEN 1
          ELSE 0
          END
   WHERE
     reserve_pub=in_reserve_pub
-    AND ( (current_balance_val > in_history_fee_val) OR
-          ( (current_balance_frac >= in_history_fee_frac) AND
-            (current_balance_val >= in_history_fee_val) ) );
+    AND ( (current_balance.val > in_history_fee_val) OR
+          ( (current_balance.frac >= in_history_fee_frac) AND
+            (current_balance.val >= in_history_fee_val) ) );
 
   IF NOT FOUND
   THEN

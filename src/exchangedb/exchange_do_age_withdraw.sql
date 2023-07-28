@@ -50,8 +50,7 @@ BEGIN
 --         wire_targets by wire_target_h_payto
 
 SELECT
-   current_balance_val
-  ,current_balance_frac
+   current_balance
   ,gc_date
   ,birthday
  INTO
@@ -126,8 +125,7 @@ min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
 -- Update reserve balance.
 UPDATE reserves SET
   gc_date=min_reserve_gc
- ,current_balance_val=new_balance.val
- ,current_balance_frac=new_balance.frac
+ ,current_balance=new_balance
 WHERE
   reserves.reserve_pub=rpub;
 

@@ -17,8 +17,7 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   IN cs_nonce BYTEA,
-  IN amount_val INT8,
-  IN amount_frac INT4,
+  IN amount taler_amount,
   IN h_denom_pub BYTEA,
   IN rpub BYTEA,
   IN reserve_sig BYTEA,
@@ -38,8 +37,7 @@ AS $$
 DECLARE
   reserve_gc INT8;
   denom_serial INT8;
-  reserve_val INT8;
-  reserve_frac INT4;
+  reserve taler_amount;
   reserve_birthday INT4;
   not_before date;
 BEGIN
@@ -68,14 +66,13 @@ END IF;
 
 
 SELECT
-   current_balance_val
-  ,current_balance_frac
+   current_balance
   ,gc_date
   ,birthday
   ,reserve_uuid
  INTO
-   reserve_val
-  ,reserve_frac
+   reserve.val
+  ,reserve.frac
   ,reserve_gc
   ,reserve_birthday
   ,ruuid
@@ -133,8 +130,8 @@ VALUES
   ,ruuid
   ,reserve_sig
   ,now
-  ,amount_val
-  ,amount_frac)
+  ,amount.val
+  ,amount.frac)
 ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -147,21 +144,21 @@ THEN
 END IF;
 
 -- Check reserve balance is sufficient.
-IF (reserve_val > amount_val)
+IF (reserve.val > amount.val)
 THEN
-  IF (reserve_frac >= amount_frac)
+  IF (reserve.frac >= amount.frac)
   THEN
-    reserve_val=reserve_val - amount_val;
-    reserve_frac=reserve_frac - amount_frac;
+    reserve.val=reserve.val - amount.val;
+    reserve.frac=reserve.frac - amount.frac;
   ELSE
-    reserve_val=reserve_val - amount_val - 1;
-    reserve_frac=reserve_frac + 100000000 - amount_frac;
+    reserve.val=reserve.val - amount.val - 1;
+    reserve.frac=reserve.frac + 100000000 - amount.frac;
   END IF;
 ELSE
-  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
+  IF (reserve.val = amount.val) AND (reserve.frac >= amount.frac)
   THEN
-    reserve_val=0;
-    reserve_frac=reserve_frac - amount_frac;
+    reserve.val=0;
+    reserve.frac=reserve.frac - amount.frac;
   ELSE
     reserve_found=TRUE;
     nonce_ok=TRUE; -- we do not really know
@@ -176,8 +173,7 @@ min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
 -- Update reserve balance.
 UPDATE reserves SET
   gc_date=min_reserve_gc
- ,current_balance_val=reserve_val
- ,current_balance_frac=reserve_frac
+ ,current_balance=reserve
 WHERE
   reserves.reserve_pub=rpub;
 
@@ -222,7 +218,6 @@ END IF;
 
 END $$;
 
-
-COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8, BOOLEAN)
+COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, taler_amount, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8, BOOLEAN)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if the age requirements are formally met.  If so updates the database with the result';
 

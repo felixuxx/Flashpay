@@ -21,15 +21,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   reserve_uuid_min INT8; -- minimum reserve UUID still alive
-DECLARE
   melt_min INT8; -- minimum melt still alive
-DECLARE
   coin_min INT8; -- minimum known_coin still alive
-DECLARE
   deposit_min INT8; -- minimum deposit still alive
-DECLARE
   reserve_out_min INT8; -- minimum reserve_out still alive
-DECLARE
   denom_min INT8; -- minimum denomination still alive
 BEGIN
 
@@ -42,8 +37,8 @@ DELETE FROM exchange.wire_fee
 -- TODO: use closing fee as threshold?
 DELETE FROM exchange.reserves
   WHERE gc_date < in_now
-    AND current_balance_val = 0
-    AND current_balance_frac = 0;
+    AND current_balance.val = 0
+    AND current_balance.frac = 0;
 
 SELECT
      reserve_out_serial_id

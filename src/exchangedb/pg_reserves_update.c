@@ -33,7 +33,8 @@ TEH_PG_reserves_update (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&reserve->expiry),
     GNUNET_PQ_query_param_timestamp (&reserve->gc),
-    TALER_PQ_query_param_amount (&reserve->balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &reserve->balance),
     GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
     GNUNET_PQ_query_param_end
   };
@@ -44,9 +45,8 @@ TEH_PG_reserves_update (void *cls,
            " SET"
            " expiration_date=$1"
            ",gc_date=$2"
-           ",current_balance_val=$3"
-           ",current_balance_frac=$4"
-           " WHERE reserve_pub=$5;");
+           ",current_balance=$3"
+           " WHERE reserve_pub=$4;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "reserve_update",
                                              params);
