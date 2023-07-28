@@ -48,20 +48,6 @@ enum TALER_PQ_ArrayType
 };
 
 /**
- * The header for a postgresql array in binary format. note that this a
- * simplified special case of the general structure (which contains pointers),
- * as we only support one-dimensional arrays.
- */
-struct TALER_PQ_ArrayHeader_P
-{
-  uint32_t ndim;     /* number of dimensions. we only support ndim = 1 */
-  uint32_t has_null;
-  uint32_t oid;
-  uint32_t dim;      /* size of the array */
-  uint32_t lbound;   /* index value of first element in the db (default: 1). */
-} __attribute__((packed));
-
-/**
  * Memory representation of an taler amount record for Postgres.
  *
  * All values need to be in network-byte-order.
@@ -91,6 +77,7 @@ struct TALER_PQ_Amount_P
     .v = GNUNET_htonll ((amount)->value), \
     .f = htonl ((amount)->fraction) \
   }
+
 
 #endif  /* TALER_PQ_COMMON_H_ */
 /* end of pg/pq_common.h */

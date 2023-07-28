@@ -872,7 +872,7 @@ qconv_array (
     RETURN_UNLESS ((0 == num) || (y / num == x));
 
     /* size of header */
-    total_size  = x = sizeof(struct TALER_PQ_ArrayHeader_P);
+    total_size  = x = sizeof(struct GNUNET_PQ_ArrayHeader_P);
     total_size += y;
     RETURN_UNLESS (total_size >= x);
 
@@ -941,7 +941,7 @@ qconv_array (
   /* Write data */
   {
     char *out = elements;
-    struct TALER_PQ_ArrayHeader_P h = {
+    struct GNUNET_PQ_ArrayHeader_P h = {
       .ndim = htonl (1),        /* We only support one-dimensional arrays */
       .has_null = htonl (0),    /* We do not support NULL entries in arrays */
       .lbound = htonl (1),      /* Default start index value */

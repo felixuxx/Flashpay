@@ -46,7 +46,6 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
 void
 TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin);
 
-
 /**
  * Information about an account from the configuration.
  */
