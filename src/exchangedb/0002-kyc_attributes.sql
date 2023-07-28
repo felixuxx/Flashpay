@@ -56,12 +56,6 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'birth date of the user, in format YYYY-MM-DD where a value of 0 is used to indicate unknown (in official documents); NULL if the birth date was not collected by the provider; used for KYC-driven age restrictions'
-    ,'birthdate'
-    ,table_name
-    ,partition_suffix
-  );
-  PERFORM comment_partitioned_column(
      'time when the attributes were collected by the provider'
     ,'collection_time'
     ,table_name
@@ -144,12 +138,12 @@ INSERT INTO exchange_tables
     ,by_range)
   VALUES
     ('kyc_attributes'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'create'
     ,TRUE
     ,FALSE),
     ('kyc_attributes'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'constrain'
     ,TRUE
     ,FALSE);

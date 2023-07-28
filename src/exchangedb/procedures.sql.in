@@ -18,6 +18,7 @@ BEGIN;
 
 SET search_path TO exchange;
 
+#include "exchange_do_amount_specific.sql"
 #include "exchange_do_withdraw.sql"
 #include "exchange_do_batch_withdraw.sql"
 #include "exchange_do_batch_withdraw_insert.sql"

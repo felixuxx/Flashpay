@@ -91,12 +91,12 @@ INSERT INTO exchange_tables
     ,by_range)
   VALUES
     ('aml_status'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'create'
     ,TRUE
     ,FALSE),
     ('aml_status'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'constrain'
     ,TRUE
     ,FALSE);

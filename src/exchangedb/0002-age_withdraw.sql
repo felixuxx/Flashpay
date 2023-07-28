@@ -138,7 +138,7 @@ BEGIN
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_reserve_pub'
     ' FOREIGN KEY (reserve_pub)'
-    ' REFERENCES reserves(reserve_pub);' -- ON DELETE CASCADE;'
+    ' REFERENCES reserves(reserve_pub) ON DELETE CASCADE;'
   );
 END
 $$;
@@ -151,6 +151,7 @@ INSERT INTO exchange_tables
   ,partitioned
   ,by_range)
 VALUES
-  ('age_withdraw', 'exchange-0003', 'create',   TRUE ,FALSE),
-  ('age_withdraw', 'exchange-0003', 'constrain',TRUE ,FALSE),
-  ('age_withdraw', 'exchange-0003', 'foreign',  TRUE ,FALSE);
+  ('age_withdraw', 'exchange-0002', 'create',   TRUE ,FALSE),
+  ('age_withdraw', 'exchange-0002', 'constrain',TRUE ,FALSE),
+  ('age_withdraw', 'exchange-0002', 'foreign',  TRUE ,FALSE);
+

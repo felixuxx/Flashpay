@@ -110,12 +110,12 @@ INSERT INTO exchange_tables
     ,by_range)
   VALUES
     ('purse_actions'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'create'
     ,TRUE
     ,FALSE),
     ('purse_actions'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'master'
     ,TRUE
     ,FALSE);

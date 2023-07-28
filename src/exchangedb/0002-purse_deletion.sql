@@ -94,17 +94,17 @@ INSERT INTO exchange_tables
     ,by_range)
   VALUES
     ('purse_deletion'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'create'
     ,TRUE
     ,FALSE),
     ('purse_deletion'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'constrain'
     ,TRUE
     ,FALSE),
     ('purse_requests_was_deleted'
-    ,'exchange-0003'
+    ,'exchange-0002'
     ,'master'
     ,TRUE
     ,FALSE);
