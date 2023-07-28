@@ -141,22 +141,10 @@ COMMENT ON FUNCTION comment_partitioned_column
 -- Taler amounts and helper functiosn
 -------------------------------------------------------------
 
-DO $$
-BEGIN
-  CREATE TYPE TALER_AMOUNT
-    AS (val  INT8
-       ,frac INT4);
-
-  COMMENT ON TYPE TALER_AMOUNT
-    IS 'Type to store a TALER-amount as (val, frac) pair.';
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END
-$$;
 
 CREATE PROCEDURE amount_normalize(
-    IN amount TALER_AMOUNT
-  ,OUT normalized TALER_AMOUNT
+    IN amount taler_amount
+  ,OUT normalized taler_amount
 )
 LANGUAGE plpgsql
 AS $$
@@ -169,9 +157,9 @@ COMMENT ON PROCEDURE amount_normalize
   IS 'Returns the normalized amount by adding to the .val the value of (.frac / 100000000) and removing the modulus 100000000 from .frac.';
 
 CREATE PROCEDURE amount_add(
-   IN a TALER_AMOUNT
-  ,IN b TALER_AMOUNT
-  ,OUT sum TALER_AMOUNT
+   IN a taler_amount
+  ,IN b taler_amount
+  ,OUT sum taler_amount
 )
 LANGUAGE plpgsql
 AS $$
@@ -189,9 +177,9 @@ COMMENT ON PROCEDURE amount_add
   IS 'Returns the normalized sum of two amounts. It raises an exception when the resulting .val is larger than 2^52';
 
 CREATE FUNCTION amount_left_minus_right(
-  IN  l TALER_AMOUNT
- ,IN  r TALER_AMOUNT
- ,OUT diff TALER_AMOUNT
+  IN  l taler_amount
+ ,IN  r taler_amount
+ ,OUT diff taler_amount
  ,OUT ok BOOLEAN
 )
 LANGUAGE plpgsql
