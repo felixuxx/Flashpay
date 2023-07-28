@@ -98,7 +98,7 @@ function stop_libeufin()
 
 function launch_libeufin () {
 # shellcheck disable=SC2016
-    export LIBEUFIN_SANDBOX_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
+    export LIBEUFIN_SANDBOX_DB_CONNECTION="postgresql:///${DB}"
     libeufin-sandbox serve \
                      --no-auth \
                      --port 18082 \
@@ -106,7 +106,7 @@ function launch_libeufin () {
                      2> "${MY_TMP_DIR}/libeufin-sandbox-stderr.log" &
     echo $! > "${MY_TMP_DIR}/libeufin-sandbox.pid"
 # shellcheck disable=SC2016
-    export LIBEUFIN_NEXUS_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
+    export LIBEUFIN_NEXUS_DB_CONNECTION="postgresql:///${DB}"
     libeufin-nexus serve \
                    --port 8082 \
                    2> "${MY_TMP_DIR}/libeufin-nexus-stderr.log" \
