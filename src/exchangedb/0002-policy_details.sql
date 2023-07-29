@@ -21,15 +21,11 @@ CREATE TABLE policy_details
   ,policy_hash_code BYTEA PRIMARY KEY CHECK(LENGTH(policy_hash_code)=16)
   ,policy_json VARCHAR
   ,deadline INT8 NOT NULL
-  ,commitment_val INT8 NOT NULL
-  ,commitment_frac INT4 NOT NULL
-  ,accumulated_total_val INT8 NOT NULL
-  ,accumulated_total_frac INT4 NOT NULL
-  ,fee_val INT8 NOT NULL
-  ,fee_frac INT4 NOT NULL
-  ,transferable_val INT8 NOT NULL
-  ,transferable_frac INT8 NOT NULL
-  ,fulfillment_state smallint NOT NULL CHECK(fulfillment_state between 0 and 5)
+  ,commitment taler_amount NOT NULL
+  ,accumulated_total taler_amount NOT NULL
+  ,fee taler_amount NOT NULL
+  ,transferable taler_amount NOT NULL
+  ,fulfillment_state SMALLINT NOT NULL CHECK(fulfillment_state between 0 and 5)
   ,fulfillment_id BIGINT NULL REFERENCES policy_fulfillments (fulfillment_id) ON DELETE CASCADE
   );
 COMMENT ON TABLE policy_details
@@ -40,13 +36,13 @@ COMMENT ON COLUMN policy_details.policy_json
   IS 'JSON object with options set that the exchange needs to consider when executing a deposit. Supported details depend on the policy extensions supported by the exchange.';
 COMMENT ON COLUMN policy_details.deadline
   IS 'Deadline until the policy must be marked as fulfilled (maybe "forever")';
-COMMENT ON COLUMN policy_details.commitment_val
+COMMENT ON COLUMN policy_details.commitment
   IS 'The amount that this policy commits to.  Invariant: commitment >= fee';
-COMMENT ON COLUMN policy_details.accumulated_total_val
+COMMENT ON COLUMN policy_details.accumulated_total
   IS 'The sum of all contributions of all deposit that reference this policy.  Invariant: The fulfilment_state must be Insufficient as long as accumulated_total < commitment';
-COMMENT ON COLUMN policy_details.fee_val
+COMMENT ON COLUMN policy_details.fee
   IS 'The fee for this policy, due when the policy is fulfilled or timed out';
-COMMENT ON COLUMN policy_details.transferable_val
+COMMENT ON COLUMN policy_details.transferable
   IS 'The amount that on fulfillment or timeout will be transferred to the payto-URI''s of the corresponding deposit''s.  The policy fees must have been already deducted from it.  Invariant: fee+transferable <= accumulated_total.  The remaining amount (accumulated_total - fee - transferable) can be refreshed by the owner of the coins when the state is Timeout or Success.';
 COMMENT ON COLUMN policy_details.fulfillment_state
   IS 'State of the fulfillment:

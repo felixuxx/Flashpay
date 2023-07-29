@@ -19,8 +19,7 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_melt(
   IN in_cs_rms BYTEA,
-  IN in_amount_with_fee_val INT8,
-  IN in_amount_with_fee_frac INT4,
+  IN in_amount_with_fee taler_amount,
   IN in_rc BYTEA,
   IN in_old_coin_pub BYTEA,
   IN in_old_coin_sig BYTEA,
@@ -45,16 +44,14 @@ INSERT INTO exchange.refresh_commitments
   (rc
   ,old_coin_pub
   ,old_coin_sig
-  ,amount_with_fee_val
-  ,amount_with_fee_frac
+  ,amount_with_fee
   ,noreveal_index
   )
   VALUES
   (in_rc
   ,in_old_coin_pub
   ,in_old_coin_sig
-  ,in_amount_with_fee_val
-  ,in_amount_with_fee_frac
+  ,in_amount_with_fee
   ,in_noreveal_index)
   ON CONFLICT DO NOTHING;
 
@@ -104,24 +101,24 @@ out_zombie_bad=FALSE; -- zombie is OK
 
 
 -- Check and update balance of the coin.
-UPDATE known_coins
+UPDATE known_coins kc
   SET
-    remaining_frac=remaining_frac-in_amount_with_fee_frac
+    remaining.frac=(kc.remaining).frac-in_amount_with_fee.frac
        + CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN (kc.remaining).frac < in_amount_with_fee.frac
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val-in_amount_with_fee_val
+    remaining.val=(kc.remaining).val-in_amount_with_fee.val
        - CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN (kc.remaining).frac < in_amount_with_fee.frac
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_old_coin_pub
-    AND ( (remaining_val > in_amount_with_fee_val) OR
-          ( (remaining_frac >= in_amount_with_fee_frac) AND
-            (remaining_val >= in_amount_with_fee_val) ) );
+    AND ( ((kc.remaining).val > in_amount_with_fee.val) OR
+          ( ((kc.remaining).frac >= in_amount_with_fee.frac) AND
+            ((kc.remaining).val >= in_amount_with_fee.val) ) );
 
 IF NOT FOUND
 THEN
@@ -183,4 +180,3 @@ out_balance_ok=TRUE;
 out_noreveal_index=in_noreveal_index;
 
 END $$;
-

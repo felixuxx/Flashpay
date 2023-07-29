@@ -135,8 +135,7 @@ TEH_PG_select_merge_amounts_for_kyc_check (
   PREPARE (pg,
            "select_kyc_relevant_merge_events",
            "SELECT"
-           " amount_with_fee_val AS amount_val"
-           ",amount_with_fee_frac AS amount_frac"
+           " amount_with_fee AS amount"
            ",merge_timestamp AS date"
            " FROM account_merges"
            " JOIN purse_merges USING (purse_pub)"

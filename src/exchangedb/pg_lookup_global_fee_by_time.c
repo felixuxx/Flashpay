@@ -165,12 +165,9 @@ TEH_PG_lookup_global_fee_by_time (
   PREPARE (pg,
            "lookup_global_fee_by_time",
            "SELECT"
-           " history_fee_val"
-           ",history_fee_frac"
-           ",account_fee_val"
-           ",account_fee_frac"
-           ",purse_fee_val"
-           ",purse_fee_frac"
+           " history_fee"
+           ",account_fee"
+           ",purse_fee"
            ",purse_timeout"
            ",history_expiration"
            ",purse_account_limit"

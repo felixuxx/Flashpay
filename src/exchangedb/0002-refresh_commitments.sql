@@ -29,8 +29,7 @@ BEGIN
       ',rc BYTEA PRIMARY KEY CHECK (LENGTH(rc)=64)'
       ',old_coin_pub BYTEA NOT NULL'
       ',old_coin_sig BYTEA NOT NULL CHECK(LENGTH(old_coin_sig)=64)'
-      ',amount_with_fee_val INT8 NOT NULL'
-      ',amount_with_fee_frac INT4 NOT NULL'
+      ',amount_with_fee taler_amount NOT NULL'
       ',noreveal_index INT4 NOT NULL'
     ') %s ;'
     ,table_name

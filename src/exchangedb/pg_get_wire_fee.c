@@ -54,17 +54,13 @@ TEH_PG_get_wire_fee (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-
-  /* Used in #postgres_get_wire_fee() */
   PREPARE (pg,
            "get_wire_fee",
            "SELECT "
            " start_date"
            ",end_date"
-           ",wire_fee_val"
-           ",wire_fee_frac"
-           ",closing_fee_val"
-           ",closing_fee_frac"
+           ",wire_fee"
+           ",closing_fee"
            ",master_sig"
            " FROM wire_fee"
            " WHERE wire_method=$1"

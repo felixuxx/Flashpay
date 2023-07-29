@@ -41,8 +41,10 @@ TEH_PG_insert_close_request (
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    TALER_PQ_query_param_amount (balance),
-    TALER_PQ_query_param_amount (closing_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       closing_fee),
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_end
   };
@@ -53,14 +55,12 @@ TEH_PG_insert_close_request (
            "(reserve_pub"
            ",close_timestamp"
            ",reserve_sig"
-           ",close_val"
-           ",close_frac"
-           ",close_fee_val"
-           ",close_fee_frac"
+           ",close"
+           ",close_fee"
            ",payto_uri"
            ")"
            "VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8)"
+           "($1, $2, $3, $4, $5, $6)"
            " ON CONFLICT DO NOTHING;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_account_close",

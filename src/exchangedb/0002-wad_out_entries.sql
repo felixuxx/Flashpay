@@ -33,12 +33,9 @@ BEGIN
      ',h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)'
      ',purse_expiration INT8 NOT NULL'
      ',merge_timestamp INT8 NOT NULL'
-     ',amount_with_fee_val INT8 NOT NULL'
-     ',amount_with_fee_frac INT4 NOT NULL'
-     ',wad_fee_val INT8 NOT NULL'
-     ',wad_fee_frac INT4 NOT NULL'
-     ',deposit_fees_val INT8 NOT NULL'
-     ',deposit_fees_frac INT4 NOT NULL'
+     ',amount_with_fee taler_amount NOT NULL'
+     ',wad_fee taler_amount NOT NULL'
+     ',deposit_fees taler_amount NOT NULL'
      ',reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)'
      ',purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)'
      ') %s ;'
@@ -89,19 +86,19 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Total amount in the purse'
-    ,'amount_with_fee_val'
+    ,'amount_with_fee'
     ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
     'Wad fee charged to the purse'
-    ,'wad_fee_val'
+    ,'wad_fee'
     ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Total deposit fees charged to the purse'
-    ,'deposit_fees_val'
+    ,'deposit_fees'
     ,table_name
     ,partition_suffix
   );

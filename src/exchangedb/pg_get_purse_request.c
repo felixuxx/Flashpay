@@ -67,14 +67,11 @@ TEH_PG_get_purse_request (
            ",purse_expiration"
            ",h_contract_terms"
            ",age_limit"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
-           ",balance_val"
-           ",balance_frac"
+           ",amount_with_fee"
+           ",balance"
            ",purse_sig"
            " FROM purse_requests"
            " WHERE purse_pub=$1;");
-
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_purse_request",
                                                    params,

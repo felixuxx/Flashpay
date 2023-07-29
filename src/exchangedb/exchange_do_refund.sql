@@ -15,12 +15,9 @@
 --
 
 CREATE OR REPLACE FUNCTION exchange_do_refund(
-  IN in_amount_with_fee_val INT8,
-  IN in_amount_with_fee_frac INT4,
-  IN in_amount_val INT8,
-  IN in_amount_frac INT4,
-  IN in_deposit_fee_val INT8,
-  IN in_deposit_fee_frac INT4,
+  IN in_amount_with_fee taler_amount,
+  IN in_amount taler_amount,
+  IN in_deposit_fee taler_amount,
   IN in_h_contract_terms BYTEA,
   IN in_rtransaction_id INT8,
   IN in_deposit_shard INT8,
@@ -39,11 +36,11 @@ DECLARE
 DECLARE
   tmp_val INT8; -- total amount refunded
 DECLARE
-  tmp_frac INT8; -- total amount refunded
+  tmp_frac INT8; -- total amount refunded, large fraction to deal with overflows!
 DECLARE
-  deposit_val INT8; -- amount that was originally deposited
+  tmp taler_amount; -- total amount refunded, normalized
 DECLARE
-  deposit_frac INT8; -- amount that was originally deposited
+  deposit taler_amount; -- amount that was originally deposited
 BEGIN
 -- Shards: SELECT deposits (coin_pub, shard, h_contract_terms, merchant_pub)
 --         INSERT refunds (by coin_pub, rtransaction_id) ON CONFLICT DO NOTHING
@@ -52,15 +49,15 @@ BEGIN
 
 SELECT
    deposit_serial_id
-  ,amount_with_fee_val
-  ,amount_with_fee_frac
+  ,(dep.amount_with_fee).val
+  ,(dep.amount_with_fee).frac
   ,done
 INTO
    dsi
-  ,deposit_val
-  ,deposit_frac
+  ,deposit.val
+  ,deposit.frac
   ,out_gone
-FROM exchange.deposits
+FROM exchange.deposits dep
  WHERE coin_pub=in_coin_pub
   AND shard=in_deposit_shard
   AND merchant_pub=in_merchant_pub
@@ -81,16 +78,15 @@ INSERT INTO exchange.refunds
   ,coin_pub
   ,merchant_sig
   ,rtransaction_id
-  ,amount_with_fee_val
-  ,amount_with_fee_frac
+  ,amount_with_fee
   )
   VALUES
   (dsi
   ,in_coin_pub
   ,in_merchant_sig
   ,in_rtransaction_id
-  ,in_amount_with_fee_val
-  ,in_amount_with_fee_frac)
+  ,in_amount_with_fee
+  )
   ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -105,8 +101,7 @@ THEN
    WHERE coin_pub=in_coin_pub
      AND deposit_serial_id=dsi
      AND rtransaction_id=in_rtransaction_id
-     AND amount_with_fee_val=in_amount_with_fee_val
-     AND amount_with_fee_frac=in_amount_with_fee_frac;
+     AND amount_with_fee=in_amount_with_fee;
 
   IF NOT FOUND
   THEN
@@ -136,12 +131,12 @@ END IF;
 
 -- Check refund balance invariant.
 SELECT
-   SUM(amount_with_fee_val) -- overflow here is not plausible
-  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
+   SUM((refunds.amount_with_fee).val) -- overflow here is not plausible
+  ,SUM(CAST((refunds.amount_with_fee).frac AS INT8)) -- compute using 64 bits
   INTO
    tmp_val
   ,tmp_frac
-  FROM exchange.refunds
+  FROM exchange.refunds refunds
   WHERE coin_pub=in_coin_pub
     AND deposit_serial_id=dsi;
 IF tmp_val IS NULL
@@ -154,15 +149,15 @@ THEN
 END IF;
 
 -- Normalize result before continuing
-tmp_val = tmp_val + tmp_frac / 100000000;
-tmp_frac = tmp_frac % 100000000;
+tmp.val = tmp_val + tmp_frac / 100000000;
+tmp.frac = tmp_frac % 100000000;
 
 -- Actually check if the deposits are sufficient for the refund. Verbosely. ;-)
-IF (tmp_val < deposit_val)
+IF (tmp.val < deposit.val)
 THEN
   out_refund_ok=TRUE;
 ELSE
-  IF (tmp_val = deposit_val) AND (tmp_frac <= deposit_frac)
+  IF (tmp.val = deposit.val) AND (tmp.frac <= deposit.frac)
   THEN
     out_refund_ok=TRUE;
   ELSE
@@ -170,42 +165,39 @@ ELSE
   END IF;
 END IF;
 
-IF (tmp_val = deposit_val) AND (tmp_frac = deposit_frac)
+IF (tmp.val = deposit.val) AND (tmp.frac = deposit.frac)
 THEN
   -- Refunds have reached the full value of the original
   -- deposit. Also refund the deposit fee.
-  in_amount_frac = in_amount_frac + in_deposit_fee_frac;
-  in_amount_val = in_amount_val + in_deposit_fee_val;
+  in_amount.frac = in_amount.frac + in_deposit_fee.frac;
+  in_amount.val = in_amount.val + in_deposit_fee.val;
 
   -- Normalize result before continuing
-  in_amount_val = in_amount_val + in_amount_frac / 100000000;
-  in_amount_frac = in_amount_frac % 100000000;
+  in_amount.val = in_amount.val + in_amount.frac / 100000000;
+  in_amount.frac = in_amount.frac % 100000000;
 END IF;
 
 -- Update balance of the coin.
-UPDATE known_coins
+UPDATE known_coins kc
   SET
-    remaining_frac=remaining_frac+in_amount_frac
+    remaining.frac=(kc.remaining).frac+in_amount.frac
        - CASE
-         WHEN remaining_frac+in_amount_frac >= 100000000
+         WHEN (kc.remaining).frac+in_amount.frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val+in_amount_val
+    remaining.val=(kc.remaining).val+in_amount.val
        + CASE
-         WHEN remaining_frac+in_amount_frac >= 100000000
+         WHEN (kc.remaining).frac+in_amount.frac >= 100000000
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_coin_pub;
-
 
 out_conflict=FALSE;
 out_not_found=FALSE;
 
 END $$;
 
--- COMMENT ON FUNCTION exchange_do_refund(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+-- COMMENT ON FUNCTION exchange_do_refund(taler_amount, BYTEA, BOOLEAN, BOOLEAN)
 --  IS 'Executes a refund operation, checking that the corresponding deposit was sufficient to cover the refunded amount';
-
-

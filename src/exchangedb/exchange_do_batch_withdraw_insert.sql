@@ -64,8 +64,7 @@ INSERT INTO exchange.reserves_out
   ,reserve_uuid
   ,reserve_sig
   ,execution_date
-  ,amount_with_fee_val
-  ,amount_with_fee_frac)
+  ,amount_with_fee)
 VALUES
   (h_coin_envelope
   ,denom_serial
@@ -73,8 +72,7 @@ VALUES
   ,ruuid
   ,reserve_sig
   ,now
-  ,amount.val
-  ,amount.frac)
+  ,amount)
 ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -120,4 +118,3 @@ END $$;
 
 COMMENT ON FUNCTION exchange_do_batch_withdraw_insert(BYTEA, taler_amount, BYTEA, INT8, BYTEA, BYTEA, BYTEA, INT8)
   IS 'Stores information about a planchet for a batch withdraw operation. Checks if the planchet already exists, and in that case indicates a conflict';
-

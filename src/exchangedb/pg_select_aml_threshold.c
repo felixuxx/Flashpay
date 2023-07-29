@@ -54,8 +54,7 @@ TEH_PG_select_aml_threshold (
   PREPARE (pg,
            "select_aml_threshold",
            "SELECT"
-           " threshold_val"
-           ",threshold_frac"
+           " threshold"
            ",status"
            ",kyc_requirement"
            " FROM aml_status"

@@ -70,16 +70,11 @@ TEH_PG_have_deposit2 (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting deposits for coin %s\n",
               TALER_B2S (coin_pub));
-
-  /* Fetch an existing deposit request, used to ensure idempotency
-     during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE (pg,
            "get_deposit",
            "SELECT"
-           " dep.amount_with_fee_val"
-           ",dep.amount_with_fee_frac"
-           ",denominations.fee_deposit_val"
-           ",denominations.fee_deposit_frac"
+           " dep.amount_with_fee"
+           ",denominations.fee_deposit"
            ",dep.wallet_timestamp"
            ",dep.exchange_timestamp"
            ",dep.refund_deadline"

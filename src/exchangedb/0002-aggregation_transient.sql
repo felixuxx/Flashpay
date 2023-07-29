@@ -25,8 +25,7 @@ DECLARE
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I '
-    '(amount_val INT8 NOT NULL'
-    ',amount_frac INT4 NOT NULL'
+    '(amount taler_amount NOT NULL'
     ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
     ',merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)'
     ',exchange_account_section TEXT NOT NULL'
@@ -44,7 +43,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
        'Sum of all of the aggregated deposits (without deposit fees)'
-      ,'amount_val'
+      ,'amount'
       ,table_name
       ,shard_suffix
   );

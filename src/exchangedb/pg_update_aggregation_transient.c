@@ -36,23 +36,21 @@ TEH_PG_update_aggregation_transient (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (total),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       total),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_uint64 (&kyc_requirement_row),
     GNUNET_PQ_query_param_end
   };
 
-
-  /* Used in #postgres_update_aggregation_transient() */
   PREPARE (pg,
            "update_aggregation_transient",
            "UPDATE aggregation_transient"
-           " SET amount_val=$1"
-           "    ,amount_frac=$2"
-           "    ,legitimization_requirement_serial_id=$5"
-           " WHERE wire_target_h_payto=$3"
-           "   AND wtid_raw=$4");
+           " SET amount=$1"
+           "    ,legitimization_requirement_serial_id=$4"
+           " WHERE wire_target_h_payto=$2"
+           "   AND wtid_raw=$3");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_aggregation_transient",
                                              params);

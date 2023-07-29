@@ -34,12 +34,9 @@ BEGIN
       ',age_limit INT4 NOT NULL'
       ',flags INT4 NOT NULL'
       ',in_reserve_quota BOOLEAN NOT NULL DEFAULT(FALSE)'
-      ',amount_with_fee_val INT8 NOT NULL'
-      ',amount_with_fee_frac INT4 NOT NULL'
-      ',purse_fee_val INT8 NOT NULL'
-      ',purse_fee_frac INT4 NOT NULL'
-      ',balance_val INT8 NOT NULL DEFAULT (0)'
-      ',balance_frac INT4 NOT NULL DEFAULT (0)'
+      ',amount_with_fee taler_amount NOT NULL'
+      ',purse_fee taler_amount NOT NULL'
+      ',balance taler_amount NOT NULL DEFAULT (0,0)'
       ',purse_sig BYTEA NOT NULL CHECK(LENGTH(purse_sig)=64)'
       ',PRIMARY KEY (purse_pub)'
     ') %s ;'
@@ -90,19 +87,19 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Total amount expected to be in the purse'
-    ,'amount_with_fee_val'
+    ,'amount_with_fee'
     ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Purse fee the client agreed to pay from the reserve (accepted by the exchange at the time the purse was created). Zero if in_reserve_quota is TRUE.'
-    ,'purse_fee_val'
+    ,'purse_fee'
     ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
     'Total amount actually in the purse (updated)'
-    ,'balance_val'
+    ,'balance'
     ,table_name
     ,partition_suffix
   );

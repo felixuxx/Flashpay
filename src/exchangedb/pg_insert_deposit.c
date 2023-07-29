@@ -52,7 +52,8 @@ TEH_PG_insert_deposit (void *cls,
     uint64_t shard = TEH_PG_compute_shard (&deposit->merchant_pub);
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-      TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+      TALER_PQ_query_param_amount_tuple (pg->conn,
+                                         &deposit->amount_with_fee),
       GNUNET_PQ_query_param_timestamp (&deposit->timestamp),
       GNUNET_PQ_query_param_timestamp (&deposit->refund_deadline),
       GNUNET_PQ_query_param_timestamp (&deposit->wire_deadline),
@@ -73,15 +74,13 @@ TEH_PG_insert_deposit (void *cls,
       GNUNET_TIME_timestamp2s (deposit->wire_deadline),
       (unsigned long long) deposit->wire_deadline.abs_time.abs_value_us,
       (unsigned long long) deposit->refund_deadline.abs_time.abs_value_us);
-    /* Store information about a /deposit the exchange is to execute.
-       Used in #postgres_insert_deposit().  Only used in test cases. */
+
     PREPARE (pg,
              "insert_deposit",
              "INSERT INTO deposits "
              "(known_coin_id"
              ",coin_pub"
-             ",amount_with_fee_val"
-             ",amount_with_fee_frac"
+             ",amount_with_fee"
              ",wallet_timestamp"
              ",refund_deadline"
              ",wire_deadline"
@@ -93,7 +92,7 @@ TEH_PG_insert_deposit (void *cls,
              ",exchange_timestamp"
              ",shard"
              ") SELECT known_coin_id, $1, $2, $3, $4, $5, $6, "
-             " $7, $8, $9, $10, $11, $12, $13"
+             " $7, $8, $9, $10, $11, $12"
              "    FROM known_coins"
              "   WHERE coin_pub=$1"
              " ON CONFLICT DO NOTHING;");

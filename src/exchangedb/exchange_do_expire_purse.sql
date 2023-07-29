@@ -71,21 +71,20 @@ END IF;
 -- restore balance to each coin deposited into the purse
 FOR my_deposit IN
   SELECT coin_pub
-        ,amount_with_fee_val
-        ,amount_with_fee_frac
-    FROM exchange.purse_deposits
+        ,amount_with_fee
+    FROM purse_deposits
   WHERE purse_pub = my_purse_pub
 LOOP
-  UPDATE exchange.known_coins SET
-    remaining_frac=remaining_frac+my_deposit.amount_with_fee_frac
+  UPDATE known_coins kc SET
+    remaining.frac=(kc.remaining).frac+(my_deposit.amount_with_fee).frac
      - CASE
-       WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
+       WHEN (kc.remaining).frac+(my_deposit.amount_with_fee).frac >= 100000000
        THEN 100000000
        ELSE 0
        END,
-    remaining_val=remaining_val+my_deposit.amount_with_fee_val
+    remaining.val=(kc.remaining).val+(my_deposit.amount_with_fee).val
      + CASE
-       WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
+       WHEN (kc.remaining).frac+(my_deposit.amount_with_fee).frac >= 100000000
        THEN 1
        ELSE 0
        END
@@ -95,5 +94,3 @@ END $$;
 
 COMMENT ON FUNCTION exchange_do_expire_purse(INT8,INT8,INT8)
   IS 'Finds an expired purse in the given time range and refunds the coins (if any).';
-
-

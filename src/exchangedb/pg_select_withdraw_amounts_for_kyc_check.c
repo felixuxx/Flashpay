@@ -131,13 +131,11 @@ TEH_PG_select_withdraw_amounts_for_kyc_check (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  /* Used in #postgres_select_withdraw_amounts_for_kyc_check (
- () */
+
   PREPARE (pg,
            "select_kyc_relevant_withdraw_events",
            "SELECT"
-           " ro.amount_with_fee_val AS amount_val"
-           ",ro.amount_with_fee_frac AS amount_frac"
+           " ro.amount_with_fee AS amount"
            ",ro.execution_date AS date"
            " FROM reserves_out ro"
            " JOIN reserves_out_by_reserve USING (h_blind_ev)"

@@ -21,8 +21,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_open_deposit(
   IN in_coin_sig BYTEA,
   IN in_reserve_sig BYTEA,
   IN in_reserve_pub BYTEA,
-  IN in_coin_total_val INT8,
-  IN in_coin_total_frac INT4,
+  IN in_coin_total taler_amount,
   OUT out_insufficient_funds BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -33,16 +32,15 @@ INSERT INTO exchange.reserves_open_deposits
   ,reserve_pub
   ,coin_pub
   ,coin_sig
-  ,contribution_val
-  ,contribution_frac
+  ,contribution
   )
   VALUES
   (in_reserve_sig
   ,in_reserve_pub
   ,in_coin_pub
   ,in_coin_sig
-  ,in_coin_total_val
-  ,in_coin_total_frac)
+  ,in_coin_total
+  )
   ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -54,24 +52,24 @@ END IF;
 
 
 -- Check and update balance of the coin.
-UPDATE exchange.known_coins
+UPDATE exchange.known_coins kc
   SET
-    remaining_frac=remaining_frac-in_coin_total_frac
+    remaining.frac=(kc.remaining).frac-in_coin_total.frac
        + CASE
-         WHEN remaining_frac < in_coin_total_frac
+         WHEN (kc.remaining).frac < in_coin_total.frac
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val-in_coin_total_val
+    remaining.val=(kc.remaining).val-in_coin_total.val
        - CASE
-         WHEN remaining_frac < in_coin_total_frac
+         WHEN (kc.remaining).frac < in_coin_total.frac
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_coin_total_val) OR
-          ( (remaining_frac >= in_coin_total_frac) AND
-            (remaining_val >= in_coin_total_val) ) );
+    AND ( ((kc.remaining).val > in_coin_total.val) OR
+          ( ((kc.remaining).frac >= in_coin_total.frac) AND
+            ((kc.remaining).val >= in_coin_total.val) ) );
 
 IF NOT FOUND
 THEN
@@ -84,4 +82,3 @@ END IF;
 out_insufficient_funds=FALSE;
 
 END $$;
-

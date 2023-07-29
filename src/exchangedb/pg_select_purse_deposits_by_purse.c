@@ -133,8 +133,7 @@ TEH_PG_select_purse_deposits_by_purse (
            "audit_get_purse_deposits_by_purse",
            "SELECT"
            " pd.purse_deposit_serial_id"
-           ",pd.amount_with_fee_val"
-           ",pd.amount_with_fee_frac"
+           ",pd.amount_with_fee"
            ",pd.coin_pub"
            ",denom.denom_pub"
            " FROM purse_deposits pd"

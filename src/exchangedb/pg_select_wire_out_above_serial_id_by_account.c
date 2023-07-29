@@ -135,7 +135,6 @@ TEH_PG_select_wire_out_above_serial_id_by_account (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Used in #postgres_select_wire_out_above_serial_id_by_account() */
   PREPARE (pg,
            "audit_get_wire_incr_by_account",
            "SELECT"
@@ -143,8 +142,7 @@ TEH_PG_select_wire_out_above_serial_id_by_account (
            ",execution_date"
            ",wtid_raw"
            ",payto_uri"
-           ",amount_val"
-           ",amount_frac"
+           ",amount"
            " FROM wire_out"
            "   JOIN wire_targets"
            "     USING (wire_target_h_payto)"

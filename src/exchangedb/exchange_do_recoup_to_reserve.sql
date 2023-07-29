@@ -35,6 +35,7 @@ DECLARE
   balance taler_amount; -- current balance of the reserve
   new_balance taler_amount; -- new balance of the reserve
   reserve RECORD;
+  rval RECORD;
 BEGIN
 -- Shards: SELECT known_coins (by coin_pub)
 --         SELECT recoup      (by coin_pub)
@@ -47,11 +48,9 @@ out_internal_failure=FALSE;
 
 -- Check remaining balance of the coin.
 SELECT
-   remaining_frac
-  ,remaining_val
+   remaining
  INTO
-   tmp.frac
-  ,tmp.val
+   rval
 FROM exchange.known_coins
   WHERE coin_pub=in_coin_pub;
 
@@ -61,6 +60,8 @@ THEN
   out_recoup_ok=FALSE;
   RETURN;
 END IF;
+
+tmp := rval.remaining;
 
 IF tmp.val + tmp.frac = 0
 THEN
@@ -80,12 +81,12 @@ END IF;
 -- Update balance of the coin.
 UPDATE known_coins
   SET
-     remaining_frac=0
-    ,remaining_val=0
+     remaining.val = 0
+    ,remaining.frac = 0
   WHERE coin_pub=in_coin_pub;
 
 -- Get current balance
-SELECT *
+SELECT current_balance
   INTO reserve
   FROM reserves
  WHERE reserve_pub=in_reserve_pub;
@@ -127,8 +128,7 @@ INSERT INTO exchange.recoup
   (coin_pub
   ,coin_sig
   ,coin_blind
-  ,amount_val
-  ,amount_frac
+  ,amount
   ,recoup_timestamp
   ,reserve_out_serial_id
   )
@@ -136,8 +136,7 @@ VALUES
   (in_coin_pub
   ,in_coin_sig
   ,in_coin_blind
-  ,tmp.val
-  ,tmp.frac
+  ,tmp
   ,in_recoup_timestamp
   ,in_reserve_out_serial_id);
 
@@ -149,6 +148,3 @@ END $$;
 
 -- COMMENT ON FUNCTION exchange_do_recoup_to_reserve(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
 --  IS 'Executes a recoup of a coin that was withdrawn from a reserve';
-
-
-

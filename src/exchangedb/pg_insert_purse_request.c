@@ -56,8 +56,10 @@ TEH_PG_insert_purse_request (
     GNUNET_PQ_query_param_uint32 (&age_limit),
     GNUNET_PQ_query_param_uint32 (&flags32),
     GNUNET_PQ_query_param_bool (in_reserve_quota),
-    TALER_PQ_query_param_amount (amount),
-    TALER_PQ_query_param_amount (purse_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       amount),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       purse_fee),
     GNUNET_PQ_query_param_auto_from_type (purse_sig),
     GNUNET_PQ_query_param_end
   };
@@ -74,13 +76,11 @@ TEH_PG_insert_purse_request (
            "  ,age_limit"
            "  ,flags"
            "  ,in_reserve_quota"
-           "  ,amount_with_fee_val"
-           "  ,amount_with_fee_frac"
-           "  ,purse_fee_val"
-           "  ,purse_fee_frac"
+           "  ,amount_with_fee"
+           "  ,purse_fee"
            "  ,purse_sig"
            "  ) VALUES "
-           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
+           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
            "  ON CONFLICT DO NOTHING;");
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_purse_request",

@@ -30,10 +30,8 @@ BEGIN
       ',execution_date INT8 NOT NULL'
       ',wtid BYTEA NOT NULL CHECK (LENGTH(wtid)=32)'
       ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
-      ',amount_val INT8 NOT NULL'
-      ',amount_frac INT4 NOT NULL'
-      ',closing_fee_val INT8 NOT NULL'
-      ',closing_fee_frac INT4 NOT NULL'
+      ',amount taler_amount NOT NULL'
+      ',closing_fee taler_amount NOT NULL'
       ',close_request_row INT8 NOT NULL DEFAULT(0)'
     ') %s ;'
     ,table_name

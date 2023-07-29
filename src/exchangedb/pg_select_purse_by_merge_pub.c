@@ -60,7 +60,6 @@ TEH_PG_select_purse_by_merge_pub (
     GNUNET_PQ_result_spec_end
   };
 
-
   PREPARE (pg,
            "select_purse_by_merge_pub",
            "SELECT "
@@ -68,14 +67,11 @@ TEH_PG_select_purse_by_merge_pub (
            ",purse_expiration"
            ",h_contract_terms"
            ",age_limit"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
-           ",balance_val"
-           ",balance_frac"
+           ",amount_with_fee"
+           ",balance"
            ",purse_sig"
            " FROM purse_requests"
            " WHERE merge_pub=$1;");
-
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_purse_by_merge_pub",
                                                    params,

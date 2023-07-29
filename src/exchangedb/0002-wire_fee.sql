@@ -19,10 +19,8 @@ CREATE TABLE wire_fee
   ,wire_method VARCHAR NOT NULL
   ,start_date INT8 NOT NULL
   ,end_date INT8 NOT NULL
-  ,wire_fee_val INT8 NOT NULL
-  ,wire_fee_frac INT4 NOT NULL
-  ,closing_fee_val INT8 NOT NULL
-  ,closing_fee_frac INT4 NOT NULL
+  ,wire_fee taler_amount NOT NULL
+  ,closing_fee taler_amount NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,PRIMARY KEY (wire_method, start_date)
   );

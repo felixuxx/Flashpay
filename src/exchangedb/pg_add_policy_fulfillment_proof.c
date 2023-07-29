@@ -94,7 +94,7 @@ TEH_PG_add_policy_fulfillment_proof (
       GNUNET_PQ_result_spec_end
     };
 
-
+    // FIXME: where do we prepare this statement!??
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "insert_proof_into_policy_fulfillments",
                                                    params,
@@ -112,14 +112,19 @@ TEH_PG_add_policy_fulfillment_proof (
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (&pos->hash_code),
         GNUNET_PQ_query_param_timestamp (&pos->deadline),
-        TALER_PQ_query_param_amount (&pos->commitment),
-        TALER_PQ_query_param_amount (&pos->accumulated_total),
-        TALER_PQ_query_param_amount (&pos->policy_fee),
-        TALER_PQ_query_param_amount (&pos->transferable_amount),
+        TALER_PQ_query_param_amount_tuple (pg->conn,
+                                           &pos->commitment),
+        TALER_PQ_query_param_amount_tuple (pg->conn,
+                                           &pos->accumulated_total),
+        TALER_PQ_query_param_amount_tuple (pg->conn,
+                                           &pos->policy_fee),
+        TALER_PQ_query_param_amount_tuple (pg->conn,
+                                           &pos->transferable_amount),
         GNUNET_PQ_query_param_auto_from_type (&pos->fulfillment_state),
         GNUNET_PQ_query_param_end
       };
 
+      // FIXME: where do we prepare this statement!??
       qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                "update_policy_details",
                                                params);

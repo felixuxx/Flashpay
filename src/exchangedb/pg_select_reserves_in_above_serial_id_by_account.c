@@ -138,15 +138,12 @@ TEH_PG_select_reserves_in_above_serial_id_by_account (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
-     transactions for reserves with serial id '\geq' the given parameter */
   PREPARE (pg,
            "audit_reserves_in_get_transactions_incr_by_account",
            "SELECT"
            " reserves.reserve_pub"
            ",wire_reference"
-           ",credit_val"
-           ",credit_frac"
+           ",credit"
            ",execution_date"
            ",payto_uri AS sender_account_details"
            ",reserve_in_serial_id"
@@ -157,7 +154,6 @@ TEH_PG_select_reserves_in_above_serial_id_by_account (
            "   ON (wire_source_h_payto = wire_target_h_payto)"
            " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
            " ORDER BY reserve_in_serial_id;");
-
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_reserves_in_get_transactions_incr_by_account",
                                              params,

@@ -142,7 +142,6 @@ TEH_PG_select_withdrawals_above_serial_id (
   enum GNUNET_DB_QueryStatus qs;
 
   /* Fetch deposits with rowid '\geq' the given parameter */
-
   PREPARE (pg,
            "audit_get_reserves_out_incr",
            "SELECT"
@@ -151,8 +150,7 @@ TEH_PG_select_withdrawals_above_serial_id (
            ",reserve_sig"
            ",reserves.reserve_pub"
            ",execution_date"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
+           ",amount_with_fee"
            ",reserve_out_serial_id"
            " FROM reserves_out"
            "    JOIN reserves"
@@ -161,8 +159,6 @@ TEH_PG_select_withdrawals_above_serial_id (
            "      USING (denominations_serial)"
            " WHERE reserve_out_serial_id>=$1"
            " ORDER BY reserve_out_serial_id ASC;");
-
-
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_reserves_out_incr",
                                              params,

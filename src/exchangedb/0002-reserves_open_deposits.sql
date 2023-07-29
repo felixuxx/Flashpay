@@ -30,8 +30,7 @@ BEGIN
       ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)'
       ',coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)'
       ',coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)'
-      ',contribution_val INT8 NOT NULL'
-      ',contribution_frac INT4 NOT NULL'
+      ',contribution taler_amount NOT NULL'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'

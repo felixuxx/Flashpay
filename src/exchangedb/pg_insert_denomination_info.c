@@ -42,11 +42,16 @@ TEH_PG_insert_denomination_info (
     GNUNET_PQ_query_param_timestamp (&issue->expire_withdraw),
     GNUNET_PQ_query_param_timestamp (&issue->expire_deposit),
     GNUNET_PQ_query_param_timestamp (&issue->expire_legal),
-    TALER_PQ_query_param_amount (&issue->value),
-    TALER_PQ_query_param_amount (&issue->fees.withdraw),
-    TALER_PQ_query_param_amount (&issue->fees.deposit),
-    TALER_PQ_query_param_amount (&issue->fees.refresh),
-    TALER_PQ_query_param_amount (&issue->fees.refund),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &issue->value),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &issue->fees.withdraw),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &issue->fees.deposit),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &issue->fees.refresh),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &issue->fees.refund),
     GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.bits),
     GNUNET_PQ_query_param_end
   };
@@ -81,20 +86,15 @@ TEH_PG_insert_denomination_info (
            ",expire_withdraw"
            ",expire_deposit"
            ",expire_legal"
-           ",coin_val"                                                /* value of this denom */
-           ",coin_frac"                                                /* fractional value of this denom */
-           ",fee_withdraw_val"
-           ",fee_withdraw_frac"
-           ",fee_deposit_val"
-           ",fee_deposit_frac"
-           ",fee_refresh_val"
-           ",fee_refresh_frac"
-           ",fee_refund_val"
-           ",fee_refund_frac"
+           ",coin"  /* value of this denom */
+           ",fee_withdraw"
+           ",fee_deposit"
+           ",fee_refresh"
+           ",fee_refund"
            ",age_mask"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16, $17, $18);");
+           " $11, $12, $13);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              params);

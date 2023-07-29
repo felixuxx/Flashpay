@@ -29,8 +29,7 @@ BEGIN
       ',partner_serial_id INT8'
       ',purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)'
       ',coin_pub BYTEA NOT NULL'
-      ',amount_with_fee_val INT8 NOT NULL'
-      ',amount_with_fee_frac INT4 NOT NULL'
+      ',amount_with_fee taler_amount NOT NULL'
       ',coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)'
       ',PRIMARY KEY (purse_pub,coin_pub)'
     ') %s ;'
@@ -63,7 +62,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Total amount being deposited'
-    ,'amount_with_fee_val'
+    ,'amount_with_fee'
     ,table_name
     ,partition_suffix
   );

@@ -128,12 +128,11 @@ TEH_PG_find_aggregation_transient (
     .pg = pg,
     .status = GNUNET_OK
   };
-  /* Used in #postgres_find_aggregation_transient() */
+
   PREPARE (pg,
            "find_transient_aggregations",
            "SELECT"
-           "  amount_val"
-           " ,amount_frac"
+           "  amount"
            " ,wtid_raw"
            " ,merchant_pub"
            " ,payto_uri"

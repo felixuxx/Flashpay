@@ -30,11 +30,18 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   was_merged BOOLEAN;
+DECLARE
   psi INT8; -- partner's serial ID (set if merged)
+DECLARE
   my_amount taler_amount; -- total in purse
+DECLARE
   was_paid BOOLEAN;
+DECLARE
   my_in_reserve_quota BOOLEAN;
+DECLARE
   my_reserve_pub BYTEA;
+DECLARE
+  rval RECORD;
 BEGIN
 
 -- Store the deposit request.
@@ -42,15 +49,13 @@ INSERT INTO exchange.purse_deposits
   (partner_serial_id
   ,purse_pub
   ,coin_pub
-  ,amount_with_fee_val
-  ,amount_with_fee_frac
+  ,amount_with_fee
   ,coin_sig)
   VALUES
   (in_partner_id
   ,in_purse_pub
   ,in_coin_pub
-  ,in_amount_with_fee.val
-  ,in_amount_with_fee.frac
+  ,in_amount_with_fee
   ,in_coin_sig)
   ON CONFLICT DO NOTHING;
 
@@ -96,24 +101,24 @@ END IF;
 
 -- Debit the coin
 -- Check and update balance of the coin.
-UPDATE known_coins
+UPDATE known_coins kc
   SET
-    remaining_frac=remaining_frac-in_amount_with_fee.frac
+    remaining.frac=(kc.remaining).frac-in_amount_with_fee.frac
        + CASE
-         WHEN remaining_frac < in_amount_with_fee.frac
+         WHEN (kc.remaining).frac < in_amount_with_fee.frac
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val-in_amount_with_fee.val
+    remaining.val=(kc.remaining).val-in_amount_with_fee.val
        - CASE
-         WHEN remaining_frac < in_amount_with_fee.frac
+         WHEN (kc.remaining).frac < in_amount_with_fee.frac
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_amount_with_fee.val) OR
-          ( (remaining_frac >= in_amount_with_fee.frac) AND
-            (remaining_val >= in_amount_with_fee.val) ) );
+    AND ( ((kc.remaining).val > in_amount_with_fee.val) OR
+          ( ((kc.remaining).frac >= in_amount_with_fee.frac) AND
+            ((kc.remaining).val >= in_amount_with_fee.val) ) );
 
 IF NOT FOUND
 THEN
@@ -126,17 +131,17 @@ END IF;
 
 
 -- Credit the purse.
-UPDATE purse_requests
+UPDATE purse_requests pr
   SET
-    balance_frac=balance_frac+in_amount_without_fee.frac
+    balance.frac=(pr.balance).frac+in_amount_without_fee.frac
        - CASE
-         WHEN balance_frac+in_amount_without_fee.frac >= 100000000
+         WHEN (pr.balance).frac+in_amount_without_fee.frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    balance_val=balance_val+in_amount_without_fee.val
+    balance.val=(pr.balance).val+in_amount_without_fee.val
        + CASE
-         WHEN balance_frac+in_amount_without_fee.frac >= 100000000
+         WHEN (pr.balance).frac+in_amount_without_fee.frac >= 100000000
          THEN 1
          ELSE 0
          END
@@ -161,23 +166,25 @@ THEN
 END IF;
 
 SELECT
-    amount_with_fee_val
-   ,amount_with_fee_frac
+    amount_with_fee
    ,in_reserve_quota
   INTO
-    my_amount.val
-   ,my_amount.frac
-   ,my_in_reserve_quota
-  FROM exchange.purse_requests
+    rval
+  FROM exchange.purse_requests preq
   WHERE (purse_pub=in_purse_pub)
-    AND ( ( ( (amount_with_fee_val <= balance_val)
-          AND (amount_with_fee_frac <= balance_frac) )
-         OR (amount_with_fee_val < balance_val) ) );
+    AND ( ( ( ((preq.amount_with_fee).val <= (preq.balance).val)
+          AND ((preq.amount_with_fee).frac <= (preq.balance).frac) )
+         OR ((preq.amount_with_fee).val < (preq.balance).val) ) );
 IF NOT FOUND
 THEN
   out_late=FALSE;
   RETURN;
 END IF;
+
+-- We use rval as workaround as we cannot select
+-- directly into the amount due to Postgres limitations.
+my_amount := rval.amount_with_fee;
+my_in_reserve_quota := rval.in_reserve_quota;
 
 -- Remember how this purse was finished.
 INSERT INTO purse_decision

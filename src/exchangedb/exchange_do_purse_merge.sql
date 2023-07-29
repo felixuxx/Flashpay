@@ -30,10 +30,17 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   my_amount taler_amount;
+DECLARE
   my_purse_fee taler_amount;
+DECLARE
   my_partner_serial_id INT8;
+DECLARE
   my_in_reserve_quota BOOLEAN;
+DECLARE
+  rval RECORD;
+DECLARE
   reserve RECORD;
+DECLARE
   balance taler_amount;
 BEGIN
 
@@ -60,29 +67,29 @@ END IF;
 
 out_no_partner=FALSE;
 
-
 -- Check purse is 'full'.
-SELECT amount_with_fee_val
-      ,amount_with_fee_frac
-      ,purse_fee_val
-      ,purse_fee_frac
+SELECT amount_with_fee
+      ,purse_fee
       ,in_reserve_quota
-  INTO my_amount.val
-      ,my_amount.frac
-      ,my_purse_fee.val
-      ,my_purse_fee.frac
-      ,my_in_reserve_quota
-  FROM exchange.purse_requests
+  INTO rval
+  FROM purse_requests pr
   WHERE purse_pub=in_purse_pub
-    AND balance_val >= amount_with_fee_val
-    AND ( (balance_frac >= amount_with_fee_frac) OR
-          (balance_val > amount_with_fee_val) );
+    AND (pr.balance).val >= (pr.amount_with_fee).val
+    AND ( (pr.balance).frac >= (pr.amount_with_fee).frac OR
+          (pr.balance).val > (pr.amount_with_fee).val );
 IF NOT FOUND
 THEN
   out_no_balance=TRUE;
   out_conflict=FALSE;
   RETURN;
 END IF;
+
+-- We use rval as workaround as we cannot select
+-- directly into the amount due to Postgres limitations.
+my_amount := rval.amount_with_fee;
+my_purse_fee := rval.purse_fee;
+my_in_reserve_quota := rval.in_reserve_quota;
+
 out_no_balance=FALSE;
 
 -- Store purse merge signature, checks for purse_pub uniqueness
@@ -228,4 +235,3 @@ END $$;
 
 COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA, INT8)
   IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
-

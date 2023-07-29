@@ -141,19 +141,8 @@ struct PostgresClosure
  * @param field name of the database field to fetch amount from
  * @param[out] amountp pointer to amount to set
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount ( \
-    field,pg->currency,amountp)
-
-
-/**
- * Wrapper macro to add the currency from the plugin's state
- * when fetching amounts from the database.  NBO variant.
- *
- * @param field name of the database field to fetch amount from
- * @param[out] amountp pointer to amount to set
- */
-#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field,                          \
-                                        amountp) TALER_PQ_result_spec_amount_nbo ( \
+#define TALER_PQ_RESULT_SPEC_AMOUNT(field, \
+                                    amountp) TALER_PQ_result_spec_amount_tuple ( \
     field,pg->currency,amountp)
 
 

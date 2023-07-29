@@ -51,13 +51,14 @@ TEH_PG_insert_reserve_closed (
       GNUNET_PQ_query_param_timestamp (&execution_date),
       GNUNET_PQ_query_param_auto_from_type (wtid),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      TALER_PQ_query_param_amount (amount_with_fee),
-      TALER_PQ_query_param_amount (closing_fee),
+      TALER_PQ_query_param_amount_tuple (pg->conn,
+                                         amount_with_fee),
+      TALER_PQ_query_param_amount_tuple (pg->conn,
+                                         closing_fee),
       GNUNET_PQ_query_param_uint64 (&close_request_row),
       GNUNET_PQ_query_param_end
     };
 
-    /* Used in #postgres_insert_reserve_closed() */
     PREPARE (pg,
              "reserves_close_insert",
              "INSERT INTO reserves_close "
@@ -65,12 +66,10 @@ TEH_PG_insert_reserve_closed (
              ",execution_date"
              ",wtid"
              ",wire_target_h_payto"
-             ",amount_val"
-             ",amount_frac"
-             ",closing_fee_val"
-             ",closing_fee_frac"
+             ",amount"
+             ",closing_fee"
              ",close_request_row"
-             ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);");
+             ") VALUES ($1, $2, $3, $4, $5, $6, $7);");
 
     qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "reserves_close_insert",

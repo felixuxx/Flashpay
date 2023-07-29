@@ -64,19 +64,14 @@ TEH_PG_get_global_fee (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-
-  /* Used in #postgres_get_global_fee() */
   PREPARE (pg,
            "get_global_fee",
            "SELECT "
            " start_date"
            ",end_date"
-           ",history_fee_val"
-           ",history_fee_frac"
-           ",account_fee_val"
-           ",account_fee_frac"
-           ",purse_fee_val"
-           ",purse_fee_frac"
+           ",history_fee"
+           ",account_fee"
+           ",purse_fee"
            ",purse_timeout"
            ",history_expiration"
            ",purse_account_limit"

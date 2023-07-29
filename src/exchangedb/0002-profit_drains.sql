@@ -20,8 +20,7 @@ CREATE TABLE profit_drains
   ,account_section VARCHAR NOT NULL
   ,payto_uri VARCHAR NOT NULL
   ,trigger_date INT8 NOT NULL
-  ,amount_val INT8 NOT NULL
-  ,amount_frac INT4 NOT NULL
+  ,amount taler_amount NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,executed BOOLEAN NOT NULL DEFAULT FALSE
   );
@@ -35,7 +34,7 @@ COMMENT ON COLUMN profit_drains.payto_uri
   IS 'specifies the account to be credited';
 COMMENT ON COLUMN profit_drains.trigger_date
   IS 'set by taler-exchange-offline at the time of making the signature; not necessarily the exact date of execution of the wire transfer, just for orientation';
-COMMENT ON COLUMN profit_drains.amount_val
+COMMENT ON COLUMN profit_drains.amount
   IS 'amount to be transferred';
 COMMENT ON COLUMN profit_drains.master_sig
   IS 'EdDSA signature of type TALER_SIGNATURE_MASTER_DRAIN_PROFIT';

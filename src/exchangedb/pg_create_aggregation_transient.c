@@ -38,7 +38,8 @@ TEH_PG_create_aggregation_transient (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (total),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       total),
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_uint64 (&kyc_requirement_row),
@@ -46,18 +47,17 @@ TEH_PG_create_aggregation_transient (
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_end
   };
-  /* Used in #postgres_create_aggregation_transient() */
+
   PREPARE (pg,
            "create_aggregation_transient",
            "INSERT INTO aggregation_transient"
-           " (amount_val"
-           " ,amount_frac"
+           " (amount"
            " ,merchant_pub"
            " ,wire_target_h_payto"
            " ,legitimization_requirement_serial_id"
            " ,exchange_account_section"
            " ,wtid_raw)"
-           " VALUES ($1, $2, $3, $4, $5, $6, $7);");
+           " VALUES ($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "create_aggregation_transient",
                                              params);

@@ -30,8 +30,7 @@ BEGIN
       ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)'
       ',request_timestamp INT8 NOT NULL'
       ',reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)'
-      ',history_fee_val INT8 NOT NULL'
-      ',history_fee_frac INT4 NOT NULL'
+      ',history_fee taler_amount NOT NULL'
       ',PRIMARY KEY (reserve_pub,request_timestamp)'
     ') %s ;'
     ,table_name
@@ -57,7 +56,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'History fee approved by the signature'
-    ,'history_fee_val'
+    ,'history_fee'
     ,table_name
     ,shard_suffix
   );

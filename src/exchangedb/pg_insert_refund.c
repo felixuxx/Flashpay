@@ -37,14 +37,14 @@ TEH_PG_insert_refund (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&refund->details.merchant_sig),
     GNUNET_PQ_query_param_auto_from_type (&refund->details.h_contract_terms),
     GNUNET_PQ_query_param_uint64 (&refund->details.rtransaction_id),
-    TALER_PQ_query_param_amount (&refund->details.refund_amount),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &refund->details.refund_amount),
     GNUNET_PQ_query_param_end
   };
 
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&refund->details.refund_amount,
                                             &refund->details.refund_fee));
-
   PREPARE (pg,
            "insert_refund",
            "INSERT INTO refunds "
@@ -52,9 +52,8 @@ TEH_PG_insert_refund (void *cls,
            ",deposit_serial_id"
            ",merchant_sig"
            ",rtransaction_id"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
-           ") SELECT $1, deposit_serial_id, $3, $5, $6, $7"
+           ",amount_with_fee"
+           ") SELECT $1, deposit_serial_id, $3, $5, $6"
            "    FROM deposits"
            "   WHERE coin_pub=$1"
            "     AND h_contract_terms=$4"

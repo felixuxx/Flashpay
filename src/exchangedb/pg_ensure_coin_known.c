@@ -60,9 +60,8 @@ TEH_PG_ensure_coin_known (void *cls,
       &is_age_hash_null),
     GNUNET_PQ_result_spec_end
   };
-  /* Used in #postgres_insert_known_coin() to store the denomination public
-     key and signature for a coin known to the exchange.
 
+  /*
      See also:
      https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql/37543015#37543015
   */
@@ -70,13 +69,11 @@ TEH_PG_ensure_coin_known (void *cls,
            "insert_known_coin",
            "WITH dd"
            "  (denominations_serial"
-           "  ,coin_val"
-           "  ,coin_frac"
+           "  ,coin"
            "  ) AS ("
            "    SELECT "
            "       denominations_serial"
-           "      ,coin_val"
-           "      ,coin_frac"
+           "      ,coin"
            "        FROM denominations"
            "        WHERE denom_pub_hash=$2"
            "  ), input_rows"
@@ -88,15 +85,13 @@ TEH_PG_ensure_coin_known (void *cls,
            "  ,denominations_serial"
            "  ,age_commitment_hash"
            "  ,denom_sig"
-           "  ,remaining_val"
-           "  ,remaining_frac"
+           "  ,remaining"
            "  ) SELECT "
            "     $1"
            "    ,denominations_serial"
            "    ,$3"
            "    ,$4"
-           "    ,coin_val"
-           "    ,coin_frac"
+           "    ,coin"
            "  FROM dd"
            "  ON CONFLICT DO NOTHING" /* CONFLICT on (coin_pub) */
            "  RETURNING "

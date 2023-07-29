@@ -42,7 +42,8 @@ TEH_PG_insert_partner (void *cls,
     GNUNET_PQ_query_param_timestamp (&start_date),
     GNUNET_PQ_query_param_timestamp (&end_date),
     GNUNET_PQ_query_param_relative_time (&wad_frequency),
-    TALER_PQ_query_param_amount (wad_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       wad_fee),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_string (partner_base_url),
     GNUNET_PQ_query_param_end
@@ -56,12 +57,11 @@ TEH_PG_insert_partner (void *cls,
            "  ,start_date"
            "  ,end_date"
            "  ,wad_frequency"
-           "  ,wad_fee_val"
-           "  ,wad_fee_frac"
+           "  ,wad_fee"
            "  ,master_sig"
            "  ,partner_base_url"
            "  ) VALUES "
-           "  ($1, $2, $3, $4, $5, $6, $7, $8)"
+           "  ($1, $2, $3, $4, $5, $6, $7)"
            "  ON CONFLICT DO NOTHING;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_partner",

@@ -53,7 +53,7 @@ BEGIN
 WITH dd AS (
 SELECT
   denominations_serial,
-  coin_val, coin_frac
+  coin
   FROM denominations
     WHERE denom_pub_hash
     IN
@@ -87,16 +87,14 @@ SELECT
       denominations_serial,
       age_commitment_hash,
       denom_sig,
-      remaining_val,
-      remaining_frac
+      remaining
       )
       SELECT
         ir.coin_pub,
         dd.denominations_serial,
         ir.age_commitment_hash,
         ir.denom_sig,
-        dd.coin_val,
-        dd.coin_frac
+        dd.coin
         FROM input_rows ir
         JOIN dd
           ON dd.denom_pub_hash = ir.denom_pub_hash
@@ -218,7 +216,7 @@ BEGIN
 WITH dd AS (
 SELECT
   denominations_serial,
-  coin_val, coin_frac
+  coin
   FROM denominations
     WHERE denom_pub_hash
     IN
@@ -242,16 +240,14 @@ SELECT
       denominations_serial,
       age_commitment_hash,
       denom_sig,
-      remaining_val,
-      remaining_frac
+      remaining
       )
       SELECT
         ir.coin_pub,
         dd.denominations_serial,
         ir.age_commitment_hash,
         ir.denom_sig,
-        dd.coin_val,
-        dd.coin_frac
+        dd.coin
         FROM input_rows ir
         JOIN dd
           ON dd.denom_pub_hash = ir.denom_pub_hash
@@ -324,7 +320,7 @@ BEGIN
 WITH dd AS (
 SELECT
   denominations_serial,
-  coin_val, coin_frac
+  coin
   FROM denominations
     WHERE denom_pub_hash
     IN
@@ -344,16 +340,14 @@ SELECT
       denominations_serial,
       age_commitment_hash,
       denom_sig,
-      remaining_val,
-      remaining_frac
+      remaining
       )
       SELECT
         ir.coin_pub,
         dd.denominations_serial,
         ir.age_commitment_hash,
         ir.denom_sig,
-        dd.coin_val,
-        dd.coin_frac
+        dd.coin
         FROM input_rows ir
         JOIN dd
           ON dd.denom_pub_hash = ir.denom_pub_hash
@@ -430,8 +424,8 @@ BEGIN
         in_denom_sig2 AS denom_sig
       WHERE i = 2
     );
-    WITH dd (denominations_serial, coin_val, coin_frac) AS (
-      SELECT denominations_serial, coin_val, coin_frac
+    WITH dd (denominations_serial, coin) AS (
+      SELECT denominations_serial, coin
       FROM denominations
       WHERE denom_pub_hash = ins_values.denom_pub_hash
     ),
@@ -444,15 +438,13 @@ BEGIN
         denominations_serial,
         age_commitment_hash,
         denom_sig,
-        remaining_val,
-        remaining_frac
+        remaining
       ) SELECT
         input_rows.coin_pub,
         dd.denominations_serial,
         ins_values.age_commitment_hash,
         ins_values.denom_sig,
-        coin_val,
-        coin_frac
+        coin
       FROM dd
       CROSS JOIN input_rows
       ON CONFLICT DO NOTHING

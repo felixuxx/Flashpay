@@ -29,8 +29,7 @@ BEGIN
       ',shard INT8 NOT NULL'
       ',coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)'
       ',known_coin_id INT8 NOT NULL' -- FIXME: column needed!?
-      ',amount_with_fee_val INT8 NOT NULL'
-      ',amount_with_fee_frac INT4 NOT NULL'
+      ',amount_with_fee taler_amount NOT NULL'
       ',wallet_timestamp INT8 NOT NULL'
       ',exchange_timestamp INT8 NOT NULL'
       ',refund_deadline INT8 NOT NULL'

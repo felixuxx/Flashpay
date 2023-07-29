@@ -58,7 +58,6 @@ TEH_PG_get_drain_profit (
     GNUNET_PQ_result_spec_end
   };
 
-
   PREPARE (pg,
            "get_profit_drain",
            "SELECT"
@@ -66,8 +65,7 @@ TEH_PG_get_drain_profit (
            ",account_section"
            ",payto_uri"
            ",trigger_date"
-           ",amount_val"
-           ",amount_frac"
+           ",amount"
            ",master_sig"
            " FROM profit_drains"
            " WHERE wtid=$1;");

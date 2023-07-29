@@ -53,8 +53,7 @@ TEH_PG_select_aggregation_transient (
   PREPARE (pg,
            "select_aggregation_transient",
            "SELECT"
-           "  amount_val"
-           " ,amount_frac"
+           "  amount"
            " ,wtid_raw"
            " FROM aggregation_transient"
            " WHERE wire_target_h_payto=$1"

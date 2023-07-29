@@ -143,25 +143,20 @@ TEH_PG_get_global_fees (void *cls,
     .status = GNUNET_OK
   };
 
-  /* Used in #postgres_get_global_fees() */
   PREPARE (pg,
            "get_global_fees",
            "SELECT "
            " start_date"
            ",end_date"
-           ",history_fee_val"
-           ",history_fee_frac"
-           ",account_fee_val"
-           ",account_fee_frac"
-           ",purse_fee_val"
-           ",purse_fee_frac"
+           ",history_fee"
+           ",account_fee"
+           ",purse_fee"
            ",purse_timeout"
            ",history_expiration"
            ",purse_account_limit"
            ",master_sig"
            " FROM global_fee"
            " WHERE start_date >= $1");
-
   return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "get_global_fees",
                                                params,

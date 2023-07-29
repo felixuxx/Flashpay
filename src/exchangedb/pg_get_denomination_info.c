@@ -64,8 +64,6 @@ TEH_PG_get_denomination_info (
     GNUNET_PQ_result_spec_end
   };
 
-
-    /* Used in #postgres_get_denomination_info() */
   PREPARE (pg,
            "denomination_get",
            "SELECT"
@@ -74,19 +72,14 @@ TEH_PG_get_denomination_info (
            ",expire_withdraw"
            ",expire_deposit"
            ",expire_legal"
-           ",coin_val"                                                /* value of this denom */
-           ",coin_frac"                                                /* fractional value of this denom */
-           ",fee_withdraw_val"
-           ",fee_withdraw_frac"
-           ",fee_deposit_val"
-           ",fee_deposit_frac"
-           ",fee_refresh_val"
-           ",fee_refresh_frac"
-           ",fee_refund_val"
-           ",fee_refund_frac"
+           ",coin"  /* value of this denom */
+           ",fee_withdraw"
+           ",fee_deposit"
+           ",fee_refresh"
+           ",fee_refund"
            ",age_mask"
            " FROM denominations"
-           " WHERE denom_pub_hash=$1;"); 
+           " WHERE denom_pub_hash=$1;");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "denomination_get",
                                                  params,
@@ -96,4 +89,3 @@ TEH_PG_get_denomination_info (
   issue->denom_hash = *denom_pub_hash;
   return qs;
 }
-

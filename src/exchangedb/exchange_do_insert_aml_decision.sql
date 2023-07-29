@@ -16,8 +16,7 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_h_payto BYTEA,
-  IN in_new_threshold_val INT8,
-  IN in_new_threshold_frac INT4,
+  IN in_new_threshold taler_amount,
   IN in_new_status INT4,
   IN in_decision_time INT8,
   IN in_justification VARCHAR,
@@ -59,8 +58,7 @@ THEN
     RETURN;
   END IF;
   UPDATE exchange.aml_status
-    SET threshold_val=in_new_threshold_val
-       ,threshold_frac=in_new_threshold_frac
+    SET threshold=in_new_threshold
        ,status=in_new_status
        ,kyc_requirement=in_requirement_row
    WHERE h_payto=in_h_payto;
@@ -69,14 +67,12 @@ ELSE
   out_last_date = 0;
   INSERT INTO exchange.aml_status
     (h_payto
-    ,threshold_val
-    ,threshold_frac
+    ,threshold
     ,status
     ,kyc_requirement)
     VALUES
     (in_h_payto
-    ,in_new_threshold_val
-    ,in_new_threshold_frac
+    ,in_new_threshold
     ,in_new_status
     ,in_requirement_row);
 END IF;
@@ -84,8 +80,7 @@ END IF;
 
 INSERT INTO exchange.aml_history
   (h_payto
-  ,new_threshold_val
-  ,new_threshold_frac
+  ,new_threshold
   ,new_status
   ,decision_time
   ,justification
@@ -95,8 +90,7 @@ INSERT INTO exchange.aml_history
   ,decider_sig
   ) VALUES
   (in_h_payto
-  ,in_new_threshold_val
-  ,in_new_threshold_frac
+  ,in_new_threshold
   ,in_new_status
   ,in_decision_time
   ,in_justification
@@ -125,5 +119,5 @@ END IF;
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT4, INT4, INT8, VARCHAR, BYTEA, BYTEA, VARCHAR, VARCHAR, INT8)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, taler_amount, INT4, INT8, VARCHAR, BYTEA, BYTEA, VARCHAR, VARCHAR, INT8)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

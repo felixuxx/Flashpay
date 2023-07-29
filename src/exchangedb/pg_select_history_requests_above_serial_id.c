@@ -136,8 +136,7 @@ TEH_PG_select_history_requests_above_serial_id (
            "audit_get_history_requests_incr",
            "SELECT"
            " history_request_serial_id"
-           ",history_fee_val"
-           ",history_fee_frac"
+           ",history_fee"
            ",request_timestamp"
            ",reserve_pub"
            ",reserve_sig"

@@ -114,8 +114,7 @@ INSERT INTO exchange.reserves_out
   ,reserve_uuid
   ,reserve_sig
   ,execution_date
-  ,amount_with_fee_val
-  ,amount_with_fee_frac)
+  ,amount_with_fee)
 VALUES
   (h_coin_envelope
   ,denom_serial
@@ -123,8 +122,7 @@ VALUES
   ,ruuid
   ,reserve_sig
   ,now
-  ,amount.val
-  ,amount.frac)
+  ,amount)
 ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -213,4 +211,3 @@ END $$;
 
 COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, taler_amount, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8, BOOLEAN)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if the age requirements are formally met.  If so updates the database with the result';
-

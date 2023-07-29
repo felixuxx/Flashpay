@@ -135,8 +135,7 @@ TEH_PG_select_aggregation_amounts_for_kyc_check (
   PREPARE (pg,
            "select_kyc_relevant_aggregation_events",
            "SELECT"
-           " amount_val"
-           ",amount_frac"
+           " amount"
            ",execution_date AS date"
            " FROM wire_out"
            " WHERE wire_target_h_payto=$1"

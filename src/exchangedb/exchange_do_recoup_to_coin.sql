@@ -31,9 +31,9 @@ CREATE OR REPLACE FUNCTION exchange_do_recoup_to_coin(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  tmp_val INT8; -- amount recouped
+  rval RECORD;
 DECLARE
-  tmp_frac INT8; -- amount recouped
+  tmp taler_amount; -- amount recouped
 BEGIN
 
 -- Shards: UPDATE known_coins (by coin_pub)
@@ -41,17 +41,13 @@ BEGIN
 --         UPDATE known_coins (by coin_pub)
 --         INSERT recoup_refresh (by coin_pub)
 
-
 out_internal_failure=FALSE;
-
 
 -- Check remaining balance of the coin.
 SELECT
-   remaining_frac
-  ,remaining_val
+   remaining
  INTO
-   tmp_frac
-  ,tmp_val
+   rval
 FROM exchange.known_coins
   WHERE coin_pub=in_coin_pub;
 
@@ -62,7 +58,9 @@ THEN
   RETURN;
 END IF;
 
-IF tmp_val + tmp_frac = 0
+tmp := rval.remaining;
+
+IF tmp.val + tmp.frac = 0
 THEN
   -- Check for idempotency
   SELECT
@@ -78,28 +76,26 @@ END IF;
 -- Update balance of the coin.
 UPDATE known_coins
   SET
-     remaining_frac=0
-    ,remaining_val=0
+     remaining.val = 0
+    ,remaining.frac = 0
   WHERE coin_pub=in_coin_pub;
 
-
 -- Credit the old coin.
-UPDATE known_coins
+UPDATE known_coins kc
   SET
-    remaining_frac=remaining_frac+tmp_frac
+    remaining.frac=(kc.remaining).frac+tmp.frac
        - CASE
-         WHEN remaining_frac+tmp_frac >= 100000000
+         WHEN (kc.remaining).frac+tmp.frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val+tmp_val
+    remaining.val=(kc.remaining).val+tmp.val
        + CASE
-         WHEN remaining_frac+tmp_frac >= 100000000
+         WHEN (kc.remaining).frac+tmp.frac >= 100000000
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_old_coin_pub;
-
 
 IF NOT FOUND
 THEN
@@ -115,8 +111,7 @@ INSERT INTO exchange.recoup_refresh
   ,known_coin_id
   ,coin_sig
   ,coin_blind
-  ,amount_val
-  ,amount_frac
+  ,amount
   ,recoup_timestamp
   ,rrc_serial
   )
@@ -125,8 +120,7 @@ VALUES
   ,in_known_coin_id
   ,in_coin_sig
   ,in_coin_blind
-  ,tmp_val
-  ,tmp_frac
+  ,tmp
   ,in_recoup_timestamp
   ,in_rrc_serial);
 
@@ -139,4 +133,3 @@ END $$;
 
 -- COMMENT ON FUNCTION exchange_do_recoup_to_coin(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
 --  IS 'Executes a recoup-refresh of a coin that was obtained from a refresh-reveal process';
-

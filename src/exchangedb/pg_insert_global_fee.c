@@ -40,9 +40,12 @@ TEH_PG_insert_global_fee (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&start_date),
     GNUNET_PQ_query_param_timestamp (&end_date),
-    TALER_PQ_query_param_amount (&fees->history),
-    TALER_PQ_query_param_amount (&fees->account),
-    TALER_PQ_query_param_amount (&fees->purse),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &fees->history),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &fees->account),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &fees->purse),
     GNUNET_PQ_query_param_relative_time (&purse_timeout),
     GNUNET_PQ_query_param_relative_time (&history_expiration),
     GNUNET_PQ_query_param_uint32 (&purse_account_limit),
@@ -119,18 +122,15 @@ TEH_PG_insert_global_fee (void *cls,
            "INSERT INTO global_fee "
            "(start_date"
            ",end_date"
-           ",history_fee_val"
-           ",history_fee_frac"
-           ",account_fee_val"
-           ",account_fee_frac"
-           ",purse_fee_val"
-           ",purse_fee_frac"
+           ",history_fee"
+           ",account_fee"
+           ",purse_fee"
            ",purse_timeout"
            ",history_expiration"
            ",purse_account_limit"
            ",master_sig"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_global_fee",
                                              params);

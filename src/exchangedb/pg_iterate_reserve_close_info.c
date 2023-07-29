@@ -113,8 +113,7 @@ TEH_PG_iterate_reserve_close_info (
   PREPARE (pg,
            "iterate_reserve_close_info",
            "SELECT"
-           " amount_val"
-           ",amount_frac"
+           " amount"
            ",execution_date"
            " FROM reserves_close"
            " WHERE wire_target_h_payto=$1"

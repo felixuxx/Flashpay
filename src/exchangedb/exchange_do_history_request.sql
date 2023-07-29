@@ -35,14 +35,12 @@ BEGIN
   (reserve_pub
   ,request_timestamp
   ,reserve_sig
-  ,history_fee_val
-  ,history_fee_frac)
+  ,history_fee)
   VALUES
   (in_reserve_pub
   ,in_request_timestamp
   ,in_reserve_sig
-  ,in_history_fee.val
-  ,in_history_fee.frac)
+  ,in_history_fee)
   ON CONFLICT DO NOTHING;
 
   IF NOT FOUND
@@ -101,4 +99,3 @@ BEGIN
   out_balance_ok=TRUE;
 
 END $$;
-

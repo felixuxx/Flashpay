@@ -162,8 +162,7 @@ TEH_PG_select_deposits_above_serial_id (
   PREPARE (pg,
            "audit_get_deposits_incr",
            "SELECT"
-           " amount_with_fee_val"
-           ",amount_with_fee_frac"
+           " amount_with_fee"
            ",wallet_timestamp"
            ",exchange_timestamp"
            ",merchant_pub"

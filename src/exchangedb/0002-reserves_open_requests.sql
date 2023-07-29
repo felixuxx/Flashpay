@@ -30,8 +30,7 @@ BEGIN
       ',request_timestamp INT8 NOT NULL'
       ',expiration_date INT8 NOT NULL'
       ',reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)'
-      ',reserve_payment_val INT8 NOT NULL'
-      ',reserve_payment_frac INT4 NOT NULL'
+      ',reserve_payment taler_amount NOT NULL'
       ',requested_purse_limit INT4 NOT NULL'
     ') %s ;'
     ,table_name
@@ -45,7 +44,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column (
      'Fee to pay for the request from the reserve balance itself.'
-    ,'reserve_payment_val'
+    ,'reserve_payment'
     ,table_name
     ,partition_suffix
   );

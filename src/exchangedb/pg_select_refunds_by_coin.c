@@ -153,8 +153,7 @@ TEH_PG_select_refunds_by_coin (
     PREPARE (pg,
              query,
              "SELECT"
-             " ref.amount_with_fee_val"
-             ",ref.amount_with_fee_frac"
+             " ref.amount_with_fee"
              " FROM refunds ref"
              " JOIN deposits dep"
              "   USING (coin_pub,deposit_serial_id)"
@@ -167,8 +166,7 @@ TEH_PG_select_refunds_by_coin (
     PREPARE (pg,
              query,
              "SELECT"
-             " ref.amount_with_fee_val"
-             ",ref.amount_with_fee_frac"
+             " ref.amount_with_fee"
              " FROM refunds ref"
              " LEFT JOIN deposits dep"
              "   ON dep.coin_pub = ref.coin_pub"
@@ -183,15 +181,13 @@ TEH_PG_select_refunds_by_coin (
              query,
              "WITH rc AS MATERIALIZED("
              "SELECT"
-             " amount_with_fee_val"
-             ",amount_with_fee_frac"
+             " amount_with_fee"
              ",coin_pub"
              ",deposit_serial_id"
              " FROM refunds ref"
              " WHERE ref.coin_pub=$1)"
              "SELECT"
-             "   rc.amount_with_fee_val"
-             "  ,rc.amount_with_fee_frac"
+             "   rc.amount_with_fee"
              "  FROM deposits dep"
              " JOIN rc"
              " ON rc.deposit_serial_id = dep.deposit_serial_id"
@@ -206,18 +202,15 @@ TEH_PG_select_refunds_by_coin (
              query,
              "WITH rc AS MATERIALIZED("
              "SELECT"
-             " amount_with_fee_val"
-             ",amount_with_fee_frac"
+             " amount_with_fee"
              ",deposit_serial_id"
              " FROM refunds"
              " WHERE coin_pub=$1)"
              "SELECT"
-             "   rc.amount_with_fee_val"
-             "  ,rc.amount_with_fee_frac"
+             "   rc.amount_with_fee"
              "  FROM ("
              "SELECT"
-             " amount_with_fee_val"
-             ",amount_with_fee_frac"
+             " amount_with_fee"
              " FROM deposits depos"
              "  WHERE"
              "  depos.coin_pub = $1"
@@ -230,20 +223,17 @@ TEH_PG_select_refunds_by_coin (
              query,
              "WITH rc AS MATERIALIZED("
              "SELECT"
-             " amount_with_fee_val"
-             ",amount_with_fee_frac"
+             " amount_with_fee"
              ",coin_pub"
              ",deposit_serial_id"
              " FROM refunds ref"
              " WHERE ref.coin_pub=$1)"
              "SELECT"
-             "   rc.amount_with_fee_val"
-             "  ,rc.amount_with_fee_frac"
+             "   rc.amount_with_fee"
              "  ,deposit_serial_id"
              "  FROM ("
              "SELECT"
-             " amount_with_fee_val"
-             ",amount_with_fee_frac"
+             " amount_with_fee"
              " FROM deposits depos"
              "  WHERE"
              "  depos.merchant_pub = $2"
@@ -256,8 +246,7 @@ TEH_PG_select_refunds_by_coin (
     PREPARE (pg,
              query,
              "SELECT"
-             " amount_with_fee_val"
-             ",amount_with_fee_frac"
+             " amount_with_fee"
              ",coin_pub"
              ",deposit_serial_id"
              " FROM refunds"
@@ -270,8 +259,7 @@ TEH_PG_select_refunds_by_coin (
              "WITH"
              " rc AS MATERIALIZED("
              "  SELECT"
-             "   amount_with_fee_val"
-             "  ,amount_with_fee_frac"
+             "   amount_with_fee"
              "  ,coin_pub"
              "  ,deposit_serial_id"
              "  FROM refunds"
@@ -285,8 +273,7 @@ TEH_PG_select_refunds_by_coin (
              "    AND h_contract_terms = $3"
              ")"
              "SELECT"
-             "   rc.amount_with_fee_val"
-             "  ,rc.amount_with_fee_frac"
+             "   rc.amount_with_fee"
              "  FROM "
              "  rc JOIN dep USING (deposit_serial_id);");
     break;
@@ -295,8 +282,7 @@ TEH_PG_select_refunds_by_coin (
     PREPARE (pg,
              query,
              "SELECT"
-             "   ref.amount_with_fee_val"
-             "  ,ref.amount_with_fee_frac"
+             "   ref.amount_with_fee"
              " FROM deposits dep"
              " JOIN refunds ref USING(deposit_serial_id)"
              " WHERE dep.coin_pub IN ("
@@ -315,7 +301,7 @@ TEH_PG_select_refunds_by_coin (
              " FROM"
              " exchange_do_refund_by_coin"
              " ($1, $2, $3) "
-             " AS (amount_with_fee_val INT8, amount_with_fee_frac INT4);");
+             " AS (amount_with_fee taler_amount);");
     break;
   default:
     GNUNET_break (0);

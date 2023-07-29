@@ -43,11 +43,16 @@ TEH_PG_add_denomination_key (
     GNUNET_PQ_query_param_timestamp (&meta->expire_withdraw),
     GNUNET_PQ_query_param_timestamp (&meta->expire_deposit),
     GNUNET_PQ_query_param_timestamp (&meta->expire_legal),
-    TALER_PQ_query_param_amount (&meta->value),
-    TALER_PQ_query_param_amount (&meta->fees.withdraw),
-    TALER_PQ_query_param_amount (&meta->fees.deposit),
-    TALER_PQ_query_param_amount (&meta->fees.refresh),
-    TALER_PQ_query_param_amount (&meta->fees.refund),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &meta->value),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &meta->fees.withdraw),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &meta->fees.deposit),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &meta->fees.refresh),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &meta->fees.refund),
     GNUNET_PQ_query_param_uint32 (&meta->age_mask.bits),
     GNUNET_PQ_query_param_end
   };
@@ -56,8 +61,6 @@ TEH_PG_add_denomination_key (
   GNUNET_assert (GNUNET_YES ==
                  TALER_denom_fee_check_currency (meta->value.currency,
                                                  &meta->fees));
-  /* Used in #postgres_insert_denomination_info() and
-   #postgres_add_denomination_key() */
   PREPARE (pg,
            "denomination_insert",
            "INSERT INTO denominations "
@@ -68,20 +71,15 @@ TEH_PG_add_denomination_key (
            ",expire_withdraw"
            ",expire_deposit"
            ",expire_legal"
-           ",coin_val"                                                /* value of this denom */
-           ",coin_frac"                                                /* fractional value of this denom */
-           ",fee_withdraw_val"
-           ",fee_withdraw_frac"
-           ",fee_deposit_val"
-           ",fee_deposit_frac"
-           ",fee_refresh_val"
-           ",fee_refresh_frac"
-           ",fee_refund_val"
-           ",fee_refund_frac"
+           ",coin"     /* value of this denom */
+           ",fee_withdraw"
+           ",fee_deposit"
+           ",fee_refresh"
+           ",fee_refund"
            ",age_mask"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16, $17, $18);");
+           " $11, $12, $13);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              iparams);

@@ -39,10 +39,14 @@ TEH_PG_persist_policy_details (
     GNUNET_PQ_query_param_auto_from_type (&details->hash_code),
     TALER_PQ_query_param_json (details->policy_json),
     GNUNET_PQ_query_param_timestamp (&details->deadline),
-    TALER_PQ_query_param_amount (&details->commitment),
-    TALER_PQ_query_param_amount (&details->accumulated_total),
-    TALER_PQ_query_param_amount (&details->policy_fee),
-    TALER_PQ_query_param_amount (&details->transferable_amount),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &details->commitment),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &details->accumulated_total),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &details->policy_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &details->transferable_amount),
     GNUNET_PQ_query_param_auto_from_type (&details->fulfillment_state),
     (details->no_policy_fulfillment_id)
      ?  GNUNET_PQ_query_param_null ()
@@ -63,11 +67,10 @@ TEH_PG_persist_policy_details (
            "call_insert_or_update_policy_details",
            "SELECT"
            " out_policy_details_serial_id AS policy_details_serial_id"
-           ",out_accumulated_total_val AS accumulated_total_val"
-           ",out_accumulated_total_frac AS accumulated_total_frac"
+           ",out_accumulated_total AS accumulated_total"
            ",out_fulfillment_state AS fulfillment_state"
            " FROM exchange_do_insert_or_update_policy_details"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_insert_or_update_policy_details",
                                                    params,

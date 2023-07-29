@@ -25,8 +25,7 @@ RETURNS TABLE
   coin_pub             BYTEA,
   coin_sig             BYTEA,
   coin_blind           BYTEA,
-  amount_val           BIGINT,
-  amount_frac          INTEGER,
+  amount               taler_amount,
   recoup_timestamp     BIGINT
 )
 LANGUAGE plpgsql
@@ -60,16 +59,15 @@ BEGIN
              rc.coin_pub,
              rc.coin_sig,
              rc.coin_blind,
-             rc.amount_val,
-             rc.amount_frac,
+             rc.amount,
              rc.recoup_timestamp
       FROM (
-        SELECT *
+        SELECT * --FIXME: bad code, we never use '*'!
         FROM exchange.known_coins
         WHERE known_coins.coin_pub = c_pub
       ) kc
       JOIN (
-        SELECT *
+        SELECT *  --FIXME: bad code, we never use '*'!
         FROM exchange.recoup
         WHERE recoup.coin_pub = c_pub
       ) rc USING (coin_pub);
@@ -79,4 +77,3 @@ $$;
 
 COMMENT ON FUNCTION exchange_do_recoup_by_reserve
   IS 'Recoup by reserve as a function to make sure we hit only the needed partition and not all when joining as joins on distributed tables fetch ALL rows from the shards';
-

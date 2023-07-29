@@ -40,8 +40,10 @@ TEH_PG_insert_wire_fee (void *cls,
     GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_timestamp (&start_date),
     GNUNET_PQ_query_param_timestamp (&end_date),
-    TALER_PQ_query_param_amount (&fees->wire),
-    TALER_PQ_query_param_amount (&fees->closing),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &fees->wire),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &fees->closing),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
@@ -89,20 +91,17 @@ TEH_PG_insert_wire_fee (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
 
-  /* Used in #postgres_insert_wire_fee */
   PREPARE (pg,
            "insert_wire_fee",
            "INSERT INTO wire_fee "
            "(wire_method"
            ",start_date"
            ",end_date"
-           ",wire_fee_val"
-           ",wire_fee_frac"
-           ",closing_fee_val"
-           ",closing_fee_frac"
+           ",wire_fee"
+           ",closing_fee"
            ",master_sig"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8);");
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire_fee",
                                              params);

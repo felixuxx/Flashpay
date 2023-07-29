@@ -41,11 +41,12 @@ TEH_PG_insert_drain_profit (
     GNUNET_PQ_query_param_string (account_section),
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount (amount),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       amount),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
-  /* Used in #postgres_insert_drain_profit() */
+
   PREPARE (pg,
            "drain_profit_insert",
            "INSERT INTO profit_drains "
@@ -53,11 +54,9 @@ TEH_PG_insert_drain_profit (
            ",account_section"
            ",payto_uri"
            ",trigger_date"
-           ",amount_val"
-           ",amount_frac"
+           ",amount"
            ",master_sig"
-           ") VALUES ($1, $2, $3, $4, $5, $6, $7);");
-
+           ") VALUES ($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "drain_profit_insert",
                                              params);

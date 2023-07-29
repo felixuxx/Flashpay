@@ -126,14 +126,11 @@ TEH_PG_get_wire_fees (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-
   PREPARE (pg,
            "get_wire_fees",
            "SELECT"
-           " wire_fee_val"
-           ",wire_fee_frac"
-           ",closing_fee_val"
-           ",closing_fee_frac"
+           " wire_fee"
+           ",closing_fee"
            ",start_date"
            ",end_date"
            ",master_sig"

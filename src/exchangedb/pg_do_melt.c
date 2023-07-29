@@ -40,7 +40,8 @@ TEH_PG_do_melt (
     NULL == rms
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (rms),
-    TALER_PQ_query_param_amount (&refresh->amount_with_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &refresh->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&refresh->rc),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin_sig),
@@ -63,7 +64,6 @@ TEH_PG_do_melt (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Used in #postgres_do_melt() to melt a coin. */
   PREPARE (pg,
            "call_melt",
            "SELECT "
@@ -71,7 +71,7 @@ TEH_PG_do_melt (
            ",out_zombie_bad AS zombie_required"
            ",out_noreveal_index AS noreveal_index"
            " FROM exchange_do_melt"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "call_melt",
                                                  params,

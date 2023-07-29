@@ -168,12 +168,9 @@ TEH_PG_select_purse_deposits_above_serial_id (
   PREPARE (pg,
            "audit_get_purse_deposits_incr",
            "SELECT"
-           " pd.amount_with_fee_val"
-           ",pd.amount_with_fee_frac"
-           ",pr.amount_with_fee_val AS total_val"
-           ",pr.amount_with_fee_frac AS total_frac"
-           ",pr.balance_val"
-           ",pr.balance_frac"
+           " pd.amount_with_fee"
+           ",pr.amount_with_fee AS total"
+           ",pr.balance"
            ",pr.flags"
            ",pd.purse_pub"
            ",pd.coin_sig"

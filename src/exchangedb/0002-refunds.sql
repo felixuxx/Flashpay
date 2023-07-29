@@ -30,8 +30,7 @@ BEGIN
       ',deposit_serial_id INT8 NOT NULL'
       ',merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)'
       ',rtransaction_id INT8 NOT NULL'
-      ',amount_with_fee_val INT8 NOT NULL'
-      ',amount_with_fee_frac INT4 NOT NULL'
+      ',amount_with_fee taler_amount NOT NULL'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'

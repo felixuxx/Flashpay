@@ -13,11 +13,7 @@
 -- You should have received a copy of the GNU General Public License along with
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
-/*DROP FUNCTION exchange_do_refund_by_coin(
-  IN in_coin_pub BYTEA,
-  IN in_merchant_pub BYTEA,
-  IN in_h_contract BYTEA
-);*/
+
 CREATE OR REPLACE FUNCTION exchange_do_refund_by_coin(
   IN in_coin_pub BYTEA,
   IN in_merchant_pub BYTEA,
@@ -30,8 +26,7 @@ DECLARE
   curs CURSOR
   FOR
   SELECT
-    amount_with_fee_val
-   ,amount_with_fee_frac
+    amount_with_fee
    ,deposit_serial_id
   FROM refunds
   WHERE coin_pub=in_coin_pub;
@@ -44,8 +39,7 @@ LOOP
     EXIT WHEN NOT FOUND;
     RETURN QUERY
       SELECT
-        i.amount_with_fee_val
-       ,i.amount_with_fee_frac
+        i.amount_with_fee
        FROM deposits
        WHERE
          coin_pub=in_coin_pub
@@ -56,15 +50,14 @@ END LOOP;
 CLOSE curs;
 END $$;
 
-/*RETURNS TABLE(amount_with_fee_val INT8, amount_with_fee_frac INT4)
+/*RETURNS TABLE(amount_with_fee taler_amount)
 LANGUAGE plpgsql
 AS $$
 DECLARE
   curs CURSOR
   FOR
   SELECT
-    r.amount_with_fee_val
-   ,r.amount_with_fee_frac
+    r.amount_with_fee
    ,r.deposit_serial_id
   FROM refunds r
   WHERE r.coin_pub=in_coin_pub;
@@ -78,8 +71,7 @@ LOOP
     THEN
       RETURN QUERY
       SELECT
-        i.amount_with_fee_val
-       ,i.amount_with_fee_frac
+        i.amount_with_fee
        FROM deposits
        WHERE
          merchant_pub=in_merchant_pub

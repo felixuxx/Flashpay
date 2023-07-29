@@ -14,8 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 CREATE OR REPLACE FUNCTION exchange_do_deposit(
-  IN in_amount_with_fee_val INT8,
-  IN in_amount_with_fee_frac INT4,
+  IN in_amount_with_fee taler_amount,
   IN in_h_contract_terms BYTEA,
   IN in_wire_salt BYTEA,
   IN in_wallet_timestamp INT8,
@@ -66,8 +65,7 @@ INSERT INTO exchange.deposits
   (shard
   ,coin_pub
   ,known_coin_id
-  ,amount_with_fee_val
-  ,amount_with_fee_frac
+  ,amount_with_fee
   ,wallet_timestamp
   ,exchange_timestamp
   ,refund_deadline
@@ -84,8 +82,7 @@ INSERT INTO exchange.deposits
   (in_shard
   ,in_coin_pub
   ,in_known_coin_id
-  ,in_amount_with_fee_val
-  ,in_amount_with_fee_frac
+  ,in_amount_with_fee
   ,in_wallet_timestamp
   ,in_exchange_timestamp
   ,in_refund_deadline
@@ -138,24 +135,24 @@ END IF;
 out_exchange_timestamp=in_exchange_timestamp;
 
 -- Check and update balance of the coin.
-UPDATE known_coins
+UPDATE known_coins kc
   SET
-    remaining_frac=remaining_frac-in_amount_with_fee_frac
+    remaining.frac=(kc.remaining).frac-in_amount_with_fee.frac
        + CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN (kc.remaining).frac < in_amount_with_fee.frac
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val-in_amount_with_fee_val
+    remaining.val=(kc.remaining).val-in_amount_with_fee.val
        - CASE
-         WHEN remaining_frac < in_amount_with_fee_frac
+         WHEN (kc.remaining).frac < in_amount_with_fee.frac
          THEN 1
          ELSE 0
          END
   WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_amount_with_fee_val) OR
-          ( (remaining_frac >= in_amount_with_fee_frac) AND
-            (remaining_val >= in_amount_with_fee_val) ) );
+    AND ( ((kc.remaining).val > in_amount_with_fee.val) OR
+          ( ((kc.remaining).frac >= in_amount_with_fee.frac) AND
+            ((kc.remaining).val >= in_amount_with_fee.val) ) );
 
 IF NOT FOUND
 THEN

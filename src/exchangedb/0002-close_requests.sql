@@ -29,10 +29,8 @@ BEGIN
       ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)'
       ',close_timestamp INT8 NOT NULL'
       ',reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)'
-      ',close_val INT8 NOT NULL'
-      ',close_frac INT4 NOT NULL'
-      ',close_fee_val INT8 NOT NULL'
-      ',close_fee_frac INT4 NOT NULL'
+      ',close taler_amount NOT NULL'
+      ',close_fee taler_amount NOT NULL'
       ',payto_uri VARCHAR NOT NULL'
       ',done BOOL NOT NULL DEFAULT(FALSE)'
       ',PRIMARY KEY (reserve_pub,close_timestamp)'
@@ -60,7 +58,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Balance of the reserve at the time of closing, to be wired to the associated bank account (minus the closing fee)'
-    ,'close_val'
+    ,'close'
     ,table_name
     ,partition_suffix
   );

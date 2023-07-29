@@ -138,8 +138,7 @@ TEH_PG_select_aml_history (
   PREPARE (pg,
            "lookup_aml_history",
            "SELECT"
-           " new_threshold_val"
-           ",new_threshold_frac"
+           " new_threshold"
            ",new_status"
            ",decision_time"
            ",justification"

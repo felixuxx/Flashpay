@@ -55,10 +55,6 @@ TEH_PG_get_withdraw_info (
     GNUNET_PQ_result_spec_end
   };
 
-  /* Used in #postgres_get_withdraw_info() to
-      locate the response for a /reserve/withdraw request
-      using the hash of the blinded message.  Used to
-      make sure /reserve/withdraw requests are idempotent. */
   PREPARE (pg,
            "get_withdraw_info",
            "SELECT"
@@ -68,10 +64,8 @@ TEH_PG_get_withdraw_info (
            ",reserves.reserve_pub"
            ",execution_date"
            ",h_blind_ev"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
-           ",denom.fee_withdraw_val"
-           ",denom.fee_withdraw_frac"
+           ",amount_with_fee"
+           ",denom.fee_withdraw"
            " FROM reserves_out"
            "    JOIN reserves"
            "      USING (reserve_uuid)"

@@ -142,10 +142,8 @@ TEH_PG_lookup_wire_fee_by_time (
   PREPARE (pg,
            "lookup_wire_fee_by_time",
            "SELECT"
-           " wire_fee_val"
-           ",wire_fee_frac"
-           ",closing_fee_val"
-           ",closing_fee_frac"
+           " wire_fee"
+           ",closing_fee"
            " FROM wire_fee"
            " WHERE wire_method=$1"
            " AND end_date > $2"

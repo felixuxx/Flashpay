@@ -25,16 +25,11 @@ CREATE TABLE denominations
   ,expire_withdraw INT8 NOT NULL
   ,expire_deposit INT8 NOT NULL
   ,expire_legal INT8 NOT NULL
-  ,coin_val INT8 NOT NULL
-  ,coin_frac INT4 NOT NULL
-  ,fee_withdraw_val INT8 NOT NULL
-  ,fee_withdraw_frac INT4 NOT NULL
-  ,fee_deposit_val INT8 NOT NULL
-  ,fee_deposit_frac INT4 NOT NULL
-  ,fee_refresh_val INT8 NOT NULL
-  ,fee_refresh_frac INT4 NOT NULL
-  ,fee_refund_val INT8 NOT NULL
-  ,fee_refund_frac INT4 NOT NULL
+  ,coin taler_amount NOT NULL
+  ,fee_withdraw taler_amount NOT NULL
+  ,fee_deposit taler_amount NOT NULL
+  ,fee_refresh taler_amount NOT NULL
+  ,fee_refund taler_amount NOT NULL
   );
 COMMENT ON TABLE denominations
   IS 'Main denominations table. All the valid denominations the exchange knows about.';

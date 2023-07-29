@@ -29,16 +29,14 @@ BEGIN
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
-    ,credit_val
-    ,credit_frac
+    ,credit
     ,exchange_account_section
     ,wire_source_h_payto
     ,execution_date)
     VALUES
     (in_reserve_pub
     ,in_wire_ref
-    ,in_credit.val
-    ,in_credit.frac
+    ,in_credit
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_expiration_date)
@@ -47,17 +45,17 @@ BEGIN
   THEN
     --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
     out_duplicate = FALSE;
-    UPDATE reserves
+    UPDATE reserves rs
       SET
-         current_balance.frac = current_balance.frac+in_credit.frac
+         current_balance.frac = (rs.current_balance).frac+in_credit.frac
            - CASE
-             WHEN current_balance.frac + in_credit.frac >= 100000000
+             WHEN (rs.current_balance).frac + in_credit.frac >= 100000000
                THEN 100000000
              ELSE 1
              END
-            ,current_balance.val = current_balance.val+in_credit.val
+        ,current_balance.val = (rs.current_balance).val+in_credit.val
            + CASE
-             WHEN current_balance.frac + in_credit.frac >= 100000000
+             WHEN (rs.current_balance).frac + in_credit.frac >= 100000000
                THEN 1
              ELSE 0
              END

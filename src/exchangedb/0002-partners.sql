@@ -21,8 +21,7 @@ CREATE TABLE partners
   ,end_date INT8 NOT NULL
   ,next_wad INT8 NOT NULL DEFAULT (0)
   ,wad_frequency INT8 NOT NULL
-  ,wad_fee_val INT8 NOT NULL
-  ,wad_fee_frac INT4 NOT NULL
+  ,wad_fee taler_amount NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,partner_base_url TEXT NOT NULL
   ,PRIMARY KEY (partner_master_pub, start_date)
@@ -39,7 +38,7 @@ COMMENT ON COLUMN partners.next_wad
   IS 'at what time should we do the next wad transfer to this partner (frequently updated); set to forever after the end_date';
 COMMENT ON COLUMN partners.wad_frequency
   IS 'how often do we promise to do wad transfers';
-COMMENT ON COLUMN partners.wad_fee_val
+COMMENT ON COLUMN partners.wad_fee
   IS 'how high is the fee for a wallet to be added to a wad to this partner';
 COMMENT ON COLUMN partners.partner_base_url
   IS 'base URL of the REST API for this partner';

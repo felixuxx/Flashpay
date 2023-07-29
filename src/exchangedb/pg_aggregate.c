@@ -62,12 +62,10 @@ TEH_PG_aggregate (
            "   RETURNING"
            "     deposit_serial_id"
            "    ,coin_pub"
-           "    ,amount_with_fee_val AS amount_val"
-           "    ,amount_with_fee_frac AS amount_frac)"
+           "    ,amount_with_fee AS amount)"
            " ,ref AS (" /* find applicable refunds -- NOTE: may do a full join on the master, maybe find a left-join way to integrate with query above to push it to the shards? */
            "  SELECT"
-           "    amount_with_fee_val AS refund_val"
-           "   ,amount_with_fee_frac AS refund_frac"
+           "    amount_with_fee AS refund"
            "   ,coin_pub"
            "   ,deposit_serial_id" /* theoretically, coin could be in multiple refunded transactions */
            "    FROM refunds"
@@ -75,8 +73,8 @@ TEH_PG_aggregate (
            "     AND deposit_serial_id IN (SELECT deposit_serial_id FROM dep))"
            " ,ref_by_coin AS (" /* total up refunds by coin */
            "  SELECT"
-           "    SUM(refund_val) AS sum_refund_val"
-           "   ,SUM(refund_frac) AS sum_refund_frac"
+           "    SUM((ref.refund).val) AS sum_refund_val"
+           "   ,SUM((ref.refund).frac) AS sum_refund_frac"
            "   ,coin_pub"
            "   ,deposit_serial_id" /* theoretically, coin could be in multiple refunded transactions */
            "    FROM ref"
@@ -94,13 +92,12 @@ TEH_PG_aggregate (
            "    FROM norm_ref_by_coin norm"
            "    JOIN dep"
            "      ON (norm.coin_pub = dep.coin_pub"
-           "      AND norm.deposit_serial_id = dep.deposit_Serial_id"
-           "      AND norm.norm_refund_val = dep.amount_val"
-           "      AND norm.norm_refund_frac = dep.amount_frac))"
+           "      AND norm.deposit_serial_id = dep.deposit_serial_id"
+           "      AND norm.norm_refund_val = (dep.amount).val"
+           "      AND norm.norm_refund_frac = (dep.amount).frac))"
            " ,fees AS (" /* find deposit fees for not fully refunded deposits */
            "  SELECT"
-           "    denom.fee_deposit_val AS fee_val"
-           "   ,denom.fee_deposit_frac AS fee_frac"
+           "    denom.fee_deposit AS fee"
            "   ,cs.deposit_serial_id" /* ensures we get the fee for each coin, not once per denomination */
            "    FROM dep cs"
            "    JOIN known_coins kc" /* NOTE: may do a full join on the master, maybe find a left-join way to integrate with query above to push it to the shards? */
@@ -115,12 +112,12 @@ TEH_PG_aggregate (
            "    SELECT deposit_serial_id,$4"
            "      FROM dep)"
            "SELECT" /* calculate totals (deposits, refunds and fees) */
-           "  CAST(COALESCE(SUM(dep.amount_val),0) AS INT8) AS sum_deposit_value" /* cast needed, otherwise we get NUMBER */
-           " ,COALESCE(SUM(dep.amount_frac),0) AS sum_deposit_fraction" /* SUM over INT returns INT8 */
-           " ,CAST(COALESCE(SUM(ref.refund_val),0) AS INT8) AS sum_refund_value"
-           " ,COALESCE(SUM(ref.refund_frac),0) AS sum_refund_fraction"
-           " ,CAST(COALESCE(SUM(fees.fee_val),0) AS INT8) AS sum_fee_value"
-           " ,COALESCE(SUM(fees.fee_frac),0) AS sum_fee_fraction"
+           "  CAST(COALESCE(SUM((dep.amount).val),0) AS INT8) AS sum_deposit_value" /* cast needed, otherwise we get NUMBER */
+           " ,COALESCE(SUM((dep.amount).frac),0) AS sum_deposit_fraction" /* SUM over INT returns INT8 */
+           " ,CAST(COALESCE(SUM((ref.refund).val),0) AS INT8) AS sum_refund_value"
+           " ,COALESCE(SUM((ref.refund).frac),0) AS sum_refund_fraction"
+           " ,CAST(COALESCE(SUM((fees.fee).val),0) AS INT8) AS sum_fee_value"
+           " ,COALESCE(SUM((fees.fee).frac),0) AS sum_fee_fraction"
            " FROM dep "
            "   FULL OUTER JOIN ref ON (FALSE)"    /* We just want all sums */
            "   FULL OUTER JOIN fees ON (FALSE);");

@@ -35,15 +35,15 @@ TEH_PG_set_purse_balance (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       balance),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "set_purse_balance",
            "UPDATE purse_requests"
-           " SET balance_val=$2"
-           "    ,balance_frac=$3"
+           " SET balance=$2"
            " WHERE purse_pub=$1;");
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,

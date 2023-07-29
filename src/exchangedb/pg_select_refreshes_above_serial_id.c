@@ -149,8 +149,7 @@ TEH_PG_select_refreshes_above_serial_id (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  /* Used in #postgres_select_refreshes_above_serial_id() to fetch
-     refresh session with id '\geq' the given parameter */
+
   PREPARE (pg,
            "audit_get_refresh_commitments_incr",
            "SELECT"
@@ -158,8 +157,7 @@ TEH_PG_select_refreshes_above_serial_id (
            ",kc.coin_pub AS old_coin_pub"
            ",kc.age_commitment_hash"
            ",old_coin_sig"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
+           ",amount_with_fee"
            ",noreveal_index"
            ",melt_serial_id"
            ",rc"

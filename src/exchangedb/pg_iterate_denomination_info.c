@@ -155,7 +155,6 @@ TEH_PG_iterate_denomination_info (void *cls,
     .pg = pg
   };
 
-  /* Used in #postgres_iterate_denomination_info() */
   PREPARE (pg,
            "denomination_iterate",
            "SELECT"
@@ -165,16 +164,11 @@ TEH_PG_iterate_denomination_info (void *cls,
            ",expire_withdraw"
            ",expire_deposit"
            ",expire_legal"
-           ",coin_val"                                                /* value of this denom */
-           ",coin_frac"                                                /* fractional value of this denom */
-           ",fee_withdraw_val"
-           ",fee_withdraw_frac"
-           ",fee_deposit_val"
-           ",fee_deposit_frac"
-           ",fee_refresh_val"
-           ",fee_refresh_frac"
-           ",fee_refund_val"
-           ",fee_refund_frac"
+           ",coin" /* value of this denom */
+           ",fee_withdraw"
+           ",fee_deposit"
+           ",fee_refresh"
+           ",fee_refund"
            ",denom_pub"
            ",age_mask"
            " FROM denominations;");

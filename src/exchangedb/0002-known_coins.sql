@@ -31,8 +31,7 @@ BEGIN
       ',coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)'
       ',age_commitment_hash BYTEA CHECK (LENGTH(age_commitment_hash)=32)'
       ',denom_sig BYTEA NOT NULL'
-      ',remaining_val INT8 NOT NULL DEFAULT(0)'
-      ',remaining_frac INT4 NOT NULL DEFAULT(0)'
+      ',remaining taler_amount NOT NULL DEFAULT(0,0)'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'
@@ -57,7 +56,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Value of the coin that remains to be spent'
-    ,'remaining_val'
+    ,'remaining'
     ,table_name
     ,partition_suffix
   );

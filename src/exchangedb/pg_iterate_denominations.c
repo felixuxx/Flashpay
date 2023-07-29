@@ -143,7 +143,6 @@ TEH_PG_iterate_denominations (void *cls,
     .pg = pg
   };
 
-  /* Used in #postgres_iterate_denominations() */
   PREPARE (pg,
            "select_denominations",
            "SELECT"
@@ -154,24 +153,17 @@ TEH_PG_iterate_denominations (void *cls,
            ",expire_withdraw"
            ",expire_deposit"
            ",expire_legal"
-           ",coin_val"                                                /* value of this denom */
-           ",coin_frac"                                                /* fractional value of this denom */
-           ",fee_withdraw_val"
-           ",fee_withdraw_frac"
-           ",fee_deposit_val"
-           ",fee_deposit_frac"
-           ",fee_refresh_val"
-           ",fee_refresh_frac"
-           ",fee_refund_val"
-           ",fee_refund_frac"
+           ",coin"              /* value of this denom */
+           ",fee_withdraw"
+           ",fee_deposit"
+           ",fee_refresh"
+           ",fee_refund"
            ",denom_type"
            ",age_mask"
            ",denom_pub"
            " FROM denominations"
            " LEFT JOIN "
            "   denomination_revocations USING (denominations_serial);");
-
-
   return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "select_denominations",
                                                params,

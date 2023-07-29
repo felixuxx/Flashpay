@@ -55,7 +55,8 @@ TEH_PG_insert_aml_decision (
     : NULL;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    TALER_PQ_query_param_amount (new_threshold),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       new_threshold),
     GNUNET_PQ_query_param_uint32 (&ns),
     GNUNET_PQ_query_param_timestamp (&decision_time),
     GNUNET_PQ_query_param_string (justification),
@@ -83,7 +84,7 @@ TEH_PG_insert_aml_decision (
            " out_invalid_officer"
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,

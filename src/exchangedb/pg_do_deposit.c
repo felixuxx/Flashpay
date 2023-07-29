@@ -41,7 +41,8 @@ TEH_PG_do_deposit (
   struct PostgresClosure *pg = cls;
   uint64_t deposit_shard = TEH_PG_compute_shard (&deposit->merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &deposit->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&deposit->wire_salt),
     GNUNET_PQ_query_param_timestamp (&deposit->timestamp),
@@ -78,7 +79,7 @@ TEH_PG_do_deposit (
            ",out_balance_ok AS balance_ok"
            ",out_conflict AS conflicted"
            " FROM exchange_do_deposit"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_deposit",
                                                    params,

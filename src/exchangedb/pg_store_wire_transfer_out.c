@@ -40,11 +40,11 @@ TEH_PG_store_wire_transfer_out (
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_string (exchange_account_section),
-    TALER_PQ_query_param_amount (amount),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       amount),
     GNUNET_PQ_query_param_end
   };
 
-  /* Used in #postgres_store_wire_transfer_out */
   PREPARE (pg,
            "insert_wire_out",
            "INSERT INTO wire_out "
@@ -52,11 +52,9 @@ TEH_PG_store_wire_transfer_out (
            ",wtid_raw"
            ",wire_target_h_payto"
            ",exchange_account_section"
-           ",amount_val"
-           ",amount_frac"
+           ",amount"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6);");
-
+           "($1, $2, $3, $4, $5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire_out",
                                              params);

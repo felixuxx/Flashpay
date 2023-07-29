@@ -35,7 +35,8 @@ TEH_PG_trigger_aml_process (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    TALER_PQ_query_param_amount (threshold_crossed),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       threshold_crossed),
     GNUNET_PQ_query_param_end
   };
 
@@ -43,15 +44,13 @@ TEH_PG_trigger_aml_process (
            "trigger_aml_process",
            "INSERT INTO aml_status"
            "(h_payto"
-           ",threshold_val"
-           ",threshold_frac"
+           ",threshold"
            ",status)"
            "VALUES"
-           "($1, $2, $3, 1)" // 1: decision needed
+           "($1, $2, 1)" // 1: decision needed
            "ON CONFLICT DO"
            " UPDATE SET"
-           "   threshold_val=$2"
-           "  ,threshold_frac=$3"
+           "   threshold=$2"
            "  ,status=status | 1;"); // do not clear 'frozen' status
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "trigger_aml_process",

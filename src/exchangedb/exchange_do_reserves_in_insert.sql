@@ -56,16 +56,14 @@ BEGIN
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
-    ,credit_val
-    ,credit_frac
+    ,credit
     ,exchange_account_section
     ,wire_source_h_payto
     ,execution_date)
     VALUES
     (in_reserve_pub
     ,in_wire_ref
-    ,in_credit.val
-    ,in_credit.frac
+    ,in_credit
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_execution_date)
@@ -181,16 +179,14 @@ BEGIN
     INSERT INTO reserves_in
       (reserve_pub
       ,wire_reference
-      ,credit_val
-      ,credit_frac
+      ,credit
       ,exchange_account_section
       ,wire_source_h_payto
       ,execution_date)
       VALUES
       (in0_reserve_pub
       ,in0_wire_ref
-      ,in0_credit.val
-      ,in0_credit.frac
+      ,in0_credit
       ,in0_exchange_account_name
       ,in0_wire_source_h_payto
       ,in0_execution_date),
@@ -394,16 +390,14 @@ BEGIN
     INSERT INTO reserves_in
       (reserve_pub
       ,wire_reference
-      ,credit_val
-      ,credit_frac
+      ,credit
       ,exchange_account_section
       ,wire_source_h_payto
       ,execution_date)
       VALUES
       (in0_reserve_pub
       ,in0_wire_ref
-      ,in0_credit.val
-      ,in0_credit.frac
+      ,in0_credit
       ,in0_exchange_account_name
       ,in0_wire_source_h_payto
       ,in0_execution_date),
@@ -750,16 +744,14 @@ BEGIN
     INSERT INTO reserves_in
       (reserve_pub
       ,wire_reference
-      ,credit_val
-      ,credit_frac
+      ,credit
       ,exchange_account_section
       ,wire_source_h_payto
       ,execution_date)
       VALUES
       (in0_reserve_pub
       ,in0_wire_ref
-      ,in0_credit.val
-      ,in0_credit.frac
+      ,in0_credit
       ,in0_exchange_account_name
       ,in0_wire_source_h_payto
       ,in0_execution_date),
@@ -927,8 +919,7 @@ CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN in_reserve_expiration INT8,
   IN ina_reserve_pub BYTEA[],
   IN ina_wire_ref INT8[],
-  IN ina_credit_val INT8[],
-  IN ina_credit_frac INT4[],
+  IN ina_credit taler_amount[],
   IN ina_exchange_account_name VARCHAR[],
   IN ina_execution_date INT8[],
   IN ina_wire_source_h_payto BYTEA[],
@@ -960,8 +951,7 @@ BEGIN
     SELECT
       reserve_pub
      ,wire_ref
-     ,credit_val
-     ,credit_frac
+     ,credit
      ,exchange_account_name
      ,execution_date
      ,wire_source_h_payto
@@ -970,8 +960,7 @@ BEGIN
     FROM
       UNNEST (ina_reserve_pub) AS reserve_pub
      ,UNNEST (ina_wire_ref) AS wire_ref
-     ,UNNEST (ina_credit_val) AS credit_val
-     ,UNNEST (ina_credit_frac) AS credit_frac
+     ,UNNEST (ina_credit) AS credit
      ,UNNEST (ina_exchange_account_name) AS exchange_account_name
      ,UNNEST (ina_execution_date) AS execution_date
      ,UNNEST (ina_wire_source_h_payto) AS wire_source_h_payto
@@ -979,14 +968,12 @@ BEGIN
   LOOP
     INSERT INTO reserves
       (reserve_pub
-      ,current_balance_val
-      ,current_balance_frac
+      ,current_balance
       ,expiration_date
       ,gc_date
     ) VALUES (
       i.reserve_pub
-     ,i.credit_val
-     ,i.credit_frac
+     ,i.credit
      ,in_reserve_expiration
      ,in_gc_date
     )
@@ -998,16 +985,14 @@ BEGIN
     INSERT INTO reserves_in
       (reserve_pub
       ,wire_reference
-      ,credit_val
-      ,credit_frac
+      ,credit
       ,exchange_account_section
       ,wire_source_h_payto
       ,execution_date
     ) VALUES (
       i.reserve_pub
      ,i.wire_reference
-     ,i.credit_val
-     ,i.credit_frac
+     ,i.credit
      ,i.exchange_account_section
      ,i.wire_source_h_payto
      ,i.execution_date

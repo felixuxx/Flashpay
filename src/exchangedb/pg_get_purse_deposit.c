@@ -66,8 +66,7 @@ TEH_PG_get_purse_deposit (
            "select_purse_deposit_by_coin_pub",
            "SELECT "
            " coin_sig"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
+           ",amount_with_fee"
            ",denom_pub_hash"
            ",age_commitment_hash"
            ",partner_base_url"

@@ -30,9 +30,8 @@ BEGIN
       ',wtid_raw BYTEA UNIQUE NOT NULL CHECK (LENGTH(wtid_raw)=32)'
       ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
       ',exchange_account_section TEXT NOT NULL'
-      ',amount_val INT8 NOT NULL'
-      ',amount_frac INT4 NOT NULL'
-    ') %s ;'
+      ',amount taler_amount NOT NULL'
+      ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (wtid_raw)'
     ,partition_suffix

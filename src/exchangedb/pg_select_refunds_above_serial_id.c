@@ -188,8 +188,7 @@ TEH_PG_select_refunds_above_serial_id (
            ",ref.rtransaction_id"
            ",denom.denom_pub"
            ",kc.coin_pub"
-           ",ref.amount_with_fee_val"
-           ",ref.amount_with_fee_frac"
+           ",ref.amount_with_fee"
            ",ref.refund_serial_id"
            " FROM refunds ref"
            "   JOIN deposits dep"
@@ -203,16 +202,14 @@ TEH_PG_select_refunds_above_serial_id (
   PREPARE (pg,
            "test_refund_full",
            "SELECT"
-           " CAST(SUM(CAST(ref.amount_with_fee_frac AS INT8)) AS INT8) AS s_f"
-           ",CAST(SUM(ref.amount_with_fee_val) AS INT8) AS s_v"
-           ",dep.amount_with_fee_val"
-           ",dep.amount_with_fee_frac"
+           " CAST(SUM(CAST((ref.amount_with_fee).frac AS INT8)) AS INT8) AS s_f"
+           ",CAST(SUM((ref.amount_with_fee).val) AS INT8) AS s_v"
+           ",dep.amount_with_fee"
            " FROM refunds ref"
            "   JOIN deposits dep"
            "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
            " WHERE ref.refund_serial_id=$1"
-           " GROUP BY (dep.amount_with_fee_val, dep.amount_with_fee_frac);");
-
+           " GROUP BY (dep.amount_with_fee);");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_refunds_incr",
                                              params,
