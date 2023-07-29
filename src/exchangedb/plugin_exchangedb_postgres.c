@@ -779,12 +779,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->batch_ensure_coin_known
     = &TEH_PG_batch_ensure_coin_known;
 
-  if (GNUNET_OK != TALER_PQ_load_oids_for_composite_types (pg->conn))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to load OIDs for composite types\n");
-  }
-
   return plugin;
 }
 

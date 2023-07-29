@@ -67,11 +67,13 @@ struct TALER_PQ_Amount_P
  *
  * @param db postgres-context of type `struct GNUNET_PQ_Context *`
  * @param amount amount of type `struct TALER_Amount *`
+ * @param oid_v OID of the INT8 type in postgres
+ * @param oid_f OID of the INT4 type in postgres
  */
-#define MAKE_TALER_PQ_AMOUNT_P(db,amount) \
+#define MAKE_TALER_PQ_AMOUNT_P(db,amount,oid_v,oid_f) \
   { \
-    .oid_v = htonl (GNUNET_PQ_get_oid ((db), GNUNET_PQ_DATATYPE_INT8)), \
-    .oid_f = htonl (GNUNET_PQ_get_oid ((db), GNUNET_PQ_DATATYPE_INT4)), \
+    .oid_v = htonl (oid_v), \
+    .oid_f = htonl (oid_f), \
     .sz_v = htonl (sizeof((amount)->value)), \
     .sz_f = htonl (sizeof((amount)->fraction)), \
     .v = GNUNET_htonll ((amount)->value), \

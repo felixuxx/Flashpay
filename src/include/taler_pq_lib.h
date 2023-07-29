@@ -31,31 +31,6 @@
 #include "taler_util.h"
 
 /**
- * Enumerates the composite types that Taler defines in Postgres.
- * The corresponding OIDs (which are assigned by postgres at time of
- * declaration) are stored in TALER_PQ_CompositeOIDs.
- */
-enum TALER_PQ_CompositeType
-{
-  TALER_PQ_CompositeAmount,
-  TALER_PQ_CompositeMAX /* MUST be last */
-};
-
-/**
- * The correspondence of the Composite types and their OID in Postgres
- */
-extern Oid TALER_PQ_CompositeOIDs[TALER_PQ_CompositeMAX];
-
-/**
- * Initialize the list of OIDs in TALER_PQ_CompositeOIDs.  MUST be called
- * before any composite type is used in arrays-specs/-params.
- *
- * @return GNUNET_SYSERR on failure
- */
-enum GNUNET_GenericReturnValue
-TALER_PQ_load_oids_for_composite_types (struct GNUNET_PQ_Context *db);
-
-/**
  * Generate query parameter for a currency, consisting of the three
  * components "value", "fraction" and "currency" in this order. The
  * types must be a 64-bit integer, 32-bit integer and a
@@ -177,7 +152,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_blinded_denom_sig (
   size_t num,
   const struct TALER_BlindedDenominationSignature *denom_sigs,
-  const struct GNUNET_PQ_Context *db
+  struct GNUNET_PQ_Context *db
   );
 
 /**
@@ -191,7 +166,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_blinded_coin_hash (
   size_t num,
   const struct TALER_BlindedCoinHashP *coin_evs,
-  const struct GNUNET_PQ_Context *db);
+  struct GNUNET_PQ_Context *db);
 
 /**
  * Generate query parameter for an array of mounts
@@ -332,7 +307,7 @@ TALER_PQ_result_spec_json (const char *name,
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_blinded_denom_sig (
-  const struct GNUNET_PQ_Context *db,
+  struct GNUNET_PQ_Context *db,
   const char *name,
   size_t *num,
   struct TALER_BlindedDenominationSignature **denom_sigs);
@@ -348,7 +323,7 @@ TALER_PQ_result_spec_array_blinded_denom_sig (
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_blinded_coin_hash (
-  const struct GNUNET_PQ_Context *db,
+  struct GNUNET_PQ_Context *db,
   const char *name,
   size_t *num,
   struct TALER_BlindedCoinHashP **h_coin_evs);
@@ -364,7 +339,7 @@ TALER_PQ_result_spec_array_blinded_coin_hash (
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_denom_hash (
-  const struct GNUNET_PQ_Context *db,
+  struct GNUNET_PQ_Context *db,
   const char *name,
   size_t *num,
   struct TALER_DenominationHashP **denom_hs);
@@ -381,7 +356,7 @@ TALER_PQ_result_spec_array_denom_hash (
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_amount (
-  struct GNUNET_PQ_Context *db, /* not const because we need to query dynamically */
+  struct GNUNET_PQ_Context *db,
   const char *name,
   const char *currency,
   size_t *num,

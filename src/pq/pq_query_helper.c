@@ -175,7 +175,7 @@ qconv_amount_tuple (void *cls,
                     void *scratch[],
                     unsigned int scratch_length)
 {
-  const struct GNUNET_PQ_Context *db = cls;
+  struct GNUNET_PQ_Context *db = cls;
   const struct TALER_Amount *amount = data;
   size_t sz;
 
@@ -188,18 +188,29 @@ qconv_amount_tuple (void *cls,
 
   {
     char *out;
-    struct TALER_PQ_Amount_P d = MAKE_TALER_PQ_AMOUNT_P (db, amount);
+    Oid oid_v, oid_f;
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_PQ_get_oid_by_name (db, "int8", &oid_v));
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_PQ_get_oid_by_name (db, "int4", &oid_f));
 
-    sz = sizeof(uint32_t); /* number of elements in tuple */
-    sz += sizeof(d);
+    {
+      struct TALER_PQ_Amount_P d = MAKE_TALER_PQ_AMOUNT_P (db,
+                                                           amount,
+                                                           oid_v,
+                                                           oid_f);
 
-    out = GNUNET_malloc (sz);
-    scratch[0] = out;
+      sz = sizeof(uint32_t); /* number of elements in tuple */
+      sz += sizeof(d);
 
-    *(uint32_t *) out = htonl (2);
-    out += sizeof(uint32_t);
+      out = GNUNET_malloc (sz);
+      scratch[0] = out;
 
-    *(struct TALER_PQ_Amount_P*) out = d;
+      *(uint32_t *) out = htonl (2);
+      out += sizeof(uint32_t);
+
+      *(struct TALER_PQ_Amount_P*) out = d;
+    }
 
   }
 
@@ -795,7 +806,7 @@ struct qconv_array_cls
   /**
    * db context, needed for OID-lookup of basis-types
    */
-  const struct GNUNET_PQ_Context *db;
+  struct GNUNET_PQ_Context *db;
 };
 
 /**
@@ -972,15 +983,28 @@ qconv_array (
       case TALER_PQ_array_of_amount:
         {
           const struct TALER_Amount *amounts = data;
-          struct TALER_PQ_Amount_P am = MAKE_TALER_PQ_AMOUNT_P (meta->db,
-                                                                &amounts[i]);
+          Oid oid_v, oid_f;
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "int8",
+                                                    &oid_v));
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "int4",
+                                                    &oid_f));
+          {
+            struct TALER_PQ_Amount_P am = MAKE_TALER_PQ_AMOUNT_P (meta->db,
+                                                                  &amounts[i],
+                                                                  oid_v,
+                                                                  oid_f);
 
-          *(uint32_t *) out = htonl (2); /* number of elements in tuple */
-          out += sizeof(uint32_t);
-          sz -= sizeof(uint32_t);
-          GNUNET_memcpy (out,
-                         &am,
-                         sizeof(am));
+            *(uint32_t *) out = htonl (2); /* number of elements in tuple */
+            out += sizeof(uint32_t);
+            sz -= sizeof(uint32_t);
+            GNUNET_memcpy (out,
+                           &am,
+                           sizeof(am));
+          }
           break;
         }
       case TALER_PQ_array_of_blinded_denom_sig:
@@ -1086,7 +1110,7 @@ query_param_array_generic (
   size_t same_size,
   enum TALER_PQ_ArrayType typ,
   Oid oid,
-  const struct GNUNET_PQ_Context *db)
+  struct GNUNET_PQ_Context *db)
 {
   struct qconv_array_cls *meta = GNUNET_new (struct qconv_array_cls);
   meta->typ = typ;
@@ -1113,16 +1137,18 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_blinded_denom_sig (
   size_t num,
   const struct TALER_BlindedDenominationSignature *denom_sigs,
-  const struct GNUNET_PQ_Context *db)
+  struct GNUNET_PQ_Context *db)
 {
+  Oid oid;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db, "bytea", &oid));
   return query_param_array_generic (num,
                                     true,
                                     denom_sigs,
                                     NULL,
                                     0,
                                     TALER_PQ_array_of_blinded_denom_sig,
-                                    GNUNET_PQ_get_oid (db,
-                                                       GNUNET_PQ_DATATYPE_BYTEA),
+                                    oid,
                                     NULL);
 }
 
@@ -1131,16 +1157,18 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_blinded_coin_hash (
   size_t num,
   const struct TALER_BlindedCoinHashP *coin_hs,
-  const struct GNUNET_PQ_Context *db)
+  struct GNUNET_PQ_Context *db)
 {
+  Oid oid;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db, "bytea", &oid));
   return query_param_array_generic (num,
                                     true,
                                     coin_hs,
                                     NULL,
                                     sizeof(struct TALER_BlindedCoinHashP),
                                     TALER_PQ_array_of_blinded_coin_hash,
-                                    GNUNET_PQ_get_oid (db,
-                                                       GNUNET_PQ_DATATYPE_BYTEA),
+                                    oid,
                                     NULL);
 }
 
@@ -1149,16 +1177,18 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_denom_hash (
   size_t num,
   const struct TALER_DenominationHashP *denom_hs,
-  const struct GNUNET_PQ_Context *db)
+  struct GNUNET_PQ_Context *db)
 {
+  Oid oid;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db, "bytea", &oid));
   return query_param_array_generic (num,
                                     true,
                                     denom_hs,
                                     NULL,
                                     sizeof(struct TALER_DenominationHashP),
                                     TALER_PQ_array_of_denom_hash,
-                                    GNUNET_PQ_get_oid (db,
-                                                       GNUNET_PQ_DATATYPE_BYTEA),
+                                    oid,
                                     NULL);
 }
 
@@ -1169,19 +1199,17 @@ TALER_PQ_query_param_array_amount (
   const struct TALER_Amount *amounts,
   struct GNUNET_PQ_Context *db)
 {
-  if (TALER_PQ_CompositeOIDs[0] == 0)
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_PQ_load_oids_for_composite_types (db));
-
+  Oid oid;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db, "taler_amount", &oid));
   return query_param_array_generic (
     num,
     true,
     amounts,
     NULL,
-    sizeof(uint32_t) /* the # of elements in the tuple, here: 2 */
-    + sizeof(struct TALER_PQ_Amount_P),
+    sizeof(uint32_t) + sizeof(struct TALER_PQ_Amount_P),
     TALER_PQ_array_of_amount,
-    TALER_PQ_CompositeOIDs[TALER_PQ_CompositeAmount],
+    oid,
     db);
 }
 

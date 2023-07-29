@@ -1385,7 +1385,7 @@ array_cleanup (void *cls,
 
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_blinded_denom_sig (
-  const struct GNUNET_PQ_Context *db,
+  struct GNUNET_PQ_Context *db,
   const char *name,
   size_t *num,
   struct TALER_BlindedDenominationSignature **denom_sigs)
@@ -1394,8 +1394,10 @@ TALER_PQ_result_spec_array_blinded_denom_sig (
 
   info->num = num;
   info->typ = TALER_PQ_array_of_blinded_denom_sig;
-  info->oid = GNUNET_PQ_get_oid (db,
-                                 GNUNET_PQ_DATATYPE_BYTEA);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "bytea",
+                                            &info->oid));
 
   struct GNUNET_PQ_ResultSpec res = {
     .conv = extract_array_generic,
@@ -1410,7 +1412,7 @@ TALER_PQ_result_spec_array_blinded_denom_sig (
 
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_blinded_coin_hash (
-  const struct GNUNET_PQ_Context *db,
+  struct GNUNET_PQ_Context *db,
   const char *name,
   size_t *num,
   struct TALER_BlindedCoinHashP **h_coin_evs)
@@ -1419,8 +1421,10 @@ TALER_PQ_result_spec_array_blinded_coin_hash (
 
   info->num = num;
   info->typ = TALER_PQ_array_of_blinded_coin_hash;
-  info->oid = GNUNET_PQ_get_oid (db,
-                                 GNUNET_PQ_DATATYPE_BYTEA);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "bytea",
+                                            &info->oid));
 
   struct GNUNET_PQ_ResultSpec res = {
     .conv = extract_array_generic,
@@ -1435,7 +1439,7 @@ TALER_PQ_result_spec_array_blinded_coin_hash (
 
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_denom_hash (
-  const struct GNUNET_PQ_Context *db,
+  struct GNUNET_PQ_Context *db,
   const char *name,
   size_t *num,
   struct TALER_DenominationHashP **denom_hs)
@@ -1444,8 +1448,10 @@ TALER_PQ_result_spec_array_denom_hash (
 
   info->num = num;
   info->typ = TALER_PQ_array_of_denom_hash;
-  info->oid = GNUNET_PQ_get_oid (db,
-                                 GNUNET_PQ_DATATYPE_BYTEA);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "bytea",
+                                            &info->oid));
 
   struct GNUNET_PQ_ResultSpec res = {
     .conv = extract_array_generic,
@@ -1466,16 +1472,15 @@ TALER_PQ_result_spec_array_amount (
   size_t *num,
   struct TALER_Amount **amounts)
 {
-  if (TALER_PQ_CompositeOIDs[0] == 0)
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_PQ_load_oids_for_composite_types (db));
-
   struct ArrayResultCls *info = GNUNET_new (struct ArrayResultCls);
 
   info->num = num;
   info->typ = TALER_PQ_array_of_amount;
-  info->oid = TALER_PQ_CompositeOIDs[TALER_PQ_CompositeAmount];
   info->db = db;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "taler_amount",
+                                            &info->oid));
 
   {
     size_t clen = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
