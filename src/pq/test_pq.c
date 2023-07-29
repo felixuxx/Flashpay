@@ -35,20 +35,24 @@ postgres_prepare (struct GNUNET_PQ_Context *db)
   struct GNUNET_PQ_PreparedStatement ps[] = {
     GNUNET_PQ_make_prepare ("test_insert",
                             "INSERT INTO test_pq ("
-                            " hamount_val"
+                            " tamount"
+                            ",hamount_val"
                             ",hamount_frac"
                             ",namount_val"
                             ",namount_frac"
                             ",json"
+                            ",aamount"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5);"),
+                            "($1, $2, $3, $4, $5, $6, $7);"),
     GNUNET_PQ_make_prepare ("test_select",
                             "SELECT"
-                            " hamount_val"
+                            " tamount"
+                            ",hamount_val"
                             ",hamount_frac"
                             ",namount_val"
                             ",namount_frac"
                             ",json"
+                            ",aamount"
                             " FROM test_pq;"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -66,15 +70,31 @@ postgres_prepare (struct GNUNET_PQ_Context *db)
 static int
 run_queries (struct GNUNET_PQ_Context *conn)
 {
+  struct TALER_Amount tamount;
   struct TALER_Amount hamount;
   struct TALER_Amount hamount2;
   struct TALER_AmountNBO namount;
   struct TALER_AmountNBO namount2;
+  struct TALER_Amount aamount[3];
+  struct TALER_Amount *pamount;
+  size_t npamount;
   PGresult *result;
   int ret;
   json_t *json;
   json_t *json2;
 
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:5.3",
+                                         &aamount[0]));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:6.4",
+                                         &aamount[1]));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:7.5",
+                                         &aamount[2]));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:7.7",
+                                         &tamount));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:5.5",
                                          &hamount));
@@ -88,9 +108,13 @@ run_queries (struct GNUNET_PQ_Context *conn)
   GNUNET_assert (NULL != json);
   {
     struct GNUNET_PQ_QueryParam params_insert[] = {
+      TALER_PQ_query_param_amount_tuple (conn, &tamount),
       TALER_PQ_query_param_amount (&hamount),
       TALER_PQ_query_param_amount_nbo (&namount),
       TALER_PQ_query_param_json (json),
+      TALER_PQ_query_param_array_amount (3,
+                                         aamount,
+                                         conn),
       GNUNET_PQ_query_param_end
     };
 
@@ -129,6 +153,12 @@ run_queries (struct GNUNET_PQ_Context *conn)
       TALER_PQ_result_spec_amount ("hamount", "EUR", &hamount2),
       TALER_PQ_result_spec_amount_nbo ("namount", "EUR", &namount2),
       TALER_PQ_result_spec_json ("json", &json2),
+      TALER_PQ_result_spec_amount_tuple ("tamount", "EUR", &tamount),
+      TALER_PQ_result_spec_array_amount (conn,
+                                         "aamount",
+                                         "EUR",
+                                         &npamount,
+                                         &pamount),
       GNUNET_PQ_result_spec_end
     };
 
@@ -148,6 +178,15 @@ run_queries (struct GNUNET_PQ_Context *conn)
                                     &hamount2));
     GNUNET_break (42 ==
                   json_integer_value (json_object_get (json2, "foo")));
+
+    GNUNET_break (3 == npamount);
+    for (size_t i = 0; i < 3; i++)
+    {
+      GNUNET_break (0 ==
+                    TALER_amount_cmp (&aamount[i],
+                                      &pamount[i]));
+    }
+
     GNUNET_PQ_cleanup_result (results_select);
     PQclear (result);
   }
@@ -164,12 +203,22 @@ main (int argc,
       const char *const argv[])
 {
   struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("DO $$ "
+                            " BEGIN"
+                            " CREATE TYPE taler_amount AS"
+                            "   (val INT8, frac INT4);"
+                            " EXCEPTION"
+                            "   WHEN duplicate_object THEN null;"
+                            " END "
+                            "$$;"),
     GNUNET_PQ_make_execute ("CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
-                            " hamount_val INT8 NOT NULL"
+                            " tamount taler_amount NOT NULL"
+                            ",hamount_val INT8 NOT NULL"
                             ",hamount_frac INT4 NOT NULL"
                             ",namount_val INT8 NOT NULL"
                             ",namount_frac INT4 NOT NULL"
                             ",json VARCHAR NOT NULL"
+                            ",aamount taler_amount[]"
                             ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };

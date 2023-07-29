@@ -1136,6 +1136,12 @@ struct ArrayResultCls
   /* Out-pointer. If @a typ is TALER_PQ_array_of_byte and @a same_size is 0,
    * allocate and put the array of @a num sizes here. NULL otherwise */
   size_t **sizes;
+
+  /* DB_connection, needed for OID-lookup for composite types */
+  const struct GNUNET_PQ_Context *db;
+
+  /* Currency information for amount composites */
+  char currency[TALER_CURRENCY_LEN];
 };
 
 /**
@@ -1216,6 +1222,43 @@ extract_array_generic (
 
     switch (info->typ)
     {
+    case TALER_PQ_array_of_amount:
+      {
+        struct TALER_Amount *amounts;
+        if (NULL != dst_size)
+          *dst_size = sizeof(struct TALER_Amount) * (header.dim);
+
+        amounts = GNUNET_new_array (header.dim, struct TALER_Amount);
+        *((void **) dst) = amounts;
+
+        for (uint32_t i = 0; i < header.dim; i++)
+        {
+          struct TALER_PQ_Amount_P ap;
+          struct TALER_Amount *amount = &amounts[i];
+          size_t sz = ntohl (*(uint32_t *) in);
+          in += sizeof(uint32_t);
+
+          /* total size for this array-entry */
+          FAIL_IF ((sizeof(uint32_t)
+                    + sizeof(struct TALER_PQ_Amount_P))
+                   > sz);
+
+          /* number of elements in composite type*/
+          sz = ntohl (*(uint32_t *) in);
+          in += sizeof(uint32_t);
+          FAIL_IF (2 != sz);
+
+          ap = *(struct TALER_PQ_Amount_P *) in;
+          amount->value = GNUNET_ntohll (ap.v);
+          amount->fraction = ntohl (ap.f);
+          GNUNET_memcpy (amount->currency,
+                         info->currency,
+                         TALER_CURRENCY_LEN);
+
+          in += sizeof(struct TALER_PQ_Amount_P);
+        }
+        return GNUNET_OK;
+      }
     case TALER_PQ_array_of_denom_hash:
       if (NULL != dst_size)
         *dst_size = sizeof(struct TALER_DenominationHashP) * (header.dim);
@@ -1414,6 +1457,45 @@ TALER_PQ_result_spec_array_denom_hash (
   return res;
 
 };
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_amount (
+  struct GNUNET_PQ_Context *db,
+  const char *name,
+  const char *currency,
+  size_t *num,
+  struct TALER_Amount **amounts)
+{
+  if (TALER_PQ_CompositeOIDs[0] == 0)
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_PQ_load_oids_for_composite_types (db));
+
+  struct ArrayResultCls *info = GNUNET_new (struct ArrayResultCls);
+
+  info->num = num;
+  info->typ = TALER_PQ_array_of_amount;
+  info->oid = TALER_PQ_CompositeOIDs[TALER_PQ_CompositeAmount];
+  info->db = db;
+
+  {
+    size_t clen = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
+                              strlen (currency));
+    GNUNET_memcpy (&info->currency,
+                   currency,
+                   clen);
+  }
+
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = extract_array_generic,
+    .cleaner = array_cleanup,
+    .dst = (void *) amounts,
+    .fname = name,
+    .cls = info,
+  };
+  return res;
+
+
+}
 
 
 /* end of pq_result_helper.c */

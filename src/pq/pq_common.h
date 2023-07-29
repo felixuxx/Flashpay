@@ -43,7 +43,7 @@ enum TALER_PQ_ArrayType
   TALER_PQ_array_of_blinded_denom_sig,
   TALER_PQ_array_of_blinded_coin_hash,
   TALER_PQ_array_of_denom_hash,
-  /* TODO[oec]: Next up: TALER_PQ_array_of_amount, */
+  TALER_PQ_array_of_amount,
   TALER_PQ_array_of_MAX,       /* must be last */
 };
 

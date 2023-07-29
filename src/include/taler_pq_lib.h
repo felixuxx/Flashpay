@@ -194,6 +194,19 @@ TALER_PQ_query_param_array_blinded_coin_hash (
   const struct GNUNET_PQ_Context *db);
 
 /**
+ * Generate query parameter for an array of mounts
+ *
+ * @param num of elements in @e amounts
+ * @param amounts continuous array of amounts
+ * @param db context for db-connection, needed for OID-lookup
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_amount (
+  size_t num,
+  const struct TALER_Amount *amounts,
+  struct GNUNET_PQ_Context *db);
+
+/**
  * Currency amount expected.
  *
  * @param name name of the field in the table
@@ -355,6 +368,25 @@ TALER_PQ_result_spec_array_denom_hash (
   const char *name,
   size_t *num,
   struct TALER_DenominationHashP **denom_hs);
+
+/**
+ * Array of amounts
+ *
+ * @param db context of the database connection
+ * @param name name of the field in the table
+ * @param currency The currency
+ * @param[out] num number of elements in @e amounts
+ * @param[out] amounts where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_amount (
+  struct GNUNET_PQ_Context *db, /* not const because we need to query dynamically */
+  const char *name,
+  const char *currency,
+  size_t *num,
+  struct TALER_Amount **amounts);
+
 
 #endif  /* TALER_PQ_LIB_H_ */
 
