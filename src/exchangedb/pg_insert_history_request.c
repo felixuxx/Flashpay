@@ -41,8 +41,8 @@ TEH_PG_insert_history_request (
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       history_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 history_fee),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {

@@ -42,12 +42,12 @@ TEH_PG_do_refund (
   uint64_t deposit_shard = TEH_PG_compute_shard (&refund->details.merchant_pub);
   struct TALER_Amount amount_without_fee;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &refund->details.refund_amount),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &amount_without_fee),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       deposit_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &refund->details.refund_amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &amount_without_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 deposit_fee),
     GNUNET_PQ_query_param_auto_from_type (&refund->details.h_contract_terms),
     GNUNET_PQ_query_param_uint64 (&refund->details.rtransaction_id),
     GNUNET_PQ_query_param_uint64 (&deposit_shard),

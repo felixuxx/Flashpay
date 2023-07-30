@@ -51,10 +51,10 @@ TEH_PG_insert_reserve_closed (
       GNUNET_PQ_query_param_timestamp (&execution_date),
       GNUNET_PQ_query_param_auto_from_type (wtid),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      TALER_PQ_query_param_amount_tuple (pg->conn,
-                                         amount_with_fee),
-      TALER_PQ_query_param_amount_tuple (pg->conn,
-                                         closing_fee),
+      TALER_PQ_query_param_amount (pg->conn,
+                                   amount_with_fee),
+      TALER_PQ_query_param_amount (pg->conn,
+                                   closing_fee),
       GNUNET_PQ_query_param_uint64 (&close_request_row),
       GNUNET_PQ_query_param_end
     };

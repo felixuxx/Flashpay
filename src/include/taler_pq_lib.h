@@ -41,7 +41,7 @@
  * @param amount pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_amount_tuple (
+TALER_PQ_query_param_amount (
   const struct GNUNET_PQ_Context *db,
   const struct TALER_Amount *amount);
 
@@ -169,9 +169,9 @@ TALER_PQ_query_param_array_amount (
  * @return array entry for the result specification to use
  */
 struct GNUNET_PQ_ResultSpec
-TALER_PQ_result_spec_amount_tuple (const char *name,
-                                   const char *currency,
-                                   struct TALER_Amount *amount);
+TALER_PQ_result_spec_amount (const char *name,
+                             const char *currency,
+                             struct TALER_Amount *amount);
 
 /**
  * Denomination public key expected.

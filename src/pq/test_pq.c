@@ -86,8 +86,8 @@ run_queries (struct GNUNET_PQ_Context *conn)
                                       json_integer (42)));
   {
     struct GNUNET_PQ_QueryParam params_insert[] = {
-      TALER_PQ_query_param_amount_tuple (conn,
-                                         &tamount),
+      TALER_PQ_query_param_amount (conn,
+                                   &tamount),
       TALER_PQ_query_param_json (json),
       TALER_PQ_query_param_array_amount (3,
                                          aamount,
@@ -119,9 +119,9 @@ run_queries (struct GNUNET_PQ_Context *conn)
       GNUNET_PQ_query_param_end
     };
     struct GNUNET_PQ_ResultSpec results_select[] = {
-      TALER_PQ_result_spec_amount_tuple ("tamount",
-                                         "EUR",
-                                         &tamount2),
+      TALER_PQ_result_spec_amount ("tamount",
+                                   "EUR",
+                                   &tamount2),
       TALER_PQ_result_spec_json ("json",
                                  &json2),
       TALER_PQ_result_spec_array_amount (conn,

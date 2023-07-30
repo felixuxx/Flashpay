@@ -43,8 +43,8 @@ TEH_PG_do_batch_withdraw (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 amount),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_timestamp (&gc),

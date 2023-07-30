@@ -41,10 +41,10 @@ TEH_PG_insert_close_request (
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       balance),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       closing_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 closing_fee),
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_end
   };

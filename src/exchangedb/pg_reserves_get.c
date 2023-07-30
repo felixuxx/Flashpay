@@ -35,9 +35,9 @@ TEH_PG_reserves_get (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount_tuple ("current_balance",
-                                       pg->currency,
-                                       &reserve->balance),
+    TALER_PQ_result_spec_amount ("current_balance",
+                                 pg->currency,
+                                 &reserve->balance),
     GNUNET_PQ_result_spec_timestamp ("expiration_date",
                                      &reserve->expiry),
     GNUNET_PQ_result_spec_timestamp ("gc_date",

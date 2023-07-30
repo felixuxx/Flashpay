@@ -100,7 +100,7 @@ struct ReserveRecord
 #define RR_QUERY_PARAM(rr,index) \
   GNUNET_PQ_query_param_auto_from_type (rr[index].reserve->reserve_pub),    \
   GNUNET_PQ_query_param_uint64 (&rr[index].reserve->wire_reference),        \
-  TALER_PQ_query_param_amount_tuple (pg->conn, rr[index].reserve->balance), \
+  TALER_PQ_query_param_amount (pg->conn, rr[index].reserve->balance), \
   GNUNET_PQ_query_param_string (rr[index].reserve->exchange_account_name),  \
   GNUNET_PQ_query_param_timestamp (&rr[index].reserve->execution_time),     \
   GNUNET_PQ_query_param_auto_from_type (&rr[index].h_payto),                \
@@ -537,8 +537,8 @@ transact (
         GNUNET_PQ_query_param_auto_from_type (rr[i].reserve->reserve_pub),
         GNUNET_PQ_query_param_timestamp (&reserve_expiration),
         GNUNET_PQ_query_param_uint64 (&rr[i].reserve->wire_reference),
-        TALER_PQ_query_param_amount_tuple (pg->conn,
-                                           rr[i].reserve->balance),
+        TALER_PQ_query_param_amount (pg->conn,
+                                     rr[i].reserve->balance),
         GNUNET_PQ_query_param_string (rr[i].reserve->exchange_account_name),
         GNUNET_PQ_query_param_auto_from_type (&rr[i].h_payto),
         GNUNET_PQ_query_param_string (rr[i].notify_s),
@@ -860,8 +860,8 @@ TEH_PG_reserves_in_insertN (
         GNUNET_PQ_query_param_auto_from_type (reserve_pubs[i]),
         GNUNET_PQ_query_param_timestamp (&reserve_expiration),
         GNUNET_PQ_query_param_uint64 (&wire_reference[i]),
-        TALER_PQ_query_param_amount_tuple (pg->conn,
-                                           balances[i]),
+        TALER_PQ_query_param_amount (pg->conn,
+                                     balances[i]),
         GNUNET_PQ_query_param_string (exchange_account_names[i]),
         GNUNET_PQ_query_param_auto_from_type (h_paytos[i]),
         GNUNET_PQ_query_param_string (notify_s[i]),

@@ -52,8 +52,8 @@ TEH_PG_insert_deposit (void *cls,
     uint64_t shard = TEH_PG_compute_shard (&deposit->merchant_pub);
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-      TALER_PQ_query_param_amount_tuple (pg->conn,
-                                         &deposit->amount_with_fee),
+      TALER_PQ_query_param_amount (pg->conn,
+                                   &deposit->amount_with_fee),
       GNUNET_PQ_query_param_timestamp (&deposit->timestamp),
       GNUNET_PQ_query_param_timestamp (&deposit->refund_deadline),
       GNUNET_PQ_query_param_timestamp (&deposit->wire_deadline),

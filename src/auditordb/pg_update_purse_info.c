@@ -38,8 +38,8 @@ TAH_PG_update_purse_info (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 balance),
     GNUNET_PQ_query_param_end
   };
 

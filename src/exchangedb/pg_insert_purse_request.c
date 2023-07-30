@@ -56,10 +56,10 @@ TEH_PG_insert_purse_request (
     GNUNET_PQ_query_param_uint32 (&age_limit),
     GNUNET_PQ_query_param_uint32 (&flags32),
     GNUNET_PQ_query_param_bool (in_reserve_quota),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       amount),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       purse_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 purse_fee),
     GNUNET_PQ_query_param_auto_from_type (purse_sig),
     GNUNET_PQ_query_param_end
   };

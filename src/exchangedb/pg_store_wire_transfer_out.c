@@ -40,8 +40,8 @@ TEH_PG_store_wire_transfer_out (
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_string (exchange_account_section),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 amount),
     GNUNET_PQ_query_param_end
   };
 

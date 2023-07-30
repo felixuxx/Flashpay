@@ -43,7 +43,7 @@ TEH_PG_lookup_auditor_timestamp (
     GNUNET_PQ_result_spec_end
   };
 
-      /* Used in #postgres_lookup_auditor_timestamp() */
+  /* Used in #postgres_lookup_auditor_timestamp() */
   PREPARE (pg,
            "lookup_auditor_timestamp",
            "SELECT"

@@ -147,9 +147,9 @@ extract_amount_tuple (void *cls,
 
 
 struct GNUNET_PQ_ResultSpec
-TALER_PQ_result_spec_amount_tuple (const char *name,
-                                   const char *currency,
-                                   struct TALER_Amount *amount)
+TALER_PQ_result_spec_amount (const char *name,
+                             const char *currency,
+                             struct TALER_Amount *amount)
 {
   struct GNUNET_PQ_ResultSpec res = {
     .conv = &extract_amount_tuple,

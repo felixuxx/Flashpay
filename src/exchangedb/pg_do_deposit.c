@@ -41,8 +41,8 @@ TEH_PG_do_deposit (
   struct PostgresClosure *pg = cls;
   uint64_t deposit_shard = TEH_PG_compute_shard (&deposit->merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &deposit->amount_with_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &deposit->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&deposit->wire_salt),
     GNUNET_PQ_query_param_timestamp (&deposit->timestamp),

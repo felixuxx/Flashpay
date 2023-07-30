@@ -34,8 +34,8 @@ TAH_PG_update_wire_fee_summary (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       wire_fee_balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 wire_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };

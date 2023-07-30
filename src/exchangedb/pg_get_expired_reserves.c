@@ -84,9 +84,9 @@ reserve_expired_cb (void *cls,
                                     &account_details),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
-      TALER_PQ_result_spec_amount_tuple ("current_balance",
-                                         pg->currency,
-                                         &remaining_balance),
+      TALER_PQ_result_spec_amount ("current_balance",
+                                   pg->currency,
+                                   &remaining_balance),
       GNUNET_PQ_result_spec_end
     };
 

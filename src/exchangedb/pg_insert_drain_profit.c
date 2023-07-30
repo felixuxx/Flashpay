@@ -41,8 +41,8 @@ TEH_PG_insert_drain_profit (
     GNUNET_PQ_query_param_string (account_section),
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 amount),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };

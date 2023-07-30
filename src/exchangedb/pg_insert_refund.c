@@ -37,8 +37,8 @@ TEH_PG_insert_refund (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&refund->details.merchant_sig),
     GNUNET_PQ_query_param_auto_from_type (&refund->details.h_contract_terms),
     GNUNET_PQ_query_param_uint64 (&refund->details.rtransaction_id),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &refund->details.refund_amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &refund->details.refund_amount),
     GNUNET_PQ_query_param_end
   };
 

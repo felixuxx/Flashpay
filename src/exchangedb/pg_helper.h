@@ -142,7 +142,7 @@ struct PostgresClosure
  * @param[out] amountp pointer to amount to set
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT(field, \
-                                    amountp) TALER_PQ_result_spec_amount_tuple ( \
+                                    amountp) TALER_PQ_result_spec_amount ( \
     field,pg->currency,amountp)
 
 

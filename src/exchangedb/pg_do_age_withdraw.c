@@ -44,8 +44,8 @@ TEH_PG_do_age_withdraw (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &commitment->amount_with_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &commitment->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&commitment->reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&commitment->reserve_sig),
     GNUNET_PQ_query_param_timestamp (&now),

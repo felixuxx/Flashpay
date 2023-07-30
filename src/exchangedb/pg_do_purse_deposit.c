@@ -47,12 +47,12 @@ TEH_PG_do_purse_deposit (
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_uint64 (&partner_id),
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       amount),
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       amount_minus_fee),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),

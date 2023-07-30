@@ -44,8 +44,8 @@ TEH_PG_insert_reserve_open_deposit (
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       coin_total),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 coin_total),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {

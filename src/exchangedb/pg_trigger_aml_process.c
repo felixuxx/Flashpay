@@ -35,8 +35,8 @@ TEH_PG_trigger_aml_process (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       threshold_crossed),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 threshold_crossed),
     GNUNET_PQ_query_param_end
   };
 

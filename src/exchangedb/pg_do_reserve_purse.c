@@ -74,8 +74,8 @@ TEH_PG_do_reserve_purse (
     GNUNET_PQ_query_param_timestamp (&reserve_gc),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_bool (NULL == purse_fee),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       NULL == purse_fee
+    TALER_PQ_query_param_amount (pg->conn,
+                                 NULL == purse_fee
                                         ? &zero_fee
                                         : purse_fee),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),

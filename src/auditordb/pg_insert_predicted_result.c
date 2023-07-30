@@ -36,10 +36,10 @@ TAH_PG_insert_predicted_result (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       balance),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       drained),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 drained),
     GNUNET_PQ_query_param_end
   };
 

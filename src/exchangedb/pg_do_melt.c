@@ -40,8 +40,8 @@ TEH_PG_do_melt (
     NULL == rms
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (rms),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &refresh->amount_with_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &refresh->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&refresh->rc),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin_sig),

@@ -112,14 +112,14 @@ TEH_PG_add_policy_fulfillment_proof (
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (&pos->hash_code),
         GNUNET_PQ_query_param_timestamp (&pos->deadline),
-        TALER_PQ_query_param_amount_tuple (pg->conn,
-                                           &pos->commitment),
-        TALER_PQ_query_param_amount_tuple (pg->conn,
-                                           &pos->accumulated_total),
-        TALER_PQ_query_param_amount_tuple (pg->conn,
-                                           &pos->policy_fee),
-        TALER_PQ_query_param_amount_tuple (pg->conn,
-                                           &pos->transferable_amount),
+        TALER_PQ_query_param_amount (pg->conn,
+                                     &pos->commitment),
+        TALER_PQ_query_param_amount (pg->conn,
+                                     &pos->accumulated_total),
+        TALER_PQ_query_param_amount (pg->conn,
+                                     &pos->policy_fee),
+        TALER_PQ_query_param_amount (pg->conn,
+                                     &pos->transferable_amount),
         GNUNET_PQ_query_param_auto_from_type (&pos->fulfillment_state),
         GNUNET_PQ_query_param_end
       };

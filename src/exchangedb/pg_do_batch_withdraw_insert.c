@@ -41,8 +41,8 @@ TEH_PG_do_batch_withdraw_insert (
     NULL == nonce
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (nonce),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &collectable->amount_with_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &collectable->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
     GNUNET_PQ_query_param_uint64 (&ruuid),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),

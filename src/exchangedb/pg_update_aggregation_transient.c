@@ -36,8 +36,8 @@ TEH_PG_update_aggregation_transient (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       total),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 total),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_uint64 (&kyc_requirement_row),

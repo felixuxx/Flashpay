@@ -74,19 +74,19 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
       &td->details.denominations.expire_deposit),
     GNUNET_PQ_query_param_timestamp (
       &td->details.denominations.expire_legal),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.denominations.coin),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.denominations.fees.withdraw),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.denominations.fees.deposit),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.denominations.fees.refresh),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.denominations.fees.refund),
     GNUNET_PQ_query_param_end
@@ -322,7 +322,7 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.wire_reference),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.reserves_in.credit),
     GNUNET_PQ_query_param_auto_from_type (
@@ -370,7 +370,7 @@ irbt_cb_table_reserves_open_requests (struct PostgresClosure *pg,
       &td->details.reserves_open_requests.expiration_date),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_open_requests.reserve_sig),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.reserves_open_requests.reserve_payment),
     GNUNET_PQ_query_param_uint32 (
@@ -415,7 +415,7 @@ irbt_cb_table_reserves_open_deposits (
       &td->details.reserves_open_deposits.coin_sig),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_open_deposits.reserve_sig),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.reserves_open_deposits.contribution),
     GNUNET_PQ_query_param_end
@@ -456,10 +456,10 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
       &td->details.reserves_close.wtid),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_close.sender_account_h_payto),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.reserves_close.amount),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.reserves_close.closing_fee),
     GNUNET_PQ_query_param_auto_from_type (
@@ -509,7 +509,7 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
       &td->details.reserves_out.reserve_sig),
     GNUNET_PQ_query_param_timestamp (
       &td->details.reserves_out.execution_date),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.reserves_out.amount_with_fee),
     GNUNET_PQ_query_param_end
@@ -731,7 +731,7 @@ irbt_cb_table_refresh_commitments (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.refresh_commitments.rc),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.refresh_commitments.old_coin_sig),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.refresh_commitments.amount_with_fee),
     GNUNET_PQ_query_param_uint32 (
@@ -870,7 +870,7 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.deposits.coin_pub),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.deposits.amount_with_fee),
     GNUNET_PQ_query_param_timestamp (&td->details.deposits.wallet_timestamp),
@@ -936,7 +936,7 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.refunds.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&td->details.refunds.merchant_sig),
     GNUNET_PQ_query_param_uint64 (&td->details.refunds.rtransaction_id),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.refunds.amount_with_fee),
     GNUNET_PQ_query_param_uint64 (&td->details.refunds.deposit_serial_id),
@@ -978,7 +978,7 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
       &td->details.wire_out.wire_target_h_payto),
     GNUNET_PQ_query_param_string (
       td->details.wire_out.exchange_account_section),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wire_out.amount),
     GNUNET_PQ_query_param_end
@@ -1049,10 +1049,10 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_string (td->details.wire_fee.wire_method),
     GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.start_date),
     GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.end_date),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wire_fee.fees.wire),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wire_fee.fees.closing),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
@@ -1094,13 +1094,13 @@ irbt_cb_table_global_fee (struct PostgresClosure *pg,
       &td->details.global_fee.start_date),
     GNUNET_PQ_query_param_timestamp (
       &td->details.global_fee.end_date),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.global_fee.fees.history),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.global_fee.fees.account),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.global_fee.fees.purse),
     GNUNET_PQ_query_param_relative_time (
@@ -1149,7 +1149,7 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_sig),
     GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_blind),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.recoup.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.recoup.timestamp),
@@ -1192,7 +1192,7 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.recoup_refresh.coin_sig),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.recoup_refresh.coin_blind),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.recoup_refresh.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.recoup_refresh.timestamp),
@@ -1272,17 +1272,17 @@ irbt_cb_table_policy_details (struct PostgresClosure *pg,
     (td->details.policy_details.no_policy_json)
       ? GNUNET_PQ_query_param_null ()
       : TALER_PQ_query_param_json (td->details.policy_details.policy_json),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.policy_details.commitment),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.policy_details.accumulated_total),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.policy_details.fee),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &td->details.policy_details.transferable),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &td->details.policy_details.transferable),
     GNUNET_PQ_query_param_timestamp (&td->details.policy_details.deadline),
     GNUNET_PQ_query_param_uint16 (
       &td->details.policy_details.fulfillment_state),
@@ -1380,10 +1380,10 @@ irbt_cb_table_purse_requests (struct PostgresClosure *pg,
       &td->details.purse_requests.h_contract_terms),
     GNUNET_PQ_query_param_uint32 (&td->details.purse_requests.age_limit),
     GNUNET_PQ_query_param_uint32 (&td->details.purse_requests.flags),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.purse_requests.amount_with_fee),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.purse_requests.purse_fee),
     GNUNET_PQ_query_param_auto_from_type (
@@ -1504,7 +1504,7 @@ irbt_cb_table_purse_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.purse_deposits.purse_pub),
     GNUNET_PQ_query_param_auto_from_type (&td->details.purse_deposits.coin_pub),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.purse_deposits.amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&td->details.purse_deposits.coin_sig),
@@ -1585,7 +1585,7 @@ irbt_cb_table_history_requests (struct PostgresClosure *pg,
       &td->details.history_requests.request_timestamp),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.history_requests.reserve_sig),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.history_requests.history_fee),
     GNUNET_PQ_query_param_end
@@ -1625,10 +1625,10 @@ irbt_cb_table_close_requests (struct PostgresClosure *pg,
       &td->details.close_requests.close_timestamp),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.close_requests.reserve_sig),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.close_requests.close),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.close_requests.close_fee),
     GNUNET_PQ_query_param_string (
@@ -1668,7 +1668,7 @@ irbt_cb_table_wads_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wads_out.wad_id),
     GNUNET_PQ_query_param_uint64 (&td->details.wads_out.partner_serial_id),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_out.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.wads_out.execution_time),
@@ -1715,13 +1715,13 @@ irbt_cb_table_wads_out_entries (struct PostgresClosure *pg,
       &td->details.wads_out_entries.purse_expiration),
     GNUNET_PQ_query_param_timestamp (
       &td->details.wads_out_entries.merge_timestamp),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_out_entries.amount_with_fee),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_out_entries.wad_fee),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_out_entries.deposit_fees),
     GNUNET_PQ_query_param_auto_from_type (
@@ -1768,7 +1768,7 @@ irbt_cb_table_wads_in (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wads_in.wad_id),
     GNUNET_PQ_query_param_string (td->details.wads_in.origin_exchange_url),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_in.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.wads_in.arrival_time),
@@ -1813,13 +1813,13 @@ irbt_cb_table_wads_in_entries (struct PostgresClosure *pg,
       &td->details.wads_in_entries.purse_expiration),
     GNUNET_PQ_query_param_timestamp (
       &td->details.wads_in_entries.merge_timestamp),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_in_entries.amount_with_fee),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_in_entries.wad_fee),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.wads_in_entries.deposit_fees),
     GNUNET_PQ_query_param_auto_from_type (
@@ -1872,7 +1872,7 @@ irbt_cb_table_profit_drains (struct PostgresClosure *pg,
       td->details.profit_drains.payto_uri),
     GNUNET_PQ_query_param_timestamp (
       &td->details.profit_drains.trigger_date),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.profit_drains.amount),
     GNUNET_PQ_query_param_auto_from_type (
@@ -1958,7 +1958,7 @@ irbt_cb_table_aml_history (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.aml_history.h_payto),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.aml_history.new_threshold),
     GNUNET_PQ_query_param_uint32 (
@@ -2095,7 +2095,7 @@ irbt_cb_table_age_withdraw (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.age_withdraw.h_commitment),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.age_withdraw.amount_with_fee),
     GNUNET_PQ_query_param_uint16 (

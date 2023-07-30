@@ -28,7 +28,7 @@
 
 enum GNUNET_GenericReturnValue
 TEH_PG_start (void *cls,
-                const char *name)
+              const char *name)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
@@ -54,4 +54,3 @@ TEH_PG_start (void *cls,
   pg->transaction_name = name;
   return GNUNET_OK;
 }
-

@@ -44,10 +44,10 @@ TEH_PG_do_reserve_open (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       total_paid),
-    TALER_PQ_query_param_amount_tuple (
+    TALER_PQ_query_param_amount (
       pg->conn,
       reserve_payment),
     GNUNET_PQ_query_param_uint32 (&min_purse_limit),
@@ -56,14 +56,14 @@ TEH_PG_do_reserve_open (
     GNUNET_PQ_query_param_timestamp (&desired_expiration),
     GNUNET_PQ_query_param_relative_time (&pg->legal_reserve_expiration_time),
     GNUNET_PQ_query_param_timestamp (&now),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       open_fee),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 open_fee),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount_tuple ("out_open_cost",
-                                       pg->currency,
-                                       open_cost),
+    TALER_PQ_result_spec_amount ("out_open_cost",
+                                 pg->currency,
+                                 open_cost),
     GNUNET_PQ_result_spec_timestamp ("out_final_expiration",
                                      final_expiration),
     GNUNET_PQ_result_spec_bool ("out_no_funds",

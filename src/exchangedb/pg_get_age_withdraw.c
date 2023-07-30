@@ -48,9 +48,9 @@ TEH_PG_get_age_withdraw (
                                           &aw->reserve_pub),
     GNUNET_PQ_result_spec_uint16 ("max_age",
                                   &aw->max_age),
-    TALER_PQ_result_spec_amount_tuple ("amount_with_fee",
-                                       pg->currency,
-                                       &aw->amount_with_fee),
+    TALER_PQ_result_spec_amount ("amount_with_fee",
+                                 pg->currency,
+                                 &aw->amount_with_fee),
     GNUNET_PQ_result_spec_uint16 ("noreveal_index",
                                   &aw->noreveal_index),
     TALER_PQ_result_spec_array_blinded_coin_hash (

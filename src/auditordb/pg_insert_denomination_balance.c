@@ -35,15 +35,15 @@ TAH_PG_insert_denomination_balance (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &dcd->denom_balance),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &dcd->denom_loss),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dcd->denom_balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dcd->denom_loss),
     GNUNET_PQ_query_param_uint64 (&dcd->num_issued),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &dcd->denom_risk),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &dcd->recoup_loss),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dcd->denom_risk),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dcd->recoup_loss),
     GNUNET_PQ_query_param_end
   };
 

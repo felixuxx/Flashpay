@@ -102,7 +102,7 @@ qconv_amount_tuple (void *cls,
 
 
 struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_amount_tuple (
+TALER_PQ_query_param_amount (
   const struct GNUNET_PQ_Context *db,
   const struct TALER_Amount *amount)
 {

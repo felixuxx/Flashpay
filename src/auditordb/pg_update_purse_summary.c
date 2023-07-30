@@ -35,8 +35,8 @@ TAH_PG_update_purse_summary (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       &sum->balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &sum->balance),
     GNUNET_PQ_query_param_uint64 (&sum->open_purses),
     GNUNET_PQ_query_param_end
   };

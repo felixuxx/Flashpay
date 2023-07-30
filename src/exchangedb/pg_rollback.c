@@ -48,5 +48,3 @@ TEH_PG_rollback (void *cls)
                                            es));
   pg->transaction_name = NULL;
 }
-
-

@@ -40,10 +40,10 @@ TAH_PG_insert_historic_denom_revenue (
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_timestamp (&revenue_timestamp),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       revenue_balance),
-    TALER_PQ_query_param_amount_tuple (pg->conn,
-                                       loss_balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 revenue_balance),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 loss_balance),
     GNUNET_PQ_query_param_end
   };
 
