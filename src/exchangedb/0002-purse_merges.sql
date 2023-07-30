@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_purse_merges(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_merges';
+  table_name TEXT DEFAULT 'purse_merges';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I '
@@ -77,13 +77,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_purse_merges(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_merges';
+  table_name TEXT DEFAULT 'purse_merges';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   -- FIXME: change to materialized index by reserve_pub!
@@ -110,7 +110,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_merges';
+  table_name TEXT DEFAULT 'purse_merges';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

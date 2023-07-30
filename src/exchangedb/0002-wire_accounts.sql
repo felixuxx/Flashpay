@@ -15,13 +15,13 @@
 --
 
 CREATE TABLE wire_accounts
-  (payto_uri VARCHAR PRIMARY KEY
+  (payto_uri TEXT PRIMARY KEY
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
   ,is_active BOOLEAN NOT NULL
   ,last_change INT8 NOT NULL
-  ,conversion_url VARCHAR DEFAULT (NULL)
-  ,debit_restrictions VARCHAR DEFAULT (NULL)
-  ,credit_restrictions VARCHAR DEFAULT (NULL)
+  ,conversion_url TEXT DEFAULT (NULL)
+  ,debit_restrictions TEXT DEFAULT (NULL)
+  ,credit_restrictions TEXT DEFAULT (NULL)
   );
 COMMENT ON TABLE wire_accounts
   IS 'Table with current and historic bank accounts of the exchange. Entries never expire as we need to remember the last_change column indefinitely.';

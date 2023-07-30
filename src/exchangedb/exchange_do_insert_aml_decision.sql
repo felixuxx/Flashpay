@@ -19,11 +19,11 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_new_threshold taler_amount,
   IN in_new_status INT4,
   IN in_decision_time INT8,
-  IN in_justification VARCHAR,
+  IN in_justification TEXT,
   IN in_decider_pub BYTEA,
   IN in_decider_sig BYTEA,
-  IN in_notify_s VARCHAR,
-  IN in_kyc_requirements VARCHAR,
+  IN in_notify_s TEXT,
+  IN in_kyc_requirements TEXT,
   IN in_requirement_row INT8,
   OUT out_invalid_officer BOOLEAN,
   OUT out_last_date INT8)
@@ -119,5 +119,5 @@ END IF;
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, taler_amount, INT4, INT8, VARCHAR, BYTEA, BYTEA, VARCHAR, VARCHAR, INT8)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, taler_amount, INT4, INT8, TEXT, BYTEA, BYTEA, TEXT, TEXT, INT8)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

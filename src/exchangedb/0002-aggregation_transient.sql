@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_aggregation_transient(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN shard_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'aggregation_transient';
+  table_name TEXT DEFAULT 'aggregation_transient';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I '

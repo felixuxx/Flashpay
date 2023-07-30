@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION exchange_do_get_ready_deposit(
   IN in_now INT8,
   IN in_start_shard_now INT8,
   IN in_end_shard_now INT8,
-  OUT out_payto_uri VARCHAR,
+  OUT out_payto_uri TEXT,
   OUT out_merchant_pub BYTEA
 )
 LANGUAGE plpgsql

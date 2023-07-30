@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION exchange_do_deposit(
   IN in_refund_deadline INT8,
   IN in_wire_deadline INT8,
   IN in_merchant_pub BYTEA,
-  IN in_receiver_wire_account VARCHAR,
+  IN in_receiver_wire_account TEXT,
   IN in_h_payto BYTEA,
   IN in_known_coin_id INT8,
   IN in_coin_pub BYTEA,

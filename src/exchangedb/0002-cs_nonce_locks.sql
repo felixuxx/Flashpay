@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_cs_nonce_locks(
-  partition_suffix VARCHAR DEFAULT NULL
+  partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -60,13 +60,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_cs_nonce_locks(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'cs_nonce_locks';
+  table_name TEXT DEFAULT 'cs_nonce_locks';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

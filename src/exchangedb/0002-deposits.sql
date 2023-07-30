@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_deposits(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits';
+  table_name TEXT DEFAULT 'deposits';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
@@ -99,13 +99,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_deposits(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits';
+  table_name TEXT DEFAULT 'deposits';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -140,7 +140,7 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits';
+  table_name TEXT DEFAULT 'deposits';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
@@ -159,13 +159,13 @@ $$;
 
 
 CREATE FUNCTION create_table_deposits_by_ready(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits_by_ready';
+  table_name TEXT DEFAULT 'deposits_by_ready';
 BEGIN
   PERFORM create_partitioned_table(
   'CREATE TABLE %I'
@@ -188,13 +188,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_deposits_by_ready(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits_by_ready';
+  table_name TEXT DEFAULT 'deposits_by_ready';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -207,13 +207,13 @@ $$;
 
 
 CREATE FUNCTION create_table_deposits_for_matching(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits_for_matching';
+  table_name TEXT DEFAULT 'deposits_for_matching';
 BEGIN
   PERFORM create_partitioned_table(
   'CREATE TABLE %I'
@@ -236,13 +236,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_deposits_for_matching(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'deposits_for_matching';
+  table_name TEXT DEFAULT 'deposits_for_matching';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

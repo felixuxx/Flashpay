@@ -15,13 +15,13 @@
 --
 
 CREATE OR REPLACE FUNCTION create_table_purse_deletion(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_deletion';
+  table_name TEXT DEFAULT 'purse_deletion';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE IF NOT EXISTS %I'
@@ -51,13 +51,13 @@ COMMENT ON FUNCTION create_table_purse_deletion
 
 
 CREATE OR REPLACE FUNCTION constrain_table_purse_deletion(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_deletion';
+  table_name TEXT DEFAULT 'purse_deletion';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -74,7 +74,7 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_requests';
+  table_name TEXT DEFAULT 'purse_requests';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE exchange.' || table_name ||

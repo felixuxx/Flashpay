@@ -526,7 +526,7 @@ transact (
            "SELECT"
            " out_duplicate AS duplicate "
            "FROM exchange_do_batch_reserves_update"
-           " ($1,$2,$3,$4,$5,$6,$7,$8);");
+           " ($1,$2,$3,$4,$5,$6,$7);");
   for (unsigned int i = 0; i<reserves_length; i++)
   {
     if (! rr[i].conflicts)
@@ -580,7 +580,7 @@ transact (
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_reserves_in_insert (
+TEH_PG_reserves_in_insertL (
   void *cls,
   const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
   unsigned int reserves_length,
@@ -619,8 +619,6 @@ TEH_PG_reserves_in_insert (
 }
 
 
-#if 0
-
 /**
  * Closure for our helper_cb()
  */
@@ -644,13 +642,13 @@ struct Context
   /**
    * Set to #GNUNET_SYSERR on failures.
    */
-  struct GNUNET_GenericReturnValue status;
+  enum GNUNET_GenericReturnValue status;
 
   /**
    * Single value (no array) set to true if we need
    * to follow-up with an update.
    */
-  bool *needs_update;
+  bool needs_update;
 };
 
 
@@ -691,23 +689,25 @@ helper_cb (void *cls,
       ctx->status = GNUNET_SYSERR;
       return;
     }
-    *ctx->need_update |= ctx->conflicts[i];
+    ctx->needs_update |= ctx->conflicts[i];
   }
 }
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_reserves_in_insertN (
+TEH_PG_reserves_in_insert (
   void *cls,
   const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
   unsigned int reserves_length,
+  unsigned int batch_size,
   enum GNUNET_DB_QueryStatus *results)
 {
+  (void) batch_size;
   struct PostgresClosure *pg = cls;
   struct TALER_PaytoHashP h_paytos[GNUNET_NZL (reserves_length)];
   char *notify_s[GNUNET_NZL (reserves_length)];
-  struct TALER_ReservePublicKeyP *reserve_pubs[GNUNET_NZL (reserves_length)];
-  struct TALER_Amount *balances[GNUNET_NZL (reserves_length)];
+  struct TALER_ReservePublicKeyP reserve_pubs[GNUNET_NZL (reserves_length)];
+  struct TALER_Amount balances[GNUNET_NZL (reserves_length)];
   struct GNUNET_TIME_Timestamp execution_times[GNUNET_NZL (reserves_length)];
   const char *sender_account_details[GNUNET_NZL (reserves_length)];
   const char *exchange_account_names[GNUNET_NZL (reserves_length)];
@@ -719,8 +719,8 @@ TEH_PG_reserves_in_insertN (
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   struct GNUNET_TIME_Timestamp gc
     = GNUNET_TIME_relative_to_timestamp (pg->legal_reserve_expiration_time);
-  bool needs_update = false;
   enum GNUNET_DB_QueryStatus qs;
+  bool need_update;
 
   for (unsigned int i = 0; i<reserves_length; i++)
   {
@@ -729,8 +729,8 @@ TEH_PG_reserves_in_insertN (
     TALER_payto_hash (reserve->sender_account_details,
                       &h_paytos[i]);
     notify_s[i] = compute_notify_on_reserve (reserve->reserve_pub);
-    reserve_pubs[i] = &reserve->reserve_pub;
-    balances[i] = &reserve->balance;
+    reserve_pubs[i] = *reserve->reserve_pub;
+    balances[i] = *reserve->balance;
     execution_times[i] = reserve->execution_time;
     sender_account_details[i] = reserve->sender_account_details;
     exchange_account_names[i] = reserve->exchange_account_name;
@@ -760,7 +760,7 @@ TEH_PG_reserves_in_insertN (
            "SELECT"
            " transaction_duplicate"
            ",ruuid"
-           "FROM exchange_do_array_reserves_insert"
+           " FROM exchange_do_array_reserves_insert"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
   {
     struct GNUNET_PQ_QueryParam params[] = {
@@ -772,40 +772,44 @@ TEH_PG_reserves_in_insertN (
       GNUNET_PQ_query_param_array_uint64 (reserves_length,
                                           wire_references,
                                           pg->conn),
-      TALER_PQ_query_param_array_amount (reserves_length,
-                                         balances,
-                                         pg->conn),
-      GNUNET_PQ_query_param_array_string (reserves_length,
-                                          exchange_account_names,
-                                          pg->conn),
-      GNUNET_PQ_query_param_array_timestamp (reserves_length,
-                                             execution_times,
-                                             pg->conn),
-      GNUNET_PQ_query_param_array_bytes_same_size_cont_auto (
+      TALER_PQ_query_param_array_amount (
+        reserves_length,
+        balances,
+        pg->conn),
+      GNUNET_PQ_query_param_array_ptrs_string (
+        reserves_length,
+        (const char **) exchange_account_names,
+        pg->conn),
+      GNUNET_PQ_query_param_array_timestamp (
+        reserves_length,
+        execution_times,
+        pg->conn),
+      GNUNET_PQ_query_param_array_auto_from_type (
         reserves_length,
         h_paytos,
-        sizeof (struct GNUNET_PaytoHashP),
         pg->conn),
-      GNUNET_PQ_query_param_array_string (reserves_length,
-                                          sender_account_details,
-                                          pg->conn),
-      GNUNET_PQ_query_param_array_string (reserves_length,
-                                          notify_s,
-                                          pg->conn),
+      GNUNET_PQ_query_param_array_ptrs_string (
+        reserves_length,
+        (const char **) sender_account_details,
+        pg->conn),
+      GNUNET_PQ_query_param_array_ptrs_string (
+        reserves_length,
+        (const char **) notify_s,
+        pg->conn),
       GNUNET_PQ_query_param_end
     };
     struct Context ctx = {
       .reserve_uuids = reserve_uuids,
       .transaction_duplicates = transaction_duplicates,
       .conflicts = conflicts,
-      .needs_update = &needs_update,
+      .needs_update = false,
       .status = GNUNET_OK
     };
 
     qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "reserves_insert_with_array",
                                                params,
-                                               &multi_res,
+                                               &helper_cb,
                                                &ctx);
     if ( (qs < 0) ||
          (GNUNET_OK != ctx.status) )
@@ -815,6 +819,7 @@ TEH_PG_reserves_in_insertN (
                   qs);
       goto finished;
     }
+    need_update = ctx.needs_update;
   }
 
   {
@@ -857,13 +862,13 @@ TEH_PG_reserves_in_insertN (
     {
       bool duplicate;
       struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (reserve_pubs[i]),
+        GNUNET_PQ_query_param_auto_from_type (&reserve_pubs[i]),
         GNUNET_PQ_query_param_timestamp (&reserve_expiration),
-        GNUNET_PQ_query_param_uint64 (&wire_reference[i]),
+        GNUNET_PQ_query_param_uint64 (&wire_references[i]),
         TALER_PQ_query_param_amount (pg->conn,
-                                     balances[i]),
+                                     &balances[i]),
         GNUNET_PQ_query_param_string (exchange_account_names[i]),
-        GNUNET_PQ_query_param_auto_from_type (h_paytos[i]),
+        GNUNET_PQ_query_param_auto_from_type (&h_paytos[i]),
         GNUNET_PQ_query_param_string (notify_s[i]),
         GNUNET_PQ_query_param_end
       };
@@ -894,9 +899,6 @@ TEH_PG_reserves_in_insertN (
 finished:
   GNUNET_PQ_event_do_poll (pg->conn);
   for (unsigned int i = 0; i<reserves_length; i++)
-    GNUNET_free (rrs[i].notify_s);
+    GNUNET_free (notify_s[i]);
   return qs;
 }
-
-
-#endif

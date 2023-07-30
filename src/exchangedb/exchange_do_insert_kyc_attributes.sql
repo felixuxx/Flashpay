@@ -18,16 +18,16 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
   IN in_kyc_prox BYTEA,
-  IN in_provider_section VARCHAR,
+  IN in_provider_section TEXT,
   IN in_birthday INT4,
-  IN in_provider_account_id VARCHAR,
-  IN in_provider_legitimization_id VARCHAR,
+  IN in_provider_account_id TEXT,
+  IN in_provider_legitimization_id TEXT,
   IN in_collection_time_ts INT8,
   IN in_expiration_time INT8,
   IN in_expiration_time_ts INT8,
   IN in_enc_attributes BYTEA,
   IN in_require_aml BOOLEAN,
-  IN in_kyc_completed_notify_s VARCHAR,
+  IN in_kyc_completed_notify_s TEXT,
   OUT out_ok BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -105,5 +105,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, BYTEA, VARCHAR, INT4, VARCHAR, VARCHAR, INT8, INT8, INT8, BYTEA, BOOL, VARCHAR)
+COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, BYTEA, TEXT, INT4, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
   IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';

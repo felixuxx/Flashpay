@@ -16,13 +16,13 @@
 
 
 CREATE OR REPLACE FUNCTION create_table_purse_actions(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_actions';
+  table_name TEXT DEFAULT 'purse_actions';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE IF NOT EXISTS %I'
@@ -84,7 +84,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_actions';
+  table_name TEXT DEFAULT 'purse_actions';
 BEGIN
   -- Create global index
   CREATE INDEX IF NOT EXISTS purse_action_by_target

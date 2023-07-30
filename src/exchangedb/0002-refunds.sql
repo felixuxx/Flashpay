@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_refunds(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'refunds';
+  table_name TEXT DEFAULT 'refunds';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
@@ -58,13 +58,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_refunds (
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'refunds';
+  table_name TEXT DEFAULT 'refunds';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -87,7 +87,7 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'refunds';
+  table_name TEXT DEFAULT 'refunds';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

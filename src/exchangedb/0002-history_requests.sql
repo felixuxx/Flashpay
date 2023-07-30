@@ -16,13 +16,13 @@
 
 
 CREATE FUNCTION create_table_history_requests(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN shard_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'history_requests';
+  table_name TEXT DEFAULT 'history_requests';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I '
@@ -64,13 +64,13 @@ END $$;
 
 
 CREATE FUNCTION constrain_table_history_requests(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  partition_name VARCHAR;
+  partition_name TEXT;
 BEGIN
   partition_name = concat_ws('_', 'history_requests', partition_suffix);
 
@@ -88,7 +88,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'history_requests';
+  table_name TEXT DEFAULT 'history_requests';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

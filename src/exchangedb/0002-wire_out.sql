@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_wire_out(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'wire_out';
+  table_name TEXT DEFAULT 'wire_out';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE IF NOT EXISTS %I'
@@ -58,13 +58,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_wire_out(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'wire_out';
+  table_name TEXT DEFAULT 'wire_out';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

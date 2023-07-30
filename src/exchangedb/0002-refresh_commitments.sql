@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_refresh_commitments(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'refresh_commitments';
+  table_name TEXT DEFAULT 'refresh_commitments';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
@@ -64,13 +64,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_refresh_commitments(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'refresh_commitments';
+  table_name TEXT DEFAULT 'refresh_commitments';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
@@ -94,7 +94,7 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'refresh_commitments';
+  table_name TEXT DEFAULT 'refresh_commitments';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

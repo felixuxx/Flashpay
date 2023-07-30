@@ -36,7 +36,7 @@ COMMENT ON TYPE taler_amount
 
 CREATE TABLE IF NOT EXISTS auditor_exchanges
   (master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)
-  ,exchange_url VARCHAR NOT NULL
+  ,exchange_url TEXT NOT NULL
   );
 COMMENT ON TABLE auditor_exchanges
   IS 'list of the exchanges we are auditing';

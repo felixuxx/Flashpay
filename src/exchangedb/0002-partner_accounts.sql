@@ -16,7 +16,7 @@
 
 
 CREATE TABLE partner_accounts
-  (payto_uri VARCHAR PRIMARY KEY
+  (payto_uri TEXT PRIMARY KEY
   ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
   ,partner_master_sig BYTEA CHECK (LENGTH(partner_master_sig)=64)
   ,last_seen INT8 NOT NULL

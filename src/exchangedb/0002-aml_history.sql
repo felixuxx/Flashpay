@@ -15,13 +15,13 @@
 --
 
 CREATE OR REPLACE FUNCTION create_table_aml_history(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'aml_history';
+  table_name TEXT DEFAULT 'aml_history';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE IF NOT EXISTS %I'
@@ -30,8 +30,8 @@ BEGIN
       ',new_threshold taler_amount NOT NULL DEFAULT(0,0)'
       ',new_status INT4 NOT NULL DEFAULT(0)'
       ',decision_time INT8 NOT NULL DEFAULT(0)'
-      ',justification VARCHAR NOT NULL'
-      ',kyc_requirements VARCHAR'
+      ',justification TEXT NOT NULL'
+      ',kyc_requirements TEXT'
       ',kyc_req_row INT8 NOT NULL DEFAULT(0)'
       ',decider_pub BYTEA CHECK (LENGTH(decider_pub)=32)'
       ',decider_sig BYTEA CHECK (LENGTH(decider_sig)=64)'
@@ -106,13 +106,13 @@ COMMENT ON FUNCTION create_table_aml_history
 
 
 CREATE OR REPLACE FUNCTION constrain_table_aml_history(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'aml_history';
+  table_name TEXT DEFAULT 'aml_history';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

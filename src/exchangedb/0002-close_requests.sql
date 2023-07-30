@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_close_requests(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'close_requests';
+  table_name TEXT DEFAULT 'close_requests';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I '
@@ -31,7 +31,7 @@ BEGIN
       ',reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)'
       ',close taler_amount NOT NULL'
       ',close_fee taler_amount NOT NULL'
-      ',payto_uri VARCHAR NOT NULL'
+      ',payto_uri TEXT NOT NULL'
       ',done BOOL NOT NULL DEFAULT(FALSE)'
       ',PRIMARY KEY (reserve_pub,close_timestamp)'
     ') %s ;'
@@ -72,13 +72,13 @@ END $$;
 
 
 CREATE FUNCTION constrain_table_close_requests(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'close_requests';
+  table_name TEXT DEFAULT 'close_requests';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -105,7 +105,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'close_requests';
+  table_name TEXT DEFAULT 'close_requests';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

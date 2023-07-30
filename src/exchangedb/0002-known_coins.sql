@@ -16,13 +16,13 @@
 
 
 CREATE FUNCTION create_table_known_coins(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR default 'known_coins';
+  table_name TEXT default 'known_coins';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
@@ -77,13 +77,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_known_coins(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR default 'known_coins';
+  table_name TEXT default 'known_coins';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -100,7 +100,7 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR default 'known_coins';
+  table_name TEXT default 'known_coins';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

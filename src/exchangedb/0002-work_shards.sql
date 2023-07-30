@@ -20,7 +20,7 @@ CREATE TABLE work_shards
   ,start_row INT8 NOT NULL
   ,end_row INT8 NOT NULL
   ,completed BOOLEAN NOT NULL DEFAULT FALSE
-  ,job_name VARCHAR NOT NULL
+  ,job_name TEXT NOT NULL
   ,PRIMARY KEY (job_name, start_row)
   );
 COMMENT ON TABLE work_shards

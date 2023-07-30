@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_update(
   IN in_expiration_date INT8,
   IN in_wire_ref INT8,
   IN in_credit taler_amount,
-  IN in_exchange_account_name VARCHAR,
+  IN in_exchange_account_name TEXT,
   IN in_wire_source_h_payto BYTEA,
   IN in_notify text,
   OUT out_duplicate BOOLEAN)

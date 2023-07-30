@@ -20,10 +20,10 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_in_insert(
   IN in_reserve_pub BYTEA,
   IN in_wire_ref INT8,
   IN in_credit taler_amount,
-  IN in_exchange_account_name VARCHAR,
+  IN in_exchange_account_name TEXT,
   IN in_execution_date INT8,
   IN in_wire_source_h_payto BYTEA,
-  IN in_payto_uri VARCHAR,
+  IN in_payto_uri TEXT,
   IN in_notify TEXT,
   OUT transaction_duplicate0 BOOLEAN,
   OUT ruuid0 INT8)
@@ -86,18 +86,18 @@ CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in0_reserve_pub BYTEA,
   IN in0_wire_ref INT8,
   IN in0_credit taler_amount,
-  IN in0_exchange_account_name VARCHAR,
+  IN in0_exchange_account_name TEXT,
   IN in0_execution_date INT8,
   IN in0_wire_source_h_payto BYTEA,
-  IN in0_payto_uri VARCHAR,
+  IN in0_payto_uri TEXT,
   IN in0_notify TEXT,
   IN in1_reserve_pub BYTEA,
   IN in1_wire_ref INT8,
   IN in1_credit taler_amount,
-  IN in1_exchange_account_name VARCHAR,
+  IN in1_exchange_account_name TEXT,
   IN in1_execution_date INT8,
   IN in1_wire_source_h_payto BYTEA,
-  IN in1_payto_uri VARCHAR,
+  IN in1_payto_uri TEXT,
   IN in1_notify TEXT,
   OUT transaction_duplicate0 BOOLEAN,
   OUT transaction_duplicate1 BOOLEAN,
@@ -192,8 +192,7 @@ BEGIN
       ,in0_execution_date),
       (in1_reserve_pub
       ,in1_wire_ref
-      ,in1_credit.val
-      ,in1_credit.frac
+      ,in1_credit
       ,in1_exchange_account_name
       ,in1_wire_source_h_payto
       ,in1_execution_date)
@@ -247,34 +246,34 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in0_reserve_pub BYTEA,
   IN in0_wire_ref INT8,
   IN in0_credit taler_amount,
-  IN in0_exchange_account_name VARCHAR,
+  IN in0_exchange_account_name TEXT,
   IN in0_execution_date INT8,
   IN in0_wire_source_h_payto BYTEA,
-  IN in0_payto_uri VARCHAR,
+  IN in0_payto_uri TEXT,
   IN in0_notify TEXT,
   IN in1_reserve_pub BYTEA,
   IN in1_wire_ref INT8,
   IN in1_credit taler_amount,
-  IN in1_exchange_account_name VARCHAR,
+  IN in1_exchange_account_name TEXT,
   IN in1_execution_date INT8,
   IN in1_wire_source_h_payto BYTEA,
-  IN in1_payto_uri VARCHAR,
+  IN in1_payto_uri TEXT,
   IN in1_notify TEXT,
   IN in2_reserve_pub BYTEA,
   IN in2_wire_ref INT8,
   IN in2_credit taler_amount,
-  IN in2_exchange_account_name VARCHAR,
+  IN in2_exchange_account_name TEXT,
   IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,
-  IN in2_payto_uri VARCHAR,
+  IN in2_payto_uri TEXT,
   IN in2_notify TEXT,
   IN in3_reserve_pub BYTEA,
   IN in3_wire_ref INT8,
   IN in3_credit taler_amount,
-  IN in3_exchange_account_name VARCHAR,
+  IN in3_exchange_account_name TEXT,
   IN in3_execution_date INT8,
   IN in3_wire_source_h_payto BYTEA,
-  IN in3_payto_uri VARCHAR,
+  IN in3_payto_uri TEXT,
   IN in3_notify TEXT,
   OUT transaction_duplicate0 BOOLEAN,
   OUT transaction_duplicate1 BOOLEAN,
@@ -403,22 +402,19 @@ BEGIN
       ,in0_execution_date),
       (in1_reserve_pub
       ,in1_wire_ref
-      ,in1_credit.val
-      ,in1_credit.frac
+      ,in1_credit
       ,in1_exchange_account_name
       ,in1_wire_source_h_payto
       ,in1_execution_date),
       (in2_reserve_pub
       ,in2_wire_ref
-      ,in2_credit.val
-      ,in2_credit.frac
+      ,in2_credit
       ,in2_exchange_account_name
       ,in2_wire_source_h_payto
       ,in2_execution_date),
       (in3_reserve_pub
       ,in3_wire_ref
-      ,in3_credit.val
-      ,in3_credit.frac
+      ,in3_credit
       ,in3_exchange_account_name
       ,in3_wire_source_h_payto
       ,in3_execution_date)
@@ -494,66 +490,66 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in0_reserve_pub BYTEA,
   IN in0_wire_ref INT8,
   IN in0_credit taler_amount,
-  IN in0_exchange_account_name VARCHAR,
+  IN in0_exchange_account_name TEXT,
   IN in0_execution_date INT8,
   IN in0_wire_source_h_payto BYTEA,
-  IN in0_payto_uri VARCHAR,
+  IN in0_payto_uri TEXT,
   IN in0_notify TEXT,
   IN in1_reserve_pub BYTEA,
   IN in1_wire_ref INT8,
   IN in1_credit taler_amount,
-  IN in1_exchange_account_name VARCHAR,
+  IN in1_exchange_account_name TEXT,
   IN in1_execution_date INT8,
   IN in1_wire_source_h_payto BYTEA,
-  IN in1_payto_uri VARCHAR,
+  IN in1_payto_uri TEXT,
   IN in1_notify TEXT,
   IN in2_reserve_pub BYTEA,
   IN in2_wire_ref INT8,
   IN in2_credit taler_amount,
-  IN in2_exchange_account_name VARCHAR,
+  IN in2_exchange_account_name TEXT,
   IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,
-  IN in2_payto_uri VARCHAR,
+  IN in2_payto_uri TEXT,
   IN in2_notify TEXT,
   IN in3_reserve_pub BYTEA,
   IN in3_wire_ref INT8,
   IN in3_credit taler_amount,
-  IN in3_exchange_account_name VARCHAR,
+  IN in3_exchange_account_name TEXT,
   IN in3_execution_date INT8,
   IN in3_wire_source_h_payto BYTEA,
-  IN in3_payto_uri VARCHAR,
+  IN in3_payto_uri TEXT,
   IN in3_notify TEXT,
   IN in4_reserve_pub BYTEA,
   IN in4_wire_ref INT8,
   IN in4_credit taler_amount,
-  IN in4_exchange_account_name VARCHAR,
+  IN in4_exchange_account_name TEXT,
   IN in4_execution_date INT8,
   IN in4_wire_source_h_payto BYTEA,
-  IN in4_payto_uri VARCHAR,
+  IN in4_payto_uri TEXT,
   IN in4_notify TEXT,
   IN in5_reserve_pub BYTEA,
   IN in5_wire_ref INT8,
   IN in5_credit taler_amount,
-  IN in5_exchange_account_name VARCHAR,
+  IN in5_exchange_account_name TEXT,
   IN in5_execution_date INT8,
   IN in5_wire_source_h_payto BYTEA,
-  IN in5_payto_uri VARCHAR,
+  IN in5_payto_uri TEXT,
   IN in5_notify TEXT,
   IN in6_reserve_pub BYTEA,
   IN in6_wire_ref INT8,
   IN in6_credit taler_amount,
-  IN in6_exchange_account_name VARCHAR,
+  IN in6_exchange_account_name TEXT,
   IN in6_execution_date INT8,
   IN in6_wire_source_h_payto BYTEA,
-  IN in6_payto_uri VARCHAR,
+  IN in6_payto_uri TEXT,
   IN in6_notify TEXT,
   IN in7_reserve_pub BYTEA,
   IN in7_wire_ref INT8,
   IN in7_credit taler_amount,
-  IN in7_exchange_account_name VARCHAR,
+  IN in7_exchange_account_name TEXT,
   IN in7_execution_date INT8,
   IN in7_wire_source_h_payto BYTEA,
-  IN in7_payto_uri VARCHAR,
+  IN in7_payto_uri TEXT,
   IN in7_notify TEXT,
   OUT transaction_duplicate0 BOOLEAN,
   OUT transaction_duplicate1 BOOLEAN,
@@ -757,50 +753,43 @@ BEGIN
       ,in0_execution_date),
       (in1_reserve_pub
       ,in1_wire_ref
-      ,in1_credit.val
-      ,in1_credit.frac
+      ,in1_credit
       ,in1_exchange_account_name
       ,in1_wire_source_h_payto
       ,in1_execution_date),
       (in2_reserve_pub
       ,in2_wire_ref
-      ,in2_credit.val
-      ,in2_credit.frac
+      ,in2_credit
       ,in2_exchange_account_name
       ,in2_wire_source_h_payto
       ,in2_execution_date),
       (in3_reserve_pub
       ,in3_wire_ref
-      ,in3_credit.val
-      ,in3_credit.frac
+      ,in3_credit
       ,in3_exchange_account_name
       ,in3_wire_source_h_payto
       ,in3_execution_date),
       (in4_reserve_pub
       ,in4_wire_ref
-      ,in4_credit.val
-      ,in4_credit.frac
+      ,in4_credit
       ,in4_exchange_account_name
       ,in4_wire_source_h_payto
       ,in4_execution_date),
       (in5_reserve_pub
       ,in5_wire_ref
-      ,in5_credit.val
-      ,in5_credit.frac
+      ,in5_credit
       ,in5_exchange_account_name
       ,in5_wire_source_h_payto
       ,in5_execution_date),
       (in6_reserve_pub
       ,in6_wire_ref
-      ,in6_credit.val
-      ,in6_credit.frac
+      ,in6_credit
       ,in6_exchange_account_name
       ,in6_wire_source_h_payto
       ,in6_execution_date),
       (in7_reserve_pub
       ,in7_wire_ref
-      ,in7_credit.val
-      ,in7_credit.frac
+      ,in7_credit
       ,in7_exchange_account_name
       ,in7_wire_source_h_payto
       ,in7_execution_date)
@@ -920,10 +909,10 @@ CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN ina_reserve_pub BYTEA[],
   IN ina_wire_ref INT8[],
   IN ina_credit taler_amount[],
-  IN ina_exchange_account_name VARCHAR[],
+  IN ina_exchange_account_name TEXT[],
   IN ina_execution_date INT8[],
   IN ina_wire_source_h_payto BYTEA[],
-  IN ina_payto_uri VARCHAR[],
+  IN ina_payto_uri TEXT[],
   IN ina_notify TEXT[])
 RETURNS SETOF exchange_do_array_reserve_insert_return_type
 LANGUAGE plpgsql

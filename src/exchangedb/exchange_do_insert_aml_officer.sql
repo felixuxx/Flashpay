@@ -17,7 +17,7 @@
 CREATE OR REPLACE FUNCTION exchange_do_insert_aml_officer(
   IN in_decider_pub BYTEA,
   IN in_master_sig BYTEA,
-  IN in_decider_name VARCHAR,
+  IN in_decider_name TEXT,
   IN in_is_active BOOLEAN,
   IN in_read_only BOOLEAN,
   IN in_last_change INT8,
@@ -70,5 +70,5 @@ UPDATE exchange.aml_staff
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_officer(BYTEA, BYTEA, VARCHAR, BOOL, BOOL, INT8)
+COMMENT ON FUNCTION exchange_do_insert_aml_officer(BYTEA, BYTEA, TEXT, BOOL, BOOL, INT8)
   IS 'Inserts or updates AML staff record, making sure the update is more recent than the previous change';

@@ -20,7 +20,7 @@ CREATE UNLOGGED TABLE revolving_work_shards
   ,start_row INT4 NOT NULL
   ,end_row INT4 NOT NULL
   ,active BOOLEAN NOT NULL DEFAULT FALSE
-  ,job_name VARCHAR NOT NULL
+  ,job_name TEXT NOT NULL
   ,PRIMARY KEY (job_name, start_row)
   );
 COMMENT ON TABLE revolving_work_shards

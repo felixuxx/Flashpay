@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_merge_sig BYTEA,
   IN in_merge_timestamp INT8,
   IN in_reserve_sig BYTEA,
-  IN in_partner_url VARCHAR,
+  IN in_partner_url TEXT,
   IN in_reserve_pub BYTEA,
   IN in_wallet_h_payto BYTEA,
   IN in_expiration_date INT8,
@@ -233,5 +233,5 @@ RETURN;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA, INT8)
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, TEXT, BYTEA, BYTEA, INT8)
   IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';

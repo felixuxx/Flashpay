@@ -16,7 +16,7 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_insert_or_update_policy_details(
   IN in_policy_hash_code BYTEA,
-  IN in_policy_json VARCHAR,
+  IN in_policy_json TEXT,
   IN in_deadline INT8,
   IN in_commitment taler_amount,
   IN in_accumulated_total taler_amount,

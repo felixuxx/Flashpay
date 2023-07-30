@@ -16,13 +16,13 @@
 
 
 CREATE FUNCTION create_table_purse_decision(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_decision';
+  table_name TEXT DEFAULT 'purse_decision';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I '
@@ -51,13 +51,13 @@ END
 $$;
 
 CREATE FUNCTION constrain_table_purse_decision(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'purse_decision';
+  table_name TEXT DEFAULT 'purse_decision';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

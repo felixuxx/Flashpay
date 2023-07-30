@@ -16,13 +16,13 @@
 
 
 CREATE FUNCTION create_table_contracts(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'contracts';
+  table_name TEXT DEFAULT 'contracts';
 BEGIN
   PERFORM create_partitioned_table(
      'CREATE TABLE %I '
@@ -72,13 +72,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_contracts(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'contracts';
+  table_name TEXT DEFAULT 'contracts';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

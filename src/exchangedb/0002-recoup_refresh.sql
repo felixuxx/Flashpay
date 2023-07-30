@@ -16,13 +16,13 @@
 
 
 CREATE FUNCTION create_table_recoup_refresh(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup_refresh';
+  table_name TEXT DEFAULT 'recoup_refresh';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
@@ -73,13 +73,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_recoup_refresh(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup_refresh';
+  table_name TEXT DEFAULT 'recoup_refresh';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   -- FIXME: any query using this index will be slow. Materialize index or change query?
@@ -108,7 +108,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup_refresh';
+  table_name TEXT DEFAULT 'recoup_refresh';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

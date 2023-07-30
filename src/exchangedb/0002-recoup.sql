@@ -15,13 +15,13 @@
 --
 
 CREATE FUNCTION create_table_recoup(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup';
+  table_name TEXT DEFAULT 'recoup';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
@@ -71,13 +71,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_recoup(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup';
+  table_name TEXT DEFAULT 'recoup';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
@@ -99,7 +99,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup';
+  table_name TEXT DEFAULT 'recoup';
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
@@ -115,13 +115,13 @@ $$;
 
 
 CREATE FUNCTION create_table_recoup_by_reserve(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup_by_reserve';
+  table_name TEXT DEFAULT 'recoup_by_reserve';
 BEGIN
   PERFORM create_partitioned_table(
   'CREATE TABLE %I'
@@ -142,13 +142,13 @@ $$;
 
 
 CREATE FUNCTION constrain_table_recoup_by_reserve(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'recoup_by_reserve';
+  table_name TEXT DEFAULT 'recoup_by_reserve';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (

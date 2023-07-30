@@ -15,13 +15,13 @@
 --
 
 CREATE OR REPLACE FUNCTION create_table_aml_status(
-  IN partition_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'aml_status';
+  table_name TEXT DEFAULT 'aml_status';
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE IF NOT EXISTS %I'
@@ -65,13 +65,13 @@ COMMENT ON FUNCTION create_table_aml_status
 
 
 CREATE OR REPLACE FUNCTION constrain_table_aml_status(
-  IN partition_suffix VARCHAR
+  IN partition_suffix TEXT
 )
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  table_name VARCHAR DEFAULT 'aml_status';
+  table_name TEXT DEFAULT 'aml_status';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
