@@ -94,7 +94,15 @@ TEH_PG_add_policy_fulfillment_proof (
       GNUNET_PQ_result_spec_end
     };
 
-    // FIXME: where do we prepare this statement!??
+    PREPARE (pg,
+             "insert_proof_into_policy_fulfillments",
+             "INSERT INTO policy_fulfillments"
+             "(fulfillment_timestamp"
+             ",fulfillment_proof"
+             ",h_fulfillment_proof"
+             ",policy_hash_codes"
+             ") VALUES ($1, $2, $3, $4)"
+             " ON CONFLICT DO NOTHING;");
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "insert_proof_into_policy_fulfillments",
                                                    params,
@@ -124,7 +132,17 @@ TEH_PG_add_policy_fulfillment_proof (
         GNUNET_PQ_query_param_end
       };
 
-      // FIXME: where do we prepare this statement!??
+      // FIXME-Oec: review if this is the intended logic here!
+      PREPARE (pg,
+               "update_policy_details",
+               "UPDATE policy_details SET"
+               " deadline=$2"
+               ",commitment=$3"
+               ",accumulated_total=$4"
+               ",fee=$5"
+               ",transferable=$6"
+               ",fulfillment_state=$7"
+               " WHERE policy_hash_code=$1;");
       qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                "update_policy_details",
                                                params);
