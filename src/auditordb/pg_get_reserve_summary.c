@@ -65,20 +65,13 @@ TAH_PG_get_reserve_summary (void *cls,
   PREPARE (pg,
            "auditor_reserve_balance_select",
            "SELECT"
-           " reserve_balance_val"
-           ",reserve_balance_frac"
-           ",reserve_loss_val"
-           ",reserve_loss_frac"
-           ",withdraw_fee_balance_val"
-           ",withdraw_fee_balance_frac"
-           ",close_fee_balance_val"
-           ",close_fee_balance_frac"
-           ",purse_fee_balance_val"
-           ",purse_fee_balance_frac"
-           ",open_fee_balance_val"
-           ",open_fee_balance_frac"
-           ",history_fee_balance_val"
-           ",history_fee_balance_frac"
+           " reserve_balance"
+           ",reserve_loss"
+           ",withdraw_fee_balance"
+           ",close_fee_balance"
+           ",purse_fee_balance"
+           ",open_fee_balance"
+           ",history_fee_balance"
            " FROM auditor_reserve_balance"
            " WHERE master_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

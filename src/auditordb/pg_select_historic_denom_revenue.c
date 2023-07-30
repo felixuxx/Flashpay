@@ -134,10 +134,8 @@ TAH_PG_select_historic_denom_revenue (
            "SELECT"
            " denom_pub_hash"
            ",revenue_timestamp"
-           ",revenue_balance_val"
-           ",revenue_balance_frac"
-           ",loss_balance_val"
-           ",loss_balance_frac"
+           ",revenue_balance"
+           ",loss_balance"
            " FROM auditor_historic_denomination_revenue"
            " WHERE master_pub=$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

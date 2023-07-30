@@ -35,8 +35,10 @@ TAH_PG_update_predicted_result (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (balance),
-    TALER_PQ_query_param_amount (drained),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       drained),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -44,11 +46,9 @@ TAH_PG_update_predicted_result (
   PREPARE (pg,
            "auditor_predicted_result_update",
            "UPDATE auditor_predicted_result SET"
-           " balance_val=$1"
-           ",balance_frac=$2"
-           ",drained_val=$3"
-           ",drained_frac=$4"
-           " WHERE master_pub=$5;");
+           " balance=$1"
+           ",drained=$2"
+           " WHERE master_pub=$3;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_predicted_result_update",
                                              params);

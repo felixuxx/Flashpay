@@ -34,15 +34,24 @@ TAH_PG_update_balance_summary (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (&dfb->total_escrowed),
-    TALER_PQ_query_param_amount (&dfb->deposit_fee_balance),
-    TALER_PQ_query_param_amount (&dfb->melt_fee_balance),
-    TALER_PQ_query_param_amount (&dfb->refund_fee_balance),
-    TALER_PQ_query_param_amount (&dfb->purse_fee_balance),
-    TALER_PQ_query_param_amount (&dfb->open_deposit_fee_balance),
-    TALER_PQ_query_param_amount (&dfb->risk),
-    TALER_PQ_query_param_amount (&dfb->loss),
-    TALER_PQ_query_param_amount (&dfb->irregular_loss),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->total_escrowed),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->deposit_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->melt_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->refund_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->purse_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->open_deposit_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->risk),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->loss),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dfb->irregular_loss),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -50,25 +59,16 @@ TAH_PG_update_balance_summary (
   PREPARE (pg,
            "auditor_balance_summary_update",
            "UPDATE auditor_balance_summary SET"
-           " denom_balance_val=$1"
-           ",denom_balance_frac=$2"
-           ",deposit_fee_balance_val=$3"
-           ",deposit_fee_balance_frac=$4"
-           ",melt_fee_balance_val=$5"
-           ",melt_fee_balance_frac=$6"
-           ",refund_fee_balance_val=$7"
-           ",refund_fee_balance_frac=$8"
-           ",purse_fee_balance_val=$9"
-           ",purse_fee_balance_frac=$10"
-           ",open_deposit_fee_balance_val=$11"
-           ",open_deposit_fee_balance_frac=$12"
-           ",risk_val=$13"
-           ",risk_frac=$14"
-           ",loss_val=$15"
-           ",loss_frac=$16"
-           ",irregular_loss_val=$17"
-           ",irregular_loss_frac=$18"
-           " WHERE master_pub=$19;");
+           " denom_balance=$1"
+           ",deposit_fee_balance=$2"
+           ",melt_fee_balance=$3"
+           ",refund_fee_balance=$4"
+           ",purse_fee_balance=$5"
+           ",open_deposit_fee_balance=$6"
+           ",risk=$7"
+           ",loss=$8"
+           ",irregular_loss=$9"
+           " WHERE master_pub=$10;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_balance_summary_update",
                                              params);

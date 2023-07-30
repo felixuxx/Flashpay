@@ -35,7 +35,8 @@ TAH_PG_insert_purse_summary (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (&sum->balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &sum->balance),
     GNUNET_PQ_query_param_uint64 (&sum->open_purses),
     GNUNET_PQ_query_param_end
   };
@@ -44,10 +45,9 @@ TAH_PG_insert_purse_summary (
            "auditor_purse_summary_insert",
            "INSERT INTO auditor_purse_summary "
            "(master_pub"
-           ",balance_val"
-           ",balance_frac"
+           ",balance"
            ",open_purses"
-           ") VALUES ($1,$2,$3,$4);");
+           ") VALUES ($1,$2,$3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_purse_summary_insert",
                                              params);

@@ -48,8 +48,7 @@ TAH_PG_get_purse_summary (void *cls,
            "auditor_get_purse_summary",
            "SELECT"
            " open_purses"
-           ",balance_val"
-           ",balance_frac"
+           ",balance"
            " FROM auditor_purse_summary"
            " WHERE master_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

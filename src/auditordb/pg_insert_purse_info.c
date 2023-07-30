@@ -38,7 +38,8 @@ TAH_PG_insert_purse_info (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
     GNUNET_PQ_query_param_end
   };
@@ -48,10 +49,9 @@ TAH_PG_insert_purse_info (
            "INSERT INTO auditor_purses "
            "(purse_pub"
            ",master_pub"
-           ",target_val"
-           ",target_frac"
+           ",target"
            ",expiration_date"
-           ") VALUES ($1,$2,$3,$4,$5);");
+           ") VALUES ($1,$2,$3,$4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_purses_insert",
                                              params);

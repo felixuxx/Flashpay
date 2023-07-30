@@ -38,7 +38,8 @@ TAH_PG_insert_historic_reserve_revenue (
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_timestamp (&start_time),
     GNUNET_PQ_query_param_timestamp (&end_time),
-    TALER_PQ_query_param_amount (reserve_profits),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       reserve_profits),
     GNUNET_PQ_query_param_end
   };
 
@@ -48,9 +49,8 @@ TAH_PG_insert_historic_reserve_revenue (
            "(master_pub"
            ",start_date"
            ",end_date"
-           ",reserve_profits_val"
-           ",reserve_profits_frac"
-           ") VALUES ($1,$2,$3,$4,$5);");
+           ",reserve_profits"
+           ") VALUES ($1,$2,$3,$4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_historic_reserve_summary_insert",
                                              params);

@@ -39,13 +39,20 @@ TAH_PG_insert_reserve_info (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (&rfb->reserve_balance),
-    TALER_PQ_query_param_amount (&rfb->reserve_loss),
-    TALER_PQ_query_param_amount (&rfb->withdraw_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->close_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->purse_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->open_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->history_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->reserve_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->reserve_loss),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->withdraw_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->close_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->purse_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->open_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->history_fee_balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
     NULL == origin_account
     ? GNUNET_PQ_query_param_null ()
@@ -58,26 +65,18 @@ TAH_PG_insert_reserve_info (
            "INSERT INTO auditor_reserves "
            "(reserve_pub"
            ",master_pub"
-           ",reserve_balance_val"
-           ",reserve_balance_frac"
-           ",reserve_loss_val"
-           ",reserve_loss_frac"
-           ",withdraw_fee_balance_val"
-           ",withdraw_fee_balance_frac"
-           ",close_fee_balance_val"
-           ",close_fee_balance_frac"
-           ",purse_fee_balance_val"
-           ",purse_fee_balance_frac"
-           ",open_fee_balance_val"
-           ",open_fee_balance_frac"
-           ",history_fee_balance_val"
-           ",history_fee_balance_frac"
+           ",reserve_balance"
+           ",reserve_loss"
+           ",withdraw_fee_balance"
+           ",close_fee_balance"
+           ",purse_fee_balance"
+           ",open_fee_balance"
+           ",history_fee_balance"
            ",expiration_date"
            ",origin_account"
 
            ") VALUES "
-           "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18);");
-
+           "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserves_insert",
                                              params);

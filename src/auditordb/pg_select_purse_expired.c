@@ -133,8 +133,7 @@ TAH_PG_select_purse_expired (
            "SELECT"
            " purse_pub"
            ",expiration_date"
-           ",balance_val"
-           ",balance_frac"
+           ",balance"
            " FROM auditor_purses"
            " WHERE master_pub=$1"
            " AND expiration_date<$2;");

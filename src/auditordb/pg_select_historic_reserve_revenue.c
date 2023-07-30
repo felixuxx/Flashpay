@@ -129,8 +129,7 @@ TAH_PG_select_historic_reserve_revenue (
            "SELECT"
            " start_date"
            ",end_date"
-           ",reserve_profits_val"
-           ",reserve_profits_frac"
+           ",reserve_profits"
            " FROM auditor_historic_reserve_summary"
            " WHERE master_pub=$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

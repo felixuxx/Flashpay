@@ -38,15 +38,15 @@ TAH_PG_update_purse_info (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       balance),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "auditor_purses_update",
            "UPDATE auditor_purses SET "
-           " balance_val=$3"
-           ",balance_frac=$4"
+           " balance=$3"
            " WHERE purse_pub=$1"
            "   AND master_pub=$2;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,

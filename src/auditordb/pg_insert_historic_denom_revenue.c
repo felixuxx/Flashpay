@@ -40,8 +40,10 @@ TAH_PG_insert_historic_denom_revenue (
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_timestamp (&revenue_timestamp),
-    TALER_PQ_query_param_amount (revenue_balance),
-    TALER_PQ_query_param_amount (loss_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       revenue_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       loss_balance),
     GNUNET_PQ_query_param_end
   };
 
@@ -51,11 +53,9 @@ TAH_PG_insert_historic_denom_revenue (
            "(master_pub"
            ",denom_pub_hash"
            ",revenue_timestamp"
-           ",revenue_balance_val"
-           ",revenue_balance_frac"
-           ",loss_balance_val"
-           ",loss_balance_frac"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7);");
+           ",revenue_balance"
+           ",loss_balance"
+           ") VALUES ($1,$2,$3,$4,$5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_historic_denomination_revenue_insert",
                                              params);

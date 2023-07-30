@@ -40,7 +40,8 @@ TAH_PG_insert_deposit_confirmation (
     GNUNET_PQ_query_param_timestamp (&dc->exchange_timestamp),
     GNUNET_PQ_query_param_timestamp (&dc->wire_deadline),
     GNUNET_PQ_query_param_timestamp (&dc->refund_deadline),
-    TALER_PQ_query_param_amount (&dc->amount_without_fee),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dc->amount_without_fee),
     GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&dc->merchant),
     GNUNET_PQ_query_param_auto_from_type (&dc->exchange_sig),
@@ -59,14 +60,13 @@ TAH_PG_insert_deposit_confirmation (
            ",exchange_timestamp"
            ",wire_deadline"
            ",refund_deadline"
-           ",amount_without_fee_val"
-           ",amount_without_fee_frac"
+           ",amount_without_fee"
            ",coin_pub"
            ",merchant_pub"
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"                  /* master_sig could be normalized... */
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);");
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_deposit_confirmation_insert",
                                              params);

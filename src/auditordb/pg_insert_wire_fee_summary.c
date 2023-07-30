@@ -35,7 +35,8 @@ TAH_PG_insert_wire_fee_summary (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (wire_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       wire_fee_balance),
     GNUNET_PQ_query_param_end
   };
 
@@ -43,9 +44,8 @@ TAH_PG_insert_wire_fee_summary (
            "auditor_wire_fee_balance_insert",
            "INSERT INTO auditor_wire_fee_balance"
            "(master_pub"
-           ",wire_fee_balance_val"
-           ",wire_fee_balance_frac"
-           ") VALUES ($1,$2,$3)");
+           ",wire_fee_balance"
+           ") VALUES ($1,$2)");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_wire_fee_balance_insert",
                                              params);

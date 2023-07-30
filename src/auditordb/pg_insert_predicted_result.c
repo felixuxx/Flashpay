@@ -36,8 +36,10 @@ TAH_PG_insert_predicted_result (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (balance),
-    TALER_PQ_query_param_amount (drained),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       drained),
     GNUNET_PQ_query_param_end
   };
 
@@ -45,11 +47,9 @@ TAH_PG_insert_predicted_result (
            "auditor_predicted_result_insert",
            "INSERT INTO auditor_predicted_result"
            "(master_pub"
-           ",balance_val"
-           ",balance_frac"
-           ",drained_val"
-           ",drained_frac"
-           ") VALUES ($1,$2,$3,$4,$5);");
+           ",balance"
+           ",drained"
+           ") VALUES ($1,$2,$3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_predicted_result_insert",
                                              params);

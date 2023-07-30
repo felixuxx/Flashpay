@@ -54,8 +54,7 @@ TAH_PG_get_purse_info (
            "auditor_get_purse_info",
            "SELECT"
            " expiration_date"
-           ",balance_val"
-           ",balance_frac"
+           ",balance"
            " FROM auditor_purses"
            " WHERE purse_pub=$1"
            "   AND master_pub=$2;");

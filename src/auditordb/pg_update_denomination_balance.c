@@ -34,11 +34,15 @@ TAH_PG_update_denomination_balance (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (&dcd->denom_balance),
-    TALER_PQ_query_param_amount (&dcd->denom_loss),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dcd->denom_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dcd->denom_loss),
     GNUNET_PQ_query_param_uint64 (&dcd->num_issued),
-    TALER_PQ_query_param_amount (&dcd->denom_risk),
-    TALER_PQ_query_param_amount (&dcd->recoup_loss),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dcd->denom_risk),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &dcd->recoup_loss),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
@@ -46,16 +50,12 @@ TAH_PG_update_denomination_balance (
   PREPARE (pg,
            "auditor_denomination_pending_update",
            "UPDATE auditor_denomination_pending SET"
-           " denom_balance_val=$1"
-           ",denom_balance_frac=$2"
-           ",denom_loss_val=$3"
-           ",denom_loss_frac=$4"
-           ",num_issued=$5"
-           ",denom_risk_val=$6"
-           ",denom_risk_frac=$7"
-           ",recoup_loss_val=$8"
-           ",recoup_loss_frac=$9"
-           " WHERE denom_pub_hash=$10");
+           " denom_balance=$1"
+           ",denom_loss=$2"
+           ",num_issued=$3"
+           ",denom_risk=$4"
+           ",recoup_loss=$5"
+           " WHERE denom_pub_hash=$6");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_denomination_pending_update",
                                              params);

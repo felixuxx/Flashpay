@@ -48,10 +48,8 @@ TAH_PG_get_predicted_balance (void *cls,
   PREPARE (pg,
            "auditor_predicted_result_select",
            "SELECT"
-           " balance_val"
-           ",balance_frac"
-           ",drained_val"
-           ",drained_frac"
+           " balance"
+           ",drained"
            " FROM auditor_predicted_result"
            " WHERE master_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

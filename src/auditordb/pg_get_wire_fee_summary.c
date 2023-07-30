@@ -53,8 +53,7 @@ TAH_PG_get_wire_fee_summary (void *cls,
   PREPARE (pg,
            "auditor_wire_fee_balance_select",
            "SELECT"
-           " wire_fee_balance_val"
-           ",wire_fee_balance_frac"
+           " wire_fee_balance"
            " FROM auditor_wire_fee_balance"
            " WHERE master_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

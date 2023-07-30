@@ -34,13 +34,20 @@ TAH_PG_update_reserve_summary (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (&rfb->reserve_balance),
-    TALER_PQ_query_param_amount (&rfb->reserve_loss),
-    TALER_PQ_query_param_amount (&rfb->withdraw_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->close_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->purse_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->open_fee_balance),
-    TALER_PQ_query_param_amount (&rfb->history_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->reserve_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->reserve_loss),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->withdraw_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->close_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->purse_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->open_fee_balance),
+    TALER_PQ_query_param_amount_tuple (pg->conn,
+                                       &rfb->history_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -48,21 +55,14 @@ TAH_PG_update_reserve_summary (
   PREPARE (pg,
            "auditor_reserve_balance_update",
            "UPDATE auditor_reserve_balance SET"
-           " reserve_balance_val=$1"
-           ",reserve_balance_frac=$2"
-           ",reserve_loss_val=$3"
-           ",reserve_loss_frac=$4"
-           ",withdraw_fee_balance_val=$5"
-           ",withdraw_fee_balance_frac=$6"
-           ",close_fee_balance_val=$7"
-           ",close_fee_balance_frac=$8"
-           ",purse_fee_balance_val=$9"
-           ",purse_fee_balance_frac=$10"
-           ",open_fee_balance_val=$11"
-           ",open_fee_balance_frac=$12"
-           ",history_fee_balance_val=$13"
-           ",history_fee_balance_frac=$14"
-           " WHERE master_pub=$15;");
+           " reserve_balance=$1"
+           ",reserve_loss=$2"
+           ",withdraw_fee_balance=$3"
+           ",close_fee_balance=$4"
+           ",purse_fee_balance=$5"
+           ",open_fee_balance=$6"
+           ",history_fee_balance=$7"
+           " WHERE master_pub=$8;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserve_balance_update",
                                              params);

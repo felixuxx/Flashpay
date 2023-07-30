@@ -54,15 +54,11 @@ TAH_PG_get_denomination_balance (
   PREPARE (pg,
            "auditor_denomination_pending_select",
            "SELECT"
-           " denom_balance_val"
-           ",denom_balance_frac"
-           ",denom_loss_val"
-           ",denom_loss_frac"
+           " denom_balance"
+           ",denom_loss"
            ",num_issued"
-           ",denom_risk_val"
-           ",denom_risk_frac"
-           ",recoup_loss_val"
-           ",recoup_loss_frac"
+           ",denom_risk"
+           ",recoup_loss"
            " FROM auditor_denomination_pending"
            " WHERE denom_pub_hash=$1");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
