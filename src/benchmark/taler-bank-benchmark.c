@@ -38,6 +38,7 @@
 #include "taler_testing_lib.h"
 #include "taler_error_codes.h"
 
+#define SHARD_SIZE "1024"
 
 /**
  * Credentials to use for the benchmark.
@@ -73,11 +74,6 @@ static unsigned int howmany_reserves = 1;
  * How many clients we want to create.
  */
 static unsigned int howmany_clients = 1;
-
-/**
- * How many bank worker threads do we want to create.
- */
-static unsigned int howmany_threads;
 
 /**
  * How many wirewatch processes do we want to create.
@@ -339,6 +335,7 @@ parallel_benchmark (void)
                                             "taler-exchange-wirewatch",
                                             "-c", cfg_filename,
                                             "-a", exchange_bank_section,
+                                            "-S", SHARD_SIZE,
                                             (NULL != loglev) ? "-L" : NULL,
                                             loglev,
                                             NULL);
@@ -376,6 +373,7 @@ parallel_benchmark (void)
                                             "taler-exchange-wirewatch",
                                             "-c", cfg_filename,
                                             "-a", exchange_bank_section,
+                                            "-S", SHARD_SIZE,
                                             "-t",
                                             (NULL != loglev) ? "-L" : NULL,
                                             loglev,
@@ -405,6 +403,7 @@ parallel_benchmark (void)
                                             "taler-exchange-wirewatch",
                                             "-c", cfg_filename,
                                             "-a", exchange_bank_section,
+                                            "-S", SHARD_SIZE,
                                             "-t",
                                             (NULL != loglev) ? "-L" : NULL,
                                             loglev,
@@ -451,11 +450,6 @@ main (int argc,
                                "NPROCS",
                                "How many client processes we should run",
                                &howmany_clients),
-    GNUNET_GETOPT_option_uint ('P',
-                               "service-parallelism",
-                               "NTHREADS",
-                               "How many service threads we should create",
-                               &howmany_threads),
     GNUNET_GETOPT_option_uint ('r',
                                "reserves",
                                "NRESERVES",

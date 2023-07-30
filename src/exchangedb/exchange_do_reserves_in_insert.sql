@@ -922,47 +922,47 @@ DECLARE
   conflict BOOL;
   dup BOOL;
   uuid INT8;
-  i RECORD;
+  i INT4;
+  ini_reserve_pub BYTEA;
+  ini_wire_ref INT8;
+  ini_credit taler_amount;
+  ini_exchange_account_name TEXT;
+  ini_execution_date INT8;
+  ini_wire_source_h_payto BYTEA;
+  ini_payto_uri TEXT;
+  ini_notify TEXT;
 BEGIN
 
-  INSERT INTO wire_targets
-    (wire_target_h_payto
-    ,payto_uri)
-    SELECT
-      wire_source_h_payto
-     ,payto_uri
-    FROM
-      UNNEST (ina_wire_source_h_payto) AS wire_source_h_payto
-     ,UNNEST (ina_payto_uri) AS payto_uri
-  ON CONFLICT DO NOTHING;
-
-  FOR i IN
-    SELECT
-      reserve_pub
-     ,wire_ref
-     ,credit
-     ,exchange_account_name
-     ,execution_date
-     ,wire_source_h_payto
-     ,payto_uri
-     ,notify
-    FROM
-      UNNEST (ina_reserve_pub) AS reserve_pub
-     ,UNNEST (ina_wire_ref) AS wire_ref
-     ,UNNEST (ina_credit) AS credit
-     ,UNNEST (ina_exchange_account_name) AS exchange_account_name
-     ,UNNEST (ina_execution_date) AS execution_date
-     ,UNNEST (ina_wire_source_h_payto) AS wire_source_h_payto
-     ,UNNEST (ina_notify) AS notify
+  FOR i IN 1..array_length(ina_reserve_pub,1)
   LOOP
+    ini_reserve_pub = ina_reserve_pub[i];
+    ini_wire_ref = ina_wire_ref[i];
+    ini_credit = ina_credit[i];
+    ini_exchange_account_name = ina_exchange_account_name[i];
+    ini_execution_date = ina_execution_date[i];
+    ini_wire_source_h_payto = ina_wire_source_h_payto[i];
+    ini_payto_uri = ina_payto_uri[i];
+    ini_notify = ina_notify[i];
+
+--    RAISE WARNING 'Starting loop on %', ini_notify;
+
+    INSERT INTO wire_targets
+      (wire_target_h_payto
+      ,payto_uri
+      ) VALUES (
+        ini_wire_source_h_payto
+       ,ini_payto_uri
+      )
+    ON CONFLICT DO NOTHING;
+
     INSERT INTO reserves
       (reserve_pub
       ,current_balance
       ,expiration_date
       ,gc_date
     ) VALUES (
-      i.reserve_pub
-     ,i.credit
+      ini_reserve_pub
+     ,ini_credit
      ,in_reserve_expiration
      ,in_gc_date
     )
@@ -979,12 +979,12 @@ BEGIN
       ,wire_source_h_payto
       ,execution_date
     ) VALUES (
-      i.reserve_pub
-     ,i.wire_reference
-     ,i.credit
-     ,i.exchange_account_section
-     ,i.wire_source_h_payto
-     ,i.execution_date
+      ini_reserve_pub
+     ,ini_wire_ref
+     ,ini_credit
+     ,ini_exchange_account_name
+     ,ini_wire_source_h_payto
+     ,ini_execution_date
     )
     ON CONFLICT DO NOTHING;
 
@@ -1001,12 +1001,11 @@ BEGIN
       THEN
         EXECUTE FORMAT (
           'NOTIFY %s'
-          ,i.notify);
+          ,ini_notify);
       END IF;
       dup = FALSE;
     END IF;
     RETURN NEXT (dup,uuid);
   END LOOP;
-
   RETURN;
 END $$;
