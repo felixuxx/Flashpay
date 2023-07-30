@@ -1311,7 +1311,6 @@ run (void *cls)
             plugin->reserves_in_insert (plugin->cls,
                                         &reserve,
                                         1,
-                                        1,
                                         &qsr));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             qsr);
@@ -1337,7 +1336,6 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_in_insert (plugin->cls,
                                         &reserve,
-                                        1,
                                         1,
                                         &qsr));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=

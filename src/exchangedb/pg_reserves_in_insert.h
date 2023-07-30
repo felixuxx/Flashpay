@@ -33,7 +33,6 @@
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserves array of reserves to insert
  * @param reserves_length length of the @a reserves array
- * @param batch_size how many inserts to do in one go
  * @param[out] results set to query status per reserve, must be of length @a reserves_length
  * @return transaction status code
  */
@@ -42,7 +41,6 @@ TEH_PG_reserves_in_insert (
   void *cls,
   const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
   unsigned int reserves_length,
-  unsigned int batch_size,
   enum GNUNET_DB_QueryStatus *results);
 
 

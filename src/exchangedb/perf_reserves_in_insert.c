@@ -78,8 +78,9 @@ run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   const uint32_t num_partitions = 10;
-  static unsigned int batches[] = {1, 1, 2, 3, 4, 16, 32 };
-  const unsigned int lcm = 3 * 32;
+  static unsigned int batches[] = {1, 1, 2, 3, 4, 16, 32, 64, 128, 256, 512,
+                                   1024, 1024, 512, 256, 128, 64, 32,
+                                   16, 4, 3, 2, 1 };
   struct GNUNET_TIME_Relative times[sizeof (batches) / sizeof(*batches)];
   unsigned long long sqrs[sizeof (batches) / sizeof(*batches)];
 
@@ -109,7 +110,7 @@ run (void *cls)
          i< sizeof(batches) / sizeof(*batches);
          i++)
     {
-      unsigned int batch_size = batches[i];
+      unsigned int lcm = batches[i];
       struct TALER_Amount value;
       struct GNUNET_TIME_Absolute now;
       struct GNUNET_TIME_Timestamp ts;
@@ -141,7 +142,6 @@ run (void *cls)
                 plugin->reserves_in_insert (plugin->cls,
                                             reserves,
                                             lcm,
-                                            batch_size,
                                             results));
       }
       duration = GNUNET_TIME_absolute_get_duration (now);
@@ -159,6 +159,7 @@ run (void *cls)
        i< sizeof(batches) / sizeof(*batches);
        i++)
   {
+    unsigned int lcm = batches[i];
     struct GNUNET_TIME_Relative avg;
     double avg_dbl;
     double variance;
@@ -168,10 +169,10 @@ run (void *cls)
     avg_dbl = avg.rel_value_us;
     variance = sqrs[i] - (avg_dbl * avg_dbl * ROUNDS);
     fprintf (stdout,
-             "Batch[%2u]: %8llu ± %6.0f\n",
+             "Batch[%4u]: %8llu us/entry ± %6.0f\n",
              batches[i],
-             (unsigned long long) avg.rel_value_us,
-             sqrt (variance / (ROUNDS - 1)));
+             (unsigned long long) avg.rel_value_us / lcm,
+             sqrt (variance / lcm / (ROUNDS - 1)));
   }
   result = 0;
 drop:
