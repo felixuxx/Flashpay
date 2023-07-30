@@ -1625,7 +1625,7 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
       json_t *out_authorization_sig;
 
       /**
-       * Maximum age commited
+       * Maximum age committed
        */
       uint8_t max_age;
 

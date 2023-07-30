@@ -1,5 +1,5 @@
 --------------------------------------------------------------
--- Taler amounts and helper functiosn
+-- Taler amounts and helper functions
 -------------------------------------------------------------
 
 CREATE OR REPLACE PROCEDURE amount_normalize(

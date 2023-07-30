@@ -166,7 +166,7 @@ struct AgeWithdrawState
  * code is expected and store the exchange signature in the state.
  *
  * @param cls Closure of type `struct AgeWithdrawState *`
- * @param response Repsonse details
+ * @param response Response details
  */
 static void
 age_withdraw_cb (
@@ -338,7 +338,7 @@ age_withdraw_run (
  * pending operation thereof
  *
  * @param cls Closure of type `struct AgeWithdrawState`
- * @param cmd The command beeing freed.
+ * @param cmd The command being freed.
  */
 static void
 age_withdraw_cleanup (
