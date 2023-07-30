@@ -30,28 +30,6 @@
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_util.h"
 
-/**
- * Generate query parameter for a currency, consisting of the three
- * components "value", "fraction" and "currency" in this order. The
- * types must be a 64-bit integer, 32-bit integer and a
- * #TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
- *
- * @param x pointer to the query parameter to pass
- */
-struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x);
-
-
-/**
- * Generate query parameter for an amount, consisting of the two
- * components "value" and "fraction" in this order. The
- * types must be a 64-bit integer and a 32-bit integer
- * respectively. The currency is dropped.
- *
- * @param x pointer to the query parameter to pass
- */
-struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_amount (const struct TALER_Amount *x);
 
 /**
  * Generate query parameter (as record tuple) for an amount, consisting
@@ -181,32 +159,6 @@ TALER_PQ_query_param_array_amount (
   const struct TALER_Amount *amounts,
   struct GNUNET_PQ_Context *db);
 
-/**
- * Currency amount expected.
- *
- * @param name name of the field in the table
- * @param currency currency to use for @a amount
- * @param[out] amount where to store the result
- * @return array entry for the result specification to use
- */
-struct GNUNET_PQ_ResultSpec
-TALER_PQ_result_spec_amount_nbo (const char *name,
-                                 const char *currency,
-                                 struct TALER_AmountNBO *amount);
-
-
-/**
- * Currency amount expected.
- *
- * @param name name of the field in the table
- * @param currency currency to use for @a amount
- * @param[out] amount where to store the result
- * @return array entry for the result specification to use
- */
-struct GNUNET_PQ_ResultSpec
-TALER_PQ_result_spec_amount (const char *name,
-                             const char *currency,
-                             struct TALER_Amount *amount);
 
 /**
  * Currency amount expected, from a record-field of (DB) taler_amount type

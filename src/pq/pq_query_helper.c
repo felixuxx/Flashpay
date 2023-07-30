@@ -29,128 +29,6 @@
 
 
 /**
- * Function called to convert input argument into SQL parameters.
- *
- * @param cls closure
- * @param data pointer to input argument, here a `struct TALER_AmountNBO`
- * @param data_len number of bytes in @a data (if applicable)
- * @param[out] param_values SQL data to set
- * @param[out] param_lengths SQL length data to set
- * @param[out] param_formats SQL format data to set
- * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
- * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
- * @param scratch_length number of entries left in @a scratch
- * @return -1 on error, number of offsets used in @a scratch otherwise
- */
-static int
-qconv_amount_nbo (void *cls,
-                  const void *data,
-                  size_t data_len,
-                  void *param_values[],
-                  int param_lengths[],
-                  int param_formats[],
-                  unsigned int param_length,
-                  void *scratch[],
-                  unsigned int scratch_length)
-{
-  const struct TALER_AmountNBO *amount = data;
-  unsigned int off = 0;
-
-  (void) cls;
-  (void) scratch;
-  (void) scratch_length;
-  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
-  GNUNET_assert (2 == param_length);
-  param_values[off] = (void *) &amount->value;
-  param_lengths[off] = sizeof (amount->value);
-  param_formats[off] = 1;
-  off++;
-  param_values[off] = (void *) &amount->fraction;
-  param_lengths[off] = sizeof (amount->fraction);
-  param_formats[off] = 1;
-  return 0;
-}
-
-
-struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
-{
-  struct GNUNET_PQ_QueryParam res = {
-    .conv = &qconv_amount_nbo,
-    .data = x,
-    .size = sizeof (*x),
-    .num_params = 2
-  };
-
-  return res;
-}
-
-
-/**
- * Function called to convert input argument into SQL parameters.
- *
- * @param cls closure
- * @param data pointer to input argument, here a `struct TALER_Amount`
- * @param data_len number of bytes in @a data (if applicable)
- * @param[out] param_values SQL data to set
- * @param[out] param_lengths SQL length data to set
- * @param[out] param_formats SQL format data to set
- * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
- * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
- * @param scratch_length number of entries left in @a scratch
- * @return -1 on error, number of offsets used in @a scratch otherwise
- */
-static int
-qconv_amount (void *cls,
-              const void *data,
-              size_t data_len,
-              void *param_values[],
-              int param_lengths[],
-              int param_formats[],
-              unsigned int param_length,
-              void *scratch[],
-              unsigned int scratch_length)
-{
-  const struct TALER_Amount *amount_hbo = data;
-  struct TALER_AmountNBO *amount;
-
-  (void) cls;
-  (void) scratch;
-  (void) scratch_length;
-  GNUNET_assert (2 == param_length);
-  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
-  amount = GNUNET_new (struct TALER_AmountNBO);
-  scratch[0] = amount;
-  TALER_amount_hton (amount,
-                     amount_hbo);
-  qconv_amount_nbo (cls,
-                    amount,
-                    sizeof (struct TALER_AmountNBO),
-                    param_values,
-                    param_lengths,
-                    param_formats,
-                    param_length,
-                    &scratch[1],
-                    scratch_length - 1);
-  return 1;
-}
-
-
-struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_amount (const struct TALER_Amount *x)
-{
-  struct GNUNET_PQ_QueryParam res = {
-    .conv = &qconv_amount,
-    .data = x,
-    .size = sizeof (*x),
-    .num_params = 2
-  };
-
-  return res;
-}
-
-
-/**
  * Function called to convert input amount into SQL parameter as tuple.
  *
  * @param cls closure
@@ -185,33 +63,34 @@ qconv_amount_tuple (void *cls,
   GNUNET_assert (1 <= scratch_length);
   GNUNET_assert (sizeof (struct TALER_Amount) == data_len);
   GNUNET_static_assert (sizeof(uint32_t) == sizeof(Oid));
-
   {
     char *out;
-    Oid oid_v, oid_f;
+    Oid oid_v;
+    Oid oid_f;
+
     GNUNET_assert (GNUNET_OK ==
-                   GNUNET_PQ_get_oid_by_name (db, "int8", &oid_v));
+                   GNUNET_PQ_get_oid_by_name (db,
+                                              "int8",
+                                              &oid_v));
     GNUNET_assert (GNUNET_OK ==
-                   GNUNET_PQ_get_oid_by_name (db, "int4", &oid_f));
+                   GNUNET_PQ_get_oid_by_name (db,
+                                              "int4",
+                                              &oid_f));
 
     {
-      struct TALER_PQ_Amount_P d = MAKE_TALER_PQ_AMOUNT_P (db,
-                                                           amount,
-                                                           oid_v,
-                                                           oid_f);
-
+      struct TALER_PQ_Amount_P d
+        = MAKE_TALER_PQ_AMOUNT_P (db,
+                                  amount,
+                                  oid_v,
+                                  oid_f);
       sz = sizeof(uint32_t); /* number of elements in tuple */
       sz += sizeof(d);
-
       out = GNUNET_malloc (sz);
       scratch[0] = out;
-
       *(uint32_t *) out = htonl (2);
       out += sizeof(uint32_t);
-
       *(struct TALER_PQ_Amount_P*) out = d;
     }
-
   }
 
   param_values[0] = scratch[0];
