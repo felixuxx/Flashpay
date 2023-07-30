@@ -68,10 +68,6 @@ TEH_PG_do_batch_withdraw (
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));
-
-
-  /* Used in #postgres_do_batch_withdraw() to
-        update the reserve balance and check its status */
   PREPARE (pg,
            "call_batch_withdraw",
            "SELECT "

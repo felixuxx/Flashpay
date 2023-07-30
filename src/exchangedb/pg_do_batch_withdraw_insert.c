@@ -25,6 +25,7 @@
 #include "pg_do_batch_withdraw_insert.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_do_batch_withdraw_insert (
   void *cls,
@@ -60,9 +61,7 @@ TEH_PG_do_batch_withdraw_insert (
                                 nonce_reuse),
     GNUNET_PQ_result_spec_end
   };
-  /* Used in #postgres_do_batch_withdraw_insert() to store
-        the signature of a blinded coin with the blinded coin's
-        details. */
+
   PREPARE (pg,
            "call_batch_withdraw_insert",
            "SELECT "
