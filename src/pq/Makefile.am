@@ -16,6 +16,7 @@ libtalerpq_la_SOURCES = \
 libtalerpq_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la  \
   -lgnunetutil -ljansson \
+  -lgnunetpq \
   -lpq \
   $(XLIB)
 libtalerpq_la_LDFLAGS = \
