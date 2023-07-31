@@ -49,7 +49,7 @@ EXTRA_DIST = \
   taler-bank-manage-testing \
   taler-nexus-prepare \
   taler-terms-generator.in \
-  gana-update.sh \
+  gana-generate.sh \
   gana/gnu-taler-error-codes/registry.rec \
   gana/gnu-taler-error-codes/Makefile \
   $(terms_DATA) \
