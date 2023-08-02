@@ -2,7 +2,7 @@
 -- Taler amounts and helper functions
 -------------------------------------------------------------
 
-CREATE OR REPLACE PROCEDURE amount_normalize(
+CREATE OR REPLACE FUNCTION amount_normalize(
     IN amount taler_amount
   ,OUT normalized taler_amount
 )
@@ -13,10 +13,10 @@ BEGIN
   normalized.frac = amount.frac % 100000000;
 END $$;
 
-COMMENT ON PROCEDURE amount_normalize
+COMMENT ON FUNCTION amount_normalize
   IS 'Returns the normalized amount by adding to the .val the value of (.frac / 100000000) and removing the modulus 100000000 from .frac.';
 
-CREATE OR REPLACE PROCEDURE amount_add(
+CREATE OR REPLACE FUNCTION amount_add(
    IN a taler_amount
   ,IN b taler_amount
   ,OUT sum taler_amount
@@ -33,7 +33,7 @@ BEGIN
   END IF;
 END $$;
 
-COMMENT ON PROCEDURE amount_add
+COMMENT ON FUNCTION amount_add
   IS 'Returns the normalized sum of two amounts. It raises an exception when the resulting .val is larger than 2^52';
 
 CREATE OR REPLACE FUNCTION amount_left_minus_right(
