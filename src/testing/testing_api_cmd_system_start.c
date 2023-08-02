@@ -282,18 +282,6 @@ system_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (as->reader);
     as->reader = NULL;
   }
-  if (NULL != as->pipe_in)
-  {
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_DISK_pipe_close (as->pipe_in));
-    as->pipe_in = NULL;
-  }
-  if (NULL != as->pipe_out)
-  {
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_DISK_pipe_close (as->pipe_out));
-    as->pipe_out = NULL;
-  }
   if (NULL != as->system_proc)
   {
     if (as->active)
@@ -305,6 +293,18 @@ system_cleanup (void *cls,
     }
     GNUNET_OS_process_destroy (as->system_proc);
     as->system_proc = NULL;
+  }
+  if (NULL != as->pipe_in)
+  {
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_DISK_pipe_close (as->pipe_in));
+    as->pipe_in = NULL;
+  }
+  if (NULL != as->pipe_out)
+  {
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_DISK_pipe_close (as->pipe_out));
+    as->pipe_out = NULL;
   }
 
   for (unsigned int i = 0; NULL != as->args[i]; i++)
