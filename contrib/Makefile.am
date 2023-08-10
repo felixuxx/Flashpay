@@ -30,6 +30,8 @@ rdata_DATA = \
   auditor-report.tex.j2
 
 bin_SCRIPTS = \
+  taler-auditor-dbconfig \
+  taler-exchange-dbconfig \
   taler-terms-generator \
   taler-bank-manage-testing \
   taler-nexus-prepare
