@@ -150,6 +150,27 @@ struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
 struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
+ * Absolute STEFAN parameter.
+ */
+struct TALER_Amount TEH_stefan_abs;
+
+/**
+ * Logarithmic STEFAN parameter.
+ */
+struct TALER_Amount TEH_stefan_log;
+
+/**
+ * Linear STEFAN parameter.
+ */
+struct TALER_Amount TEH_stefan_lin;
+
+/**
+ * Default number of fractional digits to render
+ * amounts with.
+ */
+unsigned int TEH_currency_fraction_digits;
+
+/**
  * Our currency.
  */
 char *TEH_currency;
@@ -1925,6 +1946,25 @@ exchange_serve_process_config (void)
                                "CURRENCY");
     return GNUNET_SYSERR;
   }
+  {
+    unsigned long long cfd;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
+                                               "exchange",
+                                               "CURRENCY_FRACTION_DIGITS",
+                                               &cfd))
+      cfd = 0;
+    if (cfd > 8)
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler",
+                                 "CURRENCY_FRACTION_DIGITS",
+                                 "Value must be below 8");
+      return GNUNET_SYSERR;
+    }
+    TEH_currency_fraction_digits = (unsigned int) cfd;
+  }
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
                                "exchange",
@@ -1935,6 +1975,37 @@ exchange_serve_process_config (void)
                 "Need amount in section `exchange' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "STEFAN_ABS",
+                               &TEH_stefan_abs))
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TEH_currency,
+                                          &TEH_stefan_abs));
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "STEFAN_LOG",
+                               &TEH_stefan_log))
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TEH_currency,
+                                          &TEH_stefan_log));
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "STEFAN_LIN",
+                               &TEH_stefan_lin))
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TEH_currency,
+                                          &TEH_stefan_lin));
+  }
+
   if (0 != strcmp (TEH_currency,
                    TEH_aml_threshold.currency))
   {

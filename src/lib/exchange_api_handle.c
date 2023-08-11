@@ -155,12 +155,14 @@ free_fees (struct TALER_EXCHANGE_WireFeesByMethod *wfm,
  * Parse wire @a fees and return array.
  *
  * @param master_pub master public key to use to check signatures
+ * @param currency currency amounts are expected in
  * @param fees json AggregateTransferFee to parse
  * @param[out] fees_len set to length of returned array
  * @return NULL on error
  */
 static struct TALER_EXCHANGE_WireFeesByMethod *
 parse_fees (const struct TALER_MasterPublicKeyP *master_pub,
+            const char *currency,
             const json_t *fees,
             unsigned int *fees_len)
 {
@@ -187,10 +189,12 @@ parse_fees (const struct TALER_MasterPublicKeyP *master_pub,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("sig",
                                      &wa->master_sig),
-        TALER_JSON_spec_amount_any ("wire_fee",
-                                    &wa->fees.wire),
-        TALER_JSON_spec_amount_any ("closing_fee",
-                                    &wa->fees.closing),
+        TALER_JSON_spec_amount ("wire_fee",
+                                currency,
+                                &wa->fees.wire),
+        TALER_JSON_spec_amount ("closing_fee",
+                                currency,
+                                &wa->fees.closing),
         GNUNET_JSON_spec_timestamp ("start_date",
                                     &wa->start_date),
         GNUNET_JSON_spec_timestamp ("end_date",
@@ -741,6 +745,9 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_JSON_spec_string (
         "currency",
         &currency),
+      GNUNET_JSON_spec_uint32 (
+        "currency_fraction_digits",
+        &key_data->currency_fraction_digits),
       GNUNET_JSON_spec_string (
         "asset_type",
         &asset_type),
@@ -787,6 +794,29 @@ decode_keys_json (const json_t *resp_obj,
             GNUNET_JSON_parse (resp_obj,
                                (check_sig) ? mspec : &mspec[2],
                                NULL, NULL));
+    {
+      struct GNUNET_JSON_Specification sspec[] = {
+        TALER_JSON_spec_amount (
+          "stefan_abs",
+          currency,
+          &key_data->stefan_abs),
+        TALER_JSON_spec_amount (
+          "stefan_log",
+          currency,
+          &key_data->stefan_log),
+        TALER_JSON_spec_amount (
+          "stefan_lin",
+          currency,
+          &key_data->stefan_lin),
+        GNUNET_JSON_spec_end ()
+      };
+
+      EXITIF (GNUNET_OK !=
+              GNUNET_JSON_parse (resp_obj,
+                                 sspec,
+                                 NULL, NULL));
+    }
+
     key_data->currency = GNUNET_strdup (currency);
     key_data->asset_type = GNUNET_strdup (asset_type);
     if (! no_extensions)
@@ -862,6 +892,7 @@ decode_keys_json (const json_t *resp_obj,
 
   /* Parse wire accounts */
   key_data->fees = parse_fees (&key_data->master_pub,
+                               key_data->currency,
                                fees,
                                &key_data->fees_len);
   EXITIF (NULL == key_data->fees);

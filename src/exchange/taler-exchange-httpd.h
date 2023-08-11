@@ -98,6 +98,27 @@ extern struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
 extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
+ * Absolute STEFAN parameter.
+ */
+extern struct TALER_Amount TEH_stefan_abs;
+
+/**
+ * Logarithmic STEFAN parameter.
+ */
+extern struct TALER_Amount TEH_stefan_log;
+
+/**
+ * Linear STEFAN parameter.
+ */
+extern struct TALER_Amount TEH_stefan_lin;
+
+/**
+ * Default number of fractional digits to render
+ * amounts with.
+ */
+extern unsigned int TEH_currency_fraction_digits;
+
+/**
  * Our currency.
  */
 extern char *TEH_currency;

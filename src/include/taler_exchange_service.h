@@ -517,6 +517,27 @@ struct TALER_EXCHANGE_Keys
   struct TALER_AgeMask age_mask;
 
   /**
+   * Absolute STEFAN parameter.
+   */
+  struct TALER_Amount stefan_abs;
+
+  /**
+   * Logarithmic STEFAN parameter.
+   */
+  struct TALER_Amount stefan_log;
+
+  /**
+   * Linear STEFAN parameter.
+   */
+  struct TALER_Amount stefan_lin;
+
+  /**
+   * Default number of fractional digits to render
+   * amounts with.
+   */
+  uint32_t currency_fraction_digits;
+
+  /**
    * Length of @e accounts array.
    */
   unsigned int accounts_len;
