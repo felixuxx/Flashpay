@@ -129,7 +129,7 @@ while getopts ':a:C:hi:l:o:p:t:' OPTION; do
                 a4|letter)
                 ;;
                 *)
-                    echo "Error: Paper format '$PAPER' invalid (use 'a4' or 'letter')"
+                    echo "Error: Paper format '$PAPER' invalid (use 'a4' or 'letter')" 1>&2
                     exit 1
                     ;;
             esac
@@ -138,21 +138,22 @@ while getopts ':a:C:hi:l:o:p:t:' OPTION; do
             TITLE="$OPTARG"
             ;;
         ?)
-        exit_fail "Unrecognized command line option"
+        echo "Unrecognized command line option" 1>&2
+        exit 1
         ;;
     esac
 done
 
 if ! which sphinx-build > /dev/null
 then
-    echo "Command 'sphinx-build' not found, but required. Please install sphinx."
+    echo "Command 'sphinx-build' not found, but required. Please install sphinx." 1>&2
     exit 1
 fi
 
 BUILDDIR=$(mktemp -d /tmp/taler-terms-XXXXXX)
 if [ ! -f "${VERSION}.rst" ]
 then
-    echo "Error: File '${VERSION}.rst' not found. Please check '-i' option."
+    echo "Error: File '${VERSION}.rst' not found. Please check '-i' option." 1>&2
     exit 1
 fi
 
@@ -161,17 +162,17 @@ cp "${VERSION}.rst" "${BUILDDIR}/"
 if [ -z ${TITLE+x} ]
 then
     TITLE=$(head -n1 "${VERSION}.rst")
-    echo "Title automatically set to '$TITLE'"
+    echo "Title automatically set to '$TITLE'" 1>&2
 fi
 
 if [ -n "${ADD_LANGUAGE+x}" ]
 then
     if echo "${ADD_LANGUAGE}" | grep -e '..' > /dev/null
     then
-        echo "Error: Invalid language '${ADD_LANGUAGE}'. Two characters (en, de, fr, ...) expected."
+        echo "Error: Invalid language '${ADD_LANGUAGE}'. Two characters (en, de, fr, ...) expected." 1>&2
         exit 1
     fi
-    echo "Adding language files for translations to '${ADD_LANGUAGE}'"
+    echo "Adding language files for translations to '${ADD_LANGUAGE}'" 1>&2
     make_config "${ADD_LANGUAGE}"
     sphinx-build \
         -b gettext \
@@ -194,21 +195,21 @@ then
            "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po"
     fi
     rm "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
-    echo "Done"
+    echo "Done" 1>&2
     exit 0
 fi
 
 for d in en $(ls -d locale/?? 2> /dev/null || true)
 do
     LANGUAGE=$(basename "$d")
-    echo "Generating files at '$OUTPUT' for ETag '$VERSION' and language '${LANGUAGE}' in '${BUILDDIR}':"
+    echo "Generating files at '$OUTPUT' for ETag '$VERSION' and language '${LANGUAGE}' in '${BUILDDIR}':" 1>&2
 
     make_config "$LANGUAGE"
     mkdir -p "${OUTPUT}/${LANGUAGE}/"
 
     LBUILD="sphinx-build -D language=${LANGUAGE} -d ${BUILDDIR}/.doctrees"
 
-    echo "$VERSION XML ($LANGUAGE)..."
+    echo "$VERSION XML ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b xml \
@@ -217,7 +218,7 @@ do
         &> "${BUILDDIR}/xml-sphinx.log"
     mv "${BUILDDIR}/xml/${VERSION}.xml" "${OUTPUT}/${LANGUAGE}/${VERSION}.xml"
 
-    echo "$VERSION TXT ($LANGUAGE)..."
+    echo "$VERSION TXT ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b text \
@@ -227,7 +228,7 @@ do
     mv "${BUILDDIR}/txt/${VERSION}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION}.txt"
     cp "${OUTPUT}/${LANGUAGE}/${VERSION}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION}.md"
 
-    echo "$VERSION HTML ($LANGUAGE)..."
+    echo "$VERSION HTML ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b html \
@@ -238,7 +239,7 @@ do
         -o "${OUTPUT}/${LANGUAGE}/${VERSION}.html" \
         "${BUILDDIR}/html/${VERSION}.html"
 
-    echo "$VERSION EPUB ($LANGUAGE)..."
+    echo "$VERSION EPUB ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b epub \
@@ -247,7 +248,7 @@ do
         &> "$BUILDDIR/epub-sphinx.log"
     mv "${BUILDDIR}/epub/${VERSION}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION}.epub"
 
-    echo "$VERSION PDF ($LANGUAGE)..."
+    echo "$VERSION PDF ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b latex \
@@ -262,5 +263,5 @@ do
     mv "${BUILDDIR}/pdf/${VERSION}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION}.pdf"
 done
 
-echo "Done"
+echo "Done" 1>&2
 exit 0

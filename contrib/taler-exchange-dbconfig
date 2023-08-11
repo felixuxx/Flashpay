@@ -31,6 +31,7 @@ while getopts ':hn:rsu:' OPTION; do
         h)
             echo 'Supported options:'
             echo "  -c FILENAME  -- write configuration to FILENAME (default: $CFGFILE)"
+            echo "  -h           -- print this help text"
             echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
             echo "  -r           -- reset database (dangerous)"
             echo "  -s           -- skip database initialization"
