@@ -194,7 +194,7 @@ then
         mv "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot" \
            "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po"
     fi
-    rm "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
+    rm -f "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
     echo "Done" 1>&2
     exit 0
 fi
