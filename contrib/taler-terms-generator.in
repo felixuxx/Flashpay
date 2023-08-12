@@ -167,7 +167,7 @@ fi
 
 if [ -n "${ADD_LANGUAGE+x}" ]
 then
-    if echo "${ADD_LANGUAGE}" | grep -e '..' > /dev/null
+    if ! echo "${ADD_LANGUAGE}" | grep -e '^..$' > /dev/null
     then
         echo "Error: Invalid language '${ADD_LANGUAGE}'. Two characters (en, de, fr, ...) expected." 1>&2
         exit 1

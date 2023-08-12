@@ -1261,8 +1261,11 @@ i18n_cleaner (void *cls,
   struct I18nContext *ctx = cls;
 
   (void) spec;
-  GNUNET_free (ctx->lp);
-  GNUNET_free (ctx);
+  if (NULL != ctx)
+  {
+    GNUNET_free (ctx->lp);
+    GNUNET_free (ctx);
+  }
 }
 
 
@@ -1282,8 +1285,9 @@ TALER_JSON_spec_i18n_string (const char *name,
     .size_ptr = NULL
   };
 
-  ctx->lp = (NULL != language_pattern) ? GNUNET_strdup (language_pattern) :
-            NULL;
+  ctx->lp = (NULL != language_pattern)
+    ? GNUNET_strdup (language_pattern)
+    : NULL;
   ctx->field = name;
   *strptr = NULL;
   return ret;
