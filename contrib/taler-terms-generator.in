@@ -177,7 +177,7 @@ then
     sphinx-build \
         -b gettext \
         -D language="${ADD_LANGUAGE}" \
-        -d "{BUILDDIR}/.doctrees" \
+        -d "${BUILDDIR}/.doctrees" \
         "${BUILDDIR}" \
         "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/" \
         &> "${BUILDDIR}/add-language.log"
@@ -234,7 +234,7 @@ do
         -b html \
         "${BUILDDIR}" \
         "${BUILDDIR}/html" \
-        &> "$BUILDDIR/html-sphinx.log"
+        &> "${BUILDDIR}/html-sphinx.log"
     htmlark \
         -o "${OUTPUT}/${LANGUAGE}/${VERSION}.html" \
         "${BUILDDIR}/html/${VERSION}.html"
@@ -245,7 +245,7 @@ do
         -b epub \
         "${BUILDDIR}" \
         "${BUILDDIR}/epub" \
-        &> "$BUILDDIR/epub-sphinx.log"
+        &> "${BUILDDIR}/epub-sphinx.log"
     mv "${BUILDDIR}/epub/${VERSION}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION}.epub"
 
     echo "$VERSION PDF ($LANGUAGE)..." 1>&2
@@ -255,11 +255,11 @@ do
         -D latex_paper_size="${PAPER}" \
         "${BUILDDIR}" \
         "${BUILDDIR}/pdf" \
-        &> "$BUILDDIR/pdf-sphinx.log"
+        &> "${BUILDDIR}/pdf-sphinx.log"
     make \
         -C "${BUILDDIR}/pdf" \
         all-pdf \
-        &> "$BUILDDIR/pdf-latex.log"
+        &> "${BUILDDIR}/pdf-latex.log"
     mv "${BUILDDIR}/pdf/${VERSION}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION}.pdf"
 done
 
