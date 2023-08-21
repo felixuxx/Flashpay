@@ -25,6 +25,151 @@
 
 
 /**
+ * Extract an amount from a tuple including the currency from a Postgres
+ * database @a result at row @a row.
+ *
+ * @param cls closure; not used
+ * @param result where to extract data from
+ * @param row row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_NO if at least one result was NULL
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field)
+ */
+static enum GNUNET_GenericReturnValue
+extract_amount_currency_tuple (void *cls,
+                               PGresult *result,
+                               int row,
+                               const char *fname,
+                               size_t *dst_size,
+                               void *dst)
+{
+  struct TALER_Amount *r_amount = dst;
+  int col;
+
+  (void) cls;
+  if (sizeof (struct TALER_Amount) != *dst_size)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* Set return value to invalid in case we don't finish */
+  memset (r_amount,
+          0,
+          sizeof (struct TALER_Amount));
+  col = PQfnumber (result,
+                   fname);
+  if (col < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Field `%s' does not exist in result\n",
+                fname);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+                   row,
+                   col))
+  {
+    return GNUNET_NO;
+  }
+
+  /* Parse the tuple */
+  {
+    char *in;
+    uint32_t num;
+    struct TALER_PQ_AmountCurrencyP ap;
+    int size;
+    const static int expected_size
+      = sizeof(uint32_t) /* length */
+        + sizeof(ap);
+
+    size = PQgetlength (result,
+                        row,
+                        col);
+    if (expected_size != size)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Incorrect size of binary field `%s' (got %d, expected %d)\n",
+                  fname,
+                  size,
+                  expected_size);
+      return GNUNET_SYSERR;
+    }
+
+    in = PQgetvalue (result,
+                     row,
+                     col);
+
+    num = ntohl (*(uint32_t *) in);
+    if (3 != num)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Incorrect number of elements in tuple-field `%s'\n",
+                  fname);
+      return GNUNET_SYSERR;
+    }
+    in += sizeof(uint32_t);
+    memcpy (&ap,
+            in,
+            sizeof (ap));
+    /* TODO[oec]: OID-checks? */
+
+    r_amount->value = GNUNET_ntohll (ap.v);
+    r_amount->fraction = ntohl (ap.f);
+    memcpy (r_amount->currency,
+            ap.c,
+            TALER_CURRENCY_LEN);
+    if ('\0' != r_amount->currency[TALER_CURRENCY_LEN - 1])
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid currency (not 0-terminated) in tuple field `%s'\n",
+                  fname);
+      /* be sure nobody uses this by accident */
+      memset (r_amount,
+              0,
+              sizeof (struct TALER_Amount));
+      return GNUNET_SYSERR;
+    }
+  }
+
+  if (r_amount->value >= TALER_AMOUNT_MAX_VALUE)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Value in field `%s' exceeds legal range\n",
+                fname);
+    return GNUNET_SYSERR;
+  }
+  if (r_amount->fraction >= TALER_AMOUNT_FRAC_BASE)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fraction in field `%s' exceeds legal range\n",
+                fname);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_amount_with_currency (const char *name,
+                                           struct TALER_Amount *amount)
+{
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_amount_currency_tuple,
+    .dst = (void *) amount,
+    .dst_size = sizeof (*amount),
+    .fname = name
+  };
+
+  return res;
+}
+
+
+/**
  * Extract an amount from a tuple from a Postgres database @a result at row @a row.
  *
  * @param cls closure, a `const char *` giving the currency
@@ -49,7 +194,7 @@ extract_amount_tuple (void *cls,
   struct TALER_Amount *r_amount = dst;
   const char *currency = cls;
   int col;
-  int len;
+  size_t len;
 
   if (sizeof (struct TALER_Amount) != *dst_size)
   {
@@ -81,10 +226,10 @@ extract_amount_tuple (void *cls,
   {
     char *in;
     uint32_t num;
-    struct TALER_PQ_Amount_P ap;
+    struct TALER_PQ_AmountP ap;
     int size;
     const static int expected_size = sizeof(uint32_t) /* length */
-                                     + sizeof(struct TALER_PQ_Amount_P);
+                                     + sizeof(ap);
 
     size = PQgetlength (result,
                         row,
@@ -113,7 +258,9 @@ extract_amount_tuple (void *cls,
       return GNUNET_SYSERR;
     }
     in += sizeof(uint32_t);
-    ap = *(struct TALER_PQ_Amount_P *) in;
+    memcpy (&ap,
+            in,
+            sizeof (ap));
 
     /* TODO[oec]: OID-checks? */
 
@@ -993,14 +1140,14 @@ extract_array_generic (
 
         for (uint32_t i = 0; i < header.dim; i++)
         {
-          struct TALER_PQ_Amount_P ap;
+          struct TALER_PQ_AmountP ap;
           struct TALER_Amount *amount = &amounts[i];
           size_t sz = ntohl (*(uint32_t *) in);
           in += sizeof(uint32_t);
 
           /* total size for this array-entry */
           FAIL_IF ((sizeof(uint32_t)
-                    + sizeof(struct TALER_PQ_Amount_P))
+                    + sizeof(struct TALER_PQ_AmountP))
                    > sz);
 
           /* number of elements in composite type*/
@@ -1008,14 +1155,14 @@ extract_array_generic (
           in += sizeof(uint32_t);
           FAIL_IF (2 != sz);
 
-          ap = *(struct TALER_PQ_Amount_P *) in;
+          ap = *(struct TALER_PQ_AmountP *) in;
           amount->value = GNUNET_ntohll (ap.v);
           amount->fraction = ntohl (ap.f);
           GNUNET_memcpy (amount->currency,
                          info->currency,
                          TALER_CURRENCY_LEN);
 
-          in += sizeof(struct TALER_PQ_Amount_P);
+          in += sizeof(struct TALER_PQ_AmountP);
         }
         return GNUNET_OK;
       }

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2021, 2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -26,6 +26,102 @@
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_pq_lib.h"
 #include "pq_common.h"
+
+
+/**
+ * Function called to convert input amount into SQL parameter as tuple.
+ *
+ * @param cls closure
+ * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_amount_currency_tuple (void *cls,
+                             const void *data,
+                             size_t data_len,
+                             void *param_values[],
+                             int param_lengths[],
+                             int param_formats[],
+                             unsigned int param_length,
+                             void *scratch[],
+                             unsigned int scratch_length)
+{
+  struct GNUNET_PQ_Context *db = cls;
+  const struct TALER_Amount *amount = data;
+  size_t sz;
+
+  GNUNET_assert (NULL != db);
+  GNUNET_assert (NULL != amount);
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (1 <= scratch_length);
+  GNUNET_assert (sizeof (struct TALER_Amount) == data_len);
+  GNUNET_static_assert (sizeof(uint32_t) == sizeof(Oid));
+  {
+    char *out;
+    Oid oid_v;
+    Oid oid_f;
+    Oid oid_c;
+
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_PQ_get_oid_by_name (db,
+                                              "int8",
+                                              &oid_v));
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_PQ_get_oid_by_name (db,
+                                              "int4",
+                                              &oid_f));
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_PQ_get_oid_by_name (db,
+                                              "text",
+                                              &oid_c));
+
+    {
+      struct TALER_PQ_AmountCurrencyP d
+        = TALER_PQ_make_taler_pq_amount_currency_ (amount,
+                                                   oid_v,
+                                                   oid_f,
+                                                   oid_c);
+
+      sz = sizeof(uint32_t); /* number of elements in tuple */
+      sz += sizeof(d);
+      out = GNUNET_malloc (sz);
+      scratch[0] = out;
+      *(uint32_t *) out = htonl (3);
+      out += sizeof(uint32_t);
+      *(struct TALER_PQ_AmountCurrencyP*) out = d;
+    }
+  }
+
+  param_values[0] = scratch[0];
+  param_lengths[0] = sz;
+  param_formats[0] = 1;
+
+  return 1;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_amount_with_currency (
+  const struct GNUNET_PQ_Context *db,
+  const struct TALER_Amount *amount)
+{
+  struct GNUNET_PQ_QueryParam res = {
+    .conv_cls = (void *) db,
+    .conv = &qconv_amount_currency_tuple,
+    .data = amount,
+    .size = sizeof (*amount),
+    .num_params = 1,
+  };
+
+  return res;
+}
 
 
 /**
@@ -78,18 +174,18 @@ qconv_amount_tuple (void *cls,
                                               &oid_f));
 
     {
-      struct TALER_PQ_Amount_P d
-        = MAKE_TALER_PQ_AMOUNT_P (db,
-                                  amount,
-                                  oid_v,
-                                  oid_f);
+      struct TALER_PQ_AmountP d
+        = TALER_PQ_make_taler_pq_amount_ (amount,
+                                          oid_v,
+                                          oid_f);
+
       sz = sizeof(uint32_t); /* number of elements in tuple */
       sz += sizeof(d);
       out = GNUNET_malloc (sz);
       scratch[0] = out;
       *(uint32_t *) out = htonl (2);
       out += sizeof(uint32_t);
-      *(struct TALER_PQ_Amount_P*) out = d;
+      *(struct TALER_PQ_AmountP*) out = d;
     }
   }
 
@@ -872,10 +968,11 @@ qconv_array (
                                                     "int4",
                                                     &oid_f));
           {
-            struct TALER_PQ_Amount_P am = MAKE_TALER_PQ_AMOUNT_P (meta->db,
-                                                                  &amounts[i],
-                                                                  oid_v,
-                                                                  oid_f);
+            struct TALER_PQ_AmountP am
+              = TALER_PQ_make_taler_pq_amount_ (
+                  &amounts[i],
+                  oid_v,
+                  oid_f);
 
             *(uint32_t *) out = htonl (2); /* number of elements in tuple */
             out += sizeof(uint32_t);
@@ -1086,7 +1183,7 @@ TALER_PQ_query_param_array_amount (
     true,
     amounts,
     NULL,
-    sizeof(uint32_t) + sizeof(struct TALER_PQ_Amount_P),
+    sizeof(uint32_t) + sizeof(struct TALER_PQ_AmountP),
     TALER_PQ_array_of_amount,
     oid,
     db);

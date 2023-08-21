@@ -10,7 +10,7 @@ lib_LTLIBRARIES = \
   libtalerpq.la
 
 libtalerpq_la_SOURCES = \
-  pq_common.h \
+  pq_common.h pq_common.c \
   pq_query_helper.c \
   pq_result_helper.c
 libtalerpq_la_LIBADD = \

@@ -45,6 +45,22 @@ TALER_PQ_query_param_amount (
   const struct GNUNET_PQ_Context *db,
   const struct TALER_Amount *amount);
 
+
+/**
+ * Generate query parameter (as record tuple) for an amount, consisting of the
+ * three components "value", "fraction" and "currency" in this order. The
+ * types must be a 64-bit integer, a 32-bit integer and a TEXT field of 12
+ * characters respectively.
+ *
+ * @param db The database context for OID lookup
+ * @param amount pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_amount_with_currency (
+  const struct GNUNET_PQ_Context *db,
+  const struct TALER_Amount *amount);
+
+
 /**
  * Generate query parameter for a denomination public
  * key. Internally, the various attributes of the
@@ -161,7 +177,24 @@ TALER_PQ_query_param_array_amount (
 
 
 /**
- * Currency amount expected, from a record-field of (DB) taler_amount type
+ * Currency amount expected, from a record-field of (DB)
+ * taler_amount_with_currency type. The currenty must be stored in the
+ * database when using this function.
+ *
+ * @param name name of the field in the table
+ * @param[out] amount where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_amount_with_currency (
+  const char *name,
+  struct TALER_Amount *amount);
+
+
+/**
+ * Currency amount expected, from a record-field of (DB) taler_amount type.
+ * The currency is NOT stored in the database when using this function, but
+ * instead passed as the @a currency argument.
  *
  * @param name name of the field in the table
  * @param currency currency to use for @a amount
@@ -172,6 +205,7 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount (const char *name,
                              const char *currency,
                              struct TALER_Amount *amount);
+
 
 /**
  * Denomination public key expected.

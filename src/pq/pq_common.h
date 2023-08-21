@@ -21,7 +21,8 @@
 #ifndef TALER_PQ_COMMON_H_
 #define TALER_PQ_COMMON_H_
 
-#include "platform.h"
+#include "taler_util.h"
+
 /**
  * Internal types that are supported as TALER-exchange-specific array types.
  *
@@ -43,6 +44,9 @@ enum TALER_PQ_ArrayType
   TALER_PQ_array_of_blinded_denom_sig,
   TALER_PQ_array_of_blinded_coin_hash,
   TALER_PQ_array_of_denom_hash,
+  /**
+   * Amounts *without* currency.
+   */
   TALER_PQ_array_of_amount,
   TALER_PQ_array_of_MAX,       /* must be last */
 };
@@ -52,7 +56,7 @@ enum TALER_PQ_ArrayType
  *
  * All values need to be in network-byte-order.
  */
-struct TALER_PQ_Amount_P
+struct TALER_PQ_AmountP
 {
   uint32_t oid_v; /* oid of .v  */
   uint32_t sz_v;  /* size of .v */
@@ -62,23 +66,66 @@ struct TALER_PQ_Amount_P
   uint32_t f;     /* fraction   */
 } __attribute__((packed));
 
+
 /**
- * Create a `struct TALER_PQ_Amount_P` for initialization
+ * Memory representation of an taler amount record with currency for Postgres.
  *
- * @param db postgres-context of type `struct GNUNET_PQ_Context *`
+ * All values need to be in network-byte-order.
+ */
+struct TALER_PQ_AmountCurrencyP
+{
+  uint32_t oid_v; /* oid of .v  */
+  uint32_t sz_v;  /* size of .v */
+  uint64_t v;     /* value      */
+  uint32_t oid_f; /* oid of .f  */
+  uint32_t sz_f;  /* size of .f */
+  uint32_t f;     /* fraction   */
+
+  /**
+   * oid of .c
+   */
+  uint32_t oid_c;
+
+  /**
+   * size of .c
+   */
+  uint32_t sz_c;
+
+  /**
+   * currency
+   */
+  uint8_t c[TALER_CURRENCY_LEN];
+} __attribute__((packed));
+
+
+/**
+ * Create a `struct TALER_PQ_AmountP` for initialization
+ *
  * @param amount amount of type `struct TALER_Amount *`
  * @param oid_v OID of the INT8 type in postgres
  * @param oid_f OID of the INT4 type in postgres
  */
-#define MAKE_TALER_PQ_AMOUNT_P(db,amount,oid_v,oid_f) \
-  { \
-    .oid_v = htonl (oid_v), \
-    .oid_f = htonl (oid_f), \
-    .sz_v = htonl (sizeof((amount)->value)), \
-    .sz_f = htonl (sizeof((amount)->fraction)), \
-    .v = GNUNET_htonll ((amount)->value), \
-    .f = htonl ((amount)->fraction) \
-  }
+struct TALER_PQ_AmountP
+TALER_PQ_make_taler_pq_amount_ (
+  const struct TALER_Amount *amount,
+  uint32_t oid_v,
+  uint32_t oid_f);
+
+
+/**
+ * Create a `struct TALER_PQ_AmountCurrencyP` for initialization
+ *
+ * @param amount amount of type `struct TALER_Amount *`
+ * @param oid_v OID of the INT8 type in postgres
+ * @param oid_f OID of the INT4 type in postgres
+ * @param oid_c OID of the TEXT type in postgres
+ */
+struct TALER_PQ_AmountCurrencyP
+TALER_PQ_make_taler_pq_amount_currency_ (
+  const struct TALER_Amount *amount,
+  uint32_t oid_v,
+  uint32_t oid_f,
+  uint32_t oid_c);
 
 
 #endif  /* TALER_PQ_COMMON_H_ */
