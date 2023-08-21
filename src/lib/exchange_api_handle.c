@@ -789,11 +789,21 @@ decode_keys_json (const json_t *resp_obj,
         NULL),
       GNUNET_JSON_spec_end ()
     };
+    const char *emsg;
+    unsigned int eline;
 
-    EXITIF (GNUNET_OK !=
-            GNUNET_JSON_parse (resp_obj,
-                               (check_sig) ? mspec : &mspec[2],
-                               NULL, NULL));
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (resp_obj,
+                           (check_sig) ? mspec : &mspec[2],
+                           &emsg,
+                           &eline))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Parsing /keys failed for `%s' (%u)\n",
+                  emsg,
+                  eline);
+      EXITIF (1);
+    }
     {
       struct GNUNET_JSON_Specification sspec[] = {
         TALER_JSON_spec_amount (
@@ -2240,6 +2250,14 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                              kd->version),
     GNUNET_JSON_pack_string ("currency",
                              kd->currency),
+    GNUNET_JSON_pack_uint64 ("currency_fraction_digits",
+                             kd->currency_fraction_digits),
+    TALER_JSON_pack_amount ("stefan_abs",
+                            &kd->stefan_abs),
+    TALER_JSON_pack_amount ("stefan_log",
+                            &kd->stefan_log),
+    TALER_JSON_pack_amount ("stefan_lin",
+                            &kd->stefan_lin),
     GNUNET_JSON_pack_string ("asset_type",
                              kd->asset_type),
     GNUNET_JSON_pack_data_auto ("master_public_key",

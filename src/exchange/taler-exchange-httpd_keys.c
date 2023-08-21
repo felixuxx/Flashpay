@@ -2535,11 +2535,9 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                             &TEH_stefan_lin),
     GNUNET_JSON_pack_string ("asset_type",
                              asset_type),
-    // FIXME: legacy, remove soon!
-    GNUNET_JSON_pack_bool ("tipping_allowed",
-                           GNUNET_YES == TEH_enable_rewards),
     GNUNET_JSON_pack_bool ("rewards_allowed",
-                           GNUNET_YES == TEH_enable_rewards),
+                           GNUNET_YES ==
+                           TEH_enable_rewards),
     GNUNET_JSON_pack_data_auto ("master_public_key",
                                 &TEH_master_public_key),
     GNUNET_JSON_pack_time_rel ("reserve_closing_delay",
