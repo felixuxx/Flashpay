@@ -69,7 +69,7 @@ START_WIREWATCH=0
 USE_ACCOUNT="exchange-account-1"
 USE_VALGRIND=""
 WIRE_DOMAIN="x-taler-bank"
-CONF_ORIG="~/.config/taler.conf"
+CONF_ORIG="$HOME/.config/taler.conf"
 LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
