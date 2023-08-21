@@ -79,43 +79,41 @@ extract_amount_currency_tuple (void *cls,
 
   /* Parse the tuple */
   {
-    char *in;
-    uint32_t num;
     struct TALER_PQ_AmountCurrencyP ap;
+    const char *in;
     int size;
-    const static int expected_size
-      = sizeof(uint32_t) /* length */
-        + sizeof(ap);
 
     size = PQgetlength (result,
                         row,
                         col);
-    if (expected_size != size)
+    if ( (size >= sizeof (ap)) ||
+         (size <= sizeof (ap) - TALER_CURRENCY_LEN) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Incorrect size of binary field `%s' (got %d, expected %d)\n",
+                  "Incorrect size of binary field `%s' (got %d, expected (%d-%d))\n",
                   fname,
                   size,
-                  expected_size);
+                  (int) (sizeof (ap) - TALER_CURRENCY_LEN),
+                  (int) sizeof (ap));
       return GNUNET_SYSERR;
     }
 
     in = PQgetvalue (result,
                      row,
                      col);
-
-    num = ntohl (*(uint32_t *) in);
-    if (3 != num)
+    memset (&ap.c,
+            0,
+            TALER_CURRENCY_LEN);
+    memcpy (&ap,
+            in,
+            size);
+    if (3 != ntohl (ap.cnt))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Incorrect number of elements in tuple-field `%s'\n",
                   fname);
       return GNUNET_SYSERR;
     }
-    in += sizeof(uint32_t);
-    memcpy (&ap,
-            in,
-            sizeof (ap));
     /* TODO[oec]: OID-checks? */
 
     r_amount->value = GNUNET_ntohll (ap.v);
@@ -224,7 +222,7 @@ extract_amount_tuple (void *cls,
 
   /* Parse the tuple */
   {
-    char *in;
+    const char *in;
     uint32_t num;
     struct TALER_PQ_AmountP ap;
     int size;

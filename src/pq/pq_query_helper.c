@@ -68,6 +68,7 @@ qconv_amount_currency_tuple (void *cls,
     Oid oid_v;
     Oid oid_f;
     Oid oid_c;
+    struct TALER_PQ_AmountCurrencyP d;
 
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_PQ_get_oid_by_name (db,
@@ -79,24 +80,18 @@ qconv_amount_currency_tuple (void *cls,
                                               &oid_f));
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_PQ_get_oid_by_name (db,
-                                              "text",
+                                              "varchar",
                                               &oid_c));
-
-    {
-      struct TALER_PQ_AmountCurrencyP d
-        = TALER_PQ_make_taler_pq_amount_currency_ (amount,
-                                                   oid_v,
-                                                   oid_f,
-                                                   oid_c);
-
-      sz = sizeof(uint32_t); /* number of elements in tuple */
-      sz += sizeof(d);
-      out = GNUNET_malloc (sz);
-      scratch[0] = out;
-      *(uint32_t *) out = htonl (3);
-      out += sizeof(uint32_t);
-      *(struct TALER_PQ_AmountCurrencyP*) out = d;
-    }
+    sz = TALER_PQ_make_taler_pq_amount_currency_ (amount,
+                                                  oid_v,
+                                                  oid_f,
+                                                  oid_c,
+                                                  &d);
+    out = GNUNET_malloc (sz);
+    memcpy (out,
+            &d,
+            sz);
+    scratch[0] = out;
   }
 
   param_values[0] = scratch[0];

@@ -74,6 +74,7 @@ struct TALER_PQ_AmountP
  */
 struct TALER_PQ_AmountCurrencyP
 {
+  uint32_t cnt; /* number of OIDs in tuple  */
   uint32_t oid_v; /* oid of .v  */
   uint32_t sz_v;  /* size of .v */
   uint64_t v;     /* value      */
@@ -119,13 +120,16 @@ TALER_PQ_make_taler_pq_amount_ (
  * @param oid_v OID of the INT8 type in postgres
  * @param oid_f OID of the INT4 type in postgres
  * @param oid_c OID of the TEXT type in postgres
+ * @param[out] rval set to encoded @a amount
+ * @return actual (useful) size of @a rval for Postgres
  */
-struct TALER_PQ_AmountCurrencyP
+size_t
 TALER_PQ_make_taler_pq_amount_currency_ (
   const struct TALER_Amount *amount,
   uint32_t oid_v,
   uint32_t oid_f,
-  uint32_t oid_c);
+  uint32_t oid_c,
+  struct TALER_PQ_AmountCurrencyP *rval);
 
 
 #endif  /* TALER_PQ_COMMON_H_ */

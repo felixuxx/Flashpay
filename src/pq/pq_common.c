@@ -40,26 +40,28 @@ TALER_PQ_make_taler_pq_amount_ (
 }
 
 
-struct TALER_PQ_AmountCurrencyP
+size_t
 TALER_PQ_make_taler_pq_amount_currency_ (
   const struct TALER_Amount *amount,
   uint32_t oid_v,
   uint32_t oid_f,
-  uint32_t oid_c)
+  uint32_t oid_c,
+  struct TALER_PQ_AmountCurrencyP *rval)
 {
-  struct TALER_PQ_AmountCurrencyP rval = {
-    .oid_v = htonl (oid_v),
-    .oid_f = htonl (oid_f),
-    .oid_c = htonl (oid_c),
-    .sz_v = htonl (sizeof((amount)->value)),
-    .sz_f = htonl (sizeof((amount)->fraction)),
-    .sz_c = htonl (TALER_CURRENCY_LEN),
-    .v = GNUNET_htonll ((amount)->value),
-    .f = htonl ((amount)->fraction),
-  };
+  size_t clen = strlen (amount->currency);
 
-  memcpy (rval.c,
+  GNUNET_assert (clen < TALER_CURRENCY_LEN);
+  rval->cnt = htonl (3);
+  rval->oid_v = htonl (oid_v);
+  rval->oid_f = htonl (oid_f);
+  rval->oid_c = htonl (oid_c);
+  rval->sz_v = htonl (sizeof(amount->value));
+  rval->sz_f = htonl (sizeof(amount->fraction));
+  rval->sz_c = htonl (clen);
+  rval->v = GNUNET_htonll (amount->value);
+  rval->f = htonl (amount->fraction);
+  memcpy (rval->c,
           amount->currency,
-          TALER_CURRENCY_LEN);
-  return rval;
+          clen);
+  return sizeof (*rval) - TALER_CURRENCY_LEN + clen;
 }
