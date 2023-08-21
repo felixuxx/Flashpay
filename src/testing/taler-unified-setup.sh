@@ -360,8 +360,8 @@ then
         taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION" -V "$LIBEUFIN_NEXUS_DB_CONNECTION"
     fi
     export LIBEUFIN_NEXUS_DB_CONNECTION
-#    libeufin-nexus reset-tables \
-#        &> libeufin-nexus-reset.log
+    libeufin-nexus reset-tables \
+        &> libeufin-nexus-reset.log
 
     # For convenience, username and password are
     # identical to those used at the Sandbox.
