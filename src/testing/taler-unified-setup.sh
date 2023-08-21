@@ -261,8 +261,8 @@ then
     # Create the default demobank.
     echo -n "Configuring sandbox at ${LIBEUFIN_SANDBOX_DB_CONNECTION} "
 
-#    libeufin-sandbox reset-tables \
-#        &> libeufin-sandbox-reset.log
+    libeufin-sandbox reset-tables \
+        &> libeufin-sandbox-reset.log
     libeufin-sandbox config \
                      --currency "$CURRENCY" \
                      --users-debt-limit 99999999 \
