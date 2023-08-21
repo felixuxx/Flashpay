@@ -25,6 +25,8 @@
 # are running. Close STDIN (or input 'NEWLINE') to stop all started
 # services again.
 #
+# shellcheck disable=SC2317
+
 set -eu
 
 # Exit, with status code "skip" (no 'real' failure)
@@ -46,7 +48,7 @@ function cleanup()
 
     for n in $(jobs -p)
     do
-        kill $n 2> /dev/null || true
+        kill "$n" 2> /dev/null || true
     done
     wait
     rm -f libeufin-nexus.pid libeufin-sandbox.pid
@@ -98,18 +100,23 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
             echo 'Supported options:'
             echo '  -a           -- start auditor'
             echo '  -b           -- start backup/sync'
+            # shellcheck disable=SC2016
             echo '  -c $CONF     -- set configuration'
+            # shellcheck disable=SC2016
             echo '  -d $METHOD   -- use wire method (default: x-taler-bank)'
             echo '  -e           -- start exchange'
             echo '  -f           -- start fakebank'
             echo '  -g           -- start aggregator'
             echo '  -h           -- print this help'
+            # shellcheck disable=SC2016
             echo '  -L $LOGLEVEL -- set log level'
             echo '  -m           -- start merchant'
             echo '  -n           -- start nexus'
+            # shellcheck disable=SC2016
             echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
             echo '  -s           -- start sandbox'
             echo '  -t           -- start transfer'
+            # shellcheck disable=SC2016
             echo '  -u $SECTION  -- exchange account to use'
             echo '  -v           -- use valgrind'
             echo '  -w           -- start wirewatch'
@@ -244,10 +251,10 @@ if [ "1" = "$START_SANDBOX" ]
 then
     #
     LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
-    if [ ! -z "${PGHOST:+}" ]
+    if [ -n "${PGHOST:+}" ]
     then
-        EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
-        LIBEUFIN_SANDBOX_DB_CONNECTION=$(echo $LIBEUFIN_SANDBOX_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
+        EHOST=$(echo "$PGHOST" | sed -e "s/\//\\\\\//g")
+        LIBEUFIN_SANDBOX_DB_CONNECTION=$(echo "$LIBEUFIN_SANDBOX_DB_CONNECTION" | sed -e "s/\/var\/run\/postgresql/$EHOST/")
         taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION" -V "$LIBEUFIN_SANDBOX_DB_CONNECTION"
     fi
     export LIBEUFIN_SANDBOX_DB_CONNECTION
@@ -346,10 +353,10 @@ then
     # to the exchange.
     LIBEUFIN_NEXUS_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
 
-    if [ ! -z "${PGHOST:+}" ]
+    if [ -n "${PGHOST:+}" ]
     then
-        EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
-        LIBEUFIN_NEXUS_DB_CONNECTION=$(echo $LIBEUFIN_NEXUS_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
+        EHOST=$(echo "$PGHOST" | sed -e "s/\//\\\\\//g")
+        LIBEUFIN_NEXUS_DB_CONNECTION=$(echo "$LIBEUFIN_NEXUS_DB_CONNECTION" | sed -e "s/\/var\/run\/postgresql/$EHOST/")
         taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION" -V "$LIBEUFIN_NEXUS_DB_CONNECTION"
     fi
     export LIBEUFIN_NEXUS_DB_CONNECTION
@@ -477,7 +484,6 @@ then
     $USE_VALGRIND taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-rsa.log &
     $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
     $USE_VALGRIND taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
-    EXCHANGE_HTTPD_PID=$!
     echo " DONE"
 fi
 
@@ -489,7 +495,6 @@ then
                   -c "$CONF" \
                   --longpoll-timeout="1 s" \
                   2> taler-exchange-wirewatch.log &
-    WIREWATCH_PID=$!
     echo " DONE"
 fi
 
@@ -497,7 +502,6 @@ if [ "1" = "$START_AGGREGATOR" ]
 then
     echo -n "Starting aggregator ..."
     $USE_VALGRIND taler-exchange-aggregator -c "$CONF" 2> taler-exchange-aggregator.log &
-    AGGREGATOR_PID=$!
     echo " DONE"
 fi
 
@@ -505,14 +509,13 @@ if [ "1" = "$START_TRANSFER" ]
 then
     echo -n "Starting transfer ..."
     $USE_VALGRIND taler-exchange-transfer -c "$CONF" 2> taler-exchange-transfer.log &
-    TRANSFER_PID=$!
     echo " DONE"
 fi
 
 if [ "1" = "$START_MERCHANT" ]
 then
     echo -n "Starting merchant ..."
-    if [ ! -z "${USE_MERCHANT_EXCHANGE+x}" ]
+    if [ -n "${USE_MERCHANT_EXCHANGE+x}" ]
     then
         MEPUB=$(taler-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY)
         MXPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
@@ -522,13 +525,17 @@ then
             taler-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY -V "$MXPUB"
         fi
     fi
-    MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
-    MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
+    MERCHANT_TYPE=$(taler-config -c "$CONF" -s MERCHANT -o SERVE)
+    if [ "unix" = "$MERCHANT_TYPE" ]
+    then
+        MERCHANT_URL="$(taler-config -c "$CONF" -s MERCHANT -o BASE_URL)"
+    else
+        MERCHANT_PORT="$(taler-config -c "$CONF" -s MERCHANT -o PORT)"
+        MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
+    fi
     taler-merchant-dbinit -c "$CONF" -L "$LOGLEVEL" --reset &> taler-merchant-dbinit.log
     $USE_VALGRIND taler-merchant-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
-    MERCHANT_HTTPD_PID=$!
     $USE_VALGRIND taler-merchant-webhook -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
-    MERCHANT_WEBHOOK_PID=$!
     echo " DONE"
 fi
 
@@ -593,11 +600,15 @@ fi
 
 echo -n "Waiting for Taler services ..."
 # Wait for all other taler services to be available
+E_DONE=0
+M_DONE=0
+S_DONE=0
+A_DONE=0
 for n in $(seq 1 20)
 do
     sleep "$DEFAULT_SLEEP"
     OK="0"
-    if [ "1" = "$START_EXCHANGE" ]
+    if [ "0" = "$E_DONE" ] && [ "1" = "$START_EXCHANGE" ]
     then
         echo -n "E"
         wget \
@@ -606,8 +617,9 @@ do
             "${EXCHANGE_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
+        E_DONE=1
     fi
-    if [ "1" = "$START_MERCHANT" ]
+    if [ "0" = "$M_DONE" ] && [ "1" = "$START_MERCHANT" ]
     then
         echo -n "M"
         wget \
@@ -616,8 +628,9 @@ do
             "${MERCHANT_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
+        M_DONE=1
     fi
-    if [ "1" = "$START_BACKUP" ]
+    if [ "0" = "$S_DONE" ] && [ "1" = "$START_BACKUP" ]
     then
         echo -n "S"
         wget \
@@ -626,8 +639,9 @@ do
             "${SYNC_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
+        S_DONE=1
     fi
-    if [ "1" = "$START_AUDITOR" ]
+    if [ "0" = "$A_DONE" ] && [ "1" = "$START_AUDITOR" ]
     then
         echo -n "A"
         wget \
@@ -636,6 +650,7 @@ do
             "${AUDITOR_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
+        A_DONE=1
     fi
     OK="1"
     break
@@ -699,7 +714,7 @@ then
     then
         echo -n "Enabling auditor ..."
         taler-exchange-offline -c "$CONF" \
-          enable-auditor $AUDITOR_PUB $AUDITOR_URL "$CURRENCY Auditor" \
+          enable-auditor "$AUDITOR_PUB" "$AUDITOR_URL" "$CURRENCY Auditor" \
           upload &> taler-exchange-offline-auditor.log
         echo "OK"
     fi
@@ -751,6 +766,7 @@ then
     done
 else
     # Wait until caller stops us.
+    # shellcheck disable=SC2162
     read
 fi
 
