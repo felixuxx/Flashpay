@@ -199,7 +199,6 @@ add_account_cb (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
                                "PAYTO_URI");
-    lc->res = GNUNET_SYSERR;
     return;
   }
   method = TALER_payto_get_method (payto_uri);

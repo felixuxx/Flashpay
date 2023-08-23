@@ -4059,6 +4059,323 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
+ * Handle incoming HTTP request for /history/incoming
+ * of the Anastasis API.  This one can return transactions
+ * created by debits from the exchange!
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param account which account the request is about
+ * @param con_cls closure for request (NULL or &special_ptr)
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_anastasis_credit_history (
+  struct TALER_FAKEBANK_Handle *h,
+  struct MHD_Connection *connection,
+  const char *account,
+  void **con_cls)
+{
+  struct ConnectionContext *cc = *con_cls;
+  struct HistoryContext *hc;
+  const struct Transaction *pos;
+  enum GNUNET_GenericReturnValue ret;
+
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &history_cleanup;
+    *con_cls = cc;
+    hc = GNUNET_new (struct HistoryContext);
+    cc->ctx = hc;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Handling /history/incoming connection %p\n",
+                connection);
+    if (GNUNET_OK !=
+        (ret = parse_history_common_args (h,
+                                          connection,
+                                          &hc->ha)))
+    {
+      GNUNET_break_op (0);
+      return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
+    }
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->big_lock));
+    hc->acc = lookup_account (h,
+                              account,
+                              NULL);
+    if (NULL == hc->acc)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                         account);
+    }
+    /* FIXME: was simply: acc->payto_uri -- same!? */
+    GNUNET_asprintf (&hc->payto_uri,
+                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     account,
+                     hc->acc->receiver_name);
+    GNUNET_assert (0 == strcmp (hc->payto_uri,
+                                hc->acc->payto_uri));
+    hc->history = json_array ();
+    if (NULL == hc->history)
+    {
+      GNUNET_break (0);
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return MHD_NO;
+    }
+    hc->timeout = GNUNET_TIME_relative_to_absolute (hc->ha.lp_timeout);
+  }
+  else
+  {
+    hc = cc->ctx;
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->big_lock));
+  }
+
+  if (! hc->ha.have_start)
+  {
+    pos = (0 > hc->ha.delta)
+          ? hc->acc->in_tail
+          : hc->acc->in_head;
+  }
+  else
+  {
+    struct Transaction *t = h->transactions[hc->ha.start_idx % h->ram_limit];
+    bool overflow;
+    uint64_t dir;
+    bool skip = true;
+
+    overflow = ( (NULL != t) && (t->row_id != hc->ha.start_idx) );
+    dir = (0 > hc->ha.delta) ? (h->ram_limit - 1) : 1;
+    /* If account does not match, linear scan for
+       first matching account. */
+    while ( (! overflow) &&
+            (NULL != t) &&
+            (t->credit_account != hc->acc) )
+    {
+      skip = false;
+      t = h->transactions[(t->row_id + dir) % h->ram_limit];
+      if ( (NULL != t) &&
+           (t->row_id == hc->ha.start_idx) )
+        overflow = true; /* full circle, give up! */
+    }
+    if ( (NULL == t) ||
+         overflow)
+    {
+      /* FIXME: these conditions are unclear to me. */
+      if (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout) &&
+          (0 < hc->ha.delta))
+      {
+        GNUNET_assert (0 ==
+                       pthread_mutex_unlock (&h->big_lock));
+        if (overflow)
+          return TALER_MHD_reply_with_ec (
+            connection,
+            TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
+            NULL);
+        goto finish;
+      }
+      if (h->in_shutdown)
+      {
+        GNUNET_assert (0 ==
+                       pthread_mutex_unlock (&h->big_lock));
+        goto finish;
+      }
+      start_lp (h,
+                connection,
+                hc->acc,
+                GNUNET_TIME_absolute_get_remaining (hc->timeout),
+                LP_CREDIT,
+                NULL);
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return MHD_YES;
+    }
+    if (skip)
+    {
+      /* range from application is exclusive, skip the
+  matching entry */
+      if (0 > hc->ha.delta)
+        pos = t->prev_in;
+      else
+        pos = t->next_in;
+    }
+    else
+    {
+      pos = t;
+    }
+  }
+  if (NULL != pos)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning %lld credit transactions starting (inclusive) from %llu\n",
+                (long long) hc->ha.delta,
+                (unsigned long long) pos->row_id);
+  while ( (0 != hc->ha.delta) &&
+          (NULL != pos) )
+  {
+    json_t *trans;
+    char *subject;
+
+    if (T_DEBIT != pos->type)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Unexpected CREDIT transaction #%llu for account `%s'\n",
+                  (unsigned long long) pos->row_id,
+                  account);
+      if (0 > hc->ha.delta)
+        pos = pos->prev_in;
+      if (0 < hc->ha.delta)
+        pos = pos->next_in;
+      continue;
+    }
+
+    {
+      char *wtids;
+
+      wtids = GNUNET_STRINGS_data_to_string_alloc (
+        &pos->subject.debit.wtid,
+        sizeof (pos->subject.debit.wtid));
+      GNUNET_asprintf (&subject,
+                       "%s %s",
+                       wtids,
+                       pos->subject.debit.exchange_base_url);
+      GNUNET_free (wtids);
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found transaction over %s with subject %s\n",
+                TALER_amount2s (&pos->amount),
+                subject);
+    trans = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("row_id",
+                               pos->row_id),
+      GNUNET_JSON_pack_timestamp ("date",
+                                  pos->date),
+      TALER_JSON_pack_amount ("amount",
+                              &pos->amount),
+      GNUNET_JSON_pack_string ("credit_account",
+                               hc->payto_uri),   // FIXME #7275: inefficient to repeat this always here!
+      GNUNET_JSON_pack_string ("debit_account",
+                               pos->debit_account->payto_uri),
+      GNUNET_JSON_pack_string ("subject",
+                               subject));
+    GNUNET_free (subject);
+    GNUNET_assert (NULL != trans);
+    GNUNET_assert (0 ==
+                   json_array_append_new (hc->history,
+                                          trans));
+    if (hc->ha.delta > 0)
+      hc->ha.delta--;
+    else
+      hc->ha.delta++;
+    if (0 > hc->ha.delta)
+      pos = pos->prev_in;
+    if (0 < hc->ha.delta)
+      pos = pos->next_in;
+  }
+  if ( (0 == json_array_size (hc->history)) &&
+       (! h->in_shutdown) &&
+       (GNUNET_TIME_absolute_is_future (hc->timeout)) &&
+       (0 < hc->ha.delta))
+  {
+    start_lp (h,
+              connection,
+              hc->acc,
+              GNUNET_TIME_absolute_get_remaining (hc->timeout),
+              LP_CREDIT,
+              NULL);
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    return MHD_YES;
+  }
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
+finish:
+  if (0 == json_array_size (hc->history))
+  {
+    GNUNET_break (h->in_shutdown ||
+                  (! GNUNET_TIME_absolute_is_future (hc->timeout)));
+    return TALER_MHD_reply_static (connection,
+                                   MHD_HTTP_NO_CONTENT,
+                                   NULL,
+                                   NULL,
+                                   0);
+  }
+  {
+    json_t *h = hc->history;
+
+    hc->history = NULL;
+    return TALER_MHD_REPLY_JSON_PACK (connection,
+                                      MHD_HTTP_OK,
+                                      GNUNET_JSON_pack_array_steal (
+                                        "incoming_transactions",
+                                        h));
+  }
+}
+
+
+/**
+ * Handle incoming HTTP request to Anastasis API.
+ *
+ * @param h our handle
+ * @param connection the connection
+ * @param url the requested url
+ * @param method the method (POST, GET, ...)
+ * @param account which account should process the request
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_anastasis_api (
+  struct TALER_FAKEBANK_Handle *h,
+  struct MHD_Connection *connection,
+  const char *account,
+  const char *url,
+  const char *method,
+  const char *upload_data,
+  size_t *upload_data_size,
+  void **con_cls)
+{
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Fakebank - Anastasis API: serving URL `%s' for account `%s'\n",
+              url,
+              account);
+  if (0 == strcasecmp (method,
+                       MHD_HTTP_METHOD_GET))
+  {
+    if ( (0 == strcmp (url,
+                       "/history/incoming")) &&
+         (NULL != account) )
+      return handle_anastasis_credit_history (h,
+                                              connection,
+                                              account,
+                                              con_cls);
+    if (0 == strcmp (url,
+                     "/"))
+      return handle_home_page (h,
+                               connection);
+  }
+  /* Unexpected URL path, just close the connection. */
+  TALER_LOG_ERROR ("Breaking URL: %s %s\n",
+                   method,
+                   url);
+  GNUNET_break_op (0);
+  return TALER_MHD_reply_with_error (
+    connection,
+    MHD_HTTP_NOT_FOUND,
+    TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+    url);
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls a `struct TALER_FAKEBANK_Handle`
@@ -4113,6 +4430,28 @@ handle_mhd_request (void *cls,
                                upload_data_size,
                                con_cls);
   }
+  if (0 == strncmp (url,
+                    "/anastasis-api/",
+                    strlen ("/anastasis-api/")))
+  {
+    url += strlen ("/anastasis-api");
+    if ( (strlen (url) > 1) &&
+         (NULL != (end = strchr (url + 1, '/'))) )
+    {
+      account = GNUNET_strndup (url + 1,
+                                end - url - 1);
+      url = end;
+    }
+    return handle_anastasis_api (h,
+                                 connection,
+                                 account,
+                                 url,
+                                 method,
+                                 upload_data,
+                                 upload_data_size,
+                                 con_cls);
+  }
+
   if (0 == strncmp (url,
                     "/taler-wire-gateway/",
                     strlen ("/taler-wire-gateway/")))
