@@ -29,16 +29,20 @@
 
 set -eu
 
+EXIT_STATUS=2
+
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
     echo " SKIP: " "$@" >&2
-    exit 77
+    EXIT_STATUS=77
+    exit "$EXIT_STATUS"
 }
 
 # Exit, with error message (hard failure)
 function exit_fail() {
     echo " FAIL: " "$@" >&2
-    exit 1
+    EXIT_STATUS=1
+    exit "$EXIT_STATUS"
 }
 
 # Cleanup to run whenever we exit
@@ -52,6 +56,7 @@ function cleanup()
     done
     wait
     rm -f libeufin-nexus.pid libeufin-sandbox.pid
+    exit "$EXIT_STATUS"
 }
 
 # Install cleanup handler (except for kill -9)
@@ -803,5 +808,5 @@ else
 fi
 
 echo "Taler unified setup terminating!" >&2
-
-exit 0
+EXIT_STATUS=0
+exit "$EXIT_STATUS"
