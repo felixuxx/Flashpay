@@ -424,11 +424,14 @@ batch_withdraw_transaction (void *cls,
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                           NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    /* Assume P2P transfer, so origin is reserve_pub */
+    char *pt;
+
+    pt = TALER_reserve_make_payto (TEH_base_url,
+                                   wc->reserve_pub);
+    TALER_payto_hash (pt,
+                      &wc->h_payto);
+    GNUNET_free (pt);
   }
   qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
