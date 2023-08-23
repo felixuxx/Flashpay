@@ -422,56 +422,50 @@ batch_withdraw_transaction (void *cls,
                                              "reserves_get_origin");
     return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  /* If no results, reserve was created by merge, in which case no KYC check
+     is required as the merge already did that. */
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    /* Assume P2P transfer, so origin is reserve_pub */
-    char *pt;
-
-    pt = TALER_reserve_make_payto (TEH_base_url,
-                                   wc->reserve_pub);
-    TALER_payto_hash (pt,
-                      &wc->h_payto);
-    GNUNET_free (pt);
-  }
-  qs = TALER_KYCLOGIC_kyc_test_required (
-    TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
-    &wc->h_payto,
-    TEH_plugin->select_satisfied_kyc_processes,
-    TEH_plugin->cls,
-    &batch_withdraw_amount_cb,
-    wc,
-    &kyc_required);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "kyc_test_required");
-    return qs;
-  }
-  if (NULL != kyc_required)
-  {
-    /* insert KYC requirement into DB! */
-    wc->kyc.ok = false;
-    qs = TEH_plugin->insert_kyc_requirement_for_account (
-      TEH_plugin->cls,
-      kyc_required,
+    qs = TALER_KYCLOGIC_kyc_test_required (
+      TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
       &wc->h_payto,
-      wc->reserve_pub,
-      &wc->kyc.requirement_row);
-    GNUNET_free (kyc_required);
+      TEH_plugin->select_satisfied_kyc_processes,
+      TEH_plugin->cls,
+      &batch_withdraw_amount_cb,
+      wc,
+      &kyc_required);
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_STORE_FAILED,
-                                               "insert_kyc_requirement_for_account");
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "kyc_test_required");
+      return qs;
     }
-    return qs;
+    if (NULL != kyc_required)
+    {
+      /* insert KYC requirement into DB! */
+      wc->kyc.ok = false;
+      qs = TEH_plugin->insert_kyc_requirement_for_account (
+        TEH_plugin->cls,
+        kyc_required,
+        &wc->h_payto,
+        wc->reserve_pub,
+        &wc->kyc.requirement_row);
+      GNUNET_free (kyc_required);
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+          *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 TALER_EC_GENERIC_DB_STORE_FAILED,
+                                                 "insert_kyc_requirement_for_account");
+      }
+      return qs;
+    }
   }
   wc->kyc.ok = true;
 
