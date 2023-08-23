@@ -227,6 +227,20 @@ register_sandbox_account() {
     unset LIBEUFIN_SANDBOX_PASSWORD
 }
 
+register_fakebank_account() {
+    BODY='{"username":"'"$1"'","password":"'"$2"'"}'
+    wget \
+        --post-data="$BODY" \
+        --header='Content-type: application/json' \
+        --tries=3 \
+        --waitretry=1 \
+        --timeout=30 \
+        "http://localhost:$BANK_PORT/taler-bank-access/testing/register" \
+        -o /dev/null \
+        -O /dev/null \
+        >/dev/null
+}
+
 
 if [[ "1" = "$START_NEXUS" || "1" = "$START_FAKEBANK" ]]
 then
@@ -449,9 +463,12 @@ fi
 if [ "1" = "$START_FAKEBANK" ]
 then
     echo "Setting up fakebank ..."
-    $USE_VALGRIND taler-fakebank-run -c "$CONF" -L "$LOGLEVEL" -n 4 2> taler-fakebank-run.log &
+    $USE_VALGRIND taler-fakebank-run\
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  -n 4 \
+                  2> taler-fakebank-run.log &
 fi
-
 
 if [ "1" = "$START_EXCHANGE" ]
 then
@@ -597,6 +614,20 @@ then
     fi
     echo " OK"
 fi
+
+if [ "1" = "$START_FAKEBANK" ]
+then
+    echo -n "Register Fakebank users ..."
+    register_fakebank_account fortytwo x
+    register_fakebank_account fortythree x
+    register_fakebank_account exchange x
+    register_fakebank_account tor x
+    register_fakebank_account gnunet x
+    register_fakebank_account tutorial x
+    register_fakebank_account survey x
+    echo " DONE"
+fi
+
 
 echo -n "Waiting for Taler services ..."
 # Wait for all other taler services to be available
