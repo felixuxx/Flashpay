@@ -462,12 +462,13 @@ fi
 
 if [ "1" = "$START_FAKEBANK" ]
 then
-    echo "Setting up fakebank ..."
+    echo -n "Setting up fakebank ..."
     $USE_VALGRIND taler-fakebank-run\
                   -c "$CONF" \
                   -L "$LOGLEVEL" \
                   -n 4 \
                   2> taler-fakebank-run.log &
+    echo " OK"
 fi
 
 if [ "1" = "$START_EXCHANGE" ]

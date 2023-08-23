@@ -64,22 +64,22 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
 
 # obtain key configuration data
-MASTER_PRIV_FILE=`taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE`
-MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
+MASTER_PRIV_FILE=$(taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE)
+MASTER_PRIV_DIR=$(dirname $MASTER_PRIV_FILE)
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
-MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
-EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
-MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
+MASTER_PUB=$(gnunet-ecc -p $MASTER_PRIV_FILE)
+EXCHANGE_URL=$(taler-config -c $CONF -s EXCHANGE -o BASE_URL)
+MERCHANT_PORT=$(taler-config -c $CONF -s MERCHANT -o PORT)
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
-BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
+BANK_PORT=$(taler-config -c $CONF -s BANK -o HTTP_PORT)
 BANK_URL=http://localhost:${BANK_PORT}/
 AUDITOR_URL=http://localhost:8083/
-AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
-AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
+AUDITOR_PRIV_FILE=$(taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE)
+AUDITOR_PRIV_DIR=$(dirname $AUDITOR_PRIV_FILE)
 mkdir -p $AUDITOR_PRIV_DIR
 gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
-AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
+AUDITOR_PUB=$(gnunet-ecc -p $AUDITOR_PRIV_FILE)
 
 echo "AUDITOR PUB is $AUDITOR_PUB using file $AUDITOR_PRIV_FILE"
 

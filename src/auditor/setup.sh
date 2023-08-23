@@ -16,7 +16,7 @@ function exit_cleanup()
     if [ ! -z ${SETUP_PID+x} ]
     then
         echo "Killing taler-unified-setup ($SETUP_PID)" >&2
-        kill -TERM "$SETUP_PID"
+        kill -TERM "$SETUP_PID" 2> /dev/null || true
         wait
     fi
 }
