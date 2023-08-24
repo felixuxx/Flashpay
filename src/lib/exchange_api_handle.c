@@ -1518,6 +1518,7 @@ TALER_EXCHANGE_get_keys (
   gkh->cert_cb_cls = cert_cb_cls;
   if (NULL != last_keys)
   {
+    gkh->prev_keys = TALER_EXCHANGE_keys_incref (last_keys);
     TALER_LOG_DEBUG ("Last DK issue date (before GETting /keys): %s\n",
                      GNUNET_TIME_timestamp2s (
                        last_keys->last_denom_issue_date));
