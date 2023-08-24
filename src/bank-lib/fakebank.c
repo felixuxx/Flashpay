@@ -4430,6 +4430,20 @@ handle_mhd_request (void *cls,
                                upload_data_size,
                                con_cls);
   }
+  /* Next is duplication to be more libeufin-like: */
+  if (0 == strncmp (url,
+                    "/access-api/",
+                    strlen ("/access-api/")))
+  {
+    url += strlen ("/access-api");
+    return handle_bank_access (h,
+                               connection,
+                               url,
+                               method,
+                               upload_data,
+                               upload_data_size,
+                               con_cls);
+  }
   if (0 == strncmp (url,
                     "/anastasis-api/",
                     strlen ("/anastasis-api/")))
