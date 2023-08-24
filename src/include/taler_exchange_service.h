@@ -826,6 +826,61 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
+ * Use STEFAN curve in @a keys to convert @a brut to @a net.  Computes the
+ * expected minimum (!) @a net amount that should for sure arrive in the
+ * target amount at cost of @a brut to the wallet. Note that STEFAN curves by
+ * design over-estimate actual fees and a wallet may be able to achieve the
+ * same @a net amount with less fees --- or if the available coins are
+ * abnormal in structure, it may take more.
+ *
+ * @param keys exchange key data
+ * @param brut gross amount (actual cost including fees)
+ * @param[out] net net amount (effective amount)
+ * @return #GNUNET_OK on success, #GNUNET_NO if the
+ *   resulting @a net is zero (or lower)
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_keys_stefan_b2n (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_Amount *brut,
+  struct TALER_Amount *net);
+
+
+/**
+ * Use STEFAN curve in @a keys to convert @a net to @a brut.  Computes the
+ * expected maximum (!) @a brut amount that should be needed in the wallet to
+ * transfer @a net amount to the target account.  Note that STEFAN curves by
+ * design over-estimate actual fees and a wallet may be able to achieve the
+ * same @a net amount with less fees --- or if the available coins are
+ * abnormal in structure, it may take more.
+ *
+ * @param keys exchange key data
+ * @param net net amount (effective amount)
+ * @param[out] brut gross amount (actual cost including fees)
+ * @return #GNUNET_OK on success, #GNUNET_NO if the
+ *   resulting @a brut is zero (only if @a net was zero)
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_keys_stefan_n2b (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_Amount *net,
+  struct TALER_Amount *brut);
+
+
+/**
+ * Round brutto or netto value computed via STEFAN
+ * curve to decimal places commonly used at the exchange.
+ *
+ * @param keys exchange keys response data
+ * @param[in,out] val value to round
+ */
+void
+TALER_EXCHANGE_keys_stefan_round (
+  const struct TALER_EXCHANGE_Keys *keys,
+  struct TALER_Amount *val);
+
+
+/**
  * Test if the given @a pub is a the current signing key from the exchange
  * according to @a keys.
  *

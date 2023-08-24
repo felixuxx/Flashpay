@@ -74,6 +74,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_reserves_history.c \
   exchange_api_reserves_open.c \
   exchange_api_reserves_status.c \
+  exchange_api_stefan.c \
   exchange_api_transfers_get.c \
   exchange_api_withdraw.c \
   exchange_api_withdraw2.c
@@ -107,5 +108,21 @@ libtalerauditor_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  -lm \
   $(LIBGNURLCURL_LIBS) \
   $(XLIB)
+
+
+check_PROGRAMS = \
+ test_stefan
+
+TESTS = \
+ $(check_PROGRAMS)
+
+
+test_stefan_SOURCES = \
+  test_stefan.c
+test_stefan_LDADD = \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil
