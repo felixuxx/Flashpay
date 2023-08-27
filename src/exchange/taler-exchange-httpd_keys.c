@@ -686,6 +686,19 @@ add_wire_account (void *cls,
 {
   json_t *a = cls;
 
+  if (GNUNET_OK !=
+      TALER_exchange_wire_signature_check (
+        payto_uri,
+        conversion_url,
+        debit_restrictions,
+        credit_restrictions,
+        &TEH_master_public_key,
+        master_sig))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database has wire account with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
+    return;
+  }
   if (0 !=
       json_array_append_new (
         a,
@@ -762,6 +775,19 @@ add_wire_fee (void *cls,
   struct AddContext *ac = cls;
   struct WireFeeSet *wfs;
 
+  if (GNUNET_OK !=
+      TALER_exchange_offline_wire_fee_verify (
+        ac->wire_method,
+        start_date,
+        end_date,
+        fees,
+        &TEH_master_public_key,
+        master_sig))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database has wire fee with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
+    return;
+  }
   GNUNET_CRYPTO_hash_context_read (ac->hc,
                                    master_sig,
                                    sizeof (*master_sig));
@@ -1986,6 +2012,23 @@ denomination_info_cb (
   struct TEH_KeyStateHandle *ksh = cls;
   struct TEH_DenominationKey *dk;
 
+  if (GNUNET_OK !=
+      TALER_exchange_offline_denom_validity_verify (
+        h_denom_pub,
+        meta->start,
+        meta->expire_withdraw,
+        meta->expire_deposit,
+        meta->expire_legal,
+        &meta->value,
+        &meta->fees,
+        &TEH_master_public_key,
+        master_sig))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database has denomination with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
+    return;
+  }
+
   GNUNET_assert (TALER_DENOMINATION_INVALID != denom_pub->cipher);
   if (GNUNET_TIME_absolute_is_zero (meta->start.abs_time) ||
       GNUNET_TIME_absolute_is_zero (meta->expire_withdraw.abs_time) ||
@@ -2034,6 +2077,19 @@ signkey_info_cb (
   struct SigningKey *sk;
   struct GNUNET_PeerIdentity pid;
 
+  if (GNUNET_OK !=
+      TALER_exchange_offline_signkey_validity_verify (
+        exchange_pub,
+        meta->start,
+        meta->expire_sign,
+        meta->expire_legal,
+        &TEH_master_public_key,
+        master_sig))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database has signing key with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
+    return;
+  }
   sk = GNUNET_new (struct SigningKey);
   sk->exchange_pub = *exchange_pub;
   sk->meta = *meta;
@@ -3181,6 +3237,21 @@ global_fee_info_cb (
   struct TEH_KeyStateHandle *ksh = cls;
   struct TEH_GlobalFee *gf;
 
+  if (GNUNET_OK !=
+      TALER_exchange_offline_global_fee_verify (
+        start_date,
+        end_date,
+        fees,
+        purse_timeout,
+        history_expiration,
+        purse_account_limit,
+        &TEH_master_public_key,
+        master_sig))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database has global fee with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
+    return;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Found global fees with %u purses\n",
               purse_account_limit);
