@@ -2595,7 +2595,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     }
     /* FIXME: was simply: acc->payto_uri -- same!? */
     GNUNET_asprintf (&hc->payto_uri,
-                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     "payto://x-taler-bank/%s/%s?receiver-name=%s",
+                     h->hostname,
                      account,
                      hc->acc->receiver_name);
     GNUNET_assert (0 == strcmp (hc->payto_uri,
