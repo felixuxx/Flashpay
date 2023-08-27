@@ -275,12 +275,12 @@ struct TALER_TESTING_Command
    *
    * @param cls closure
    * @param cmd command being run
-   * @param i interpreter state
+   * @param is interpreter state
    */
   void
   (*run)(void *cls,
          const struct TALER_TESTING_Command *cmd,
-         struct TALER_TESTING_Interpreter *i);
+         struct TALER_TESTING_Interpreter *is);
 
 
   /**
