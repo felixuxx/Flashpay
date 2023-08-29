@@ -1482,12 +1482,6 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_keys_get_handler,
     },
-    /* Requests for wiring information */
-    {
-      .url = "wire",
-      .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_handler_wire
-    },
     {
       .url = "batch-deposit",
       .method = MHD_HTTP_METHOD_POST,

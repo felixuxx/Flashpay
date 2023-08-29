@@ -401,6 +401,10 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                      ec,
                                      NULL);
     else
+    {
+      /* Make sure merge_timestamp is omitted if not yet merged */
+      if (GNUNET_TIME_absolute_is_never (gc->merge_timestamp.abs_time))
+        gc->merge_timestamp = GNUNET_TIME_UNIT_ZERO_TS;
       res = TALER_MHD_REPLY_JSON_PACK (
         rc->connection,
         MHD_HTTP_OK,
@@ -419,6 +423,7 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
           GNUNET_JSON_pack_timestamp ("deposit_timestamp",
                                       dt))
         );
+    }
   }
   return res;
 }

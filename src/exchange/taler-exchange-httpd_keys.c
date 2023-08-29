@@ -1054,60 +1054,6 @@ get_wire_state (void)
 }
 
 
-MHD_RESULT
-TEH_handler_wire (struct TEH_RequestContext *rc,
-                  const char *const args[])
-{
-  struct WireStateHandle *wsh;
-
-  (void) args;
-  wsh = get_wire_state ();
-  if (NULL == wsh)
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       NULL);
-  {
-    const char *etag;
-
-    etag = MHD_lookup_connection_value (rc->connection,
-                                        MHD_HEADER_KIND,
-                                        MHD_HTTP_HEADER_IF_NONE_MATCH);
-    if ( (NULL != etag) &&
-         (MHD_HTTP_OK == wsh->http_status) &&
-         (NULL != wsh->etag) &&
-         (0 == strcmp (etag,
-                       wsh->etag)) )
-    {
-      MHD_RESULT ret;
-      struct MHD_Response *resp;
-
-      resp = MHD_create_response_from_buffer (0,
-                                              NULL,
-                                              MHD_RESPMEM_PERSISTENT);
-      TALER_MHD_add_global_headers (resp);
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (resp,
-                                             MHD_HTTP_HEADER_EXPIRES,
-                                             wsh->dat));
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (resp,
-                                             MHD_HTTP_HEADER_ETAG,
-                                             wsh->etag));
-      ret = MHD_queue_response (rc->connection,
-                                MHD_HTTP_NOT_MODIFIED,
-                                resp);
-      GNUNET_break (MHD_YES == ret);
-      MHD_destroy_response (resp);
-      return ret;
-    }
-  }
-  return MHD_queue_response (rc->connection,
-                             wsh->http_status,
-                             wsh->wire_reply);
-}
-
-
 const struct TALER_WireFeeSet *
 TEH_wire_fees_by_time (
   struct GNUNET_TIME_Timestamp ts,
@@ -2479,7 +2425,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
             struct GNUNET_TIME_Timestamp last_cherry_pick_date,
             json_t *signkeys,
             json_t *recoup,
-            json_t *denoms,
             json_t *grouped_denominations,
             const struct GNUNET_HashCode *h_grouped)
 {
@@ -2501,7 +2446,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                    last_cherry_pick_date.abs_time));
   GNUNET_assert (NULL != signkeys);
   GNUNET_assert (NULL != recoup);
-  GNUNET_assert (NULL != denoms);
   GNUNET_assert (NULL != grouped_denominations);
   GNUNET_assert (NULL != h_grouped);
   GNUNET_assert (NULL != ksh->auditors);
@@ -2602,8 +2546,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                    signkeys),
     GNUNET_JSON_pack_array_incref ("recoup",
                                    recoup),
-    GNUNET_JSON_pack_array_incref ("denoms",
-                                   denoms),
     GNUNET_JSON_pack_array_incref ("wads",
                                    json_object_get (wsh->json_reply,
                                                     "wads")),
@@ -2813,7 +2755,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   json_t *recoup;
   struct SignKeyCtx sctx;
-  json_t *denoms = NULL;
   json_t *grouped_denominations = NULL;
   struct GNUNET_TIME_Timestamp last_cherry_pick_date;
   struct GNUNET_CONTAINER_Heap *heap;
@@ -2846,8 +2787,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                   sctx.min_sk_frequency);
   }
 
-  denoms = json_array ();
-  GNUNET_assert (NULL != denoms);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
 
   grouped_denominations = json_array ();
@@ -2905,7 +2844,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                         last_cherry_pick_date,
                         sctx.signkeys,
                         recoup,
-                        denoms,
                         grouped_denominations,
                         &grouped_hash_xor))
         {
@@ -2922,41 +2860,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       }
 
       last_cherry_pick_date = dk->meta.start;
-
-      {
-        json_t *denom;
-
-        denom =
-          GNUNET_JSON_PACK (
-            GNUNET_JSON_pack_data_auto ("master_sig",
-                                        &dk->master_sig),
-            GNUNET_JSON_pack_timestamp ("stamp_start",
-                                        dk->meta.start),
-            GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
-                                        dk->meta.expire_withdraw),
-            GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
-                                        dk->meta.expire_deposit),
-            GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
-                                        dk->meta.expire_legal),
-            TALER_JSON_pack_denom_pub ("denom_pub",
-                                       &dk->denom_pub),
-            TALER_JSON_pack_amount ("value",
-                                    &dk->meta.value),
-            TALER_JSON_PACK_DENOM_FEES ("fee",
-                                        &dk->meta.fees));
-
-        GNUNET_CRYPTO_hash_context_read (hash_context,
-                                         &dk->h_denom_pub,
-                                         sizeof (struct GNUNET_HashCode));
-
-        GNUNET_assert (
-          0 ==
-          json_array_append_new (
-            denoms,
-            denom));
-
-      }
-
       /*
        * Group the denominations by {cipher, value, fees, age_mask}.
        *
@@ -3166,7 +3069,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                     last_cherry_pick_date,
                     sctx.signkeys,
                     recoup,
-                    denoms,
                     grouped_denominations,
                     &grouped_hash_xor))
     {
@@ -3205,7 +3107,6 @@ CLEANUP:
   json_decref (grouped_denominations);
   json_decref (sctx.signkeys);
   json_decref (recoup);
-  json_decref (denoms);
   return ret;
 }
 

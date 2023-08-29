@@ -111,6 +111,12 @@ struct TALER_DepositRequestPS
    */
   struct TALER_MerchantPublicKeyP merchant;
 
+  /**
+   * Hash over a JSON containing data provided by the
+   * wallet to complete the contract upon payment.
+   */
+  struct GNUNET_HashCode wallet_data_hash;
+
 };
 
 GNUNET_NETWORK_STRUCT_END

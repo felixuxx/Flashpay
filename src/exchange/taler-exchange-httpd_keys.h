@@ -198,18 +198,6 @@ TEH_wire_update_state (void);
 
 
 /**
- * Handle a "/wire" request.
- *
- * @param rc request context
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
-MHD_RESULT
-TEH_handler_wire (struct TEH_RequestContext *rc,
-                  const char *const args[]);
-
-
-/**
  * Return the current key state for this thread.  Possibly re-builds the key
  * state if we have reason to believe that something changed.
  *
