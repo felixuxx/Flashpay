@@ -36,6 +36,8 @@ BEGIN
       ',wire_deadline INT8 NOT NULL'
       ',merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)'
       ',h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)'
+      ',wallet_data_hash BYTEA CHECK (LENGTH(wallet_data_hash)=64) DEFAULT NULL'
+      ',subcontract_id INT4 NOT NULL DEFAULT 0'
       ',coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)'
       ',wire_salt BYTEA NOT NULL CHECK (LENGTH(wire_salt)=16)'
       ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
@@ -67,6 +69,12 @@ BEGIN
   PERFORM comment_partitioned_column(
      'Identifies the target bank account and KYC status'
     ,'wire_target_h_payto'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'hash over data provided by the wallet upon payment to select a more specific contract'
+    ,'wallet_data_hash'
     ,table_name
     ,partition_suffix
   );
