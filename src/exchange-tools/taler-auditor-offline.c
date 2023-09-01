@@ -1048,12 +1048,12 @@ do_show (char *const *args)
 static enum GNUNET_GenericReturnValue
 sign_denomkeys (const json_t *denomkeys)
 {
-  size_t index;
+  size_t group_idx;
   json_t *value;
 
-  json_array_foreach (denomkeys, index, value) {
+  json_array_foreach (denomkeys, group_idx, value) {
     struct TALER_DenominationGroup group = { 0 };
-    const json_t *denoms;
+    const json_t *denom_keys_array;
     const char *err_name;
     unsigned int err_line;
     struct GNUNET_JSON_Specification spec[] = {
@@ -1061,11 +1061,11 @@ sign_denomkeys (const json_t *denomkeys)
                                           currency,
                                           &group),
       GNUNET_JSON_spec_array_const ("denoms",
-                                    &denoms),
+                                    &denom_keys_array),
       GNUNET_JSON_spec_end ()
     };
-    size_t index2;
-    json_t *value2;
+    size_t index;
+    json_t *denom_key_obj;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -1083,12 +1083,14 @@ sign_denomkeys (const json_t *denomkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    json_array_foreach (denoms, index2, value2) {
+    json_array_foreach (denom_keys_array, index, denom_key_obj) {
       struct GNUNET_TIME_Timestamp stamp_start;
       struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
       struct GNUNET_TIME_Timestamp stamp_expire_deposit;
       struct GNUNET_TIME_Timestamp stamp_expire_legal;
-      struct TALER_DenominationPublicKey denom_pub;
+      struct TALER_DenominationPublicKey denom_pub = {
+        .age_mask = group.age_mask
+      };
       struct TALER_MasterSignatureP master_sig;
       struct GNUNET_JSON_Specification ispec[] = {
         TALER_JSON_spec_denom_pub_cipher (NULL,
@@ -1109,7 +1111,7 @@ sign_denomkeys (const json_t *denomkeys)
       struct TALER_DenominationHashP h_denom_pub;
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (value2,
+          GNUNET_JSON_parse (denom_key_obj,
                              ispec,
                              &err_name,
                              &err_line))
@@ -1118,8 +1120,8 @@ sign_denomkeys (const json_t *denomkeys)
                  "Invalid input for denomination key to 'show': %s#%u at %u/%u (skipping)\n",
                  err_name,
                  err_line,
-                 (unsigned int) index,
-                 (unsigned int) index2);
+                 (unsigned int) group_idx,
+                 (unsigned int) index);
         GNUNET_JSON_parse_free (spec);
         global_ret = EXIT_FAILURE;
         test_shutdown ();
