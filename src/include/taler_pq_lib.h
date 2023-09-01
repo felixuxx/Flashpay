@@ -178,7 +178,7 @@ TALER_PQ_query_param_array_amount (
 
 /**
  * Currency amount expected, from a record-field of (DB)
- * taler_amount_with_currency type. The currenty must be stored in the
+ * taler_amount_with_currency type. The currency must be stored in the
  * database when using this function.
  *
  * @param name name of the field in the table

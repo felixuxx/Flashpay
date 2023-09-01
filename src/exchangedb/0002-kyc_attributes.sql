@@ -80,7 +80,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Reference the legitimization process for which theses attributes are gathered for.'
+     'Reference the legitimization process for which these attributes are gathered for.'
     ,'legitimization_serial'
     ,table_name
     ,partition_suffix
