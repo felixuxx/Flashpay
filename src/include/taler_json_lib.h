@@ -416,7 +416,7 @@ TALER_JSON_spec_denom_pub (const char *field,
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denom_pub_cipher (const char *field,
-                                  const enum TALER_DenominationCipher cipher,
+                                  enum TALER_DenominationCipher cipher,
                                   struct TALER_DenominationPublicKey *pk);
 
 

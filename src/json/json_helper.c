@@ -677,6 +677,7 @@ parse_denom_pub_cipher (void *cls,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      denom_pub->cipher = cipher;
       return GNUNET_OK;
     }
   case TALER_DENOMINATION_CS:
@@ -697,10 +698,12 @@ parse_denom_pub_cipher (void *cls,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      denom_pub->cipher = cipher;
       return GNUNET_OK;
     }
   default:
     GNUNET_break_op (0);
+    denom_pub->cipher = 0;
     return GNUNET_SYSERR;
   }
 }

@@ -734,46 +734,27 @@ do_download (char *const *args)
  * @param denomkeys keys to output
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 show_denomkeys (const json_t *denomkeys)
 {
   size_t index;
   json_t *value;
 
   json_array_foreach (denomkeys, index, value) {
+    struct TALER_DenominationGroup group;
+    const json_t *denoms;
     const char *err_name;
     unsigned int err_line;
-    struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_TIME_Timestamp stamp_start;
-    struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
-    struct GNUNET_TIME_Timestamp stamp_expire_deposit;
-    struct GNUNET_TIME_Timestamp stamp_expire_legal;
-    struct TALER_Amount coin_value;
-    struct TALER_DenomFeeSet fees;
-    struct TALER_MasterSignatureP master_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_denom_pub ("denom_pub",
-                                 &denom_pub),
-      TALER_JSON_spec_amount ("value",
-                              currency,
-                              &coin_value),
-      TALER_JSON_SPEC_DENOM_FEES ("fee",
-                                  currency,
-                                  &fees),
-      GNUNET_JSON_spec_timestamp ("stamp_start",
-                                  &stamp_start),
-      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
-                                  &stamp_expire_withdraw),
-      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
-                                  &stamp_expire_deposit),
-      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
-                                  &stamp_expire_legal),
-      GNUNET_JSON_spec_fixed_auto ("master_sig",
-                                   &master_sig),
+      TALER_JSON_spec_denomination_group (NULL,
+                                          currency,
+                                          &group),
+      GNUNET_JSON_spec_array_const ("denoms",
+                                    &denoms),
       GNUNET_JSON_spec_end ()
     };
-    struct GNUNET_TIME_Relative duration;
-    struct TALER_DenominationHashP h_denom_pub;
+    size_t index2;
+    json_t *value2;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -791,70 +772,116 @@ show_denomkeys (const json_t *denomkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    duration = GNUNET_TIME_absolute_get_difference (
-      stamp_start.abs_time,
-      stamp_expire_withdraw.abs_time);
-    TALER_denom_pub_hash (&denom_pub,
-                          &h_denom_pub);
-    if (GNUNET_OK !=
-        TALER_exchange_offline_denom_validity_verify (
-          &h_denom_pub,
-          stamp_start,
-          stamp_expire_withdraw,
-          stamp_expire_deposit,
-          stamp_expire_legal,
-          &coin_value,
-          &fees,
-          &master_pub,
-          &master_sig))
-    {
-      fprintf (stderr,
-               "Invalid master signature for key %s (aborting)\n",
-               TALER_B2S (&h_denom_pub));
-      global_ret = EXIT_FAILURE;
-      test_shutdown ();
-      return GNUNET_SYSERR;
+    json_array_foreach (denoms, index2, value2) {
+      struct GNUNET_TIME_Timestamp stamp_start;
+      struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
+      struct GNUNET_TIME_Timestamp stamp_expire_deposit;
+      struct GNUNET_TIME_Timestamp stamp_expire_legal;
+      struct TALER_DenominationPublicKey denom_pub;
+      struct TALER_MasterSignatureP master_sig;
+      struct GNUNET_JSON_Specification ispec[] = {
+        TALER_JSON_spec_denom_pub_cipher (NULL,
+                                          group.cipher,
+                                          &denom_pub),
+        GNUNET_JSON_spec_timestamp ("stamp_start",
+                                    &stamp_start),
+        GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                    &stamp_expire_withdraw),
+        GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                    &stamp_expire_deposit),
+        GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                    &stamp_expire_legal),
+        GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                     &master_sig),
+        GNUNET_JSON_spec_end ()
+      };
+      struct GNUNET_TIME_Relative duration;
+      struct TALER_DenominationHashP h_denom_pub;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (value2,
+                             ispec,
+                             &err_name,
+                             &err_line))
+      {
+        fprintf (stderr,
+                 "Invalid input for denomination key to 'show': %s#%u at %u/%u (skipping)\n",
+                 err_name,
+                 err_line,
+                 (unsigned int) index,
+                 (unsigned int) index2);
+        GNUNET_JSON_parse_free (spec);
+        global_ret = EXIT_FAILURE;
+        test_shutdown ();
+        return GNUNET_SYSERR;
+      }
+      duration = GNUNET_TIME_absolute_get_difference (
+        stamp_start.abs_time,
+        stamp_expire_withdraw.abs_time);
+      TALER_denom_pub_hash (&denom_pub,
+                            &h_denom_pub);
+      if (GNUNET_OK !=
+          TALER_exchange_offline_denom_validity_verify (
+            &h_denom_pub,
+            stamp_start,
+            stamp_expire_withdraw,
+            stamp_expire_deposit,
+            stamp_expire_legal,
+            &group.value,
+            &group.fees,
+            &master_pub,
+            &master_sig))
+      {
+        fprintf (stderr,
+                 "Invalid master signature for key %s (aborting)\n",
+                 TALER_B2S (&h_denom_pub));
+        global_ret = EXIT_FAILURE;
+        GNUNET_JSON_parse_free (ispec);
+        GNUNET_JSON_parse_free (spec);
+        test_shutdown ();
+        return GNUNET_SYSERR;
+      }
+
+      {
+        char *withdraw_fee_s;
+        char *deposit_fee_s;
+        char *refresh_fee_s;
+        char *refund_fee_s;
+        char *deposit_s;
+        char *legal_s;
+
+        withdraw_fee_s = TALER_amount_to_string (&group.fees.withdraw);
+        deposit_fee_s = TALER_amount_to_string (&group.fees.deposit);
+        refresh_fee_s = TALER_amount_to_string (&group.fees.refresh);
+        refund_fee_s = TALER_amount_to_string (&group.fees.refund);
+        deposit_s = GNUNET_strdup (
+          GNUNET_TIME_timestamp2s (stamp_expire_deposit));
+        legal_s = GNUNET_strdup (
+          GNUNET_TIME_timestamp2s (stamp_expire_legal));
+
+        printf (
+          "DENOMINATION-KEY %s of value %s starting at %s "
+          "(used for: %s, deposit until: %s legal end: %s) with fees %s/%s/%s/%s\n",
+          TALER_B2S (&h_denom_pub),
+          TALER_amount2s (&group.value),
+          GNUNET_TIME_timestamp2s (stamp_start),
+          GNUNET_TIME_relative2s (duration,
+                                  false),
+          deposit_s,
+          legal_s,
+          withdraw_fee_s,
+          deposit_fee_s,
+          refresh_fee_s,
+          refund_fee_s);
+        GNUNET_free (withdraw_fee_s);
+        GNUNET_free (deposit_fee_s);
+        GNUNET_free (refresh_fee_s);
+        GNUNET_free (refund_fee_s);
+        GNUNET_free (deposit_s);
+        GNUNET_free (legal_s);
+      }
+      GNUNET_JSON_parse_free (ispec);
     }
-
-    {
-      char *withdraw_fee_s;
-      char *deposit_fee_s;
-      char *refresh_fee_s;
-      char *refund_fee_s;
-      char *deposit_s;
-      char *legal_s;
-
-      withdraw_fee_s = TALER_amount_to_string (&fees.withdraw);
-      deposit_fee_s = TALER_amount_to_string (&fees.deposit);
-      refresh_fee_s = TALER_amount_to_string (&fees.refresh);
-      refund_fee_s = TALER_amount_to_string (&fees.refund);
-      deposit_s = GNUNET_strdup (
-        GNUNET_TIME_timestamp2s (stamp_expire_deposit));
-      legal_s = GNUNET_strdup (
-        GNUNET_TIME_timestamp2s (stamp_expire_legal));
-
-      printf (
-        "DENOMINATION-KEY %s of value %s starting at %s "
-        "(used for: %s, deposit until: %s legal end: %s) with fees %s/%s/%s/%s\n",
-        TALER_B2S (&h_denom_pub),
-        TALER_amount2s (&coin_value),
-        GNUNET_TIME_timestamp2s (stamp_start),
-        GNUNET_TIME_relative2s (duration,
-                                false),
-        deposit_s,
-        legal_s,
-        withdraw_fee_s,
-        deposit_fee_s,
-        refresh_fee_s,
-        refund_fee_s);
-      GNUNET_free (withdraw_fee_s);
-      GNUNET_free (deposit_fee_s);
-      GNUNET_free (refresh_fee_s);
-      GNUNET_free (refund_fee_s);
-      GNUNET_free (deposit_s);
-      GNUNET_free (legal_s);
-    }
-
     GNUNET_JSON_parse_free (spec);
   }
   return GNUNET_OK;
@@ -951,7 +978,7 @@ do_show (char *const *args)
   const json_t *denomkeys;
   struct TALER_MasterPublicKeyP mpub;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_array_const ("denoms",
+    GNUNET_JSON_spec_array_const ("denominations",
                                   &denomkeys),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &mpub),
@@ -1018,45 +1045,27 @@ do_show (char *const *args)
  * @param denomkeys keys to output
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 sign_denomkeys (const json_t *denomkeys)
 {
   size_t index;
   json_t *value;
 
   json_array_foreach (denomkeys, index, value) {
+    struct TALER_DenominationGroup group = { 0 };
+    const json_t *denoms;
     const char *err_name;
     unsigned int err_line;
-    struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_TIME_Timestamp stamp_start;
-    struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
-    struct GNUNET_TIME_Timestamp stamp_expire_deposit;
-    struct GNUNET_TIME_Timestamp stamp_expire_legal;
-    struct TALER_Amount coin_value;
-    struct TALER_DenomFeeSet fees;
-    struct TALER_MasterSignatureP master_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_denom_pub ("denom_pub",
-                                 &denom_pub),
-      TALER_JSON_spec_amount ("value",
-                              currency,
-                              &coin_value),
-      TALER_JSON_SPEC_DENOM_FEES ("fee",
-                                  currency,
-                                  &fees),
-      GNUNET_JSON_spec_timestamp ("stamp_start",
-                                  &stamp_start),
-      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
-                                  &stamp_expire_withdraw),
-      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
-                                  &stamp_expire_deposit),
-      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
-                                  &stamp_expire_legal),
-      GNUNET_JSON_spec_fixed_auto ("master_sig",
-                                   &master_sig),
+      TALER_JSON_spec_denomination_group (NULL,
+                                          currency,
+                                          &group),
+      GNUNET_JSON_spec_array_const ("denoms",
+                                    &denoms),
       GNUNET_JSON_spec_end ()
     };
-    struct TALER_DenominationHashP h_denom_pub;
+    size_t index2;
+    json_t *value2;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -1074,48 +1083,92 @@ sign_denomkeys (const json_t *denomkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    TALER_denom_pub_hash (&denom_pub,
-                          &h_denom_pub);
-    if (GNUNET_OK !=
-        TALER_exchange_offline_denom_validity_verify (
-          &h_denom_pub,
-          stamp_start,
-          stamp_expire_withdraw,
-          stamp_expire_deposit,
-          stamp_expire_legal,
-          &coin_value,
-          &fees,
-          &master_pub,
-          &master_sig))
-    {
-      fprintf (stderr,
-               "Invalid master signature for key %s (aborting)\n",
-               TALER_B2S (&h_denom_pub));
-      global_ret = EXIT_FAILURE;
-      test_shutdown ();
-      return GNUNET_SYSERR;
-    }
+    json_array_foreach (denoms, index2, value2) {
+      struct GNUNET_TIME_Timestamp stamp_start;
+      struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
+      struct GNUNET_TIME_Timestamp stamp_expire_deposit;
+      struct GNUNET_TIME_Timestamp stamp_expire_legal;
+      struct TALER_DenominationPublicKey denom_pub;
+      struct TALER_MasterSignatureP master_sig;
+      struct GNUNET_JSON_Specification ispec[] = {
+        TALER_JSON_spec_denom_pub_cipher (NULL,
+                                          group.cipher,
+                                          &denom_pub),
+        GNUNET_JSON_spec_timestamp ("stamp_start",
+                                    &stamp_start),
+        GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                    &stamp_expire_withdraw),
+        GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                    &stamp_expire_deposit),
+        GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                    &stamp_expire_legal),
+        GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                     &master_sig),
+        GNUNET_JSON_spec_end ()
+      };
+      struct TALER_DenominationHashP h_denom_pub;
 
-    {
-      struct TALER_AuditorSignatureP auditor_sig;
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (value2,
+                             ispec,
+                             &err_name,
+                             &err_line))
+      {
+        fprintf (stderr,
+                 "Invalid input for denomination key to 'show': %s#%u at %u/%u (skipping)\n",
+                 err_name,
+                 err_line,
+                 (unsigned int) index,
+                 (unsigned int) index2);
+        GNUNET_JSON_parse_free (spec);
+        global_ret = EXIT_FAILURE;
+        test_shutdown ();
+        return GNUNET_SYSERR;
+      }
+      TALER_denom_pub_hash (&denom_pub,
+                            &h_denom_pub);
+      if (GNUNET_OK !=
+          TALER_exchange_offline_denom_validity_verify (
+            &h_denom_pub,
+            stamp_start,
+            stamp_expire_withdraw,
+            stamp_expire_deposit,
+            stamp_expire_legal,
+            &group.value,
+            &group.fees,
+            &master_pub,
+            &master_sig))
+      {
+        fprintf (stderr,
+                 "Invalid master signature for key %s (aborting)\n",
+                 TALER_B2S (&h_denom_pub));
+        global_ret = EXIT_FAILURE;
+        test_shutdown ();
+        return GNUNET_SYSERR;
+      }
 
-      TALER_auditor_denom_validity_sign (auditor_url,
-                                         &h_denom_pub,
-                                         &master_pub,
-                                         stamp_start,
-                                         stamp_expire_withdraw,
-                                         stamp_expire_deposit,
-                                         stamp_expire_legal,
-                                         &coin_value,
-                                         &fees,
-                                         &auditor_priv,
-                                         &auditor_sig);
-      output_operation (OP_SIGN_DENOMINATION,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_data_auto ("h_denom_pub",
-                                                      &h_denom_pub),
-                          GNUNET_JSON_pack_data_auto ("auditor_sig",
-                                                      &auditor_sig)));
+      {
+        struct TALER_AuditorSignatureP auditor_sig;
+
+        TALER_auditor_denom_validity_sign (auditor_url,
+                                           &h_denom_pub,
+                                           &master_pub,
+                                           stamp_start,
+                                           stamp_expire_withdraw,
+                                           stamp_expire_deposit,
+                                           stamp_expire_legal,
+                                           &group.value,
+                                           &group.fees,
+                                           &auditor_priv,
+                                           &auditor_sig);
+        output_operation (OP_SIGN_DENOMINATION,
+                          GNUNET_JSON_PACK (
+                            GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                                        &h_denom_pub),
+                            GNUNET_JSON_pack_data_auto ("auditor_sig",
+                                                        &auditor_sig)));
+      }
+      GNUNET_JSON_parse_free (ispec);
     }
     GNUNET_JSON_parse_free (spec);
   }
@@ -1137,7 +1190,7 @@ do_sign (char *const *args)
   struct TALER_MasterPublicKeyP mpub;
   const json_t *denomkeys;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_array_const ("denoms",
+    GNUNET_JSON_spec_array_const ("denominations",
                                   &denomkeys),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &mpub),
