@@ -1070,6 +1070,7 @@ DONE:
  * @param same_size If not 0, all elements in @a elements have this size
  * @param typ Supported internal type of each element in @a elements
  * @param oid Oid of the type to be used in Postgres
+ * @param[in,out] db our database handle for looking up OIDs
  * @return Query parameter
  */
 static struct GNUNET_PQ_QueryParam

@@ -191,7 +191,7 @@ TEH_wire_init (void);
  *
  * (We do not do so immediately, but merely signal to all threads that they
  * need to rebuild their wire state upon the next call to
- * #TEH_handler_wire()).
+ * #TEH_keys_get_state()).
  */
 void
 TEH_wire_update_state (void);

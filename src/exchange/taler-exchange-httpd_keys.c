@@ -2412,11 +2412,10 @@ wallet_threshold_cb (void *cls,
  * @param[in,out] ksh key state handle we build @a krd for
  * @param[in] denom_keys_hash hash over all the denomination keys in @a denoms
  * @param last_cherry_pick_date timestamp to use
- * @param signkeys list of sign keys to return
- * @param recoup list of revoked keys to return
- * @param denoms list of denominations to return
- * @param grouped_denominations list of grouped denominations to return
- * @param[in] h_grouped XOR of all hashes in @a grouped_demoninations
+ * @param[in,out] signkeys list of sign keys to return
+ * @param[in,out] recoup list of revoked keys to return
+ * @param[in,out] grouped_denominations list of grouped denominations to return
+ * @param h_grouped XOR of all hashes in @a grouped_demoninations
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue

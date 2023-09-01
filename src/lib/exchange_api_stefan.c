@@ -72,8 +72,9 @@ amount_to_double (const struct TALER_Amount *a)
 /**
  * Convert double to amount for STEFAN curve evaluation.
  *
- * @param a input amount
- * @return (rounded) amount as a double
+ * @param dv input amount
+ * @param currency deisred currency
+ * @param[out] rval (rounded) amount as a double
  */
 static void
 double_to_amount (double dv,
