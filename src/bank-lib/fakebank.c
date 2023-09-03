@@ -2479,8 +2479,6 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                               &pos->amount),
       GNUNET_JSON_pack_string ("credit_account",
                                credit_payto),
-      GNUNET_JSON_pack_string ("debit_account",
-                               hc->payto_uri),          // FIXME #7275: inefficient to return this here always!
       GNUNET_JSON_pack_string ("exchange_base_url",
                                pos->subject.debit.exchange_base_url),
       GNUNET_JSON_pack_data_auto ("wtid",
@@ -2531,11 +2529,15 @@ finish:
     json_t *h = hc->history;
 
     hc->history = NULL;
-    return TALER_MHD_REPLY_JSON_PACK (connection,
-                                      MHD_HTTP_OK,
-                                      GNUNET_JSON_pack_array_steal (
-                                        "outgoing_transactions",
-                                        h));
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_string (
+        "debit_account",
+        hc->payto_uri),
+      GNUNET_JSON_pack_array_steal (
+        "outgoing_transactions",
+        h));
   }
 }
 
@@ -2720,8 +2722,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                                   pos->date),
       TALER_JSON_pack_amount ("amount",
                               &pos->amount),
-      GNUNET_JSON_pack_string ("credit_account",
-                               hc->payto_uri),   // FIXME #7275: inefficient to repeat this always here!
       GNUNET_JSON_pack_string ("debit_account",
                                pos->debit_account->payto_uri),
       GNUNET_JSON_pack_data_auto ("reserve_pub",
@@ -2771,11 +2771,15 @@ finish:
     json_t *h = hc->history;
 
     hc->history = NULL;
-    return TALER_MHD_REPLY_JSON_PACK (connection,
-                                      MHD_HTTP_OK,
-                                      GNUNET_JSON_pack_array_steal (
-                                        "incoming_transactions",
-                                        h));
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_string (
+        "credit_account",
+        hc->payto_uri),
+      GNUNET_JSON_pack_array_steal (
+        "incoming_transactions",
+        h));
   }
 }
 
@@ -3293,7 +3297,7 @@ get_account_access (struct TALER_FAKEBANK_Handle *h,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_string ("paytoUri", /* FIXME: #7300 */
+    GNUNET_JSON_pack_string ("payto_uri",
                              acc->payto_uri),
     GNUNET_JSON_pack_object_steal (
       "balance",
@@ -3907,7 +3911,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_OK,
-      GNUNET_JSON_pack_array_steal ("publicAccounts", /* FIXME: #7300 */
+      GNUNET_JSON_pack_array_steal ("public_accounts",
                                     json_array ()));
   }
   if ( (0 == strncmp (url,
@@ -4253,14 +4257,14 @@ handle_anastasis_credit_history (
                 TALER_amount2s (&pos->amount),
                 subject);
     trans = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("type",
+                               "RESERVE"),
       GNUNET_JSON_pack_uint64 ("row_id",
                                pos->row_id),
       GNUNET_JSON_pack_timestamp ("date",
                                   pos->date),
       TALER_JSON_pack_amount ("amount",
                               &pos->amount),
-      GNUNET_JSON_pack_string ("credit_account",
-                               hc->payto_uri),   // FIXME #7275: inefficient to repeat this always here!
       GNUNET_JSON_pack_string ("debit_account",
                                pos->debit_account->payto_uri),
       GNUNET_JSON_pack_string ("subject",
@@ -4311,11 +4315,15 @@ finish:
     json_t *h = hc->history;
 
     hc->history = NULL;
-    return TALER_MHD_REPLY_JSON_PACK (connection,
-                                      MHD_HTTP_OK,
-                                      GNUNET_JSON_pack_array_steal (
-                                        "incoming_transactions",
-                                        h));
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_string (
+        "credit_account",
+        hc->payto_uri),
+      GNUNET_JSON_pack_array_steal (
+        "incoming_transactions",
+        h));
   }
 }
 

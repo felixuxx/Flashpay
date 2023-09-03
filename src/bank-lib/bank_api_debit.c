@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017--2022 Taler Systems SA
+  Copyright (C) 2017--2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -82,15 +82,21 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
     .ec = TALER_EC_NONE,
     .response = history
   };
-  json_t *history_array;
+  const char *debit_account_uri;
+  const json_t *history_array;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_array_const ("outgoing_transactions",
+                                  &history_array),
+    GNUNET_JSON_spec_string ("debit_account",
+                             &debit_account_uri),
+    GNUNET_JSON_spec_end ()
+  };
 
-  if (NULL == (history_array = json_object_get (history,
-                                                "outgoing_transactions")))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (! json_is_array (history_array))
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (history,
+                         spec,
+                         NULL,
+                         NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -114,8 +120,6 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
                                      &td->wtid),
         GNUNET_JSON_spec_string ("credit_account",
                                  &td->credit_account_uri),
-        GNUNET_JSON_spec_string ("debit_account",
-                                 &td->debit_account_uri),
         GNUNET_JSON_spec_string ("exchange_base_url",
                                  &td->exchange_base_url),
         GNUNET_JSON_spec_end ()
@@ -132,6 +136,7 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      td->debit_account_uri = debit_account_uri;
     }
     dhr.details.ok.details_length = len;
     dhr.details.ok.details = dd;
