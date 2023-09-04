@@ -20,7 +20,6 @@ terms_DATA = \
   exchange-pp-v0.rst
 
 install-exec-local:
-	pwd
 	find locale/ -name "*.po"
 	mkdir -p $(DESTDIR)$(datadir)
 	cp --parents -r $$(find locale/ -name "*.po") $(DESTDIR)$(datadir)
