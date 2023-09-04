@@ -7,7 +7,9 @@ RUN apt-get update -yqq && \
 		   autoconf \
 		   autopoint \
 		   curl \
+		   doxygen \
                    git \
+		   jq \
 		   libcurl4-gnutls-dev \
 		   libgcrypt-dev \
 		   libidn11-dev \
@@ -52,10 +54,6 @@ RUN cat /etc/apt/preferences.d/taler && \
 
 
 RUN pip3 install --break-system-packages htmlark
-
-RUN apt-get update -yqq && \
-    apt-get install -yqq \
-                   doxygen
 
 WORKDIR /workdir
 
