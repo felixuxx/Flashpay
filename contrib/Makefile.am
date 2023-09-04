@@ -2,7 +2,7 @@
 
 SUBDIRS = .
 
-tmplpkgdatadir = $(prefix)/share/taler/exchange/templates/
+tmplpkgdatadir = $(datadir)/taler/exchange/templates/
 dist_tmplpkgdata_DATA = \
   persona-exchange-unauthorized.en.must \
   persona-load-failure.en.must \
