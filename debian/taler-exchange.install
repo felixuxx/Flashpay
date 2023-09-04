@@ -36,6 +36,6 @@ usr/share/taler/exchange/templates/*.must
 debian/etc-taler-exchange/* etc/
 
 # Terms of service / privacy policy templates
-usr/share/taler/exchange/*.rst
+usr/share/taler/terms/*.rst
 # Translations of ToS/PP
-usr/share/taler/exchange/locale/*/LC_MESSAGES/*.po
+usr/share/locale/*/LC_MESSAGES/*.po
