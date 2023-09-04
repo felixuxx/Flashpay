@@ -1,0 +1,60 @@
+FROM docker.io/library/debian:bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -yqq && \
+    apt-get install -yqq \
+		   autoconf \
+		   autopoint \
+		   curl \
+		   doxygen \
+                   git \
+		   jq \
+		   libcurl4-gnutls-dev \
+		   libgcrypt-dev \
+		   libidn11-dev \
+		   libjansson-dev \
+                   libmicrohttpd-dev \
+		   libpq-dev \
+		   libqrencode-dev \
+                   libsodium-dev \
+                   libtool \
+		   libunistring-dev \
+		   make \
+		   pkg-config \
+		   python3-pip \
+		   python3-sphinx \
+		   python3-sphinx-rtd-theme \
+                   recutils \
+                   texinfo \
+		   zlib1g-dev
+
+# Debian packaging tools
+RUN apt-get install -yqq \
+                   po-debconf \
+                   build-essential \
+                   debhelper-compat \
+                   devscripts
+
+# Install Taler (and friends) packages
+RUN curl -sS https://deb.taler.net/apt-nightly/taler-bookworm-ci.sources \
+    | tee /etc/apt/sources.list.d/taler-bookworm-ci.sources
+
+RUN echo '\
+Package: * \n\
+Pin: origin "deb.taler.net" \n\
+Pin-Priority: 999' > /etc/apt/preferences.d/taler
+
+RUN cat /etc/apt/preferences.d/taler && \
+    apt-get update -y && \
+    apt-get install -y \
+                   libgnunet-dev \
+                   libgnunet \
+&& rm -rf /var/lib/apt/lists/*
+
+
+RUN pip3 install --break-system-packages htmlark
+
+WORKDIR /workdir
+
+CMD ["bash", "/workdir/ci/ci.sh"]
