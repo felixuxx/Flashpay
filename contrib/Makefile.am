@@ -22,8 +22,8 @@ terms_DATA = \
 install-exec-local:
 	pwd
 	find locale/ -name "*.po"
-	mkdir -p $(termsdir)
-	cp --parents -r $$(find locale/ -name "*.po") $(termsdir)
+	mkdir -p $(DESTDIR)$(termsdir)
+	cp --parents -r $$(find locale/ -name "*.po") $(DESTDIR)$(termsdir)
 
 rdatadir=$(datadir)/taler/exchange
 rdata_DATA = \
