@@ -7,4 +7,22 @@ set -exuo pipefail
 	    --disable-doc
 make
 make install
-make check
+
+check_command()
+{
+	make check
+}
+
+print_logs()
+{
+	for i in $(cat src/util/test-suite.log  | grep '^FAIL:' | cut -d' ' -f 2)
+	do
+		echo Printing $i.log:
+		tail src/util/$i.log
+	done
+}
+
+if ! check_command ; then
+	print_logs
+	exit 1
+fi
