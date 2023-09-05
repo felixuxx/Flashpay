@@ -397,6 +397,11 @@ AS_IF([test "x$enableval" = "xno"], [enable_dev=0])
 AC_CHECK_DECL([MHD_OPTION_NOTIFY_CONNECTION],,[enable_dev=0],[[#include <microhttpd.h>]])
 AC_DEFINE_UNQUOTED([HAVE_DEVELOPER],[$enable_dev],[1 if developer logic is enabled, 0 otherwise])
 
+AC_PATH_PROG([JQ], [jq], [no])
+if test "$JQ" = "no"; then
+  AC_MSG_ERROR([jq is required but not found. Please install jq.])
+fi
+
 
 
 # Adam shostack suggests the following for Windows:
