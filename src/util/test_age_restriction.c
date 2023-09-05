@@ -80,24 +80,24 @@ test_groups (void)
       .bits =
         1 | 1 << 5 | 1 << 13 | 1 << 23,
 
-        .group = { 0, 0, 0, 0, 0,
-                   1, 1, 1, 1, 1, 1, 1, 1,
-                   2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                   3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }
+      .group = { 0, 0, 0, 0, 0,
+                 1, 1, 1, 1, 1, 1, 1, 1,
+                 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }
 
 
     },
     {
       .bits =
         1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21,
-        .group = { 0, 0, 0, 0, 0, 0, 0, 0,
-                   1, 1,
-                   2, 2,
-                   3, 3,
-                   4, 4,
-                   5, 5,
-                   6, 6, 6,
-                   7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}
+      .group = { 0, 0, 0, 0, 0, 0, 0, 0,
+                 1, 1,
+                 2, 2,
+                 3, 3,
+                 4, 4,
+                 5, 5,
+                 6, 6, 6,
+                 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}
 
 
     }
@@ -135,7 +135,6 @@ test_dates (void)
   struct TALER_AgeMask mask = {
     .bits = 1 | 1 << 5 | 1 << 9 | 1 << 13 | 1 << 17 | 1 << 21
   };
-
   struct
   {
     char *date;
@@ -156,26 +155,51 @@ test_dates (void)
 
     /* These dates should be far enough for the near future so that
      * the expected values are correct. Will need adjustment in 2044 :) */
-    {.date = "2023-06-26", .expected = 19533, .ret = GNUNET_OK },
-    {.date = "2023-06-01", .expected = 19508, .ret = GNUNET_OK },
-    {.date = "2023-06-00", .expected = 19508, .ret = GNUNET_OK },
-    {.date = "2023-01-01", .expected = 19357, .ret = GNUNET_OK },
-    {.date = "2023-00-00", .expected = 19357, .ret = GNUNET_OK },
+    {.date = "2022-11-26", .expected = 19322, .ret = GNUNET_OK },
+    {.date = "2022-11-27", .expected = 19323, .ret = GNUNET_OK },
+    {.date = "2023-06-26", .expected = 19534, .ret = GNUNET_OK },
+    {.date = "2023-06-01", .expected = 19509, .ret = GNUNET_OK },
+    {.date = "2023-06-00", .expected = 19509, .ret = GNUNET_OK },
+    {.date = "2023-01-01", .expected = 19358, .ret = GNUNET_OK },
+    {.date = "2023-00-00", .expected = 19358, .ret = GNUNET_OK },
+
+    /* Special case: .date == NULL meands birthday == current date, which
+     * should be 21 years in the future.  We will set these values below in the
+     * loop */
+    {.date = NULL, .expected = 0, .ret = GNUNET_OK },
   };
+  char buf[256]={0};
 
   for (uint8_t t = 0; t < sizeof(test) / sizeof(test[0]); t++)
   {
     uint32_t d;
     enum GNUNET_GenericReturnValue ret;
+    char *date = test[t].date;
 
-    ret = TALER_parse_coarse_date (test[t].date,
+    if (NULL == test[t].date)
+    {
+      /* Special case:  We set .date to the current date. */
+      time_t tn;
+      struct tm now;
+
+      time (&tn);
+      localtime_r (&tn, &now);
+      strftime (buf, sizeof(buf), "%Y-%m-%d", &now);
+      date = &buf[0];
+
+      /* The expected value is the number of days since 1970-01-01,
+       * counted simplistically */
+      test[t].expected = timegm (&now) / 60 / 60 / 24;
+    }
+
+    ret = TALER_parse_coarse_date (date,
                                    &mask,
                                    &d);
     if (ret != test[t].ret)
     {
       printf (
         "dates[%d] for date `%s` expected parser to return: %d, got: %d\n",
-        t, test[t].date, test[t].ret, ret);
+        t, date, test[t].ret, ret);
       return GNUNET_SYSERR;
     }
 
@@ -186,12 +210,12 @@ test_dates (void)
     {
       printf (
         "dates[%d] for date `%s` expected value %d, but got %d\n",
-        t, test[t].date, test[t].expected, d);
+        t, date, test[t].expected, d);
       return GNUNET_SYSERR;
     }
 
     printf ("dates[%d] for date `%s` got expected value %d\n",
-            t, test[t].date, d);
+            t, date, d);
   }
 
   printf ("done with dates\n");

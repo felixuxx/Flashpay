@@ -392,6 +392,7 @@ TALER_age_commitment_attest (
           &at,
           &attest->signature);
   }
+#undef sign
 
   return GNUNET_OK;
 }
@@ -441,6 +442,7 @@ TALER_age_commitment_verify (
                    &attest->signature,
                    &comm->keys[group - 1].pub);
   }
+#undef verify
 }
 
 
@@ -776,24 +778,26 @@ TALER_parse_coarse_date (
   GNUNET_assert (NULL !=mask);
   GNUNET_assert (NULL !=out);
 
-  if (NULL == strptime (in, "%Y-%0m-%0d", &date))
+  if (NULL == strptime (in, "%Y-%m-%d", &date))
   {
-    if (NULL == strptime (in, "%Y-%0m-00", &date))
+    if (NULL == strptime (in, "%Y-%m-00", &date))
       if (NULL == strptime (in, "%Y-00-00", &date))
         return GNUNET_SYSERR;
-
     /* turns out that the day is off by one in the last two cases */
     date.tm_mday += 1;
   }
 
-  seconds = mktime (&date);
+  seconds = timegm (&date);
   if (-1 == seconds)
     return GNUNET_SYSERR;
 
   /* calculate the limit date for the largest age group */
-  localtime_r (&(time_t){time (NULL)}, &limit);
+  {
+    time_t l = time (NULL);
+    localtime_r (&l, &limit);
+  }
   limit.tm_year -= TALER_adult_age (mask);
-  GNUNET_assert (-1 != mktime (&limit));
+  GNUNET_assert (-1 != timegm (&limit));
 
   if ((limit.tm_year < date.tm_year)
       || ((limit.tm_year == date.tm_year)
