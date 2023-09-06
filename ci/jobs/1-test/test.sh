@@ -8,9 +8,11 @@ set -evu
 make
 make install
 
+
 check_command()
 {
-	make check
+	# Set LD_LIBRARY_PATH so tests can find the installed libs
+	LD_LIBRARY_PATH=/usr/local/lib make check
 }
 
 print_logs()
