@@ -8,7 +8,6 @@ RUN apt-get update -yqq && \
 		   autopoint \
 		   curl \
                    git \
-		   jq \
 		   libcurl4-gnutls-dev \
 		   libgcrypt-dev \
 		   libidn11-dev \
@@ -39,6 +38,12 @@ RUN apt-get install -yqq \
 RUN apt-get install -yqq \
                    doxygen \
                    graphviz
+
+# Test suite dependencies
+RUN apt-get install -yqq \
+		   jq \
+                   postgresql \
+                   sudo
 
 # Install Taler (and friends) packages
 RUN curl -sS https://deb.taler.net/apt-nightly/taler-bookworm-ci.sources \
