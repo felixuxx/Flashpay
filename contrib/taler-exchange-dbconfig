@@ -125,7 +125,7 @@ fi
 if [ 0 = "$SKIP_DBINIT" ]
 then
     echo "Initializing database $DBNAME." 1>&2
-    sudo -i -u "$DBUSER" taler-exchange-dbinit
+    sudo -u "$DBUSER" taler-exchange-dbinit
 fi
 
 echo "Database configuration finished." 1>&2
