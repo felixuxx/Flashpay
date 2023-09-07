@@ -1,6 +1,5 @@
 usr/bin/taler-exchange-aggregator
 usr/bin/taler-exchange-closer
-usr/bin/taler-exchange-dbinit
 usr/bin/taler-exchange-drain
 usr/bin/taler-exchange-expire
 usr/bin/taler-exchange-httpd
