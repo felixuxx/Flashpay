@@ -74,7 +74,6 @@ Depends:
  lsb-base,
  netbase,
  ucf,
- dbconfig-pgsql | dbconfig-no-thanks,
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends:
@@ -127,7 +126,6 @@ Depends:
  adduser,
  lsb-base,
  netbase,
- dbconfig-pgsql | dbconfig-no-thanks,
  python3-jinja2,
  ${misc:Depends},
  ${shlibs:Depends}
