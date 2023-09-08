@@ -23,11 +23,11 @@ print_logs()
 {
 	for i in src/*/test-suite.log
 	do
-		FAILURE="$(grep '^FAIL:' ${i} | cut -d' ' -f2)"
-		if [ ! -z "${FAILURE}" ]; then
+		for FAILURE in $(grep '^FAIL:' ${i} | cut -d' ' -f2)
+		do
 			echo "Printing ${FAILURE}.log"
 			tail "$(dirname $i)/${FAILURE}.log"
-		fi
+		done
 	done
 }
 
