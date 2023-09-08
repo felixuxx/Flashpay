@@ -22,6 +22,7 @@ man_MANS = \
   prebuilt/man/taler-exchange-aggregator.1 \
   prebuilt/man/taler-exchange-benchmark.1  \
   prebuilt/man/taler-exchange-closer.1     \
+  prebuilt/man/taler-exchange-dbconfig.1  \
   prebuilt/man/taler-exchange-dbinit.1  \
   prebuilt/man/taler-exchange-drain.1  \
   prebuilt/man/taler-exchange-expire.1  \
