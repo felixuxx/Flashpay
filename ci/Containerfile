@@ -59,6 +59,7 @@ RUN cat /etc/apt/preferences.d/taler && \
     apt-get install -y \
                    libgnunet-dev \
                    libgnunet \
+                   gnunet \
 && rm -rf /var/lib/apt/lists/*
 
 
