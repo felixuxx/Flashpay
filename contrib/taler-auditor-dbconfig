@@ -85,7 +85,7 @@ if sudo -i -u postgres psql "$DBNAME" < /dev/null 2> /dev/null
 then
     if [ 1 = "$RESET_DB" ]
     then
-        echo "Deleting existing database $DBNAME." 1>&2
+        echo "Deleting existing database '$DBNAME'." 1>&2
         sudo -i -u postgres dropdb "$DBNAME"
     else
         echo "Database '$DBNAME' already exists, refusing to setup again."
@@ -111,10 +111,10 @@ fi
 
 if [ -f "$CFGFILE" ]
 then
-    echo "Adding database configuration to $CFGFILE." 1>&2
+    echo "Adding database configuration to '$CFGFILE'." 1>&2
     echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
 else
-    echo "Configuration $CFGFILE does not yet exist, creating it." 1>&2
+    echo "Configuration '$CFGFILE' does not yet exist, creating it." 1>&2
     mkdir -p "$(dirname "$CFGFILE")"
     echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
     chown "$DBUSER":root "$CFGFILE"
@@ -123,7 +123,7 @@ fi
 
 if [ 0 = "$SKIP_DBINIT" ]
 then
-    echo "Initializing database $DBNAME." 1>&2
+    echo "Initializing database '$DBNAME'." 1>&2
     sudo -u "$DBUSER" taler-auditor-dbinit
 fi
 
