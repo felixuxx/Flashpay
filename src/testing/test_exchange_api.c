@@ -1269,7 +1269,7 @@ main (int argc,
   {
     char *cipher;
 
-    cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+    cipher = GNUNET_STRINGS_get_suffix_from_binary_name (argv[0]);
     GNUNET_assert (NULL != cipher);
     uses_cs = (0 == strcmp (cipher,
                             "cs"));

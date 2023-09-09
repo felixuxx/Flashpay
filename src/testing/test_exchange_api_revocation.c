@@ -251,7 +251,7 @@ main (int argc,
   {
     char *cipher;
 
-    cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+    cipher = GNUNET_STRINGS_get_suffix_from_binary_name (argv[0]);
     GNUNET_assert (NULL != cipher);
     GNUNET_asprintf (&config_file,
                      "test_exchange_api-%s.conf",

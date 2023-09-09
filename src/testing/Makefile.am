@@ -194,7 +194,6 @@ test_auditor_api_cs_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -211,7 +210,6 @@ test_auditor_api_rsa_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -225,7 +223,6 @@ test_auditor_api_version_LDADD = \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -260,7 +257,6 @@ test_exchange_api_cs_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -277,7 +273,6 @@ test_exchange_api_rsa_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -294,7 +289,6 @@ test_exchange_api_age_restriction_cs_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -311,7 +305,6 @@ test_exchange_api_age_restriction_rsa_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -328,7 +321,6 @@ test_exchange_p2p_cs_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -345,7 +337,6 @@ test_exchange_p2p_rsa_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -361,7 +352,6 @@ test_exchange_api_keys_cherry_picking_cs_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -376,7 +366,6 @@ test_exchange_api_keys_cherry_picking_rsa_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -392,7 +381,6 @@ test_exchange_api_revocation_cs_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -408,7 +396,6 @@ test_exchange_api_revocation_rsa_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -424,7 +411,6 @@ test_exchange_api_overlapping_keys_bug_cs_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -439,7 +425,6 @@ test_exchange_api_overlapping_keys_bug_rsa_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
@@ -451,7 +436,6 @@ test_exchange_management_api_cs_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetutil \
   $(XLIB)
 
@@ -461,7 +445,6 @@ test_exchange_management_api_rsa_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetutil \
   $(XLIB)
 
@@ -510,7 +493,6 @@ test_exchange_api_twisted_cs_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
@@ -528,7 +510,6 @@ test_exchange_api_twisted_rsa_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
@@ -544,7 +525,6 @@ test_bank_api_with_fakebank_twisted_LDADD = \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
   libtalertwistertesting.la \
-  -lgnunettesting \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
