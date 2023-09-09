@@ -56,13 +56,13 @@ configure)
 
   if ! dpkg-statoverride --list /etc/taler/secrets/exchange-accountcredentials-1.secret.conf >/dev/null 2>&1; then
     dpkg-statoverride --add --update \
-      ${_WIREUSERNAME} root 460 \
+      ${_WIREUSERNAME} root 640 \
       /etc/taler/secrets/exchange-accountcredentials-1.secret.conf
   fi
 
   if ! dpkg-statoverride --list /etc/taler/secrets/exchange-db.secret.conf >/dev/null 2>&1; then
     dpkg-statoverride --add --update \
-      root ${_DBGROUPNAME} 660 \
+      root ${_DBGROUPNAME} 640 \
       /etc/taler/secrets/exchange-db.secret.conf
   fi
 

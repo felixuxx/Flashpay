@@ -2,6 +2,17 @@
 
 set -e
 
+_GROUPNAME=taler-exchange-secmod
+_DBGROUPNAME=taler-exchange-db
+_EUSERNAME=taler-exchange-httpd
+_CLOSERUSERNAME=taler-exchange-closer
+_CSECUSERNAME=taler-exchange-secmod-cs
+_RSECUSERNAME=taler-exchange-secmod-rsa
+_ESECUSERNAME=taler-exchange-secmod-eddsa
+_AGGRUSERNAME=taler-exchange-aggregator
+_WIREUSERNAME=taler-exchange-wire
+
+
 if [ -f /usr/share/debconf/confmodule ]; then
   . /usr/share/debconf/confmodule
 fi
@@ -9,6 +20,19 @@ fi
 case "${1}" in
 purge)
     rm -rf /var/lib/taler/exchange-offline /var/lib/taler/exchange-secmod-*
+    dpkg-statoverride --remove \
+       /etc/taler/secrets/exchange-accountcredentials-1.secret.conf || true
+    dpkg-statoverride --remove \
+                      /etc/taler/secrets/exchange-db.secret.conf || true
+    deluser --quiet --system ${_CSECUSERNAME} || true
+    deluser --quiet --system ${_RSECUSERNAME} || true
+    deluser --quiet --system ${_ESECUSERNAME} || true
+    deluser --quiet --system ${_AGGRUSERNAME} || true
+    deluser --quiet --system ${_WIREUSERNAME} || true
+    deluser --quiet --system ${_CLOSERUSERNAME} || true
+    deluser --quiet --system ${_EUSERNAME} || true
+    delgroup --only-if-empty --quiet ${_DBGROUPNAME} || true
+    delgroup --only-if-empty --quiet ${_GROUPNAME} || true
     ;;
 
 remove | upgrade | failed-upgrade | abort-install | abort-upgrade | disappear)
