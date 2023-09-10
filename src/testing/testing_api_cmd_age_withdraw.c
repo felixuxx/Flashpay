@@ -355,20 +355,23 @@ age_withdraw_cleanup (
     aws->handle = NULL;
   }
 
-  for (size_t n = 0; n < aws->num_coins; n++)
+  if (NULL != aws->coin_inputs)
   {
-    struct TALER_EXCHANGE_AgeWithdrawCoinInput *in = &aws->coin_inputs[n];
-    struct CoinOutputState *out = &aws->coin_outputs[n];
-
-    if (NULL != in && NULL != in->denom_pub)
+    for (size_t n = 0; n < aws->num_coins; n++)
     {
-      TALER_EXCHANGE_destroy_denomination_key (in->denom_pub);
-      in->denom_pub = NULL;
+      struct TALER_EXCHANGE_AgeWithdrawCoinInput *in = &aws->coin_inputs[n];
+      struct CoinOutputState *out = &aws->coin_outputs[n];
+
+      if (NULL != in && NULL != in->denom_pub)
+      {
+        TALER_EXCHANGE_destroy_denomination_key (in->denom_pub);
+        in->denom_pub = NULL;
+      }
+      if (NULL != out)
+        TALER_age_commitment_proof_free (&out->details.age_commitment_proof);
     }
-    if (NULL != out)
-      TALER_age_commitment_proof_free (&out->details.age_commitment_proof);
+    GNUNET_free (aws->coin_inputs);
   }
-  GNUNET_free (aws->coin_inputs);
   GNUNET_free (aws->coin_outputs);
   GNUNET_free (aws->exchange_url);
   GNUNET_free (aws->reserve_payto_uri);

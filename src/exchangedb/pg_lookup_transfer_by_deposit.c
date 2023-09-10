@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -74,27 +74,30 @@ TEH_PG_lookup_transfer_by_deposit (
   PREPARE (pg,
            "lookup_deposit_wtid",
            "SELECT"
-           " aggregation_tracking.wtid_raw"
+           " atr.wtid_raw"
            ",wire_out.execution_date"
-           ",dep.amount_with_fee"
-           ",dep.wire_salt"
+           ",cdep.amount_with_fee"
+           ",bdep.wire_salt"
            ",wt.payto_uri"
            ",denom.fee_deposit"
-           " FROM deposits dep"
+           " FROM coin_deposits cdep"
+           "    JOIN batch_deposits bdep"
+           "      USING (batch_deposit_serial_id)"
            "    JOIN wire_targets wt"
            "      USING (wire_target_h_payto)"
-           "    JOIN aggregation_tracking"
-           "      USING (deposit_serial_id)"
+           "    JOIN aggregation_tracking atr"
+           "      ON (cdep.batch_deposit_serial_id = atr.batch_deposit_serial_id)"
            "    JOIN known_coins kc"
-           "      ON (kc.coin_pub = dep.coin_pub)"
+           "      ON (kc.coin_pub = cdep.coin_pub)"
            "    JOIN denominations denom"
            "      USING (denominations_serial)"
            "    JOIN wire_out"
            "      USING (wtid_raw)"
-           " WHERE dep.coin_pub=$1"
-           "   AND dep.merchant_pub=$3"
-           "   AND dep.h_contract_terms=$2");
-
+           " WHERE cdep.coin_pub=$1"
+           "   AND bdep.merchant_pub=$3"
+           "   AND bdep.h_contract_terms=$2");
+  /* NOTE: above query might be more efficient if we computed the shard
+     from the merchant_pub and included that in the query */
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "lookup_deposit_wtid",
                                                  params,
@@ -163,29 +166,33 @@ TEH_PG_lookup_transfer_by_deposit (
              "get_deposit_without_wtid",
              "SELECT"
              " agt.legitimization_requirement_serial_id"
-             ",dep.wire_salt"
+             ",bdep.wire_salt"
              ",wt.payto_uri"
-             ",dep.amount_with_fee"
+             ",cdep.amount_with_fee"
              ",denom.fee_deposit"
-             ",dep.wire_deadline"
+             ",bdep.wire_deadline"
              ",aml.status"
              ",aml.kyc_requirement"
-             " FROM deposits dep"
+             " FROM coin_deposits cdep"
+             " JOIN batch_deposits bdep"
+             "   USING (batch_deposit_serial_id)"
              " JOIN wire_targets wt"
              "   USING (wire_target_h_payto)"
              " JOIN known_coins kc"
-             "   ON (kc.coin_pub = dep.coin_pub)"
+             "   ON (kc.coin_pub = cdep.coin_pub)"
              " JOIN denominations denom"
              "   USING (denominations_serial)"
              " LEFT JOIN aggregation_transient agt "
-             "   ON ( (dep.wire_target_h_payto = agt.wire_target_h_payto) AND"
-             "        (dep.merchant_pub = agt.merchant_pub) )"
+             "   ON ( (bdep.wire_target_h_payto = agt.wire_target_h_payto) AND"
+             "        (bdep.merchant_pub = agt.merchant_pub) )"
              " LEFT JOIN aml_status aml"
              "   ON (wt.wire_target_h_payto = aml.h_payto)"
-             " WHERE dep.coin_pub=$1"
-             "   AND dep.merchant_pub=$3"
-             "   AND dep.h_contract_terms=$2"
+             " WHERE cdep.coin_pub=$1"
+             "   AND bdep.merchant_pub=$3"
+             "   AND bdep.h_contract_terms=$2"
              " LIMIT 1;");
+    /* NOTE: above query might be more efficient if we computed the shard
+       from the merchant_pub and included that in the query */
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_deposit_without_wtid",
                                                    params,

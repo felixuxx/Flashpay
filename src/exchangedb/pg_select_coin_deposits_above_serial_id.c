@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,21 +14,21 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_deposits_above_serial_id.c
- * @brief Implementation of the select_deposits_above_serial_id function for Postgres
+ * @file exchangedb/pg_select_coin_deposits_above_serial_id.c
+ * @brief Implementation of the select_coin_deposits_above_serial_id function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_select_deposits_above_serial_id.h"
+#include "pg_select_coin_deposits_above_serial_id.h"
 #include "pg_helper.h"
 
 /**
  * Closure for #deposit_serial_helper_cb().
  */
-struct DepositSerialContext
+struct CoinDepositSerialContext
 {
 
   /**
@@ -57,16 +57,16 @@ struct DepositSerialContext
  * Helper function to be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
- * @param cls closure of type `struct DepositSerialContext`
+ * @param cls closure of type `struct CoinDepositSerialContext`
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-deposit_serial_helper_cb (void *cls,
-                          PGresult *result,
-                          unsigned int num_results)
+coin_deposit_serial_helper_cb (void *cls,
+                               PGresult *result,
+                               unsigned int num_results)
 {
-  struct DepositSerialContext *dsc = cls;
+  struct CoinDepositSerialContext *dsc = cls;
   struct PostgresClosure *pg = dsc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
@@ -107,7 +107,7 @@ deposit_serial_helper_cb (void *cls,
                                     &deposit.receiver_wire_account),
       GNUNET_PQ_result_spec_bool ("done",
                                   &done),
-      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+      GNUNET_PQ_result_spec_uint64 ("coin_deposit_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
@@ -139,7 +139,7 @@ deposit_serial_helper_cb (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_deposits_above_serial_id (
+TEH_PG_select_coin_deposits_above_serial_id (
   void *cls,
   uint64_t serial_id,
   TALER_EXCHANGEDB_DepositCallback cb,
@@ -150,7 +150,7 @@ TEH_PG_select_deposits_above_serial_id (
     GNUNET_PQ_query_param_uint64 (&serial_id),
     GNUNET_PQ_query_param_end
   };
-  struct DepositSerialContext dsc = {
+  struct CoinDepositSerialContext dsc = {
     .cb = cb,
     .cb_cls = cb_cls,
     .pg = pg,
@@ -160,36 +160,38 @@ TEH_PG_select_deposits_above_serial_id (
 
   /* Fetch deposits with rowid '\geq' the given parameter */
   PREPARE (pg,
-           "audit_get_deposits_incr",
+           "audit_get_coin_deposits_incr",
            "SELECT"
-           " amount_with_fee"
-           ",wallet_timestamp"
-           ",exchange_timestamp"
-           ",merchant_pub"
+           " cdep.amount_with_fee"
+           ",bdep.wallet_timestamp"
+           ",bdep.exchange_timestamp"
+           ",bdep.merchant_pub"
            ",denom.denom_pub"
            ",kc.coin_pub"
            ",kc.age_commitment_hash"
-           ",coin_sig"
-           ",refund_deadline"
-           ",wire_deadline"
-           ",h_contract_terms"
-           ",wire_salt"
-           ",payto_uri AS receiver_wire_account"
-           ",done"
-           ",deposit_serial_id"
-           " FROM deposits"
-           "    JOIN wire_targets USING (wire_target_h_payto)"
-           "    JOIN known_coins kc USING (coin_pub)"
-           "    JOIN denominations denom USING (denominations_serial)"
-           " WHERE ("
-           "  (deposit_serial_id>=$1)"
-           " )"
-           " ORDER BY deposit_serial_id ASC;");
-
+           ",cdep.coin_sig"
+           ",bdep.refund_deadline"
+           ",bdep.wire_deadline"
+           ",bdep.h_contract_terms"
+           ",bdep.wire_salt"
+           ",wt.payto_uri AS receiver_wire_account"
+           ",bdep.done"
+           ",cdep.coin_deposit_serial_id"
+           " FROM coin_deposits cdep"
+           " JOIN batch_deposits bdep"
+           "   USING (batch_deposit_serial_id)"
+           " JOIN wire_targets wt"
+           "   USING (wire_target_h_payto)"
+           " JOIN known_coins kc"
+           "   USING (coin_pub)"
+           " JOIN denominations denom"
+           "   USING (denominations_serial)"
+           " WHERE (coin_deposit_serial_id>=$1)"
+           " ORDER BY coin_deposit_serial_id ASC;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_get_deposits_incr",
+                                             "audit_get_coin_deposits_incr",
                                              params,
-                                             &deposit_serial_helper_cb,
+                                             &coin_deposit_serial_helper_cb,
                                              &dsc);
   if (GNUNET_OK != dsc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;

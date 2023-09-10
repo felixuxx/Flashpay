@@ -73,23 +73,25 @@ TEH_PG_have_deposit2 (
   PREPARE (pg,
            "get_deposit",
            "SELECT"
-           " dep.amount_with_fee"
+           " cdep.amount_with_fee"
            ",denominations.fee_deposit"
-           ",dep.wallet_timestamp"
-           ",dep.exchange_timestamp"
-           ",dep.refund_deadline"
-           ",dep.wire_deadline"
-           ",dep.h_contract_terms"
-           ",dep.wire_salt"
+           ",bdep.wallet_timestamp"
+           ",bdep.exchange_timestamp"
+           ",bdep.refund_deadline"
+           ",bdep.wire_deadline"
+           ",bdep.h_contract_terms"
+           ",bdep.wire_salt"
            ",wt.payto_uri AS receiver_wire_account"
-           " FROM deposits dep"
-           " JOIN known_coins kc ON (kc.coin_pub = dep.coin_pub)"
+           " FROM coin_deposits cdep"
+           " JOIN batch_deposits bdep USING (batch_deposit_serial_id)"
+           " JOIN known_coins kc ON (kc.coin_pub = cdep.coin_pub)"
            " JOIN denominations USING (denominations_serial)"
            " JOIN wire_targets wt USING (wire_target_h_payto)"
-           " WHERE dep.coin_pub=$1"
-           "   AND dep.merchant_pub=$3"
-           "   AND dep.h_contract_terms=$2;");
-
+           " WHERE cdep.coin_pub=$1"
+           "   AND bdep.merchant_pub=$3"
+           "   AND bdep.h_contract_terms=$2;");
+  /* Note: query might be made more efficient if we computed the 'shard'
+     from merchant_pub and included that as a constraint on bdep! */
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_deposit",
                                                  params,

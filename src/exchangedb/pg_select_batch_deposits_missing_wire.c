@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,15 +14,15 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_deposits_missing_wire.c
- * @brief Implementation of the select_deposits_missing_wire function for Postgres
+ * @file exchangedb/pg_select_batch_deposits_missing_wire.c
+ * @brief Implementation of the select_batch_deposits_missing_wire function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_select_deposits_missing_wire.h"
+#include "pg_select_batch_deposits_missing_wire.h"
 #include "pg_helper.h"
 
 /**
@@ -76,7 +76,7 @@ missing_wire_cb (void *cls,
     struct GNUNET_TIME_Timestamp deadline;
     bool done;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+      GNUNET_PQ_result_spec_uint64 ("batch_deposit_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &coin_pub),
@@ -113,11 +113,12 @@ missing_wire_cb (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_deposits_missing_wire (void *cls,
-                                     struct GNUNET_TIME_Timestamp start_date,
-                                     struct GNUNET_TIME_Timestamp end_date,
-                                     TALER_EXCHANGEDB_WireMissingCallback cb,
-                                     void *cb_cls)
+TEH_PG_select_batch_deposits_missing_wire (
+  void *cls,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  TALER_EXCHANGEDB_WireMissingCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -133,36 +134,39 @@ TEH_PG_select_deposits_missing_wire (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Used in #postgres_select_deposits_missing_wire */
   // FIXME: used by the auditor; can probably be done
   // smarter by checking if 'done' or 'blocked'
   // are set correctly when going over deposits, instead
   // of JOINing with refunds.
+  // Also unclear why we return by coin_pub here;
+  // Also fails to check overdue in case of PARTIAL refunds.
+
   PREPARE (pg,
            "deposits_get_overdue",
            "SELECT"
-           " deposit_serial_id"
-           ",coin_pub"
-           ",amount_with_fee"
-           ",payto_uri"
-           ",wire_deadline"
-           ",done"
-           " FROM deposits d"
+           " bdep.batch_deposit_serial_id"
+           ",cdep.coin_pub"
+           ",cdep.amount_with_fee"
+           ",wt.payto_uri"
+           ",bdep.wire_deadline"
+           ",bdep.done"
+           " FROM batch_deposits bdep"
+           "   JOIN coin_deposits cdep"
+           "     USING (batch_deposit_serial_id)"
            "   JOIN known_coins"
            "     USING (coin_pub)"
-           "   JOIN wire_targets"
+           "   JOIN wire_targets wt"
            "     USING (wire_target_h_payto)"
-           " WHERE wire_deadline >= $1"
-           " AND wire_deadline < $2"
+           " WHERE bdep.wire_deadline >= $1"
+           " AND bdep.wire_deadline < $2"
            " AND NOT (EXISTS (SELECT 1"
            "            FROM refunds r"
-           "            WHERE (r.coin_pub = d.coin_pub) AND (r.deposit_serial_id = d.deposit_serial_id))"
+           "            WHERE (r.coin_pub = cdep.coin_pub)"
+           "               AND (r.batch_deposit_serial_id = bdep.batch_deposit_serial_id))"
            "       OR EXISTS (SELECT 1"
-           "            FROM aggregation_tracking"
-           "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
-           " ORDER BY wire_deadline ASC");
-
-
+           "            FROM aggregation_tracking atr"
+           "            WHERE (atr.batch_deposit_serial_id = bdep.batch_deposit_serial_id)))"
+           " ORDER BY bdep.wire_deadline ASC");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_get_overdue",
                                              params,

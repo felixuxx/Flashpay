@@ -274,7 +274,11 @@ static bool
 add_deposit (const struct Merchant *m)
 {
   struct Deposit d;
-  struct TALER_EXCHANGEDB_Deposit deposit;
+  struct TALER_EXCHANGEDB_CoinDepositInformation deposit;
+  struct TALER_EXCHANGEDB_BatchDeposit bd = {
+    .cdis = &deposit,
+    .num_cdis = 1
+  };
   uint64_t known_coin_id;
   struct TALER_DenominationHashP dph;
   struct TALER_AgeCommitmentHash agh;
@@ -302,29 +306,40 @@ add_deposit (const struct Merchant *m)
   }
   deposit.coin = d.coin;
   RANDOMIZE (&deposit.csig);
-  deposit.merchant_pub = m->merchant_pub;
-  deposit.h_contract_terms = d.h_contract_terms;
-  deposit.wire_salt = m->wire_salt;
-  deposit.receiver_wire_account = m->payto_uri;
-  deposit.timestamp = random_time ();
+  bd.merchant_pub = m->merchant_pub;
+  bd.h_contract_terms = d.h_contract_terms;
+  bd.wire_salt = m->wire_salt;
+  bd.receiver_wire_account = m->payto_uri;
+  bd.wallet_timestamp = random_time ();
   do {
-    deposit.refund_deadline = random_time ();
-    deposit.wire_deadline = random_time ();
-  } while (GNUNET_TIME_timestamp_cmp (deposit.wire_deadline,
+    bd.refund_deadline = random_time ();
+    bd.wire_deadline = random_time ();
+  } while (GNUNET_TIME_timestamp_cmp (bd.wire_deadline,
                                       <,
-                                      deposit.refund_deadline));
+                                      bd.refund_deadline));
 
   make_amount (1, 0, &deposit.amount_with_fee);
-  make_amount (0, 5, &deposit.deposit_fee);
-  if (0 >=
-      plugin->insert_deposit (plugin->cls,
-                              random_time (),
-                              &deposit))
+
   {
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return false;
+    struct GNUNET_TIME_Timestamp now;
+    bool balance_ok;
+    uint32_t bad_idx;
+    bool conflict;
+
+    now = random_time ();
+    if (0 >=
+        plugin->do_deposit (plugin->cls,
+                            &bd,
+                            &now,
+                            &balance_ok,
+                            &bad_idx,
+                            &conflict))
+    {
+      GNUNET_break (0);
+      global_ret = EXIT_FAILURE;
+      GNUNET_SCHEDULER_shutdown ();
+      return false;
+    }
   }
   if (GNUNET_YES ==
       eval_probability (((float) refund_rate) / 100.0))

@@ -1135,77 +1135,125 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
 
 
 /**
- * Function called with deposits table entries.
+ * Function called with batch deposits table entries.
  *
  * @param cls closure
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-lrbt_cb_table_deposits (void *cls,
-                        PGresult *result,
-                        unsigned int num_results)
+lrbt_cb_table_batch_deposits (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
   struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_DEPOSITS
+    .table = TALER_EXCHANGEDB_RT_BATCH_DEPOSITS
   };
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    bool no_policy;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
         "serial",
         &td.serial),
       GNUNET_PQ_result_spec_uint64 (
         "shard",
-        &td.details.deposits.shard),
-      GNUNET_PQ_result_spec_uint64 (
-        "known_coin_id",
-        &td.details.deposits.known_coin_id),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "coin_pub",
-        &td.details.deposits.coin_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT (
-        "amount_with_fee",
-        &td.details.deposits.amount_with_fee),
-      GNUNET_PQ_result_spec_timestamp (
-        "wallet_timestamp",
-        &td.details.deposits.wallet_timestamp),
-      GNUNET_PQ_result_spec_timestamp (
-        "exchange_timestamp",
-        &td.details.deposits.exchange_timestamp),
-      GNUNET_PQ_result_spec_timestamp (
-        "refund_deadline",
-        &td.details.deposits.refund_deadline),
-      GNUNET_PQ_result_spec_timestamp (
-        "wire_deadline",
-        &td.details.deposits.wire_deadline),
+        &td.details.batch_deposits.shard),
       GNUNET_PQ_result_spec_auto_from_type (
         "merchant_pub",
-        &td.details.deposits.merchant_pub),
+        &td.details.batch_deposits.merchant_pub),
+      GNUNET_PQ_result_spec_timestamp (
+        "wallet_timestamp",
+        &td.details.batch_deposits.wallet_timestamp),
+      GNUNET_PQ_result_spec_timestamp (
+        "exchange_timestamp",
+        &td.details.batch_deposits.exchange_timestamp),
+      GNUNET_PQ_result_spec_timestamp (
+        "refund_deadline",
+        &td.details.batch_deposits.refund_deadline),
+      GNUNET_PQ_result_spec_timestamp (
+        "wire_deadline",
+        &td.details.batch_deposits.wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type (
         "h_contract_terms",
-        &td.details.deposits.h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "coin_sig",
-        &td.details.deposits.coin_sig),
+        &td.details.batch_deposits.h_contract_terms),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type (
+          "wallet_data_hash",
+          &td.details.batch_deposits.wallet_data_hash),
+        &td.details.batch_deposits.no_wallet_data_hash),
       GNUNET_PQ_result_spec_auto_from_type (
         "wire_salt",
-        &td.details.deposits.wire_salt),
+        &td.details.batch_deposits.wire_salt),
       GNUNET_PQ_result_spec_auto_from_type (
         "wire_target_h_payto",
-        &td.details.deposits.wire_target_h_payto),
+        &td.details.batch_deposits.wire_target_h_payto),
       GNUNET_PQ_result_spec_auto_from_type (
         "policy_blocked",
-        &td.details.deposits.policy_blocked),
+        &td.details.batch_deposits.policy_blocked),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_uint64 (
           "policy_details_serial_id",
-          &td.details.deposits.policy_details_serial_id),
-        &no_policy),
+          &td.details.batch_deposits.policy_details_serial_id),
+        &td.details.batch_deposits.no_policy_details),
+      GNUNET_PQ_result_spec_end
+    };
+
+    td.details.batch_deposits.policy_details_serial_id = 0;
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with coin deposits table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_coin_deposits (void *cls,
+                             PGresult *result,
+                             unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_COIN_DEPOSITS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "batch_deposit_serial_id",
+        &td.details.coin_deposits.batch_deposit_serial_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.coin_deposits.coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_sig",
+        &td.details.coin_deposits.coin_sig),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.coin_deposits.amount_with_fee),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1262,8 +1310,8 @@ lrbt_cb_table_refunds (void *cls,
         "amount_with_fee",
         &td.details.refunds.amount_with_fee),
       GNUNET_PQ_result_spec_uint64 (
-        "deposit_serial_id",
-        &td.details.refunds.deposit_serial_id),
+        "batch_deposit_serial_id",
+        &td.details.refunds.batch_deposit_serial_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1364,8 +1412,8 @@ lrbt_cb_table_aggregation_tracking (void *cls,
         "serial",
         &td.serial),
       GNUNET_PQ_result_spec_uint64 (
-        "deposit_serial_id",
-        &td.details.aggregation_tracking.deposit_serial_id),
+        "batch_deposit_serial_id",
+        &td.details.aggregation_tracking.batch_deposit_serial_id),
       GNUNET_PQ_result_spec_auto_from_type (
         "wtid_raw",
         &td.details.aggregation_tracking.wtid_raw),
@@ -3124,30 +3172,40 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY rtc_serial ASC;");
     rh = &lrbt_cb_table_refresh_transfer_keys;
     break;
-  case TALER_EXCHANGEDB_RT_DEPOSITS:
-    XPREPARE ("select_above_serial_by_table_deposits",
+  case TALER_EXCHANGEDB_RT_BATCH_DEPOSITS:
+    XPREPARE ("select_above_serial_by_table_batch_deposits",
               "SELECT"
-              " deposit_serial_id AS serial"
+              " batch_deposit_serial_id AS serial"
               ",shard"
-              ",coin_pub"
-              ",known_coin_id"
-              ",amount_with_fee"
+              ",merchant_pub"
               ",wallet_timestamp"
               ",exchange_timestamp"
               ",refund_deadline"
               ",wire_deadline"
-              ",merchant_pub"
               ",h_contract_terms"
-              ",coin_sig"
+              ",wallet_data_hash"
               ",wire_salt"
               ",wire_target_h_payto"
               ",done"
               ",policy_blocked"
               ",policy_details_serial_id"
-              " FROM deposits"
-              " WHERE deposit_serial_id > $1"
-              " ORDER BY deposit_serial_id ASC;");
-    rh = &lrbt_cb_table_deposits;
+              " FROM batch_deposits"
+              " WHERE batch_deposit_serial_id > $1"
+              " ORDER BY batch_deposit_serial_id ASC;");
+    rh = &lrbt_cb_table_batch_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_COIN_DEPOSITS:
+    XPREPARE ("select_above_serial_by_table_coin_deposits",
+              "SELECT"
+              " coin_deposit_serial_id AS serial"
+              ",batch_deposit_serial_id"
+              ",coin_pub"
+              ",coin_sig"
+              ",amount_with_fee"
+              " FROM coin_deposits"
+              " WHERE coin_deposit_serial_id > $1"
+              " ORDER BY coin_deposit_serial_id ASC;");
+    rh = &lrbt_cb_table_coin_deposits;
     break;
   case TALER_EXCHANGEDB_RT_REFUNDS:
     XPREPARE ("select_above_serial_by_table_refunds",
@@ -3157,7 +3215,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",merchant_sig"
               ",rtransaction_id"
               ",amount_with_fee"
-              ",deposit_serial_id"
+              ",batch_deposit_serial_id"
               " FROM refunds"
               " WHERE refund_serial_id > $1"
               " ORDER BY refund_serial_id ASC;");
@@ -3181,7 +3239,7 @@ TEH_PG_lookup_records_by_table (void *cls,
     XPREPARE ("select_above_serial_by_table_aggregation_tracking",
               "SELECT"
               " aggregation_serial_id AS serial"
-              ",deposit_serial_id"
+              ",batch_deposit_serial_id"
               ",wtid_raw"
               " FROM aggregation_tracking"
               " WHERE aggregation_serial_id > $1"

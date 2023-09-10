@@ -914,11 +914,11 @@ check_for_required_transfers (void)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange's unfinished deposits (deadline: %s)\n",
               GNUNET_TIME_timestamp2s (next_timestamp));
-  qs = TALER_ARL_edb->select_deposits_missing_wire (TALER_ARL_edb->cls,
-                                                    pp.last_timestamp,
-                                                    next_timestamp,
-                                                    &wire_missing_cb,
-                                                    &next_timestamp);
+  qs = TALER_ARL_edb->select_batch_deposits_missing_wire (TALER_ARL_edb->cls,
+                                                          pp.last_timestamp,
+                                                          next_timestamp,
+                                                          &wire_missing_cb,
+                                                          &next_timestamp);
   if (0 > qs)
   {
     GNUNET_break (0);

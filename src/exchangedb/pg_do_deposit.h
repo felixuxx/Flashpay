@@ -24,29 +24,28 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Perform deposit operation, checking for sufficient balance
- * of the coin and possibly persisting the deposit details.
+ * of the coins and possibly persisting the deposit details.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param deposit deposit operation details
- * @param known_coin_id row of the coin in the known_coins table
- * @param h_payto hash of the merchant's bank account details
- * @param policy_details_serial_id pointer to the ID of the entry in policy_details, maybe NULL
+ * @param bd batch deposit operation details
  * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
  * @param[out] balance_ok set to true if the balance was sufficient
+ * @param[out] bad_balance_index set to the first index of a coin for which the balance was insufficient,
+ *             only used if @a balance_ok is set to false.
  * @param[out] in_conflict set to true if the deposit conflicted
  * @return query execution status
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_do_deposit (
   void *cls,
-  const struct TALER_EXCHANGEDB_Deposit *deposit,
-  uint64_t known_coin_id,
-  const struct TALER_PaytoHashP *h_payto,
-  uint64_t *policy_details_serial_id,
+  const struct TALER_EXCHANGEDB_BatchDeposit *bd,
   struct GNUNET_TIME_Timestamp *exchange_timestamp,
   bool *balance_ok,
+  uint32_t *bad_balance_index,
   bool *in_conflict);
 
 #endif

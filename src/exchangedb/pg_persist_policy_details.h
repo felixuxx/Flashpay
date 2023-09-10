@@ -24,6 +24,8 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /* Persist the details to a policy in the policy_details table.  If there
  * already exists a policy, update the fields accordingly.
  *

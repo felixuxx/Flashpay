@@ -603,7 +603,7 @@ static struct TALER_PaytoHashP wire_target_h_payto;
 
 
 /**
- * Callback for #select_deposits_above_serial_id ()
+ * Callback for #select_coin_deposits_above_serial_id ()
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
@@ -930,14 +930,17 @@ audit_wire_cb (void *cls,
 /**
  * Test API relating to wire_out handling.
  *
+ * @param bd batch deposit to test
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
+test_wire_out (const struct TALER_EXCHANGEDB_BatchDeposit *bd)
 {
+  const struct TALER_EXCHANGEDB_CoinDepositInformation *deposit = &bd->cdis[0];
   struct TALER_PaytoHashP h_payto;
 
-  TALER_payto_hash (deposit->receiver_wire_account,
+  GNUNET_assert (0 < bd->num_cdis);
+  TALER_payto_hash (bd->receiver_wire_account,
                     &h_payto);
   auditor_row_cnt = 0;
   memset (&wire_out_wtid,
@@ -955,8 +958,8 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
           plugin->start_deferred_wire_out (plugin->cls));
 
   /* setup values for wire transfer aggregation data */
-  merchant_pub_wt = deposit->merchant_pub;
-  h_contract_terms_wt = deposit->h_contract_terms;
+  merchant_pub_wt = bd->merchant_pub;
+  h_contract_terms_wt = bd->h_contract_terms;
   coin_pub_wt = deposit->coin.coin_pub;
 
   coin_value_wt = deposit->amount_with_fee;
@@ -1202,8 +1205,10 @@ run (void *cls)
   struct TALER_EXCHANGEDB_ReserveHistory *rh_head;
   struct TALER_EXCHANGEDB_BankTransfer *bt;
   struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw;
-  struct TALER_EXCHANGEDB_Deposit deposit;
-  struct TALER_EXCHANGEDB_Deposit deposit2;
+  struct TALER_EXCHANGEDB_CoinDepositInformation deposit;
+  struct TALER_EXCHANGEDB_BatchDeposit bd;
+  struct TALER_CoinSpendPublicKeyP cpub2;
+  struct TALER_MerchantPublicKeyP mpub2;
   struct TALER_EXCHANGEDB_Refund refund;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_EXCHANGEDB_TransactionList *tlp;
@@ -1233,7 +1238,12 @@ run (void *cls)
   memset (&deposit,
           0,
           sizeof (deposit));
-  deposit.receiver_wire_account = (char *) rcvr;
+  memset (&bd,
+          0,
+          sizeof (bd));
+  bd.receiver_wire_account = (char *) rcvr;
+  bd.cdis = &deposit;
+  bd.num_cdis = 1;
   memset (&salt,
           45,
           sizeof (salt));
@@ -1282,7 +1292,6 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fees.deposit));
-  deposit.deposit_fee = fees.deposit;
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fees.refresh));
@@ -1516,23 +1525,22 @@ run (void *cls)
     struct GNUNET_TIME_Timestamp deposit_timestamp
       = GNUNET_TIME_timestamp_get ();
     bool balance_ok;
+    uint32_t bad_balance_idx;
     bool in_conflict;
     struct TALER_PaytoHashP h_payto;
 
     RND_BLK (&h_payto);
-    deposit.refund_deadline
+    bd.refund_deadline
       = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MONTHS);
-    deposit.wire_deadline
+    bd.wire_deadline
       = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MONTHS);
     deposit.amount_with_fee = value;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_deposit (plugin->cls,
-                                &deposit,
-                                known_coin_id,
-                                &h_payto,
-                                false,
+                                &bd,
                                 &deposit_timestamp,
                                 &balance_ok,
+                                &bad_balance_idx,
                                 &in_conflict));
     FAILIF (! balance_ok);
     FAILIF (in_conflict);
@@ -1545,9 +1553,9 @@ run (void *cls)
     bool conflict;
 
     refund.coin = deposit.coin;
-    refund.details.merchant_pub = deposit.merchant_pub;
+    refund.details.merchant_pub = bd.merchant_pub;
     RND_BLK (&refund.details.merchant_sig);
-    refund.details.h_contract_terms = deposit.h_contract_terms;
+    refund.details.h_contract_terms = bd.h_contract_terms;
     refund.details.rtransaction_id = 1;
     refund.details.refund_amount = value;
     refund.details.refund_fee = fees.refund;
@@ -2002,26 +2010,24 @@ run (void *cls)
                                &deposit.csig));
         FAILIF (0 !=
                 GNUNET_memcmp (&have->merchant_pub,
-                               &deposit.merchant_pub));
+                               &bd.merchant_pub));
         FAILIF (0 !=
                 GNUNET_memcmp (&have->h_contract_terms,
-                               &deposit.h_contract_terms));
+                               &bd.h_contract_terms));
         FAILIF (0 !=
                 GNUNET_memcmp (&have->wire_salt,
-                               &deposit.wire_salt));
+                               &bd.wire_salt));
         FAILIF (GNUNET_TIME_timestamp_cmp (have->timestamp,
                                            !=,
-                                           deposit.timestamp));
+                                           bd.wallet_timestamp));
         FAILIF (GNUNET_TIME_timestamp_cmp (have->refund_deadline,
                                            !=,
-                                           deposit.refund_deadline));
+                                           bd.refund_deadline));
         FAILIF (GNUNET_TIME_timestamp_cmp (have->wire_deadline,
                                            !=,
-                                           deposit.wire_deadline));
+                                           bd.wire_deadline));
         FAILIF (0 != TALER_amount_cmp (&have->amount_with_fee,
                                        &deposit.amount_with_fee));
-        FAILIF (0 != TALER_amount_cmp (&have->deposit_fee,
-                                       &deposit.deposit_fee));
         matched |= 1;
         break;
       }
@@ -2092,7 +2098,6 @@ run (void *cls)
   memset (&deposit,
           0,
           sizeof (deposit));
-  deposit.deposit_fee = fees.deposit;
   RND_BLK (&deposit.coin.coin_pub);
   TALER_denom_pub_hash (&dkp->pub,
                         &deposit.coin.denom_pub_hash);
@@ -2104,20 +2109,18 @@ run (void *cls)
                                           &alg_values,
                                           &dkp->pub));
   RND_BLK (&deposit.csig);
-  RND_BLK (&deposit.merchant_pub);
-  RND_BLK (&deposit.h_contract_terms);
-  RND_BLK (&deposit.wire_salt);
-  deposit.receiver_wire_account =
+  RND_BLK (&bd.merchant_pub);
+  RND_BLK (&bd.h_contract_terms);
+  RND_BLK (&bd.wire_salt);
+  bd.receiver_wire_account =
     "payto://iban/DE67830654080004822650?receiver-name=Test";
   TALER_merchant_wire_signature_hash (
     "payto://iban/DE67830654080004822650?receiver-name=Test",
-    &deposit.wire_salt,
+    &bd.wire_salt,
     &h_wire_wt);
   deposit.amount_with_fee = value;
-  deposit.deposit_fee = fees.deposit;
-
-  deposit.refund_deadline = deadline;
-  deposit.wire_deadline = deadline;
+  bd.refund_deadline = deadline;
+  bd.wire_deadline = deadline;
   result = 8;
   {
     uint64_t known_coin_id;
@@ -2136,22 +2139,30 @@ run (void *cls)
     struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
     struct TALER_MerchantWireHashP h_wire;
+    bool balance_ok;
+    uint32_t bad_idx;
+    bool ctr_conflict;
 
     now = GNUNET_TIME_timestamp_get ();
+    TALER_payto_hash (bd.receiver_wire_account,
+                      &bd.wire_target_h_payto);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->insert_deposit (plugin->cls,
-                                    now,
-                                    &deposit));
-    TALER_merchant_wire_signature_hash (deposit.receiver_wire_account,
-                                        &deposit.wire_salt,
+            plugin->do_deposit (plugin->cls,
+                                &bd,
+                                &now,
+                                &balance_ok,
+                                &bad_idx,
+                                &ctr_conflict));
+    TALER_merchant_wire_signature_hash (bd.receiver_wire_account,
+                                        &bd.wire_salt,
                                         &h_wire);
     FAILIF (1 !=
             plugin->have_deposit2 (plugin->cls,
-                                   &deposit.h_contract_terms,
+                                   &bd.h_contract_terms,
                                    &h_wire,
                                    &deposit.coin.coin_pub,
-                                   &deposit.merchant_pub,
-                                   deposit.refund_deadline,
+                                   &bd.merchant_pub,
+                                   bd.refund_deadline,
                                    &deposit_fee,
                                    &r));
     FAILIF (GNUNET_TIME_timestamp_cmp (now,
@@ -2169,19 +2180,19 @@ run (void *cls)
       GNUNET_TIME_absolute_add (deadline.abs_time,
                                 GNUNET_TIME_UNIT_SECONDS));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->select_deposits_missing_wire (plugin->cls,
-                                                  start_range,
-                                                  end_range,
-                                                  &wire_missing_cb,
-                                                  &deposit));
+            plugin->select_batch_deposits_missing_wire (plugin->cls,
+                                                        start_range,
+                                                        end_range,
+                                                        &wire_missing_cb,
+                                                        &deposit));
     FAILIF (8 != result);
   }
   auditor_row_cnt = 0;
   FAILIF (0 >=
-          plugin->select_deposits_above_serial_id (plugin->cls,
-                                                   0,
-                                                   &audit_deposit_cb,
-                                                   NULL));
+          plugin->select_coin_deposits_above_serial_id (plugin->cls,
+                                                        0,
+                                                        &audit_deposit_cb,
+                                                        NULL));
   FAILIF (0 == auditor_row_cnt);
   result = 8;
   sleep (2); /* give deposit time to be ready */
@@ -2196,9 +2207,9 @@ run (void *cls)
                                        &merchant_pub2,
                                        &payto_uri2));
     FAILIF (0 != GNUNET_memcmp (&merchant_pub2,
-                                &deposit.merchant_pub));
+                                &bd.merchant_pub));
     FAILIF (0 != strcmp (payto_uri2,
-                         deposit.receiver_wire_account));
+                         bd.receiver_wire_account));
     TALER_payto_hash (payto_uri2,
                       &wire_target_h_payto);
     GNUNET_free (payto_uri2);
@@ -2214,7 +2225,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->aggregate (plugin->cls,
                                &wire_target_h_payto,
-                               &deposit.merchant_pub,
+                               &bd.merchant_pub,
                                &wtid,
                                &total));
   }
@@ -2238,7 +2249,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
-                                                  &deposit.merchant_pub,
+                                                  &bd.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2246,14 +2257,14 @@ run (void *cls)
             plugin->create_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
                                                   "x-bank",
-                                                  &deposit.merchant_pub,
+                                                  &bd.merchant_pub,
                                                   &wtid,
                                                   0,
                                                   &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
-                                                  &deposit.merchant_pub,
+                                                  &bd.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2275,7 +2286,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
-                                                  &deposit.merchant_pub,
+                                                  &bd.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2292,7 +2303,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
-                                                  &deposit.merchant_pub,
+                                                  &bd.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2301,37 +2312,35 @@ run (void *cls)
           plugin->commit (plugin->cls));
 
   result = 10;
-  deposit2 = deposit;
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          "test-2"));
-  RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
+  RND_BLK (&mpub2); /* should fail if merchant is different */
   {
     struct TALER_MerchantWireHashP h_wire;
     struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
 
-    TALER_merchant_wire_signature_hash (deposit2.receiver_wire_account,
-                                        &deposit2.wire_salt,
+    TALER_merchant_wire_signature_hash (bd.receiver_wire_account,
+                                        &bd.wire_salt,
                                         &h_wire);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->have_deposit2 (plugin->cls,
-                                   &deposit2.h_contract_terms,
+                                   &bd.h_contract_terms,
                                    &h_wire,
-                                   &deposit2.coin.coin_pub,
-                                   &deposit2.merchant_pub,
-                                   deposit2.refund_deadline,
+                                   &deposit.coin.coin_pub,
+                                   &mpub2,
+                                   bd.refund_deadline,
                                    &deposit_fee,
                                    &r));
-    deposit2.merchant_pub = deposit.merchant_pub;
-    RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
+    RND_BLK (&cpub2); /* should fail if coin is different */
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->have_deposit2 (plugin->cls,
-                                   &deposit2.h_contract_terms,
+                                   &bd.h_contract_terms,
                                    &h_wire,
-                                   &deposit2.coin.coin_pub,
-                                   &deposit2.merchant_pub,
-                                   deposit2.refund_deadline,
+                                   &cpub2,
+                                   &bd.merchant_pub,
+                                   bd.refund_deadline,
                                    &deposit_fee,
                                    &r));
   }
@@ -2381,7 +2390,7 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           test_wire_prepare ());
   FAILIF (GNUNET_OK !=
-          test_wire_out (&deposit));
+          test_wire_out (&bd));
   FAILIF (GNUNET_OK !=
           test_gc ());
   FAILIF (GNUNET_OK !=

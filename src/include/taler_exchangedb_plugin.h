@@ -273,7 +273,8 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS,
   TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS,
   TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS,
-  TALER_EXCHANGEDB_RT_DEPOSITS,
+  TALER_EXCHANGEDB_RT_BATCH_DEPOSITS,
+  TALER_EXCHANGEDB_RT_COIN_DEPOSITS,
   TALER_EXCHANGEDB_RT_REFUNDS,
   TALER_EXCHANGEDB_RT_WIRE_OUT,
   TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING,
@@ -497,26 +498,33 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       uint64_t shard;
-      uint64_t known_coin_id;
-      struct TALER_CoinSpendPublicKeyP coin_pub;
-      struct TALER_Amount amount_with_fee;
+      struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct GNUNET_TIME_Timestamp exchange_timestamp;
       struct GNUNET_TIME_Timestamp refund_deadline;
       struct GNUNET_TIME_Timestamp wire_deadline;
-      struct TALER_MerchantPublicKeyP merchant_pub;
       struct TALER_PrivateContractHashP h_contract_terms;
-      struct TALER_CoinSpendSignatureP coin_sig;
+      struct GNUNET_HashCode wallet_data_hash;
+      bool no_wallet_data_hash;
       struct TALER_WireSaltP wire_salt;
       struct TALER_PaytoHashP wire_target_h_payto;
       bool policy_blocked;
       uint64_t policy_details_serial_id;
-    } deposits;
+      bool no_policy_details;
+    } batch_deposits;
+
+    struct
+    {
+      uint64_t batch_deposit_serial_id;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct TALER_Amount amount_with_fee;
+    } coin_deposits;
 
     struct
     {
       struct TALER_CoinSpendPublicKeyP coin_pub;
-      uint64_t deposit_serial_id;
+      uint64_t batch_deposit_serial_id;
       struct TALER_MerchantSignatureP merchant_sig;
       uint64_t rtransaction_id;
       struct TALER_Amount amount_with_fee;
@@ -533,7 +541,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      uint64_t deposit_serial_id;
+      uint64_t batch_deposit_serial_id;
       struct TALER_WireTransferIdentifierRawP wtid_raw;
     } aggregation_tracking;
 
@@ -1683,6 +1691,129 @@ struct TALER_EXCHANGEDB_ReserveHistory
     struct TALER_EXCHANGEDB_CloseRequest *close_request;
 
   } details;
+
+};
+
+
+/**
+ * @brief Data about a coin for a deposit operation.
+ */
+struct TALER_EXCHANGEDB_CoinDepositInformation
+{
+  /**
+   * Information about the coin that is being deposited.
+   */
+  struct TALER_CoinPublicInfo coin;
+
+  /**
+   * ECDSA signature affirming that the customer intends
+   * this coin to be deposited at the merchant identified
+   * by @e h_wire in relation to the proposal data identified
+   * by @e h_contract_terms.
+   */
+  struct TALER_CoinSpendSignatureP csig;
+
+  /**
+   * Fraction of the coin's remaining value to be deposited, including
+   * depositing fee (if any).  The coin is identified by @e coin_pub.
+   */
+  struct TALER_Amount amount_with_fee;
+
+};
+
+
+/**
+ * @brief Data from a batch deposit operation.
+ */
+struct TALER_EXCHANGEDB_BatchDeposit
+{
+  /**
+   * Array about the coins that are being deposited.
+   */
+  const struct TALER_EXCHANGEDB_CoinDepositInformation *cdis;
+
+  /**
+   * Length of the @e cdis array.
+   */
+  unsigned int num_cdis;
+
+  /**
+   * Public key of the merchant.  Enables later identification
+   * of the merchant in case of a need to rollback transactions.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Hash over the proposal data between merchant and customer
+   * (remains unknown to the Exchange).
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Salt used by the merchant to compute "h_wire".
+   */
+  struct TALER_WireSaltP wire_salt;
+
+  /**
+   * Information about the receiver for executing the transaction.  URI in
+   * payto://-format.
+   */
+  const char *receiver_wire_account;
+
+  /**
+   * Unsalted hash over @e receiver_wire_account.
+   */
+  struct TALER_PaytoHashP wire_target_h_payto;
+
+  /**
+   * Time when this request was generated.  Used, for example, to
+   * assess when (roughly) the income was achieved for tax purposes.
+   * Note that the Exchange will only check that the timestamp is not "too
+   * far" into the future (i.e. several days).  The fact that the
+   * timestamp falls within the validity period of the coin's
+   * denomination key is irrelevant for the validity of the deposit
+   * request, as obviously the customer and merchant could conspire to
+   * set any timestamp.  Also, the Exchange must accept very old deposit
+   * requests, as the merchant might have been unable to transmit the
+   * deposit request in a timely fashion (so back-dating is not
+   * prevented).
+   */
+  struct GNUNET_TIME_Timestamp wallet_timestamp;
+
+  /**
+   * How much time does the merchant have to issue a refund request?
+   * Zero if refunds are not allowed.  After this time, the coin
+   * cannot be refunded.
+   */
+  struct GNUNET_TIME_Timestamp refund_deadline;
+
+  /**
+   * How much time does the merchant have to execute the wire transfer?
+   * This time is advisory for aggregating transactions, not a hard
+   * constraint (as the merchant can theoretically pick any time,
+   * including one in the past).
+   */
+  struct GNUNET_TIME_Timestamp wire_deadline;
+
+  /**
+   * Hash over additional inputs by the wallet.
+   */
+  struct GNUNET_HashCode wallet_data_hash;
+
+  /**
+   * Row ID of the policy details; 0 if no policy applies.
+   */
+  uint64_t policy_details_serial_id;
+
+  /**
+   * True if @e wallet_data_hash was provided
+   */
+  bool has_wallet_data_hash;
+
+  /**
+   * True if further processing is blocked by policy.
+   */
+  bool policy_blocked;
 
 };
 
@@ -3917,25 +4048,22 @@ struct TALER_EXCHANGEDB_Plugin
    * of the coin and possibly persisting the deposit details.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param deposit deposit operation details
-   * @param known_coin_id row of the coin in the known_coins table
-   * @param h_payto hash of the merchant's payto URI
-   * @param policy_details_serial_id (pointer to) the row ID of the policy details, maybe NULL
+   * @param bd batch deposit operation details
    * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
    * @param[out] balance_ok set to true if the balance was sufficient
-   * @param[out] in_conflict set to true if the deposit conflicted
+   * @param[out] bad_balance_index set to the first index of a coin for which the balance was insufficient,
+   *             only used if @a balance_ok is set to false.
+   * @param[out] ctr_conflict set to true if the same contract terms hash was previously submitted with other meta data (deadlines, wallet_data_hash, wire data etc.)
    * @return query execution status
    */
   enum GNUNET_DB_QueryStatus
   (*do_deposit)(
     void *cls,
-    const struct TALER_EXCHANGEDB_Deposit *deposit,
-    uint64_t known_coin_id,
-    const struct TALER_PaytoHashP *h_payto,
-    uint64_t *policy_details_serial_id,
+    const struct TALER_EXCHANGEDB_BatchDeposit *bd,
     struct GNUNET_TIME_Timestamp *exchange_timestamp,
     bool *balance_ok,
-    bool *in_conflict);
+    uint32_t *bad_balance_index,
+    bool *ctr_conflict);
 
 
   /**
@@ -4283,21 +4411,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Insert information about deposited coin into the database.
-   * Used in tests and for benchmarking.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param exchange_timestamp time the exchange received the deposit request
-   * @param deposit deposit information to store
-   * @return query result status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_deposit)(void *cls,
-                    struct GNUNET_TIME_Timestamp exchange_timestamp,
-                    const struct TALER_EXCHANGEDB_Deposit *deposit);
-
-
-  /**
    * Insert information about refunded coin into the database.
    * Used in tests and for benchmarking.
    *
@@ -4625,21 +4738,6 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_Amount *deposit_fee,
     struct TALER_EXCHANGEDB_KycStatus *kyc,
     enum TALER_AmlDecisionState *aml_decision);
-
-
-  /**
-   * Function called to insert aggregation information into the DB.
-   *
-   * @param cls closure
-   * @param wtid the raw wire transfer identifier we used
-   * @param deposit_serial_id row in the deposits table for which this is aggregation data
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_aggregation_tracking)(
-    void *cls,
-    const struct TALER_WireTransferIdentifierRawP *wtid,
-    unsigned long long deposit_serial_id);
 
 
   /**
@@ -5037,10 +5135,10 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_deposits_above_serial_id)(void *cls,
-                                     uint64_t serial_id,
-                                     TALER_EXCHANGEDB_DepositCallback cb,
-                                     void *cb_cls);
+  (*select_coin_deposits_above_serial_id)(void *cls,
+                                          uint64_t serial_id,
+                                          TALER_EXCHANGEDB_DepositCallback cb,
+                                          void *cb_cls);
 
 
   /**
@@ -5396,10 +5494,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_reserve_by_h_blind)(void *cls,
-                            const struct TALER_BlindedCoinHashP *bch,
-                            struct TALER_ReservePublicKeyP *reserve_pub,
-                            uint64_t *reserve_out_serial_id);
+  (*get_reserve_by_h_blind)(
+    void *cls,
+    const struct TALER_BlindedCoinHashP *bch,
+    struct TALER_ReservePublicKeyP *reserve_pub,
+    uint64_t *reserve_out_serial_id);
 
 
   /**
@@ -5413,10 +5512,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_old_coin_by_h_blind)(void *cls,
-                             const struct TALER_BlindedCoinHashP *h_blind_ev,
-                             struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-                             uint64_t *rrc_serial);
+  (*get_old_coin_by_h_blind)(
+    void *cls,
+    const struct TALER_BlindedCoinHashP *h_blind_ev,
+    struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+    uint64_t *rrc_serial);
 
 
   /**
@@ -5466,11 +5566,12 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_deposits_missing_wire)(void *cls,
-                                  struct GNUNET_TIME_Timestamp start_date,
-                                  struct GNUNET_TIME_Timestamp end_date,
-                                  TALER_EXCHANGEDB_WireMissingCallback cb,
-                                  void *cb_cls);
+  (*select_batch_deposits_missing_wire)(
+    void *cls,
+    struct GNUNET_TIME_Timestamp start_date,
+    struct GNUNET_TIME_Timestamp end_date,
+    TALER_EXCHANGEDB_WireMissingCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -5482,9 +5583,10 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*lookup_auditor_timestamp)(void *cls,
-                              const struct TALER_AuditorPublicKeyP *auditor_pub,
-                              struct GNUNET_TIME_Timestamp *last_date);
+  (*lookup_auditor_timestamp)(
+    void *cls,
+    const struct TALER_AuditorPublicKeyP *auditor_pub,
+    struct GNUNET_TIME_Timestamp *last_date);
 
 
   /**
@@ -5498,10 +5600,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*lookup_auditor_status)(void *cls,
-                           const struct TALER_AuditorPublicKeyP *auditor_pub,
-                           char **auditor_url,
-                           bool *enabled);
+  (*lookup_auditor_status)(
+    void *cls,
+    const struct TALER_AuditorPublicKeyP *auditor_pub,
+    char **auditor_url,
+    bool *enabled);
 
 
   /**
@@ -5516,11 +5619,12 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor)(void *cls,
-                    const struct TALER_AuditorPublicKeyP *auditor_pub,
-                    const char *auditor_url,
-                    const char *auditor_name,
-                    struct GNUNET_TIME_Timestamp start_date);
+  (*insert_auditor)(
+    void *cls,
+    const struct TALER_AuditorPublicKeyP *auditor_pub,
+    const char *auditor_url,
+    const char *auditor_name,
+    struct GNUNET_TIME_Timestamp start_date);
 
 
   /**
@@ -5536,12 +5640,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_auditor)(void *cls,
-                    const struct TALER_AuditorPublicKeyP *auditor_pub,
-                    const char *auditor_url,
-                    const char *auditor_name,
-                    struct GNUNET_TIME_Timestamp change_date,
-                    bool enabled);
+  (*update_auditor)(
+    void *cls,
+    const struct TALER_AuditorPublicKeyP *auditor_pub,
+    const char *auditor_url,
+    const char *auditor_name,
+    struct GNUNET_TIME_Timestamp change_date,
+    bool enabled);
 
 
   /**

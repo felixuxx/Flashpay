@@ -74,7 +74,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_compute_shard.h pg_compute_shard.c \
   plugin_exchangedb_postgres.c pg_helper.h \
   pg_reserves_update.h pg_reserves_update.c \
-  pg_insert_aggregation_tracking.h pg_insert_aggregation_tracking.c \
   pg_select_aggregation_amounts_for_kyc_check.h pg_select_aggregation_amounts_for_kyc_check.c \
   pg_lookup_wire_fee_by_time.h pg_lookup_wire_fee_by_time.c \
   pg_select_satisfied_kyc_processes.h pg_select_satisfied_kyc_processes.c \
@@ -144,7 +143,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_find_aggregation_transient.h pg_find_aggregation_transient.c \
   pg_update_aggregation_transient.h pg_update_aggregation_transient.c \
   pg_get_ready_deposit.h pg_get_ready_deposit.c \
-  pg_insert_deposit.h pg_insert_deposit.c \
   pg_insert_refund.h pg_insert_refund.c \
   pg_select_refunds_by_coin.h pg_select_refunds_by_coin.c \
   pg_get_melt.h pg_get_melt.c \
@@ -165,7 +163,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_start_deferred_wire_out.h pg_start_deferred_wire_out.c \
   pg_store_wire_transfer_out.h pg_store_wire_transfer_out.c \
   pg_gc.h pg_gc.c \
-  pg_select_deposits_above_serial_id.h pg_select_deposits_above_serial_id.c \
+  pg_select_coin_deposits_above_serial_id.h pg_select_coin_deposits_above_serial_id.c \
   pg_select_history_requests_above_serial_id.h pg_select_history_requests_above_serial_id.c \
   pg_select_purse_decisions_above_serial_id.h pg_select_purse_decisions_above_serial_id.c \
   pg_select_purse_deposits_by_purse.h pg_select_purse_deposits_by_purse.c \
@@ -182,7 +180,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_get_old_coin_by_h_blind.h pg_get_old_coin_by_h_blind.c \
   pg_insert_denomination_revocation.h pg_insert_denomination_revocation.c \
   pg_get_denomination_revocation.h pg_get_denomination_revocation.c \
-  pg_select_deposits_missing_wire.h pg_select_deposits_missing_wire.c \
+  pg_select_batch_deposits_missing_wire.h pg_select_batch_deposits_missing_wire.c \
   pg_lookup_auditor_timestamp.h pg_lookup_auditor_timestamp.c \
   pg_lookup_auditor_status.h pg_lookup_auditor_status.c \
   pg_insert_auditor.h pg_insert_auditor.c \

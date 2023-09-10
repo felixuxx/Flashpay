@@ -855,68 +855,106 @@ irbt_cb_table_refresh_transfer_keys (
 
 
 /**
+ * Function called with batch deposits records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_batch_deposits (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.batch_deposits.shard),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.batch_deposits.merchant_pub),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.batch_deposits.wallet_timestamp),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.batch_deposits.exchange_timestamp),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.batch_deposits.refund_deadline),
+    GNUNET_PQ_query_param_timestamp (&td->details.batch_deposits.wire_deadline),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.batch_deposits.h_contract_terms),
+    td->details.batch_deposits.no_wallet_data_hash
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (
+      &td->details.batch_deposits.wallet_data_hash),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.batch_deposits.wire_salt),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.batch_deposits.wire_target_h_payto),
+    GNUNET_PQ_query_param_bool (td->details.batch_deposits.policy_blocked),
+    td->details.batch_deposits.no_policy_details
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_uint64 (
+      &td->details.batch_deposits.policy_details_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_batch_deposits",
+           "INSERT INTO batch_deposits"
+           "(batch_deposit_serial_id"
+           ",shard"
+           ",merchant_pub"
+           ",wallet_timestamp"
+           ",exchange_timestamp"
+           ",refund_deadline"
+           ",wire_deadline"
+           ",h_contract_terms"
+           ",wallet_data_hash"
+           ",wire_salt"
+           ",wire_target_h_payto"
+           ",policy_details_serial_id"
+           ",policy_blocked"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+           " $11, $12, $13);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_batch_deposits",
+                                             params);
+}
+
+
+/**
  * Function called with deposits records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_deposits (struct PostgresClosure *pg,
-                        const struct TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_coin_deposits (struct PostgresClosure *pg,
+                             const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_uint64 (&td->details.deposits.shard),
-    GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.coin_deposits.batch_deposit_serial_id),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.deposits.coin_pub),
+      &td->details.coin_deposits.coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.coin_deposits.coin_sig),
     TALER_PQ_query_param_amount (
       pg->conn,
-      &td->details.deposits.amount_with_fee),
-    GNUNET_PQ_query_param_timestamp (&td->details.deposits.wallet_timestamp),
-    GNUNET_PQ_query_param_timestamp (
-      &td->details.deposits.exchange_timestamp),
-    GNUNET_PQ_query_param_timestamp (&td->details.deposits.refund_deadline),
-    GNUNET_PQ_query_param_timestamp (&td->details.deposits.wire_deadline),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.deposits.h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.coin_sig),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.deposits.wire_target_h_payto),
-    GNUNET_PQ_query_param_bool (td->details.deposits.policy_blocked),
-    0 == td->details.deposits.policy_details_serial_id
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_uint64 (
-      &td->details.deposits.policy_details_serial_id),
+      &td->details.coin_deposits.amount_with_fee),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_deposits",
-           "INSERT INTO deposits"
-           "(deposit_serial_id"
-           ",shard"
-           ",known_coin_id"
+           "insert_into_table_coin_deposits",
+           "INSERT INTO coin_deposits"
+           "(coin_deposit_serial_id"
+           ",batch_deposit_serial_id"
            ",coin_pub"
-           ",amount_with_fee"
-           ",wallet_timestamp"
-           ",exchange_timestamp"
-           ",refund_deadline"
-           ",wire_deadline"
-           ",merchant_pub"
-           ",h_contract_terms"
            ",coin_sig"
-           ",wire_salt"
-           ",wire_target_h_payto"
-           ",policy_blocked"
-           ",policy_details_serial_id"
+           ",amount_with_fee"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16);");
+           "($1, $2, $3, $4, $5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_deposits",
+                                             "insert_into_table_coin_deposits",
                                              params);
 }
 
@@ -939,7 +977,8 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (
       pg->conn,
       &td->details.refunds.amount_with_fee),
-    GNUNET_PQ_query_param_uint64 (&td->details.refunds.deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.refunds.batch_deposit_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -951,7 +990,7 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
            ",merchant_sig"
            ",rtransaction_id"
            ",amount_with_fee"
-           ",deposit_serial_id"
+           ",batch_deposit_serial_id"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
@@ -1014,7 +1053,7 @@ irbt_cb_table_aggregation_tracking (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_uint64 (
-      &td->details.aggregation_tracking.deposit_serial_id),
+      &td->details.aggregation_tracking.batch_deposit_serial_id),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.aggregation_tracking.wtid_raw),
     GNUNET_PQ_query_param_end
@@ -1024,7 +1063,7 @@ irbt_cb_table_aggregation_tracking (struct PostgresClosure *pg,
            "insert_into_table_aggregation_tracking",
            "INSERT INTO aggregation_tracking"
            "(aggregation_serial_id"
-           ",deposit_serial_id"
+           ",batch_deposit_serial_id"
            ",wtid_raw"
            ") VALUES "
            "($1, $2, $3);");
@@ -2194,8 +2233,11 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
     rh = &irbt_cb_table_refresh_transfer_keys;
     break;
-  case TALER_EXCHANGEDB_RT_DEPOSITS:
-    rh = &irbt_cb_table_deposits;
+  case TALER_EXCHANGEDB_RT_BATCH_DEPOSITS:
+    rh = &irbt_cb_table_batch_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_COIN_DEPOSITS:
+    rh = &irbt_cb_table_coin_deposits;
     break;
   case TALER_EXCHANGEDB_RT_REFUNDS:
     rh = &irbt_cb_table_refunds;

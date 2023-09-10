@@ -2553,7 +2553,7 @@ analyze_coins (void *cls)
 
   /* process deposits */
   if (0 >
-      (qs = TALER_ARL_edb->select_deposits_above_serial_id (
+      (qs = TALER_ARL_edb->select_coin_deposits_above_serial_id (
          TALER_ARL_edb->cls,
          ppc.last_deposit_serial_id,
          &deposit_cb,

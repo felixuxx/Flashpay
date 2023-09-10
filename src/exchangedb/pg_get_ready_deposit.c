@@ -33,7 +33,6 @@ TEH_PG_get_ready_deposit (void *cls,
                           struct TALER_MerchantPublicKeyP *merchant_pub,
                           char **payto_uri)
 {
-  static int choose_mode = -2;
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now
     = GNUNET_TIME_absolute_get ();
@@ -50,76 +49,24 @@ TEH_PG_get_ready_deposit (void *cls,
                                   payto_uri),
     GNUNET_PQ_result_spec_end
   };
-  const char *query;
+  const char *query = "deposits_get_ready";
 
-  if (-2 == choose_mode)
-  {
-    const char *mode = getenv ("TALER_POSTGRES_GET_READY_LOGIC");
-    char dummy;
-
-    if ( (NULL==mode) ||
-         (1 != sscanf (mode,
-                       "%d%c",
-                       &choose_mode,
-                       &dummy)) )
-    {
-      if (NULL != mode)
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Bad mode `%s' specified\n",
-                    mode);
-      choose_mode = 0;
-    }
-  }
-  switch (choose_mode)
-  {
-  case 0:
-    query = "deposits_get_ready-v5";
-    PREPARE (pg,
-             query,
-             "SELECT"
-             " payto_uri"
-             ",merchant_pub"
-             " FROM deposits dep"
-             " JOIN wire_targets wt"
-             "   USING (wire_target_h_payto)"
-             " WHERE NOT (done OR policy_blocked)"
-             "   AND dep.wire_deadline<=$1"
-             "   AND dep.shard >= $2"
-             "   AND dep.shard <= $3"
-             " ORDER BY "
-             "   dep.wire_deadline ASC"
-             "  ,dep.shard ASC"
-             " LIMIT 1;");
-    break;
-  case 1:
-    query = "deposits_get_ready-v6";
-    PREPARE (pg,
-             query,
-             "WITH rc AS MATERIALIZED ("
-             " SELECT"
-             " merchant_pub"
-             ",wire_target_h_payto"
-             " FROM deposits"
-             " WHERE NOT (done OR policy_blocked)"
-             "   AND wire_deadline<=$1"
-             "   AND shard >= $2"
-             "   AND shard <= $3"
-             " ORDER BY wire_deadline ASC"
-             "  ,shard ASC"
-             "  LIMIT 1"
-             ")"
-             "SELECT"
-             " wt.payto_uri"
-             ",rc.merchant_pub"
-             " FROM wire_targets wt"
-             " JOIN rc"
-             "   USING (wire_target_h_payto);");
-    break;
-  default:
-    GNUNET_break (0);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
+  PREPARE (pg,
+           query,
+           "SELECT"
+           " wts.payto_uri"
+           ",bdep.merchant_pub"
+           " FROM batch_deposits bdep"
+           " JOIN wire_targets wts"
+           "   USING (wire_target_h_payto)"
+           " WHERE NOT (bdep.done OR bdep.policy_blocked)"
+           "   AND bdep.wire_deadline<=$1"
+           "   AND bdep.shard >= $2"
+           "   AND bdep.shard <= $3"
+           " ORDER BY "
+           "   bdep.wire_deadline ASC"
+           "  ,bdep.shard ASC"
+           " LIMIT 1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    query,
                                                    params,

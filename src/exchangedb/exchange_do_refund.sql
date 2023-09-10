@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION exchange_do_refund(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  dsi INT8; -- ID of deposit being refunded
+  bdsi INT8; -- ID of deposit being refunded
 DECLARE
   tmp_val INT8; -- total amount refunded
 DECLARE
@@ -48,17 +48,19 @@ BEGIN
 --         UPDATE known_coins (by coin_pub)
 
 SELECT
-   deposit_serial_id
-  ,(dep.amount_with_fee).val
-  ,(dep.amount_with_fee).frac
-  ,done
-INTO
-   dsi
+   bdep.batch_deposit_serial_id
+  ,(cdep.amount_with_fee).val
+  ,(cdep.amount_with_fee).frac
+  ,bdep.done
+ INTO
+   bdsi
   ,deposit.val
   ,deposit.frac
   ,out_gone
-FROM exchange.deposits dep
- WHERE coin_pub=in_coin_pub
+ FROM batch_deposits bdep
+ JOIN coin_deposits cdep
+   USING (batch_deposit_serial_id)
+ WHERE cdep.coin_pub=in_coin_pub
   AND shard=in_deposit_shard
   AND merchant_pub=in_merchant_pub
   AND h_contract_terms=in_h_contract_terms;
@@ -73,15 +75,15 @@ THEN
   RETURN;
 END IF;
 
-INSERT INTO exchange.refunds
-  (deposit_serial_id
+INSERT INTO refunds
+  (batch_deposit_serial_id
   ,coin_pub
   ,merchant_sig
   ,rtransaction_id
   ,amount_with_fee
   )
   VALUES
-  (dsi
+  (bdsi
   ,in_coin_pub
   ,in_merchant_sig
   ,in_rtransaction_id
@@ -99,7 +101,7 @@ THEN
    PERFORM
    FROM exchange.refunds
    WHERE coin_pub=in_coin_pub
-     AND deposit_serial_id=dsi
+     AND batch_deposit_serial_id=bdsi
      AND rtransaction_id=in_rtransaction_id
      AND amount_with_fee=in_amount_with_fee;
 
@@ -131,14 +133,14 @@ END IF;
 
 -- Check refund balance invariant.
 SELECT
-   SUM((refunds.amount_with_fee).val) -- overflow here is not plausible
-  ,SUM(CAST((refunds.amount_with_fee).frac AS INT8)) -- compute using 64 bits
+   SUM((refs.amount_with_fee).val) -- overflow here is not plausible
+  ,SUM(CAST((refs.amount_with_fee).frac AS INT8)) -- compute using 64 bits
   INTO
    tmp_val
   ,tmp_frac
-  FROM exchange.refunds refunds
+  FROM refunds refs
   WHERE coin_pub=in_coin_pub
-    AND deposit_serial_id=dsi;
+    AND batch_deposit_serial_id=bdsi;
 IF tmp_val IS NULL
 THEN
   RAISE NOTICE 'failed to sum up existing refunds';
@@ -199,5 +201,5 @@ out_not_found=FALSE;
 
 END $$;
 
--- COMMENT ON FUNCTION exchange_do_refund(taler_amount, BYTEA, BOOLEAN, BOOLEAN)
---  IS 'Executes a refund operation, checking that the corresponding deposit was sufficient to cover the refunded amount';
+COMMENT ON FUNCTION exchange_do_refund(taler_amount, taler_amount, taler_amount, BYTEA, INT8, INT8, INT8, BYTEA, BYTEA, BYTEA)
+  IS 'Executes a refund operation, checking that the corresponding deposit was sufficient to cover the refunded amount';

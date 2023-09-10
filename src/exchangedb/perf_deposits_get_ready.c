@@ -16,7 +16,7 @@
 /**
  * @file exchangedb/perf_deposits_get_ready.c
  * @brief benchmark for deposits_get_ready
- * @author Joseph Xu
+git  * @author Joseph Xu
  */
 #include "platform.h"
 #include "taler_exchangedb_lib.h"
@@ -196,8 +196,9 @@ run (void *cls)
   struct TALER_DenominationPublicKey *new_denom_pubs = NULL;
   struct GNUNET_TIME_Relative times = GNUNET_TIME_UNIT_ZERO;
   unsigned long long sqrs = 0;
-  struct TALER_EXCHANGEDB_Deposit *depos = NULL;
-  struct TALER_EXCHANGEDB_Refund *ref = NULL;
+  struct TALER_EXCHANGEDB_CoinDepositInformation *depos;
+  struct TALER_EXCHANGEDB_BatchDeposit bd;
+  struct TALER_EXCHANGEDB_Refund *ref;
   unsigned int *perm;
   unsigned long long duration_sq;
   struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
@@ -208,7 +209,7 @@ run (void *cls)
   ref = GNUNET_new_array (ROUNDS + 1,
                           struct TALER_EXCHANGEDB_Refund);
   depos = GNUNET_new_array (ROUNDS + 1,
-                            struct TALER_EXCHANGEDB_Deposit);
+                            struct TALER_EXCHANGEDB_CoinDepositInformation);
 
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
@@ -321,9 +322,9 @@ run (void *cls)
     struct TALER_CoinPubHashP c_hash;
     unsigned int k = (unsigned int) rand () % 5;
     unsigned int i = perm[j];
+
     if (i >= ROUNDS)
       i = ROUNDS;   /* throw-away slot, do not keep around */
-    depos[i].deposit_fee = fees.deposit;
     RND_BLK (&coin_pub);
     RND_BLK (&c_hash);
     RND_BLK (&reserve_pub);
@@ -331,7 +332,7 @@ run (void *cls)
     TALER_denom_pub_hash (&new_dkp[k]->pub,
                           &cbc.denom_pub_hash);
     deadline = GNUNET_TIME_timestamp_get ();
-    RND_BLK (&depos[i].coin.coin_pub);
+    depos[i].coin.coin_pub = coin_pub;
     TALER_denom_pub_hash (&new_dkp[k]->pub,
                           &depos[i].coin.denom_pub_hash);
     GNUNET_assert (GNUNET_OK ==
@@ -341,19 +342,21 @@ run (void *cls)
                                             &c_hash,
                                             &alg_values,
                                             &new_dkp[k]->pub));
-    RND_BLK (&depos[i].merchant_pub);
+    RND_BLK (&bd.merchant_pub);
     RND_BLK (&depos[i].csig);
-    RND_BLK (&depos[i].h_contract_terms);
-    RND_BLK (&depos[i].wire_salt);
+    RND_BLK (&bd.h_contract_terms);
+    RND_BLK (&bd.wire_salt);
     depos[i].amount_with_fee = value;
-    depos[i].refund_deadline = deadline;
-    depos[i].wire_deadline = deadline;
-    depos[i].receiver_wire_account =
+    bd.refund_deadline = deadline;
+    bd.wire_deadline = deadline;
+    bd.receiver_wire_account =
       "payto://iban/DE67830654080004822650?receiver-name=Test";
     TALER_merchant_wire_signature_hash (
-      "payto://iban/DE67830654080004822650?receiver-name=Test",
-      &depos[i].wire_salt,
+      bd.receiver_wire_account,
+      &bd.wire_salt,
       &h_wire_wt);
+    bd.num_cdis = 1;
+    bd.cdis = &depos[i];
     cbc.reserve_pub = reserve_pub;
     cbc.amount_with_fee = value;
     GNUNET_assert (GNUNET_OK ==
@@ -401,12 +404,18 @@ run (void *cls)
     }
     {
       struct GNUNET_TIME_Timestamp now;
+      bool balance_ok;
+      uint32_t bad_idx;
+      bool ctr_conflict;
 
       now = GNUNET_TIME_timestamp_get ();
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->insert_deposit (plugin->cls,
-                                      now,
-                                      &depos[i]));
+              plugin->do_deposit (plugin->cls,
+                                  &bd,
+                                  &now,
+                                  &balance_ok,
+                                  &bad_idx,
+                                  &ctr_conflict));
     }
     if (ROUNDS == i)
       TALER_denom_sig_free (&depos[i].coin.denom_sig);

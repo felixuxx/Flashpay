@@ -65,7 +65,6 @@
 #include "pg_iterate_active_signkeys.h"
 #include "pg_preflight.h"
 #include "pg_commit.h"
-#include "pg_insert_aggregation_tracking.h"
 #include "pg_drop_tables.h"
 #include "pg_select_satisfied_kyc_processes.h"
 #include "pg_select_aggregation_amounts_for_kyc_check.h"
@@ -140,7 +139,6 @@
 #include "pg_find_aggregation_transient.h"
 #include "pg_update_aggregation_transient.h"
 #include "pg_get_ready_deposit.h"
-#include "pg_insert_deposit.h"
 #include "pg_insert_refund.h"
 #include "pg_select_refunds_by_coin.h"
 #include "pg_get_melt.h"
@@ -161,7 +159,7 @@
 #include "pg_start_deferred_wire_out.h"
 #include "pg_store_wire_transfer_out.h"
 #include "pg_gc.h"
-#include "pg_select_deposits_above_serial_id.h"
+#include "pg_select_coin_deposits_above_serial_id.h"
 #include "pg_select_history_requests_above_serial_id.h"
 #include "pg_select_purse_decisions_above_serial_id.h"
 #include "pg_select_purse_deposits_by_purse.h"
@@ -178,7 +176,7 @@
 #include "pg_get_old_coin_by_h_blind.h"
 #include "pg_insert_denomination_revocation.h"
 #include "pg_get_denomination_revocation.h"
-#include "pg_select_deposits_missing_wire.h"
+#include "pg_select_batch_deposits_missing_wire.h"
 #include "pg_lookup_auditor_timestamp.h"
 #include "pg_lookup_auditor_status.h"
 #include "pg_insert_auditor.h"
@@ -479,8 +477,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_commit;
   plugin->preflight
     = &TEH_PG_preflight;
-  plugin->insert_aggregation_tracking
-    = &TEH_PG_insert_aggregation_tracking;
   plugin->select_aggregation_amounts_for_kyc_check
     = &TEH_PG_select_aggregation_amounts_for_kyc_check;
   plugin->select_satisfied_kyc_processes
@@ -627,8 +623,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_update_aggregation_transient;
   plugin->get_ready_deposit
     = &TEH_PG_get_ready_deposit;
-  plugin->insert_deposit
-    = &TEH_PG_insert_deposit;
   plugin->insert_refund
     = &TEH_PG_insert_refund;
   plugin->select_refunds_by_coin
@@ -669,8 +663,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_store_wire_transfer_out;
   plugin->gc
     = &TEH_PG_gc;
-  plugin->select_deposits_above_serial_id
-    = &TEH_PG_select_deposits_above_serial_id;
+  plugin->select_coin_deposits_above_serial_id
+    = &TEH_PG_select_coin_deposits_above_serial_id;
   plugin->select_history_requests_above_serial_id
     = &TEH_PG_select_history_requests_above_serial_id;
   plugin->select_purse_decisions_above_serial_id
@@ -703,8 +697,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_denomination_revocation;
   plugin->get_denomination_revocation
     = &TEH_PG_get_denomination_revocation;
-  plugin->select_deposits_missing_wire
-    = &TEH_PG_select_deposits_missing_wire;
+  plugin->select_batch_deposits_missing_wire
+    = &TEH_PG_select_batch_deposits_missing_wire;
   plugin->lookup_auditor_timestamp
     = &TEH_PG_lookup_auditor_timestamp;
   plugin->lookup_auditor_status

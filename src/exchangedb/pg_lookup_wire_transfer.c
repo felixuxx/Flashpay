@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -82,7 +82,8 @@ handle_wt_result (void *cls,
     struct TALER_DenominationPublicKey denom_pub;
     char *payto_uri;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id", &rowid),
+      GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
       GNUNET_PQ_result_spec_string ("payto_uri",
@@ -153,18 +154,20 @@ TEH_PG_lookup_wire_transfer (
            "lookup_transactions",
            "SELECT"
            " aggregation_serial_id"
-           ",deposits.h_contract_terms"
+           ",bdep.h_contract_terms"
            ",payto_uri"
            ",wire_targets.wire_target_h_payto"
            ",kc.coin_pub"
-           ",deposits.merchant_pub"
+           ",bdep.merchant_pub"
            ",wire_out.execution_date"
-           ",deposits.amount_with_fee"
+           ",cdep.amount_with_fee"
            ",denom.fee_deposit"
            ",denom.denom_pub"
            " FROM aggregation_tracking"
-           "    JOIN deposits"
-           "      USING (deposit_serial_id)"
+           "    JOIN batch_deposits bdep"
+           "      USING (batch_deposit_serial_id)"
+           "    JOIN coin_deposits cdep"
+           "      USING (batch_deposit_serial_id)"
            "    JOIN wire_targets"
            "      USING (wire_target_h_payto)"
            "    JOIN known_coins kc"

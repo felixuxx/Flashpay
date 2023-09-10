@@ -39,7 +39,6 @@
 #include "taler-exchange-httpd_config.h"
 #include "taler-exchange-httpd_contract.h"
 #include "taler-exchange-httpd_csr.h"
-#include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_extensions.h"
 #include "taler-exchange-httpd_keys.h"
@@ -324,10 +323,6 @@ handle_post_coins (struct TEH_RequestContext *rc,
     CoinOpHandler handler;
 
   } h[] = {
-    {
-      .op = "deposit",
-      .handler = &TEH_handler_deposit
-    },
     {
       .op = "melt",
       .handler = &TEH_handler_melt

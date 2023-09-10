@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -205,12 +205,20 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY rtc_serial DESC"
               " LIMIT 1;");
     break;
-  case TALER_EXCHANGEDB_RT_DEPOSITS:
-    XPREPARE ("select_serial_by_table_deposits",
+  case TALER_EXCHANGEDB_RT_BATCH_DEPOSITS:
+    XPREPARE ("select_serial_by_table_batch_deposits",
               "SELECT"
-              " deposit_serial_id AS serial"
-              " FROM deposits"
-              " ORDER BY deposit_serial_id DESC"
+              " batch_deposit_serial_id AS serial"
+              " FROM batch_deposits"
+              " ORDER BY batch_deposit_serial_id DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_COIN_DEPOSITS:
+    XPREPARE ("select_serial_by_table_coin_deposits",
+              "SELECT"
+              " coin_deposit_serial_id AS serial"
+              " FROM coin_deposits"
+              " ORDER BY coin_deposit_serial_id DESC"
               " LIMIT 1;");
     break;
   case TALER_EXCHANGEDB_RT_REFUNDS:

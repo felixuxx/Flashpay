@@ -132,11 +132,13 @@ insert_deposit_run (void *cls,
                     struct TALER_TESTING_Interpreter *is)
 {
   struct InsertDepositState *ids = cls;
-  struct TALER_EXCHANGEDB_Deposit deposit;
+  struct TALER_EXCHANGEDB_CoinDepositInformation deposit;
+  struct TALER_EXCHANGEDB_BatchDeposit bd;
   struct TALER_MerchantPrivateKeyP merchant_priv;
   struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
   struct TALER_DenominationPublicKey dpk;
   struct TALER_DenominationPrivateKey denom_priv;
+  char *receiver_wire_account;
 
   (void) cmd;
   if (NULL == ids->plugin)
@@ -152,7 +154,6 @@ insert_deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  // prepare and store issue first.
   fake_issue (&issue);
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&denom_priv,
@@ -182,6 +183,11 @@ insert_deposit_run (void *cls,
   memset (&deposit,
           0,
           sizeof (deposit));
+  memset (&bd,
+          0,
+          sizeof (bd));
+  bd.cdis = &deposit;
+  bd.num_cdis = 1;
 
   GNUNET_assert (
     GNUNET_YES ==
@@ -194,15 +200,12 @@ insert_deposit_run (void *cls,
                        NULL,
                        0));
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
-                                      &deposit.merchant_pub.eddsa_pub);
+                                      &bd.merchant_pub.eddsa_pub);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &deposit.h_contract_terms.hash);
-  if ( (GNUNET_OK !=
-        TALER_string_to_amount (ids->amount_with_fee,
-                                &deposit.amount_with_fee)) ||
-       (GNUNET_OK !=
-        TALER_string_to_amount (ids->deposit_fee,
-                                &deposit.deposit_fee)) )
+                                    &bd.h_contract_terms.hash);
+  if (GNUNET_OK !=
+      TALER_string_to_amount (ids->amount_with_fee,
+                              &deposit.amount_with_fee))
   {
     TALER_TESTING_interpreter_fail (is);
     TALER_denom_pub_free (&dpk);
@@ -250,21 +253,27 @@ insert_deposit_run (void *cls,
                                             &dpk));
     TALER_blinded_denom_sig_free (&bds);
   }
-  GNUNET_asprintf (&deposit.receiver_wire_account,
+  GNUNET_asprintf (&receiver_wire_account,
                    "payto://x-taler-bank/localhost/%s?receiver-name=%s",
                    ids->merchant_account,
                    ids->merchant_account);
-  memset (&deposit.wire_salt,
+  bd.receiver_wire_account = receiver_wire_account;
+  TALER_payto_hash (bd.receiver_wire_account,
+                    &bd.wire_target_h_payto);
+  memset (&bd.wire_salt,
           46,
-          sizeof (deposit.wire_salt));
-  deposit.timestamp = GNUNET_TIME_timestamp_get ();
-  deposit.wire_deadline = GNUNET_TIME_relative_to_timestamp (
+          sizeof (bd.wire_salt));
+  bd.wallet_timestamp = GNUNET_TIME_timestamp_get ();
+  bd.wire_deadline = GNUNET_TIME_relative_to_timestamp (
     ids->wire_deadline);
   /* finally, actually perform the DB operation */
   {
     uint64_t known_coin_id;
     struct TALER_DenominationHashP dph;
     struct TALER_AgeCommitmentHash agh;
+    bool balance_ok;
+    uint32_t bad_index;
+    bool ctr_conflict;
 
     if ( (GNUNET_OK !=
           ids->plugin->start (ids->plugin->cls,
@@ -276,15 +285,18 @@ insert_deposit_run (void *cls,
                                           &dph,
                                           &agh)) ||
          (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          ids->plugin->insert_deposit (ids->plugin->cls,
-                                       ids->exchange_timestamp,
-                                       &deposit)) ||
+          ids->plugin->do_deposit (ids->plugin->cls,
+                                   &bd,
+                                   &ids->exchange_timestamp,
+                                   &balance_ok,
+                                   &bad_index,
+                                   &ctr_conflict)) ||
          (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           ids->plugin->commit (ids->plugin->cls)) )
     {
       GNUNET_break (0);
       ids->plugin->rollback (ids->plugin->cls);
-      GNUNET_free (deposit.receiver_wire_account);
+      GNUNET_free (receiver_wire_account);
       TALER_denom_pub_free (&dpk);
       TALER_denom_priv_free (&denom_priv);
       TALER_TESTING_interpreter_fail (is);
@@ -295,7 +307,7 @@ insert_deposit_run (void *cls,
   TALER_denom_sig_free (&deposit.coin.denom_sig);
   TALER_denom_pub_free (&dpk);
   TALER_denom_priv_free (&denom_priv);
-  GNUNET_free (deposit.receiver_wire_account);
+  GNUNET_free (receiver_wire_account);
   TALER_TESTING_interpreter_next (is);
 }
 

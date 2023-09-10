@@ -23,7 +23,7 @@ DECLARE
   reserve_uuid_min INT8; -- minimum reserve UUID still alive
   melt_min INT8; -- minimum melt still alive
   coin_min INT8; -- minimum known_coin still alive
-  deposit_min INT8; -- minimum deposit still alive
+  batch_deposit_min INT8; -- minimum deposit still alive
   reserve_out_min INT8; -- minimum reserve_out still alive
   denom_min INT8; -- minimum denomination still alive
 BEGIN
@@ -104,22 +104,25 @@ SELECT
   ORDER BY known_coin_id ASC
   LIMIT 1;
 
-DELETE FROM exchange.deposits
-  WHERE known_coin_id < coin_min;
+DELETE FROM exchange.batch_deposits
+  WHERE wire_deadline < in_ancient_date;
 
 SELECT
-     deposit_serial_id
+     batch_deposit_serial_id
   INTO
-     deposit_min
-  FROM exchange.deposits
-  ORDER BY deposit_serial_id ASC
+     batch_deposit_min
+  FROM exchange.coin_deposits
+  ORDER BY batch_deposit_serial_id ASC
   LIMIT 1;
 
 DELETE FROM exchange.refunds
-  WHERE deposit_serial_id < deposit_min;
-
+  WHERE batch_deposit_serial_id < batch_deposit_min;
 DELETE FROM exchange.aggregation_tracking
-  WHERE deposit_serial_id < deposit_min;
+  WHERE batch_deposit_serial_id < batch_deposit_min;
+DELETE FROM exchange.coin_deposits
+  WHERE batch_deposit_serial_id < batch_deposit_min;
+
+
 
 SELECT
      denominations_serial
@@ -133,6 +136,3 @@ DELETE FROM exchange.cs_nonce_locks
   WHERE max_denomination_serial <= denom_min;
 
 END $$;
-
-
-

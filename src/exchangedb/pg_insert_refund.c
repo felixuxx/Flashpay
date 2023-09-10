@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -49,12 +49,13 @@ TEH_PG_insert_refund (void *cls,
            "insert_refund",
            "INSERT INTO refunds "
            "(coin_pub"
-           ",deposit_serial_id"
+           ",batch_deposit_serial_id"
            ",merchant_sig"
            ",rtransaction_id"
            ",amount_with_fee"
-           ") SELECT $1, deposit_serial_id, $3, $5, $6"
-           "    FROM deposits"
+           ") SELECT $1, cdep.batch_deposit_serial_id, $3, $5, $6"
+           "    FROM coin_deposits cdep"
+           "    JOIN batch_deposits bdep USING (batch_deposit_serial_id)"
            "   WHERE coin_pub=$1"
            "     AND h_contract_terms=$4"
            "     AND merchant_pub=$2");

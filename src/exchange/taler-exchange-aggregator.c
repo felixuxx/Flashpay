@@ -726,10 +726,16 @@ do_aggregate (struct AggregationUnit *au)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                                 &au->wtid,
                                 sizeof (au->wtid));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No transient aggregation found, starting %s\n",
+                TALER_B2S (&au->wtid));
     au->have_transient = false;
     break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     au->have_transient = true;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Transient aggregation found, resuming %s\n",
+                TALER_B2S (&au->wtid));
     break;
   }
   qs = db_plugin->aggregate (db_plugin->cls,
@@ -751,7 +757,7 @@ do_aggregate (struct AggregationUnit *au)
                 "Serialization issue, trying again later!\n");
     return GNUNET_NO;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Aggregation total is %s.\n",
               TALER_amount2s (&au->total_amount));
   /* Subtract wire transfer fee and round to the unit supported by the

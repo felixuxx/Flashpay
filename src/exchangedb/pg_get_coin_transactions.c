@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -116,7 +116,7 @@ add_coin_deposit (void *cls,
                                       &deposit->receiver_wire_account),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &deposit->csig),
-        GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+        GNUNET_PQ_result_spec_uint64 ("coin_deposit_serial_id",
                                       &serial_id),
         GNUNET_PQ_result_spec_auto_from_type ("done",
                                               &deposit->done),
@@ -726,28 +726,30 @@ TEH_PG_get_coin_transactions (
   PREPARE (pg,
            "get_deposit_with_coin_pub",
            "SELECT"
-           " dep.amount_with_fee"
+           " cdep.amount_with_fee"
            ",denoms.fee_deposit"
            ",denoms.denom_pub_hash"
            ",kc.age_commitment_hash"
-           ",dep.wallet_timestamp"
-           ",dep.refund_deadline"
-           ",dep.wire_deadline"
-           ",dep.merchant_pub"
-           ",dep.h_contract_terms"
-           ",dep.wire_salt"
+           ",bdep.wallet_timestamp"
+           ",bdep.refund_deadline"
+           ",bdep.wire_deadline"
+           ",bdep.merchant_pub"
+           ",bdep.h_contract_terms"
+           ",bdep.wire_salt"
            ",wt.payto_uri"
-           ",dep.coin_sig"
-           ",dep.deposit_serial_id"
-           ",dep.done"
-           " FROM deposits dep"
+           ",cdep.coin_sig"
+           ",cdep.coin_deposit_serial_id"
+           ",bdep.done"
+           " FROM coin_deposits cdep"
+           "    JOIN batch_deposits bdep"
+           "      USING (batch_deposit_serial_id)"
            "    JOIN wire_targets wt"
            "      USING (wire_target_h_payto)"
            "    JOIN known_coins kc"
-           "      ON (kc.coin_pub = dep.coin_pub)"
+           "      ON (kc.coin_pub = cdep.coin_pub)"
            "    JOIN denominations denoms"
            "      USING (denominations_serial)"
-           " WHERE dep.coin_pub=$1;");
+           " WHERE cdep.coin_pub=$1;");
   PREPARE (pg,
            "get_refresh_session_by_coin",
            "SELECT"
@@ -792,16 +794,18 @@ TEH_PG_get_coin_transactions (
   PREPARE (pg,
            "get_refunds_by_coin",
            "SELECT"
-           " dep.merchant_pub"
+           " bdep.merchant_pub"
            ",ref.merchant_sig"
-           ",dep.h_contract_terms"
+           ",bdep.h_contract_terms"
            ",ref.rtransaction_id"
            ",ref.amount_with_fee"
            ",denom.fee_refund"
            ",ref.refund_serial_id"
            " FROM refunds ref"
-           " JOIN deposits dep"
-           "   ON (ref.coin_pub = dep.coin_pub AND ref.deposit_serial_id = dep.deposit_serial_id)"
+           " JOIN coin_deposits cdep"
+           "   ON (ref.coin_pub = cdep.coin_pub AND ref.batch_deposit_serial_id = cdep.batch_deposit_serial_id)"
+           " JOIN batch_deposits bdep"
+           "   ON (ref.batch_deposit_serial_id = bdep.batch_deposit_serial_id)"
            " JOIN known_coins kc"
            "   ON (ref.coin_pub = kc.coin_pub)"
            " JOIN denominations denom"

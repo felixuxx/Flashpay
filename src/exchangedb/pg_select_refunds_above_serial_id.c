@@ -182,19 +182,21 @@ TEH_PG_select_refunds_above_serial_id (
   PREPARE (pg,
            "audit_get_refunds_incr",
            "SELECT"
-           " dep.merchant_pub"
+           " bdep.merchant_pub"
            ",ref.merchant_sig"
-           ",dep.h_contract_terms"
+           ",bdep.h_contract_terms"
            ",ref.rtransaction_id"
            ",denom.denom_pub"
            ",kc.coin_pub"
            ",ref.amount_with_fee"
            ",ref.refund_serial_id"
            " FROM refunds ref"
-           "   JOIN deposits dep"
-           "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
+           "   JOIN batch_deposits bdep"
+           "     ON (ref.batch_deposit_serial_id=bdep.batch_deposit_serial_id)"
+           "   JOIN coin_deposits cdep"
+           "     ON (ref.coin_pub=cdep.coin_pub AND ref.batch_deposit_serial_id=cdep.batch_deposit_serial_id)"
            "   JOIN known_coins kc"
-           "     ON (dep.coin_pub=kc.coin_pub)"
+           "     ON (cdep.coin_pub=kc.coin_pub)"
            "   JOIN denominations denom"
            "     ON (kc.denominations_serial=denom.denominations_serial)"
            " WHERE ref.refund_serial_id>=$1"
@@ -204,12 +206,12 @@ TEH_PG_select_refunds_above_serial_id (
            "SELECT"
            " CAST(SUM(CAST((ref.amount_with_fee).frac AS INT8)) AS INT8) AS s_f"
            ",CAST(SUM((ref.amount_with_fee).val) AS INT8) AS s_v"
-           ",dep.amount_with_fee"
+           ",cdep.amount_with_fee"
            " FROM refunds ref"
-           "   JOIN deposits dep"
-           "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
+           "   JOIN coin_deposits cdep"
+           "     ON (ref.coin_pub=cdep.coin_pub AND ref.batch_deposit_serial_id=cdep.batch_deposit_serial_id)"
            " WHERE ref.refund_serial_id=$1"
-           " GROUP BY (dep.amount_with_fee);");
+           " GROUP BY (cdep.amount_with_fee);");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_refunds_incr",
                                              params,
