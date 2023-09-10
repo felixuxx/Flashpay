@@ -198,7 +198,7 @@ LOOP
     THEN
       -- Insufficient balance.
       -- Note: C arrays are 0 indexed, but i started at 1
-      out_insufficient_balance_coin_index=i-i;
+      out_insufficient_balance_coin_index=i-1;
       RETURN;
     END IF;
   END IF;

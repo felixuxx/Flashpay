@@ -96,6 +96,10 @@ TEH_PG_do_deposit (
     amounts_with_fee[i] = cdi->amount_with_fee;
     coin_pubs[i] = &cdi->coin.coin_pub;
     coin_sigs[i] = &cdi->csig;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Do deposit %u = %s\n",
+                i,
+                TALER_B2S (&cdi->coin.coin_pub));
   }
   PREPARE (pg,
            "call_deposit",

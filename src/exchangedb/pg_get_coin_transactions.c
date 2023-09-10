@@ -741,14 +741,14 @@ TEH_PG_get_coin_transactions (
            ",cdep.coin_deposit_serial_id"
            ",bdep.done"
            " FROM coin_deposits cdep"
-           "    JOIN batch_deposits bdep"
-           "      USING (batch_deposit_serial_id)"
-           "    JOIN wire_targets wt"
-           "      USING (wire_target_h_payto)"
-           "    JOIN known_coins kc"
-           "      ON (kc.coin_pub = cdep.coin_pub)"
-           "    JOIN denominations denoms"
-           "      USING (denominations_serial)"
+           " JOIN batch_deposits bdep"
+           "   USING (batch_deposit_serial_id)"
+           " JOIN wire_targets wt"
+           "   USING (wire_target_h_payto)"
+           " JOIN known_coins kc"
+           "   ON (kc.coin_pub = cdep.coin_pub)"
+           " JOIN denominations denoms"
+           "   USING (denominations_serial)"
            " WHERE cdep.coin_pub=$1;");
   PREPARE (pg,
            "get_refresh_session_by_coin",

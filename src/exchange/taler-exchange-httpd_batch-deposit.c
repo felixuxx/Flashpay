@@ -202,7 +202,7 @@ batch_deposit_transaction (void *cls,
   struct BatchDepositContext *dc = cls;
   const struct TALER_EXCHANGEDB_BatchDeposit *bd = &dc->bd;
   enum GNUNET_DB_QueryStatus qs = GNUNET_SYSERR;
-  uint32_t bad_balance_coin_index;
+  uint32_t bad_balance_coin_index = UINT32_MAX;
   bool balance_ok;
   bool in_conflict;
 
@@ -233,6 +233,10 @@ batch_deposit_transaction (void *cls,
                               connection,
                               &known_coin_id,
                               mhd_ret);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "make coin known (%s) returned %d\n",
+                TALER_B2S (&cdi->coin.coin_pub),
+                qs);
     if (qs < 0)
       return qs;
   }
@@ -256,11 +260,11 @@ batch_deposit_transaction (void *cls,
                                            "batch-deposit");
     return qs;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "do_deposit returned %d / %s / %u / %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "do_deposit returned: %d / %s[%u] / %s\n",
               qs,
               balance_ok ? "balance ok" : "balance insufficient",
-              bad_balance_coin_index,
+              (unsigned int) bad_balance_coin_index,
               in_conflict ? "in conflict" : "no conflict");
   if (in_conflict)
   {
@@ -276,6 +280,9 @@ batch_deposit_transaction (void *cls,
   if (! balance_ok)
   {
     GNUNET_assert (bad_balance_coin_index < bd->num_cdis);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "returning history of conflicting coin (%s)\n",
+                TALER_B2S (&bd->cdis[bad_balance_coin_index].coin.coin_pub));
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
