@@ -153,9 +153,8 @@ again:
         GNUNET_memcmp (&pub,
                        &pubi))
     {
-      /* note: in the future, maybe have batch
-         sign API to avoid having to handle
-         key rollover... */
+      /* note: in the future, maybe have batch sign API to avoid having to
+         handle key rollover... */
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Exchange public key changed during batch deposit, trying again\n");
       json_decref (arr);
@@ -511,6 +510,10 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                                  &bd->merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &bd->h_contract_terms),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("wallet_data_hash",
+                                   &bd->wallet_data_hash),
+      &bd->no_wallet_data_hash),
     GNUNET_JSON_spec_array_const ("coins",
                                   &coins),
     GNUNET_JSON_spec_mark_optional (

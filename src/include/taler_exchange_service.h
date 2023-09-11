@@ -1054,40 +1054,10 @@ struct TALER_EXCHANGE_DepositContractDetail
 {
 
   /**
-   * Execution date, until which the merchant would like the exchange to
-   * settle the balance (advisory, the exchange cannot be forced to settle in
-   * the past or upon very short notice, but of course a well-behaved exchange
-   * will limit aggregation based on the advice received).
-   */
-  struct GNUNET_TIME_Timestamp wire_deadline;
-
-  /**
-   * The merchant’s account details, in the payto://-format supported by the
-   * exchange.
-   */
-  const char *merchant_payto_uri;
-
-  /**
-   * Salt used to hash the @e merchant_payto_uri.
-   */
-  struct TALER_WireSaltP wire_salt;
-
-  /**
    * Hash of the contact of the merchant with the customer (further details
    * are never disclosed to the exchange)
    */
   struct TALER_PrivateContractHashP h_contract_terms;
-
-  /**
-   * Policy extension specific details about the deposit relevant to the exchange.
-   */
-  json_t *policy_details;
-
-  /**
-   * Timestamp when the contract was finalized, must match approximately the
-   * current time of the exchange.
-   */
-  struct GNUNET_TIME_Timestamp timestamp;
 
   /**
    * The public key of the merchant (used to identify the merchant for refund
@@ -1096,11 +1066,47 @@ struct TALER_EXCHANGE_DepositContractDetail
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
+   * Salt used to hash the @e merchant_payto_uri.
+   */
+  struct TALER_WireSaltP wire_salt;
+
+  /**
+   * Hash over data provided by the wallet to customize the contract.
+   * All zero if not used.
+   */
+  struct GNUNET_HashCode wallet_data_hash;
+
+  /**
    * Date until which the merchant can issue a refund to the customer via the
    * exchange (can be zero if refunds are not allowed); must not be after the
    * @e wire_deadline.
    */
   struct GNUNET_TIME_Timestamp refund_deadline;
+
+  /**
+   * Execution date, until which the merchant would like the exchange to
+   * settle the balance (advisory, the exchange cannot be forced to settle in
+   * the past or upon very short notice, but of course a well-behaved exchange
+   * will limit aggregation based on the advice received).
+   */
+  struct GNUNET_TIME_Timestamp wire_deadline;
+
+  /**
+   * Timestamp when the contract was finalized, must match approximately the
+   * current time of the exchange.
+   */
+  struct GNUNET_TIME_Timestamp wallet_timestamp;
+
+  /**
+   * The merchant’s account details, in the payto://-format supported by the
+   * exchange.
+   */
+  const char *merchant_payto_uri;
+
+  /**
+   * Policy extension specific details about the deposit relevant to the exchange.
+   */
+  const json_t *policy_details;
 
 };
 

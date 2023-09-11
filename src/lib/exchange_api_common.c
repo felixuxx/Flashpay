@@ -2148,7 +2148,7 @@ TALER_EXCHANGE_verify_deposit_signature_ (
                                    &cdd->h_age_commitment,
                                    ech,
                                    &cdd->h_denom_pub,
-                                   dcd->timestamp,
+                                   dcd->wallet_timestamp,
                                    &dcd->merchant_pub,
                                    dcd->refund_deadline,
                                    &cdd->coin_pub,

@@ -382,7 +382,7 @@ batch_deposit_run (void *cls,
       .wire_salt = wire_salt,
       .h_contract_terms = h_contract_terms,
       .policy_details = NULL /* FIXME #7270-OEC */,
-      .timestamp = ds->wallet_timestamp,
+      .wallet_timestamp = ds->wallet_timestamp,
       .merchant_pub = merchant_pub,
       .refund_deadline = ds->refund_deadline
     };

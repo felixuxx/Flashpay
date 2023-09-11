@@ -569,6 +569,7 @@ TALER_EXCHANGE_batch_deposit (
   json_t *deposits;
   CURL *eh;
   struct TALER_Amount amount_without_fee;
+  const struct GNUNET_HashCode *wallet_data_hashp;
 
   if (GNUNET_TIME_timestamp_cmp (dcd->refund_deadline,
                                  >,
@@ -599,6 +600,7 @@ TALER_EXCHANGE_batch_deposit (
   {
     const struct TALER_EXCHANGE_CoinDepositDetail *cdd = &cdds[i];
     const struct TALER_EXCHANGE_DenomPublicKey *dki;
+    const struct TALER_AgeCommitmentHash *h_age_commitmentp;
 
     dki = TALER_EXCHANGE_get_denomination_key_by_hash (keys,
                                                        &cdd->h_denom_pub);
@@ -639,6 +641,10 @@ TALER_EXCHANGE_batch_deposit (
       GNUNET_free (dh);
       return NULL;
     }
+    if (GNUNET_is_zero (&cdd->h_age_commitment))
+      h_age_commitmentp = NULL;
+    else
+      h_age_commitmentp = &cdd->h_age_commitment;
     GNUNET_assert (
       0 ==
       json_array_append_new (
@@ -654,7 +660,7 @@ TALER_EXCHANGE_batch_deposit (
                                       &cdd->coin_pub),
           GNUNET_JSON_pack_allow_null (
             GNUNET_JSON_pack_data_auto ("h_age_commitment",
-                                        &cdd->h_age_commitment)),
+                                        h_age_commitmentp)),
           GNUNET_JSON_pack_data_auto ("coin_sig",
                                       &cdd->coin_sig)
           )));
@@ -672,6 +678,11 @@ TALER_EXCHANGE_batch_deposit (
     return NULL;
   }
 
+  if (GNUNET_is_zero (&dcd->wallet_data_hash))
+    wallet_data_hashp = NULL;
+  else
+    wallet_data_hashp = &dcd->wallet_data_hash;
+
   deposit_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("merchant_payto_uri",
                              dcd->merchant_payto_uri),
@@ -682,10 +693,13 @@ TALER_EXCHANGE_batch_deposit (
     GNUNET_JSON_pack_array_steal ("coins",
                                   deposits),
     GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_data_auto ("wallet_data_hash",
+                                  wallet_data_hashp)),
+    GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_object_steal ("policy_details",
-                                     dcd->policy_details)),
+                                     (json_t *) dcd->policy_details)),
     GNUNET_JSON_pack_timestamp ("timestamp",
-                                dcd->timestamp),
+                                dcd->wallet_timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
                                 &dcd->merchant_pub),
     GNUNET_JSON_pack_allow_null (

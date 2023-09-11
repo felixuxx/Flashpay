@@ -36,7 +36,7 @@
  * @param auth authentication data to use
  * @return #GNUNET_OK in success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_BANK_setup_auth_ (CURL *easy,
                         const struct TALER_BANK_AuthenticationData *auth);
 

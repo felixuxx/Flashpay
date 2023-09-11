@@ -50,7 +50,7 @@ TEH_PG_do_deposit (
     GNUNET_PQ_query_param_timestamp (&bd->refund_deadline),
     GNUNET_PQ_query_param_timestamp (&bd->wire_deadline),
     GNUNET_PQ_query_param_auto_from_type (&bd->h_contract_terms),
-    (0 == bd->has_wallet_data_hash)
+    (bd->no_wallet_data_hash)
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (&bd->wallet_data_hash),
     GNUNET_PQ_query_param_auto_from_type (&bd->wire_salt),

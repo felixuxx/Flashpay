@@ -1727,15 +1727,6 @@ struct TALER_EXCHANGEDB_CoinDepositInformation
  */
 struct TALER_EXCHANGEDB_BatchDeposit
 {
-  /**
-   * Array about the coins that are being deposited.
-   */
-  const struct TALER_EXCHANGEDB_CoinDepositInformation *cdis;
-
-  /**
-   * Length of the @e cdis array.
-   */
-  unsigned int num_cdis;
 
   /**
    * Public key of the merchant.  Enables later identification
@@ -1750,20 +1741,19 @@ struct TALER_EXCHANGEDB_BatchDeposit
   struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
-   * Salt used by the merchant to compute "h_wire".
+   * Hash over additional inputs by the wallet.
    */
-  struct TALER_WireSaltP wire_salt;
-
-  /**
-   * Information about the receiver for executing the transaction.  URI in
-   * payto://-format.
-   */
-  const char *receiver_wire_account;
+  struct GNUNET_HashCode wallet_data_hash;
 
   /**
    * Unsalted hash over @e receiver_wire_account.
    */
   struct TALER_PaytoHashP wire_target_h_payto;
+
+  /**
+   * Salt used by the merchant to compute "h_wire".
+   */
+  struct TALER_WireSaltP wire_salt;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -1796,19 +1786,30 @@ struct TALER_EXCHANGEDB_BatchDeposit
   struct GNUNET_TIME_Timestamp wire_deadline;
 
   /**
-   * Hash over additional inputs by the wallet.
-   */
-  struct GNUNET_HashCode wallet_data_hash;
-
-  /**
    * Row ID of the policy details; 0 if no policy applies.
    */
   uint64_t policy_details_serial_id;
 
   /**
-   * True if @e wallet_data_hash was provided
+   * Information about the receiver for executing the transaction.  URI in
+   * payto://-format.
    */
-  bool has_wallet_data_hash;
+  const char *receiver_wire_account;
+
+  /**
+   * Array about the coins that are being deposited.
+   */
+  const struct TALER_EXCHANGEDB_CoinDepositInformation *cdis;
+
+  /**
+   * Length of the @e cdis array.
+   */
+  unsigned int num_cdis;
+
+  /**
+   * False if @e wallet_data_hash was provided
+   */
+  bool no_wallet_data_hash;
 
   /**
    * True if further processing is blocked by policy.
@@ -1861,10 +1862,10 @@ struct TALER_EXCHANGEDB_Deposit
   struct TALER_WireSaltP wire_salt;
 
   /**
-   * Information about the receiver for executing the transaction.  URI in
-   * payto://-format.
+   * Hash over the policy data for this deposit (remains unknown to the
+   * Exchange).  Needed for the verification of the deposit's signature
    */
-  char *receiver_wire_account;
+  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -1907,16 +1908,17 @@ struct TALER_EXCHANGEDB_Deposit
    */
   struct TALER_Amount deposit_fee;
 
-  /*
+  /**
+   * Information about the receiver for executing the transaction.  URI in
+   * payto://-format.
+   */
+  char *receiver_wire_account;
+
+  /**
    * True if @e policy_json was provided
    */
   bool has_policy;
 
-  /**
-   * Hash over the policy data for this deposit (remains unknown to the
-   * Exchange).  Needed for the verification of the deposit's signature
-   */
-  struct TALER_ExtensionPolicyHashP h_policy;
 };
 
 
@@ -1959,20 +1961,26 @@ struct TALER_EXCHANGEDB_DepositListEntry
   struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
-   * true, if age commitment is not applicable
-   */
-  bool no_age_commitment;
-
-  /**
-   * Detailed information about the receiver for executing the transaction.
-   * URL in payto://-format.
-   */
-  char *receiver_wire_account;
-
-  /**
    * Salt used to compute h_wire from the @e receiver_wire_account.
    */
   struct TALER_WireSaltP wire_salt;
+
+  /**
+   * Hash over the policy data for this deposit (remains unknown to the
+   * Exchange).  Needed for the verification of the deposit's signature
+   */
+  struct TALER_ExtensionPolicyHashP h_policy;
+
+  /**
+   * Fraction of the coin's remaining value to be deposited, including
+   * depositing fee (if any).  The coin is identified by @e coin_pub.
+   */
+  struct TALER_Amount amount_with_fee;
+
+  /**
+   * Depositing fee.
+   */
+  struct TALER_Amount deposit_fee;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -2005,26 +2013,20 @@ struct TALER_EXCHANGEDB_DepositListEntry
   struct GNUNET_TIME_Timestamp wire_deadline;
 
   /**
-   * Fraction of the coin's remaining value to be deposited, including
-   * depositing fee (if any).  The coin is identified by @e coin_pub.
+   * Detailed information about the receiver for executing the transaction.
+   * URL in payto://-format.
    */
-  struct TALER_Amount amount_with_fee;
+  char *receiver_wire_account;
 
   /**
-   * Depositing fee.
+   * true, if age commitment is not applicable
    */
-  struct TALER_Amount deposit_fee;
+  bool no_age_commitment;
 
-  /*
+  /**
    * True if a policy was provided with the deposit request
    */
   bool has_policy;
-
-  /**
-   * Hash over the policy data for this deposit (remains unknown to the
-   * Exchange).  Needed for the verification of the deposit's signature
-   */
-  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Has the deposit been wired?
