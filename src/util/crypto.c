@@ -85,7 +85,9 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
 #endif
 
   TALER_coin_pub_hash (&coin_public_info->coin_pub,
-                       &coin_public_info->h_age_commitment,
+                       coin_public_info->no_age_commitment
+                       ? NULL
+                       : &coin_public_info->h_age_commitment,
                        &c_hash);
 
   if (GNUNET_OK !=
