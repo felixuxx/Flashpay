@@ -41,7 +41,9 @@ TEH_PG_ensure_coin_known (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin->denom_pub_hash),
-    GNUNET_PQ_query_param_auto_from_type (&coin->h_age_commitment),
+    coin->no_age_commitment
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (&coin->h_age_commitment),
     TALER_PQ_query_param_denom_sig (&coin->denom_sig),
     GNUNET_PQ_query_param_end
   };
