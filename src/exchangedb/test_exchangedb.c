@@ -1133,7 +1133,7 @@ wire_missing_cb (void *cls,
                  struct GNUNET_TIME_Timestamp deadline,
                  bool done)
 {
-  const struct TALER_EXCHANGEDB_Deposit *deposit = cls;
+  const struct TALER_EXCHANGEDB_CoinDepositInformation *deposit = cls;
 
   (void) payto_uri;
   (void) deadline;
