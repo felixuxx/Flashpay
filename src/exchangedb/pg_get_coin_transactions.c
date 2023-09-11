@@ -189,8 +189,10 @@ add_coin_purse_deposit (void *cls,
           NULL),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &deposit->coin_sig),
-        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
-                                              &deposit->h_age_commitment),
+        GNUNET_PQ_result_spec_allow_null (
+          GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                                &deposit->h_age_commitment),
+          &deposit->no_age_commitment),
         GNUNET_PQ_result_spec_allow_null (
           GNUNET_PQ_result_spec_bool ("refunded",
                                       &deposit->refunded),
