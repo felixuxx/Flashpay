@@ -1077,7 +1077,7 @@ sign_denomkeys (const json_t *denomkeys)
                "Invalid input for denomination key to 'sign': %s#%u at %u (skipping)\n",
                err_name,
                err_line,
-               (unsigned int) index);
+               (unsigned int) group_idx);
       GNUNET_JSON_parse_free (spec);
       global_ret = EXIT_FAILURE;
       test_shutdown ();
