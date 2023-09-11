@@ -16,7 +16,7 @@ fi
 
 
 echo "$0: Updating submodules"
-echo | git submodule update --init
+echo | git submodule update --init --force --remote
 
 # Generate based on pinned submodule
 ./contrib/gana-generate.sh
