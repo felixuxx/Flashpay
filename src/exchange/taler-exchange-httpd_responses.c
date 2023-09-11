@@ -76,6 +76,7 @@ TEH_RESPONSE_compile_transaction_history (
               &deposit->deposit_fee,
               &h_wire,
               &deposit->h_contract_terms,
+              &deposit->wallet_data_hash,
               &deposit->h_age_commitment,
               &deposit->h_policy,
               &deposit->h_denom_pub,

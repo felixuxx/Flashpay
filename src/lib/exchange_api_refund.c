@@ -234,6 +234,8 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       bool no_hac;
       struct TALER_ExtensionPolicyHashP h_policy;
       bool no_h_policy;
+      struct GNUNET_HashCode wallet_data_hash;
+      bool no_wallet_data_hash;
       struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline;
@@ -253,6 +255,10 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
           GNUNET_JSON_spec_fixed_auto ("h_policy",
                                        &h_policy),
           &no_h_policy),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_fixed_auto ("wallet_data_hash",
+                                       &wallet_data_hash),
+          &no_wallet_data_hash),
         GNUNET_JSON_spec_timestamp ("timestamp",
                                     &wallet_timestamp),
         GNUNET_JSON_spec_timestamp ("refund_deadline",
@@ -277,6 +283,8 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                        &deposit_fee,
                                        &h_wire,
                                        &h_contract_terms,
+                                       no_wallet_data_hash ? NULL :
+                                       &wallet_data_hash,
                                        no_hac ?  NULL : &h_age_commitment,
                                        no_h_policy ? NULL: &h_policy,
                                        &h_denom_pub,

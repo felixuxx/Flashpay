@@ -3548,6 +3548,7 @@ TALER_wallet_reserve_attest_request_verify (
  * @param deposit_fee the deposit fee we expect to pay
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param wallet_data_hash hash over wallet inputs into the contract (maybe NULL)
  * @param h_age_commitment hash over the age commitment, if applicable to the denomination (maybe NULL)
  * @param h_policy hash over the policy extension
  * @param h_denom_pub hash of the coin denomination's public key
@@ -3563,6 +3564,7 @@ TALER_wallet_deposit_sign (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct GNUNET_HashCode *wallet_data_hash,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_DenominationHashP *h_denom_pub,
@@ -3580,6 +3582,7 @@ TALER_wallet_deposit_sign (
  * @param deposit_fee the deposit fee we expect to pay
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param wallet_data_hash hash over wallet inputs into the contract (maybe NULL)
  * @param h_age_commitment hash over the age commitment (maybe all zeroes, if not applicable to the denomination)
  * @param h_policy hash over the policy extension
  * @param h_denom_pub hash of the coin denomination's public key
@@ -3596,6 +3599,7 @@ TALER_wallet_deposit_verify (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct GNUNET_HashCode *wallet_data_hash,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_DenominationHashP *h_denom_pub,

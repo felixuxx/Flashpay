@@ -364,8 +364,9 @@ batch_deposit_run (void *cls,
                                &denom_pub->fees.deposit,
                                &h_wire,
                                &h_contract_terms,
+                               NULL, /* wallet_data_hash */
                                &cdd->h_age_commitment,
-                               NULL, /* FIXME #7270: add hash of extensions */
+                               NULL, /* hash of extensions */
                                &denom_pub->h_key,
                                ds->wallet_timestamp,
                                &merchant_pub,

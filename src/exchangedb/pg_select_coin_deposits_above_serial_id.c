@@ -93,6 +93,10 @@ coin_deposit_serial_helper_cb (void *cls,
         GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                               &deposit.coin.h_age_commitment),
         &deposit.coin.no_age_commitment),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("wallet_data_hash",
+                                              &deposit.wallet_data_hash),
+        &deposit.no_wallet_data_hash),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                             &deposit.csig),
       GNUNET_PQ_result_spec_timestamp ("refund_deadline",
@@ -166,6 +170,7 @@ TEH_PG_select_coin_deposits_above_serial_id (
            ",bdep.wallet_timestamp"
            ",bdep.exchange_timestamp"
            ",bdep.merchant_pub"
+           ",bdep.wallet_data_hash"
            ",denom.denom_pub"
            ",kc.coin_pub"
            ",kc.age_commitment_hash"

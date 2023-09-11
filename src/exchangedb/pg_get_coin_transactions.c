@@ -100,6 +100,10 @@ add_coin_deposit (void *cls,
           GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                                 &deposit->h_age_commitment),
           &deposit->no_age_commitment),
+        GNUNET_PQ_result_spec_allow_null (
+          GNUNET_PQ_result_spec_auto_from_type ("wallet_data_hash",
+                                                &deposit->wallet_data_hash),
+          &deposit->no_wallet_data_hash),
         GNUNET_PQ_result_spec_timestamp ("wallet_timestamp",
                                          &deposit->timestamp),
         GNUNET_PQ_result_spec_timestamp ("refund_deadline",
@@ -735,6 +739,7 @@ TEH_PG_get_coin_transactions (
            ",bdep.wire_deadline"
            ",bdep.merchant_pub"
            ",bdep.h_contract_terms"
+           ",bdep.wallet_data_hash"
            ",bdep.wire_salt"
            ",wt.payto_uri"
            ",cdep.coin_sig"

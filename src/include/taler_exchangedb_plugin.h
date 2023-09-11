@@ -1862,6 +1862,11 @@ struct TALER_EXCHANGEDB_Deposit
   struct TALER_WireSaltP wire_salt;
 
   /**
+   * Hash over inputs from the wallet to customize the contract.
+   */
+  struct GNUNET_HashCode wallet_data_hash;
+
+  /**
    * Hash over the policy data for this deposit (remains unknown to the
    * Exchange).  Needed for the verification of the deposit's signature
    */
@@ -1919,6 +1924,11 @@ struct TALER_EXCHANGEDB_Deposit
    */
   bool has_policy;
 
+  /**
+   * True if @e wallet_data_hash is not in use.
+   */
+  bool no_wallet_data_hash;
+
 };
 
 
@@ -1948,6 +1958,11 @@ struct TALER_EXCHANGEDB_DepositListEntry
    * (remains unknown to the Exchange).
    */
   struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Hash over inputs from the wallet to customize the contract.
+   */
+  struct GNUNET_HashCode wallet_data_hash;
 
   /**
    * Hash of the public denomination key used to sign the coin.
@@ -2022,6 +2037,11 @@ struct TALER_EXCHANGEDB_DepositListEntry
    * true, if age commitment is not applicable
    */
   bool no_age_commitment;
+
+  /**
+   * true, if wallet data hash is not present
+   */
+  bool no_wallet_data_hash;
 
   /**
    * True if a policy was provided with the deposit request

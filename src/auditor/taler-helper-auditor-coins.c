@@ -1565,6 +1565,9 @@ deposit_cb (void *cls,
                                      &issue->fees.deposit,
                                      &h_wire,
                                      &deposit->h_contract_terms,
+                                     deposit->no_wallet_data_hash
+                                     ? NULL
+                                     : &deposit->wallet_data_hash,
                                      &deposit->coin.h_age_commitment,
                                      &deposit->h_policy,
                                      &h_denom_pub,
