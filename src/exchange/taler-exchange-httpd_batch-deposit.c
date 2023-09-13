@@ -469,7 +469,7 @@ parse_coin (struct MHD_Connection *connection,
         &dc->h_wire,
         &bd->h_contract_terms,
         &bd->wallet_data_hash,
-        NULL != cdi->coin.no_age_commitment
+        cdi->coin.no_age_commitment
         ? NULL
         : &cdi->coin.h_age_commitment,
         NULL != dc->policy_json ? &dc->h_policy : NULL,

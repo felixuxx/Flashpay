@@ -37,13 +37,12 @@
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_batch_deposits_missing_wire (void *cls,
-                                           struct GNUNET_TIME_Timestamp
-                                           start_date,
-                                           struct GNUNET_TIME_Timestamp
-                                           end_date,
-                                           TALER_EXCHANGEDB_WireMissingCallback
-                                           cb,
-                                           void *cb_cls);
+TEH_PG_select_batch_deposits_missing_wire (
+  void *cls,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  TALER_EXCHANGEDB_WireMissingCallback
+  cb,
+  void *cb_cls);
 
 #endif

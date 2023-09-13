@@ -1117,40 +1117,32 @@ drop:
  * and have not yet seen a wire transfer.
  *
  * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
- * @param rowid deposit table row of the coin's deposit
- * @param coin_pub public key of the coin
- * @param amount value of the deposit, including fee
- * @param payto_uri where should the funds be wired
- * @param deadline what was the requested wire transfer deadline
- * @param done did the exchange claim that it made a transfer?
+ * @param total_amount value of all missing deposits, including fees
+ * @param payto_uri where should the funds be wired; URI in payto://-format
+ * @param deadline what was the earliest requested wire transfer deadline
+ * @param kyc_pending NULL if no KYC requirement is pending, otherwise text describing the missing KYC requirement
+ * @param aml_status status of AML possibly blocking the transfer
+ * @param aml_limit current monthly AML limit
  */
 static void
-wire_missing_cb (void *cls,
-                 uint64_t rowid,
-                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                 const struct TALER_Amount *amount,
-                 const char *payto_uri,
-                 struct GNUNET_TIME_Timestamp deadline,
-                 bool done)
+wire_missing_cb (
+  void *cls,
+  const struct TALER_Amount *total_amount,
+  const char *payto_uri,
+  struct GNUNET_TIME_Timestamp deadline,
+  const char *kyc_pending,
+  enum TALER_AmlDecisionState status,
+  const struct TALER_Amount *aml_limit)
 {
   const struct TALER_EXCHANGEDB_CoinDepositInformation *deposit = cls;
 
   (void) payto_uri;
   (void) deadline;
-  (void) rowid;
-  if (done)
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  if (0 != TALER_amount_cmp (amount,
+  (void) kyc_pending;
+  (void) status;
+  (void) aml_limit;
+  if (0 != TALER_amount_cmp (total_amount,
                              &deposit->amount_with_fee))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  if (0 != GNUNET_memcmp (coin_pub,
-                          &deposit->coin.coin_pub))
   {
     GNUNET_break (0);
     result = 66;

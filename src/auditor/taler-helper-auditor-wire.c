@@ -223,6 +223,16 @@ static json_t *report_row_minor_inconsistencies;
 static json_t *report_lags;
 
 /**
+ * Array of reports about lagging transactions from deposits due to missing KYC.
+ */
+static json_t *report_kyc_lags;
+
+/**
+ * Array of reports about lagging transactions from deposits due to pending or frozen AML decisions.
+ */
+static json_t *report_aml_lags;
+
+/**
  * Array of reports about lagging transactions from reserve closures.
  */
 static json_t *report_closure_lags;
@@ -524,6 +534,10 @@ do_shutdown (void *cls)
         /* Tested in test-auditor.sh #1 */
         GNUNET_JSON_pack_array_steal ("lag_details",
                                       report_lags),
+        GNUNET_JSON_pack_array_steal ("lag_aml_details",
+                                      report_aml_lags),
+        GNUNET_JSON_pack_array_steal ("lag_kyc_details",
+                                      report_kyc_lags),
         /* Tested in test-auditor.sh #22 */
         TALER_JSON_pack_amount ("total_closure_amount_lag",
                                 &total_closure_amount_lag),
@@ -550,6 +564,8 @@ do_shutdown (void *cls)
     report_row_minor_inconsistencies = NULL;
     report_misattribution_in_inconsistencies = NULL;
     report_lags = NULL;
+    report_kyc_lags = NULL;
+    report_aml_lags = NULL;
     report_closure_lags = NULL;
     report_account_progress = NULL;
     report_wire_format_inconsistencies = NULL;
@@ -843,56 +859,94 @@ commit (enum GNUNET_DB_QueryStatus qs)
  * Function called on deposits that are past their due date
  * and have not yet seen a wire transfer.
  *
- * @param cls closure
- * @param rowid deposit table row of the coin's deposit
- * @param coin_pub public key of the coin
- * @param amount value of the deposit, including fee
+ * @param cls closure, points to a `struct GNUNET_TIME_Timestamp`
+ * @param total_amount value of the missing deposits, including fee
  * @param payto_uri where should the funds be wired
- * @param deadline what was the requested wire transfer deadline
- * @param done did the exchange claim that it made a transfer?
- *             NOTE: only valid in internal audit mode!
+ * @param deadline what was the earliest requested wire transfer deadline
+ * @param kyc_pending NULL if no KYC requirement is pending, otherwise text describing the missing KYC requirement
+ * @param aml_status status of AML possibly blocking the transfer
+ * @param aml_limit current monthly AML limit
  */
 static void
 wire_missing_cb (void *cls,
-                 uint64_t rowid,
-                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                 const struct TALER_Amount *amount,
+                 const struct TALER_Amount *total_amount,
                  const char *payto_uri,
                  struct GNUNET_TIME_Timestamp deadline,
-                 bool done)
+                 const char *kyc_pending,
+                 enum TALER_AmlDecisionState status,
+                 const struct TALER_Amount *aml_limit)
 {
+  struct GNUNET_TIME_Timestamp *nt = cls;
   json_t *rep;
 
+  *nt = GNUNET_TIME_timestamp_min (deadline,
+                                   *nt);
   (void) cls;
+  // TODO: maybe split up by category?
   TALER_ARL_amount_add (&total_amount_lag,
                         &total_amount_lag,
-                        amount);
+                        total_amount);
   /* For now, we simplify and only check that the
      amount was tiny */
-  if (0 > TALER_amount_cmp (amount,
+  if (0 > TALER_amount_cmp (total_amount,
                             &tiny_amount))
     return; /* acceptable, amount was tiny */
-  rep = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_uint64 ("row",
-                             rowid),
-    TALER_JSON_pack_amount ("amount",
-                            amount),
-    TALER_JSON_pack_time_abs_human ("deadline",
-                                    deadline.abs_time),
-    GNUNET_JSON_pack_data_auto ("coin_pub",
-                                coin_pub),
-    GNUNET_JSON_pack_string ("account",
-                             payto_uri));
-  if (internal_checks)
+  if (NULL != kyc_pending)
   {
-    /* the 'done' bit is only useful in 'internal' mode */
-    GNUNET_assert (0 ==
-                   json_object_set (rep,
-                                    "claimed_done",
-                                    json_string ((done) ? "yes" : "no")));
+    rep = GNUNET_JSON_PACK (
+      TALER_JSON_pack_amount ("total_amount",
+                              total_amount),
+      TALER_JSON_pack_time_abs_human ("deadline",
+                                      deadline.abs_time),
+      GNUNET_JSON_pack_string ("kyc_pending",
+                               kyc_pending),
+      GNUNET_JSON_pack_string ("account",
+                               payto_uri));
+    TALER_ARL_report (report_kyc_lags,
+                      rep);
   }
-  TALER_ARL_report (report_lags,
-                    rep);
+  else if (TALER_AML_NORMAL != status)
+  {
+    const char *sstatus;
+
+    switch (status)
+    {
+    case TALER_AML_NORMAL:
+      GNUNET_assert (0);
+      break;
+    case TALER_AML_PENDING:
+      sstatus = "pending";
+      break;
+    case TALER_AML_FROZEN:
+      sstatus = "frozen";
+      break;
+    }
+    rep = GNUNET_JSON_PACK (
+      TALER_JSON_pack_amount ("total_amount",
+                              total_amount),
+      TALER_JSON_pack_amount ("aml_limit",
+                              aml_limit),
+      TALER_JSON_pack_time_abs_human ("deadline",
+                                      deadline.abs_time),
+      GNUNET_JSON_pack_string ("aml_status",
+                               sstatus),
+      GNUNET_JSON_pack_string ("account",
+                               payto_uri));
+    TALER_ARL_report (report_aml_lags,
+                      rep);
+  }
+  else
+  {
+    rep = GNUNET_JSON_PACK (
+      TALER_JSON_pack_amount ("total_amount",
+                              total_amount),
+      TALER_JSON_pack_time_abs_human ("deadline",
+                                      deadline.abs_time),
+      GNUNET_JSON_pack_string ("account",
+                               payto_uri));
+    TALER_ARL_report (report_lags,
+                      rep);
+  }
 }
 
 
@@ -2390,6 +2444,10 @@ run (void *cls,
                     = json_array ()));
   GNUNET_assert (NULL !=
                  (report_lags = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_aml_lags = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_kyc_lags = json_array ()));
   GNUNET_assert (NULL !=
                  (report_closure_lags = json_array ()));
   GNUNET_assert (NULL !=

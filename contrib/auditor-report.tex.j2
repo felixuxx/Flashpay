@@ -206,51 +206,101 @@ load. Small amounts of lag can occur in normal operation.
 The total amount the exchange currently lags behind in deposits is
 {\bf {{ wire.total_amount_lag }}}.
 
-Note that some lag is perfectly normal, as tiny amounts that are too small to be wired
-are deferred beyond the due date, hoping that additional transfers will push them above
-the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagging behind.
+Note that some lag is perfectly normal, as tiny amounts that are too small to
+be wired are deferred beyond the due date, hoping that additional transfers
+will push them above the tiny threshold. Below, we report {\em non-tiny} wire
+transfers that are lagging behind.
 
 % Table generation tested by testcase #1 in test-auditor.sh
 
 {% if wire.lag_details|length() == 0 %}
   {\bf No non-tiny wire transfers that are lagging behind detected.}
 {% else %}
-  \begin{longtable}{l|r|r|c}
-  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
-  \multicolumn{4}{l}{\bf Coin} \\
-  \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
+  \begin{longtable}{l|r|r}
+  {\bf Deadline} & {\bf Amount} & {\bf Target account} \\ \hline \hline
 \endfirsthead
-  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
-  \multicolumn{4}{l}{\bf Coin} \\
-  \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
+  {\bf Deadline} & {\bf Amount} & {\bf Target account} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
-  \multicolumn{4}{l}{\bf Coin} \\
-  \multicolumn{4}{l}{\bf Target account} \\
+  {\bf Deadline} & {\bf Amount} & {\bf Target account} \\
 \endfoot
   \hline \hline
-  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
-  \multicolumn{4}{l}{\bf Coin} \\
-  \multicolumn{4}{l}{\bf Target account} \\
+  {\bf Deadline} & {\bf Amount} & {\bf Target account} \\
     \caption{Lagging non-tiny transactions.}
     \label{table:lag}
 \endlastfoot
 {% for item in wire.lag_details %}
   {{ item.deadline }} &
-  {{ item.amount }} &
-  {{ item.row }} &
-{% if 'claimed_done' in item %}
-  {{ item.claimed_done }}
+  {{ item.total_amount }} &
+  {\tt
+    {% if 'account' in item %}
+       {{ item.account }}
+    {% endif %}
+  } \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+
+{% if wire.lag_kyc_details|length() == 0 %}
+  {\bf No KYC-blocked non-tiny wire transfers that are lagging behind detected.}
 {% else %}
-  N/A
-{% endif %}  \\
-\nopagebreak
-  \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
+  \begin{longtable}{l|r|c|r}
+  {\bf Deadline} & {\bf Amount} & {\bf Requirement} & {\bf Target account} \\ \hline \hline
+\endfirsthead
+  {\bf Deadline} & {\bf Amount} & {\bf Requirement} & {\bf Target account} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Deadline} & {\bf Amount} & {\bf Requirement} & {\bf Target account} \\
+\endfoot
+  \hline \hline
+  {\bf Deadline} & {\bf Amount} & {\bf Requirement} & {\bf Target account} \\
+    \caption{Lagging non-tiny transactions due to missing KYC data.}
+    \label{table:lag}
+\endlastfoot
+{% for item in wire.lag_kyc_details %}
+  {{ item.deadline }} &
+  {{ item.amount }} &
+  {{ item.kyc_pending }} &
+  {\tt
+    {% if 'account' in item %}
+       {{ item.account }}
+    {% endif %}
+  } \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+{% if wire.lag_aml_details|length() == 0 %}
+  {\bf No non-tiny wire transfers that are lagging behind due to AML detected.}
+{% else %}
+  \begin{longtable}{l|r|r}
+  {\bf Deadline} & {\bf Amount}/{\bf Limit} & {\bf AML status} \\
+  \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
+\endfirsthead
+  {\bf Deadline} & {\bf Amount}/{\bf Limit} & {\bf AML status} \\
+  \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Deadline} & {\bf Amount}/{\bf Limit} & {\bf AML status} \\
+  \multicolumn{4}{l}{\bf Target account} \\
+\endfoot
+  \hline \hline
+  {\bf Deadline} & {\bf Amount}/{\bf Limit} & {\bf AML status} \\
+  \multicolumn{4}{l}{\bf Target account} \\
+    \caption{Lagging non-tiny transactions due to AML decisions.}
+    \label{table:lag}
+\endlastfoot
+{% for item in wire.lag_aml_details %}
+  {{ item.deadline }} &
+  {{ item.amount }}/{{ item.aml_limit }} &
+  {{ item.aml_status }} &
 \nopagebreak
   \multicolumn{4}{l}{ {\tt
-    {% if 'payto_uri' in item.account %}
-       {{ item.account.payto_uri }}
+    {% if 'account' in item %}
+       {{ item.account }}
     {% endif %}
   } } \\ \hline
 {% endfor %}

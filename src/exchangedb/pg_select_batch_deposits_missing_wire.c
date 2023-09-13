@@ -69,25 +69,34 @@ missing_wire_cb (void *cls,
 
   while (0 < num_results)
   {
-    uint64_t rowid;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
-    struct TALER_Amount amount;
-    char *payto_uri;
+    struct TALER_Amount total_amount;
+    struct TALER_Amount aml_limit;
+    char *payto_uri = NULL;
+    char *kyc_pending = NULL;
+    uint32_t aml_status32 = TALER_AML_NORMAL;
     struct GNUNET_TIME_Timestamp deadline;
-    bool done;
+    bool no_aml_limit;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("batch_deposit_serial_id",
-                                    &rowid),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                            &coin_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                   &amount),
-      GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &payto_uri),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("total_amount_with_fee",
+                                   &total_amount),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("payto_uri",
+                                      &payto_uri),
+        NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("kyc_pending",
+                                      &kyc_pending),
+        NULL),
       GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                        &deadline),
-      GNUNET_PQ_result_spec_bool ("done",
-                                  &done),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint32 ("aml_status",
+                                      &aml_status32),
+        NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_RESULT_SPEC_AMOUNT ("aml_limit",
+                                     &aml_limit),
+        &no_aml_limit),
       GNUNET_PQ_result_spec_end
     };
 
@@ -101,12 +110,12 @@ missing_wire_cb (void *cls,
       return;
     }
     mwc->cb (mwc->cb_cls,
-             rowid,
-             &coin_pub,
-             &amount,
+             &total_amount,
              payto_uri,
              deadline,
-             done);
+             kyc_pending,
+             (enum TALER_AmlDecisionState) aml_status32,
+             no_aml_limit ? NULL : &aml_limit);
     GNUNET_PQ_cleanup_result (rs);
   }
 }
@@ -134,39 +143,17 @@ TEH_PG_select_batch_deposits_missing_wire (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  // FIXME: used by the auditor; can probably be done
-  // smarter by checking if 'done' or 'blocked'
-  // are set correctly when going over deposits, instead
-  // of JOINing with refunds.
-  // Also unclear why we return by coin_pub here;
-  // Also fails to check overdue in case of PARTIAL refunds.
-
   PREPARE (pg,
            "deposits_get_overdue",
            "SELECT"
-           " bdep.batch_deposit_serial_id"
-           ",cdep.coin_pub"
-           ",cdep.amount_with_fee"
-           ",wt.payto_uri"
-           ",bdep.wire_deadline"
-           ",bdep.done"
-           " FROM batch_deposits bdep"
-           "   JOIN coin_deposits cdep"
-           "     USING (batch_deposit_serial_id)"
-           "   JOIN known_coins"
-           "     USING (coin_pub)"
-           "   JOIN wire_targets wt"
-           "     USING (wire_target_h_payto)"
-           " WHERE bdep.wire_deadline >= $1"
-           " AND bdep.wire_deadline < $2"
-           " AND NOT (EXISTS (SELECT 1"
-           "            FROM refunds r"
-           "            WHERE (r.coin_pub = cdep.coin_pub)"
-           "               AND (r.batch_deposit_serial_id = bdep.batch_deposit_serial_id))"
-           "       OR EXISTS (SELECT 1"
-           "            FROM aggregation_tracking atr"
-           "            WHERE (atr.batch_deposit_serial_id = bdep.batch_deposit_serial_id)))"
-           " ORDER BY bdep.wire_deadline ASC");
+           " total_amount_with_fee"
+           ",payto_uri"
+           ",kyc_pending"
+           ",wire_deadline"
+           ",aml_status"
+           ",aml_limit"
+           " FROM exchange_do_select_deposits_missing_wire"
+           " ($1,$2);");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_get_overdue",
                                              params,

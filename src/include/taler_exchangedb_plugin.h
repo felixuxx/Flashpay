@@ -3421,22 +3421,22 @@ typedef void
  * and have not yet seen a wire transfer.
  *
  * @param cls closure
- * @param rowid deposit table row of the coin's deposit
- * @param coin_pub public key of the coin
- * @param amount value of the deposit, including fee
+ * @param total_amount value of all missing deposits, including fees
  * @param payto_uri where should the funds be wired; URI in payto://-format
- * @param deadline what was the requested wire transfer deadline
- * @param done did the exchange claim that it made a transfer?
+ * @param deadline what was the earliest requested wire transfer deadline
+ * @param kyc_pending NULL if no KYC requirement is pending, otherwise text describing the missing KYC requirement
+ * @param aml_status status of AML possibly blocking the transfer
+ * @param aml_limit current monthly AML limit
  */
 typedef void
 (*TALER_EXCHANGEDB_WireMissingCallback)(
   void *cls,
-  uint64_t rowid,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *amount,
+  const struct TALER_Amount *total_amount,
   const char *payto_uri,
   struct GNUNET_TIME_Timestamp deadline,
-  bool done);
+  const char *kyc_pending,
+  enum TALER_AmlDecisionState status,
+  const struct TALER_Amount *aml_limit);
 
 
 /**
