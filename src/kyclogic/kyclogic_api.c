@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -1487,7 +1487,25 @@ TALER_KYCLOGIC_lookup_checks (const char *section_name,
 {
   *num_checks = 0;
   *provided_checks = NULL;
-  GNUNET_break (0); // FIXME: NOT implemented!
+  for (unsigned int i = 0; i<num_kyc_providers; i++)
+  {
+    struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
+
+    if (0 !=
+        strcasecmp (section_name,
+                    kp->provider_section_name))
+      continue;
+    *num_checks = kp->num_checks;
+    if (0 != kp->num_checks)
+    {
+      char **pc = GNUNET_new_array (kp->num_checks,
+                                    char *);
+      for (unsigned int i = 0; i<kp->num_checks; i++)
+        pc[i] = GNUNET_strdup (kp->provided_checks[i]->name);
+      *provided_checks = pc;
+    }
+    return;
+  }
 }
 
 
