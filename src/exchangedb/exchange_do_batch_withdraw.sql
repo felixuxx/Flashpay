@@ -56,6 +56,7 @@ THEN
   ruuid=2;
   RETURN;
 END IF;
+reserve_found=TRUE;
 
 ruuid = reserve.reserve_uuid;
 
@@ -73,7 +74,6 @@ ELSE
   not_before=date '1970-01-01' + reserve.birthday;
   allowed_maximum_age = extract(year from age(current_date, not_before));
 
-  reserve_found=TRUE;
   balance_ok=FALSE;
   age_ok = FALSE;
   RETURN;
@@ -113,7 +113,6 @@ UPDATE reserves SET
 WHERE
   reserves.reserve_pub=rpub;
 
-reserve_found=TRUE;
 balance_ok=TRUE;
 
 END $$;
