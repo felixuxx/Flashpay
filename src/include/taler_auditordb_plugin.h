@@ -98,16 +98,22 @@ struct TALER_AUDITORDB_WireProgressPoint
 {
 
   /**
-   * Time until which we have confirmed that all wire transactions
-   * that the exchange should do, have indeed been done.
-   */
-  struct GNUNET_TIME_Timestamp last_timestamp;
-
-  /**
    * reserves_close uuid until which we have checked
    * reserve closures.
    */
   uint64_t last_reserve_close_uuid;
+
+  /**
+   * batch_deposits serial until which we have imported
+   * batch deposits into the auditor_pending_deposits table.
+   */
+  uint64_t last_batch_deposit_uuid;
+
+  /**
+   * Maximum number in the aggregations table that
+   * we have processed so far.
+   */
+  uint64_t last_aggregation_serial;
 };
 
 
@@ -603,6 +609,25 @@ typedef enum GNUNET_GenericReturnValue
   void *cls,
   uint64_t serial_id,
   const struct TALER_AUDITORDB_DepositConfirmation *dc);
+
+
+/**
+ * Function called on deposits that are past their due date
+ * and have not yet seen a wire transfer.
+ *
+ * @param cls closure
+ * @param batch_deposit_serial_id where in the table are we
+ * @param total_amount value of all missing deposits, including fees
+ * @param wire_target_h_payto hash of the recipient account's payto URI
+ * @param earliest_deadline what was the earliest requested wire transfer deadline
+ */
+typedef void
+(*TALER_AUDITORDB_WireMissingCallback)(
+  void *cls,
+  uint64_t batch_deposit_serial_id,
+  const struct TALER_Amount *total_amount,
+  const struct TALER_PaytoHashP *wire_target_h_payto,
+  struct GNUNET_TIME_Timestamp deadline);
 
 
 /**
@@ -1703,6 +1728,61 @@ struct TALER_AUDITORDB_Plugin
                            const struct TALER_MasterPublicKeyP *master_pub,
                            struct TALER_Amount *balance,
                            struct TALER_Amount *drained_profits);
+
+  /**
+   * Insert new row into the pending deposits table.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master key of the exchange
+   * @param batch_deposit_serial_id where in the table are we
+   * @param total_amount value of all missing deposits, including fees
+   * @param wire_target_h_payto hash of the recipient account's payto URI
+   * @param deadline what was the requested wire transfer deadline
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_pending_deposit)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    uint64_t batch_deposit_serial_id,
+    const struct TALER_PaytoHashP *wire_target_h_payto,
+    const struct TALER_Amount *total_amount,
+    struct GNUNET_TIME_Timestamp deadline);
+
+
+  /**
+   * Delete a row from the pending deposit table.
+   * Usually done when the respective wire transfer
+   * was finally detected.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master key of the exchange
+   * @param batch_deposit_serial_id which entry to delete
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*delete_pending_deposit)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    uint64_t batch_deposit_serial_id);
+
+
+  /**
+   * Return (batch) deposits for which we have not yet
+   * seen the required wire transfer.
+   *
+   * @param deadline only return up to this deadline
+   * @param cb function to call on each entry
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_pending_deposits)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct GNUNET_TIME_Absolute deadline,
+    TALER_AUDITORDB_WireMissingCallback cb,
+    void *cb_cls);
 
 
 };

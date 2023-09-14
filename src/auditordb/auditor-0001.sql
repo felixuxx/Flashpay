@@ -139,8 +139,9 @@ COMMENT ON TABLE wire_auditor_account_progress
 
 CREATE TABLE IF NOT EXISTS wire_auditor_progress
   (master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
-  ,last_timestamp INT8 NOT NULL
   ,last_reserve_close_uuid INT8 NOT NULL
+  ,last_batch_deposit_uuid INT8 NOT NULL
+  ,last_aggregation_serial INT8 NOT NULL
   ,PRIMARY KEY (master_pub)
   );
 
@@ -308,6 +309,29 @@ CREATE TABLE IF NOT EXISTS auditor_predicted_result
 COMMENT ON TABLE auditor_predicted_result
   IS 'Table with the sum of the ledger, auditor_historic_revenue and the auditor_reserve_balance and the drained profits.  This is the final amount that the exchange should have in its bank account right now (and the total amount drained as profits to non-escrow accounts).';
 
+
+CREATE TABLE IF NOT EXISTS auditor_pending_deposits
+  (master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
+  ,total_amount taler_amount NOT NULL
+  ,wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=64)
+  ,batch_deposit_serial_id INT8 NOT NULL
+  ,deadline INT8 NOT NULL
+  ,PRIMARY KEY(master_pub, batch_deposit_serial_id)
+  );
+COMMENT ON TABLE auditor_pending_deposits
+  IS 'Table with the sum of the (batch) deposits we have seen but not yet checked that they have been aggregated and wired for a particular target bank account';
+COMMENT ON COLUMN auditor_pending_deposits.total_amount
+  IS 'Amount we expect to be wired in total for the batch. Includes deposit fees, not the actual expected net wire transfer amount.';
+COMMENT ON COLUMN auditor_pending_deposits.wire_target_h_payto
+  IS 'Hash of the payto URI of the bank account to be credited by the deadline';
+COMMENT ON COLUMN auditor_pending_deposits.batch_deposit_serial_id
+  IS 'Entry in the batch_deposits table of the exchange this entry is for';
+COMMENT ON COLUMN auditor_pending_deposits.deadline
+  IS 'Deadline by which funds should be wired (may be in the future)';
+CREATE INDEX IF NOT EXISTS auditor_pending_deposits_by_deadline
+  ON auditor_pending_deposits
+  (master_pub
+  ,deadline ASC);
 
 -- Finally, commit everything
 COMMIT;

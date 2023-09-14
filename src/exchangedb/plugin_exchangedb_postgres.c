@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014--2022 Taler Systems SA
+   Copyright (C) 2014--2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -177,6 +177,8 @@
 #include "pg_insert_denomination_revocation.h"
 #include "pg_get_denomination_revocation.h"
 #include "pg_select_batch_deposits_missing_wire.h"
+#include "pg_select_justification_for_missing_wire.h"
+#include "pg_select_aggregations_above_serial.h"
 #include "pg_lookup_auditor_timestamp.h"
 #include "pg_lookup_auditor_status.h"
 #include "pg_insert_auditor.h"
@@ -699,6 +701,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_denomination_revocation;
   plugin->select_batch_deposits_missing_wire
     = &TEH_PG_select_batch_deposits_missing_wire;
+  plugin->select_justification_for_missing_wire
+    = &TEH_PG_select_justification_for_missing_wire;
+  plugin->select_aggregations_above_serial
+    = &TEH_PG_select_aggregations_above_serial;
   plugin->lookup_auditor_timestamp
     = &TEH_PG_lookup_auditor_timestamp;
   plugin->lookup_auditor_status

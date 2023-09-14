@@ -1,5 +1,5 @@
 % This file is part of TALER
-% Copyright (C) 2016--2019 Taler Systems SA
+% Copyright (C) 2016--2023 Taler Systems SA
 %
 % TALER is free software; you can redistribute it and/or modify it under the
 % terms of the GNU Affero General Public License as published by the Free Software
@@ -88,12 +88,18 @@ In that time, the auditors processed the following table ranges:
                           & {{ reserves.end_ppr_reserve_in_serial_id }} \\ \hline
   Reserves Out (withdraw) & {{ reserves.start_ppr_reserve_out_serial_id }}
                           & {{ reserves.end_ppr_reserve_out_serial_id }} \\ \hline
-  Reserves Recoup        & {{ reserves.start_ppr_reserve_recoup_serial_id }}
+  Reserves Recoup         & {{ reserves.start_ppr_reserve_recoup_serial_id }}
                           & {{ reserves.end_ppr_reserve_recoup_serial_id }} \\ \hline
   Reserves Close          & {{ reserves.start_ppr_reserve_close_serial_id }}
                           & {{ reserves.end_ppr_reserve_close_serial_id }} \\ \hline
   Aggregation             & {{ aggregation.start_ppa_wire_out_serial_id }}
                           & {{ aggregation.end_ppa_wire_out_serial_id }} \\ \hline
+  Aggregation (wire)      & {{ wire.start_pp_last_aggregation_serial_id }}
+                          & {{ wire.end_pp_last_aggregation_serial_id }} \\ \hline
+  Deposits (wire)         & {{ wire.start_pp_last_batch_deposit_id }}
+                          & {{ wire.end_pp_last_batch_deposit_id }} \\ \hline
+  Reserves Close (wire)   & {{ wire.start_pp_reserve_close_id }}
+                          & {{ wire.end_pp_reserve_close_id }} \\ \hline
   Coin withdraw           & {{ coins.start_ppc_withdraw_serial_id }}
                           & {{ coins.end_ppc_withdraw_serial_id }} \\ \hline
   Coin deposit            & {{ coins.start_ppc_deposit_serial_id }}
@@ -102,9 +108,9 @@ In that time, the auditors processed the following table ranges:
                           & {{ coins.end_ppc_melt_serial_id }} \\ \hline
   Coin refund             & {{ coins.start_ppc_refund_serial_id }}
                           & {{ coins.end_ppc_refund_serial_id }} \\ \hline
-  Coin recoup            & {{ coins.start_ppc_recoup_serial_id }}
+  Coin recoup             & {{ coins.start_ppc_recoup_serial_id }}
                           & {{ coins.end_ppc_recoup_serial_id }} \\ \hline
-  Coin recoup refresh    & {{ coins.start_ppc_recoup_refresh_serial_id }}
+  Coin recoup refresh     & {{ coins.start_ppc_recoup_refresh_serial_id }}
                           & {{ coins.end_ppc_recoup_refresh_serial_id }} \\
 \end{tabular}
 \end{center}

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -38,18 +38,21 @@ TAH_PG_get_wire_auditor_progress (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_timestamp ("last_timestamp",
-                                     &pp->last_timestamp),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_close_uuid",
                                   &pp->last_reserve_close_uuid),
+    GNUNET_PQ_result_spec_uint64 ("last_batch_deposit_uuid",
+                                  &pp->last_batch_deposit_uuid),
+    GNUNET_PQ_result_spec_uint64 ("last_aggregation_serial",
+                                  &pp->last_aggregation_serial),
     GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
            "wire_auditor_progress_select",
            "SELECT"
-           " last_timestamp"
-           ",last_reserve_close_uuid"
+           " last_reserve_close_uuid"
+           ",last_batch_deposit_uuid"
+           ",last_aggregation_serial"
            " FROM wire_auditor_progress"
            " WHERE master_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

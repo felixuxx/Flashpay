@@ -1480,4 +1480,15 @@ TALER_KYCLOGIC_kyc_iterate_thresholds (
 }
 
 
+void
+TALER_KYCLOGIC_lookup_checks (const char *section_name,
+                              unsigned int *num_checks,
+                              char ***provided_checks)
+{
+  *num_checks = 0;
+  *provided_checks = NULL;
+  GNUNET_break (0); // FIXME: NOT implemented!
+}
+
+
 /* end of taler-exchange-httpd_kyc.c */

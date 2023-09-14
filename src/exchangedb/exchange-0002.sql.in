@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -38,12 +38,10 @@ COMMENT ON TYPE exchange_do_array_reserve_insert_return_type
 CREATE TYPE exchange_do_select_deposits_missing_wire_return_type
   AS
   (
-    total_amount_with_fee taler_amount,
-    payto_uri TEXT,
-    kyc_pending TEXT, -- can be NULL
-    wire_deadline INT8,
-    aml_status INT4,
-    aml_limit taler_amount
+    batch_deposit_serial_id INT8,
+    total_amount taler_amount,
+    wire_target_h_payto BYTEA,
+    deadline INT8
   );
 COMMENT ON TYPE exchange_do_select_deposits_missing_wire_return_type
   IS 'Return type for exchange_do_select_deposits_missing_wire';

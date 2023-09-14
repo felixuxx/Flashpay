@@ -19,6 +19,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_h_payto BYTEA,
   IN in_kyc_prox BYTEA,
   IN in_provider_section TEXT,
+  IN in_satisfied_checks TEXT[],
   IN in_birthday INT4,
   IN in_provider_account_id TEXT,
   IN in_provider_legitimization_id TEXT,
@@ -40,6 +41,7 @@ INSERT INTO exchange.kyc_attributes
   (h_payto
   ,kyc_prox
   ,provider
+  ,satisfied_checks
   ,collection_time
   ,expiration_time
   ,encrypted_attributes
@@ -48,6 +50,7 @@ INSERT INTO exchange.kyc_attributes
   (in_h_payto
   ,in_kyc_prox
   ,in_provider_section
+  ,in_satisfied_checks
   ,in_collection_time_ts
   ,in_expiration_time_ts
   ,in_enc_attributes
@@ -68,7 +71,8 @@ out_ok = FOUND;
 SELECT reserve_pub
   INTO orig_reserve_pub
   FROM exchange.legitimization_requirements
- WHERE h_payto=in_h_payto AND NOT reserve_pub IS NULL;
+ WHERE h_payto=in_h_payto
+   AND NOT reserve_pub IS NULL;
 orig_reserve_found = FOUND;
 
 IF orig_reserve_found
@@ -105,5 +109,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, BYTEA, TEXT, INT4, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, BYTEA, TEXT, TEXT[], INT4, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
   IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';

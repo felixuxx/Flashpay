@@ -62,6 +62,9 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_get_reserve_info.h pg_get_reserve_info.c \
   pg_insert_reserve_summary.h pg_insert_reserve_summary.c \
   pg_update_reserve_summary.h pg_update_reserve_summary.c \
+  pg_select_pending_deposits.h pg_select_pending_deposits.c \
+  pg_delete_pending_deposit.h pg_delete_pending_deposit.c \
+  pg_insert_pending_deposit.h pg_insert_pending_deposit.c \
   pg_get_reserve_summary.h pg_get_reserve_summary.c \
   pg_insert_wire_fee_summary.h pg_insert_wire_fee_summary.c \
   pg_update_wire_fee_summary.h pg_update_wire_fee_summary.c \

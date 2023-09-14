@@ -181,6 +181,8 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_insert_denomination_revocation.h pg_insert_denomination_revocation.c \
   pg_get_denomination_revocation.h pg_get_denomination_revocation.c \
   pg_select_batch_deposits_missing_wire.h pg_select_batch_deposits_missing_wire.c \
+  pg_select_justification_for_missing_wire.h pg_select_justification_for_missing_wire.c \
+  pg_select_aggregations_above_serial.h pg_select_aggregations_above_serial.c \
   pg_lookup_auditor_timestamp.h pg_lookup_auditor_timestamp.c \
   pg_lookup_auditor_status.h pg_lookup_auditor_status.c \
   pg_insert_auditor.h pg_insert_auditor.c \

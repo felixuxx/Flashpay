@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022-2023 Taler Systems SA
+   Copyright (C) 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,31 +14,33 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_batch_deposits_missing_wire.h
- * @brief implementation of the select_batch_deposits_missing_wire function for Postgres
+ * @file auditordb/pg_select_pending_deposits.h
+ * @brief implementation of the select_pending_deposits function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_SELECT_DEPOSITS_MISSING_WIRE_H
-#define PG_SELECT_DEPOSITS_MISSING_WIRE_H
+#ifndef PG_SELECT_PENDING_DEPOSITS_H
+#define PG_SELECT_PENDING_DEPOSITS_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
-#include "taler_exchangedb_plugin.h"
+#include "taler_auditordb_plugin.h"
+
+
 /**
- * Select all of those batch deposits in the database
- * above the given serial ID.
+ * Return (batch) deposits for which we have not yet
+ * seen the required wire transfer.
  *
- * @param cls closure
- * @param min_batch_deposit_serial_id select all batch deposits above this ID
- * @param cb function to call on all such deposits
+ * @param deadline only return up to this deadline
+ * @param cb function to call on each entry
  * @param cb_cls closure for @a cb
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_batch_deposits_missing_wire (
+TAH_PG_select_pending_deposits (
   void *cls,
-  uint64_t min_batch_deposit_serial_id,
-  TALER_EXCHANGEDB_WireMissingCallback cb,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Absolute deadline,
+  TALER_AUDITORDB_WireMissingCallback cb,
   void *cb_cls);
 
 #endif

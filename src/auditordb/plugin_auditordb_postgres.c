@@ -36,6 +36,9 @@
 #include "pg_insert_auditor_progress_deposit_confirmation.h"
 #include "pg_update_auditor_progress_deposit_confirmation.h"
 #include "pg_get_auditor_progress_deposit_confirmation.h"
+#include "pg_select_pending_deposits.h"
+#include "pg_delete_pending_deposit.h"
+#include "pg_insert_pending_deposit.h"
 #include "pg_insert_auditor_progress_coin.h"
 #include "pg_update_auditor_progress_coin.h"
 #include "pg_get_auditor_progress_coin.h"
@@ -509,6 +512,13 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_select_historic_reserve_revenue;
   plugin->insert_historic_reserve_revenue
     = &TAH_PG_insert_historic_reserve_revenue;
+
+  plugin->select_pending_deposits
+    = &TAH_PG_select_pending_deposits;
+  plugin->delete_pending_deposit
+    = &TAH_PG_delete_pending_deposit;
+  plugin->insert_pending_deposit
+    = &TAH_PG_insert_pending_deposit;
 
   plugin->get_predicted_balance
     = &TAH_PG_get_predicted_balance;

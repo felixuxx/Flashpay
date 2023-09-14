@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022-2023 Taler Systems SA
+   Copyright (C) 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,31 +14,33 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_batch_deposits_missing_wire.h
- * @brief implementation of the select_batch_deposits_missing_wire function for Postgres
+ * @file auditordb/pg_delete_pending_deposit.h
+ * @brief implementation of the delete_pending_deposit function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_SELECT_DEPOSITS_MISSING_WIRE_H
-#define PG_SELECT_DEPOSITS_MISSING_WIRE_H
+#ifndef PG_DELETE_PENDING_DEPOSIT_H
+#define PG_DELETE_PENDING_DEPOSIT_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
-#include "taler_exchangedb_plugin.h"
+#include "taler_auditordb_plugin.h"
+
+
 /**
- * Select all of those batch deposits in the database
- * above the given serial ID.
+ * Delete a row from the pending deposit table.
+ * Usually done when the respective wire transfer
+ * was finally detected.
  *
- * @param cls closure
- * @param min_batch_deposit_serial_id select all batch deposits above this ID
- * @param cb function to call on all such deposits
- * @param cb_cls closure for @a cb
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param master_pub master key of the exchange
+ * @param batch_deposit_serial_id which entry to delete
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_batch_deposits_missing_wire (
+TAH_PG_delete_pending_deposit (
   void *cls,
-  uint64_t min_batch_deposit_serial_id,
-  TALER_EXCHANGEDB_WireMissingCallback cb,
-  void *cb_cls);
+  const struct TALER_MasterPublicKeyP *master_pub,
+  uint64_t batch_deposit_serial_id);
+
 
 #endif

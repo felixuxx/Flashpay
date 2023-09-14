@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -35,6 +35,8 @@
  * @param h_payto account for which the attribute data is stored
  * @param kyc_prox key for similarity search
  * @param provider_section provider that must be checked
+ * @param num_checks how many checks do these attributes satisfy
+ * @param satisfied_checks array of checks satisfied by these attributes
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
  * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
@@ -52,6 +54,8 @@ TEH_PG_insert_kyc_attributes (
   const struct TALER_PaytoHashP *h_payto,
   const struct GNUNET_ShortHashCode *kyc_prox,
   const char *provider_section,
+  unsigned int num_checks,
+  const char *satisfied_checks[static num_checks],
   uint32_t birthday,
   struct GNUNET_TIME_Timestamp collection_time,
   const char *provider_account_id,

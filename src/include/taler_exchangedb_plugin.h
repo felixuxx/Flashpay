@@ -3417,26 +3417,37 @@ typedef void
 
 
 /**
- * Function called on deposits that are past their due date
- * and have not yet seen a wire transfer.
+ * Function called on (batch) deposits will need a wire
+ * transfer.
  *
  * @param cls closure
+ * @param batch_deposit_serial_id where in the table are we
  * @param total_amount value of all missing deposits, including fees
- * @param payto_uri where should the funds be wired; URI in payto://-format
- * @param deadline what was the earliest requested wire transfer deadline
- * @param kyc_pending NULL if no KYC requirement is pending, otherwise text describing the missing KYC requirement
- * @param aml_status status of AML possibly blocking the transfer
- * @param aml_limit current monthly AML limit
+ * @param wire_target_h_payto hash of the recipient account's payto URI
+ * @param earliest_deadline what was the earliest requested wire transfer deadline
  */
 typedef void
 (*TALER_EXCHANGEDB_WireMissingCallback)(
   void *cls,
+  uint64_t batch_deposit_serial_id,
   const struct TALER_Amount *total_amount,
-  const char *payto_uri,
-  struct GNUNET_TIME_Timestamp deadline,
-  const char *kyc_pending,
-  enum TALER_AmlDecisionState status,
-  const struct TALER_Amount *aml_limit);
+  const struct TALER_PaytoHashP *wire_target_h_payto,
+  struct GNUNET_TIME_Timestamp deadline);
+
+
+/**
+ * Function called on aggregations that were done for
+ * a (batch) deposit.
+ *
+ * @param cls closure
+ * @param tracking_serial_id where in the table are we
+ * @param batch_deposit_serial_id which batch deposit was aggregated
+ */
+typedef void
+(*TALER_EXCHANGEDB_AggregationCallback)(
+  void *cls,
+  uint64_t tracking_serial_id,
+  uint64_t batch_deposit_serial_id);
 
 
 /**
@@ -5576,13 +5587,11 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Select all of those deposits in the database for which we do
-   * not have a wire transfer (or a refund) and which should have
-   * been deposited between @a start_date and @a end_date.
+   * Select all (batch) deposits in the database
+   * above a given @a min_batch_deposit_serial_id.
    *
    * @param cls closure
-   * @param start_date lower bound on the requested wire execution date
-   * @param end_date upper bound on the requested wire execution date
+   * @param min_batch_deposit_serial_id only return entries stricly above this row (and in order)
    * @param cb function to call on all such deposits
    * @param cb_cls closure for @a cb
    * @return transaction status code
@@ -5590,10 +5599,51 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_batch_deposits_missing_wire)(
     void *cls,
-    struct GNUNET_TIME_Timestamp start_date,
-    struct GNUNET_TIME_Timestamp end_date,
+    uint64_t min_batch_deposit_serial_id,
     TALER_EXCHANGEDB_WireMissingCallback cb,
     void *cb_cls);
+
+
+  /**
+   * Select all aggregation tracking IDs in the database
+   * above a given @a min_tracking_serial_id.
+   *
+   * @param cls closure
+   * @param min_tracking_serial_id only return entries stricly above this row (and in order)
+   * @param cb function to call on all such aggregations
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_aggregations_above_serial)(
+    void *cls,
+    uint64_t min_tracking_serial_id,
+    TALER_EXCHANGEDB_AggregationCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Return any applicable justification as to why
+   * a wire transfer might have been held.  Used
+   * by the auditor to determine if a wire transfer
+   * is legitimately stalled.
+   *
+   * @param cls closure
+   * @param wire_target_h_payto effected target account
+   * @param[out] payto_uri target account URI, set to NULL if unknown
+   * @param[out] kyc_pending set to string describing missing KYC data
+   * @param[out] status set to AML status
+   * @param[out] aml_limit set to AML limit, or invalid amount for none
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_justification_for_missing_wire)(
+    void *cls,
+    const struct TALER_PaytoHashP *wire_target_h_payto,
+    char **payto_uri,
+    char **kyc_pending,
+    enum TALER_AmlDecisionState *status,
+    struct TALER_Amount *aml_limit);
 
 
   /**
@@ -6897,6 +6947,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_payto account for which the attribute data is stored
    * @param kyc_prox key for similarity search
    * @param provider_section provider that must be checked
+   * @param num_checks how many checks do these attributes satisfy
+   * @param satisfied_checks array of checks satisfied by these attributes
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
    * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
@@ -6914,6 +6966,8 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     const struct GNUNET_ShortHashCode *kyc_prox,
     const char *provider_section,
+    unsigned int num_checks,
+    const char *satisfied_checks[static num_checks],
     uint32_t birthday,
     struct GNUNET_TIME_Timestamp collection_time,
     const char *provider_account_id,

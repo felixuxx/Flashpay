@@ -120,6 +120,8 @@ kyc_aml_finished (void *cls,
   unsigned int birthday = 0;
   struct GNUNET_ShortHashCode kyc_prox;
   struct GNUNET_AsyncScopeSave old_scope;
+  unsigned int num_checks;
+  char **provided_checks;
 
   kat->kyc_aml = NULL;
   GNUNET_async_scope_enter (&kat->scope,
@@ -155,12 +157,17 @@ kyc_aml_finished (void *cls,
                                        kat->attributes,
                                        &ea,
                                        &eas);
+  TALER_KYCLOGIC_lookup_checks (kat->provider_section,
+                                &num_checks,
+                                &provided_checks);
   qs = TEH_plugin->insert_kyc_attributes (
     TEH_plugin->cls,
     kat->process_row,
     &kat->account_id,
     &kyc_prox,
     kat->provider_section,
+    num_checks,
+    provided_checks,
     birthday,
     GNUNET_TIME_timestamp_get (),
     kat->provider_user_id,
@@ -169,6 +176,9 @@ kyc_aml_finished (void *cls,
     eas,
     ea,
     0 != code);
+  for (unsigned int i = 0; i<num_checks; i++)
+    GNUNET_free (provided_checks[i]);
+  GNUNET_free (provided_checks);
   GNUNET_free (ea);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Stored encrypted KYC process #%llu attributes: %d\n",

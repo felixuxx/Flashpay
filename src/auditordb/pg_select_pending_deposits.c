@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022-2023 Taler Systems SA
+   Copyright (C) 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,29 +14,31 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_batch_deposits_missing_wire.c
- * @brief Implementation of the select_batch_deposits_missing_wire function for Postgres
+ * @file auditordb/pg_select_pending_deposits.c
+ * @brief Implementation of the select_pending_deposits function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_select_batch_deposits_missing_wire.h"
+#include "pg_select_pending_deposits.h"
 #include "pg_helper.h"
 
+
 /**
- * Closure for #missing_wire_cb().
+ * Closure for #wire_missing_cb().
  */
-struct MissingWireContext
+struct WireMissingContext
 {
-  /**
-   * Function to call per result.
-   */
-  TALER_EXCHANGEDB_WireMissingCallback cb;
 
   /**
-   * Closure for @e cb.
+   * Function to call for each pending deposit.
+   */
+  TALER_AUDITORDB_WireMissingCallback cb;
+
+  /**
+   * Closure for @e cb
    */
   void *cb_cls;
 
@@ -46,99 +48,105 @@ struct MissingWireContext
   struct PostgresClosure *pg;
 
   /**
-   * Set to #GNUNET_SYSERR on error.
+   * Query status to return.
    */
-  enum GNUNET_GenericReturnValue status;
+  enum GNUNET_DB_QueryStatus qs;
 };
 
 
 /**
- * Invoke the callback for each result.
+ * Helper function for #TAH_PG_select_purse_expired().
+ * To be called with the results of a SELECT statement
+ * that has returned @a num_results results.
  *
- * @param cls a `struct MissingWireContext *`
- * @param result SQL result
- * @param num_results number of rows in @a result
+ * @param cls closure of type `struct WireMissingContext *`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
  */
 static void
-missing_wire_cb (void *cls,
+wire_missing_cb (void *cls,
                  PGresult *result,
                  unsigned int num_results)
 {
-  struct MissingWireContext *mwc = cls;
-  struct PostgresClosure *pg = mwc->pg;
+  struct WireMissingContext *eic = cls;
+  struct PostgresClosure *pg = eic->pg;
 
-  while (0 < num_results)
+  for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t batch_deposit_serial_id;
-    struct GNUNET_TIME_Timestamp deadline;
-    struct TALER_PaytoHashP wire_target_h_payto;
     struct TALER_Amount total_amount;
+    struct TALER_PaytoHashP wire_target_h_payto;
+    struct GNUNET_TIME_Timestamp deadline;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("batch_deposit_serial_id",
                                     &batch_deposit_serial_id),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("total_amount",
+                                   &total_amount),
       GNUNET_PQ_result_spec_auto_from_type ("wire_target_h_payto",
                                             &wire_target_h_payto),
       GNUNET_PQ_result_spec_timestamp ("deadline",
                                        &deadline),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("total_amount",
-                                   &total_amount),
       GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
-                                  --num_results))
+                                  i))
     {
       GNUNET_break (0);
-      mwc->status = GNUNET_SYSERR;
+      eic->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-    mwc->cb (mwc->cb_cls,
+    eic->cb (eic->cb_cls,
              batch_deposit_serial_id,
              &total_amount,
              &wire_target_h_payto,
              deadline);
-    GNUNET_PQ_cleanup_result (rs);
   }
+  eic->qs = num_results;
 }
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_batch_deposits_missing_wire (
+TAH_PG_select_pending_deposits (
   void *cls,
-  uint64_t min_batch_deposit_serial_id,
-  TALER_EXCHANGEDB_WireMissingCallback cb,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Absolute deadline,
+  TALER_AUDITORDB_WireMissingCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&min_batch_deposit_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_absolute_time (&deadline),
     GNUNET_PQ_query_param_end
   };
-  struct MissingWireContext mwc = {
+  struct WireMissingContext eic = {
     .cb = cb,
     .cb_cls = cb_cls,
-    .pg = pg,
-    .status = GNUNET_OK
+    .pg = pg
   };
   enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
-           "deposits_get_deposits_missing_wire",
+           "auditor_select_pending_deposits",
            "SELECT"
            " batch_deposit_serial_id"
+           ",total_amount"
            ",wire_target_h_payto"
            ",deadline"
-           ",total_amount"
-           " FROM exchange_do_select_deposits_missing_wire"
-           " ($1);");
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "deposits_get_deposits_missing_wire",
-                                             params,
-                                             &missing_wire_cb,
-                                             &mwc);
-  if (GNUNET_OK != mwc.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
+           " FROM auditor_pending_deposits"
+           " WHERE master_pub=$1"
+           " AND deadline<$2;");
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "auditor_select_pending_deposits",
+    params,
+    &wire_missing_cb,
+    &eic);
+  if (0 > qs)
+    return qs;
+  GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != eic.qs);
+  return eic.qs;
 }

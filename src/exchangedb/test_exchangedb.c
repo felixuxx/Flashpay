@@ -1113,40 +1113,32 @@ drop:
 
 
 /**
- * Function called on deposits that are past their due date
- * and have not yet seen a wire transfer.
+ * Function called on batch deposits that may require a
+ * wire transfer.
  *
  * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
+ * @param batch_deposit_serial_id where in the table are we
  * @param total_amount value of all missing deposits, including fees
- * @param payto_uri where should the funds be wired; URI in payto://-format
+ * @param wire_target_h_payto hash of the recipient account's payto URI
  * @param deadline what was the earliest requested wire transfer deadline
- * @param kyc_pending NULL if no KYC requirement is pending, otherwise text describing the missing KYC requirement
- * @param aml_status status of AML possibly blocking the transfer
- * @param aml_limit current monthly AML limit
  */
 static void
 wire_missing_cb (
   void *cls,
+  uint64_t batch_deposit_serial_id,
   const struct TALER_Amount *total_amount,
-  const char *payto_uri,
-  struct GNUNET_TIME_Timestamp deadline,
-  const char *kyc_pending,
-  enum TALER_AmlDecisionState status,
-  const struct TALER_Amount *aml_limit)
+  const struct TALER_PaytoHashP *wire_target_h_payto,
+  struct GNUNET_TIME_Timestamp deadline)
 {
   const struct TALER_EXCHANGEDB_CoinDepositInformation *deposit = cls;
 
-  (void) payto_uri;
+  (void) batch_deposit_serial_id;
   (void) deadline;
-  (void) kyc_pending;
-  (void) status;
-  (void) aml_limit;
-  if (0 != TALER_amount_cmp (total_amount,
-                             &deposit->amount_with_fee))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
+  (void) wire_target_h_payto;
+  if (0 ==
+      TALER_amount_cmp (total_amount,
+                        &deposit->amount_with_fee))
+    result = 8;
 }
 
 
@@ -2162,19 +2154,10 @@ run (void *cls)
                                        r));
   }
   {
-    struct GNUNET_TIME_Timestamp start_range;
-    struct GNUNET_TIME_Timestamp end_range;
-
-    start_range = GNUNET_TIME_absolute_to_timestamp (
-      GNUNET_TIME_absolute_subtract (deadline.abs_time,
-                                     GNUNET_TIME_UNIT_SECONDS));
-    end_range = GNUNET_TIME_absolute_to_timestamp (
-      GNUNET_TIME_absolute_add (deadline.abs_time,
-                                GNUNET_TIME_UNIT_SECONDS));
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+    result = 66;
+    FAILIF (0 >=
             plugin->select_batch_deposits_missing_wire (plugin->cls,
-                                                        start_range,
-                                                        end_range,
+                                                        0,
                                                         &wire_missing_cb,
                                                         &deposit));
     FAILIF (8 != result);

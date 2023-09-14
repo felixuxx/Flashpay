@@ -357,4 +357,18 @@ TALER_KYCLOGIC_lookup_logic (const char *name,
                              const char **configuration_section);
 
 
+/**
+ * Obtain array of KYC checks provided by the provider
+ * configured in @a section_name.
+ *
+ * @param section_name configuration section name
+ * @param[out] num_checks set to the length of the array
+ * @param[out] provided_checks set to an array with the
+ *   names of the checks provided by this KYC provider
+ */
+void
+TALER_KYCLOGIC_lookup_checks (const char *section_name,
+                              unsigned int *num_checks,
+                              char ***provided_checks);
+
 #endif

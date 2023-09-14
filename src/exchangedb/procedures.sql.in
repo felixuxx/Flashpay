@@ -27,6 +27,7 @@ SET search_path TO exchange;
 #include "exchange_do_deposit.sql"
 #include "exchange_do_melt.sql"
 #include "exchange_do_select_deposits_missing_wire.sql"
+#include "exchange_do_select_justification_for_missing_wire.sql"
 #include "exchange_do_refund.sql"
 #include "exchange_do_recoup_to_reserve.sql"
 #include "exchange_do_recoup_to_coin.sql"
