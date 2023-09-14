@@ -28,7 +28,8 @@ DECLARE
    ,wire_target_h_payto
    ,wire_deadline
     FROM batch_deposits
-    WHERE batch_deposit_serial_id > in_min_serial_id;
+    WHERE batch_deposit_serial_id > in_min_serial_id
+    ORDER BY batch_deposit_serial_id ASC;
 DECLARE
   my_total_val INT8; -- all deposits without wire
 DECLARE

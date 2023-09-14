@@ -313,7 +313,7 @@ COMMENT ON TABLE auditor_predicted_result
 CREATE TABLE IF NOT EXISTS auditor_pending_deposits
   (master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,total_amount taler_amount NOT NULL
-  ,wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=64)
+  ,wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)
   ,batch_deposit_serial_id INT8 NOT NULL
   ,deadline INT8 NOT NULL
   ,PRIMARY KEY(master_pub, batch_deposit_serial_id)

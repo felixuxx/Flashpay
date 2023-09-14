@@ -67,7 +67,7 @@ missing_wire_cb (void *cls,
   struct MissingWireContext *mwc = cls;
   struct PostgresClosure *pg = mwc->pg;
 
-  while (0 < num_results)
+  for (unsigned int i = 0; i<num_results; i++)
   {
     uint64_t batch_deposit_serial_id;
     struct GNUNET_TIME_Timestamp deadline;
@@ -88,7 +88,7 @@ missing_wire_cb (void *cls,
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
-                                  --num_results))
+                                  i))
     {
       GNUNET_break (0);
       mwc->status = GNUNET_SYSERR;
