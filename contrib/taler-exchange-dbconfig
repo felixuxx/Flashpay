@@ -21,13 +21,14 @@ set -eu
 
 RESET_DB=0
 SKIP_DBINIT=0
+FORCE_PERMS=0
 DBUSER="taler-exchange-httpd"
 DBGROUP="taler-exchange-db"
 DBNAME="exchange"
 CFGFILE="/etc/taler/secrets/exchange-db.secret.conf"
 
 # Parse command-line options
-while getopts ':g:hn:rsu:' OPTION; do
+while getopts ':g:hn:prsu:' OPTION; do
     case "$OPTION" in
         h)
             echo 'Supported options:'
@@ -36,12 +37,16 @@ while getopts ':g:hn:rsu:' OPTION; do
             echo "  -h           -- print this help text"
             echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
             echo "  -r           -- reset database (dangerous)"
+            echo "  -p           -- force permission setup even without database initialization"
             echo "  -s           -- skip database initialization"
             echo "  -u USER      -- taler-exchange to be run by USER (default: $DBUSER)"
             exit 0
             ;;
         n)
             DBNAME="$OPTARG"
+            ;;
+        p)
+            FORCE_PERMS="1"
             ;;
         r)
             RESET_DB="1"
@@ -131,6 +136,24 @@ then
     echo "Initializing database '$DBNAME'." 1>&2
     sudo -u "$DBUSER" taler-exchange-dbinit
 fi
+
+if [ 0 = "$SKIP_DBINIT" ] || [ 1 = "$FORCE_PERMS" ]
+then
+    DB_GRP="$(getent group "$DBGROUP" | sed -e "s/.*://g" -e "s/,/ /g")"
+    echo "Initializing permissions for '$DB_GRP'." 1>&2
+    for GROUPIE in $DB_GRP
+    do
+        if [ "$GROUPIE" != "$DBUSER" ]
+        then
+            sudo -u "$DBUSER" \
+                 echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
+                         'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
+                | psql taler-exchange
+        fi
+    done
+fi
+
+
 
 echo "Database configuration finished." 1>&2
 
