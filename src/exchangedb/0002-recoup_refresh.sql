@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -126,6 +126,50 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION recoup_refresh_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+  VALUES
+     (NEW.coin_pub
+    ,'recoup_refresh::NEW'
+    ,NEW.recoup_refresh_uuid);
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+  SELECT
+     melt.old_coin_pub
+    ,'recoup_refresh::OLD'
+    ,NEW.recoup_refresh_uuid
+    FROM refresh_revealed_coins rrc
+    JOIN refresh_commitments melt
+      USING (melt_serial_id)
+    WHERE rrc.rrc_serial = NEW.rrc_serial;
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION coin_deposits_insert_trigger()
+  IS 'Automatically generate coin history entry.';
+
+
+CREATE FUNCTION master_table_recoup_refresh()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER recoup_refresh_on_insert
+    AFTER INSERT
+     ON recoup_refresh
+     FOR EACH ROW EXECUTE FUNCTION recoup_refresh_insert_trigger();
+END $$;
+
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -146,5 +190,10 @@ INSERT INTO exchange_tables
     ('recoup_refresh'
     ,'exchange-0002'
     ,'foreign'
+    ,TRUE
+    ,FALSE),
+    ('recoup_refresh'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);

@@ -106,6 +106,37 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION refresh_commitments_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+ VALUES
+     (NEW.old_coin_pub
+    ,'refresh_commitments'
+    ,NEW.melt_serial_id);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION refresh_commitments_insert_trigger()
+  IS 'Automatically generate coin history entry.';
+
+
+CREATE FUNCTION master_table_refresh_commitments()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER refresh_commitments_on_insert
+    AFTER INSERT
+     ON refresh_commitments
+     FOR EACH ROW EXECUTE FUNCTION refresh_commitments_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -126,5 +157,10 @@ INSERT INTO exchange_tables
     ('refresh_commitments'
     ,'exchange-0002'
     ,'foreign'
+    ,TRUE
+    ,FALSE),
+   ('refresh_commitments'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);

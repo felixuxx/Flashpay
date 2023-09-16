@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -102,6 +102,37 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION refunds_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+ VALUES
+     (NEW.coin_pub
+    ,'refunds'
+    ,NEW.refund_serial_id);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION refunds_insert_trigger()
+  IS 'Automatically generate coin history entry.';
+
+
+CREATE FUNCTION master_table_refunds()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER refunds_on_insert
+    AFTER INSERT
+     ON refunds
+     FOR EACH ROW EXECUTE FUNCTION refunds_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -122,5 +153,10 @@ INSERT INTO exchange_tables
     ('refunds'
     ,'exchange-0002'
     ,'foreign'
+    ,TRUE
+    ,FALSE),
+    ('refunds'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);

@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -121,6 +121,37 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION purse_deposits_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+ VALUES
+    (NEW.coin_pub
+    ,'purse_deposits'
+    ,NEW.purse_deposit_serial_id);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION purse_deposits_insert_trigger()
+  IS 'Automatically generate coin history entry.';
+
+
+CREATE FUNCTION master_table_purse_deposits()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER purse_deposits_on_insert
+    AFTER INSERT
+     ON purse_deposits
+     FOR EACH ROW EXECUTE FUNCTION purse_deposits_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -141,5 +172,10 @@ INSERT INTO exchange_tables
     ('purse_deposits'
     ,'exchange-0002'
     ,'foreign'
+    ,TRUE
+    ,FALSE),
+    ('purse_deposits'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);

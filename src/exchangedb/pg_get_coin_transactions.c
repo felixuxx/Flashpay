@@ -729,7 +729,7 @@ TEH_PG_get_coin_transactions (
     .db_cls = cls
   };
 
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "get_deposit_with_coin_pub",
            "SELECT"
            " cdep.amount_with_fee"
@@ -757,7 +757,7 @@ TEH_PG_get_coin_transactions (
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
            " WHERE cdep.coin_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "get_refresh_session_by_coin",
            "SELECT"
            " rc"
@@ -773,7 +773,7 @@ TEH_PG_get_coin_transactions (
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
            " WHERE old_coin_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "get_purse_deposit_by_coin_pub",
            "SELECT"
            " partner_base_url"
@@ -798,7 +798,7 @@ TEH_PG_get_coin_transactions (
            // FIXME: use to-be-created materialized index
            // on coin_pub (query crosses partitions!)
            " WHERE pd.coin_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "get_refunds_by_coin",
            "SELECT"
            " bdep.merchant_pub"
@@ -818,7 +818,7 @@ TEH_PG_get_coin_transactions (
            " JOIN denominations denom"
            "   USING (denominations_serial)"
            " WHERE ref.coin_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "get_purse_decision_by_coin_pub",
            "SELECT"
            " pdes.purse_pub"
@@ -834,7 +834,7 @@ TEH_PG_get_coin_transactions (
            "   USING (denominations_serial)"
            " WHERE pd.coin_pub=$1"
            "   AND pdes.refunded;");
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "recoup_by_old_coin",
            "SELECT"
            " coins.coin_pub"
@@ -856,7 +856,7 @@ TEH_PG_get_coin_transactions (
            "       JOIN refresh_revealed_coins rrc"
            "           USING (melt_serial_id)"
            "    WHERE old_coin_pub=$1);");
-  PREPARE (pg,
+  PREPARE (pg, // done
            "recoup_by_coin",
            "SELECT"
            " reserves.reserve_pub"
@@ -882,7 +882,7 @@ TEH_PG_get_coin_transactions (
            " WHERE coins.coin_pub=$1;");
   /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
      for a refreshed coin */
-  PREPARE (pg,
+  PREPARE (pg, // done!
            "recoup_by_refreshed_coin",
            "SELECT"
            " old_coins.coin_pub AS old_coin_pub"
@@ -905,7 +905,7 @@ TEH_PG_get_coin_transactions (
            "    JOIN denominations denoms"
            "      ON (denoms.denominations_serial = coins.denominations_serial)"
            " WHERE coins.coin_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done
            "reserve_open_by_coin",
            "SELECT"
            " reserve_open_deposit_uuid"

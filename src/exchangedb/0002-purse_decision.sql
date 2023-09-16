@@ -69,6 +69,39 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION purse_decision_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+  SELECT
+    pd.coin_pub
+   ,'purse_decision'
+   ,NEW.purse_decision_serial_id
+  FROM purse_deposits pd
+  WHERE purse_pub = NEW.purse_pub;
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION purse_decision_insert_trigger()
+  IS 'Automatically generate coin history entry.';
+
+
+CREATE FUNCTION master_table_purse_decision()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER purse_decision_on_insert
+    AFTER INSERT
+     ON purse_decision
+     FOR EACH ROW EXECUTE FUNCTION purse_decision_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -84,5 +117,10 @@ INSERT INTO exchange_tables
     ('purse_decision'
     ,'exchange-0002'
     ,'constrain'
+    ,TRUE
+    ,FALSE),
+    ('purse_decision'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);

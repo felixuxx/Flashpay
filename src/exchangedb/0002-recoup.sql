@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -171,10 +171,18 @@ BEGIN
   VALUES
     (NEW.reserve_out_serial_id
     ,NEW.coin_pub);
-  RETURN NEW;
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+  VALUES
+    (NEW.coin_pub
+    ,'recoup'
+    ,NEW.recoup_uuid);
+ RETURN NEW;
 END $$;
 COMMENT ON FUNCTION recoup_insert_trigger()
-  IS 'Replicate recoup inserts into recoup_by_reserve table.';
+  IS 'Replicates recoup inserts into recoup_by_reserve table and updates the coin_history table.';
 
 
 CREATE FUNCTION recoup_delete_trigger()

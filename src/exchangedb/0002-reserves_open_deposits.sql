@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -80,6 +80,37 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION reserves_open_deposits_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO exchange.coin_history
+    (coin_pub
+    ,table_name
+    ,serial_id)
+ VALUES
+     (NEW.coin_pub
+    ,'reserves_open_deposits'
+    ,NEW.reserve_open_deposit_uuid);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION reserves_open_deposits_insert_trigger()
+  IS 'Automatically generate coin history entry.';
+
+
+CREATE FUNCTION master_table_reserves_open_deposits()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER reserves_open_deposits_on_insert
+    AFTER INSERT
+     ON reserves_open_deposits
+     FOR EACH ROW EXECUTE FUNCTION reserves_open_deposits_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -95,5 +126,10 @@ INSERT INTO exchange_tables
     ('reserves_open_deposits'
     ,'exchange-0002'
     ,'constrain'
+    ,TRUE
+    ,FALSE),
+    ('reserves_open_deposits'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);
