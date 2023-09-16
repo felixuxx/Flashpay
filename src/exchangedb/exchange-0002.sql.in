@@ -63,6 +63,7 @@ COMMENT ON TYPE exchange_do_select_deposits_missing_wire_return_type
 #include "0002-legitimization_processes.sql"
 #include "0002-legitimization_requirements.sql"
 #include "0002-reserves.sql"
+#include "0002-reserve_history.sql"
 #include "0002-reserves_in.sql"
 #include "0002-reserves_close.sql"
 #include "0002-close_requests.sql"

@@ -33,9 +33,9 @@ static int result;
 /**
  * Report line of error if @a cond is true, and jump to label "drop".
  */
-#define FAILIF(cond)                              \
+#define FAILIF(cond)                            \
   do {                                          \
-    if (! (cond)) { break;}                      \
+    if (! (cond)) { break;}                     \
     GNUNET_break (0);                           \
     goto drop;                                  \
   } while (0)

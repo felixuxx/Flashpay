@@ -165,13 +165,13 @@ CREATE FUNCTION recoup_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  INSERT INTO exchange.recoup_by_reserve
+  INSERT INTO recoup_by_reserve
     (reserve_out_serial_id
     ,coin_pub)
   VALUES
     (NEW.reserve_out_serial_id
     ,NEW.coin_pub);
-  INSERT INTO exchange.coin_history
+  INSERT INTO coin_history
     (coin_pub
     ,table_name
     ,serial_id)
@@ -179,7 +179,19 @@ BEGIN
     (NEW.coin_pub
     ,'recoup'
     ,NEW.recoup_uuid);
- RETURN NEW;
+  INSERT INTO reserve_history
+    (reserve_pub
+    ,table_name
+    ,serial_id)
+  SELECT
+     res.reserve_pub
+    ,'recoup'
+    ,NEW.recoup_uuid
+  FROM reserves_out rout
+  JOIN reserves res
+    USING (reserve_uuid)
+    WHERE rout.reserve_out_serial_id = NEW.reserve_out_serial_id;
+  RETURN NEW;
 END $$;
 COMMENT ON FUNCTION recoup_insert_trigger()
   IS 'Replicates recoup inserts into recoup_by_reserve table and updates the coin_history table.';
@@ -190,7 +202,7 @@ CREATE FUNCTION recoup_delete_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  DELETE FROM exchange.recoup_by_reserve
+  DELETE FROM recoup_by_reserve
    WHERE reserve_out_serial_id = OLD.reserve_out_serial_id
      AND coin_pub = OLD.coin_pub;
   RETURN OLD;

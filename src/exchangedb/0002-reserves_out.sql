@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -157,12 +157,23 @@ CREATE FUNCTION reserves_out_by_reserve_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  INSERT INTO exchange.reserves_out_by_reserve
+  INSERT INTO reserves_out_by_reserve
     (reserve_uuid
     ,h_blind_ev)
   VALUES
     (NEW.reserve_uuid
     ,NEW.h_blind_ev);
+  INSERT INTO reserve_history
+    (reserve_pub
+    ,table_name
+    ,serial_id)
+  SELECT
+     res.reserve_pub
+    ,'reserves_out'
+    ,NEW.reserve_out_serial_id
+  FROM
+    reserves res
+  WHERE res.reserve_uuid = NEW.reserve_uuid;
   RETURN NEW;
 END $$;
 COMMENT ON FUNCTION reserves_out_by_reserve_insert_trigger()
@@ -174,7 +185,7 @@ CREATE FUNCTION reserves_out_by_reserve_delete_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  DELETE FROM exchange.reserves_out_by_reserve
+  DELETE FROM reserves_out_by_reserve
    WHERE reserve_uuid = OLD.reserve_uuid;
   RETURN OLD;
 END $$;

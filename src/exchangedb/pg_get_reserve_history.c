@@ -648,7 +648,7 @@ TEH_PG_get_reserve_history (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  PREPARE (pg,
+  PREPARE (pg, // done
            "reserves_in_get_transactions",
            /*
            "SELECT"
@@ -677,7 +677,7 @@ TEH_PG_get_reserve_history (void *cls,
            "WHERE wire_target_h_payto = ( "
            "  SELECT wire_source_h_payto FROM ri "
            "); ");
-  PREPARE (pg,
+  PREPARE (pg, // DONE
            "get_reserves_out",
            /*
            "SELECT"
@@ -718,7 +718,7 @@ TEH_PG_get_reserve_history (void *cls,
            "   ON (ro.h_blind_ev = robr.h_blind_ev)"
            " JOIN denominations denom"
            "   ON (ro.denominations_serial = denom.denominations_serial);");
-  PREPARE (pg,
+  PREPARE (pg, // DONE
            "recoup_by_reserve",
            /*
            "SELECT"
@@ -767,7 +767,7 @@ TEH_PG_get_reserve_history (void *cls,
            "   JOIN wire_targets"
            "     USING (wire_target_h_payto)"
            " WHERE reserve_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // DONE
            "merge_by_reserve",
            "SELECT"
            " pr.amount_with_fee"
@@ -792,7 +792,7 @@ TEH_PG_get_reserve_history (void *cls,
            " WHERE pm.reserve_pub=$1"
            "  AND COALESCE(pm.partner_serial_id,0)=0" /* must be local! */
            "  AND NOT COALESCE (pdes.refunded, FALSE);");
-  PREPARE (pg,
+  PREPARE (pg, // done
            "history_by_reserve",
            "SELECT"
            " history_fee"
@@ -800,7 +800,7 @@ TEH_PG_get_reserve_history (void *cls,
            ",reserve_sig"
            " FROM history_requests"
            " WHERE reserve_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done
            "open_request_by_reserve",
            "SELECT"
            " reserve_payment"
@@ -810,7 +810,7 @@ TEH_PG_get_reserve_history (void *cls,
            ",reserve_sig"
            " FROM reserves_open_requests"
            " WHERE reserve_pub=$1;");
-  PREPARE (pg,
+  PREPARE (pg, // done
            "close_request_by_reserve",
            "SELECT"
            " close_timestamp"

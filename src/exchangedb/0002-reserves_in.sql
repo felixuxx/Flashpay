@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -118,6 +118,38 @@ BEGIN
 END $$;
 
 
+
+CREATE OR REPLACE FUNCTION reserves_in_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO reserve_history
+    (reserve_pub
+    ,table_name
+    ,serial_id)
+  VALUES
+    (NEW.reserve_pub
+    ,'reserves_in'
+    ,NEW.reserve_in_serial_id);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION reserves_in_insert_trigger()
+  IS 'Automatically generate reserve history entry.';
+
+
+CREATE FUNCTION master_table_reserves_in()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER reserves_in_on_insert
+    AFTER INSERT
+     ON reserves_in
+     FOR EACH ROW EXECUTE FUNCTION reserves_in_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -138,5 +170,10 @@ INSERT INTO exchange_tables
     ('reserves_in'
     ,'exchange-0002'
     ,'foreign'
+    ,TRUE
+    ,FALSE),
+    ('reserves_in'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);

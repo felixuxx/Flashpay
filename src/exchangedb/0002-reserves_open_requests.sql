@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -90,6 +90,37 @@ END
 $$;
 
 
+CREATE OR REPLACE FUNCTION reserves_open_requests_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO reserve_history
+    (reserve_pub
+    ,table_name
+    ,serial_id)
+  VALUES
+    (NEW.reserve_pub
+    ,'reserves_open_requests'
+    ,NEW.open_request_uuid);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION reserves_open_requests_insert_trigger()
+  IS 'Automatically generate reserve history entry.';
+
+
+CREATE FUNCTION master_table_reserves_open_requests()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  CREATE TRIGGER reserves_open_requests_on_insert
+    AFTER INSERT
+     ON reserves_open_requests
+     FOR EACH ROW EXECUTE FUNCTION reserves_open_requests_insert_trigger();
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -110,5 +141,10 @@ INSERT INTO exchange_tables
     ('reserves_open_requests'
     ,'exchange-0002'
     ,'foreign'
+    ,TRUE
+    ,FALSE),
+    ('reserves_open_requests'
+    ,'exchange-0002'
+    ,'master'
     ,TRUE
     ,FALSE);
