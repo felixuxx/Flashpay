@@ -1171,7 +1171,8 @@ struct TALER_EXCHANGE_BatchDepositResult
      */
     struct
     {
-      /* TODO: returning full details is not implemented */
+      /* FIXME: returning full details is not implemented */
+      // Should have 'coin_pub' here!
     } conflict;
 
   } details;
@@ -1407,7 +1408,7 @@ struct TALER_EXCHANGE_CsRMeltResponse
      */
     struct
     {
-      /* TODO: returning full details is not implemented */
+      /* FIXME: returning full details is not implemented */
     } gone;
 
   } details;

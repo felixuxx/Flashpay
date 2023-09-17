@@ -41,6 +41,10 @@ add_response_headers (void *cls,
 {
   (void) cls;
   TALER_MHD_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "no-cache, public"));
 }
 
 
@@ -62,7 +66,7 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
     unsigned long long ev;
 
     if (1 != sscanf (etags,
-                     "%llu%c",
+                     "\"%llu\"%c",
                      &ev,
                      &dummy))
     {
@@ -112,7 +116,7 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
 
       GNUNET_snprintf (etagp,
                        sizeof (etagp),
-                       "%llu",
+                       "\"%llu\"",
                        (unsigned long long) etag);
       history = TEH_RESPONSE_compile_transaction_history (coin_pub,
                                                           tl);
