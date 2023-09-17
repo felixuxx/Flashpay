@@ -1723,9 +1723,11 @@ run (void *cls)
       /* Just to test fetching a coin with melt history */
       struct TALER_EXCHANGEDB_TransactionList *tl;
       enum GNUNET_DB_QueryStatus qs;
+      uint64_t etag = 0;
 
       qs = plugin->get_coin_transactions (plugin->cls,
                                           &refresh.coin.coin_pub,
+                                          &etag,
                                           &tl);
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
       plugin->free_coin_transaction_list (plugin->cls,
@@ -1972,9 +1974,14 @@ run (void *cls)
                                                   &audit_refund_cb,
                                                   NULL));
   FAILIF (1 != auditor_row_cnt);
-  qs = plugin->get_coin_transactions (plugin->cls,
-                                      &refund.coin.coin_pub,
-                                      &tl);
+  {
+    uint64_t etag = 0;
+
+    qs = plugin->get_coin_transactions (plugin->cls,
+                                        &refund.coin.coin_pub,
+                                        &etag,
+                                        &tl);
+  }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
   GNUNET_assert (NULL != tl);
   matched = 0;

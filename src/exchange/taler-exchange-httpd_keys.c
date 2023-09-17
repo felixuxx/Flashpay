@@ -2317,16 +2317,14 @@ add_denom_key_cb (void *cls,
 /**
  * Add the headers we want to set for every /keys response.
  *
- * @param ksh the key state to use
- * @param wsh wire state to use
+ * @param cls the key state to use
  * @param[in,out] response the response to modify
- * @return #GNUNET_OK on success
  */
-static enum GNUNET_GenericReturnValue
-setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
-                                struct WireStateHandle *wsh,
+static void
+setup_general_response_headers (void *cls,
                                 struct MHD_Response *response)
 {
+  struct TEH_KeyStateHandle *ksh = cls;
   char dat[128];
 
   TALER_MHD_add_global_headers (response);
@@ -2352,7 +2350,7 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
                                   ksh->rekey_frequency);
     a = GNUNET_TIME_relative_to_absolute (r);
     km = GNUNET_TIME_absolute_to_timestamp (a);
-    we = GNUNET_TIME_absolute_to_timestamp (wsh->cache_expiration);
+    we = GNUNET_TIME_absolute_to_timestamp (wire_state->cache_expiration);
     m = GNUNET_TIME_timestamp_min (we,
                                    km);
     TALER_MHD_get_date_string (m.abs_time,
@@ -2380,7 +2378,6 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
                                          "public,max-age=3600"));
-  return GNUNET_OK;
 }
 
 
@@ -2688,10 +2685,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                          keys_json,
                                          MHD_RESPMEM_MUST_FREE);
     GNUNET_assert (NULL != krd.response_uncompressed);
-    GNUNET_assert (GNUNET_OK ==
-                   setup_general_response_headers (ksh,
-                                                   wsh,
-                                                   krd.response_uncompressed));
+    setup_general_response_headers (ksh,
+                                    krd.response_uncompressed);
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (krd.response_uncompressed,
                                            MHD_HTTP_HEADER_ETAG,
@@ -2711,10 +2706,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                      MHD_add_response_header (krd.response_compressed,
                                               MHD_HTTP_HEADER_CONTENT_ENCODING,
                                               "deflate")) );
-    GNUNET_assert (GNUNET_OK ==
-                   setup_general_response_headers (ksh,
-                                                   wsh,
-                                                   krd.response_compressed));
+    setup_general_response_headers (ksh,
+                                    krd.response_compressed);
     /* Set cache control headers: our response varies depending on these headers */
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (wsh->wire_reply,
@@ -3877,9 +3870,7 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
 {
   struct GNUNET_TIME_Timestamp last_issue_date;
   const char *etag;
-  struct WireStateHandle *wsh;
 
-  wsh = get_wire_state ();
   etag = MHD_lookup_connection_value (rc->connection,
                                       MHD_HEADER_KIND,
                                       MHD_HTTP_HEADER_IF_NONE_MATCH);
@@ -3967,29 +3958,11 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
     if ( (NULL != etag) &&
          (0 == strcmp (etag,
                        krd->etag)) )
-    {
-      MHD_RESULT ret;
-      struct MHD_Response *resp;
+      return TEH_RESPONSE_reply_not_modified (rc->connection,
+                                              krd->etag,
+                                              &setup_general_response_headers,
+                                              ksh);
 
-      resp = MHD_create_response_from_buffer (0,
-                                              NULL,
-                                              MHD_RESPMEM_PERSISTENT);
-      TALER_MHD_add_global_headers (resp);
-      GNUNET_break (GNUNET_OK ==
-                    setup_general_response_headers (ksh,
-                                                    wsh,
-                                                    resp));
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (resp,
-                                             MHD_HTTP_HEADER_ETAG,
-                                             krd->etag));
-      ret = MHD_queue_response (rc->connection,
-                                MHD_HTTP_NOT_MODIFIED,
-                                resp);
-      GNUNET_break (MHD_YES == ret);
-      MHD_destroy_response (resp);
-      return ret;
-    }
     return MHD_queue_response (rc->connection,
                                MHD_HTTP_OK,
                                (MHD_YES ==

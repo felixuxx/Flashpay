@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -224,6 +224,35 @@ json_t *
 TEH_RESPONSE_compile_transaction_history (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_EXCHANGEDB_TransactionList *tl);
+
+
+/**
+ * Callback used to set headers in a response.
+ *
+ * @param cls closure
+ * @param[in,out] resp response to modify
+ */
+typedef void
+(*TEH_RESPONSE_SetHeaders)(void *cls,
+                           struct MHD_Response *resp);
+
+
+/**
+ * Generate a HTTP "Not modified" response with the
+ * given @a etags.
+ *
+ * @param connection connection to queue response on
+ * @param etags ETag header to set
+ * @param cb callback to modify response headers
+ * @param cb_cls closure for @a cb
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_not_modified (
+  struct MHD_Connection *connection,
+  const char *etags,
+  TEH_RESPONSE_SetHeaders cb,
+  void *cb_cls);
 
 
 #endif

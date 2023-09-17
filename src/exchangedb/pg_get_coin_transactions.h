@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -29,16 +29,21 @@
 /**
  * Compile a list of all (historic) transactions performed with the given coin
  * (/refresh/melt, /deposit, /refund and /recoup operations).
+ * Should return 0 if @a etag is already current, otherwise
+ * return the full history and update @a etag. @a etag
+ * should be set to the last row ID of the given coin
+ * in the coin history table.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param coin_pub coin to investigate
- * @param[out] tlp set to list of transactions, NULL if coin is fresh
+ * @param[in,out] etag known etag, updated to current etag * @param[out] tlp set to list of transactions, NULL if coin is fresh
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_coin_transactions (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  uint64_t *etag,
   struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 #endif

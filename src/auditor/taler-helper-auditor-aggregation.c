@@ -767,6 +767,7 @@ wire_transfer_information_cb (
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP hpt;
+  uint64_t etag = 0;
 
   TALER_payto_hash (account_pay_uri,
                     &hpt);
@@ -779,8 +780,12 @@ wire_transfer_information_cb (
                               "h-payto does not match payto URI");
   }
   /* Obtain coin's transaction history */
+  /* TODO: could use 'etag' mechanism to only fetch transactions
+     we did not yet process, instead of going over them
+     again and again.*/
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                              coin_pub,
+                                             &etag,
                                              &tl);
   if ( (qs < 0) ||
        (NULL == tl) )

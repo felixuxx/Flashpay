@@ -39,7 +39,7 @@ struct HTD_Context
   /**
    * Public key of the coin for which we are running link.
    */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
+  const struct TALER_CoinSpendPublicKeyP *coin_pub;
 
   /**
    * Json array with transfer data we collect.
@@ -153,7 +153,7 @@ link_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->get_link_data (TEH_plugin->cls,
-                                  &ctx->coin_pub,
+                                  ctx->coin_pub,
                                   &handle_link_data,
                                   ctx);
   if (NULL == ctx->mlist)
@@ -178,26 +178,13 @@ link_transaction (void *cls,
 
 MHD_RESULT
 TEH_handler_link (struct TEH_RequestContext *rc,
-                  const char *const args[2])
+                  const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
-  struct HTD_Context ctx;
+  struct HTD_Context ctx = {
+    .coin_pub = coin_pub
+  };
   MHD_RESULT mhd_ret;
 
-  memset (&ctx,
-          0,
-          sizeof (ctx));
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (args[0],
-                                     strlen (args[0]),
-                                     &ctx.coin_pub,
-                                     sizeof (ctx.coin_pub)))
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
-                                       args[0]);
-  }
   ctx.mlist = json_array ();
   GNUNET_assert (NULL != ctx.mlist);
   if (GNUNET_OK !=

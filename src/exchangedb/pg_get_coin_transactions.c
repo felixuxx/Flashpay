@@ -684,6 +684,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_coin_transactions (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  uint64_t *etag,
   struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
   struct PostgresClosure *pg = cls;
@@ -729,6 +730,7 @@ TEH_PG_get_coin_transactions (
     .db_cls = cls
   };
 
+  *etag = 0;  // FIXME: etag not yet implemented!
   PREPARE (pg, // done!
            "get_deposit_with_coin_pub",
            "SELECT"

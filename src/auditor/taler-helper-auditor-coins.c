@@ -435,9 +435,14 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_Amount refunded;
   struct TALER_Amount deposit_fee;
   bool have_refund;
+  uint64_t etag = 0;
 
+  /* TODO: could use 'etag' mechanism to only fetch transactions
+     we did not yet process, instead of going over them
+     again and again. */
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                              coin_pub,
+                                             &etag,
                                              &tl);
   if (0 >= qs)
     return qs;

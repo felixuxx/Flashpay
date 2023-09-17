@@ -4696,15 +4696,21 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Compile a list of all (historic) transactions performed
    * with the given coin (melt, refund, recoup and deposit operations).
+   * Should return 0 if @a etag is already current, otherwise
+   * return the full history and update @a etag. @a etag
+   * should be set to the last row ID of the given coin
+   * in the coin history table.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param coin_pub coin to investigate
+   * @param[in,out] etag known etag, updated to current etag
    * @param[out] tlp set to list of transactions, NULL if coin is fresh
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_coin_transactions)(void *cls,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           uint64_t *etag,
                            struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 

@@ -653,6 +653,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   struct TALER_EXCHANGEDB_TransactionList *tl;
   enum GNUNET_DB_QueryStatus qs;
   json_t *history;
+  uint64_t etag = 0;
 
   TEH_plugin->rollback (TEH_plugin->cls);
   if (GNUNET_OK !=
@@ -667,6 +668,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   }
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           coin_pub,
+                                          &etag,
                                           &tl);
   TEH_plugin->rollback (TEH_plugin->cls);
   if (0 > qs)
@@ -1184,6 +1186,34 @@ TEH_RESPONSE_reply_aml_blocked (struct MHD_Connection *connection,
     connection,
     MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
     TALER_JSON_pack_ec (ec));
+}
+
+
+MHD_RESULT
+TEH_RESPONSE_reply_not_modified (
+  struct MHD_Connection *connection,
+  const char *etags,
+  TEH_RESPONSE_SetHeaders cb,
+  void *cb_cls)
+{
+  MHD_RESULT ret;
+  struct MHD_Response *resp;
+
+  resp = MHD_create_response_from_buffer (0,
+                                          NULL,
+                                          MHD_RESPMEM_PERSISTENT);
+  cb (cb_cls,
+      resp);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_ETAG,
+                                         etags));
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_NOT_MODIFIED,
+                            resp);
+  GNUNET_break (MHD_YES == ret);
+  MHD_destroy_response (resp);
+  return ret;
 }
 
 

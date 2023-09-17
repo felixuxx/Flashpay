@@ -36,6 +36,7 @@
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
+#include "taler-exchange-httpd_coins_get.h"
 #include "taler-exchange-httpd_config.h"
 #include "taler-exchange-httpd_contract.h"
 #include "taler-exchange-httpd_csr.h"
@@ -365,6 +366,55 @@ handle_post_coins (struct TEH_RequestContext *rc,
                            root);
   return r404 (rc->connection,
                args[1]);
+}
+
+
+/**
+ * Handle a GET "/coins/$COIN_PUB[/$OP]" request.  Parses the "coin_pub"
+ * EdDSA key of the coin and demultiplexes based on $OP.
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_get_coins (struct TEH_RequestContext *rc,
+                  const char *const args[2])
+{
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  if (NULL == args[0])
+  {
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                       rc->url);
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &coin_pub,
+                                     sizeof (coin_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
+                                       args[0]);
+  }
+
+  if (NULL == args[1])
+    return TEH_handler_coins_get (rc,
+                                  &coin_pub);
+  if (0 == strcmp (args[1],
+                   "link"))
+    return TEH_handler_link (rc,
+                             &coin_pub);
+  return TALER_MHD_reply_with_error (rc->connection,
+                                     MHD_HTTP_NOT_FOUND,
+                                     TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                     rc->url);
 }
 
 
@@ -1537,8 +1587,9 @@ handle_mhd_request (void *cls,
     {
       .url = "coins",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = TEH_handler_link,
+      .handler.get = &handle_get_coins,
       .nargs = 2,
+      .nargs_is_upper_bound = true
     },
     /* refreshes/$RCH/reveal */
     {
