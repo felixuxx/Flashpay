@@ -2740,29 +2740,6 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
- * Function called with details about
- * history requests that have been made, with
- * the goal of auditing the history request execution.
- *
- * @param cls closure
- * @param rowid unique serial ID for the deposit in our DB
- * @param history_fee fee paid for the request
- * @param ts timestamp of the request
- * @param reserve_pub reserve history was requested for
- * @param reserve_sig signature approving the @a history_fee
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
- */
-typedef enum GNUNET_GenericReturnValue
-(*TALER_EXCHANGEDB_HistoryRequestCallback)(
-  void *cls,
-  uint64_t rowid,
-  const struct TALER_Amount *history_fee,
-  const struct GNUNET_TIME_Timestamp ts,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_ReserveSignatureP *reserve_sig);
-
-
-/**
  * Function called with details about purse decisions that have been made, with
  * the goal of auditing the purse's execution.
  *
@@ -4249,6 +4226,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve
+   * @param start_off maximum starting offset in history to exclude from returning
    * @param[out] balance set to the reserve balance
    * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
    * @return transaction status
@@ -4256,29 +4234,9 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_reserve_history)(void *cls,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
+                         uint64_t start_off,
                          struct TALER_Amount *balance,
                          struct TALER_EXCHANGEDB_ReserveHistory **rhp);
-
-
-  /**
-   * Get truncated transaction history associated with the specified
-   * reserve.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserve_pub public key of the reserve
-   * @param[out] balance_in set to the total of inbound
-   *             transactions in the returned history
-   * @param[out] balance_out set to the total of outbound
-   *             transactions in the returned history
-   * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*get_reserve_status)(void *cls,
-                        const struct TALER_ReservePublicKeyP *reserve_pub,
-                        struct TALER_Amount *balance_in,
-                        struct TALER_Amount *balance_out,
-                        struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
 
   /**
@@ -5249,24 +5207,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t serial_id,
     TALER_EXCHANGEDB_PurseMergeCallback cb,
-    void *cb_cls);
-
-
-  /**
-   * Select history requests above @a serial_id in monotonically increasing
-   * order.
-   *
-   * @param cls closure
-   * @param serial_id highest serial ID to exclude (select strictly larger)
-   * @param cb function to call on each result
-   * @param cb_cls closure for @a cb
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*select_history_requests_above_serial_id)(
-    void *cls,
-    uint64_t serial_id,
-    TALER_EXCHANGEDB_HistoryRequestCallback cb,
     void *cb_cls);
 
 
@@ -6587,33 +6527,6 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp *merge_timestamp,
     char **partner_url,
     struct TALER_ReservePublicKeyP *reserve_pub);
-
-
-  /**
-   * Function called to persist a signature that
-   * prove that the client requested an
-   * account history.  Debits the @a history_fee from
-   * the reserve (if possible).
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserve_pub account that the history was requested for
-   * @param reserve_sig signature affirming the request
-   * @param request_timestamp when was the request made
-   * @param history_fee how much should the @a reserve_pub be charged for the request
-   * @param[out] balance_ok set to TRUE if the reserve balance
-   *         was sufficient
-   * @param[out] idempotent set to TRUE if the request is already in the DB
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_history_request)(
-    void *cls,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
-    const struct TALER_ReserveSignatureP *reserve_sig,
-    struct GNUNET_TIME_Timestamp request_timestamp,
-    const struct TALER_Amount *history_fee,
-    bool *balance_ok,
-    bool *idempotent);
 
 
   /**

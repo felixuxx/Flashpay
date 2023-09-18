@@ -3854,47 +3854,14 @@ TALER_wallet_recoup_refresh_sign (
 /**
  * Verify reserve history request signature.
  *
- * @param ts timestamp used
- * @param history_fee how much did the wallet say it would pay
+ * @param start_off start of the requested range
  * @param reserve_pub reserve the history request was for
  * @param reserve_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_history_verify (
-  const struct GNUNET_TIME_Timestamp ts,
-  const struct TALER_Amount *history_fee,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_ReserveSignatureP *reserve_sig);
-
-
-/**
- * Create reserve history request signature.
- *
- * @param ts timestamp used
- * @param history_fee how much do we expect to pay
- * @param reserve_priv private key of the reserve the history request is for
- * @param[out] reserve_sig resulting signature
- */
-void
-TALER_wallet_reserve_history_sign (
-  const struct GNUNET_TIME_Timestamp ts,
-  const struct TALER_Amount *history_fee,
-  const struct TALER_ReservePrivateKeyP *reserve_priv,
-  struct TALER_ReserveSignatureP *reserve_sig);
-
-
-/**
- * Verify reserve status request signature.
- *
- * @param ts timestamp used
- * @param reserve_pub reserve the status request was for
- * @param reserve_sig resulting signature
- * @return #GNUNET_OK if the signature is valid
- */
-enum GNUNET_GenericReturnValue
-TALER_wallet_reserve_status_verify (
-  const struct GNUNET_TIME_Timestamp ts,
+  uint64_t start_off,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -3902,15 +3869,44 @@ TALER_wallet_reserve_status_verify (
 /**
  * Create reserve status request signature.
  *
- * @param ts timestamp used
- * @param reserve_priv private key of the reserve the status request is for
+ * @param start_off start of the requested range
+ * @param reserve_priv private key of the reserve the history request is for
  * @param[out] reserve_sig resulting signature
  */
 void
-TALER_wallet_reserve_status_sign (
-  const struct GNUNET_TIME_Timestamp ts,
+TALER_wallet_reserve_history_sign (
+  uint64_t start_off,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Verify coin history request signature.
+ *
+ * @param start_off start of the requested range
+ * @param coin_pub coin the history request was for
+ * @param coin_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_coin_history_verify (
+  uint64_t start_off,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Create coin status request signature.
+ *
+ * @param start_off start of the requested range
+ * @param coin_priv private key of the coin the history request is for
+ * @param[out] coin_sig resulting signature
+ */
+void
+TALER_wallet_coin_history_sign (
+  uint64_t start_off,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig);
 
 
 /* ********************* merchant signing ************************** */

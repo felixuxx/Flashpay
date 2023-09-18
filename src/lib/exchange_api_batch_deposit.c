@@ -464,53 +464,16 @@ handle_deposit_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     {
-      struct TALER_CoinSpendPublicKeyP coin_pub;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                     &coin_pub),
+                                     &dr->details.conflict.coin_pub),
         GNUNET_JSON_spec_end ()
       };
-      const struct TALER_EXCHANGE_DenomPublicKey *dki;
-      bool found = false;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
                              spec,
                              NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        dr->hr.http_status = 0;
-        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        break;
-      }
-      for (unsigned int i = 0; i<dh->num_cdds; i++)
-      {
-        if (0 !=
-            GNUNET_memcmp (&coin_pub,
-                           &dh->cdds[i].coin_pub))
-          continue;
-        dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
-                                                           &dh->cdds[i].
-                                                           h_denom_pub);
-        GNUNET_assert (NULL != dki);
-        if (GNUNET_OK !=
-            TALER_EXCHANGE_check_coin_conflict_ (
-              dh->keys,
-              j,
-              dki,
-              &dh->cdds[i].coin_pub,
-              &dh->cdds[i].coin_sig,
-              &dh->cdds[i].amount))
-        {
-          GNUNET_break_op (0);
-          dr->hr.http_status = 0;
-          dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        found = true;
-        break;
-      }
-      if (! found)
       {
         GNUNET_break_op (0);
         dr->hr.http_status = 0;

@@ -1261,75 +1261,6 @@ purse_decision_cb (void *cls,
 
 
 /**
- * Function called with details about
- * history requests that have been made, with
- * the goal of auditing the history request execution.
- *
- * @param cls closure
- * @param rowid unique serial ID for the deposit in our DB
- * @param history_fee fee paid for the request
- * @param ts timestamp of the request
- * @param reserve_pub reserve history was requested for
- * @param reserve_sig signature approving the @a history_fee
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
- */
-static enum GNUNET_GenericReturnValue
-handle_history_request (
-  void *cls,
-  uint64_t rowid,
-  const struct TALER_Amount *history_fee,
-  const struct GNUNET_TIME_Timestamp ts,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_ReserveSignatureP *reserve_sig)
-{
-  struct ReserveContext *rc = cls;
-  struct ReserveSummary *rs;
-
-  /* should be monotonically increasing */
-  GNUNET_assert (rowid >= ppr.last_history_requests_serial_id);
-  ppr.last_history_requests_serial_id = rowid + 1;
-  if (GNUNET_OK !=
-      TALER_wallet_reserve_history_verify (ts,
-                                           history_fee,
-                                           reserve_pub,
-                                           reserve_sig))
-  {
-    TALER_ARL_report (report_bad_sig_losses,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("operation",
-                                                 "account-history"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("loss",
-                                                history_fee),
-                        GNUNET_JSON_pack_data_auto ("key_pub",
-                                                    reserve_pub)));
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
-                          history_fee);
-    return GNUNET_OK;
-  }
-  rs = setup_reserve (rc,
-                      reserve_pub);
-  if (NULL == rs)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  TALER_ARL_amount_add (&balance.history_fee_balance,
-                        &balance.history_fee_balance,
-                        history_fee);
-  TALER_ARL_amount_add (&rs->curr_balance.history_fee_balance,
-                        &rs->curr_balance.history_fee_balance,
-                        history_fee);
-  TALER_ARL_amount_add (&rs->total_out,
-                        &rs->total_out,
-                        history_fee);
-  return GNUNET_OK;
-}
-
-
-/**
  * Check that the reserve summary matches what the exchange database
  * thinks about the reserve, and update our own state of the reserve.
  *
@@ -1767,17 +1698,6 @@ analyze_reserves (void *cls)
     TALER_ARL_edb->cls,
     ppr.last_account_merges_serial_id,
     &handle_account_merged,
-    &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-  /* Charge history fee! */
-  qs = TALER_ARL_edb->select_history_requests_above_serial_id (
-    TALER_ARL_edb->cls,
-    ppr.last_history_requests_serial_id,
-    &handle_history_request,
     &rc);
   if (qs < 0)
   {

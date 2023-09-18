@@ -37,7 +37,6 @@ SET search_path TO exchange;
 #include "exchange_do_purse_merge.sql"
 #include "exchange_do_reserve_purse.sql"
 #include "exchange_do_expire_purse.sql"
-#include "exchange_do_history_request.sql"
 #include "exchange_do_reserve_open_deposit.sql"
 #include "exchange_do_reserve_open.sql"
 #include "exchange_do_insert_or_update_policy_details.sql"

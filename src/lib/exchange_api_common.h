@@ -170,7 +170,6 @@ TALER_EXCHANGE_check_coin_signature_conflict_ (
  * @param dk denomination of @a coin_pub that the client
  *           used
  * @param coin_pub public key of the coin
- * @param coin_sig signature over operation that conflicted
  * @param required balance required on the coin for the operation
  * @return #GNUNET_OK if @a proof holds
  */
@@ -180,7 +179,6 @@ TALER_EXCHANGE_check_coin_conflict_ (
   const json_t *proof,
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_Amount *required);
 
 

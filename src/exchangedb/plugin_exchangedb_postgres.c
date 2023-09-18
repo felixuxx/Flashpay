@@ -92,7 +92,6 @@
 #include "pg_update_auditor.h"
 #include "pg_begin_revolving_shard.h"
 #include "pg_get_extension_manifest.h"
-#include "pg_insert_history_request.h"
 #include "pg_do_purse_delete.h"
 #include "pg_do_purse_merge.h"
 #include "pg_start_read_committed.h"
@@ -160,7 +159,6 @@
 #include "pg_store_wire_transfer_out.h"
 #include "pg_gc.h"
 #include "pg_select_coin_deposits_above_serial_id.h"
-#include "pg_select_history_requests_above_serial_id.h"
 #include "pg_select_purse_decisions_above_serial_id.h"
 #include "pg_select_purse_deposits_by_purse.h"
 #include "pg_select_refreshes_above_serial_id.h"
@@ -429,8 +427,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_purse_request;
   plugin->get_reserve_history
     = &TEH_PG_get_reserve_history;
-  plugin->get_reserve_status
-    = &TEH_PG_get_reserve_status;
   plugin->get_unfinished_close_requests
     = &TEH_PG_get_unfinished_close_requests;
   plugin->insert_records_by_table
@@ -531,8 +527,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_begin_revolving_shard;
   plugin->get_extension_manifest
     = &TEH_PG_get_extension_manifest;
-  plugin->insert_history_request
-    = &TEH_PG_insert_history_request;
   plugin->do_purse_merge
     = &TEH_PG_do_purse_merge;
   plugin->do_purse_delete
@@ -667,8 +661,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_gc;
   plugin->select_coin_deposits_above_serial_id
     = &TEH_PG_select_coin_deposits_above_serial_id;
-  plugin->select_history_requests_above_serial_id
-    = &TEH_PG_select_history_requests_above_serial_id;
   plugin->select_purse_decisions_above_serial_id
     = &TEH_PG_select_purse_decisions_above_serial_id;
   plugin->select_purse_deposits_by_purse

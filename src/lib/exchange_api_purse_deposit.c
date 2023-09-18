@@ -297,114 +297,11 @@ handle_purse_deposit_finished (void *cls,
         break;
       }
     case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-      {
-        struct TALER_CoinSpendPublicKeyP coin_pub;
-        struct TALER_Amount remaining;
-        bool found = false;
-        const struct Coin *my_coin;
-
-        if (GNUNET_OK !=
-            TALER_EXCHANGE_check_coin_amount_conflict_ (
-              keys,
-              j,
-              &coin_pub,
-              &remaining))
-        {
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        for (unsigned int i = 0; i<pch->num_deposits; i++)
-        {
-          if (0 == GNUNET_memcmp (&coin_pub,
-                                  &pch->coins[i].coin_pub))
-          {
-            found = true;
-            my_coin = &pch->coins[i];
-            break;
-          }
-        }
-        if (! found)
-        {
-          /* proof is about a coin we did not even deposit */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (1 == TALER_amount_cmp (&remaining,
-                                   &my_coin->contribution))
-        {
-          /* transaction should have still fit */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (GNUNET_OK !=
-            TALER_EXCHANGE_check_coin_signature_conflict_ (
-              j,
-              &my_coin->coin_sig))
-        {
-          /* THIS transaction must not be in the conflicting history */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        /* everything OK, proof of double-spending was provided */
-        break;
-      }
+      /* Nothing to check anymore here, proof needs to be
+         checked in the GET /coins/$COIN_PUB handler */
+      break;
     case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-      {
-        struct TALER_CoinSpendPublicKeyP coin_pub;
-        struct TALER_Amount remaining;
-        bool found = false;
-        const struct Coin *my_coin;
-
-        if (GNUNET_OK !=
-            TALER_EXCHANGE_check_coin_amount_conflict_ (
-              keys,
-              j,
-              &coin_pub,
-              &remaining))
-        {
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        for (unsigned int i = 0; i<pch->num_deposits; i++)
-        {
-          if (0 == GNUNET_memcmp (&coin_pub,
-                                  &pch->coins[i].coin_pub))
-          {
-            found = true;
-            my_coin = &pch->coins[i];
-            break;
-          }
-        }
-        if (! found)
-        {
-          /* proof is about a coin we did not even deposit */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (GNUNET_OK !=
-            TALER_EXCHANGE_check_coin_denomination_conflict_ (
-              j,
-              &my_coin->h_denom_pub))
-        {
-          /* no conflicting denomination detected */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        /* everything OK, proof of conflicting denomination was provided */
-        break;
-      }
+      break;
     default:
       GNUNET_break_op (0);
       dr.hr.http_status = 0;

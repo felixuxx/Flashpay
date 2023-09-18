@@ -479,59 +479,6 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
 
 
 /**
- * Parse "history" reserve history entry.
- *
- * @param[in,out] rh entry to parse
- * @param uc our context
- * @param transaction the transaction to parse
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-parse_history (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
-               struct HistoryParseContext *uc,
-               const json_t *transaction)
-{
-  struct GNUNET_JSON_Specification history_spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &rh->details.history_details.reserve_sig),
-    GNUNET_JSON_spec_timestamp ("request_timestamp",
-                                &rh->details.history_details.request_timestamp),
-    GNUNET_JSON_spec_end ()
-  };
-
-  rh->type = TALER_EXCHANGE_RTT_HISTORY;
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (transaction,
-                         history_spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_wallet_reserve_history_verify (
-        rh->details.history_details.request_timestamp,
-        &rh->amount,
-        uc->reserve_pub,
-        &rh->details.history_details.reserve_sig))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (0 >
-      TALER_amount_add (uc->total_out,
-                        uc->total_out,
-                        &rh->amount))
-  {
-    /* overflow in history already!? inconceivable! Bad exchange! */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
  * Parse "open" reserve open entry.
  *
  * @param[in,out] rh entry to parse
@@ -666,7 +613,6 @@ TALER_EXCHANGE_parse_reserve_history (
     { "RECOUP", &parse_recoup },
     { "MERGE", &parse_merge },
     { "CLOSING", &parse_closing },
-    { "HISTORY", &parse_history },
     { "OPEN", &parse_open },
     { "CLOSE", &parse_close },
     { NULL, NULL }
@@ -770,8 +716,6 @@ TALER_EXCHANGE_free_reserve_history (
     case TALER_EXCHANGE_RTT_RECOUP:
       break;
     case TALER_EXCHANGE_RTT_CLOSING:
-      break;
-    case TALER_EXCHANGE_RTT_HISTORY:
       break;
     case TALER_EXCHANGE_RTT_MERGE:
       break;
@@ -1867,66 +1811,6 @@ TALER_EXCHANGE_check_purse_econtract_conflict_ (
 }
 
 
-enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_check_coin_amount_conflict_ (
-  const struct TALER_EXCHANGE_Keys *keys,
-  const json_t *proof,
-  struct TALER_CoinSpendPublicKeyP *coin_pub,
-  struct TALER_Amount *remaining)
-{
-  const json_t *history;
-  struct TALER_Amount total;
-  struct TALER_DenominationHashP h_denom_pub;
-  const struct TALER_EXCHANGE_DenomPublicKey *dki;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                 coin_pub),
-    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                 &h_denom_pub),
-    GNUNET_JSON_spec_array_const ("history",
-                                  &history),
-    GNUNET_JSON_spec_end ()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (proof,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  dki = TALER_EXCHANGE_get_denomination_key_by_hash (
-    keys,
-    &h_denom_pub);
-  if (NULL == dki)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (dki,
-                                          coin_pub,
-                                          history,
-                                          &total))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (0 >
-      TALER_amount_subtract (remaining,
-                             &dki->value,
-                             &total))
-  {
-    /* Strange 'proof': coin was double-spent
-       before our transaction?! */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
 /**
  * Verify that @a coin_sig does NOT appear in
  * the history of @a proof and thus whatever transaction
@@ -1937,6 +1821,7 @@ TALER_EXCHANGE_check_coin_amount_conflict_ (
  * @param coin_sig signature that must not be in @a proof
  * @return #GNUNET_OK if @a coin_sig is not in @a proof
  */
+// FIXME: move to exchange_api_coin_history.c!
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_check_coin_signature_conflict_ (
   const json_t *proof,
@@ -2011,13 +1896,25 @@ TALER_EXCHANGE_check_coin_denomination_conflict_ (
 }
 
 
+/**
+ * Check that the provided @a proof indeeds indicates
+ * a conflict for @a coin_pub.
+ *
+ * @param keys exchange keys
+ * @param proof provided conflict proof
+ * @param dk denomination of @a coin_pub that the client
+ *           used
+ * @param coin_pub public key of the coin
+ * @param required balance required on the coin for the operation
+ * @return #GNUNET_OK if @a proof holds
+ */
+// FIXME: move to exchange_api_coin_history.c!
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_check_coin_conflict_ (
   const struct TALER_EXCHANGE_Keys *keys,
   const json_t *proof,
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_Amount *required)
 {
   enum TALER_ErrorCode ec;
@@ -2026,81 +1923,12 @@ TALER_EXCHANGE_check_coin_conflict_ (
   switch (ec)
   {
   case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-    {
-      struct TALER_Amount left;
-      struct TALER_CoinSpendPublicKeyP pcoin_pub;
-
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_amount_conflict_ (
-            keys,
-            proof,
-            &pcoin_pub,
-            &left))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (0 !=
-          GNUNET_memcmp (&pcoin_pub,
-                         coin_pub))
-      {
-        /* conflict is for a different coin! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (-1 !=
-          TALER_amount_cmp (&left,
-                            required))
-      {
-        /* Balance was sufficient after all; recoup MAY have still been possible */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_signature_conflict_ (
-            proof,
-            coin_sig))
-      {
-        /* Not a conflicting transaction: ours is included! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      break;
-    }
+    /* Nothing to check anymore here, proof needs to be
+       checked in the GET /coins/$COIN_PUB handler */
+    break;
   case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-    {
-      struct TALER_Amount left;
-      struct TALER_CoinSpendPublicKeyP pcoin_pub;
-
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_amount_conflict_ (
-            keys,
-            proof,
-            &pcoin_pub,
-            &left))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (0 !=
-          GNUNET_memcmp (&pcoin_pub,
-                         coin_pub))
-      {
-        /* conflict is for a different coin! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_denomination_conflict_ (
-            proof,
-            &dk->h_key))
-      {
-        /* Eh, same denomination, hence no conflict */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      break;
-    }
+    // FIXME: write check!
+    break;
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

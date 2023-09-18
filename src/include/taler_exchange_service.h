@@ -1171,8 +1171,11 @@ struct TALER_EXCHANGE_BatchDepositResult
      */
     struct
     {
-      /* FIXME: returning full details is not implemented */
-      // Should have 'coin_pub' here!
+      /**
+       * The coin that had a conflict.
+       */
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+
     } conflict;
 
   } details;
@@ -1612,11 +1615,6 @@ enum TALER_EXCHANGE_ReserveTransactionType
   TALER_EXCHANGE_RTT_CLOSING,
 
   /**
-   * Reserve history request.
-   */
-  TALER_EXCHANGE_RTT_HISTORY,
-
-  /**
    * Reserve purse merge operation.
    */
   TALER_EXCHANGE_RTT_MERGE,
@@ -1649,6 +1647,13 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
    * Amount transferred (in or out).
    */
   struct TALER_Amount amount;
+
+  /**
+   * Index of this entry in the reserve history.
+   * Useful to filter requests by starting offset.
+   * Offsets are not necessarily contiguous.
+   */
+  uint64_t entry_off;
 
   /**
    * Details depending on @e type.
@@ -1786,25 +1791,6 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
       struct TALER_Amount fee;
 
     } close_details;
-
-    /**
-     * Information about a history operation of the reserve.
-     * @e type is #TALER_EXCHANGE_RTT_HISTORY.
-     */
-    struct
-    {
-
-      /**
-       * When was the request made.
-       */
-      struct GNUNET_TIME_Timestamp request_timestamp;
-
-      /**
-       * Signature by the reserve approving the history request.
-       */
-      struct TALER_ReserveSignatureP reserve_sig;
-
-    } history_details;
 
     /**
      * Information about a merge operation on the reserve.
@@ -2032,115 +2018,6 @@ TALER_EXCHANGE_reserves_get_cancel (
 
 
 /**
- * @brief A /reserves/$RID/status Handle
- */
-struct TALER_EXCHANGE_ReservesStatusHandle;
-
-
-/**
- * @brief Reserve status details.
- */
-struct TALER_EXCHANGE_ReserveStatus
-{
-
-  /**
-   * High-level HTTP response details.
-   */
-  struct TALER_EXCHANGE_HttpResponse hr;
-
-  /**
-   * Details depending on @e hr.http_status.
-   */
-  union
-  {
-
-    /**
-     * Information returned on success, if
-     * @e hr.http_status is #MHD_HTTP_OK
-     */
-    struct
-    {
-
-      /**
-       * Current reserve balance.  May not be the difference between
-       * @e total_in and @e total_out because the @e may be truncated.
-       */
-      struct TALER_Amount balance;
-
-      /**
-       * Total of all inbound transactions in @e history.
-       */
-      struct TALER_Amount total_in;
-
-      /**
-       * Total of all outbound transactions in @e history.
-       */
-      struct TALER_Amount total_out;
-
-      /**
-       * Reserve history.
-       */
-      const struct TALER_EXCHANGE_ReserveHistoryEntry *history;
-
-      /**
-       * Length of the @e history array.
-       */
-      unsigned int history_len;
-
-    } ok;
-
-  } details;
-
-};
-
-
-/**
- * Callbacks of this type are used to serve the result of submitting a
- * reserve status request to a exchange.
- *
- * @param cls closure
- * @param rs HTTP response data
- */
-typedef void
-(*TALER_EXCHANGE_ReservesStatusCallback) (
-  void *cls,
-  const struct TALER_EXCHANGE_ReserveStatus *rs);
-
-
-/**
- * Submit a request to obtain the reserve status.
- *
- * @param ctx curl context
- * @param url exchange base URL
- * @param keys exchange keys
- * @param reserve_priv private key of the reserve to inspect
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
-struct TALER_EXCHANGE_ReservesStatusHandle *
-TALER_EXCHANGE_reserves_status (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
-  struct TALER_EXCHANGE_Keys *keys,
-  const struct TALER_ReservePrivateKeyP *reserve_priv,
-  TALER_EXCHANGE_ReservesStatusCallback cb,
-  void *cb_cls);
-
-
-/**
- * Cancel a reserve status request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param rsh the reserve request handle
- */
-void
-TALER_EXCHANGE_reserves_status_cancel (
-  struct TALER_EXCHANGE_ReservesStatusHandle *rsh);
-
-
-/**
  * @brief A /reserves/$RID/history Handle
  */
 struct TALER_EXCHANGE_ReservesHistoryHandle;
@@ -2158,34 +2035,21 @@ struct TALER_EXCHANGE_ReserveHistory
   struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
-   * Timestamp of when we made the history request
-   * (client-side).
-   */
-  struct GNUNET_TIME_Timestamp ts;
-
-  /**
-   * Reserve signature affirming the history request
-   * (generated as part of the request).
-   */
-  const struct TALER_ReserveSignatureP *reserve_sig;
-
-  /**
-   * Details depending on @e hr.http_status.
+   * Details depending on @e hr.http_history.
    */
   union
   {
 
     /**
      * Information returned on success, if
-     * @e hr.http_status is #MHD_HTTP_OK
+     * @e hr.http_history is #MHD_HTTP_OK
      */
     struct
     {
 
       /**
-       * Reserve balance. May not be the difference between
-       * @e total_in and @e total_out because the @e may be truncated
-       * due to expiration.
+       * Current reserve balance.  May not be the difference between
+       * @e total_in and @e total_out because the @e may be truncated.
        */
       struct TALER_Amount balance;
 
@@ -2236,6 +2100,7 @@ typedef void
  * @param url exchange base URL
  * @param keys exchange keys
  * @param reserve_priv private key of the reserve to inspect
+ * @param start_off offset of the oldest history entry to exclude from the response
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
@@ -2247,6 +2112,7 @@ TALER_EXCHANGE_reserves_history (
   const char *url,
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
+  uint64_t start_off,
   TALER_EXCHANGE_ReservesHistoryCallback cb,
   void *cb_cls);
 
@@ -6866,6 +6732,18 @@ struct TALER_EXCHANGE_ReserveOpenResult
 
     } payment_required;
 
+    /**
+     * Information returned if status is
+     * #MHD_HTTP_CONFLICT.
+     */
+    struct
+    {
+      /**
+       * Public key of the coin that caused the conflict.
+       */
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+
+    } conflict;
 
     /**
      * Information returned if KYC is required to proceed, set if

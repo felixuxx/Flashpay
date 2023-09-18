@@ -277,107 +277,12 @@ handle_purse_create_deposit_finished (void *cls,
         }
         break;
       case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-        {
-          struct TALER_Amount left;
-          struct TALER_CoinSpendPublicKeyP pcoin_pub;
-          bool found = false;
-
-          if (GNUNET_OK !=
-              TALER_EXCHANGE_check_coin_amount_conflict_ (
-                keys,
-                j,
-                &pcoin_pub,
-                &left))
-          {
-            GNUNET_break_op (0);
-            dr.hr.http_status = 0;
-            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
-          for (unsigned int i = 0; i<pch->num_deposits; i++)
-          {
-            struct Deposit *deposit = &pch->deposits[i];
-
-            if (0 != GNUNET_memcmp (&pcoin_pub,
-                                    &deposit->coin_pub))
-              continue;
-            if (-1 !=
-                TALER_amount_cmp (&left,
-                                  &deposit->contribution))
-            {
-              /* Balance was sufficient after all; operation MAY have still been possible */
-              GNUNET_break_op (0);
-              continue;
-            }
-            if (GNUNET_OK !=
-                TALER_EXCHANGE_check_coin_signature_conflict_ (
-                  j,
-                  &deposit->coin_sig))
-            {
-              GNUNET_break_op (0);
-              continue;
-            }
-            found = true;
-            break;
-          }
-          if (! found)
-          {
-            /* conflict is for a different coin! */
-            GNUNET_break_op (0);
-            dr.hr.http_status = 0;
-            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
-          break;
-        }
+        /* Nothing to check anymore here, proof needs to be
+           checked in the GET /coins/$COIN_PUB handler */
+        break;
       case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-        {
-          struct TALER_Amount left;
-          struct TALER_CoinSpendPublicKeyP pcoin_pub;
-          bool found = false;
-
-          if (GNUNET_OK !=
-              TALER_EXCHANGE_check_coin_amount_conflict_ (
-                keys,
-                j,
-                &pcoin_pub,
-                &left))
-          {
-            GNUNET_break_op (0);
-            dr.hr.http_status = 0;
-            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
-          for (unsigned int i = 0; i<pch->num_deposits; i++)
-          {
-            struct Deposit *deposit = &pch->deposits[i];
-
-            if (0 !=
-                GNUNET_memcmp (&pcoin_pub,
-                               &deposit->coin_pub))
-              continue;
-            if (GNUNET_OK !=
-                TALER_EXCHANGE_check_coin_denomination_conflict_ (
-                  j,
-                  &deposit->h_denom_pub))
-            {
-              /* Eh, same denomination, hence no conflict */
-              GNUNET_break_op (0);
-              continue;
-            }
-            found = true;
-          }
-          if (! found)
-          {
-            /* conflict is for a different coin! */
-            GNUNET_break_op (0);
-            dr.hr.http_status = 0;
-            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
-          /* meta data conflict is real! */
-          break;
-        }
+        // FIXME: write check (add to exchange_api_common! */
+        break;
       case TALER_EC_EXCHANGE_PURSE_DEPOSIT_CONFLICTING_META_DATA:
         {
           struct TALER_CoinSpendPublicKeyP coin_pub;

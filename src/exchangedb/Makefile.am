@@ -164,7 +164,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_store_wire_transfer_out.h pg_store_wire_transfer_out.c \
   pg_gc.h pg_gc.c \
   pg_select_coin_deposits_above_serial_id.h pg_select_coin_deposits_above_serial_id.c \
-  pg_select_history_requests_above_serial_id.h pg_select_history_requests_above_serial_id.c \
   pg_select_purse_decisions_above_serial_id.h pg_select_purse_decisions_above_serial_id.c \
   pg_select_purse_deposits_by_purse.h pg_select_purse_deposits_by_purse.c \
   pg_select_refreshes_above_serial_id.h pg_select_refreshes_above_serial_id.c \
@@ -215,7 +214,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_update_auditor.h pg_update_auditor.c \
   pg_begin_revolving_shard.h pg_begin_revolving_shard.c \
   pg_get_extension_manifest.h pg_get_extension_manifest.c \
-  pg_insert_history_request.h pg_insert_history_request.c \
   pg_do_purse_merge.h pg_do_purse_merge.c \
   pg_start_read_committed.h pg_start_read_committed.c \
   pg_start_read_only.h pg_start_read_only.c \

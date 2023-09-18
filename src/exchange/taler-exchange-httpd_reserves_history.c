@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_reserves_history.c
- * @brief Handle /reserves/$RESERVE_PUB/history requests
+ * @brief Handle /reserves/$RESERVE_PUB HISTORY requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -29,7 +29,6 @@
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_history.h"
 #include "taler-exchange-httpd_responses.h"
-
 
 /**
  * How far do we allow a client's time to be off when
@@ -50,30 +49,314 @@ struct ReserveHistoryContext
   const struct TALER_ReservePublicKeyP *reserve_pub;
 
   /**
-   * Timestamp of the request.
-   */
-  struct GNUNET_TIME_Timestamp timestamp;
-
-  /**
-   * Client signature approving the request.
-   */
-  struct TALER_ReserveSignatureP reserve_sig;
-
-  /**
    * History of the reserve, set in the callback.
    */
   struct TALER_EXCHANGEDB_ReserveHistory *rh;
-
-  /**
-   * Global fees applying to the request.
-   */
-  const struct TEH_GlobalFee *gf;
 
   /**
    * Current reserve balance.
    */
   struct TALER_Amount balance;
 };
+
+
+/**
+ * Compile the history of a reserve into a JSON object.
+ *
+ * @param rh reserve history to JSON-ify
+ * @return json representation of the @a rh, NULL on error
+ */
+static json_t *
+compile_reserve_history (
+  const struct TALER_EXCHANGEDB_ReserveHistory *rh)
+{
+  json_t *json_history;
+
+  json_history = json_array ();
+  GNUNET_assert (NULL != json_history);
+  for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh;
+       NULL != pos;
+       pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
+      {
+        const struct TALER_EXCHANGEDB_BankTransfer *bank =
+          pos->details.bank;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "CREDIT"),
+                // FIXME: offset missing! (here and in all other cases!)
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            bank->execution_date),
+                GNUNET_JSON_pack_string ("sender_account_url",
+                                         bank->sender_account_details),
+                GNUNET_JSON_pack_uint64 ("wire_reference",
+                                         bank->wire_reference),
+                TALER_JSON_pack_amount ("amount",
+                                        &bank->amount))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+        break;
+      }
+    case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
+      {
+        const struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw
+          = pos->details.withdraw;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "WITHDRAW"),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &withdraw->reserve_sig),
+                GNUNET_JSON_pack_data_auto ("h_coin_envelope",
+                                            &withdraw->h_coin_envelope),
+                GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                            &withdraw->denom_pub_hash),
+                TALER_JSON_pack_amount ("withdraw_fee",
+                                        &withdraw->withdraw_fee),
+                TALER_JSON_pack_amount ("amount",
+                                        &withdraw->amount_with_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_RO_RECOUP_COIN:
+      {
+        const struct TALER_EXCHANGEDB_Recoup *recoup
+          = pos->details.recoup;
+        struct TALER_ExchangePublicKeyP pub;
+        struct TALER_ExchangeSignatureP sig;
+
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_confirm_recoup_sign (
+              &TEH_keys_exchange_sign_,
+              recoup->timestamp,
+              &recoup->value,
+              &recoup->coin.coin_pub,
+              &recoup->reserve_pub,
+              &pub,
+              &sig))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "RECOUP"),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &pub),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &sig),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            recoup->timestamp),
+                TALER_JSON_pack_amount ("amount",
+                                        &recoup->value),
+                GNUNET_JSON_pack_data_auto ("coin_pub",
+                                            &recoup->coin.coin_pub))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
+      {
+        const struct TALER_EXCHANGEDB_ClosingTransfer *closing =
+          pos->details.closing;
+        struct TALER_ExchangePublicKeyP pub;
+        struct TALER_ExchangeSignatureP sig;
+
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_reserve_closed_sign (
+              &TEH_keys_exchange_sign_,
+              closing->execution_date,
+              &closing->amount,
+              &closing->closing_fee,
+              closing->receiver_account_details,
+              &closing->wtid,
+              &pos->details.closing->reserve_pub,
+              &pub,
+              &sig))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "CLOSING"),
+                GNUNET_JSON_pack_string ("receiver_account_details",
+                                         closing->receiver_account_details),
+                GNUNET_JSON_pack_data_auto ("wtid",
+                                            &closing->wtid),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &pub),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &sig),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            closing->execution_date),
+                TALER_JSON_pack_amount ("amount",
+                                        &closing->amount),
+                TALER_JSON_pack_amount ("closing_fee",
+                                        &closing->closing_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_RO_PURSE_MERGE:
+      {
+        const struct TALER_EXCHANGEDB_PurseMerge *merge =
+          pos->details.merge;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "MERGE"),
+                GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                            &merge->h_contract_terms),
+                GNUNET_JSON_pack_data_auto ("merge_pub",
+                                            &merge->merge_pub),
+                GNUNET_JSON_pack_uint64 ("min_age",
+                                         merge->min_age),
+                GNUNET_JSON_pack_uint64 ("flags",
+                                         merge->flags),
+                GNUNET_JSON_pack_data_auto ("purse_pub",
+                                            &merge->purse_pub),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &merge->reserve_sig),
+                GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                            merge->merge_timestamp),
+                GNUNET_JSON_pack_timestamp ("purse_expiration",
+                                            merge->purse_expiration),
+                TALER_JSON_pack_amount ("purse_fee",
+                                        &merge->purse_fee),
+                TALER_JSON_pack_amount ("amount",
+                                        &merge->amount_with_fee),
+                GNUNET_JSON_pack_bool ("merged",
+                                       merge->merged))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
+      {
+        const struct TALER_EXCHANGEDB_HistoryRequest *history =
+          pos->details.history;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "HISTORY"),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &history->reserve_sig),
+                GNUNET_JSON_pack_timestamp ("request_timestamp",
+                                            history->request_timestamp),
+                TALER_JSON_pack_amount ("amount",
+                                        &history->history_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+
+    case TALER_EXCHANGEDB_RO_OPEN_REQUEST:
+      {
+        const struct TALER_EXCHANGEDB_OpenRequest *orq =
+          pos->details.open_request;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "OPEN"),
+                GNUNET_JSON_pack_uint64 ("requested_min_purses",
+                                         orq->purse_limit),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &orq->reserve_sig),
+                GNUNET_JSON_pack_timestamp ("request_timestamp",
+                                            orq->request_timestamp),
+                GNUNET_JSON_pack_timestamp ("requested_expiration",
+                                            orq->reserve_expiration),
+                TALER_JSON_pack_amount ("open_fee",
+                                        &orq->open_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+
+    case TALER_EXCHANGEDB_RO_CLOSE_REQUEST:
+      {
+        const struct TALER_EXCHANGEDB_CloseRequest *crq =
+          pos->details.close_request;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "CLOSE"),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &crq->reserve_sig),
+                GNUNET_is_zero (&crq->target_account_h_payto)
+                ? GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_string ("h_payto",
+                                           NULL))
+                : GNUNET_JSON_pack_data_auto ("h_payto",
+                                              &crq->target_account_h_payto),
+                GNUNET_JSON_pack_timestamp ("request_timestamp",
+                                            crq->request_timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+    }
+  }
+
+  return json_history;
+}
 
 
 /**
@@ -90,7 +373,7 @@ reply_reserve_history_success (struct MHD_Connection *connection,
   const struct TALER_EXCHANGEDB_ReserveHistory *rh = rhc->rh;
   json_t *json_history;
 
-  json_history = TEH_RESPONSE_compile_reserve_history (rh);
+  json_history = compile_reserve_history (rh);
   if (NULL == json_history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
@@ -107,19 +390,20 @@ reply_reserve_history_success (struct MHD_Connection *connection,
 
 
 /**
- * Function implementing /reserves/$RID/history transaction.  Given the public
- * key of a reserve, return the associated transaction history.  Runs the
- * transaction logic; IF it returns a non-error code, the transaction logic
- * MUST NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF it
- * returns the soft error code, the function MAY be called again to retry and
- * MUST not queue a MHD response.
+ * Function implementing /reserves/ HISTORY transaction.
+ * Execute a /reserves/ HISTORY.  Given the public key of a reserve,
+ * return the associated transaction history.  Runs the
+ * transaction logic; IF it returns a non-error code, the transaction
+ * logic MUST NOT queue a MHD response.  IF it returns an hard error,
+ * the transaction logic MUST queue a MHD response and set @a mhd_ret.
+ * IF it returns the soft error code, the function MAY be called again
+ * to retry and MUST not queue a MHD response.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
+ * @param[out] mhd_ret set to MHD response history for @a connection,
  *             if transaction failed (!); unused
- * @return transaction status
+ * @return transaction history
  */
 static enum GNUNET_DB_QueryStatus
 reserve_history_transaction (void *cls,
@@ -129,47 +413,9 @@ reserve_history_transaction (void *cls,
   struct ReserveHistoryContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  if (! TALER_amount_is_zero (&rsc->gf->fees.history))
-  {
-    bool balance_ok = false;
-    bool idempotent = true;
-
-    qs = TEH_plugin->insert_history_request (TEH_plugin->cls,
-                                             rsc->reserve_pub,
-                                             &rsc->reserve_sig,
-                                             rsc->timestamp,
-                                             &rsc->gf->fees.history,
-                                             &balance_ok,
-                                             &idempotent);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                      "get_reserve_history");
-    }
-    if (qs <= 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    if (! balance_ok)
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_CONFLICT,
-                                         TALER_EC_EXCHANGE_GET_RESERVE_HISTORY_ERROR_INSUFFICIENT_BALANCE,
-                                         NULL);
-    }
-    if (idempotent)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Idempotent /reserves/history request observed. Is caching working?\n");
-    }
-  }
   qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                         rsc->reserve_pub,
+                                        0,
                                         &rsc->balance,
                                         &rsc->rh);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -192,14 +438,13 @@ TEH_handler_reserves_history (struct TEH_RequestContext *rc,
 {
   struct ReserveHistoryContext rsc;
   MHD_RESULT mhd_ret;
+  uint64_t start_off = 0;
+  struct TALER_ReserveSignatureP reserve_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_timestamp ("request_timestamp",
-                                &rsc.timestamp),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &rsc.reserve_sig),
+                                 &reserve_sig),
     GNUNET_JSON_spec_end ()
   };
-  struct GNUNET_TIME_Timestamp now;
 
   rsc.reserve_pub = reserve_pub;
   {
@@ -219,51 +464,15 @@ TEH_handler_reserves_history (struct TEH_RequestContext *rc,
       return MHD_YES; /* failure */
     }
   }
-  now = GNUNET_TIME_timestamp_get ();
-  if (! GNUNET_TIME_absolute_approx_eq (now.abs_time,
-                                        rsc.timestamp.abs_time,
-                                        TIMESTAMP_TOLERANCE))
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
-                                       NULL);
-  }
-  {
-    struct TEH_KeyStateHandle *keys;
-
-    keys = TEH_keys_get_state ();
-    if (NULL == keys)
-    {
-      GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                         NULL);
-    }
-    rsc.gf = TEH_keys_global_fee_by_time (keys,
-                                          rsc.timestamp);
-  }
-  if (NULL == rsc.gf)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       NULL);
-  }
   if (GNUNET_OK !=
-      TALER_wallet_reserve_history_verify (rsc.timestamp,
-                                           &rsc.gf->fees.history,
+      TALER_wallet_reserve_history_verify (start_off,
                                            reserve_pub,
-                                           &rsc.reserve_sig))
+                                           &reserve_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_RESERVES_HISTORY_BAD_SIGNATURE,
+                                       TALER_EC_EXCHANGE_RESERVE_HISTORY_BAD_SIGNATURE,
                                        NULL);
   }
   rsc.rh = NULL;
@@ -281,7 +490,7 @@ TEH_handler_reserves_history (struct TEH_RequestContext *rc,
   {
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
+                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                        NULL);
   }
   mhd_ret = reply_reserve_history_success (rc->connection,

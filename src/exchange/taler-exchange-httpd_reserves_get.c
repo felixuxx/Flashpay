@@ -253,7 +253,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
       {
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
+                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                            args[0]);
       }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,

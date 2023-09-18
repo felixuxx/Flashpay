@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -63,12 +63,6 @@ struct HistoryState
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
-
-  /**
-   * Reserve history entry that corresponds to this operation.
-   * Will be of type #TALER_EXCHANGE_RTT_HISTORY.
-   */
-  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
   /**
    * Expected HTTP response code.
@@ -232,21 +226,6 @@ reserve_history_cb (void *cls,
   struct TALER_Amount eb;
 
   ss->rsh = NULL;
-  if (MHD_HTTP_OK == rs->hr.http_status)
-  {
-    struct TALER_EXCHANGE_Keys *keys;
-    const struct TALER_EXCHANGE_GlobalFee *gf;
-
-    ss->reserve_history.type = TALER_EXCHANGE_RTT_HISTORY;
-    keys = TALER_TESTING_get_keys (is);
-    GNUNET_assert (NULL != keys);
-    gf = TALER_EXCHANGE_get_global_fee (keys,
-                                        rs->ts);
-    GNUNET_assert (NULL != gf);
-    ss->reserve_history.amount = gf->fees.history;
-    ss->reserve_history.details.history_details.request_timestamp = rs->ts;
-    ss->reserve_history.details.history_details.reserve_sig = *rs->reserve_sig;
-  }
   if (ss->expected_response_code != rs->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -366,6 +345,7 @@ history_run (void *cls,
     TALER_TESTING_get_exchange_url (is),
     TALER_TESTING_get_keys (is),
     ss->reserve_priv,
+    0,
     &reserve_history_cb,
     ss);
 }
@@ -388,16 +368,11 @@ history_traits (void *cls,
 {
   struct HistoryState *hs = cls;
   struct TALER_TESTING_Trait traits[] = {
-    /* history entry MUST be first due to response code logic below! */
-    TALER_TESTING_make_trait_reserve_history (0,
-                                              &hs->reserve_history),
     TALER_TESTING_make_trait_reserve_pub (&hs->reserve_pub),
     TALER_TESTING_trait_end ()
   };
 
-  return TALER_TESTING_get_trait ((hs->expected_response_code == MHD_HTTP_OK)
-                                  ? &traits[0]   /* we have reserve history */
-                                  : &traits[1],  /* skip reserve history */
+  return TALER_TESTING_get_trait (traits,
                                   ret,
                                   trait,
                                   index);

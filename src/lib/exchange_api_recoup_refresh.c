@@ -183,36 +183,9 @@ handle_recoup_refresh_finished (void *cls,
     rrr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
-    {
-      struct TALER_Amount min_key;
-
-      rrr.hr.ec = TALER_JSON_get_error_code (j);
-      rrr.hr.hint = TALER_JSON_get_error_hint (j);
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_get_min_denomination_ (ph->keys,
-                                                &min_key))
-      {
-        GNUNET_break (0);
-        rrr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        rrr.hr.http_status = 0;
-        break;
-      }
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_conflict_ (
-            ph->keys,
-            j,
-            &ph->pk,
-            &ph->coin_pub,
-            &ph->coin_sig,
-            &min_key))
-      {
-        GNUNET_break (0);
-        rrr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        rrr.hr.http_status = 0;
-        break;
-      }
-      break;
-    }
+    rrr.hr.ec = TALER_JSON_get_error_code (j);
+    rrr.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */

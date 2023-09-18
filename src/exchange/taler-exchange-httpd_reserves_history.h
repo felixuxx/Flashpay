@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -15,8 +15,9 @@
 */
 /**
  * @file taler-exchange-httpd_reserves_history.h
- * @brief Handle /reserves/$RESERVE_PUB/history requests
+ * @brief Handle /reserves/$RESERVE_PUB HISTORY requests
  * @author Florian Dold
+ * @author Benedikt Mueller
  * @author Christian Grothoff
  */
 #ifndef TALER_EXCHANGE_HTTPD_RESERVES_HISTORY_H

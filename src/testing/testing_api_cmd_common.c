@@ -97,19 +97,6 @@ TALER_TESTING_history_entry_cmp (
                             &h2->details.close_details.fee)) )
       return 0;
     return 1;
-  case TALER_EXCHANGE_RTT_HISTORY:
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (GNUNET_TIME_timestamp_cmp (
-            h1->details.history_details.request_timestamp,
-            ==,
-            h2->details.history_details.request_timestamp)) &&
-         (0 ==
-          GNUNET_memcmp (&h1->details.history_details.reserve_sig,
-                         &h2->details.history_details.reserve_sig)) )
-      return 0;
-    return 1;
   case TALER_EXCHANGE_RTT_MERGE:
     if ( (0 ==
           TALER_amount_cmp (&h1->amount,

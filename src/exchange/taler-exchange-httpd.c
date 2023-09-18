@@ -67,7 +67,6 @@
 #include "taler-exchange-httpd_reserves_history.h"
 #include "taler-exchange-httpd_reserves_open.h"
 #include "taler-exchange-httpd_reserves_purse.h"
-#include "taler-exchange-httpd_reserves_status.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_withdraw.h"
@@ -732,10 +731,7 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .op = "withdraw",
       .handler = &TEH_handler_withdraw
     },
-    {
-      .op = "status",
-      .handler = &TEH_handler_reserves_status
-    },
+    // FIXME: change to GET!
     {
       .op = "history",
       .handler = &TEH_handler_reserves_history

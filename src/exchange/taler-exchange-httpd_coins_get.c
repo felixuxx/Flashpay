@@ -48,6 +48,492 @@ add_response_headers (void *cls,
 }
 
 
+/**
+ * Compile the transaction history of a coin into a JSON object.
+ *
+ * @param coin_pub public key of the coin
+ * @param tl transaction history to JSON-ify
+ * @return json representation of the @a rh, NULL on error
+ */
+static json_t *
+compile_transaction_history (
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_EXCHANGEDB_TransactionList *tl)
+{
+  json_t *history;
+
+  history = json_array ();
+  if (NULL == history)
+  {
+    GNUNET_break (0); /* out of memory!? */
+    return NULL;
+  }
+  for (const struct TALER_EXCHANGEDB_TransactionList *pos = tl;
+       NULL != pos;
+       pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_EXCHANGEDB_TT_DEPOSIT:
+      {
+        const struct TALER_EXCHANGEDB_DepositListEntry *deposit =
+          pos->details.deposit;
+        struct TALER_MerchantWireHashP h_wire;
+
+        TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
+                                            &deposit->wire_salt,
+                                            &h_wire);
+#if ENABLE_SANITY_CHECKS
+        /* internal sanity check before we hand out a bogus sig... */
+        TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+        if (GNUNET_OK !=
+            TALER_wallet_deposit_verify (
+              &deposit->amount_with_fee,
+              &deposit->deposit_fee,
+              &h_wire,
+              &deposit->h_contract_terms,
+              deposit->no_wallet_data_hash
+              ? NULL
+              : &deposit->wallet_data_hash,
+              deposit->no_age_commitment
+              ? NULL
+              : &deposit->h_age_commitment,
+              &deposit->h_policy,
+              &deposit->h_denom_pub,
+              deposit->timestamp,
+              &deposit->merchant_pub,
+              deposit->refund_deadline,
+              coin_pub,
+              &deposit->csig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+#endif
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                // FIXME: offset missing! (here and in all other cases!)
+                GNUNET_JSON_pack_string ("type",
+                                         "DEPOSIT"),
+                TALER_JSON_pack_amount ("amount",
+                                        &deposit->amount_with_fee),
+                TALER_JSON_pack_amount ("deposit_fee",
+                                        &deposit->deposit_fee),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            deposit->timestamp),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                              deposit->refund_deadline)),
+                GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                            &deposit->merchant_pub),
+                GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                            &deposit->h_contract_terms),
+                GNUNET_JSON_pack_data_auto ("h_wire",
+                                            &h_wire),
+                GNUNET_JSON_pack_allow_null (
+                  deposit->no_age_commitment ?
+                  GNUNET_JSON_pack_string (
+                    "h_age_commitment", NULL) :
+                  GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                              &deposit->h_age_commitment)),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &deposit->csig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_MELT:
+      {
+        const struct TALER_EXCHANGEDB_MeltListEntry *melt =
+          pos->details.melt;
+        const struct TALER_AgeCommitmentHash *phac = NULL;
+
+#if ENABLE_SANITY_CHECKS
+        TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+        if (GNUNET_OK !=
+            TALER_wallet_melt_verify (
+              &melt->amount_with_fee,
+              &melt->melt_fee,
+              &melt->rc,
+              &melt->h_denom_pub,
+              &melt->h_age_commitment,
+              coin_pub,
+              &melt->coin_sig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+#endif
+
+        /* Age restriction is optional.  We communicate a NULL value to
+         * JSON_PACK below */
+        if (! melt->no_age_commitment)
+          phac = &melt->h_age_commitment;
+
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "MELT"),
+                TALER_JSON_pack_amount ("amount",
+                                        &melt->amount_with_fee),
+                TALER_JSON_pack_amount ("melt_fee",
+                                        &melt->melt_fee),
+                GNUNET_JSON_pack_data_auto ("rc",
+                                            &melt->rc),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                              phac)),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &melt->coin_sig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_TT_REFUND:
+      {
+        const struct TALER_EXCHANGEDB_RefundListEntry *refund =
+          pos->details.refund;
+        struct TALER_Amount value;
+
+#if ENABLE_SANITY_CHECKS
+        TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+        if (GNUNET_OK !=
+            TALER_merchant_refund_verify (
+              coin_pub,
+              &refund->h_contract_terms,
+              refund->rtransaction_id,
+              &refund->refund_amount,
+              &refund->merchant_pub,
+              &refund->merchant_sig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+#endif
+        if (0 >
+            TALER_amount_subtract (&value,
+                                   &refund->refund_amount,
+                                   &refund->refund_fee))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "REFUND"),
+                TALER_JSON_pack_amount ("amount",
+                                        &value),
+                TALER_JSON_pack_amount ("refund_fee",
+                                        &refund->refund_fee),
+                GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                            &refund->h_contract_terms),
+                GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                            &refund->merchant_pub),
+                GNUNET_JSON_pack_uint64 ("rtransaction_id",
+                                         refund->rtransaction_id),
+                GNUNET_JSON_pack_data_auto ("merchant_sig",
+                                            &refund->merchant_sig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
+      {
+        struct TALER_EXCHANGEDB_RecoupRefreshListEntry *pr =
+          pos->details.old_coin_recoup;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_confirm_recoup_refresh_sign (
+              &TEH_keys_exchange_sign_,
+              pr->timestamp,
+              &pr->value,
+              &pr->coin.coin_pub,
+              &pr->old_coin_pub,
+              &epub,
+              &esig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        /* NOTE: we could also provide coin_pub's coin_sig, denomination key hash and
+           the denomination key's RSA signature over coin_pub, but as the
+           wallet should really already have this information (and cannot
+           check or do anything with it anyway if it doesn't), it seems
+           strictly unnecessary. */
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "OLD-COIN-RECOUP"),
+                TALER_JSON_pack_amount ("amount",
+                                        &pr->value),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &esig),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &epub),
+                GNUNET_JSON_pack_data_auto ("coin_pub",
+                                            &pr->coin.coin_pub),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            pr->timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_RECOUP:
+      {
+        const struct TALER_EXCHANGEDB_RecoupListEntry *recoup =
+          pos->details.recoup;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_confirm_recoup_sign (
+              &TEH_keys_exchange_sign_,
+              recoup->timestamp,
+              &recoup->value,
+              coin_pub,
+              &recoup->reserve_pub,
+              &epub,
+              &esig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "RECOUP"),
+                TALER_JSON_pack_amount ("amount",
+                                        &recoup->value),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &esig),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &epub),
+                GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                            &recoup->reserve_pub),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &recoup->coin_sig),
+                GNUNET_JSON_pack_data_auto ("coin_blind",
+                                            &recoup->coin_blind),
+                GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                            &recoup->reserve_pub),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            recoup->timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
+      {
+        struct TALER_EXCHANGEDB_RecoupRefreshListEntry *pr =
+          pos->details.recoup_refresh;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_confirm_recoup_refresh_sign (
+              &TEH_keys_exchange_sign_,
+              pr->timestamp,
+              &pr->value,
+              coin_pub,
+              &pr->old_coin_pub,
+              &epub,
+              &esig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        /* NOTE: we could also provide coin_pub's coin_sig, denomination key
+           hash and the denomination key's RSA signature over coin_pub, but as
+           the wallet should really already have this information (and cannot
+           check or do anything with it anyway if it doesn't), it seems
+           strictly unnecessary. */
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "RECOUP-REFRESH"),
+                TALER_JSON_pack_amount ("amount",
+                                        &pr->value),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &esig),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &epub),
+                GNUNET_JSON_pack_data_auto ("old_coin_pub",
+                                            &pr->old_coin_pub),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &pr->coin_sig),
+                GNUNET_JSON_pack_data_auto ("coin_blind",
+                                            &pr->coin_blind),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            pr->timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
+
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      {
+        struct TALER_EXCHANGEDB_PurseDepositListEntry *pd
+          = pos->details.purse_deposit;
+        const struct TALER_AgeCommitmentHash *phac = NULL;
+
+        if (! pd->no_age_commitment)
+          phac = &pd->h_age_commitment;
+
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "PURSE-DEPOSIT"),
+                TALER_JSON_pack_amount ("amount",
+                                        &pd->amount),
+                GNUNET_JSON_pack_string ("exchange_base_url",
+                                         NULL == pd->exchange_base_url
+                                         ? TEH_base_url
+                                         : pd->exchange_base_url),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                              phac)),
+                GNUNET_JSON_pack_data_auto ("purse_pub",
+                                            &pd->purse_pub),
+                GNUNET_JSON_pack_bool ("refunded",
+                                       pd->refunded),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &pd->coin_sig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
+
+    case TALER_EXCHANGEDB_TT_PURSE_REFUND:
+      {
+        const struct TALER_EXCHANGEDB_PurseRefundListEntry *prefund =
+          pos->details.purse_refund;
+        struct TALER_Amount value;
+        enum TALER_ErrorCode ec;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        if (0 >
+            TALER_amount_subtract (&value,
+                                   &prefund->refund_amount,
+                                   &prefund->refund_fee))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        ec = TALER_exchange_online_purse_refund_sign (
+          &TEH_keys_exchange_sign_,
+          &value,
+          &prefund->refund_fee,
+          coin_pub,
+          &prefund->purse_pub,
+          &epub,
+          &esig);
+        if (TALER_EC_NONE != ec)
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "PURSE-REFUND"),
+                TALER_JSON_pack_amount ("amount",
+                                        &value),
+                TALER_JSON_pack_amount ("refund_fee",
+                                        &prefund->refund_fee),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &esig),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &epub),
+                GNUNET_JSON_pack_data_auto ("purse_pub",
+                                            &prefund->purse_pub))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+      }
+      break;
+
+    case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
+      {
+        struct TALER_EXCHANGEDB_ReserveOpenListEntry *role
+          = pos->details.reserve_open;
+
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "RESERVE-OPEN-DEPOSIT"),
+                TALER_JSON_pack_amount ("coin_contribution",
+                                        &role->coin_contribution),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &role->reserve_sig),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &role->coin_sig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
+    }
+  }
+  return history;
+}
+
+
 MHD_RESULT
 TEH_handler_coins_get (struct TEH_RequestContext *rc,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub)
@@ -118,8 +604,8 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
                        sizeof (etagp),
                        "\"%llu\"",
                        (unsigned long long) etag);
-      history = TEH_RESPONSE_compile_transaction_history (coin_pub,
-                                                          tl);
+      history = compile_transaction_history (coin_pub,
+                                             tl);
       TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                               tl);
       tl = NULL;

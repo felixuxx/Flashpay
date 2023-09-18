@@ -1863,6 +1863,7 @@ run (void *cls)
 
     qs = plugin->get_reserve_history (plugin->cls,
                                       &reserve_pub,
+                                      0,
                                       &balance,
                                       &rh);
   }

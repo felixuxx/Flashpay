@@ -1154,12 +1154,8 @@ run (void *cls,
                               MHD_HTTP_OK),
     TALER_TESTING_cmd_reserve_history ("history-batch-1",
                                        "create-batch-reserve-1",
-                                       "EUR:0",
+                                       "EUR:0.01",
                                        MHD_HTTP_OK),
-    TALER_TESTING_cmd_status ("status-batch-2",
-                              "create-batch-reserve-1",
-                              "EUR:0.0",
-                              MHD_HTTP_OK),
     /**
      * Spend the coins.
      */

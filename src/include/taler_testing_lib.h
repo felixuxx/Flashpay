@@ -1290,22 +1290,6 @@ TALER_TESTING_cmd_reserve_history (const char *label,
 
 
 /**
- * Create a POST "/reserves/$RID/status" command.
- *
- * @param label the command label.
- * @param reserve_reference reference to the reserve to check.
- * @param expected_balance expected balance for the reserve.
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_reserve_status (const char *label,
-                                  const char *reserve_reference,
-                                  const char *expected_balance,
-                                  unsigned int expected_response_code);
-
-
-/**
  * Create a POST "/reserves/$RID/open" command.
  *
  * @param label the command label.

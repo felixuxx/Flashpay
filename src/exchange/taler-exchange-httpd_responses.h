@@ -34,17 +34,6 @@
 
 
 /**
- * Compile the history of a reserve into a JSON object.
- *
- * @param rh reserve history to JSON-ify
- * @return json representation of the @a rh, NULL on error
- */
-json_t *
-TEH_RESPONSE_compile_reserve_history (
-  const struct TALER_EXCHANGEDB_ReserveHistory *rh);
-
-
-/**
  * Send assertion that the given denomination key hash
  * is unknown to us at this time.
  *
@@ -211,19 +200,6 @@ TEH_RESPONSE_reply_purse_created (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   const struct TALER_Amount *purse_balance,
   const struct TEH_PurseDetails *pd);
-
-
-/**
- * Compile the transaction history of a coin into a JSON object.
- *
- * @param coin_pub public key of the coin
- * @param tl transaction history to JSON-ify
- * @return json representation of the @a rh, NULL on error
- */
-json_t *
-TEH_RESPONSE_compile_transaction_history (
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
 /**

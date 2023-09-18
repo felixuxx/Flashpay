@@ -100,7 +100,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_reserve_history.c \
   testing_api_cmd_reserve_open.c \
   testing_api_cmd_reserve_purse.c \
-  testing_api_cmd_reserve_status.c \
   testing_api_cmd_revoke.c \
   testing_api_cmd_revoke_denom_key.c \
   testing_api_cmd_revoke_sign_key.c \

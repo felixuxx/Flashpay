@@ -218,10 +218,8 @@ handle_melt_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
-  const struct TALER_EXCHANGE_Keys *keys;
 
   mh->job = NULL;
-  keys = mh->keys;
   switch (response_code)
   {
   case 0:
@@ -254,20 +252,6 @@ handle_melt_finished (void *cls,
   case MHD_HTTP_CONFLICT:
     mr.hr.ec = TALER_JSON_get_error_code (j);
     mr.hr.hint = TALER_JSON_get_error_hint (j);
-    if (GNUNET_OK !=
-        TALER_EXCHANGE_check_coin_conflict_ (
-          keys,
-          j,
-          mh->dki,
-          &mh->coin_pub,
-          &mh->coin_sig,
-          &mh->md.melted_coin.melt_amount_with_fee))
-    {
-      GNUNET_break_op (0);
-      mr.hr.http_status = 0;
-      mr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      break;
-    }
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is

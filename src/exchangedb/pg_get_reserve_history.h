@@ -32,36 +32,18 @@
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve
+ * @param start_off maximum starting offset in history to exclude from returning
  * @param[out] balance set to the reserve balance
  * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_reserve_history (void *cls,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            struct TALER_Amount *balance,
-                            struct TALER_EXCHANGEDB_ReserveHistory **rhp);
-
-
-/**
- * Get a truncated transaction history associated with the specified
- * reserve.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param reserve_pub public key of the reserve
- * @param[out] balance_in set to the total of inbound
- *             transactions in the returned history
- * @param[out] balance_out set to the total of outbound
- *             transactions in the returned history
- * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
- * @return transaction status
- */
-enum GNUNET_DB_QueryStatus
-TEH_PG_get_reserve_status (void *cls,
-                           const struct TALER_ReservePublicKeyP *reserve_pub,
-                           struct TALER_Amount *balance_in,
-                           struct TALER_Amount *balance_out,
-                           struct TALER_EXCHANGEDB_ReserveHistory **rhp);
+TEH_PG_get_reserve_history (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  uint64_t start_off,
+  struct TALER_Amount *balance,
+  struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
 
 #endif

@@ -65,24 +65,14 @@ struct TALER_EXCHANGE_ReservesHistoryHandle
   TALER_EXCHANGE_ReservesHistoryCallback cb;
 
   /**
-   * Closure for @a cb.
-   */
-  void *cb_cls;
-
-  /**
    * Public key of the reserve we are querying.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * Our signature.
+   * Closure for @a cb.
    */
-  struct TALER_ReserveSignatureP reserve_sig;
-
-  /**
-   * When did we make the request.
-   */
-  struct GNUNET_TIME_Timestamp ts;
+  void *cb_cls;
 
 };
 
@@ -103,9 +93,7 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
   unsigned int len;
   struct TALER_EXCHANGE_ReserveHistory rs = {
     .hr.reply = j,
-    .hr.http_status = MHD_HTTP_OK,
-    .ts = rsh->ts,
-    .reserve_sig = &rsh->reserve_sig
+    .hr.http_status = MHD_HTTP_OK
   };
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
@@ -143,6 +131,7 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
       GNUNET_break_op (0);
       TALER_EXCHANGE_free_reserve_history (len,
                                            rhistory);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if (NULL != rsh->cb)
@@ -191,7 +180,6 @@ handle_reserves_history_finished (void *cls,
         handle_reserves_history_ok (rsh,
                                     j))
     {
-      GNUNET_break_op (0);
       rs.hr.http_status = 0;
       rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
@@ -213,11 +201,6 @@ handle_reserves_history_finished (void *cls,
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    rs.hr.ec = TALER_JSON_get_error_code (j);
-    rs.hr.hint = TALER_JSON_get_error_hint (j);
-    break;
-  case MHD_HTTP_CONFLICT:
-    /* Insufficient balance to inquire for reserve history */
     rs.hr.ec = TALER_JSON_get_error_code (j);
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
@@ -254,18 +237,18 @@ TALER_EXCHANGE_reserves_history (
   const char *url,
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
+  uint64_t start_off,
   TALER_EXCHANGE_ReservesHistoryCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesHistoryHandle *rsh;
   CURL *eh;
-  char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
-  const struct TALER_EXCHANGE_GlobalFee *gf;
+  char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 64];
+  struct TALER_ReserveSignatureP reserve_sig;
 
   rsh = GNUNET_new (struct TALER_EXCHANGE_ReservesHistoryHandle);
   rsh->cb = cb;
   rsh->cb_cls = cb_cls;
-  rsh->ts = GNUNET_TIME_timestamp_get ();
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &rsh->reserve_pub.eddsa_pub);
   {
@@ -278,10 +261,17 @@ TALER_EXCHANGE_reserves_history (
       pub_str,
       sizeof (pub_str));
     *end = '\0';
-    GNUNET_snprintf (arg_str,
-                     sizeof (arg_str),
-                     "reserves/%s/history",
-                     pub_str);
+    if (0 != start_off)
+      GNUNET_snprintf (arg_str,
+                       sizeof (arg_str),
+                       "reserves/%s/history?start=%llu",
+                       pub_str,
+                       (unsigned long long) start_off);
+    else
+      GNUNET_snprintf (arg_str,
+                       sizeof (arg_str),
+                       "reserves/%s/history",
+                       pub_str);
   }
   rsh->url = TALER_url_join (url,
                              arg_str,
@@ -299,26 +289,13 @@ TALER_EXCHANGE_reserves_history (
     GNUNET_free (rsh);
     return NULL;
   }
-  gf = TALER_EXCHANGE_get_global_fee (keys,
-                                      rsh->ts);
-  if (NULL == gf)
-  {
-    GNUNET_break_op (0);
-    curl_easy_cleanup (eh);
-    GNUNET_free (rsh->url);
-    GNUNET_free (rsh);
-    return NULL;
-  }
-  TALER_wallet_reserve_history_sign (rsh->ts,
-                                     &gf->fees.history,
+  TALER_wallet_reserve_history_sign (start_off,
                                      reserve_priv,
-                                     &rsh->reserve_sig);
+                                     &reserve_sig);
   {
     json_t *history_obj = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_timestamp ("request_timestamp",
-                                  rsh->ts),
       GNUNET_JSON_pack_data_auto ("reserve_sig",
-                                  &rsh->reserve_sig));
+                                  &reserve_sig));
 
     if (GNUNET_OK !=
         TALER_curl_easy_post (&rsh->post_ctx,
