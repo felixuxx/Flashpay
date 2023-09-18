@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_reserves_history.h
- * @brief Handle /reserves/$RESERVE_PUB HISTORY requests
+ * @brief Handle /reserves/$RESERVE_PUB/history requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -24,20 +24,20 @@
 #define TALER_EXCHANGE_HTTPD_RESERVES_HISTORY_H
 
 #include <microhttpd.h>
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd.h"
 
 
 /**
- * Handle a POST "/reserves/$RID/history" request.
+ * Handle a GET "/reserves/$RID/history" request.
  *
  * @param rc request context
  * @param reserve_pub public key of the reserve
- * @param root uploaded body from the client
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_reserves_history (struct TEH_RequestContext *rc,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
-                              const json_t *root);
+TEH_handler_reserves_history (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub);
 
 #endif

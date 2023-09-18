@@ -23,7 +23,6 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
-#include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd_keys.h"
@@ -52,6 +51,11 @@ struct ReserveHistoryContext
    * History of the reserve, set in the callback.
    */
   struct TALER_EXCHANGEDB_ReserveHistory *rh;
+
+  /**
+   * Requested startin offset for the reserve history.
+   */
+  uint64_t start_off;
 
   /**
    * Current reserve balance.
@@ -415,7 +419,7 @@ reserve_history_transaction (void *cls,
 
   qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                         rsc->reserve_pub,
-                                        0,
+                                        rsc->start_off,
                                         &rsc->balance,
                                         &rsc->rh);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -432,40 +436,28 @@ reserve_history_transaction (void *cls,
 
 
 MHD_RESULT
-TEH_handler_reserves_history (struct TEH_RequestContext *rc,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
-                              const json_t *root)
+TEH_handler_reserves_history (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub)
 {
-  struct ReserveHistoryContext rsc;
-  MHD_RESULT mhd_ret;
-  uint64_t start_off = 0;
-  struct TALER_ReserveSignatureP reserve_sig;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &reserve_sig),
-    GNUNET_JSON_spec_end ()
+  struct ReserveHistoryContext rsc = {
+    .reserve_pub = reserve_pub
   };
+  MHD_RESULT mhd_ret;
+  struct TALER_ReserveSignatureP reserve_sig;
+  bool required = true;
 
+  TALER_MHD_parse_request_header_auto (rc->connection,
+                                       TALER_RESERVE_HISTORY_SIGNATURE_HEADER,
+                                       &reserve_sig,
+                                       required);
+  TALER_MHD_parse_request_number (rc->connection,
+                                  "start",
+                                  &rsc.start_off);
   rsc.reserve_pub = reserve_pub;
-  {
-    enum GNUNET_GenericReturnValue res;
 
-    res = TALER_MHD_parse_json_data (rc->connection,
-                                     root,
-                                     spec);
-    if (GNUNET_SYSERR == res)
-    {
-      GNUNET_break (0);
-      return MHD_NO; /* hard failure */
-    }
-    if (GNUNET_NO == res)
-    {
-      GNUNET_break_op (0);
-      return MHD_YES; /* failure */
-    }
-  }
   if (GNUNET_OK !=
-      TALER_wallet_reserve_history_verify (start_off,
+      TALER_wallet_reserve_history_verify (rsc.start_off,
                                            reserve_pub,
                                            &reserve_sig))
   {

@@ -3778,65 +3778,6 @@ TALER_EXCHANGE_deposits_get_cancel (
   struct TALER_EXCHANGE_DepositGetHandle *dwh);
 
 
-/**
- * Convenience function.  Verifies a coin's transaction history as
- * returned by the exchange.
- *
- * @param dk fee structure for the coin
- * @param coin_pub public key of the coin
- * @param history history of the coin in json encoding
- * @param[out] total how much of the coin has been spent according to @a history
- * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
- */
-enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_verify_coin_history (
-  const struct TALER_EXCHANGE_DenomPublicKey *dk,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const json_t *history,
-  struct TALER_Amount *total);
-
-
-/**
- * Parse history given in JSON format and return it in binary
- * format.
- *
- * @param keys exchange keys
- * @param history JSON array with the history
- * @param reserve_pub public key of the reserve to inspect
- * @param currency currency we expect the balance to be in
- * @param[out] total_in set to value of credits to reserve
- * @param[out] total_out set to value of debits from reserve
- * @param history_length number of entries in @a history
- * @param[out] rhistory array of length @a history_length, set to the
- *             parsed history entries
- * @return #GNUNET_OK if history was valid and @a rhistory and @a balance
- *         were set,
- *         #GNUNET_SYSERR if there was a protocol violation in @a history
- */
-enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_parse_reserve_history (
-  const struct TALER_EXCHANGE_Keys *keys,
-  const json_t *history,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const char *currency,
-  struct TALER_Amount *total_in,
-  struct TALER_Amount *total_out,
-  unsigned int history_length,
-  struct TALER_EXCHANGE_ReserveHistoryEntry rhistory[static history_length]);
-
-
-/**
- * Free memory (potentially) allocated by #TALER_EXCHANGE_parse_reserve_history().
- *
- * @param len number of entries in @a rhistory
- * @param[in] rhistory result to free
- */
-void
-TALER_EXCHANGE_free_reserve_history (
-  unsigned int len,
-  struct TALER_EXCHANGE_ReserveHistoryEntry rhistory[static len]);
-
-
 /* ********************* /recoup *********************** */
 
 

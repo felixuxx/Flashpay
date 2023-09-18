@@ -402,14 +402,17 @@ handle_get_coins (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
                                        args[0]);
   }
-
-  if (NULL == args[1])
-    return TEH_handler_coins_get (rc,
-                                  &coin_pub);
-  if (0 == strcmp (args[1],
-                   "link"))
-    return TEH_handler_link (rc,
-                             &coin_pub);
+  if (NULL != args[1])
+  {
+    if (0 == strcmp (args[1],
+                     "history"))
+      return TEH_handler_coins_get (rc,
+                                    &coin_pub);
+    if (0 == strcmp (args[1],
+                     "link"))
+      return TEH_handler_link (rc,
+                               &coin_pub);
+  }
   return TALER_MHD_reply_with_error (rc->connection,
                                      MHD_HTTP_NOT_FOUND,
                                      TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
@@ -731,11 +734,6 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .op = "withdraw",
       .handler = &TEH_handler_withdraw
     },
-    // FIXME: change to GET!
-    {
-      .op = "history",
-      .handler = &TEH_handler_reserves_history
-    },
     {
       .op = "purse",
       .handler = &TEH_handler_reserves_purse
@@ -772,6 +770,87 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       return h[i].handler (rc,
                            &reserve_pub,
                            root);
+  return r404 (rc->connection,
+               args[1]);
+}
+
+
+/**
+ * Signature of functions that handle GET operations on reserves.
+ *
+ * @param rc request context
+ * @param reserve_pub the public key of the reserve
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*ReserveGetOpHandler)(struct TEH_RequestContext *rc,
+                       const struct TALER_ReservePublicKeyP *reserve_pub);
+
+
+/**
+ * Handle a "GET /reserves/$RESERVE_PUB[/$OP]" request.  Parses the "reserve_pub"
+ * EdDSA key of the reserve and demultiplexes based on $OP.
+ *
+ * @param rc request context
+ * @param args NULL-terminated array of additional options, zero, one or two
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_get_reserves (struct TEH_RequestContext *rc,
+                     const char *const args[])
+{
+  struct TALER_ReservePublicKeyP reserve_pub;
+  static const struct
+  {
+    /**
+     * Name of the operation (args[1]), optional
+     */
+    const char *op;
+
+    /**
+     * Function to call to perform the operation.
+     */
+    ReserveGetOpHandler handler;
+
+  } h[] = {
+    {
+      .op = NULL,
+      .handler = &TEH_handler_reserves_get
+    },
+    {
+      .op = "history",
+      .handler = &TEH_handler_reserves_history
+    },
+    {
+      .op = NULL,
+      .handler = NULL
+    },
+  };
+
+  if ( (NULL == args[0]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &reserve_pub,
+                                       sizeof (reserve_pub))) )
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
+                                       args[0]);
+  }
+  for (unsigned int i = 0; NULL != h[i].handler; i++)
+  {
+    if ( ( (NULL == args[1]) &&
+           (NULL == h[i].op) ) ||
+         ( (NULL != args[1]) &&
+           (NULL != h[i].op) &&
+           (0 == strcmp (h[i].op,
+                         args[1])) ) )
+      return h[i].handler (rc,
+                           &reserve_pub);
+  }
   return r404 (rc->connection,
                args[1]);
 }
@@ -1546,8 +1625,9 @@ handle_mhd_request (void *cls,
     {
       .url = "reserves",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_handler_reserves_get,
-      .nargs = 1
+      .handler.get = &handle_get_reserves,
+      .nargs = 2,
+      .nargs_is_upper_bound = true
     },
     {
       .url = "reserves",

@@ -24,13 +24,13 @@
  */
 #ifndef TALER_EXCHANGE_HTTPD_RESPONSES_H
 #define TALER_EXCHANGE_HTTPD_RESPONSES_H
+
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_error_codes.h"
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_db.h"
-#include <gnunet/gnunet_mhd_compat.h>
 
 
 /**

@@ -357,108 +357,6 @@ reserve_age_withdraw_ok (
 
 
 /**
- * FIXME: This function should be common to batch- and age-withdraw
- *
- * We got a 409 CONFLICT response for the /reserves/$RESERVE_PUB/age-withdraw operation.
- * Check the signatures on the batch withdraw transactions in the provided
- * history and that the balances add up.  We don't do anything directly
- * with the information, as the JSON will be returned to the application.
- * However, our job is ensuring that the exchange followed the protocol, and
- * this in particular means checking all of the signatures in the history.
- *
- * @param keys The denomination keys from the exchange
- * @param reserve_pub The reserve's public key
- * @param requested_amount The requested amount
- * @param json reply from the exchange
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
- */
-static enum GNUNET_GenericReturnValue
-reserve_age_withdraw_payment_required (
-  struct TALER_EXCHANGE_Keys *keys,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_Amount *requested_amount,
-  const json_t *json)
-{
-  struct TALER_Amount balance;
-  struct TALER_Amount total_in_from_history;
-  struct TALER_Amount total_out_from_history;
-  json_t *history;
-  size_t len;
-  struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount_any ("balance",
-                                &balance),
-    GNUNET_JSON_spec_end ()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  history = json_object_get (json,
-                             "history");
-  if (NULL == history)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-
-  /* go over transaction history and compute
-     total incoming and outgoing amounts */
-  len = json_array_size (history);
-  {
-    struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory;
-
-    /* Use heap allocation as "len" may be very big and thus this may
-       not fit on the stack. Use "GNUNET_malloc_large" as a malicious
-       exchange may theoretically try to crash us by giving a history
-       that does not fit into our memory. */
-    rhistory = GNUNET_malloc_large (
-      sizeof (struct TALER_EXCHANGE_ReserveHistoryEntry)
-      * len);
-    if (NULL == rhistory)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-
-    if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (
-          keys,
-          history,
-          reserve_pub,
-          balance.currency,
-          &total_in_from_history,
-          &total_out_from_history,
-          len,
-          rhistory))
-    {
-      GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (len,
-                                           rhistory);
-      return GNUNET_SYSERR;
-    }
-    TALER_EXCHANGE_free_reserve_history (len,
-                                         rhistory);
-  }
-
-  /* Check that funds were really insufficient */
-  if (0 >= TALER_amount_cmp (requested_amount,
-                             &balance))
-  {
-    /* Requested amount is smaller or equal to reported balance,
-       so this should not have failed. */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
  * Function called when we're done processing the
  * HTTP /reserves/$RESERVE_PUB/age-withdraw request.
  *
@@ -544,29 +442,7 @@ handle_reserve_age_withdraw_blinded_finished (
   case MHD_HTTP_CONFLICT:
     /* The age requirements might not have been met */
     awbr.hr.ec = TALER_JSON_get_error_code (j_response);
-    if (TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE == awbr.hr.ec)
-    {
-      awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
-      break;
-    }
-
-    /* The exchange says that the reserve has insufficient funds;
-       check the signatures in the history... */
-    if (GNUNET_OK !=
-        reserve_age_withdraw_payment_required (awbh->keys,
-                                               &awbh->reserve_pub,
-                                               &awbh->amount_with_fee,
-                                               j_response))
-    {
-      GNUNET_break_op (0);
-      awbr.hr.http_status = 0;
-      awbr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-    }
-    else
-    {
-      awbr.hr.ec = TALER_JSON_get_error_code (j_response);
-      awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
-    }
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   case MHD_HTTP_GONE:
     /* could happen if denomination was revoked */

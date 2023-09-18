@@ -155,102 +155,6 @@ reserve_batch_withdraw_ok (struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
 
 
 /**
- * We got a 409 CONFLICT response for the /reserves/$RESERVE_PUB/batch-withdraw operation.
- * Check the signatures on the batch withdraw transactions in the provided
- * history and that the balances add up.  We don't do anything directly
- * with the information, as the JSON will be returned to the application.
- * However, our job is ensuring that the exchange followed the protocol, and
- * this in particular means checking all of the signatures in the history.
- *
- * @param wh operation handle
- * @param json reply from the exchange
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
- */
-static enum GNUNET_GenericReturnValue
-reserve_batch_withdraw_payment_required (
-  struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
-  const json_t *json)
-{
-  struct TALER_Amount balance;
-  struct TALER_Amount total_in_from_history;
-  struct TALER_Amount total_out_from_history;
-  json_t *history;
-  size_t len;
-  struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount_any ("balance",
-                                &balance),
-    GNUNET_JSON_spec_end ()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  history = json_object_get (json,
-                             "history");
-  if (NULL == history)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-
-  /* go over transaction history and compute
-     total incoming and outgoing amounts */
-  len = json_array_size (history);
-  {
-    struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory;
-
-    /* Use heap allocation as "len" may be very big and thus this may
-       not fit on the stack. Use "GNUNET_malloc_large" as a malicious
-       exchange may theoretically try to crash us by giving a history
-       that does not fit into our memory. */
-    rhistory = GNUNET_malloc_large (
-      sizeof (struct TALER_EXCHANGE_ReserveHistoryEntry)
-      * len);
-    if (NULL == rhistory)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-
-    if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (
-          wh->keys,
-          history,
-          &wh->reserve_pub,
-          balance.currency,
-          &total_in_from_history,
-          &total_out_from_history,
-          len,
-          rhistory))
-    {
-      GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (len,
-                                           rhistory);
-      return GNUNET_SYSERR;
-    }
-    TALER_EXCHANGE_free_reserve_history (len,
-                                         rhistory);
-  }
-
-  /* Check that funds were really insufficient */
-  if (0 >= TALER_amount_cmp (&wh->requested_amount,
-                             &balance))
-  {
-    /* Requested amount is smaller or equal to reported balance,
-       so this should not have failed. */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
  * Function called when we're done processing the
  * HTTP /reserves/$RESERVE_PUB/batch-withdraw request.
  *
@@ -334,21 +238,8 @@ handle_reserve_batch_withdraw_finished (void *cls,
     bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
-    /* The exchange says that the reserve has insufficient funds;
-       check the signatures in the history... */
-    if (GNUNET_OK !=
-        reserve_batch_withdraw_payment_required (wh,
-                                                 j))
-    {
-      GNUNET_break_op (0);
-      bwr.hr.http_status = 0;
-      bwr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-    }
-    else
-    {
-      bwr.hr.ec = TALER_JSON_get_error_code (j);
-      bwr.hr.hint = TALER_JSON_get_error_hint (j);
-    }
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_GONE:
     /* could happen if denomination was revoked */

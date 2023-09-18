@@ -88,6 +88,16 @@
 #define TALER_AML_OFFICER_SIGNATURE_HEADER "Taler-AML-Officer-Signature"
 
 /**
+ * Header with signature for reserve history requests.
+ */
+#define TALER_RESERVE_HISTORY_SIGNATURE_HEADER "Taler-Reserve-History-Signature"
+
+/**
+ * Header with signature for coin history requests.
+ */
+#define TALER_COIN_HISTORY_SIGNATURE_HEADER "Taler-Coin-History-Signature"
+
+/**
  * Log an error message at log-level 'level' that indicates
  * a failure of the command 'cmd' with the message given
  * by gcry_strerror(rc).

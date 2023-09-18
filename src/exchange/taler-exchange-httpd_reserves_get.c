@@ -170,8 +170,9 @@ db_event_cb (void *cls,
 
 
 MHD_RESULT
-TEH_handler_reserves_get (struct TEH_RequestContext *rc,
-                          const char *const args[1])
+TEH_handler_reserves_get (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct ReservePoller *rp = rc->rh_ctx;
 
@@ -185,18 +186,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     GNUNET_CONTAINER_DLL_insert (rp_head,
                                  rp_tail,
                                  rp);
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (args[0],
-                                       strlen (args[0]),
-                                       &rp->reserve_pub,
-                                       sizeof (rp->reserve_pub)))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
-                                         args[0]);
-    }
+    rp->reserve_pub = *reserve_pub;
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &rp->timeout);
   }
@@ -254,7 +244,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                           args[0]);
+                                           NULL);
       }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Long-polling on reserve for %s\n",

@@ -146,43 +146,6 @@ TALER_EXCHANGE_check_coin_denomination_conflict_ (
 
 
 /**
- * Verify that @a coin_sig does NOT appear in
- * the history of @a proof and thus whatever transaction
- * is authorized by @a coin_sig is a conflict with
- * @a proof.
- *
- * @param proof a proof to check
- * @param coin_sig signature that must not be in @a proof
- * @return #GNUNET_OK if @a coin_sig is not in @a proof
- */
-enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_check_coin_signature_conflict_ (
-  const json_t *proof,
-  const struct TALER_CoinSpendSignatureP *coin_sig);
-
-
-/**
- * Check that the provided @a proof indeeds indicates
- * a conflict for @a coin_pub.
- *
- * @param keys exchange keys
- * @param proof provided conflict proof
- * @param dk denomination of @a coin_pub that the client
- *           used
- * @param coin_pub public key of the coin
- * @param required balance required on the coin for the operation
- * @return #GNUNET_OK if @a proof holds
- */
-enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_check_coin_conflict_ (
-  const struct TALER_EXCHANGE_Keys *keys,
-  const json_t *proof,
-  const struct TALER_EXCHANGE_DenomPublicKey *dk,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *required);
-
-
-/**
  * Find the smallest denomination amount in @e keys.
  *
  * @param keys keys to search

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -43,11 +43,12 @@ TEH_reserves_get_cleanup (void);
  * status of the reserve.
  *
  * @param rc request context
- * @param args array of additional options (length: 1, just the reserve_pub)
+ * @param reserve_pub public key of the reserve
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_reserves_get (struct TEH_RequestContext *rc,
-                          const char *const args[1]);
+TEH_handler_reserves_get (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub);
 
 #endif

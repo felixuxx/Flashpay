@@ -37,7 +37,7 @@ TEH_reserves_get_cleanup (void);
 
 
 /**
- * Handle a GET "/coins/$COIN_PUB" request.  Parses the
+ * Handle a GET "/coins/$COIN_PUB/history" request.  Parses the
  * given "coins_pub" in @a args (which should contain the
  * EdDSA public key of a reserve) and then respond with the
  * transaction history of the coin.
