@@ -540,11 +540,14 @@ add_close_requests (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_reserve_history (void *cls,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            uint64_t start_off,
-                            struct TALER_Amount *balance,
-                            struct TALER_EXCHANGEDB_ReserveHistory **rhp)
+TEH_PG_get_reserve_history (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  uint64_t start_off,
+  uint64_t etag_in,
+  uint64_t *etag_out,
+  struct TALER_Amount *balance,
+  struct TALER_EXCHANGEDB_ReserveHistory **rhp)
 {
   struct PostgresClosure *pg = cls;
   struct ReserveHistoryContext rhc;

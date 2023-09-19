@@ -1649,13 +1649,6 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
   struct TALER_Amount amount;
 
   /**
-   * Index of this entry in the reserve history.
-   * Useful to filter requests by starting offset.
-   * Offsets are not necessarily contiguous.
-   */
-  uint64_t entry_off;
-
-  /**
    * Details depending on @e type.
    */
   union
@@ -2062,6 +2055,13 @@ struct TALER_EXCHANGE_ReserveHistory
        * Total of all outbound transactions in @e history.
        */
       struct TALER_Amount total_out;
+
+      /**
+       * Current etag / last entry in the history.
+       * Useful to filter requests by starting offset.
+       * Offsets are not necessarily contiguous.
+       */
+      uint64_t etag;
 
       /**
        * Reserve history.

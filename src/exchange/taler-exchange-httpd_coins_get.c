@@ -30,7 +30,7 @@
 
 
 /**
- * Add the headers we want to set for every /keys response.
+ * Add the headers we want to set for every response.
  *
  * @param cls the key state to use
  * @param[in,out] response the response to modify
@@ -44,7 +44,7 @@ add_response_headers (void *cls,
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
-                                         "no-cache, public"));
+                                         "no-cache"));
 }
 
 
@@ -540,7 +540,7 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
 {
   struct TALER_EXCHANGEDB_TransactionList *tl = NULL;
   uint64_t start_off = 0;
-  uint64_t etag_in = 0;
+  uint64_t etag_in;
   uint64_t etag_out;
   char etagp[24];
   struct MHD_Response *resp;
@@ -591,6 +591,7 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Client send malformed `If-None-Match' header `%s'\n",
                     etags);
+        etag_in = start_off;
       }
       else
       {
@@ -622,7 +623,6 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
                                          "get_coin_history");
     case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_break (0); /* single-shot query should never have soft-errors */
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_DB_SOFT_FAILURE,
@@ -680,6 +680,8 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
                                     history));
     http_status = MHD_HTTP_OK;
   }
+  add_response_headers (NULL,
+                        resp);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_ETAG,

@@ -23,6 +23,7 @@
 #include "taler-exchange-httpd_common_kyc.h"
 #include "taler_attributes.h"
 #include "taler_error_codes.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <gnunet/gnunet_common.h>
 
@@ -167,7 +168,7 @@ kyc_aml_finished (void *cls,
     &kyc_prox,
     kat->provider_section,
     num_checks,
-    provided_checks,
+    (const char **) provided_checks,
     birthday,
     GNUNET_TIME_timestamp_get (),
     kat->provider_user_id,

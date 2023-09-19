@@ -29,40 +29,6 @@
 #include "taler-exchange-httpd_reserves_history.h"
 #include "taler-exchange-httpd_responses.h"
 
-/**
- * How far do we allow a client's time to be off when
- * checking the request timestamp?
- */
-#define TIMESTAMP_TOLERANCE \
-  GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
-
-
-/**
- * Closure for #reserve_history_transaction.
- */
-struct ReserveHistoryContext
-{
-  /**
-   * Public key of the reserve the inquiry is about.
-   */
-  const struct TALER_ReservePublicKeyP *reserve_pub;
-
-  /**
-   * History of the reserve, set in the callback.
-   */
-  struct TALER_EXCHANGEDB_ReserveHistory *rh;
-
-  /**
-   * Requested startin offset for the reserve history.
-   */
-  uint64_t start_off;
-
-  /**
-   * Current reserve balance.
-   */
-  struct TALER_Amount balance;
-};
-
 
 /**
  * Compile the history of a reserve into a JSON object.
@@ -95,7 +61,6 @@ compile_reserve_history (
               GNUNET_JSON_PACK (
                 GNUNET_JSON_pack_string ("type",
                                          "CREDIT"),
-                // FIXME: offset missing! (here and in all other cases!)
                 GNUNET_JSON_pack_timestamp ("timestamp",
                                             bank->execution_date),
                 GNUNET_JSON_pack_string ("sender_account_url",
@@ -364,74 +329,21 @@ compile_reserve_history (
 
 
 /**
- * Send reserve history to client.
+ * Add the headers we want to set for every /keys response.
  *
- * @param connection connection to the client
- * @param rhc reserve history to return
- * @return MHD result code
+ * @param cls the key state to use
+ * @param[in,out] response the response to modify
  */
-static MHD_RESULT
-reply_reserve_history_success (struct MHD_Connection *connection,
-                               const struct ReserveHistoryContext *rhc)
+static void
+add_response_headers (void *cls,
+                      struct MHD_Response *response)
 {
-  const struct TALER_EXCHANGEDB_ReserveHistory *rh = rhc->rh;
-  json_t *json_history;
-
-  json_history = compile_reserve_history (rh);
-  if (NULL == json_history)
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                       NULL);
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_OK,
-    TALER_JSON_pack_amount ("balance",
-                            &rhc->balance),
-    GNUNET_JSON_pack_array_steal ("history",
-                                  json_history));
-}
-
-
-/**
- * Function implementing /reserves/ HISTORY transaction.
- * Execute a /reserves/ HISTORY.  Given the public key of a reserve,
- * return the associated transaction history.  Runs the
- * transaction logic; IF it returns a non-error code, the transaction
- * logic MUST NOT queue a MHD response.  IF it returns an hard error,
- * the transaction logic MUST queue a MHD response and set @a mhd_ret.
- * IF it returns the soft error code, the function MAY be called again
- * to retry and MUST not queue a MHD response.
- *
- * @param cls a `struct ReserveHistoryContext *`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response history for @a connection,
- *             if transaction failed (!); unused
- * @return transaction history
- */
-static enum GNUNET_DB_QueryStatus
-reserve_history_transaction (void *cls,
-                             struct MHD_Connection *connection,
-                             MHD_RESULT *mhd_ret)
-{
-  struct ReserveHistoryContext *rsc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                        rsc->reserve_pub,
-                                        rsc->start_off,
-                                        &rsc->balance,
-                                        &rsc->rh);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    GNUNET_break (0);
-    *mhd_ret
-      = TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "get_reserve_history");
-  }
-  return qs;
+  (void) cls;
+  TALER_MHD_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "no-cache"));
 }
 
 
@@ -440,56 +352,165 @@ TEH_handler_reserves_history (
   struct TEH_RequestContext *rc,
   const struct TALER_ReservePublicKeyP *reserve_pub)
 {
-  struct ReserveHistoryContext rsc = {
-    .reserve_pub = reserve_pub
-  };
-  MHD_RESULT mhd_ret;
-  struct TALER_ReserveSignatureP reserve_sig;
-  bool required = true;
+  struct TALER_EXCHANGEDB_ReserveHistory *rh = NULL;
+  uint64_t start_off = 0;
+  struct TALER_Amount balance;
+  uint64_t etag_in;
+  uint64_t etag_out;
+  char etagp[24];
+  struct MHD_Response *resp;
+  unsigned int http_status;
 
-  TALER_MHD_parse_request_header_auto (rc->connection,
-                                       TALER_RESERVE_HISTORY_SIGNATURE_HEADER,
-                                       &reserve_sig,
-                                       required);
   TALER_MHD_parse_request_number (rc->connection,
                                   "start",
-                                  &rsc.start_off);
-  rsc.reserve_pub = reserve_pub;
+                                  &start_off);
+  {
+    struct TALER_ReserveSignatureP reserve_sig;
+    bool required = true;
 
-  if (GNUNET_OK !=
-      TALER_wallet_reserve_history_verify (rsc.start_off,
-                                           reserve_pub,
-                                           &reserve_sig))
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_RESERVE_HISTORY_BAD_SIGNATURE,
-                                       NULL);
+    TALER_MHD_parse_request_header_auto (rc->connection,
+                                         TALER_RESERVE_HISTORY_SIGNATURE_HEADER,
+                                         &reserve_sig,
+                                         required);
+
+    if (GNUNET_OK !=
+        TALER_wallet_reserve_history_verify (start_off,
+                                             reserve_pub,
+                                             &reserve_sig))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_EXCHANGE_RESERVE_HISTORY_BAD_SIGNATURE,
+                                         NULL);
+    }
   }
-  rsc.rh = NULL;
-  if (GNUNET_OK !=
-      TEH_DB_run_transaction (rc->connection,
-                              "get reserve history",
-                              TEH_MT_REQUEST_OTHER,
-                              &mhd_ret,
-                              &reserve_history_transaction,
-                              &rsc))
+
+  /* Get etag */
   {
-    return mhd_ret;
+    const char *etags;
+
+    etags = MHD_lookup_connection_value (rc->connection,
+                                         MHD_HEADER_KIND,
+                                         MHD_HTTP_HEADER_IF_NONE_MATCH);
+    if (NULL != etags)
+    {
+      char dummy;
+      unsigned long long ev;
+
+      if (1 != sscanf (etags,
+                       "\"%llu\"%c",
+                       &ev,
+                       &dummy))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Client send malformed `If-None-Match' header `%s'\n",
+                    etags);
+        etag_in = 0;
+      }
+      else
+      {
+        etag_in = (uint64_t) ev;
+      }
+    }
+    else
+    {
+      etag_in = start_off;
+    }
   }
-  if (NULL == rsc.rh)
+
   {
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                       NULL);
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
+                                          reserve_pub,
+                                          start_off,
+                                          etag_in,
+                                          &etag_out,
+                                          &balance,
+                                          &rh);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "get_reserve_history");
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_SOFT_FAILURE,
+                                         "get_reserve_history");
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                                         NULL);
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      /* Handled below */
+      break;
+    }
   }
-  mhd_ret = reply_reserve_history_success (rc->connection,
-                                           &rsc);
-  TEH_plugin->free_reserve_history (TEH_plugin->cls,
-                                    rsc.rh);
-  return mhd_ret;
+
+  GNUNET_snprintf (etagp,
+                   sizeof (etagp),
+                   "\"%llu\"",
+                   (unsigned long long) etag_out);
+  if (etag_in == etag_out)
+  {
+    return TEH_RESPONSE_reply_not_modified (rc->connection,
+                                            etagp,
+                                            &add_response_headers,
+                                            NULL);
+  }
+  if (NULL == rh)
+  {
+    /* 204: empty history */
+    resp = MHD_create_response_from_buffer (0,
+                                            "",
+                                            MHD_RESPMEM_PERSISTENT);
+    http_status = MHD_HTTP_NO_CONTENT;
+  }
+  else
+  {
+    json_t *history;
+
+    http_status = MHD_HTTP_OK;
+    history = compile_reserve_history (rh);
+    TEH_plugin->free_reserve_history (TEH_plugin->cls,
+                                      rh);
+    rh = NULL;
+    if (NULL == history)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
+                                         NULL);
+    }
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      TALER_JSON_pack_amount ("balance",
+                              &balance),
+      GNUNET_JSON_pack_array_steal ("history",
+                                    history));
+  }
+  add_response_headers (NULL,
+                        resp);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_ETAG,
+                                         etagp));
+  {
+    MHD_RESULT ret;
+
+    ret = MHD_queue_response (rc->connection,
+                              http_status,
+                              resp);
+    GNUNET_break (MHD_YES == ret);
+    MHD_destroy_response (resp);
+    return ret;
+  }
 }
 
 

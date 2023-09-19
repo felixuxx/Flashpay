@@ -27,12 +27,18 @@
 
 
 /**
- * Get all of the transaction history associated with the specified
- * reserve.
+ * Compile a list of (historic) transactions performed with the given reserve
+ * (withdraw, incoming wire, open, close operations).  Should return 0 if the @a
+ * reserve_pub is unknown, otherwise determine @a etag_out and if it is past @a
+ * etag_in return the history after @a start_off. @a etag_out should be set
+ * to the last row ID of the given @a reserve_pub in the reserve history table.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve
  * @param start_off maximum starting offset in history to exclude from returning
+ * @param etag_in up to this offset the client already has a response, do not
+ *                   return anything unless @a etag_out will be larger
+ * @param[out] etag_out set to the latest history offset known for this @a coin_pub
  * @param[out] balance set to the reserve balance
  * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
  * @return transaction status
@@ -42,6 +48,8 @@ TEH_PG_get_reserve_history (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t start_off,
+  uint64_t etag_in,
+  uint64_t *etag_out,
   struct TALER_Amount *balance,
   struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 

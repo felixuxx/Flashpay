@@ -1863,10 +1863,13 @@ run (void *cls)
   /* check reserve history */
   {
     struct TALER_Amount balance;
+    uint64_t etag_out;
 
     qs = plugin->get_reserve_history (plugin->cls,
                                       &reserve_pub,
                                       0,
+                                      0,
+                                      &etag_out,
                                       &balance,
                                       &rh);
   }
