@@ -74,6 +74,11 @@ struct TALER_EXCHANGE_ReservesHistoryHandle
    */
   void *cb_cls;
 
+  /**
+   * Where to store the etag (if any).
+   */
+  uint64_t etag;
+
 };
 
 
@@ -797,6 +802,71 @@ parse_reserve_history (
 
 
 /**
+ * Handle HTTP header received by curl.
+ *
+ * @param buffer one line of HTTP header data
+ * @param size size of an item
+ * @param nitems number of items passed
+ * @param userdata our `struct TALER_EXCHANGE_ReservesHistoryHandle *`
+ * @return `size * nitems`
+ */
+static size_t
+handle_header (char *buffer,
+               size_t size,
+               size_t nitems,
+               void *userdata)
+{
+  struct TALER_EXCHANGE_ReservesHistoryHandle *rhh = userdata;
+  size_t total = size * nitems;
+  char *ndup;
+  const char *hdr_type;
+  char *hdr_val;
+  char *sp;
+
+  ndup = GNUNET_strndup (buffer,
+                         total);
+  hdr_type = strtok_r (ndup,
+                       ":",
+                       &sp);
+  if (NULL == hdr_type)
+  {
+    GNUNET_free (ndup);
+    return total;
+  }
+  hdr_val = strtok_r (NULL,
+                      "\n\r",
+                      &sp);
+  if (NULL == hdr_val)
+  {
+    GNUNET_free (ndup);
+    return total;
+  }
+  if (' ' == *hdr_val)
+    hdr_val++;
+  if (0 == strcasecmp (hdr_type,
+                       MHD_HTTP_HEADER_ETAG))
+  {
+    unsigned long long tval;
+    char dummy;
+
+    if (1 !=
+        sscanf (hdr_val,
+                "\"%llu\"%c",
+                &tval,
+                &dummy))
+    {
+      GNUNET_break_op (0);
+      GNUNET_free (ndup);
+      return 0;
+    }
+    rhh->etag = (uint64_t) tval;
+  }
+  GNUNET_free (ndup);
+  return total;
+}
+
+
+/**
  * We received an #MHD_HTTP_OK history code. Handle the JSON
  * response.
  *
@@ -812,7 +882,8 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
   unsigned int len;
   struct TALER_EXCHANGE_ReserveHistory rs = {
     .hr.reply = j,
-    .hr.http_status = MHD_HTTP_OK
+    .hr.http_status = MHD_HTTP_OK,
+    .details.ok.etag = rsh->etag
   };
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
@@ -1008,7 +1079,14 @@ TALER_EXCHANGE_reserves_history (
     GNUNET_free (rsh);
     return NULL;
   }
-
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_HEADERFUNCTION,
+                                   &handle_header));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_HEADERDATA,
+                                   rsh));
   {
     struct TALER_ReserveSignatureP reserve_sig;
     char *sig_hdr;
