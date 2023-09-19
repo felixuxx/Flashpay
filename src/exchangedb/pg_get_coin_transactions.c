@@ -24,8 +24,17 @@
 #include "taler_pq_lib.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_helper.h"
+#include "pg_start_read_committed.h"
+#include "pg_commit.h"
+#include "pg_rollback.h"
 #include "plugin_exchangedb_common.h"
 
+/**
+ * How often do we re-try when encountering DB serialization issues?
+ * (We are read-only, so can only happen due to concurrent insert,
+ * which should be very rare.)
+ */
+#define RETRIES 3
 
 /**
  * Closure for callbacks called from #postgres_get_coin_transactions()
@@ -43,11 +52,6 @@ struct CoinHistoryContext
   const struct TALER_CoinSpendPublicKeyP *coin_pub;
 
   /**
-   * Closure for all callbacks of this database plugin.
-   */
-  void *db_cls;
-
-  /**
    * Plugin context.
    */
   struct PostgresClosure *pg;
@@ -57,10 +61,6 @@ struct CoinHistoryContext
    */
   bool failed;
 
-  /**
-   * Set to 'true' if we found a deposit or melt (for invariant check).
-   */
-  bool have_deposit_or_melt;
 };
 
 
@@ -86,7 +86,6 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -170,7 +169,6 @@ add_coin_purse_deposit (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_PurseDepositListEntry);
     {
       bool not_finished;
@@ -246,7 +244,6 @@ add_coin_melt (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    chc->have_deposit_or_melt = true;
     melt = GNUNET_new (struct TALER_EXCHANGEDB_MeltListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -669,6 +666,11 @@ add_coin_reserve_open (void *cls,
 struct Work
 {
   /**
+   * Name of the table.
+   */
+  const char *table;
+
+  /**
    * SQL prepared statement name.
    */
   const char *statement;
@@ -680,58 +682,174 @@ struct Work
 };
 
 
+/**
+ * We found a coin history entry. Lookup details
+ * from the respective table and store in @a cls.
+ *
+ * @param[in,out] cls a `struct CoinHistoryContext`
+ * @param result a coin history entry result set
+ * @param num_results total number of results in @a results
+ */
+static void
+handle_history_entry (void *cls,
+                      PGresult *result,
+                      unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+  struct PostgresClosure *pg = chc->pg;
+  static const struct Work work[] = {
+    /** #TALER_EXCHANGEDB_TT_DEPOSIT */
+    { "coin_deposits",
+      "get_deposit_with_coin_pub",
+      &add_coin_deposit },
+    /** #TALER_EXCHANGEDB_TT_MELT */
+    { "refresh_commitments",
+      "get_refresh_session_by_coin",
+      &add_coin_melt },
+    /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
+    { "purse_deposits",
+      "get_purse_deposit_by_coin_pub",
+      &add_coin_purse_deposit },
+    /** #TALER_EXCHANGEDB_TT_PURSE_REFUND */
+    { "purse_decision",
+      "get_purse_decision_by_coin_pub",
+      &add_coin_purse_decision },
+    /** #TALER_EXCHANGEDB_TT_REFUND */
+    { "refunds",
+      "get_refunds_by_coin",
+      &add_coin_refund },
+    /** #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP */
+    { "recoup_refresh::OLD",
+      "recoup_by_old_coin",
+      &add_old_coin_recoup },
+    /** #TALER_EXCHANGEDB_TT_RECOUP */
+    { "recoup",
+      "recoup_by_coin",
+      &add_coin_recoup },
+    /** #TALER_EXCHANGEDB_TT_RECOUP_REFRESH */
+    { "recoup_refresh::NEW",
+      "recoup_by_refreshed_coin",
+      &add_coin_recoup_refresh },
+    /** #TALER_EXCHANGEDB_TT_RESERVE_OPEN */
+    { "reserves_open_deposits",
+      "reserve_open_by_coin",
+      &add_coin_reserve_open },
+    { NULL, NULL, NULL }
+  };
+  char *table_name;
+  uint64_t serial_id;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_string ("table_name",
+                                  &table_name),
+    GNUNET_PQ_result_spec_uint64 ("serial_id",
+                                  &serial_id),
+    GNUNET_PQ_result_spec_end
+  };
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (chc->coin_pub),
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    enum GNUNET_DB_QueryStatus qs;
+    bool found = false;
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      chc->failed = true;
+      return;
+    }
+
+    for (unsigned int s = 0;
+         NULL != work[s].statement;
+         s++)
+    {
+      if (0 != strcmp (table_name,
+                       work[s].table))
+        continue;
+      found = true;
+      qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                                 work[s].statement,
+                                                 params,
+                                                 work[s].cb,
+                                                 chc);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Coin %s had %d transactions at %llu in table %s\n",
+                  TALER_B2S (chc->coin_pub),
+                  (int) qs,
+                  (unsigned long long) serial_id,
+                  table_name);
+      if (0 >= qs)
+        chc->failed = true;
+      break;
+    }
+    if (! found)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Coin history includes unsupported table `%s`\n",
+                  table_name);
+      chc->failed = true;
+    }
+    GNUNET_PQ_cleanup_result (rs);
+    if (chc->failed)
+      break;
+  }
+}
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_coin_transactions (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  uint64_t *etag,
+  uint64_t start_off,
+  uint64_t etag_in,
+  uint64_t *etag_out,
   struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
   struct PostgresClosure *pg = cls;
-  static const struct Work work[] = {
-    /** #TALER_EXCHANGEDB_TT_DEPOSIT */
-    { "get_deposit_with_coin_pub",
-      &add_coin_deposit },
-    /** #TALER_EXCHANGEDB_TT_MELT */
-    { "get_refresh_session_by_coin",
-      &add_coin_melt },
-    /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
-    { "get_purse_deposit_by_coin_pub",
-      &add_coin_purse_deposit },
-    /** #TALER_EXCHANGEDB_TT_PURSE_REFUND */
-    { "get_purse_decision_by_coin_pub",
-      &add_coin_purse_decision },
-    /** #TALER_EXCHANGEDB_TT_REFUND */
-    { "get_refunds_by_coin",
-      &add_coin_refund },
-    /** #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP */
-    { "recoup_by_old_coin",
-      &add_old_coin_recoup },
-    /** #TALER_EXCHANGEDB_TT_RECOUP */
-    { "recoup_by_coin",
-      &add_coin_recoup },
-    /** #TALER_EXCHANGEDB_TT_RECOUP_REFRESH */
-    { "recoup_by_refreshed_coin",
-      &add_coin_recoup_refresh },
-    /** #TALER_EXCHANGEDB_TT_RESERVE_OPEN */
-    { "reserve_open_by_coin",
-      &add_coin_reserve_open },
-    { NULL, NULL }
-  };
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
   };
-  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam lparams[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_uint64 (&start_off),
+    GNUNET_PQ_query_param_end
+  };
   struct CoinHistoryContext chc = {
     .head = NULL,
     .coin_pub = coin_pub,
-    .pg = pg,
-    .db_cls = cls
+    .pg = pg
   };
 
-  *etag = 0;  // FIXME: etag not yet implemented!
-  PREPARE (pg, // done!
+  *tlp = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Getting transactions for coin %s\n",
+              TALER_B2S (coin_pub));
+  PREPARE (pg,
+           "get_coin_history_etag",
+           "SELECT"
+           " coin_history_serial_id"
+           " FROM coin_history"
+           " WHERE coin_pub=$1"
+           " ORDER BY coin_history_serial_id DESC"
+           " LIMIT 1;");
+  PREPARE (pg,
+           "get_coin_history",
+           "SELECT"
+           " table_name"
+           ",serial_id"
+           " FROM coin_history"
+           " WHERE coin_pub=$1"
+           "   AND coin_history_serial_id > $2"
+           " ORDER BY coin_history_serial_id DESC;");
+  PREPARE (pg,
            "get_deposit_with_coin_pub",
            "SELECT"
            " cdep.amount_with_fee"
@@ -758,8 +876,9 @@ TEH_PG_get_coin_transactions (
            "   ON (kc.coin_pub = cdep.coin_pub)"
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
-           " WHERE cdep.coin_pub=$1;");
-  PREPARE (pg, // done!
+           " WHERE cdep.coin_pub=$1"
+           "   AND cdep.coin_deposit_serial_id=$2;");
+  PREPARE (pg,
            "get_refresh_session_by_coin",
            "SELECT"
            " rc"
@@ -774,8 +893,9 @@ TEH_PG_get_coin_transactions (
            "   ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
-           " WHERE old_coin_pub=$1;");
-  PREPARE (pg, // done!
+           " WHERE old_coin_pub=$1"
+           "   AND melt_serial_id=$2;");
+  PREPARE (pg,
            "get_purse_deposit_by_coin_pub",
            "SELECT"
            " partner_base_url"
@@ -797,10 +917,26 @@ TEH_PG_get_coin_transactions (
            "   ON (pd.coin_pub = kc.coin_pub)"
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
-           // FIXME: use to-be-created materialized index
-           // on coin_pub (query crosses partitions!)
-           " WHERE pd.coin_pub=$1;");
-  PREPARE (pg, // done!
+           " WHERE pd.coin_pub=$1"
+           "   AND pd.purse_deposit_serial_id=$2;");
+  PREPARE (pg,
+           "get_purse_decision_by_coin_pub",
+           "SELECT"
+           " pdes.purse_pub"
+           ",pd.amount_with_fee"
+           ",denom.fee_refund"
+           ",pdes.purse_decision_serial_id"
+           " FROM purse_decision pdes"
+           " JOIN purse_deposits pd"
+           "   USING (purse_pub)"
+           " JOIN known_coins kc"
+           "   ON (pd.coin_pub = kc.coin_pub)"
+           " JOIN denominations denom"
+           "   USING (denominations_serial)"
+           " WHERE pd.coin_pub=$1"
+           "   AND pdes.purse_decision_serial_id=$2"
+           "   AND pdes.refunded;");
+  PREPARE (pg,
            "get_refunds_by_coin",
            "SELECT"
            " bdep.merchant_pub"
@@ -819,83 +955,66 @@ TEH_PG_get_coin_transactions (
            "   ON (ref.coin_pub = kc.coin_pub)"
            " JOIN denominations denom"
            "   USING (denominations_serial)"
-           " WHERE ref.coin_pub=$1;");
-  PREPARE (pg, // done!
-           "get_purse_decision_by_coin_pub",
-           "SELECT"
-           " pdes.purse_pub"
-           ",pd.amount_with_fee"
-           ",denom.fee_refund"
-           ",pdes.purse_decision_serial_id"
-           " FROM purse_deposits pd"
-           " JOIN purse_decision pdes"
-           "   USING (purse_pub)"
-           " JOIN known_coins kc"
-           "   ON (pd.coin_pub = kc.coin_pub)"
-           " JOIN denominations denom"
-           "   USING (denominations_serial)"
-           " WHERE pd.coin_pub=$1"
-           "   AND pdes.refunded;");
-  PREPARE (pg, // done!
+           " WHERE ref.coin_pub=$1"
+           "   AND ref.refund_serial_id=$2;");
+  PREPARE (pg,
            "recoup_by_old_coin",
            "SELECT"
            " coins.coin_pub"
-           ",coin_sig"
-           ",coin_blind"
-           ",amount"
-           ",recoup_timestamp"
+           ",rr.coin_sig"
+           ",rr.coin_blind"
+           ",rr.amount"
+           ",rr.recoup_timestamp"
            ",denoms.denom_pub_hash"
            ",coins.denom_sig"
-           ",recoup_refresh_uuid"
-           " FROM recoup_refresh"
+           ",rr.recoup_refresh_uuid"
+           " FROM recoup_refresh rr"
            " JOIN known_coins coins"
            "   USING (coin_pub)"
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
-           " WHERE rrc_serial IN"
+           " WHERE recoup_refresh_uuid=$2"
+           "   AND rrc_serial IN"
            "   (SELECT rrc.rrc_serial"
-           "    FROM refresh_commitments"
-           "       JOIN refresh_revealed_coins rrc"
-           "           USING (melt_serial_id)"
-           "    WHERE old_coin_pub=$1);");
-  PREPARE (pg, // done
+           "    FROM refresh_commitments melt"
+           "    JOIN refresh_revealed_coins rrc"
+           "      USING (melt_serial_id)"
+           "    WHERE melt.old_coin_pub=$1);");
+  PREPARE (pg,
            "recoup_by_coin",
            "SELECT"
-           " reserves.reserve_pub"
+           " res.reserve_pub"
            ",denoms.denom_pub_hash"
-           ",coin_sig"
-           ",coin_blind"
-           ",amount"
-           ",recoup_timestamp"
-           ",recoup_uuid"
+           ",rcp.coin_sig"
+           ",rcp.coin_blind"
+           ",rcp.amount"
+           ",rcp.recoup_timestamp"
+           ",rcp.recoup_uuid"
            " FROM recoup rcp"
-           /* NOTE: suboptimal JOIN follows: crosses shards!
-              Could theoretically be improved via a materialized
-              index. But likely not worth it (query is rare and
-              number of reserve shards might be limited) */
            " JOIN reserves_out ro"
            "   USING (reserve_out_serial_id)"
-           " JOIN reserves"
+           " JOIN reserves res"
            "   USING (reserve_uuid)"
            " JOIN known_coins coins"
            "   USING (coin_pub)"
            " JOIN denominations denoms"
            "   ON (denoms.denominations_serial = coins.denominations_serial)"
-           " WHERE coins.coin_pub=$1;");
+           " WHERE rcp.recoup_uuid=$2"
+           "   AND coins.coin_pub=$1;");
   /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
      for a refreshed coin */
-  PREPARE (pg, // done!
+  PREPARE (pg,
            "recoup_by_refreshed_coin",
            "SELECT"
            " old_coins.coin_pub AS old_coin_pub"
-           ",coin_sig"
-           ",coin_blind"
-           ",amount"
-           ",recoup_timestamp"
+           ",rr.coin_sig"
+           ",rr.coin_blind"
+           ",rr.amount"
+           ",rr.recoup_timestamp"
            ",denoms.denom_pub_hash"
            ",coins.denom_sig"
            ",recoup_refresh_uuid"
-           " FROM recoup_refresh"
+           " FROM recoup_refresh rr"
            "    JOIN refresh_revealed_coins rrc"
            "      USING (rrc_serial)"
            "    JOIN refresh_commitments rfc"
@@ -903,11 +1022,12 @@ TEH_PG_get_coin_transactions (
            "    JOIN known_coins old_coins"
            "      ON (rfc.old_coin_pub = old_coins.coin_pub)"
            "    JOIN known_coins coins"
-           "      ON (recoup_refresh.coin_pub = coins.coin_pub)"
+           "      ON (rr.coin_pub = coins.coin_pub)"
            "    JOIN denominations denoms"
            "      ON (denoms.denominations_serial = coins.denominations_serial)"
-           " WHERE coins.coin_pub=$1;");
-  PREPARE (pg, // done
+           " WHERE rr.recoup_refresh_uuid=$2"
+           "   AND coins.coin_pub=$1;");
+  PREPARE (pg,
            "reserve_open_by_coin",
            "SELECT"
            " reserve_open_deposit_uuid"
@@ -915,36 +1035,97 @@ TEH_PG_get_coin_transactions (
            ",reserve_sig"
            ",contribution"
            " FROM reserves_open_deposits"
-           " WHERE coin_pub=$1;");
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Getting transactions for coin %s\n",
-              TALER_B2S (coin_pub));
-  for (unsigned int i = 0; NULL != work[i].statement; i++)
+           " WHERE coin_pub=$1"
+           "   AND reserve_open_deposit_uuid=$2;");
+
+  for (unsigned int i = 0; i<RETRIES; i++)
   {
-    qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                               work[i].statement,
-                                               params,
-                                               work[i].cb,
-                                               &chc);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Coin %s yielded %d transactions of type %s\n",
-                TALER_B2S (coin_pub),
-                qs,
-                work[i].statement);
-    if ( (0 > qs) ||
-         (chc.failed) )
+    enum GNUNET_DB_QueryStatus qs;
+    uint64_t end;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("coin_history_serial_id",
+                                    &end),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        TEH_PG_start_read_committed (pg,
+                                     "get-coin-transactions"))
     {
-      if (NULL != chc.head)
-        TEH_COMMON_free_coin_transaction_list (cls,
-                                               chc.head);
-      *tlp = NULL;
-      if (chc.failed)
-        qs = GNUNET_DB_STATUS_HARD_ERROR;
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    /* First only check the last item, to see if
+       we even need to iterate */
+    qs = GNUNET_PQ_eval_prepared_singleton_select (
+      pg->conn,
+      "get_coin_history_etag",
+      params,
+      rs);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      TEH_PG_rollback (pg);
       return qs;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      TEH_PG_rollback (pg);
+      continue;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      TEH_PG_rollback (pg);
+      return qs;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      *etag_out = end;
+      if (end == etag_in)
+        return qs;
+    }
+    /* We indeed need to iterate over the history */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Current ETag for coin %s is %llu\n",
+                TALER_B2S (coin_pub),
+                (unsigned long long) end);
+
+    qs = GNUNET_PQ_eval_prepared_multi_select (
+      pg->conn,
+      "get_coin_history",
+      lparams,
+      &handle_history_entry,
+      &chc);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      TEH_PG_rollback (pg);
+      return qs;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      TEH_PG_rollback (pg);
+      continue;
+    default:
+      break;
+    }
+    if (chc.failed)
+    {
+      TEH_PG_rollback (pg);
+      TEH_COMMON_free_coin_transaction_list (pg,
+                                             chc.head);
+      return GNUNET_DB_STATUS_SOFT_ERROR;
+    }
+    qs = TEH_PG_commit (pg);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      TEH_COMMON_free_coin_transaction_list (pg,
+                                             chc.head);
+      chc.head = NULL;
+      return qs;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      TEH_COMMON_free_coin_transaction_list (pg,
+                                             chc.head);
+      chc.head = NULL;
+      continue;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      *tlp = chc.head;
+      return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
   }
-  *tlp = chc.head;
-  if (NULL == chc.head)
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  return GNUNET_DB_STATUS_SOFT_ERROR;
 }

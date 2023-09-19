@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -74,16 +74,19 @@ CREATE OR REPLACE FUNCTION purse_decision_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  INSERT INTO exchange.coin_history
-    (coin_pub
-    ,table_name
-    ,serial_id)
-  SELECT
-    pd.coin_pub
-   ,'purse_decision'
-   ,NEW.purse_decision_serial_id
-  FROM purse_deposits pd
-  WHERE purse_pub = NEW.purse_pub;
+  IF NEW.refunded
+  THEN
+    INSERT INTO exchange.coin_history
+      (coin_pub
+      ,table_name
+      ,serial_id)
+    SELECT
+      pd.coin_pub
+     ,'purse_decision'
+     ,NEW.purse_decision_serial_id
+    FROM purse_deposits pd
+    WHERE purse_pub = NEW.purse_pub;
+  END IF;
   RETURN NEW;
 END $$;
 COMMENT ON FUNCTION purse_decision_insert_trigger()

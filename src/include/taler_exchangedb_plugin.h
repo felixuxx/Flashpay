@@ -4652,23 +4652,29 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Compile a list of all (historic) transactions performed
-   * with the given coin (melt, refund, recoup and deposit operations).
-   * Should return 0 if @a etag is already current, otherwise
-   * return the full history and update @a etag. @a etag
-   * should be set to the last row ID of the given coin
-   * in the coin history table.
+   * Compile a list of (historic) transactions performed with the given coin
+   * (melt, refund, recoup and deposit operations).  Should return 0 if the @a
+   * coin_pub is unknown, otherwise determine @a etag_out and if it is past @a
+   * etag_in return the history after @a start_off. @a etag_out should be set
+   * to the last row ID of the given @a coin_pub in the coin history table.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param coin_pub coin to investigate
-   * @param[in,out] etag known etag, updated to current etag
-   * @param[out] tlp set to list of transactions, NULL if coin is fresh
+   * @param start_off starting offset from which on to return entries
+   * @param etag_in up to this offset the client already has a response, do not
+   *                   return anything unless @a etag_out will be larger
+   * @param[out] etag_out set to the latest history offset known for this @a coin_pub
+   * @param[out] tlp set to list of transactions, set to NULL if coin has no
+   *             transaction history past @a start_off or if @a etag_in is equal
+   *             to the value written to @a etag_out.
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_coin_transactions)(void *cls,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           uint64_t *etag,
+                           uint64_t start_off,
+                           uint64_t etag_in,
+                           uint64_t *etag_out,
                            struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 

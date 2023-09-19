@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_coins_get.c
- * @brief Handle GET /coins/$COIN_PUB requests
+ * @brief Handle GET /coins/$COIN_PUB/history requests
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -538,102 +538,162 @@ MHD_RESULT
 TEH_handler_coins_get (struct TEH_RequestContext *rc,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-  const char *etags;
-  uint64_t etag = 0;
+  struct TALER_EXCHANGEDB_TransactionList *tl = NULL;
+  uint64_t start_off = 0;
+  uint64_t etag_in = 0;
+  uint64_t etag_out;
+  char etagp[24];
+  struct MHD_Response *resp;
+  unsigned int http_status;
 
-  etags = MHD_lookup_connection_value (rc->connection,
-                                       MHD_HEADER_KIND,
-                                       MHD_HTTP_HEADER_IF_NONE_MATCH);
-  if (NULL != etags)
+  TALER_MHD_parse_request_number (rc->connection,
+                                  "start",
+                                  &start_off);
+  /* Check signature */
   {
-    char dummy;
-    unsigned long long ev;
+    struct TALER_CoinSpendSignatureP coin_sig;
+    bool required = true;
 
-    if (1 != sscanf (etags,
-                     "\"%llu\"%c",
-                     &ev,
-                     &dummy))
+    TALER_MHD_parse_request_header_auto (rc->connection,
+                                         TALER_COIN_HISTORY_SIGNATURE_HEADER,
+                                         &coin_sig,
+                                         required);
+    if (GNUNET_OK !=
+        TALER_wallet_coin_history_verify (start_off,
+                                          coin_pub,
+                                          &coin_sig))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Client send malformed `If-None-Match' header `%s'\n",
-                  etags);
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_EXCHANGE_COIN_HISTORY_BAD_SIGNATURE,
+                                         NULL);
+    }
+  }
+
+  /* Get etag */
+  {
+    const char *etags;
+
+    etags = MHD_lookup_connection_value (rc->connection,
+                                         MHD_HEADER_KIND,
+                                         MHD_HTTP_HEADER_IF_NONE_MATCH);
+    if (NULL != etags)
+    {
+      char dummy;
+      unsigned long long ev;
+
+      if (1 != sscanf (etags,
+                       "\"%llu\"%c",
+                       &ev,
+                       &dummy))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Client send malformed `If-None-Match' header `%s'\n",
+                    etags);
+      }
+      else
+      {
+        etag_in = (uint64_t) ev;
+      }
     }
     else
     {
-      etag = (uint64_t) ev;
+      etag_in = start_off;
     }
   }
-  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          coin_pub,
-                                          &etag,
-                                          &tl);
-  switch (qs)
+
+  /* Get history from DB between etag and now */
   {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                       "get_coin_history");
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);   /* single-shot query should never have soft-errors */
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_SOFT_FAILURE,
-                                       "get_coin_history");
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    if (0 == etag)
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                            coin_pub,
+                                            start_off,
+                                            etag_in,
+                                            &etag_out,
+                                            &tl);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "get_coin_history");
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_break (0); /* single-shot query should never have soft-errors */
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_SOFT_FAILURE,
+                                         "get_coin_history");
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_GENERIC_COIN_UNKNOWN,
                                          NULL);
-    return TEH_RESPONSE_reply_not_modified (rc->connection,
-                                            etags,
-                                            &add_response_headers,
-                                            NULL);
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    {
-      json_t *history;
-      char etagp[24];
-      MHD_RESULT ret;
-      struct MHD_Response *resp;
-
-      GNUNET_snprintf (etagp,
-                       sizeof (etagp),
-                       "\"%llu\"",
-                       (unsigned long long) etag);
-      history = compile_transaction_history (coin_pub,
-                                             tl);
-      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                              tl);
-      tl = NULL;
-      if (NULL == history)
-      {
-        GNUNET_break (0);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                           "Failed to compile coin history");
-      }
-      resp = TALER_MHD_MAKE_JSON_PACK (
-        GNUNET_JSON_pack_array_steal ("history",
-                                      history));
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (resp,
-                                             MHD_HTTP_HEADER_ETAG,
-                                             etagp));
-      ret = MHD_queue_response (rc->connection,
-                                MHD_HTTP_OK,
-                                resp);
-      GNUNET_break (MHD_YES == ret);
-      MHD_destroy_response (resp);
-      return ret;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      /* Handled below */
+      break;
     }
   }
-  GNUNET_break (0);
-  return MHD_NO;
+
+  GNUNET_snprintf (etagp,
+                   sizeof (etagp),
+                   "\"%llu\"",
+                   (unsigned long long) etag_out);
+  if (etag_in == etag_out)
+  {
+    return TEH_RESPONSE_reply_not_modified (rc->connection,
+                                            etagp,
+                                            &add_response_headers,
+                                            NULL);
+  }
+  if (NULL == tl)
+  {
+    /* 204: empty history */
+    resp = MHD_create_response_from_buffer (0,
+                                            "",
+                                            MHD_RESPMEM_PERSISTENT);
+    http_status = MHD_HTTP_NO_CONTENT;
+  }
+  else
+  {
+    /* 200: regular history */
+    json_t *history;
+
+    history = compile_transaction_history (coin_pub,
+                                           tl);
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    tl = NULL;
+    if (NULL == history)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
+                                         "Failed to compile coin history");
+    }
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("history",
+                                    history));
+    http_status = MHD_HTTP_OK;
+  }
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_ETAG,
+                                         etagp));
+  {
+    MHD_RESULT ret;
+
+    ret = MHD_queue_response (rc->connection,
+                              http_status,
+                              resp);
+    GNUNET_break (MHD_YES == ret);
+    MHD_destroy_response (resp);
+    return ret;
+  }
 }
 
 
