@@ -76,7 +76,7 @@ CREATE OR REPLACE FUNCTION purse_decision_insert_trigger()
 BEGIN
   IF NEW.refunded
   THEN
-    INSERT INTO exchange.coin_history
+    INSERT INTO coin_history
       (coin_pub
       ,table_name
       ,serial_id)
@@ -86,6 +86,17 @@ BEGIN
      ,NEW.purse_decision_serial_id
     FROM purse_deposits pd
     WHERE purse_pub = NEW.purse_pub;
+  ELSE
+    INSERT INTO reserve_history
+      (reserve_pub
+      ,table_name
+      ,serial_id)
+    SELECT
+      reserve_pub
+     ,'purse_decision'
+     ,NEW.purse_decision_serial_id
+    FROM purse_merges
+    WHERE purse_pub=NEW.purse_pub;
   END IF;
   RETURN NEW;
 END $$;

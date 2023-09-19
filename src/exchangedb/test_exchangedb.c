@@ -1859,6 +1859,8 @@ run (void *cls)
                          0,
                          value.currency));
   result = 7;
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+          plugin->commit (plugin->cls));
 
   /* check reserve history */
   {
@@ -2122,6 +2124,9 @@ run (void *cls)
   bd.refund_deadline = deadline;
   bd.wire_deadline = deadline;
   result = 8;
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         "test-3"));
   {
     uint64_t known_coin_id;
     struct TALER_DenominationHashP dph;

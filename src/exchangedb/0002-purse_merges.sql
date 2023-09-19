@@ -125,37 +125,6 @@ END
 $$;
 
 
-CREATE OR REPLACE FUNCTION purse_merges_insert_trigger()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  AS $$
-BEGIN
-  INSERT INTO reserve_history
-    (reserve_pub
-    ,table_name
-    ,serial_id)
-  VALUES
-    (NEW.reserve_pub
-    ,'purse_merges'
-    ,NEW.purse_merge_request_serial_id);
-  RETURN NEW;
-END $$;
-COMMENT ON FUNCTION purse_merges_insert_trigger()
-  IS 'Automatically generate reserve history entry.';
-
-
-CREATE FUNCTION master_table_purse_merges()
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  CREATE TRIGGER purse_merges_on_insert
-    AFTER INSERT
-     ON purse_merges
-     FOR EACH ROW EXECUTE FUNCTION purse_merges_insert_trigger();
-END $$;
-
-
 INSERT INTO exchange_tables
     (name
     ,version
@@ -176,10 +145,5 @@ INSERT INTO exchange_tables
     ('purse_merges'
     ,'exchange-0002'
     ,'foreign'
-    ,TRUE
-    ,FALSE),
-    ('purse_merges'
-    ,'exchange-0002'
-    ,'master'
     ,TRUE
     ,FALSE);
