@@ -16,7 +16,7 @@
 */
 /**
  * @file bank-lib/bank_api_admin.c
- * @brief Implementation of the /admin/ requests of the bank's HTTP API
+ * @brief Implementation of the /admin/add-incoming requests of the bank's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -27,7 +27,7 @@
 
 
 /**
- * @brief An admin/add-incoming Handle
+ * @brief An /admin/add-incoming Handle
  */
 struct TALER_BANK_AdminAddIncomingHandle
 {

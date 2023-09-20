@@ -58,7 +58,34 @@ libtalerfakebank_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalerfakebank_la_SOURCES = \
-  fakebank.c
+  fakebank.c fakebank.h \
+  fakebank_api_check.c \
+  fakebank_common_lookup.c fakebank_common_lookup.h \
+  fakebank_common_lp.c fakebank_common_lp.h \
+  fakebank_common_make_admin_transfer.c fakebank_common_make_admin_transfer.h \
+  fakebank_common_parser.c fakebank_common_parser.h \
+  fakebank_common_transact.c fakebank_common_transact.h \
+  fakebank_stop.c \
+  fakebank_bank.c fakebank_bank.h \
+  fakebank_bank_accounts_withdrawals.c fakebank_bank_accounts_withdrawals.h \
+  fakebank_bank_get_accounts.c fakebank_bank_get_accounts.h \
+  fakebank_bank_get_accounts_withdrawals.c fakebank_bank_get_accounts_withdrawals.h \
+  fakebank_bank_get_root.c fakebank_bank_get_root.h \
+  fakebank_bank_post_accounts_withdrawals.c fakebank_bank_post_accounts_withdrawals.h \
+  fakebank_bank_post_accounts_withdrawals_abort.c fakebank_bank_post_accounts_withdrawals_abort.h \
+  fakebank_bank_post_accounts_withdrawals_confirm.c fakebank_bank_post_accounts_withdrawals_confirm.h \
+  fakebank_bank_testing_register.c fakebank_bank_testing_register.h \
+  fakebank_tbr.c fakebank_tbr.h \
+  fakebank_tbr_get_history.c fakebank_tbr_get_history.h \
+  fakebank_tbr_get_root.c fakebank_tbr_get_root.h \
+  fakebank_tbi.c fakebank_tbi.h \
+  fakebank_tbi_get_withdrawal_operation.c fakebank_tbi_get_withdrawal_operation.h \
+  fakebank_tbi_post_withdrawal_operation.c fakebank_tbi_post_withdrawal_operation.h \
+  fakebank_twg.c fakebank_twg.h \
+  fakebank_twg_admin_add_incoming.c fakebank_twg_admin_add_incoming.h \
+  fakebank_twg_get_root.c fakebank_twg_get_root.h \
+  fakebank_twg_history.c fakebank_twg_history.h \
+  fakebank_twg_transfer.c fakebank_twg_transfer.h
 libtalerfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
