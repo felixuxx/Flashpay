@@ -233,14 +233,16 @@ register_sandbox_account() {
 }
 
 register_fakebank_account() {
-    BODY='{"username":"'"$1"'","password":"'"$2"'"}'
+    # FIXME: may need to pass 'is_taler_exchange' here
+    # in the future to get exchange facade from libeufin!
+    BODY='{"username":"'"$1"'","password":"'"$2"'","name":"'"$1"'"}'
     wget \
         --post-data="$BODY" \
         --header='Content-type: application/json' \
         --tries=3 \
         --waitretry=1 \
         --timeout=30 \
-        "http://localhost:$BANK_PORT/taler-bank-access/testing/register" \
+        "http://localhost:$BANK_PORT/accounts" \
         -o /dev/null \
         -O /dev/null \
         >/dev/null

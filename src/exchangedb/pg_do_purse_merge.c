@@ -75,7 +75,6 @@ TEH_PG_do_purse_merge (
                       &h_payto);
     GNUNET_free (payto_uri);
   }
-  /* Used in #postgres_do_purse_merge() */
   PREPARE (pg,
            "call_purse_merge",
            "SELECT"

@@ -94,12 +94,12 @@ run (void *cls,
   {
   case TALER_TESTING_BS_FAKEBANK:
     exchange_auth_twisted.wire_gateway_url
-      = "http://localhost:8888/2/";
+      = "http://localhost:8888/accounts/2/taler-wire-gateway/";
     systype = "-f";
     break;
   case TALER_TESTING_BS_IBAN:
     exchange_auth_twisted.wire_gateway_url
-      = "http://localhost:8888/taler-wire-gateway/Exchange/";
+      = "http://localhost:8888/accounts/Exchange/taler-wire-gateway/";
     systype = "-ns";
     break;
   }

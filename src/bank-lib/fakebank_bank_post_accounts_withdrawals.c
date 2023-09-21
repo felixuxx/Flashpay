@@ -93,7 +93,7 @@ do_post_account_withdrawals (
     wopids = GNUNET_STRINGS_data_to_string_alloc (&wo->wopid,
                                                   sizeof (wo->wopid));
     GNUNET_asprintf (&uri,
-                     "taler+http://withdraw/%s:%u/taler-bank-integration/%s",
+                     "taler+http://withdraw/%s:%u/taler-integration/%s",
                      h->hostname,
                      (unsigned int) h->port,
                      wopids);

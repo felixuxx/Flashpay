@@ -71,7 +71,7 @@ TALER_FAKEBANK_tbr_get_history_incoming (
     cc->ctx = hc;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Handling /history/incoming connection %p\n",
+                "Handling /accounts/$USERNAME/taler-revenue/history/incoming request %p\n",
                 connection);
     if (GNUNET_OK !=
         (ret = TALER_FAKEBANK_common_parse_history_args (h,

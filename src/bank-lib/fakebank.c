@@ -35,8 +35,6 @@
 #include "fakebank_bank.h"
 #include "fakebank_common_lp.h"
 #include "fakebank_tbi.h"
-#include "fakebank_tbr.h"
-#include "fakebank_twg.h"
 
 
 /**
@@ -96,16 +94,13 @@ handle_mhd_request (void *cls,
                     void **con_cls)
 {
   struct TALER_FAKEBANK_Handle *h = cls;
-  char *account = NULL;
-  char *end;
-  MHD_RESULT ret;
 
   (void) version;
   if (0 == strncmp (url,
-                    "/taler-bank-integration/",
-                    strlen ("/taler-bank-integration/")))
+                    "/taler-integration/",
+                    strlen ("/taler-integration/")))
   {
-    url += strlen ("/taler-bank-integration");
+    url += strlen ("/taler-integration");
     return TALER_FAKEBANK_tbi_main_ (h,
                                      connection,
                                      url,
@@ -114,79 +109,13 @@ handle_mhd_request (void *cls,
                                      upload_data_size,
                                      con_cls);
   }
-  if (0 == strncmp (url,
-                    "/taler-bank-access/",
-                    strlen ("/taler-bank-access/")))
-  {
-    url += strlen ("/taler-bank-access");
-    return TALER_FAKEBANK_bank_main_ (h,
-                                      connection,
-                                      url,
-                                      method,
-                                      upload_data,
-                                      upload_data_size,
-                                      con_cls);
-  }
-  /* Next is duplication to be more libeufin-like: */
-  if (0 == strncmp (url,
-                    "/access-api/",
-                    strlen ("/access-api/")))
-  {
-    url += strlen ("/access-api");
-    return TALER_FAKEBANK_bank_main_ (h,
-                                      connection,
-                                      url,
-                                      method,
-                                      upload_data,
-                                      upload_data_size,
-                                      con_cls);
-  }
-  if (0 == strncmp (url,
-                    "/anastasis-api/",
-                    strlen ("/anastasis-api/")))
-  {
-    url += strlen ("/anastasis-api");
-    if ( (strlen (url) > 1) &&
-         (NULL != (end = strchr (url + 1, '/'))) )
-    {
-      account = GNUNET_strndup (url + 1,
-                                end - url - 1);
-      url = end;
-    }
-    return TALER_FAKEBANK_tbr_main_ (h,
-                                     connection,
-                                     account,
-                                     url,
-                                     method,
-                                     upload_data,
-                                     upload_data_size,
-                                     con_cls);
-  }
-
-  if (0 == strncmp (url,
-                    "/taler-wire-gateway/",
-                    strlen ("/taler-wire-gateway/")))
-    url += strlen ("/taler-wire-gateway");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Handling request for `%s'\n",
-              url);
-  if ( (strlen (url) > 1) &&
-       (NULL != (end = strchr (url + 1, '/'))) )
-  {
-    account = GNUNET_strndup (url + 1,
-                              end - url - 1);
-    url = end;
-  }
-  ret = TALER_FAKEBANK_twg_main_ (h,
-                                  connection,
-                                  account,
-                                  url,
-                                  method,
-                                  upload_data,
-                                  upload_data_size,
-                                  con_cls);
-  GNUNET_free (account);
-  return ret;
+  return TALER_FAKEBANK_bank_main_ (h,
+                                    connection,
+                                    url,
+                                    method,
+                                    upload_data,
+                                    upload_data_size,
+                                    con_cls);
 }
 
 
