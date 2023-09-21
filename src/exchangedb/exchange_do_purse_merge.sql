@@ -44,6 +44,17 @@ DECLARE
   balance taler_amount;
 BEGIN
 
+-- Initialize reserve, if not yet exists.
+INSERT INTO reserves
+  (reserve_pub
+  ,expiration_date
+  ,gc_date)
+  VALUES
+  (in_reserve_pub
+  ,in_expiration_date
+  ,in_expiration_date)
+  ON CONFLICT DO NOTHING;
+
 
 IF in_partner_url IS NULL
 THEN
@@ -150,17 +161,6 @@ END IF;
 
 out_conflict=FALSE;
 
-
--- Initialize reserve, if not yet exists.
-INSERT INTO reserves
-  (reserve_pub
-  ,expiration_date
-  ,gc_date)
-  VALUES
-  (in_reserve_pub
-  ,in_expiration_date
-  ,in_expiration_date)
-  ON CONFLICT DO NOTHING;
 
 
 IF (my_in_reserve_quota)
