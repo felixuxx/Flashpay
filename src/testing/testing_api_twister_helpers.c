@@ -116,7 +116,9 @@ TALER_TWISTER_run_twister (const char *config_filename)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not start the taler-twister client\n");
-    GNUNET_OS_process_kill (proc, SIGTERM);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (proc,
+                                          SIGTERM));
     GNUNET_OS_process_wait (proc);
     GNUNET_OS_process_destroy (proc);
     TWISTER_FAIL ();

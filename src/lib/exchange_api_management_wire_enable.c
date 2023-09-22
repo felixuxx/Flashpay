@@ -98,6 +98,21 @@ handle_auditor_enable_finished (void *cls,
     wer.hr.ec = TALER_JSON_get_error_code (json);
     wer.hr.hint = TALER_JSON_get_error_hint (json);
     break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                wh->url);
+    if (NULL != json)
+    {
+      wer.hr.ec = TALER_JSON_get_error_code (json);
+      wer.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      wer.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      wer.hr.hint = TALER_ErrorCode_get_hint (wer.hr.ec);
+    }
+    break;
   case MHD_HTTP_CONFLICT:
     wer.hr.ec = TALER_JSON_get_error_code (json);
     wer.hr.hint = TALER_JSON_get_error_hint (json);

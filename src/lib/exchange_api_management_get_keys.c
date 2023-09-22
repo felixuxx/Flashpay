@@ -327,6 +327,21 @@ handle_get_keys_finished (void *cls,
       response_code = 0;
     }
     break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                gh->url);
+    if (NULL != json)
+    {
+      gkr.hr.ec = TALER_JSON_get_error_code (json);
+      gkr.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      gkr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      gkr.hr.hint = TALER_ErrorCode_get_hint (gkr.hr.ec);
+    }
+    break;
   default:
     /* unexpected response code */
     if (NULL != json)

@@ -193,10 +193,13 @@ handler_cb (void *cls,
                                  "Bob"),
         GNUNET_JSON_pack_string ("last_name",
                                  "Builder"));
+
     if (NULL != oas->birthdate)
-      json_object_set_new (data,
-                           "birthdate",
-                           json_string_nocheck (oas->birthdate));
+      GNUNET_assert (0 ==
+                     json_object_set_new (data,
+                                          "birthdate",
+                                          json_string_nocheck (
+                                            oas->birthdate)));
 
     body = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string (

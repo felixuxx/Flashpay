@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -99,8 +99,19 @@ handle_auditor_disable_finished (void *cls,
     wdr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_NOT_FOUND:
-    wdr.hr.ec = TALER_JSON_get_error_code (json);
-    wdr.hr.hint = TALER_JSON_get_error_hint (json);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                wh->url);
+    if (NULL != json)
+    {
+      wdr.hr.ec = TALER_JSON_get_error_code (json);
+      wdr.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      wdr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      wdr.hr.hint = TALER_ErrorCode_get_hint (wdr.hr.ec);
+    }
     break;
   case MHD_HTTP_CONFLICT:
     wdr.hr.ec = TALER_JSON_get_error_code (json);

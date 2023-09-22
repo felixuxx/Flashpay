@@ -242,7 +242,7 @@ TALER_FAKEBANK_bank_main_ (
         url);
     }
 
-    if ( (NULL == end_acc) &&
+    if ( (NULL != end_acc) &&
          (0 == strcmp ("/auth",
                        end_acc)) &&
          (0 == strcasecmp (method,

@@ -874,7 +874,6 @@ qconv_array (
     }
     else  /* sizes are different per element */
     {
-
       switch (meta->typ)
       {
       case TALER_PQ_array_of_blinded_denom_sig:
@@ -936,9 +935,10 @@ qconv_array (
     };
 
     /* Write header */
-    GNUNET_memcpy (out, &h, sizeof(h));
+    GNUNET_memcpy (out,
+                   &h,
+                   sizeof(h));
     out += sizeof(h);
-
 
     /* Write elements */
     for (size_t i = 0; i < num; i++)
@@ -947,13 +947,14 @@ qconv_array (
 
       *(uint32_t *) out = htonl (sz);
       out += sizeof(uint32_t);
-
       switch (meta->typ)
       {
       case TALER_PQ_array_of_amount:
         {
           const struct TALER_Amount *amounts = data;
-          Oid oid_v, oid_f;
+          Oid oid_v;
+          Oid oid_f;
+
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
                                                     "int8",
@@ -981,8 +982,8 @@ qconv_array (
       case TALER_PQ_array_of_blinded_denom_sig:
         {
           const struct TALER_BlindedDenominationSignature *denom_sigs = data;
-
           uint32_t be[2];
+
           be[0] = htonl ((uint32_t) denom_sigs[i].cipher);
           be[1] = htonl (0x01);     /* magic margker: blinded */
           GNUNET_memcpy (out,
@@ -994,14 +995,12 @@ qconv_array (
           switch (denom_sigs[i].cipher)
           {
           case TALER_DENOMINATION_RSA:
-            {
-              void *buf = buffers[i];
-
-              GNUNET_memcpy (out,
-                             buf,
-                             sz);
-              break;
-            }
+            /* For RSA, 'same_sized' must have been false */
+            GNUNET_assert (NULL != buffers);
+            GNUNET_memcpy (out,
+                           buffers[i],
+                           sz);
+            break;
           case TALER_DENOMINATION_CS:
             GNUNET_memcpy (out,
                            &denom_sigs[i].details.blinded_cs_answer,
@@ -1015,6 +1014,7 @@ qconv_array (
       case TALER_PQ_array_of_blinded_coin_hash:
         {
           const struct TALER_BlindedCoinHashP *coin_hs = data;
+
           GNUNET_memcpy (out,
                          &coin_hs[i],
                          sizeof(struct TALER_BlindedCoinHashP));
@@ -1024,6 +1024,7 @@ qconv_array (
       case TALER_PQ_array_of_denom_hash:
         {
           const struct TALER_DenominationHashP *denom_hs = data;
+
           GNUNET_memcpy (out,
                          &denom_hs[i],
                          sizeof(struct TALER_DenominationHashP));
@@ -1038,7 +1039,6 @@ qconv_array (
       out += sz;
     }
   }
-
   param_values[0] = elements;
   param_lengths[0] = total_size;
   param_formats[0] = 1;
@@ -1052,10 +1052,8 @@ DONE:
     GNUNET_free (buffers);
   }
   GNUNET_free (buffer_lengths);
-
   if (noerror)
     return 1;
-
   return -1;
 }
 

@@ -93,6 +93,21 @@ handle_set_global_fee_finished (void *cls,
     sfr.hr.ec = TALER_JSON_get_error_code (json);
     sfr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                sgfh->url);
+    if (NULL != json)
+    {
+      sfr.hr.ec = TALER_JSON_get_error_code (json);
+      sfr.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      sfr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      sfr.hr.hint = TALER_ErrorCode_get_hint (sfr.hr.ec);
+    }
+    break;
   case MHD_HTTP_CONFLICT:
     sfr.hr.ec = TALER_JSON_get_error_code (json);
     sfr.hr.hint = TALER_JSON_get_error_hint (json);

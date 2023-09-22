@@ -93,6 +93,21 @@ handle_set_wire_fee_finished (void *cls,
     swr.hr.ec = TALER_JSON_get_error_code (json);
     swr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                swfh->url);
+    if (NULL != json)
+    {
+      swr.hr.ec = TALER_JSON_get_error_code (json);
+      swr.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      swr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      swr.hr.hint = TALER_ErrorCode_get_hint (swr.hr.ec);
+    }
+    break;
   case MHD_HTTP_CONFLICT:
     swr.hr.ec = TALER_JSON_get_error_code (json);
     swr.hr.hint = TALER_JSON_get_error_hint (json);

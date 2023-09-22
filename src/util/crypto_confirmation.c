@@ -81,9 +81,10 @@ compute_totp (struct GNUNET_TIME_Timestamp ts,
                    gcry_md_open (&md,
                                  GCRY_MD_SHA1,
                                  GCRY_MD_FLAG_HMAC));
-    gcry_md_setkey (md,
-                    key,
-                    key_size);
+    GNUNET_assert (GPG_ERR_NO_ERROR ==
+                   gcry_md_setkey (md,
+                                   key,
+                                   key_size));
     gcry_md_write (md,
                    &ctr,
                    sizeof (ctr));

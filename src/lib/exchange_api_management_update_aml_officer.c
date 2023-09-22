@@ -98,6 +98,21 @@ handle_update_aml_officer_finished (void *cls,
     uar.hr.ec = TALER_JSON_get_error_code (json);
     uar.hr.hint = TALER_JSON_get_error_hint (json);
     break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                wh->url);
+    if (NULL != json)
+    {
+      uar.hr.ec = TALER_JSON_get_error_code (json);
+      uar.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      uar.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      uar.hr.hint = TALER_ErrorCode_get_hint (uar.hr.ec);
+    }
+    break;
   case MHD_HTTP_CONFLICT:
     uar.hr.ec = TALER_JSON_get_error_code (json);
     uar.hr.hint = TALER_JSON_get_error_hint (json);

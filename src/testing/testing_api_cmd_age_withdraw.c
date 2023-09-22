@@ -585,12 +585,14 @@ age_withdraw_reveal_cb (
       awrs->denom_sigs = GNUNET_new_array (awrs->num_coins,
                                            struct TALER_DenominationSignature);
       for (size_t n = 0; n < awrs->num_coins; n++)
-        TALER_denom_sig_unblind (&awrs->denom_sigs[n],
-                                 &response->details.ok.blinded_denom_sigs[n],
-                                 &aws->coin_outputs[n].details.blinding_key,
-                                 &aws->coin_outputs[n].details.h_coin_pub,
-                                 &aws->coin_outputs[n].details.alg_values,
-                                 &aws->coin_inputs[n].denom_pub->key);
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_denom_sig_unblind (
+                         &awrs->denom_sigs[n],
+                         &response->details.ok.blinded_denom_sigs[n],
+                         &aws->coin_outputs[n].details.blinding_key,
+                         &aws->coin_outputs[n].details.h_coin_pub,
+                         &aws->coin_outputs[n].details.alg_values,
+                         &aws->coin_inputs[n].denom_pub->key));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "age-withdraw reveal success!\n");
     }
@@ -640,6 +642,7 @@ age_withdraw_reveal_run (
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
+    return;
   }
   GNUNET_assert (age_withdraw_cmd->run == age_withdraw_run);
   aws = age_withdraw_cmd->cls;

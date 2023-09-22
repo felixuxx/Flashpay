@@ -429,8 +429,12 @@ are_denominations_valid (
   *denom_serials =
     serials = GNUNET_new_array (len, uint64_t);
 
-  TALER_amount_set_zero (TEH_currency, &total_amount);
-  TALER_amount_set_zero (TEH_currency, &total_fee);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &total_amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &total_fee));
 
   for (uint32_t i = 0; i < len; i++)
   {

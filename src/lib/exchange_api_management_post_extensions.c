@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2015-2021 Taler Systems SA
+   Copyright (C) 2015-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -98,8 +98,19 @@ handle_post_extensions_finished (void *cls,
     per.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_NOT_FOUND:
-    per.hr.ec = TALER_JSON_get_error_code (json);
-    per.hr.hint = TALER_JSON_get_error_hint (json);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Server did not find handler at `%s'. Did you configure the correct exchange base URL?\n",
+                ph->url);
+    if (NULL != json)
+    {
+      per.hr.ec = TALER_JSON_get_error_code (json);
+      per.hr.hint = TALER_JSON_get_error_hint (json);
+    }
+    else
+    {
+      per.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      per.hr.hint = TALER_ErrorCode_get_hint (per.hr.ec);
+    }
     break;
   default:
     /* unexpected response code */
