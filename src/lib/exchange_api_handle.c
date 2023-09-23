@@ -84,7 +84,7 @@ struct TALER_EXCHANGE_GetKeysHandle
 {
 
   /**
-   * The exchange base URL (i.e. "http://exchange.taler.net/")
+   * The exchange base URL (i.e. "https://exchange.demo.taler.net/")
    */
   char *exchange_url;
 
@@ -121,6 +121,119 @@ struct TALER_EXCHANGE_GetKeysHandle
   void *cert_cb_cls;
 
 };
+
+
+/**
+ * Element in the `struct SignatureContext` array.
+ */
+struct SignatureElement
+{
+
+  /**
+   * Offset of the denomination in the group array,
+   * for sorting (2nd rank, ascending).
+   */
+  unsigned int offset;
+
+  /**
+   * Offset of the group in the denominations array,
+   * for sorting (2nd rank, ascending).
+   */
+  unsigned int group_offset;
+
+  /**
+   * Pointer to actual master signature to hash over.
+   */
+  struct TALER_MasterSignatureP master_sig;
+};
+
+/**
+ * Context for collecting the array of master signatures
+ * needed to verify the exchange_sig online signature.
+ */
+struct SignatureContext
+{
+  /**
+   * Array of signatures to hash over.
+   */
+  struct SignatureElement *elements;
+
+  /**
+   * Write offset in the @e elements array.
+   */
+  unsigned int elements_pos;
+
+  /**
+   * Allocated space for @e elements.
+   */
+  unsigned int elements_size;
+};
+
+
+/**
+ * Determine order to sort two elements by before
+ * we hash the master signatures.  Used for
+ * sorting with qsort().
+ *
+ * @param a pointer to a `struct SignatureElement`
+ * @param b pointer to a `struct SignatureElement`
+ * @return 0 if equal, -1 if a < b, 1 if a > b.
+ */
+static int
+signature_context_sort_cb (const void *a,
+                           const void *b)
+{
+  const struct SignatureElement *sa = a;
+  const struct SignatureElement *sb = b;
+
+  if (sa->group_offset < sb->group_offset)
+    return -1;
+  if (sa->group_offset > sb->group_offset)
+    return 1;
+  if (sa->offset < sb->offset)
+    return -1;
+  if (sa->offset > sb->offset)
+    return 1;
+  /* We should never have two disjoint elements
+     with same time and offset */
+  GNUNET_assert (sa == sb);
+  return 0;
+}
+
+
+/**
+ * Append a @a master_sig to the @a sig_ctx using the
+ * given attributes for (later) sorting.
+ *
+ * @param[in,out] sig_ctx signature context to update
+ * @param group_offset offset for the group
+ * @param offset offset for the entry
+ * @param master_sig master signature for the entry
+ */
+static void
+append_signature (struct SignatureContext *sig_ctx,
+                  unsigned int group_offset,
+                  unsigned int offset,
+                  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct SignatureElement *element;
+  unsigned int new_size;
+
+  if (sig_ctx->elements_pos == sig_ctx->elements_size)
+  {
+    if (0 == sig_ctx->elements_size)
+      new_size = 1024;
+    else
+      new_size = sig_ctx->elements_size;
+    GNUNET_array_grow (sig_ctx->elements,
+                       sig_ctx->elements_size,
+                       new_size);
+  }
+  element = &sig_ctx->elements[sig_ctx->elements_pos++];
+  element->offset = offset;
+  element->group_offset = group_offset;
+  element->master_sig = *master_sig;
+}
 
 
 /**
@@ -335,7 +448,10 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
  * @param check_sigs should we check signatures?
  * @param denom_key_obj json to parse
  * @param master_key master key to use to verify signature
- * @param[in,out] hash_xor where to accumulate data for signature verification via XOR
+ * @param group_offset offset for the group
+ * @param index index of this denomination key in the group
+ * @param sig_ctx where to write details about encountered
+ *        master signatures, NULL if not used
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
  *        invalid or the json malformed.
  */
@@ -346,7 +462,9 @@ parse_json_denomkey_partially (
   bool check_sigs,
   const json_t *denom_key_obj,
   struct TALER_MasterPublicKeyP *master_key,
-  struct GNUNET_HashCode *hash_xor)
+  unsigned int group_offset,
+  unsigned int index,
+  struct SignatureContext *sig_ctx)
 {
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -379,10 +497,11 @@ parse_json_denomkey_partially (
   }
   TALER_denom_pub_hash (&denom_key->key,
                         &denom_key->h_key);
-  if (NULL != hash_xor)
-    GNUNET_CRYPTO_hash_xor (&denom_key->h_key.hash,
-                            hash_xor,
-                            hash_xor);
+  if (NULL != sig_ctx)
+    append_signature (sig_ctx,
+                      group_offset,
+                      index,
+                      &denom_key->master_sig);
   if (! check_sigs)
     return GNUNET_OK;
   EXITIF (GNUNET_SYSERR ==
@@ -644,9 +763,8 @@ decode_keys_json (const json_t *resp_obj,
                   struct TALER_EXCHANGE_Keys *key_data,
                   enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
-  struct TALER_ExchangeSignatureP denominations_sig;
-  struct GNUNET_HashCode hash_xor = {0};
-  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_ExchangePublicKeyP exchange_pub;
   const json_t *wblwk = NULL;
   const json_t *global_fees;
   const json_t *sign_keys_array;
@@ -659,6 +777,7 @@ decode_keys_json (const json_t *resp_obj,
   const json_t *accounts;
   const json_t *fees;
   const json_t *wads;
+  struct SignatureContext sig_ctx = { 0 };
 
   if (JSON_OBJECT != json_typeof (resp_obj))
   {
@@ -722,11 +841,11 @@ decode_keys_json (const json_t *resp_obj,
     const char *asset_type;
     struct GNUNET_JSON_Specification mspec[] = {
       GNUNET_JSON_spec_fixed_auto (
-        "denominations_sig",
-        &denominations_sig),
+        "exchange_sig",
+        &exchange_sig),
       GNUNET_JSON_spec_fixed_auto (
-        "eddsa_pub",
-        &pub),
+        "exchange_pub",
+        &exchange_pub),
       GNUNET_JSON_spec_fixed_auto (
         "master_public_key",
         &key_data->master_pub),
@@ -959,13 +1078,10 @@ decode_keys_json (const json_t *resp_obj,
     json_t *group_obj;
     unsigned int group_idx;
 
-    json_array_foreach (denominations_by_group, group_idx, group_obj)
+    json_array_foreach (denominations_by_group,
+                        group_idx,
+                        group_obj)
     {
-      /* Running XOR of each SHA512 hash of the denominations' public key in
-         this group.  Used to compare against group.hash after all keys have
-         been parsed. */
-      struct GNUNET_HashCode group_hash_xor = {0};
-
       /* First, parse { cipher, fees, value, age_mask, hash } of the current
          group. */
       struct TALER_DenominationGroup group = {0};
@@ -988,7 +1104,9 @@ decode_keys_json (const json_t *resp_obj,
                                  NULL));
 
       /* Now, parse the individual denominations */
-      json_array_foreach (denom_keys_array, index, denom_key_obj)
+      json_array_foreach (denom_keys_array,
+                          index,
+                          denom_key_obj)
       {
         /* Set the common fields from the group for this particular
            denomination.  Required to make the validity check inside
@@ -1007,12 +1125,11 @@ decode_keys_json (const json_t *resp_obj,
                                                check_sig,
                                                denom_key_obj,
                                                &key_data->master_pub,
-                                               check_sig ? &hash_xor : NULL));
-
-        /* Build the running xor of the SHA512-hash of the public keys for the group */
-        GNUNET_CRYPTO_hash_xor (&dk.h_key.hash,
-                                &group_hash_xor,
-                                &group_hash_xor);
+                                               group_idx,
+                                               index,
+                                               check_sig
+                                               ? &sig_ctx
+                                               : NULL));
         for (unsigned int j = 0;
              j<key_data->num_denom_keys;
              j++)
@@ -1046,13 +1163,6 @@ decode_keys_json (const json_t *resp_obj,
           = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
                                        dk.valid_from);
       };   /* end of json_array_foreach over denominations */
-
-      /* The calculated group_hash_xor must be the same as group.hash from
-         the JSON. */
-      EXITIF (0 !=
-              GNUNET_CRYPTO_hash_cmp (&group_hash_xor,
-                                      &group.hash));
-
     } /* end of json_array_foreach over groups of denominations */
   } /* end of scope for group_ojb/group_idx */
 
@@ -1162,15 +1272,41 @@ decode_keys_json (const json_t *resp_obj,
 
   if (check_sig)
   {
+    struct GNUNET_HashContext *hash_context;
+    struct GNUNET_HashCode hc;
+
+    hash_context = GNUNET_CRYPTO_hash_context_start ();
+    qsort (sig_ctx.elements,
+           sig_ctx.elements_pos,
+           sizeof (struct SignatureElement),
+           &signature_context_sort_cb);
+    for (unsigned int i = 0; i<sig_ctx.elements_pos; i++)
+    {
+      struct SignatureElement *element = &sig_ctx.elements[i];
+
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Adding %u,%u,%s\n",
+                  element->group_offset,
+                  element->offset,
+                  TALER_B2S (&element->master_sig));
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &element->master_sig,
+                                       sizeof (element->master_sig));
+    }
+    GNUNET_array_grow (sig_ctx.elements,
+                       sig_ctx.elements_size,
+                       0);
+    GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                       &hc);
     EXITIF (GNUNET_OK !=
             TALER_EXCHANGE_test_signing_key (key_data,
-                                             &pub));
+                                             &exchange_pub));
     EXITIF (GNUNET_OK !=
             TALER_exchange_online_key_set_verify (
               key_data->list_issue_date,
-              &hash_xor,
-              &pub,
-              &denominations_sig));
+              &hc,
+              &exchange_pub,
+              &exchange_sig));
   }
   return GNUNET_OK;
 
@@ -1853,8 +1989,6 @@ add_grp (void *cls,
   }
 
   ge = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_data_auto ("hash",
-                                &gd->meta.hash),
     GNUNET_JSON_pack_string ("cipher",
                              cipher),
     GNUNET_JSON_pack_array_steal ("denoms",
@@ -2023,10 +2157,6 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                              GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 
       }
-      /* Build the running xor of the SHA512-hash of the public keys */
-      GNUNET_CRYPTO_hash_xor (&dk->h_key.hash,
-                              &gd->meta.hash,
-                              &gd->meta.hash);
       switch (meta.cipher)
       {
       case TALER_DENOMINATION_RSA:

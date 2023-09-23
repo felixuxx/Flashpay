@@ -6044,12 +6044,6 @@ struct TALER_DenominationGroup
 {
 
   /**
-   * XOR of all SHA-512 hashes of the public keys in this
-   * group.
-   */
-  struct GNUNET_HashCode hash;
-
-  /**
    * Value of coins in this denomination group.
    */
   struct TALER_Amount value;

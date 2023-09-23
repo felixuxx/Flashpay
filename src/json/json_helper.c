@@ -266,8 +266,6 @@ parse_denomination_group (void *cls,
       GNUNET_JSON_spec_uint32 ("age_mask",
                                &group->age_mask.bits),
       &age_mask_missing),
-    GNUNET_JSON_spec_fixed_auto ("hash",
-                                 &group->hash),
     GNUNET_JSON_spec_end ()
   };
   const char *emsg;
