@@ -17,12 +17,12 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/fakebank_bank_post_accounts_withdrawals_confirm.h
+ * @file bank-lib/fakebank_bank_post_withdrawals_confirm.h
  * @brief implement bank API withdrawals /confirm endpoint
  * @author Christian Grothoff <christian@grothoff.org>
  */
-#ifndef FAKEBANK_BANK_POST_ACCOUNTS_WITHDRAWALS_CONFIRM_H
-#define FAKEBANK_BANK_POST_ACCOUNTS_WITHDRAWALS_CONFIRM_H
+#ifndef FAKEBANK_BANK_POST_WITHDRAWALS_CONFIRM_H
+#define FAKEBANK_BANK_POST_WITHDRAWALS_CONFIRM_H
 
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
@@ -36,7 +36,6 @@
  *
  * @param h our fakebank handle
  * @param connection the connection
- * @param account_name name of the debited account
  * @param withdrawal_id the withdrawal operation identifier
  * @return MHD result code
  */
@@ -44,7 +43,6 @@ MHD_RESULT
 TALER_FAKEBANK_bank_withdrawals_confirm_ (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
-  const char *account_name,
   const char *withdrawal_id);
 
 #endif

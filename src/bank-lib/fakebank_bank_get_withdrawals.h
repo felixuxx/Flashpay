@@ -21,32 +21,30 @@
  * @brief implements the Taler Bank API "GET /accounts/ACC/withdrawals/WID" handler
  * @author Christian Grothoff <christian@grothoff.org>
  */
-#ifndef FAKEBANK_BANK_GET_ACCOUNTS_WITHDRAWALS_H
-#define FAKEBANK_BANK_GET_ACCOUNTS_WITHDRAWALS_H
+#ifndef FAKEBANK_BANK_GET_WITHDRAWALS_H
+#define FAKEBANK_BANK_GET_WITHDRAWALS_H
 
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
-#include "fakebank_bank_get_accounts_withdrawals.h"
+#include "fakebank_bank_get_withdrawals.h"
 
 
 /**
- * Handle GET /accounts/${account_name}/withdrawals/{withdrawal_id} request
+ * Handle GET /withdrawals/{withdrawal_id} request
  * to the Taler bank access API.
  *
  * @param h the handle
  * @param connection the connection
- * @param account_name name of the account
  * @param withdrawal_id withdrawal ID to return status of
  * @return MHD result code
  */
 MHD_RESULT
-TALER_FAKEBANK_bank_get_accounts_withdrawals_ (
+TALER_FAKEBANK_bank_get_withdrawals_ (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
-  const char *account_name,
   const char *withdrawal_id);
 
 

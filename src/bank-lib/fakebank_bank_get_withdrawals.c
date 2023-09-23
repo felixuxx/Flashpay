@@ -17,8 +17,8 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/fakebank_bank_get_accounts_withdrawals.c
- * @brief implements the Taler Bank API "GET /accounts/ACC/withdrawals/WID" handler
+ * @file bank-lib/fakebank_bank_get_withdrawals.c
+ * @brief implements the Taler Bank API "GET /withdrawals/$WID" handler
  * @author Christian Grothoff <christian@grothoff.org>
  */
 #include "platform.h"
@@ -28,29 +28,26 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
-#include "fakebank_bank_get_accounts_withdrawals.h"
+#include "fakebank_bank_get_withdrawals.h"
 #include "fakebank_common_lookup.h"
 
 
 /**
- * Handle GET /accounts/${account_name}/withdrawals/{withdrawal_id} request
+ * Handle GET /withdrawals/{withdrawal_id} request
  * to the Taler bank access API.
  *
  * @param h the handle
  * @param connection the connection
- * @param account_name name of the account
  * @param withdrawal_id withdrawal ID to return status of
  * @return MHD result code
  */
 MHD_RESULT
-TALER_FAKEBANK_bank_get_accounts_withdrawals_ (
+TALER_FAKEBANK_bank_get_withdrawals_ (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
-  const char *account_name,
   const char *withdrawal_id)
 {
   struct WithdrawalOperation *wo;
-  struct Account *acc;
 
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
@@ -64,27 +61,6 @@ TALER_FAKEBANK_bank_get_accounts_withdrawals_ (
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
                                        withdrawal_id);
-  }
-  acc = TALER_FAKEBANK_lookup_account_ (h,
-                                        account_name,
-                                        NULL);
-  if (NULL == acc)
-  {
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->big_lock));
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
-                                       account_name);
-  }
-  if (wo->debit_account != acc)
-  {
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->big_lock));
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
-                                       account_name);
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));

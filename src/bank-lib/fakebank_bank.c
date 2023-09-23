@@ -31,11 +31,11 @@
 #include "fakebank_tbr.h"
 #include "fakebank_twg.h"
 #include "fakebank_bank_get_accounts.h"
-#include "fakebank_bank_get_accounts_withdrawals.h"
+#include "fakebank_bank_get_withdrawals.h"
 #include "fakebank_bank_get_root.h"
 #include "fakebank_bank_post_accounts_withdrawals.h"
-#include "fakebank_bank_post_accounts_withdrawals_abort.h"
-#include "fakebank_bank_post_accounts_withdrawals_confirm.h"
+#include "fakebank_bank_post_withdrawals_abort.h"
+#include "fakebank_bank_post_withdrawals_confirm.h"
 #include "fakebank_bank_testing_register.h"
 
 
@@ -149,6 +149,69 @@ TALER_FAKEBANK_bank_main_ (
       url);
   }
 
+  if ( (0 == strncmp (url,
+                      "/withdrawals/",
+                      strlen ("/withdrawals/"))) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+  {
+    /* GET /withdrawals/$WID */
+    const char *wid;
+
+    wid = &url[strlen ("/withdrawals/")];
+    return TALER_FAKEBANK_bank_get_withdrawals_ (h,
+                                                 connection,
+                                                 wid);
+  }
+
+  if ( (0 == strncmp (url,
+                      "/withdrawals/",
+                      strlen ("/withdrawals/"))) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST)) )
+  {
+    /* POST /withdrawals/$WID* */
+    const char *wid = url + strlen ("/withdrawals/");
+    const char *opid = strchr (wid,
+                               '/');
+    char *wi;
+
+    if (NULL == opid)
+    {
+      /* POST /withdrawals/$WID (not defined) */
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                         url);
+    }
+    wi = GNUNET_strndup (wid,
+                         opid - wid);
+    if (0 == strcmp (opid,
+                     "/abort"))
+    {
+      /* POST /withdrawals/$WID/abort */
+      MHD_RESULT ret;
+
+      ret = TALER_FAKEBANK_bank_withdrawals_abort_ (h,
+                                                    connection,
+                                                    wi);
+      GNUNET_free (wi);
+      return ret;
+    }
+    if (0 == strcmp (opid,
+                     "/confirm"))
+    {
+      /* POST /withdrawals/$WID/confirm */
+      MHD_RESULT ret;
+
+      ret = TALER_FAKEBANK_bank_withdrawals_confirm_ (h,
+                                                      connection,
+                                                      wi);
+      GNUNET_free (wi);
+      return ret;
+    }
+  }
 
   if (0 == strncmp (url,
                     "/accounts/",
@@ -297,25 +360,6 @@ TALER_FAKEBANK_bank_main_ (
           TALER_EC_GENERIC_CLIENT_INTERNAL_ERROR,
           url);
       }
-      if (0 == strncmp (end_acc,
-                        "/withdrawals/",
-                        strlen ("/withdrawals/")))
-      {
-        /* GET /accounts/$ACCOUNT/withdrawals/$WID */
-        const char *wid;
-        char *acc;
-        MHD_RESULT ret;
-
-        acc = GNUNET_strndup (acc_name,
-                              end_acc - acc_name);
-        wid = &end_acc[strlen ("/withdrawals/")];
-        ret = TALER_FAKEBANK_bank_get_accounts_withdrawals_ (h,
-                                                             connection,
-                                                             acc,
-                                                             wid);
-        GNUNET_free (acc);
-        return ret;
-      }
       if (0 == strcmp (end_acc,
                        "/cashouts"))
       {
@@ -432,58 +476,6 @@ TALER_FAKEBANK_bank_main_ (
           con_cls);
         GNUNET_free (acc);
         return ret;
-      }
-
-      if (0 == strncmp (end_acc,
-                        "/withdrawals/",
-                        strlen ("/withdrawals/")))
-      {
-        /* POST /accounts/$ACCOUNT/withdrawals/$WID* */
-        const char *wid = end_acc + strlen ("/withdrawals/");
-        const char *opid = strchr (wid,
-                                   '/');
-        char *wi;
-
-        if (NULL == opid)
-        {
-          /* POST /accounts/$ACCOUNT/withdrawals/$WID (not defined) */
-          GNUNET_break_op (0);
-          GNUNET_free (acc);
-          return TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_NOT_FOUND,
-                                             TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                             acc_name);
-        }
-        wi = GNUNET_strndup (wid,
-                             opid - wid);
-        if (0 == strcmp (opid,
-                         "/abort"))
-        {
-          /* POST /accounts/$ACCOUNT/withdrawals/$WID/abort */
-          MHD_RESULT ret;
-
-          ret = TALER_FAKEBANK_bank_withdrawals_abort_ (h,
-                                                        connection,
-                                                        acc,
-                                                        wi);
-          GNUNET_free (wi);
-          GNUNET_free (acc);
-          return ret;
-        }
-        if (0 == strcmp (opid,
-                         "/confirm"))
-        {
-          /* POST /accounts/$ACCOUNT/withdrawals/$WID/confirm */
-          MHD_RESULT ret;
-
-          ret = TALER_FAKEBANK_bank_withdrawals_confirm_ (h,
-                                                          connection,
-                                                          acc,
-                                                          wi);
-          GNUNET_free (wi);
-          GNUNET_free (acc);
-          return ret;
-        }
       }
     }
   }

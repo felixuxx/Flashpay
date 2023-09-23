@@ -21,8 +21,8 @@
  * @brief implement bank API withdrawals /abort endpoint
  * @author Christian Grothoff <christian@grothoff.org>
  */
-#ifndef FAKEBANK_BANK_POST_ACCOUNTS_WITHDRAWALS_ABORT_H
-#define FAKEBANK_BANK_POST_ACCOUNTS_WITHDRAWALS_ABORT_H
+#ifndef FAKEBANK_BANK_POST_WITHDRAWALS_ABORT_H
+#define FAKEBANK_BANK_POST_WITHDRAWALS_ABORT_H
 
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
@@ -32,11 +32,10 @@
 
 
 /**
- * Handle POST /accounts/{account_name}/withdrawals/{withdrawal_id}/abort request.
+ * Handle POST /withdrawals/{withdrawal_id}/abort request.
  *
  * @param h our fakebank handle
  * @param connection the connection
- * @param account_name name of the debited account
  * @param withdrawal_id the withdrawal operation identifier
  * @return MHD result code
  */
@@ -44,7 +43,6 @@ MHD_RESULT
 TALER_FAKEBANK_bank_withdrawals_abort_ (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
-  const char *account_name,
   const char *withdrawal_id);
 
 #endif
