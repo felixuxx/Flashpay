@@ -5889,9 +5889,8 @@ TALER_age_commitment_hash (
  * @param age The actual age for which an age commitment is generated
  * @param seed The seed that goes into the key generation.  MUST be chosen uniformly random.
  * @param[out] comm_proof The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc() on success
- * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
-enum GNUNET_GenericReturnValue
+void
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   uint8_t age,
@@ -6024,7 +6023,7 @@ TALER_age_commitment_base_public_key;
  * @param max_age The maximum age for this coin.
  * @param[out] comm_proof The commitment and proof for age restriction for age @a max_age
  */
-enum GNUNET_GenericReturnValue
+void
 TALER_age_restriction_from_secret (
   const struct TALER_PlanchetMasterSecretP *secret,
   const struct TALER_AgeMask *mask,

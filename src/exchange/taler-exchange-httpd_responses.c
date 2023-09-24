@@ -171,7 +171,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
     TALER_JSON_pack_ec (ec),
     GNUNET_JSON_pack_data_auto ("coin_pub",
                                 coin_pub),
-    // FIXME: to be kept only for some of the error types!
+    // FIXME - #7267: to be kept only for some of the error types!
     GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                 h_denom_pub));
 }

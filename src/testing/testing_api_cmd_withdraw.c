@@ -578,20 +578,10 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &seed,
                                 sizeof(seed));
-
-    if (GNUNET_OK !=
-        TALER_age_restriction_commit (
-          &mask,
-          age,
-          &seed,
-          &ws->age_commitment_proof))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to generate age commitment for age %d at %s\n",
-                  age,
-                  label);
-      GNUNET_assert (0);
-    }
+    TALER_age_restriction_commit (&mask,
+                                  age,
+                                  &seed,
+                                  &ws->age_commitment_proof);
     TALER_age_commitment_hash (&ws->age_commitment_proof.commitment,
                                &ws->h_age_commitment);
   }

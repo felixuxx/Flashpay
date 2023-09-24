@@ -77,7 +77,7 @@ TALER_FAKEBANK_bank_main_ (
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
       GNUNET_JSON_pack_string ("name",
-                               "libeufin-bank" /* FIXME: spec!? */));
+                               "taler-corebank"));
   }
 
   if ( (0 == strcmp (url,

@@ -535,15 +535,12 @@ run (void *cls,
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   &seed,
                                   sizeof(seed));
-
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_age_restriction_commit (
-                       &mask,
-                       13,
-                       &seed,
-                       &acp));
-
-      TALER_age_commitment_hash (&acp.commitment, &hac);
+      TALER_age_restriction_commit (&mask,
+                                    13,
+                                    &seed,
+                                    &acp);
+      TALER_age_commitment_hash (&acp.commitment,
+                                 &hac);
     }
 
     GNUNET_assert (GNUNET_OK ==

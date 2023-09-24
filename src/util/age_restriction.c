@@ -118,43 +118,41 @@ TALER_get_lowest_age (
 
 
 #ifdef AGE_RESTRICTION_WITH_ECDSA
-/* @brief Helper function to generate a ECDSA private key
+/**
+ * @brief Helper function to generate a ECDSA private key
  *
  * @param seed Input seed
  * @param size Size of the seed in bytes
  * @param[out] pkey ECDSA private key
- * @return GNUNET_OK on success
  */
-static enum GNUNET_GenericReturnValue
+static void
 ecdsa_create_from_seed (
   const void *seed,
   size_t seed_size,
   struct GNUNET_CRYPTO_EcdsaPrivateKey *key)
 {
   enum GNUNET_GenericReturnValue ret;
-  ret = GNUNET_CRYPTO_kdf (key,
-                           sizeof (*key),
-                           &seed,
-                           seed_size,
-                           "age commitment",
-                           sizeof ("age commitment") - 1,
-                           NULL, 0);
-  if (GNUNET_OK != ret)
-    return ret;
 
+  GNUNET_assert (
+    GNUNET_OK ==
+    GNUNET_CRYPTO_kdf (key,
+                       sizeof (*key),
+                       &seed,
+                       seed_size,
+                       "age commitment",
+                       sizeof ("age commitment") - 1,
+                       NULL, 0));
   /* See GNUNET_CRYPTO_ecdsa_key_create */
   key->d[0] &= 248;
   key->d[31] &= 127;
   key->d[31] |= 64;
-
-  return GNUNET_OK;
 }
 
 
 #endif
 
 
-enum GNUNET_GenericReturnValue
+void
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   uint8_t age,
@@ -212,24 +210,15 @@ TALER_age_restriction_commit (
     GNUNET_CRYPTO_edx25519_key_get_public (&pkey->priv,
                                            &ncp->commitment.keys[i].pub);
 #else
-    if (GNUNET_OK !=
-        ecdsa_create_from_seed (&seed_i,
-                                sizeof(seed_i),
-                                &pkey->priv))
-    {
-      GNUNET_free (ncp->commitment.keys);
-      GNUNET_free (ncp->proof.keys);
-      return GNUNET_SYSERR;
-    }
-
+    ecdsa_create_from_seed (&seed_i,
+                            sizeof(seed_i),
+                            &pkey->priv);
     GNUNET_CRYPTO_ecdsa_key_get_public (&pkey->priv,
                                         &ncp->commitment.keys[i].pub);
 #endif
 
     seed_i.bits[0] += 1;
   }
-
-  return GNUNET_OK;
 }
 
 
@@ -656,7 +645,7 @@ TALER_age_mask_to_string (
 }
 
 
-enum GNUNET_GenericReturnValue
+void
 TALER_age_restriction_from_secret (
   const struct TALER_PlanchetMasterSecretP *secret,
   const struct TALER_AgeMask *mask,
@@ -720,14 +709,9 @@ TALER_age_restriction_from_secret (
       GNUNET_CRYPTO_edx25519_key_get_public (&pkey->priv,
                                              &ncp->commitment.keys[i].pub);
 #else
-      if (GNUNET_OK != ecdsa_create_from_seed (&seed_i,
-                                               sizeof(seed_i),
-                                               &pkey->priv))
-      {
-        GNUNET_free (ncp->commitment.keys);
-        GNUNET_free (ncp->proof.keys);
-        return GNUNET_SYSERR;
-      }
+      ecdsa_create_from_seed (&seed_i,
+                              sizeof(seed_i),
+                              &pkey->priv);
       GNUNET_CRYPTO_ecdsa_key_get_public (&pkey->priv,
                                           &ncp->commitment.keys[i].pub);
 #endif
@@ -752,9 +736,6 @@ TALER_age_restriction_from_secret (
 #endif
     }
   }
-
-  return GNUNET_OK;
-
 }
 
 

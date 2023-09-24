@@ -115,7 +115,6 @@ compile_transaction_history (
             json_array_append_new (
               history,
               GNUNET_JSON_PACK (
-                // FIXME: offset missing! (here and in all other cases!)
                 GNUNET_JSON_pack_string ("type",
                                          "DEPOSIT"),
                 TALER_JSON_pack_amount ("amount",

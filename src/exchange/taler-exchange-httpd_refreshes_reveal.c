@@ -111,9 +111,6 @@ struct RevealContext
   /**
    * Array of information about fresh coins being revealed.
    */
-  /* FIXME: const would be nicer here, but we initialize
-     the 'alg_values' in the verification
-     routine; suboptimal to be fixed... */
   struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs;
 
   /**

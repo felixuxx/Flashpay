@@ -533,21 +533,24 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                                 &bd->wire_deadline),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_GenericReturnValue res;
 
   (void) args;
-  res = TALER_MHD_parse_json_data (connection,
-                                   root,
-                                   spec);
-  if (GNUNET_SYSERR == res)
   {
-    GNUNET_break (0);
-    return MHD_NO;   /* hard failure */
-  }
-  if (GNUNET_NO == res)
-  {
-    GNUNET_break_op (0);
-    return MHD_YES;   /* failure */
+    enum GNUNET_GenericReturnValue res;
+
+    res = TALER_MHD_parse_json_data (connection,
+                                     root,
+                                     spec);
+    if (GNUNET_SYSERR == res)
+    {
+      GNUNET_break (0);
+      return MHD_NO; /* hard failure */
+    }
+    if (GNUNET_NO == res)
+    {
+      GNUNET_break_op (0);
+      return MHD_YES; /* failure */
+    }
   }
 
   /* validate merchant's wire details (as far as we can) */
@@ -638,39 +641,32 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
     struct TALER_EXCHANGEDB_CoinDepositInformation cdis[
       GNUNET_NZL (bd->num_cdis)];
     struct TALER_Amount deposit_fees[GNUNET_NZL (bd->num_cdis)];
+    enum GNUNET_GenericReturnValue res;
 
     bd->cdis = cdis;
     dc.deposit_fees = deposit_fees;
     for (unsigned int i = 0; i<bd->num_cdis; i++)
     {
-      do {
-        res = parse_coin (connection,
-                          &dc,
-                          json_array_get (coins,
-                                          i),
-                          &cdis[i],
-                          &deposit_fees[i]);
-        if (GNUNET_OK != res)
-          break;
+      struct TALER_Amount amount_without_fee;
 
-        /* If applicable, accumulate all contributions into the policy_details */
-        if (NULL != dc.policy_json)
-        {
-          /* FIXME: how do deposit-fee and policy-fee interact? */
-          struct TALER_Amount amount_without_fee;
-
-          // FIXME-Oec: wrong enum type for 'res' here!
-          res = TALER_amount_subtract (&amount_without_fee,
-                                       &cdis[i].amount_with_fee,
-                                       &deposit_fees[i]);
-          // FIXME-Oec: rval of res not checked
-          res = TALER_amount_add (
-            &dc.policy_details.accumulated_total,
-            &dc.policy_details.accumulated_total,
-            &amount_without_fee);
-        }
-      } while(0);
-
+      res = parse_coin (connection,
+                        &dc,
+                        json_array_get (coins,
+                                        i),
+                        &cdis[i],
+                        &deposit_fees[i]);
+      if (GNUNET_OK != res)
+        break;
+      GNUNET_assert (0 <=
+                     TALER_amount_subtract (
+                       &amount_without_fee,
+                       &cdis[i].amount_with_fee,
+                       &deposit_fees[i]));
+      GNUNET_assert (0 <=
+                     TALER_amount_add (
+                       &dc.policy_details.accumulated_total,
+                       &dc.policy_details.accumulated_total,
+                       &amount_without_fee));
       if (GNUNET_OK != res)
       {
         for (unsigned int j = 0; j<i; j++)

@@ -460,14 +460,17 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
   ws->expected_response_code = expected_response_code;
 
   cnt = 1;
-  va_start (ap, amount);
-  while (NULL != (va_arg (ap, const char *)))
+  va_start (ap,
+            amount);
+  while (NULL != (va_arg (ap,
+                          const char *)))
     cnt++;
   ws->num_coins = cnt;
   ws->coins = GNUNET_new_array (cnt,
                                 struct CoinState);
   va_end (ap);
-  va_start (ap, amount);
+  va_start (ap,
+            amount);
   for (unsigned int i = 0; i<ws->num_coins; i++)
   {
     struct CoinState *cs = &ws->coins[i];
@@ -481,21 +484,10 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   &seed,
                                   sizeof(seed));
-
-      if (GNUNET_OK !=
-          TALER_age_restriction_commit (
-            &mask,
-            age,
-            &seed,
-            &cs->age_commitment_proof))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failed to generate age commitment for age %d at %s\n",
-                    age,
-                    label);
-        GNUNET_assert (0);
-      }
-
+      TALER_age_restriction_commit (&mask,
+                                    age,
+                                    &seed,
+                                    &cs->age_commitment_proof);
       TALER_age_commitment_hash (&cs->age_commitment_proof.commitment,
                                  &cs->h_age_commitment);
     }
@@ -511,7 +503,8 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
       GNUNET_assert (0);
     }
     /* move on to next vararg! */
-    amount = va_arg (ap, const char *);
+    amount = va_arg (ap,
+                     const char *);
   }
   GNUNET_assert (NULL == amount);
   va_end (ap);

@@ -131,8 +131,8 @@ kyc_aml_finished (void *cls,
                                        &kyc_prox);
   birthdate = json_string_value (json_object_get (kat->attributes,
                                                   TALER_ATTRIBUTE_BIRTHDATE));
-
-  if (TEH_age_restriction_enabled)
+  if ( (TEH_age_restriction_enabled) &&
+       (NULL != birthdate) )
   {
     enum GNUNET_GenericReturnValue ret;
 
@@ -142,15 +142,16 @@ kyc_aml_finished (void *cls,
 
     if (GNUNET_OK != ret)
     {
-      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to parse birthdate `%s' from KYC attributes\n",
+                  birthdate);
       if (NULL != kat->response)
         MHD_destroy_response (kat->response);
       kat->http_status = MHD_HTTP_BAD_REQUEST;
       kat->response = TALER_MHD_make_error (
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         TALER_ATTRIBUTE_BIRTHDATE);
-
-      /* FIXME-Christian: shouldn't we return in the error case? */
+      goto RETURN_RESULT;
     }
   }
 
@@ -195,6 +196,7 @@ kyc_aml_finished (void *cls,
                                           "do_insert_kyc_attributes");
     /* Continued below to return the response */
   }
+RETURN_RESULT:
   /* Finally, return result to main handler */
   kat->cb (kat->cb_cls,
            kat->http_status,

@@ -260,9 +260,9 @@ parse_age_withdraw_json (
                                            sizeof(bch));
         }
 
-        /* Check for duplicate planchets
-         * FIXME: is this needed?
-         */
+        /* Check for duplicate planchets. Technically a bug on
+         * the client side that is harmless for us, but still
+         * not allowed per protocol */
         for (unsigned int i = 0; i < off + kappa; i++)
         {
           if (0 == TALER_blinded_planchet_cmp (&awc->coin_evs[off + kappa],

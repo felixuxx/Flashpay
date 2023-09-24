@@ -293,29 +293,21 @@ calculate_blinded_hash (
   /* calculate age commitment hash */
   {
     struct TALER_AgeCommitmentProof acp;
-    ret = TALER_age_restriction_from_secret (secret,
-                                             &denom_key->denom_pub.age_mask,
-                                             max_age,
-                                             &acp);
 
-    if (GNUNET_OK != ret)
-    {
-      GNUNET_break (0);
-      *result = TALER_MHD_reply_with_ec (connection,
-                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING, /* FIXME[oec]: better error code */
-                                         "derivation of age restriction failed");
-      return ret;
-    }
-
-    TALER_age_commitment_hash (&acp.commitment, &ach);
+    TALER_age_restriction_from_secret (secret,
+                                       &denom_key->denom_pub.age_mask,
+                                       max_age,
+                                       &acp);
+    TALER_age_commitment_hash (&acp.commitment,
+                               &ach);
   }
 
   /* Next: calculate planchet */
   {
-    struct TALER_CoinPubHashP c_hash = {0};
+    struct TALER_CoinPubHashP c_hash;
     struct TALER_PlanchetDetail detail = {0};
-    struct TALER_CoinSpendPrivateKeyP coin_priv = {0};
-    union TALER_DenominationBlindingKeyP bks = {0};
+    struct TALER_CoinSpendPrivateKeyP coin_priv;
+    union TALER_DenominationBlindingKeyP bks;
     struct TALER_ExchangeWithdrawValues alg_values = {
       .cipher = denom_key->denom_pub.cipher,
     };

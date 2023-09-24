@@ -903,12 +903,11 @@ prepare_coins (
       can->secret = input->secrets[k];
       /* Derive the age restriction from the given secret and
        * the maximum age */
-      FAIL_IF (GNUNET_OK !=
-               TALER_age_restriction_from_secret (
-                 &can->secret,
-                 &input->denom_pub->key.age_mask,
-                 awh->max_age,
-                 &can->details.age_commitment_proof));
+      TALER_age_restriction_from_secret (
+        &can->secret,
+        &input->denom_pub->key.age_mask,
+        awh->max_age,
+        &can->details.age_commitment_proof);
 
       TALER_age_commitment_hash (&can->details.age_commitment_proof.commitment,
                                  &can->details.h_age_commitment);

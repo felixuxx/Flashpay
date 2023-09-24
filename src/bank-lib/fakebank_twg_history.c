@@ -42,7 +42,6 @@ history_cleanup (void *cls)
 {
   struct HistoryContext *hc = cls;
 
-  GNUNET_free (hc->payto_uri);
   json_decref (hc->history);
   GNUNET_free (hc);
 }
@@ -93,13 +92,6 @@ TALER_FAKEBANK_twg_get_debit_history_ (
                                          TALER_EC_BANK_UNKNOWN_ACCOUNT,
                                          account);
     }
-    GNUNET_asprintf (&hc->payto_uri,
-                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
-                     account,
-                     hc->acc->receiver_name);
-    /* New invariant: */
-    GNUNET_assert (0 == strcmp (hc->payto_uri,
-                                hc->acc->payto_uri));
     hc->history = json_array ();
     if (NULL == hc->history)
     {
@@ -294,7 +286,7 @@ finish:
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string (
         "debit_account",
-        hc->payto_uri),
+        hc->acc->payto_uri),
       GNUNET_JSON_pack_array_steal (
         "outgoing_transactions",
         h));
@@ -347,14 +339,6 @@ TALER_FAKEBANK_twg_get_credit_history_ (
                                          TALER_EC_BANK_UNKNOWN_ACCOUNT,
                                          account);
     }
-    /* FIXME: was simply: acc->payto_uri -- same!? */
-    GNUNET_asprintf (&hc->payto_uri,
-                     "payto://x-taler-bank/%s/%s?receiver-name=%s",
-                     h->hostname,
-                     account,
-                     hc->acc->receiver_name);
-    GNUNET_assert (0 == strcmp (hc->payto_uri,
-                                hc->acc->payto_uri));
     hc->history = json_array ();
     if (NULL == hc->history)
     {
@@ -529,7 +513,7 @@ finish:
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string (
         "credit_account",
-        hc->payto_uri),
+        hc->acc->payto_uri),
       GNUNET_JSON_pack_array_steal (
         "incoming_transactions",
         h));

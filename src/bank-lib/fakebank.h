@@ -485,11 +485,6 @@ struct HistoryContext
   struct Account *acc;
 
   /**
-   * Payto URI of the account.
-   */
-  char *payto_uri;
-
-  /**
    * JSON object we are building to return.
    */
   json_t *history;

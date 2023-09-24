@@ -467,10 +467,6 @@ struct TALER_ExchangeKeySetPS
 
   /**
    * Hash over the various denomination signing keys returned.
-   * // FIXME: see discussion with Jonathan Krebs, we should hash
-   * over a stable sort of the keys here, plus likely add
-   * a filter (which ciphers are supported, age restrictions, other?)
-   * instead of just list_issue_date.
    */
   struct GNUNET_HashCode hc GNUNET_PACKED;
 };
