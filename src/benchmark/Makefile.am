@@ -71,5 +71,4 @@ EXTRA_DIST = \
   bank-benchmark-cs.conf \
   bank-benchmark-rsa.conf \
   coins-cs.conf \
-  coins-rsa.conf \
-  exchange_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv
+  coins-rsa.conf

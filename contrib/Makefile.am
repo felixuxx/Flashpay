@@ -50,6 +50,8 @@ EXTRA_DIST = \
   taler-bank-manage-testing \
   taler-nexus-prepare \
   taler-terms-generator.in \
+  taler-auditor-dbconfig \
+  taler-exchange-dbconfig \
   gana-generate.sh \
   gana/gnu-taler-error-codes/registry.rec \
   gana/gnu-taler-error-codes/Makefile \

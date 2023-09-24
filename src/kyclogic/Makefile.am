@@ -14,14 +14,15 @@ pkgcfg_DATA = \
   kyclogic-oauth2.conf \
   kyclogic-persona.conf
 
-EXTRA_DIST = \
-  $(pkgcfg_DATA) \
-  sample.conf \
-  persona-sample-reply.json
-
 bin_SCRIPTS = \
   taler-exchange-kyc-kycaid-converter.sh \
   taler-exchange-kyc-persona-converter.sh
+
+EXTRA_DIST = \
+  $(pkgcfg_DATA) \
+  $(bin_SCRIPTS) \
+  sample.conf \
+  persona-sample-reply.json
 
 lib_LTLIBRARIES = \
   libtalerkyclogic.la

@@ -569,10 +569,10 @@ EXTRA_DIST = \
   test_exchange_api.conf \
   test_exchange_api-cs.conf \
   test_exchange_api-rsa.conf \
-  test_exchange_api_age_restiction.conf \
-  test_exchange_api_age_restiction-cs.conf \
-  test_exchange_api_age_restiction-rsa.conf \
-  test_exchange_api_twisted.conf \
+  test_exchange_api_age_restriction.conf \
+  test_exchange_api_age_restriction-cs.conf \
+  test_exchange_api_age_restriction-rsa.conf \
+  test_exchange_api-twisted.conf \
   test_exchange_api_twisted-cs.conf \
   test_exchange_api_twisted-rsa.conf \
   test_exchange_api_keys_cherry_picking.conf \
