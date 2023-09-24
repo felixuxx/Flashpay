@@ -80,24 +80,24 @@ test_groups (void)
       .bits =
         1 | 1 << 5 | 1 << 13 | 1 << 23,
 
-      .group = { 0, 0, 0, 0, 0,
-                 1, 1, 1, 1, 1, 1, 1, 1,
-                 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }
+        .group = { 0, 0, 0, 0, 0,
+                   1, 1, 1, 1, 1, 1, 1, 1,
+                   2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                   3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }
 
 
     },
     {
       .bits =
         1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21,
-      .group = { 0, 0, 0, 0, 0, 0, 0, 0,
-                 1, 1,
-                 2, 2,
-                 3, 3,
-                 4, 4,
-                 5, 5,
-                 6, 6, 6,
-                 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}
+        .group = { 0, 0, 0, 0, 0, 0, 0, 0,
+                   1, 1,
+                   2, 2,
+                   3, 3,
+                   4, 4,
+                   5, 5,
+                   6, 6, 6,
+                   7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}
 
 
     }
@@ -168,7 +168,7 @@ test_dates (void)
      * loop */
     {.date = NULL, .expected = 0, .ret = GNUNET_OK },
   };
-  char buf[256]={0};
+  char buf[256] = {0};
 
   for (uint8_t t = 0; t < sizeof(test) / sizeof(test[0]); t++)
   {
@@ -321,11 +321,10 @@ test_attestation (void)
                                 &seed,
                                 sizeof(seed));
 
-    ret = TALER_age_restriction_commit (&age_mask,
-                                        age,
-                                        &seed,
-                                        &acp[0]);
-
+    TALER_age_restriction_commit (&age_mask,
+                                  age,
+                                  &seed,
+                                  &acp[0]);
     printf (
       "commit(age:%d) == %d; proof.num: %ld; age_group: %d\n",
       age,

@@ -1218,6 +1218,20 @@ handler_seed (struct TEH_RequestContext *rc,
 
 
 /**
+ * Signature of functions that handle simple
+ * POST operations for the management API.
+ *
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*ManagementPostHandler)(
+  struct MHD_Connection *connection,
+  const json_t *root);
+
+
+/**
  * Handle POST "/management/..." requests.
  *
  * @param rc request context
@@ -1230,6 +1244,55 @@ handle_post_management (struct TEH_RequestContext *rc,
                         const json_t *root,
                         const char *const args[])
 {
+  static const struct
+  {
+    const char *arg0;
+    const char *arg1;
+    ManagementPostHandler handler;
+  } plain_posts[] = {
+    {
+      .arg0 = "keys",
+      .handler = &TEH_handler_management_post_keys
+    },
+    {
+      .arg0 = "wire",
+      .handler = &TEH_handler_management_post_wire
+    },
+    {
+      .arg0 = "wire",
+      .arg1 = "disable",
+      .handler = &TEH_handler_management_post_wire_disable
+    },
+    {
+      .arg0 = "wire-fee",
+      .handler = &TEH_handler_management_post_wire_fees
+    },
+    {
+      .arg0 = "global-fee",
+      .handler = &TEH_handler_management_post_global_fees
+    },
+    {
+      .arg0 = "extensions",
+      .handler = &TEH_handler_management_post_extensions
+    },
+    {
+      .arg0 = "drain",
+      .handler = &TEH_handler_management_post_drain
+    },
+    {
+      .arg0 = "aml-officers",
+      .handler = &TEH_handler_management_aml_officers
+    },
+    {
+      .arg0 = "partners",
+      .handler = &TEH_handler_management_partners
+    },
+    {
+      NULL,
+      NULL,
+      NULL
+    }
+  };
   if (NULL == args[0])
   {
     GNUNET_break_op (0);
@@ -1325,108 +1388,22 @@ handle_post_management (struct TEH_RequestContext *rc,
                                                       &exchange_pub,
                                                       root);
   }
-  /* FIXME-STYLE: all of the following can likely be nicely combined
-     into an array-based dispatcher to deduplicate the logic... */
-  if (0 == strcmp (args[0],
-                   "keys"))
+  for (unsigned int i = 0;
+       NULL != plain_posts[i].handler;
+       i++)
   {
-    if (NULL != args[1])
+    if (0 == strcmp (args[0],
+                     plain_posts[i].arg0))
     {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/keys/*");
+      if ( ( (NULL == args[1]) &&
+             (NULL == plain_posts[i].arg1) ) ||
+           ( (NULL != args[1]) &&
+             (NULL != plain_posts[i].arg1) &&
+             (0 == strcmp (args[1],
+                           plain_posts[i].arg1)) ) )
+        return plain_posts[i].handler (rc->connection,
+                                       root);
     }
-    return TEH_handler_management_post_keys (rc->connection,
-                                             root);
-  }
-  if (0 == strcmp (args[0],
-                   "wire"))
-  {
-    if (NULL == args[1])
-      return TEH_handler_management_post_wire (rc->connection,
-                                               root);
-    if ( (0 != strcmp (args[1],
-                       "disable")) ||
-         (NULL != args[2]) )
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/wire/disable");
-    }
-    return TEH_handler_management_post_wire_disable (rc->connection,
-                                                     root);
-  }
-  if (0 == strcmp (args[0],
-                   "wire-fee"))
-  {
-    if (NULL != args[1])
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/wire-fee/*");
-    }
-    return TEH_handler_management_post_wire_fees (rc->connection,
-                                                  root);
-  }
-  if (0 == strcmp (args[0],
-                   "global-fee"))
-  {
-    if (NULL != args[1])
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/global-fee/*");
-    }
-    return TEH_handler_management_post_global_fees (rc->connection,
-                                                    root);
-  }
-  if (0 == strcmp (args[0],
-                   "extensions"))
-  {
-    if (NULL != args[1])
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/extensions/*");
-    }
-    return TEH_handler_management_post_extensions (rc->connection,
-                                                   root);
-  }
-  if (0 == strcmp (args[0],
-                   "drain"))
-  {
-    if (NULL != args[1])
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/drain/*");
-    }
-    return TEH_handler_management_post_drain (rc->connection,
-                                              root);
-  }
-  if (0 == strcmp (args[0],
-                   "aml-officers"))
-  {
-    if (NULL != args[1])
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/aml-officers/*");
-    }
-    return TEH_handler_management_aml_officers (rc->connection,
-                                                root);
-  }
-  if (0 == strcmp (args[0],
-                   "partners"))
-  {
-    if (NULL != args[1])
-    {
-      GNUNET_break_op (0);
-      return r404 (rc->connection,
-                   "/management/partners/*");
-    }
-    return TEH_handler_management_partners (rc->connection,
-                                            root);
   }
   GNUNET_break_op (0);
   return r404 (rc->connection,
