@@ -552,7 +552,8 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
       return MHD_YES; /* failure */
     }
   }
-
+  TALER_amount_set_zero (TEH_currency,
+                         &dc.policy_details.accumulated_total);
   /* validate merchant's wire details (as far as we can) */
   {
     char *emsg;
