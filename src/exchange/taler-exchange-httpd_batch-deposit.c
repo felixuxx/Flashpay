@@ -710,14 +710,14 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
 
     /* generate regular response */
     {
-      MHD_RESULT res;
+      MHD_RESULT mhd_ret;
 
-      res = reply_batch_deposit_success (connection,
-                                         &dc);
+      mhd_ret = reply_batch_deposit_success (connection,
+                                             &dc);
       for (unsigned int j = 0; j<bd->num_cdis; j++)
         TALER_denom_sig_free (&cdis[j].coin.denom_sig);
       GNUNET_JSON_parse_free (spec);
-      return res;
+      return mhd_ret;
     }
   }
 }
