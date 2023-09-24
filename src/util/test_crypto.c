@@ -135,12 +135,10 @@ test_planchets_rsa (uint8_t age)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &seed,
                                 sizeof(seed));
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_age_restriction_commit (&age_mask,
-                                                 age,
-                                                 &seed,
-                                                 &acp));
+    TALER_age_restriction_commit (&age_mask,
+                                  age,
+                                  &seed,
+                                  &acp);
     TALER_age_commitment_hash (&acp.commitment,
                                &ah);
     ach = &ah;
@@ -267,12 +265,10 @@ test_planchets_cs (uint8_t age)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &seed,
                                 sizeof(seed));
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_age_restriction_commit (&age_mask,
-                                                 age,
-                                                 &seed,
-                                                 &acp));
+    TALER_age_restriction_commit (&age_mask,
+                                  age,
+                                  &seed,
+                                  &acp);
     TALER_age_commitment_hash (&acp.commitment,
                                &ah);
     ach = &ah;
