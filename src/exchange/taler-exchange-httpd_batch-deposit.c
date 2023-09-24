@@ -643,10 +643,11 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
       GNUNET_NZL (bd->num_cdis)];
     struct TALER_Amount deposit_fees[GNUNET_NZL (bd->num_cdis)];
     enum GNUNET_GenericReturnValue res;
+    unsigned int i;
 
     bd->cdis = cdis;
     dc.deposit_fees = deposit_fees;
-    for (unsigned int i = 0; i<bd->num_cdis; i++)
+    for (i = 0; i<bd->num_cdis; i++)
     {
       struct TALER_Amount amount_without_fee;
 
@@ -668,13 +669,13 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                        &dc.policy_details.accumulated_total,
                        &dc.policy_details.accumulated_total,
                        &amount_without_fee));
-      if (GNUNET_OK != res)
-      {
-        for (unsigned int j = 0; j<i; j++)
-          TALER_denom_sig_free (&cdis[j].coin.denom_sig);
-        GNUNET_JSON_parse_free (spec);
-        return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-      }
+    }
+    if (GNUNET_OK != res)
+    {
+      for (unsigned int j = 0; j<i; j++)
+        TALER_denom_sig_free (&cdis[j].coin.denom_sig);
+      GNUNET_JSON_parse_free (spec);
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
 
     dc.exchange_timestamp = GNUNET_TIME_timestamp_get ();
