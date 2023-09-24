@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -421,14 +421,23 @@ struct TALER_AUDITORDB_DepositConfirmation
    * Amount to be deposited, excluding fee.  Calculated from the
    * amount with fee and the fee from the deposit request.
    */
-  struct TALER_Amount amount_without_fee;
+  struct TALER_Amount total_without_fee;
 
   /**
-   * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.  The deposit request is to be
-   * signed by the corresponding private key (using EdDSA).
+   * Length of the @e coin_pubs and @e coin_sigs arrays.
    */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
+  unsigned int num_coins;
+
+  /**
+   * Array of the coin public keys involved in the
+   * batch deposit operation.
+   */
+  const struct TALER_CoinSpendPublicKeyP *coin_pubs;
+
+  /**
+   * Array of coin deposit signatures from the deposit operation.
+   */
+  const struct TALER_CoinSpendSignatureP *coin_sigs;
 
   /**
    * The Merchant's public key.  Allows the merchant to later refund

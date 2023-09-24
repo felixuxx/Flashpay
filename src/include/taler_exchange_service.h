@@ -1143,9 +1143,9 @@ struct TALER_EXCHANGE_BatchDepositResult
       struct GNUNET_TIME_Timestamp deposit_timestamp;
 
       /**
-       * Array of signatures provided by the exchange
+       * Deposit confirmation signature provided by the exchange
        */
-      const struct TALER_ExchangeSignatureP *exchange_sigs;
+      const struct TALER_ExchangeSignatureP *exchange_sig;
 
       /**
        * exchange key used to sign @a exchange_sig.
@@ -1157,11 +1157,6 @@ struct TALER_EXCHANGE_BatchDepositResult
        * NULL to use the default base URL.
        */
       const char *transaction_base_url;
-
-      /**
-       * Length of the @e exchange_sigs array.
-       */
-      unsigned int num_signatures;
 
     } ok;
 

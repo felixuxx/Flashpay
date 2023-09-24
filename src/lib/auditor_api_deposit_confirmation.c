@@ -167,22 +167,25 @@ handle_deposit_confirmation_finished (void *cls,
  * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
  */
 static enum GNUNET_GenericReturnValue
-verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
-                   const struct TALER_ExtensionPolicyHashP *h_policy,
-                   const struct TALER_PrivateContractHashP *h_contract_terms,
-                   struct GNUNET_TIME_Timestamp exchange_timestamp,
-                   struct GNUNET_TIME_Timestamp wire_deadline,
-                   struct GNUNET_TIME_Timestamp refund_deadline,
-                   const struct TALER_Amount *amount_without_fee,
-                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                   const struct TALER_MerchantPublicKeyP *merchant_pub,
-                   const struct TALER_ExchangePublicKeyP *exchange_pub,
-                   const struct TALER_ExchangeSignatureP *exchange_sig,
-                   const struct TALER_MasterPublicKeyP *master_pub,
-                   struct GNUNET_TIME_Timestamp ep_start,
-                   struct GNUNET_TIME_Timestamp ep_expire,
-                   struct GNUNET_TIME_Timestamp ep_end,
-                   const struct TALER_MasterSignatureP *master_sig)
+verify_signatures (
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  struct GNUNET_TIME_Timestamp wire_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
+  const struct TALER_Amount *amount_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendSignatureP *coin_sigs[
+    static num_coins],
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Timestamp ep_start,
+  struct GNUNET_TIME_Timestamp ep_expire,
+  struct GNUNET_TIME_Timestamp ep_end,
+  const struct TALER_MasterSignatureP *master_sig)
 {
   if (GNUNET_OK !=
       TALER_exchange_online_deposit_confirmation_verify (
@@ -193,7 +196,8 @@ verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
         wire_deadline,
         refund_deadline,
         amount_without_fee,
-        coin_pub,
+        num_coins,
+        coin_sigs,
         merchant_pub,
         exchange_pub,
         exchange_sig))
@@ -241,8 +245,12 @@ TALER_AUDITOR_deposit_confirmation (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *total_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendPublicKeyP *coin_pubs[
+    static num_coins],
+  const struct TALER_CoinSpendSignatureP *coin_sigs[
+    static num_coins],
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_ExchangeSignatureP *exchange_sig,
@@ -257,7 +265,14 @@ TALER_AUDITOR_deposit_confirmation (
   struct TALER_AUDITOR_DepositConfirmationHandle *dh;
   json_t *deposit_confirmation_obj;
   CURL *eh;
+  json_t *jcoin_sigs;
+  json_t *jcoin_pubs;
 
+  if (0 == num_coins)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   if (GNUNET_OK !=
       verify_signatures (h_wire,
                          h_policy,
@@ -265,8 +280,9 @@ TALER_AUDITOR_deposit_confirmation (
                          exchange_timestamp,
                          wire_deadline,
                          refund_deadline,
-                         amount_without_fee,
-                         coin_pub,
+                         total_without_fee,
+                         num_coins,
+                         coin_sigs,
                          merchant_pub,
                          exchange_pub,
                          exchange_sig,
@@ -279,7 +295,21 @@ TALER_AUDITOR_deposit_confirmation (
     GNUNET_break_op (0);
     return NULL;
   }
-
+  jcoin_sigs = json_array ();
+  GNUNET_assert (NULL != jcoin_sigs);
+  jcoin_pubs = json_array ();
+  GNUNET_assert (NULL != jcoin_pubs);
+  for (unsigned int i = 0; i<num_coins; i++)
+  {
+    GNUNET_assert (0 ==
+                   json_array_append_new (jcoin_sigs,
+                                          GNUNET_JSON_from_data_auto (
+                                            coin_sigs[i])));
+    GNUNET_assert (0 ==
+                   json_array_append_new (jcoin_pubs,
+                                          GNUNET_JSON_from_data_auto (
+                                            coin_pubs[i])));
+  }
   deposit_confirmation_obj
     = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_wire",
@@ -295,10 +325,12 @@ TALER_AUDITOR_deposit_confirmation (
                                       refund_deadline)),
         GNUNET_JSON_pack_timestamp ("wire_deadline",
                                     wire_deadline),
-        TALER_JSON_pack_amount ("amount_without_fee",
-                                amount_without_fee),
-        GNUNET_JSON_pack_data_auto ("coin_pub",
-                                    coin_pub),
+        TALER_JSON_pack_amount ("total_without_fee",
+                                total_without_fee),
+        GNUNET_JSON_pack_array_steal ("coin_pubs",
+                                      jcoin_pubs),
+        GNUNET_JSON_pack_array_steal ("coin_sigs",
+                                      jcoin_sigs),
         GNUNET_JSON_pack_data_auto ("merchant_pub",
                                     merchant_pub),
         GNUNET_JSON_pack_data_auto ("exchange_sig",

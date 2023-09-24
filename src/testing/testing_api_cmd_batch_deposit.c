@@ -59,6 +59,11 @@ struct Coin
   struct TALER_Amount deposit_fee;
 
   /**
+   * Our coin signature.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
    * Reference to any command that is able to provide a coin,
    * possibly using $LABEL#$INDEX notation.
    */
@@ -151,10 +156,9 @@ struct BatchDepositState
   struct GNUNET_SCHEDULER_Task *retry_task;
 
   /**
-   * Array of @e num_coins signatures from the exchange on the
-   * deposit confirmation.
+   * Deposit confirmation signature from the exchange.
    */
-  struct TALER_ExchangeSignatureP *exchange_sigs;
+  struct TALER_ExchangeSignatureP exchange_sig;
 
   /**
    * Reference to previous deposit operation.
@@ -205,19 +209,10 @@ batch_deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
-    if (ds->num_coins != dr->details.ok.num_signatures)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (ds->is);
-      return;
-    }
     ds->deposit_succeeded = GNUNET_YES;
     ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
     ds->exchange_pub = *dr->details.ok.exchange_pub;
-    ds->exchange_sigs = GNUNET_memdup (dr->details.ok.exchange_sigs,
-                                       dr->details.ok.num_signatures
-                                       * sizeof (struct
-                                                 TALER_ExchangeSignatureP));
+    ds->exchange_sig = *dr->details.ok.exchange_sig;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -373,6 +368,7 @@ batch_deposit_run (void *cls,
                                ds->refund_deadline,
                                coin_priv,
                                &cdd->coin_sig);
+    coin->coin_sig = cdd->coin_sig;
   }
 
   GNUNET_assert (NULL == ds->dh);
@@ -439,7 +435,6 @@ batch_deposit_cleanup (void *cls,
   for (unsigned int i = 0; i<ds->num_coins; i++)
     GNUNET_free (ds->coins[i].coin_reference);
   GNUNET_free (ds->coins);
-  GNUNET_free (ds->exchange_sigs);
   json_decref (ds->wire_details);
   json_decref (ds->contract_terms);
   GNUNET_free (ds);
@@ -495,10 +490,10 @@ batch_deposit_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       /* First two traits are only available if
          ds->traits is #GNUNET_YES */
-      TALER_TESTING_make_trait_exchange_pub (index,
+      TALER_TESTING_make_trait_exchange_pub (0,
                                              &ds->exchange_pub),
-      TALER_TESTING_make_trait_exchange_sig (index,
-                                             &ds->exchange_sigs[index]),
+      TALER_TESTING_make_trait_exchange_sig (0,
+                                             &ds->exchange_sig),
       /* These traits are always available */
       TALER_TESTING_make_trait_wire_details (ds->wire_details),
       TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
@@ -507,6 +502,8 @@ batch_deposit_traits (void *cls,
                                                      age_commitment_proof),
       TALER_TESTING_make_trait_coin_priv (index,
                                           coin_spent_priv),
+      TALER_TESTING_make_trait_coin_sig (index,
+                                         &coin->coin_sig),
       TALER_TESTING_make_trait_deposit_amount (index,
                                                &coin->amount),
       TALER_TESTING_make_trait_deposit_fee_amount (index,

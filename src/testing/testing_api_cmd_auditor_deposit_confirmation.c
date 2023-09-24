@@ -59,9 +59,9 @@ struct DepositConfirmationState
   const char *amount_without_fee;
 
   /**
-   * Which coin of the @e deposit_reference should we confirm.
+   * How many coins were there in the @e deposit_reference?
    */
-  unsigned int coin_index;
+  unsigned int num_coins;
 
   /**
    * DepositConfirmation handle while operation is running.
@@ -201,14 +201,15 @@ deposit_confirmation_run (void *cls,
   struct GNUNET_TIME_Timestamp refund_deadline
     = GNUNET_TIME_UNIT_ZERO_TS;
   struct TALER_Amount amount_without_fee;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pubs[dcs->num_coins];
+  const struct TALER_CoinSpendPublicKeyP *coin_pubps[dcs->num_coins];
+  const struct TALER_CoinSpendSignatureP *coin_sigps[dcs->num_coins];
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
   struct TALER_MerchantPublicKeyP merchant_pub;
   const struct TALER_ExchangePublicKeyP *exchange_pub;
   const struct TALER_ExchangeSignatureP *exchange_sig;
   const json_t *wire_details;
   const json_t *contract_terms;
-  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   const char *auditor_url;
@@ -249,19 +250,19 @@ deposit_confirmation_run (void *cls,
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_exchange_pub (deposit_cmd,
-                                                       dcs->coin_index,
+                                                       0,
                                                        &exchange_pub));
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_exchange_sig (deposit_cmd,
-                                                       dcs->coin_index,
+                                                       0,
                                                        &exchange_sig));
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_timestamp (deposit_cmd,
-                                                    dcs->coin_index,
+                                                    0,
                                                     &exchange_timestamp));
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_wire_deadline (deposit_cmd,
-                                                        dcs->coin_index,
+                                                        0,
                                                         &wire_deadline));
   GNUNET_assert (NULL != exchange_timestamp);
   keys = TALER_TESTING_get_keys (is);
@@ -283,12 +284,23 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_merchant_wire_signature_hash (wire_details,
                                                           &h_wire));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_coin_priv (deposit_cmd,
-                                                    dcs->coin_index,
-                                                    &coin_priv));
-  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
-                                      &coin_pub.eddsa_pub);
+
+  for (unsigned int i = 0; i<dcs->num_coins; i++)
+  {
+    const struct TALER_CoinSpendPrivateKeyP *coin_priv;
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_coin_priv (deposit_cmd,
+                                                      i,
+                                                      &coin_priv));
+    GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                        &coin_pubs[i].eddsa_pub);
+    coin_pubps[i] = &coin_pubs[i];
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_coin_sig (deposit_cmd,
+                                                     i,
+                                                     &coin_sigps[i]));
+  }
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_merchant_priv (deposit_cmd,
                                                         &merchant_priv));
@@ -331,7 +343,9 @@ deposit_confirmation_run (void *cls,
     *wire_deadline,
     refund_deadline,
     &amount_without_fee,
-    &coin_pub,
+    dcs->num_coins,
+    coin_pubps,
+    coin_sigps,
     &merchant_pub,
     exchange_pub,
     exchange_sig,
@@ -385,7 +399,7 @@ deposit_confirmation_cleanup (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation (const char *label,
                                         const char *deposit_reference,
-                                        unsigned int coin_index,
+                                        unsigned int num_coins,
                                         const char *amount_without_fee,
                                         unsigned int expected_response_code)
 {
@@ -393,7 +407,7 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
 
   dcs = GNUNET_new (struct DepositConfirmationState);
   dcs->deposit_reference = deposit_reference;
-  dcs->coin_index = coin_index;
+  dcs->num_coins = num_coins;
   dcs->amount_without_fee = amount_without_fee;
   dcs->expected_response_code = expected_response_code;
 

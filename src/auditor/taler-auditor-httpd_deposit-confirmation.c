@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -115,6 +115,11 @@ verify_and_execute_deposit_confirmation (
     .end = GNUNET_TIME_timestamp_hton (es->ep_end),
     .signkey_pub = es->exchange_pub
   };
+  const struct TALER_CoinSpendSignatureP *coin_sigps[
+    GNUNET_NZL (dc->num_coins)];
+
+  for (unsigned int i = 0; i<dc->num_coins; i++)
+    coin_sigps[i] = &dc->coin_sigs[i];
 
   if (GNUNET_TIME_absolute_is_future (es->ep_start.abs_time) ||
       GNUNET_TIME_absolute_is_past (es->ep_expire.abs_time) )
@@ -231,8 +236,9 @@ verify_and_execute_deposit_confirmation (
         dc->exchange_timestamp,
         dc->wire_deadline,
         dc->refund_deadline,
-        &dc->amount_without_fee,
-        &dc->coin_pub,
+        &dc->total_without_fee,
+        dc->num_coins,
+        coin_sigps,
         &dc->merchant,
         &dc->exchange_pub,
         &dc->exchange_sig))
@@ -265,16 +271,19 @@ verify_and_execute_deposit_confirmation (
 
 
 MHD_RESULT
-TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size)
+TAH_DEPOSIT_CONFIRMATION_handler (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size)
 {
   struct TALER_AUDITORDB_DepositConfirmation dc = {
     .refund_deadline = GNUNET_TIME_UNIT_ZERO_TS
   };
   struct TALER_AUDITORDB_ExchangeSigningKey es;
+  const json_t *jcoin_sigs;
+  const json_t *jcoin_pubs;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &dc.h_contract_terms),
@@ -290,11 +299,13 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
       NULL),
     GNUNET_JSON_spec_timestamp ("wire_deadline",
                                 &dc.wire_deadline),
-    TALER_JSON_spec_amount ("amount_without_fee",
+    TALER_JSON_spec_amount ("total_without_fee",
                             TAH_currency,
-                            &dc.amount_without_fee),
-    GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                 &dc.coin_pub),
+                            &dc.total_without_fee),
+    GNUNET_JSON_spec_array_const ("coin_pubs",
+                                  &jcoin_pubs),
+    GNUNET_JSON_spec_array_const ("coin_sigs",
+                                  &jcoin_sigs),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                  &dc.merchant),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
@@ -313,13 +324,14 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                  &es.master_sig),
     GNUNET_JSON_spec_end ()
   };
+  unsigned int num_coins;
+  json_t *json;
 
   (void) rh;
   (void) connection_cls;
   (void) upload_data;
   (void) upload_data_size;
   {
-    json_t *json;
     enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_post_json (connection,
@@ -335,22 +347,89 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
     res = TALER_MHD_parse_json_data (connection,
                                      json,
                                      spec);
-    json_decref (json);
     if (GNUNET_SYSERR == res)
+    {
+      json_decref (json);
       return MHD_NO; /* hard failure */
+    }
     if (GNUNET_NO == res)
+    {
+      json_decref (json);
       return MHD_YES; /* failure */
+    }
   }
-
-  es.exchange_pub = dc.exchange_pub; /* used twice! */
-  dc.master_public_key = es.master_public_key;
+  num_coins = json_array_size (jcoin_sigs);
+  if (num_coins != json_array_size (jcoin_pubs))
   {
+    GNUNET_break_op (0);
+    json_decref (json);
+    return TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      "coin_pubs.length != coin_sigs.length");
+  }
+  if (0 == num_coins)
+  {
+    GNUNET_break_op (0);
+    json_decref (json);
+    return TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      "coin_pubs array is empty");
+  }
+  {
+    struct TALER_CoinSpendPublicKeyP coin_pubs[num_coins];
+    struct TALER_CoinSpendSignatureP coin_sigs[num_coins];
     MHD_RESULT res;
 
+    for (unsigned int i = 0; i<num_coins; i++)
+    {
+      json_t *jpub = json_array_get (jcoin_pubs,
+                                     i);
+      json_t *jsig = json_array_get (jcoin_sigs,
+                                     i);
+      const char *ps = json_string_value (jpub);
+      const char *ss = json_string_value (jsig);
+
+      if ( (NULL == ps) ||
+           (GNUNET_OK !=
+            GNUNET_STRINGS_string_to_data (ps,
+                                           strlen (ps),
+                                           &coin_pubs[i],
+                                           sizeof (coin_pubs[i]))) )
+      {
+        GNUNET_break_op (0);
+        json_decref (json);
+        return TALER_MHD_reply_with_ec (
+          connection,
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "coin_pub[] malformed");
+      }
+      if ( (NULL == ss) ||
+           (GNUNET_OK !=
+            GNUNET_STRINGS_string_to_data (ss,
+                                           strlen (ss),
+                                           &coin_sigs[i],
+                                           sizeof (coin_sigs[i]))) )
+      {
+        GNUNET_break_op (0);
+        json_decref (json);
+        return TALER_MHD_reply_with_ec (
+          connection,
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "coin_sig[] malformed");
+      }
+    }
+    dc.num_coins = num_coins;
+    dc.coin_pubs = coin_pubs;
+    dc.coin_sigs = coin_sigs;
+    es.exchange_pub = dc.exchange_pub; /* used twice! */
+    dc.master_public_key = es.master_public_key;
     res = verify_and_execute_deposit_confirmation (connection,
                                                    &dc,
                                                    &es);
     GNUNET_JSON_parse_free (spec);
+    json_decref (json);
     return res;
   }
 }

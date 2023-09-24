@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -41,8 +41,13 @@ TAH_PG_insert_deposit_confirmation (
     GNUNET_PQ_query_param_timestamp (&dc->wire_deadline),
     GNUNET_PQ_query_param_timestamp (&dc->refund_deadline),
     TALER_PQ_query_param_amount (pg->conn,
-                                 &dc->amount_without_fee),
-    GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
+                                 &dc->total_without_fee),
+    GNUNET_PQ_query_param_array_auto_from_type (dc->num_coins,
+                                                dc->coin_pubs,
+                                                pg->conn),
+    GNUNET_PQ_query_param_array_auto_from_type (dc->num_coins,
+                                                dc->coin_sigs,
+                                                pg->conn),
     GNUNET_PQ_query_param_auto_from_type (&dc->merchant),
     GNUNET_PQ_query_param_auto_from_type (&dc->exchange_sig),
     GNUNET_PQ_query_param_auto_from_type (&dc->exchange_pub),
@@ -60,13 +65,14 @@ TAH_PG_insert_deposit_confirmation (
            ",exchange_timestamp"
            ",wire_deadline"
            ",refund_deadline"
-           ",amount_without_fee"
-           ",coin_pub"
+           ",total_without_fee"
+           ",coin_pubs"
+           ",coin_sigs"
            ",merchant_pub"
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"                  /* master_sig could be normalized... */
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);");
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_deposit_confirmation_insert",
                                              params);

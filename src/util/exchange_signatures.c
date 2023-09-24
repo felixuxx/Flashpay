@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021, 2022 Taler Systems SA
+  Copyright (C) 2021-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -78,12 +78,12 @@ struct TALER_DepositConfirmationPS
    * Amount to be deposited, excluding fee.  Calculated from the
    * amount with fee and the fee from the deposit request.
    */
-  struct TALER_AmountNBO amount_without_fee;
+  struct TALER_AmountNBO total_without_fee;
 
   /**
-   * The public key of the coin that was deposited.
+   * Hash over all of the coin signatures.
    */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct GNUNET_HashCode h_coin_sigs;
 
   /**
    * The Merchant's public key.  Allows the merchant to later refund
@@ -105,8 +105,9 @@ TALER_exchange_online_deposit_confirmation_sign (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *total_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendSignatureP *coin_sigs[static num_coins],
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig)
@@ -119,14 +120,21 @@ TALER_exchange_online_deposit_confirmation_sign (
     .exchange_timestamp = GNUNET_TIME_timestamp_hton (exchange_timestamp),
     .wire_deadline = GNUNET_TIME_timestamp_hton (wire_deadline),
     .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
-    .coin_pub = *coin_pub,
     .merchant_pub = *merchant_pub
   };
+  struct GNUNET_HashContext *hc;
 
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  for (unsigned int i = 0; i<num_coins; i++)
+    GNUNET_CRYPTO_hash_context_read (hc,
+                                     coin_sigs[i],
+                                     sizeof (*coin_sigs[i]));
+  GNUNET_CRYPTO_hash_context_finish (hc,
+                                     &dcs.h_coin_sigs);
   if (NULL != h_policy)
     dcs.h_policy = *h_policy;
-  TALER_amount_hton (&dcs.amount_without_fee,
-                     amount_without_fee);
+  TALER_amount_hton (&dcs.total_without_fee,
+                     total_without_fee);
   return scb (&dcs.purpose,
               pub,
               sig);
@@ -141,8 +149,9 @@ TALER_exchange_online_deposit_confirmation_verify (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *total_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendSignatureP *coin_sigs[static num_coins],
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_ExchangeSignatureP *exchange_sig)
@@ -155,14 +164,21 @@ TALER_exchange_online_deposit_confirmation_verify (
     .exchange_timestamp = GNUNET_TIME_timestamp_hton (exchange_timestamp),
     .wire_deadline = GNUNET_TIME_timestamp_hton (wire_deadline),
     .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
-    .coin_pub = *coin_pub,
     .merchant_pub = *merchant_pub
   };
+  struct GNUNET_HashContext *hc;
 
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  for (unsigned int i = 0; i<num_coins; i++)
+    GNUNET_CRYPTO_hash_context_read (hc,
+                                     coin_sigs[i],
+                                     sizeof (*coin_sigs[i]));
+  GNUNET_CRYPTO_hash_context_finish (hc,
+                                     &dcs.h_coin_sigs);
   if (NULL != h_policy)
     dcs.h_policy = *h_policy;
-  TALER_amount_hton (&dcs.amount_without_fee,
-                     amount_without_fee);
+  TALER_amount_hton (&dcs.total_without_fee,
+                     total_without_fee);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
                                   &dcs,

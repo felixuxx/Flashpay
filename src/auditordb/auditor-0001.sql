@@ -289,13 +289,14 @@ CREATE TABLE IF NOT EXISTS deposit_confirmations
   ,exchange_timestamp INT8 NOT NULL
   ,refund_deadline INT8 NOT NULL
   ,wire_deadline INT8 NOT NULL
-  ,amount_without_fee taler_amount NOT NULL
-  ,coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)
+  ,total_without_fee taler_amount NOT NULL
+  ,coin_pubs BYTEA[] NOT NULL CHECK (CARDINALITY(coin_pubs)>0)
+  ,coin_sigs BYTEA[] NOT NULL CHECK (CARDINALITY(coin_sigs)=CARDINALITY(coin_pubs))
   ,merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)
   ,exchange_sig BYTEA NOT NULL CHECK (LENGTH(exchange_sig)=64)
   ,exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,PRIMARY KEY (h_contract_terms,h_wire,coin_pub,merchant_pub,exchange_sig,exchange_pub,master_sig)
+  ,PRIMARY KEY (h_contract_terms,h_wire,merchant_pub,exchange_sig,exchange_pub,master_sig)
   );
 COMMENT ON TABLE deposit_confirmations
   IS 'deposit confirmation sent to us by merchants; we must check that the exchange reported these properly.';

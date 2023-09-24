@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -82,6 +82,10 @@ deposit_confirmation_cb (void *cls,
     struct TALER_AUDITORDB_DepositConfirmation dc = {
       .master_public_key = *dcc->master_pub
     };
+    struct TALER_CoinSpendPublicKeyP *coin_pubs = NULL;
+    struct TALER_CoinSpendSignatureP *coin_sigs = NULL;
+    size_t num_pubs = 0;
+    size_t num_sigs = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial_id",
                                     &serial_id),
@@ -97,10 +101,16 @@ deposit_confirmation_cb (void *cls,
                                        &dc.refund_deadline),
       GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                        &dc.wire_deadline),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_without_fee",
-                                   &dc.amount_without_fee),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                            &dc.coin_pub),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("total_without_fee",
+                                   &dc.total_without_fee),
+      GNUNET_PQ_result_spec_auto_array_from_type (pg->conn,
+                                                  "coin_pub",
+                                                  &num_pubs,
+                                                  coin_pubs),
+      GNUNET_PQ_result_spec_auto_array_from_type (pg->conn,
+                                                  "coin_sigs",
+                                                  &num_sigs,
+                                                  coin_sigs),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                             &dc.merchant),
       GNUNET_PQ_result_spec_auto_from_type ("exchange_sig",
@@ -111,6 +121,7 @@ deposit_confirmation_cb (void *cls,
                                             &dc.master_sig),
       GNUNET_PQ_result_spec_end
     };
+    enum GNUNET_GenericReturnValue rval;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
@@ -121,11 +132,22 @@ deposit_confirmation_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
+    if (num_sigs != num_pubs)
+    {
+      GNUNET_break (0);
+      dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      GNUNET_PQ_cleanup_result (rs);
+      return;
+    }
     dcc->qs = i + 1;
-    if (GNUNET_OK !=
-        dcc->cb (dcc->cb_cls,
-                 serial_id,
-                 &dc))
+    dc.coin_pubs = coin_pubs;
+    dc.coin_sigs = coin_sigs;
+    dc.num_coins = num_sigs;
+    rval = dcc->cb (dcc->cb_cls,
+                    serial_id,
+                    &dc);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != rval)
       break;
   }
 }
@@ -163,8 +185,9 @@ TAH_PG_get_deposit_confirmations (
            ",exchange_timestamp"
            ",wire_deadline"
            ",refund_deadline"
-           ",amount_without_fee"
-           ",coin_pub"
+           ",total_without_fee"
+           ",coin_pubs"
+           ",coin_sigs"
            ",merchant_pub"
            ",exchange_sig"
            ",exchange_pub"

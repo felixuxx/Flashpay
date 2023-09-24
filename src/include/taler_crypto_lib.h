@@ -4045,8 +4045,9 @@ typedef enum TALER_ErrorCode
  * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
  * @param wire_deadline date until which the exchange should wire the funds
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param amount_without_fee the amount to be deposited after fees
- * @param coin_pub public key of the deposited coin
+ * @param total_without_fee the total amount to be deposited after fees over all coins
+ * @param num_coins length of @a coin_sigs array
+ * @param coin_sigs signatures of the deposited coins
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
@@ -4061,8 +4062,9 @@ TALER_exchange_online_deposit_confirmation_sign (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *total_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendSignatureP *coin_sigs[static num_coins],
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig);
@@ -4077,8 +4079,9 @@ TALER_exchange_online_deposit_confirmation_sign (
  * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
  * @param wire_deadline date until which the exchange should wire the funds
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param amount_without_fee the amount to be deposited after fees
- * @param coin_pub public key of the deposited coin
+ * @param total_without_fee the total amount to be deposited after fees over all coins
+ * @param num_coins length of @a coin_sigs array
+ * @param coin_sigs signatures of the deposited coins
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param pub where to write the public key
  * @param sig where to write the signature
@@ -4092,8 +4095,9 @@ TALER_exchange_online_deposit_confirmation_verify (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *total_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendSignatureP *coin_sigs[static num_coins],
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);

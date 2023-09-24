@@ -811,20 +811,18 @@ TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
  * @param label command label.
  * @param deposit_reference reference to any operation that can
  *        provide a coin.
- * @param coin_index if @a deposit_reference offers an array of
- *        coins, this parameter selects which one in that array.
- *        This value is currently ignored, as only one-coin
- *        deposits are implemented.
+ * @param num_coins number of coins expected in the batch deposit
  * @param amount_without_fee deposited amount without the fee
  * @param expected_response_code expected HTTP response code.
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation (const char *label,
-                                        const char *deposit_reference,
-                                        unsigned int coin_index,
-                                        const char *amount_without_fee,
-                                        unsigned int expected_response_code);
+TALER_TESTING_cmd_deposit_confirmation (
+  const char *label,
+  const char *deposit_reference,
+  unsigned int num_coins,
+  const char *amount_without_fee,
+  unsigned int expected_response_code);
 
 
 /**
@@ -2729,6 +2727,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)     \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)               \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                 \
+  op (coin_sig, const struct TALER_CoinSpendSignatureP)                 \
   op (absolute_time, const struct GNUNET_TIME_Absolute)                 \
   op (timestamp, const struct GNUNET_TIME_Timestamp)                    \
   op (wire_deadline, const struct GNUNET_TIME_Timestamp)                \

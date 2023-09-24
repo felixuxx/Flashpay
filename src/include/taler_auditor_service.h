@@ -226,11 +226,11 @@ TALER_AUDITOR_get_config (struct GNUNET_CURL_Context *ctx,
 /**
  * Cancel auditor config request.
  *
- * @param auditor the auditor handle
+ * @param[in] auditor the auditor handle
  */
 void
-TALER_AUDITOR_get_config_cancel (struct
-                                 TALER_AUDITOR_GetConfigHandle *auditor);
+TALER_AUDITOR_get_config_cancel (
+  struct TALER_AUDITOR_GetConfigHandle *auditor);
 
 
 /**
@@ -284,8 +284,10 @@ typedef void
  * @param exchange_timestamp timestamp when the contract was finalized, must not be too far in the future
  * @param wire_deadline date until which the exchange should wire the funds
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
- * @param coin_pub coin’s public key
+ * @param total_without_fee the amount confirmed to be wired by the exchange to the merchant
+ * @param num_coins number of coins involved in the batch deposit
+ * @param coin_pubs array of the coin’s public keys
+ * @param coin_sigs array of the original deposit signatures of the coins in the batch
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param exchange_sig the signature made with purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT
  * @param exchange_pub the public key of the exchange that matches @a exchange_sig
@@ -309,8 +311,10 @@ TALER_AUDITOR_deposit_confirmation (
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *total_without_fee,
+  unsigned int num_coins,
+  const struct TALER_CoinSpendPublicKeyP *coin_pubs[static num_coins],
+  const struct TALER_CoinSpendSignatureP *coin_sigs[static num_coins],
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_ExchangeSignatureP *exchange_sig,

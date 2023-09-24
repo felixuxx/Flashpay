@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2021 Taler Systems SA
+  Copyright (C) 2016-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -108,8 +108,10 @@ test_dc (void *cls,
          const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
   struct DepositConfirmationContext *dcc = cls;
+  bool missing = false;
 
   dcc->last_seen_coin_serial = serial_id;
+  for (unsigned int i = 0; i<dc->num_coins; i++)
   {
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp exchange_timestamp;
@@ -118,26 +120,27 @@ test_dc (void *cls,
     qs = TALER_ARL_edb->have_deposit2 (TALER_ARL_edb->cls,
                                        &dc->h_contract_terms,
                                        &dc->h_wire,
-                                       &dc->coin_pub,
+                                       &dc->coin_pubs[i],
                                        &dc->merchant,
                                        dc->refund_deadline,
                                        &deposit_fee,
                                        &exchange_timestamp);
-    if (qs > 0)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Found deposit %s in exchange database\n",
-                  GNUNET_h2s (&dc->h_contract_terms.hash));
-      if (TALER_ARL_do_abort ())
-        return GNUNET_SYSERR;
-      return GNUNET_OK; /* found, all good */
-    }
+    missing |= (0 == qs);
     if (qs < 0)
     {
       GNUNET_break (0); /* DB error, complain */
       dcc->qs = qs;
       return GNUNET_SYSERR;
     }
+  }
+  if (! missing)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Found deposit %s in exchange database\n",
+                GNUNET_h2s (&dc->h_contract_terms.hash));
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
+    return GNUNET_OK; /* all coins found, all good */
   }
   /* deposit confirmation missing! report! */
   TALER_ARL_report (
@@ -146,7 +149,7 @@ test_dc (void *cls,
       TALER_JSON_pack_time_abs_human ("timestamp",
                                       dc->exchange_timestamp.abs_time),
       TALER_JSON_pack_amount ("amount",
-                              &dc->amount_without_fee),
+                              &dc->total_without_fee),
       GNUNET_JSON_pack_uint64 ("rowid",
                                serial_id),
       GNUNET_JSON_pack_data_auto ("account",
@@ -156,7 +159,7 @@ test_dc (void *cls,
   dcc->missed_count++;
   TALER_ARL_amount_add (&dcc->missed_amount,
                         &dcc->missed_amount,
-                        &dc->amount_without_fee);
+                        &dc->total_without_fee);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;

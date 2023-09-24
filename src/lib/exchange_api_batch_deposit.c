@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2022 Taler Systems SA
+   Copyright (C) 2014-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -146,9 +146,9 @@ struct TALER_EXCHANGE_BatchDepositHandle
   struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
-   * Exchange signatures, set for #auditor_cb.
+   * Exchange signature, set for #auditor_cb.
    */
-  struct TALER_ExchangeSignatureP *exchange_sigs;
+  struct TALER_ExchangeSignatureP exchange_sig;
 
   /**
    * Head of DLL of interactions with this auditor.
@@ -169,6 +169,11 @@ struct TALER_EXCHANGE_BatchDepositHandle
    * Exchange signing public key, set for #auditor_cb.
    */
   struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * Total amount deposited without fees as calculated by us.
+   */
+  struct TALER_Amount total_without_fee;
 
   /**
    * Response object to free at the end.
@@ -251,9 +256,20 @@ auditor_cb (void *cls,
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
-  struct TALER_Amount amount_without_fee;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
   unsigned int coin;
+  const struct TALER_CoinSpendSignatureP *csigs[GNUNET_NZL (
+                                                  dh->num_cdds)];
+  const struct TALER_CoinSpendPublicKeyP *cpubs[GNUNET_NZL (
+                                                  dh->num_cdds)];
+
+  for (unsigned int i = 0; i<dh->num_cdds; i++)
+  {
+    const struct TALER_EXCHANGE_CoinDepositDetail *cdd = &dh->cdds[i];
+
+    csigs[i] = &cdd->coin_sig;
+    cpubs[i] = &cdd->coin_pub;
+  }
 
   if (0 !=
       GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
@@ -278,10 +294,6 @@ auditor_cb (void *cls,
     GNUNET_break_op (0);
     return;
   }
-  GNUNET_assert (0 <=
-                 TALER_amount_subtract (&amount_without_fee,
-                                        &dh->cdds[coin].amount,
-                                        &dki->fees.deposit));
   aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
   aie->dh = dh;
   aie->auditor_url = auditor_url;
@@ -294,11 +306,13 @@ auditor_cb (void *cls,
     dh->exchange_timestamp,
     dh->dcd.wire_deadline,
     dh->dcd.refund_deadline,
-    &amount_without_fee,
-    &dh->cdds[coin].coin_pub,
+    &dh->total_without_fee,
+    dh->num_cdds,
+    cpubs,
+    csigs,
     &dh->dcd.merchant_pub,
     &dh->exchange_pub,
-    &dh->exchange_sigs[coin],
+    &dh->exchange_sig,
     &dh->keys->master_pub,
     spk->valid_from,
     spk->valid_until,
@@ -340,12 +354,9 @@ handle_deposit_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      const json_t *sigs;
-      json_t *sig;
-      unsigned int idx;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_array_const ("exchange_sigs",
-                                      &sigs),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &dh->exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
@@ -367,15 +378,6 @@ handle_deposit_finished (void *cls,
         dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      if (json_array_size (sigs) != dh->num_cdds)
-      {
-        GNUNET_break_op (0);
-        dr->hr.http_status = 0;
-        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        break;
-      }
-      dh->exchange_sigs = GNUNET_new_array (dh->num_cdds,
-                                            struct TALER_ExchangeSignatureP);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (dh->keys,
                                            &dh->exchange_pub))
@@ -385,35 +387,12 @@ handle_deposit_finished (void *cls,
         dr->hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
         break;
       }
-      json_array_foreach (sigs, idx, sig)
       {
-        struct GNUNET_JSON_Specification ispec[] = {
-          GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                       &dh->exchange_sigs[idx]),
-          GNUNET_JSON_spec_end ()
-        };
-        struct TALER_Amount amount_without_fee;
-        const struct TALER_EXCHANGE_DenomPublicKey *dki;
+        const struct TALER_CoinSpendSignatureP *csigs[
+          GNUNET_NZL (dh->num_cdds)];
 
-        if (GNUNET_OK !=
-            GNUNET_JSON_parse (sig,
-                               ispec,
-                               NULL, NULL))
-        {
-          GNUNET_break_op (0);
-          dr->hr.http_status = 0;
-          dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
-                                                           &dh->cdds[idx].
-                                                           h_denom_pub);
-        GNUNET_assert (NULL != dki);
-        GNUNET_assert (0 <=
-                       TALER_amount_subtract (&amount_without_fee,
-                                              &dh->cdds[idx].amount,
-                                              &dki->fees.deposit));
-
+        for (unsigned int i = 0; i<dh->num_cdds; i++)
+          csigs[i] = &dh->cdds[i].coin_sig;
         if (GNUNET_OK !=
             TALER_exchange_online_deposit_confirmation_verify (
               &dh->dcd.h_contract_terms,
@@ -422,11 +401,12 @@ handle_deposit_finished (void *cls,
               dh->exchange_timestamp,
               dh->dcd.wire_deadline,
               dh->dcd.refund_deadline,
-              &amount_without_fee,
-              &dh->cdds[idx].coin_pub,
+              &dh->total_without_fee,
+              dh->num_cdds,
+              csigs,
               &dh->dcd.merchant_pub,
               &dh->exchange_pub,
-              &dh->exchange_sigs[idx]))
+              &dh->exchange_sig))
         {
           GNUNET_break_op (0);
           dr->hr.http_status = 0;
@@ -438,10 +418,9 @@ handle_deposit_finished (void *cls,
                                 &auditor_cb,
                                 dh);
     }
-    dr->details.ok.exchange_sigs = dh->exchange_sigs;
+    dr->details.ok.exchange_sig = &dh->exchange_sig;
     dr->details.ok.exchange_pub = &dh->exchange_pub;
     dr->details.ok.deposit_timestamp = dh->exchange_timestamp;
-    dr->details.ok.num_signatures = dh->num_cdds;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -531,9 +510,13 @@ TALER_EXCHANGE_batch_deposit (
   json_t *deposit_obj;
   json_t *deposits;
   CURL *eh;
-  struct TALER_Amount amount_without_fee;
   const struct GNUNET_HashCode *wallet_data_hashp;
 
+  if (0 == num_cdds)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   if (GNUNET_TIME_timestamp_cmp (dcd->refund_deadline,
                                  >,
                                  dcd->wire_deadline))
@@ -547,8 +530,7 @@ TALER_EXCHANGE_batch_deposit (
   dh->cb = cb;
   dh->cb_cls = cb_cls;
   dh->cdds = GNUNET_memdup (cdds,
-                            num_cdds
-                            * sizeof (*cdds));
+                            num_cdds * sizeof (*cdds));
   dh->num_cdds = num_cdds;
   dh->dcd = *dcd;
   if (NULL != dcd->policy_details)
@@ -559,11 +541,15 @@ TALER_EXCHANGE_batch_deposit (
                                       &dh->h_wire);
   deposits = json_array ();
   GNUNET_assert (NULL != deposits);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (cdds[0].amount.currency,
+                                        &dh->total_without_fee));
   for (unsigned int i = 0; i<num_cdds; i++)
   {
     const struct TALER_EXCHANGE_CoinDepositDetail *cdd = &cdds[i];
     const struct TALER_EXCHANGE_DenomPublicKey *dki;
     const struct TALER_AgeCommitmentHash *h_age_commitmentp;
+    struct TALER_Amount amount_without_fee;
 
     dki = TALER_EXCHANGE_get_denomination_key_by_hash (keys,
                                                        &cdd->h_denom_pub);
@@ -580,17 +566,14 @@ TALER_EXCHANGE_batch_deposit (
     {
       *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
       GNUNET_break_op (0);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Amount: %s\n",
-                  TALER_amount2s (&cdd->amount));
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Fee: %s\n",
-                  TALER_amount2s (&dki->fees.deposit));
       GNUNET_free (dh->cdds);
       GNUNET_free (dh);
       return NULL;
     }
-
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&dh->total_without_fee,
+                                     &dh->total_without_fee,
+                                     &amount_without_fee));
     if (GNUNET_OK !=
         TALER_EXCHANGE_verify_deposit_signature_ (dcd,
                                                   &dh->h_policy,
@@ -737,7 +720,6 @@ TALER_EXCHANGE_batch_deposit_cancel (
   TALER_EXCHANGE_keys_decref (deposit->keys);
   GNUNET_free (deposit->url);
   GNUNET_free (deposit->cdds);
-  GNUNET_free (deposit->exchange_sigs);
   TALER_curl_easy_post_finished (&deposit->post_ctx);
   json_decref (deposit->response);
   GNUNET_free (deposit);

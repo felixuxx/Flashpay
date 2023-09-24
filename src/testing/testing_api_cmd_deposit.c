@@ -69,6 +69,11 @@ struct DepositState
   unsigned int coin_index;
 
   /**
+   * Our coin signature.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
    * Wire details of who is depositing -- this would be merchant
    * wire details in a normal scenario.
    */
@@ -258,11 +263,10 @@ deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
-    GNUNET_assert (1 == dr->details.ok.num_signatures);
     ds->deposit_succeeded = GNUNET_YES;
     ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
     ds->exchange_pub = *dr->details.ok.exchange_pub;
-    ds->exchange_sig = dr->details.ok.exchange_sigs[0];
+    ds->exchange_sig = *dr->details.ok.exchange_sig;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -287,7 +291,6 @@ deposit_run (void *cls,
   const struct TALER_AgeCommitmentHash *phac;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
-  struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHashP h_contract_terms;
   enum TALER_ErrorCode ec;
@@ -449,14 +452,14 @@ deposit_run (void *cls,
                                &merchant_pub,
                                ds->refund_deadline,
                                coin_priv,
-                               &coin_sig);
+                               &ds->coin_sig);
   }
   GNUNET_assert (NULL == ds->dh);
   {
     struct TALER_EXCHANGE_CoinDepositDetail cdd = {
       .amount = ds->amount,
       .coin_pub = coin_pub,
-      .coin_sig = coin_sig,
+      .coin_sig = ds->coin_sig,
       .denom_sig = *denom_pub_sig,
       .h_denom_pub = denom_pub->h_key,
       .h_age_commitment = {{{0}}},
@@ -595,6 +598,8 @@ deposit_traits (void *cls,
       /* These traits are always available */
       TALER_TESTING_make_trait_coin_priv (0,
                                           coin_spent_priv),
+      TALER_TESTING_make_trait_coin_sig (0,
+                                         &ds->coin_sig),
       TALER_TESTING_make_trait_age_commitment_proof (0,
                                                      age_commitment_proof),
       TALER_TESTING_make_trait_h_age_commitment (0,

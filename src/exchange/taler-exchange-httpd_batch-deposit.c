@@ -108,65 +108,33 @@ reply_batch_deposit_success (
   const struct BatchDepositContext *dc)
 {
   const struct TALER_EXCHANGEDB_BatchDeposit *bd = &dc->bd;
-  json_t *arr;
+  const struct TALER_CoinSpendSignatureP *csigs[GNUNET_NZL (bd->num_cdis)];
+  enum TALER_ErrorCode ec;
   struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
 
-again:
-  arr = json_array ();
-  GNUNET_assert (NULL != arr);
   for (unsigned int i = 0; i<bd->num_cdis; i++)
+    csigs[i] = &bd->cdis[i].csig;
+  if (TALER_EC_NONE !=
+      (ec = TALER_exchange_online_deposit_confirmation_sign (
+         &TEH_keys_exchange_sign_,
+         &bd->h_contract_terms,
+         &dc->h_wire,
+         NULL != dc->policy_json ? &dc->h_policy : NULL,
+         dc->exchange_timestamp,
+         bd->wire_deadline,
+         bd->refund_deadline,
+         &dc->policy_details.accumulated_total,   /* excludes fees */
+         bd->num_cdis,
+         csigs,
+         &dc->bd.merchant_pub,
+         &pub,
+         &sig)))
   {
-    const struct TALER_EXCHANGEDB_CoinDepositInformation *cdi
-      = &bd->cdis[i];
-    struct TALER_ExchangePublicKeyP pubi;
-    struct TALER_ExchangeSignatureP sig;
-    enum TALER_ErrorCode ec;
-    struct TALER_Amount amount_without_fee;
-
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&amount_without_fee,
-                                          &cdi->amount_with_fee,
-                                          &dc->deposit_fees[i]));
-    if (TALER_EC_NONE !=
-        (ec = TALER_exchange_online_deposit_confirmation_sign (
-           &TEH_keys_exchange_sign_,
-           &bd->h_contract_terms,
-           &dc->h_wire,
-           NULL != dc->policy_json ? &dc->h_policy : NULL,
-           dc->exchange_timestamp,
-           bd->wire_deadline,
-           bd->refund_deadline,
-           &amount_without_fee,
-           &cdi->coin.coin_pub,
-           &dc->bd.merchant_pub,
-           &pubi,
-           &sig)))
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_ec (connection,
-                                      ec,
-                                      NULL);
-    }
-    if (0 == i)
-      pub = pubi;
-    if (0 !=
-        GNUNET_memcmp (&pub,
-                       &pubi))
-    {
-      /* note: in the future, maybe have batch sign API to avoid having to
-         handle key rollover... */
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Exchange public key changed during batch deposit, trying again\n");
-      json_decref (arr);
-      goto again;
-    }
-    GNUNET_assert (
-      0 ==
-      json_array_append_new (arr,
-                             GNUNET_JSON_PACK (
-                               GNUNET_JSON_pack_data_auto (
-                                 "exchange_sig",
-                                 &sig))));
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
   }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
@@ -175,8 +143,8 @@ again:
                                 dc->exchange_timestamp),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &pub),
-    GNUNET_JSON_pack_array_steal ("exchange_sigs",
-                                  arr));
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig));
 }
 
 
