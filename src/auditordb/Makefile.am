@@ -19,9 +19,21 @@ sql_DATA = \
   drop.sql \
   restart.sql
 
+sqlinputs = \
+  0002-*.sql \
+  auditor-0002.sql.in
+#  auditor_do_*.sql
+#  procedures.sql.in
+
+auditor-0002.sql: auditor-0002.sql.in 0002-*.sql
+	chmod +w $@ || true
+	gcc -E -P -undef - < auditor-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
+	chmod ugo-w $@
+
 EXTRA_DIST = \
   auditordb-postgres.conf \
   test-auditor-db-postgres.conf \
+  $(sqlinputs) \
   $(sql_DATA) \
   pg_template.h pg_template.c \
   pg_template.sh
