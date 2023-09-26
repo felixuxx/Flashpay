@@ -80,7 +80,7 @@ Depends:
 Recommends:
   taler-exchange-offline (= ${binary:Version}),
   apache2 | nginx | httpd,
-  postgresql (>=13.0)
+  postgresql (>=15.0)
 Description: GNU's payment system operator.
   GNU Taler is the privacy-preserving digital payment
   system from the GNU project. This package contains the
