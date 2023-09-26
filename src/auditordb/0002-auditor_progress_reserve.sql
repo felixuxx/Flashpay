@@ -15,7 +15,7 @@
 --
 
 CREATE TABLE IF NOT EXISTS auditor_progress_reserve
-    ,reserve_name TEXT NOT NULL
+    ,reserve_name TEXT NOT NULL -- FIXME: I think you missunderstood how the progress points should work in the future...
     ,serial_id INT8 NOT NULL
    --  ,PRIMARY KEY (master_pub)
     );

@@ -17,7 +17,7 @@
 CREATE TABLE IF NOT EXISTS auditor_purse_summary
     ,balance_val INT8 NOT NULL
     ,balance_frac INT4 NOT NULL
-    ,open_purses INT8 NOT NULL
+    ,open_purses INT8 NOT NULL -- FIXME: do we need this column?
     );
 COMMENT ON TABLE auditor_purse_summary
   IS 'sum of the balances in open purses';

@@ -19,6 +19,14 @@ BEGIN;
 SELECT _v.register_patch('auditor-0002', NULL, NULL);
 SET search_path TO auditordb;
 
+CREATE TYPE taler_amount
+  AS
+  (val INT8
+  ,frac INT4
+  );
+COMMENT ON TYPE taler_amount
+  IS 'Stores an amount, fraction is in units of 1/100000000 of the base value';
+
 #include "0002-auditor_denomination_pending.sql"
 #include "0002-auditor_wire_fee_balance.sql"
 #include "0002-auditor_balance_summary.sql"

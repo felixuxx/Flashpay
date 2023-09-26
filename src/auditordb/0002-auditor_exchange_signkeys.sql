@@ -15,11 +15,21 @@
 --
 
 CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys
-    ,ep_start INT8 NOT NULL
-    ,ep_expire INT8 NOT NULL
-    ,ep_end INT8 NOT NULL
-    ,exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)
-    ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-    );
+  (exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
+  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
+  ,ep_valid_from INT8 NOT NULL
+  ,ep_expire_sign INT8 NOT NULL
+  ,ep_expire_legal INT8 NOT NULL
+  );
 COMMENT ON TABLE auditor_exchange_signkeys
   IS 'list of the online signing keys of exchanges we are auditing';
+COMMENT ON COLUMN auditor_exchange_signkeys.exchange_pub
+  IS 'Public online signing key of the exchange.';
+COMMENT ON COLUMN auditor_exchange_signkeys.master_sig
+  IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
+COMMENT ON COLUMN auditor_exchange_signkeys.ep_valid_from
+  IS 'Time when this online signing key will first be used to sign messages.';
+COMMENT ON COLUMN auditor_exchange_signkeys.ep_expire_sign
+  IS 'Time when this online signing key will no longer be used to sign.';
+COMMENT ON COLUMN auditor_exchange_signkeys.ep_expire_legal
+  IS 'Time when this online signing key legally expires.';

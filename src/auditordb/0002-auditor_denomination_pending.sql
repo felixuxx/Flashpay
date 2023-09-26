@@ -15,24 +15,20 @@
 --
 
 CREATE TABLE IF NOT EXISTS auditor_denomination_pending
-(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
-    ,denom_balance_val INT8 NOT NULL
-    ,denom_balance_frac INT4 NOT NULL
-    ,denom_loss_val INT8 NOT NULL
-    ,denom_loss_frac INT4 NOT NULL
-    ,num_issued INT8 NOT NULL
-    ,denom_risk_val INT8 NOT NULL
-    ,denom_risk_frac INT4 NOT NULL
-    ,recoup_loss_val INT8 NOT NULL
-    ,recoup_loss_frac INT4 NOT NULL
-    );
+  (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
+  ,denom_balance taler_amount NOT NULL
+  ,denom_loss taler_amount NOT NULL
+  ,num_issued INT8 NOT NULL
+  ,denom_risk taler_amount NOT NULL
+  ,recoup_loss taler_amount NOT NULL
+);
 COMMENT ON TABLE auditor_denomination_pending
   IS 'outstanding denomination coins that the exchange is aware of and what the respective balances are (outstanding as well as issued overall which implies the maximum value at risk).';
 COMMENT ON COLUMN auditor_denomination_pending.num_issued
   IS 'counts the number of coins issued (withdraw, refresh) of this denomination';
-COMMENT ON COLUMN auditor_denomination_pending.denom_risk_val
+COMMENT ON COLUMN auditor_denomination_pending.denom_risk
   IS 'amount that could theoretically be lost in the future due to recoup operations';
-COMMENT ON COLUMN auditor_denomination_pending.denom_loss_val
+COMMENT ON COLUMN auditor_denomination_pending.denom_loss
   IS 'amount that was lost due to failures by the exchange';
-COMMENT ON COLUMN auditor_denomination_pending.recoup_loss_val
+COMMENT ON COLUMN auditor_denomination_pending.recoup_loss
   IS 'amount actually lost due to recoup operations after a revocation';

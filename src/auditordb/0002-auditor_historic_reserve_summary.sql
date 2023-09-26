@@ -15,14 +15,15 @@
 --
 
 CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary
-    ,start_date INT8 NOT NULL
-    ,end_date INT8 NOT NULL
-    ,reserve_profits_val INT8 NOT NULL
-    ,reserve_profits_frac INT4 NOT NULL
-    );
+  (start_date INT8 PRIMARY KEY
+  ,end_date INT8 NOT NULL
+  ,reserve_profits taler_amount NOT NULL
+  );
 COMMENT ON TABLE auditor_historic_reserve_summary
   IS 'historic profits from reserves; we eventually GC auditor_historic_reserve_revenue, and then store the totals in here (by time intervals).';
-
-CREATE INDEX IF NOT EXISTS auditor_historic_reserve_summary_by_master_pub_start_date
-    ON auditor_historic_reserve_summary
-    (start_date);
+COMMENT ON COLUMN auditor_historic_reserve_summary.start_date
+  IS 'start date of the time interval over which we made these profits from reserves';
+COMMENT ON COLUMN auditor_historic_reserve_summary.end_date
+  IS 'end date (exclusive) of the time interval over which we made these profits from reserves';
+COMMENT ON COLUMN auditor_historic_reserve_summary.reserve_profits
+  IS 'total amount in profits made';

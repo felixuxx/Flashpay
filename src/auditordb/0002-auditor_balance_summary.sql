@@ -14,7 +14,22 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE TABLE IF NOT EXISTS auditor_balance_summary
+
+-- NEW:
+CREATE TABLE IF NOT EXISTS auditor_balance_summary (
+    balance_key TEXT PRIMARY KEY
+   ,balance_value taler_amount
+  );
+COMMENT ON TABLE auditor_balance_summary
+  IS 'table storing various global balances of the auditor';
+COMMENT ON COLUMN auditor_balance_summary.balance_key
+ IS 'unique name for the balance value';
+COMMENT ON COLUMN auditor_balance_summary.balance_value
+ IS 'balance amount';
+
+
+-- old:
+CREATE TABLE IF NOT EXISTS auditor_balance_summary (
     ,denom_balance_val INT8 NOT NULL
     ,denom_balance_frac INT4 NOT NULL
     ,deposit_fee_balance_val INT8 NOT NULL

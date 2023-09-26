@@ -14,11 +14,11 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
+
+-- FIXME: should be folded into the new general balances table!
 CREATE TABLE IF NOT EXISTS auditor_predicted_result
-    ,balance_val INT8 NOT NULL
-    ,balance_frac INT4 NOT NULL
-    ,drained_val INT8 NOT NULL
-    ,drained_frac INT4 NOT NULL
+    (balance taler_amount NOT NULL
+    ,drained taler_amount NOT NULL
     );
 COMMENT ON TABLE auditor_predicted_result
   IS 'Table with the sum of the ledger, auditor_historic_revenue and the auditor_reserve_balance and the drained profits.  This is the final amount that the exchange should have in its bank account right now (and the total amount drained as profits to non-escrow accounts).';

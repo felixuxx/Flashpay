@@ -15,20 +15,13 @@
 --
 
 CREATE TABLE IF NOT EXISTS auditor_reserve_balance
-    ,reserve_balance_val INT8 NOT NULL
-    ,reserve_balance_frac INT4 NOT NULL
-    ,reserve_loss_val INT8 NOT NULL
-    ,reserve_loss_frac INT4 NOT NULL
-    ,withdraw_fee_balance_val INT8 NOT NULL
-    ,withdraw_fee_balance_frac INT4 NOT NULL
-    ,close_fee_balance_val INT8 NOT NULL
-    ,close_fee_balance_frac INT4 NOT NULL
-    ,purse_fee_balance_val INT8 NOT NULL
-    ,purse_fee_balance_frac INT4 NOT NULL
-    ,open_fee_balance_val INT8 NOT NULL
-    ,open_fee_balance_frac INT4 NOT NULL
-    ,history_fee_balance_val INT8 NOT NULL
-    ,history_fee_balance_frac INT4 NOT NULL
+    ,reserve_balance taler_amount NOT NULL
+    ,reserve_loss taler_amount NOT NULL
+    ,withdraw_fee_balance taler_amount NOT NULL
+    ,close_fee_balance taler_amount NOT NULL
+    ,purse_fee_balance taler_amount NOT NULL
+    ,open_fee_balance taler_amount NOT NULL
+    ,history_fee_balance taler_amount NOT NULL
     );
 COMMENT ON TABLE auditor_reserve_balance
   IS 'sum of the balances of all customer reserves';
