@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -14,10 +14,13 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE TABLE IF NOT EXISTS auditor_progress_aggregation
-    ,last_wire_out_serial_id INT8 NOT NULL DEFAULT 0
-    -- ,PRIMARY KEY (master_pub)
-    );
-COMMENT ON TABLE auditor_progress_aggregation
-  IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
- statements to process.  The indices include the last serial ID from the respective tables that we have processed. Thus, we need to select those table entries that are strictly larger (and process in monotonically increasing order).';
+CREATE TABLE IF NOT EXISTS auditor_balances (
+    balance_key TEXT PRIMARY KEY
+   ,balance_value taler_amount
+  );
+COMMENT ON TABLE auditor_balances
+  IS 'table storing various global balances of the auditor';
+COMMENT ON COLUMN auditor_balances.balance_key
+ IS 'unique name for the balance value';
+COMMENT ON COLUMN auditor_balances.balance_value
+ IS 'balance amount';

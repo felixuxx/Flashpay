@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -27,24 +27,14 @@ CREATE TYPE taler_amount
 COMMENT ON TYPE taler_amount
   IS 'Stores an amount, fraction is in units of 1/100000000 of the base value';
 
+#include "0002-auditor_balances.sql"
 #include "0002-auditor_denomination_pending.sql"
-#include "0002-auditor_wire_fee_balance.sql"
-#include "0002-auditor_balance_summary.sql"
 #include "0002-auditor_exchange_signkeys.sql"
 #include "0002-auditor_historic_denomination_revenue.sql"
 #include "0002-auditor_historic_reserve_summary.sql"
-#include "0002-auditor_predicted_result.sql"
-#include "0002-auditor_progress_aggregation.sql"
-#include "0002-auditor_progress_coin.sql"
-#include "0002-auditor_progress_deposit_confirmation.sql"
-#include "0002-auditor_progress_purse.sql"
-#include "0002-auditor_progress_reserve.sql"
-#include "0002-auditor_purse_summary.sql"
+#include "0002-auditor_progress.sql"
 #include "0002-auditor_purses.sql"
-#include "0002-auditor_reserve_balance.sql"
 #include "0002-auditor_reserves.sql"
 #include "0002-deposit_confirmations.sql"
-#include "0002-wire_auditor_account_progress.sql"
-#include "0002-wire_auditor_progress.sql"
 
 COMMIT;

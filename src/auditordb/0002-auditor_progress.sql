@@ -14,8 +14,13 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE TABLE IF NOT EXISTS wire_auditor_progress
-    ,last_timestamp INT8 NOT NULL
-    ,last_reserve_close_uuid INT8 NOT NULL
-    --,PRIMARY KEY (master_pub)
-    );
+CREATE TABLE IF NOT EXISTS auditor_progress
+  (progress_key TEXT NOT NULL
+  ,progress_offset INT8 NOT NULL
+  );
+COMMENT ON TABLE auditor_progress
+  IS 'Information about to the point until which the audit has progressed.  Used for SELECTing the statements to process.';
+COMMENT ON COLUMN auditor_progress.progress_key
+  IS 'Name of the progress indicator';
+COMMENT ON COLUMN auditor_progress.progress_offset
+  IS 'Table offset or timestamp or counter until which the audit has progressed';
