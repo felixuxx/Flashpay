@@ -35,7 +35,7 @@ bin_SCRIPTS = \
   taler-bank-manage-testing \
   taler-nexus-prepare
 
-edit_script = $(SED) -e 's,%termsdir%,$(termsdir),'g $(NULL)
+edit_script = $(SED) -e 's,%termsdir%,$(termsdir),'g -e 's,%localedir%,$(localedir),'g $(NULL)
 taler-terms-generator: taler-terms-generator.in
 	rm -f $@ $@.tmp && \
 	$(edit_script) $< >$@.tmp && \

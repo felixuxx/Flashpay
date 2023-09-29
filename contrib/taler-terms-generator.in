@@ -30,7 +30,7 @@ function make_config()
     sed -e "s/%VERSION%/$VERSION/g" \
         -e "s/%TITLE%/$TITLE/g" \
         -e "s/%AUTHOR%/$AUTHOR/g" \
-        -e "s/%ORIGIN%/$XPWD/g" \
+        -e "s/%LOCALE_DIR%/$XPWD/g" \
         -e "s/%COPYRIGHT%/$COPYRIGHT/g" \
         -e "s/%LANGUAGE%/$1/g" \
         > "${BUILDDIR}/conf.py" <<EOF
@@ -53,7 +53,7 @@ version = '%VERSION%'
 release = '%VERSION%'
 language = "%LANGUAGE%"
 exclude_patterns = ['_build', '_exts', 'cf', 'prebuilt']
-locale_dirs = ['%ORIGIN%/locale/']
+locale_dirs = ['%LOCALE_DIR%/']
 gettext_compact = False
 pygments_style = 'sphinx'
 html_theme = 'epub'
@@ -89,12 +89,13 @@ EOF
 # defaults
 AUTHOR="GNU Taler team"
 VERSION="exchange-tos-v0"
+LOCALE_DIR="%localedir%"
 OUTPUT="%termsdir%"
 PAPER="a4"
 COPYRIGHT="2014-2023 Taler Systems SA (GPLv3+ or GFDL 1.3+)"
 
 # Parse command-line options
-while getopts ':a:C:hi:l:o:p:t:' OPTION; do
+while getopts ':a:C:hi:l:L:o:p:t:' OPTION; do
     case "$OPTION" in
         a)
             AUTHOR="$OPTARG"
@@ -104,18 +105,22 @@ while getopts ':a:C:hi:l:o:p:t:' OPTION; do
             ;;
         h)
             echo 'Supported options:'
-            echo '  -a AUTHOR    -- set author header' "(default: $AUTHOR)"
-            echo '  -C COPYRIGHT -- set copyright header' "(default: $COPYRIGHT)"
-            echo '  -h           -- print this help'
-            echo '  -i INPUT     -- input file to convert' "(default: $VERSION)"
-            echo '  -l LANGUAGE  -- target language to add'
-            echo '  -o OUTPUT    -- output directory' "(default: $OUTPUT)"
-            echo '  -p PAPER     -- paper format' "(default: $PAPER)"
-            echo '  -t TITLE     -- title of the document to generate'
+            echo '  -a AUTHOR     -- set author header' "(default: $AUTHOR)"
+            echo '  -C COPYRIGHT  -- set copyright header' "(default: $COPYRIGHT)"
+            echo '  -h            -- print this help'
+            echo '  -i INPUT      -- input file to convert' "(default: $VERSION)"
+            echo '  -l LANGUAGE   -- target language to add'
+            echo '  -L LOCALE_DIR -- directory with resources for translation' "(default: $LOCALE_DIR)"
+            echo '  -o OUTPUT     -- output directory' "(default: $OUTPUT)"
+            echo '  -p PAPER      -- paper format' "(default: $PAPER)"
+            echo '  -t TITLE      -- title of the document to generate'
             exit 0
             ;;
         l)
             ADD_LANGUAGE="$OPTARG"
+            ;;
+        L)
+            LOCALE_DIR="$OPTARG"
             ;;
         i)
             VERSION="$OPTARG"
@@ -150,6 +155,13 @@ then
     exit 1
 fi
 
+# We append ".rst" if needed, remove if given on command-line
+# shellcheck disable=SC2001
+VERSION=$(echo "${VERSION}" | sed -e "s/\.rst$//")
+
+# Sometimes we just want the basename, not the directory.
+VERSION_BASENAME=$(basename "${VERSION}")
+
 BUILDDIR=$(mktemp -d /tmp/taler-terms-XXXXXX)
 if [ ! -f "${VERSION}.rst" ]
 then
@@ -179,56 +191,62 @@ then
         -D language="${ADD_LANGUAGE}" \
         -d "${BUILDDIR}/.doctrees" \
         "${BUILDDIR}" \
-        "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/" \
+        "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/" \
         &> "${BUILDDIR}/add-language.log"
-    if [ -f "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po" ]
+    if [ -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]
     then
         msgmerge --lang="${ADD_LANGUAGE}" \
                  --no-location \
-                 -o "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.mrg" \
-                 "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po" \
-                 "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
-        mv "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.mrg" \
-                 "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po"
+                 -o "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.mrg" \
+                 "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" \
+                 "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot"
+        mv "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.mrg" \
+                 "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po"
     else
-        mv "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot" \
-           "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po"
+        mv "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot" \
+           "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po"
     fi
-    rm -f "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
+    rm -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot"
     echo "Done" 1>&2
     exit 0
 fi
 
-for d in en $(ls -d locale/?? 2> /dev/null || true)
+# shellcheck disable=SC2086
+for d in en $(ls -d ${LOCALE_DIR}/?? 2> /dev/null || true)
 do
     LANGUAGE=$(basename "$d")
-    echo "Generating files at '$OUTPUT' for ETag '$VERSION' and language '${LANGUAGE}' in '${BUILDDIR}':" 1>&2
+    if [ "en" != "${LANGUAGE}" ] && [ ! -f "${LOCALE_DIR}/${LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]
+    then
+        echo "Skipping language ${LANGUAGE}: no translation for ${VERSION_BASENAME} found."
+        continue
+    fi
+    echo "Generating files at '$OUTPUT' for ETag '$VERSION_BASENAME' and language '${LANGUAGE}' in '${BUILDDIR}':" 1>&2
 
     make_config "$LANGUAGE"
     mkdir -p "${OUTPUT}/${LANGUAGE}/"
 
     LBUILD="sphinx-build -D language=${LANGUAGE} -d ${BUILDDIR}/.doctrees"
 
-    echo "$VERSION XML ($LANGUAGE)..." 1>&2
+    echo "$VERSION_BASENAME XML ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b xml \
         "${BUILDDIR}" \
         "${BUILDDIR}/xml" \
         &> "${BUILDDIR}/xml-sphinx.log"
-    mv "${BUILDDIR}/xml/${VERSION}.xml" "${OUTPUT}/${LANGUAGE}/${VERSION}.xml"
+    mv "${BUILDDIR}/xml/${VERSION_BASENAME}.xml" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.xml"
 
-    echo "$VERSION TXT ($LANGUAGE)..." 1>&2
+    echo "$VERSION_BASENAME TXT ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b text \
         "${BUILDDIR}" \
         "${BUILDDIR}/txt" \
         &> "${BUILDDIR}/txt-sphinx.log"
-    mv "${BUILDDIR}/txt/${VERSION}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION}.txt"
-    cp "${OUTPUT}/${LANGUAGE}/${VERSION}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION}.md"
+    mv "${BUILDDIR}/txt/${VERSION_BASENAME}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.txt"
+    cp "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
 
-    echo "$VERSION HTML ($LANGUAGE)..." 1>&2
+    echo "$VERSION_BASENAME HTML ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b html \
@@ -236,19 +254,19 @@ do
         "${BUILDDIR}/html" \
         &> "${BUILDDIR}/html-sphinx.log"
     htmlark \
-        -o "${OUTPUT}/${LANGUAGE}/${VERSION}.html" \
-        "${BUILDDIR}/html/${VERSION}.html"
+        -o "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.html" \
+        "${BUILDDIR}/html/${VERSION_BASENAME}.html"
 
-    echo "$VERSION EPUB ($LANGUAGE)..." 1>&2
+    echo "$VERSION_BASENAME EPUB ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b epub \
         "${BUILDDIR}" \
         "${BUILDDIR}/epub" \
         &> "${BUILDDIR}/epub-sphinx.log"
-    mv "${BUILDDIR}/epub/${VERSION}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION}.epub"
+    mv "${BUILDDIR}/epub/${VERSION_BASENAME}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.epub"
 
-    echo "$VERSION PDF ($LANGUAGE)..." 1>&2
+    echo "$VERSION_BASENAME PDF ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
         -b latex \
@@ -260,7 +278,7 @@ do
         -C "${BUILDDIR}/pdf" \
         all-pdf \
         &> "${BUILDDIR}/pdf-latex.log"
-    mv "${BUILDDIR}/pdf/${VERSION}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION}.pdf"
+    mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
 done
 
 echo "Done" 1>&2
