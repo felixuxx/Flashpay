@@ -26,11 +26,11 @@ set -eu
 # Call with target language as first argument.
 function make_config()
 {
-    XPWD=$(echo "$PWD" | sed -e "s/\//\\\\\\//g")
+    XLOC=$(echo "$LOCALE_DIR" | sed -e "s/\//\\\\\\//g")
     sed -e "s/%VERSION%/$VERSION/g" \
         -e "s/%TITLE%/$TITLE/g" \
         -e "s/%AUTHOR%/$AUTHOR/g" \
-        -e "s/%LOCALE_DIR%/$XPWD/g" \
+        -e "s/%LOCALE_DIR%/$XLOC/g" \
         -e "s/%COPYRIGHT%/$COPYRIGHT/g" \
         -e "s/%LANGUAGE%/$1/g" \
         > "${BUILDDIR}/conf.py" <<EOF
