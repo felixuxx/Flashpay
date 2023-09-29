@@ -245,7 +245,7 @@ LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
 
 # test for postgres
-AX_LIB_POSTGRESQL([13.0])
+AX_LIB_POSTGRESQL([15.0])
 AS_IF([test "x$found_postgresql" = "xyes"],
   [SAVE_CPPFLAGS="$CPPFLAGS"
    CPPFLAGS="$POSTGRES_CPPFLAGS $CPPFLAGS"
@@ -253,7 +253,7 @@ AS_IF([test "x$found_postgresql" = "xyes"],
 AS_IF([test "x$postgres" != "x1"],
   [AC_MSG_ERROR([[
 ***
-*** You need libpq(-dev) >= 13.0 to build this program.
+*** You need libpq(-dev) >= 15.0 to build this program.
 *** ]])])
 AM_CONDITIONAL([HAVE_POSTGRESQL], [test "x$postgres" = "x1"])
 AC_DEFINE_UNQUOTED([HAVE_POSTGRESQL], [$postgres],
