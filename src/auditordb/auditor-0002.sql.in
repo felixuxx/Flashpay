@@ -16,8 +16,13 @@
 
 BEGIN;
 
+-- move later into auditor-0001.sql
+CREATE SCHEMA IF NOT EXISTS auditor;
+COMMENT ON SCHEMA auditor IS 'taler-auditor data';
+
+
 SELECT _v.register_patch('auditor-0002', NULL, NULL);
-SET search_path TO auditordb;
+SET search_path TO auditor;
 
 CREATE TYPE taler_amount
   AS
