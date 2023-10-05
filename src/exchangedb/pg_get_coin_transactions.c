@@ -1071,7 +1071,7 @@ TEH_PG_get_coin_transactions (
        we even need to iterate */
     qs = GNUNET_PQ_eval_prepared_singleton_select (
       pg->conn,
-      "get_coin_history_etag",
+      "get_coin_history_etag_balance",
       params,
       rs);
     switch (qs)
