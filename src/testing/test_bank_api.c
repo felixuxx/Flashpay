@@ -76,7 +76,7 @@ run (void *cls,
     ssoptions = "-f";
     break;
   case TALER_TESTING_BS_IBAN:
-    ssoptions = "-ns";
+    ssoptions = "-b";
     break;
   default:
     ssoptions = NULL;

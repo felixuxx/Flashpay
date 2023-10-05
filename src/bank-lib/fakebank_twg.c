@@ -46,7 +46,7 @@ TALER_FAKEBANK_twg_main_ (
   void **con_cls)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Fakebank, serving URL `%s' for account `%s'\n",
+              "Fakebank TWG, serving URL `%s' for account `%s'\n",
               url,
               account);
   if (0 == strcasecmp (method,

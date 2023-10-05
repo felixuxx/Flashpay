@@ -56,7 +56,7 @@ echo " DONE"
 
 # Launch exchange, merchant and bank.
 setup -c "$CONF" \
-      -aenmsw \
+      -abemw \
       -d "iban"
 
 # obtain key configuration data

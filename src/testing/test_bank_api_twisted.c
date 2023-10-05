@@ -100,7 +100,7 @@ run (void *cls,
   case TALER_TESTING_BS_IBAN:
     exchange_auth_twisted.wire_gateway_url
       = "http://localhost:8888/accounts/Exchange/taler-wire-gateway/";
-    systype = "-ns";
+    systype = "-b";
     break;
   }
   GNUNET_assert (NULL != systype);

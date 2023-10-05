@@ -70,7 +70,7 @@ START_FAKEBANK=0
 START_AGGREGATOR=0
 START_MERCHANT=0
 START_NEXUS=0
-START_SANDBOX=0
+START_BANK=0
 START_TRANSFER=0
 START_WIREWATCH=0
 USE_ACCOUNT="exchange-account-1"
@@ -87,7 +87,7 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
             START_AUDITOR="1"
             ;;
         b)
-            START_BACKUP="1"
+            START_BANK="1"
             ;;
         c)
             CONF_ORIG="$OPTARG"
@@ -104,7 +104,7 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
         h)
             echo 'Supported options:'
             echo '  -a           -- start auditor'
-            echo '  -b           -- start backup/sync'
+            echo '  -b           -- start bank'
             # shellcheck disable=SC2016
             echo '  -c $CONF     -- set configuration'
             # shellcheck disable=SC2016
@@ -119,7 +119,7 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
             echo '  -n           -- start nexus'
             # shellcheck disable=SC2016
             echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
-            echo '  -s           -- start sandbox'
+            echo '  -s           -- start backup/sync'
             echo '  -t           -- start transfer'
             # shellcheck disable=SC2016
             echo '  -u $SECTION  -- exchange account to use'
@@ -143,7 +143,7 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
             USE_MERCHANT_EXCHANGE="$OPTARG"
             ;;
         s)
-            START_SANDBOX="1"
+            START_BACKUP="1"
             ;;
         t)
             START_TRANSFER="1"
@@ -208,28 +208,37 @@ CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
 
 echo "Setting up for $CURRENCY at $EXCHANGE_URL"
 
-register_sandbox_account() {
-    export LIBEUFIN_SANDBOX_USERNAME="$1"
-    export LIBEUFIN_SANDBOX_PASSWORD="$2"
-    # FIXME-MS: delete should be removed after we make 'register' idempotent!
-    libeufin-cli sandbox \
-      demobank \
-      delete \
-      --bank-account "$1" &> /dev/null || true
-
-    MAYBE_IBAN="${4:-}"
-    if test -n "$MAYBE_IBAN"; then
-      libeufin-cli sandbox \
-        demobank \
-        register --name "$3" --iban "$MAYBE_IBAN"
+register_bank_account() {
+    wget \
+        --http-user="$AUSER" \
+        --http-password="$APASS" \
+        --method=DELETE \
+        -o /dev/null \
+        -O /dev/null \
+        "http://localhost:${BANK_PORT}/accounts/$1" \
+        || true # deletion may fail, that's OK!
+    if [ "$3" = "exchange" || "$3" = "Exchange" ]
+    then
+        IS_EXCHANGE="true"
     else
-      libeufin-cli sandbox \
-        demobank \
-        register --name "$3"
+        IS_EXCHANGE="false"
     fi
-
-    unset LIBEUFIN_SANDBOX_USERNAME
-    unset LIBEUFIN_SANDBOX_PASSWORD
+    MAYBE_IBAN="${4:-}"
+    if test -n "$MAYBE_IBAN";
+    then
+        # Note: this assumes that $3 has no spaces. Should probably escape in the future..
+        PAYTO="payto://SANDBOXX/${MAYBE_IBAN}?receiver-name=$3"
+        BODY='{username="'"$1"'",password="'"$2"'",is_taler_exchange='"$IS_EXCHANGE"',name="'"$3"'",internal_payto_uri="'"$PAYTO"'"}'
+    else
+        BODY='{username="'"$1"'",password="'"$2"'",is_taler_exchange='"$IS_EXCHANGE"',name="'"$3"'"}'
+    fi
+    wget \
+        --http-user="$AUSER" \
+        --http-password="$APASS" \
+        --method=POST \
+        --body-data="${BODY}" \
+        -a wget.log \
+        "http://localhost:${BANK_PORT}/accounts/$1"
 }
 
 register_fakebank_account() {
@@ -249,59 +258,28 @@ register_fakebank_account() {
 }
 
 
-if [[ "1" = "$START_NEXUS" || "1" = "$START_FAKEBANK" ]]
+if [[ "1" = "$START_BANK" || "1" = "$START_FAKEBANK" ]]
 then
     BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
-    if [ "1" = "$START_NEXUS" ]
-    then
-        NEXUS_PORT="$BANK_PORT"
-        SANDBOX_PORT="1$BANK_PORT"
-    else
-        NEXUS_PORT="0"
-        SANDBOX_PORT="1$BANK_PORT"
-    fi
-else
-    if [ "1" = "$START_SANDBOX" ]
-    then
-        BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
-        SANDBOX_PORT="$BANK_PORT"
-    fi
+    BANK_URL="http://localhost:${BANK_PORT}/"
 fi
 
-if [ "1" = "$START_SANDBOX" ]
+if [ "1" = "$START_BANK" ]
 then
-    #
-    LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
-    if [ -n "${PGHOST:+}" ]
-    then
-        EHOST=$(echo "$PGHOST" | sed -e "s/\//\\\\\//g")
-        LIBEUFIN_SANDBOX_DB_CONNECTION=$(echo "$LIBEUFIN_SANDBOX_DB_CONNECTION" | sed -e "s/\/var\/run\/postgresql/$EHOST/")
-        taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION" -V "$LIBEUFIN_SANDBOX_DB_CONNECTION"
-    fi
-    export LIBEUFIN_SANDBOX_DB_CONNECTION
-    # Create the default demobank.
-    echo -n "Configuring sandbox at ${LIBEUFIN_SANDBOX_DB_CONNECTION} "
-
-    libeufin-sandbox reset-tables \
-        &> libeufin-sandbox-reset.log
-    libeufin-sandbox config \
-                     --currency "$CURRENCY" \
-                     --users-debt-limit 99999999 \
-                     --bank-debt-limit 99999999 \
-       default &> libeufin-sandbox-config.log
+    echo -n "Setting up bank database ... "
+    libeufin-bank-dbinit \
+        -r \
+        -c "$CONF" \
+        &> libeufin-bank-reset.log
     echo "DONE"
-    echo "sandbox uses DB at $LIBEUFIN_SANDBOX_DB_CONNECTION"
-    echo -n "Launching sandbox ... "
-    export LIBEUFIN_SANDBOX_ADMIN_PASSWORD="secret"
-    libeufin-sandbox serve \
-      --port "$SANDBOX_PORT" \
-      > libeufin-sandbox-stdout.log \
-      2> libeufin-sandbox-stderr.log &
-    echo $! > libeufin-sandbox.pid
+    echo -n "Launching bank ... "
+    libeufin-bank serve \
+      --port "$BANK_PORT" \
+      > libeufin-bank-stdout.log \
+      2> libeufin-bank-stderr.log &
+    echo $! > libeufin-bank.pid
     echo "DONE"
-    export LIBEUFIN_SANDBOX_URL="http://localhost:$SANDBOX_PORT/"
-    OK="0"
-    echo -n "Waiting for Sandbox ..."
+    echo -n "Waiting for Bank ..."
     for n in $(seq 1 100); do
         echo -n "."
         sleep "$DEFAULT_SLEEP"
@@ -310,101 +288,56 @@ then
              --waitretry=0 \
              -o /dev/null \
              -O /dev/null \
-             "$LIBEUFIN_SANDBOX_URL" || continue
+             "$BANK_URL/config" || continue
         OK="1"
         break
     done
     if [ "1" != "$OK" ]
     then
-        exit_skip "Failed to launch services (sandbox)"
+        exit_skip "Failed to launch services (bank)"
     fi
     echo "OK"
-    echo -n "Register Sandbox users ..."
-    # The specified IBAN and name must match the ones hard-coded into
-    # the C helper for the add-incoming call.  Without this value,
-    # Sandbox  won't find the target account to debit along a /add-incoming
-    # call.
-    register_sandbox_account fortytwo x "User42" FR7630006000011234567890189
-    register_sandbox_account fortythree x "Forty Three"
-    register_sandbox_account exchange x "Exchange Company"
-    register_sandbox_account tor x "Tor Project"
-    register_sandbox_account gnunet x "GNUnet"
-    register_sandbox_account tutorial x "Tutorial"
-    register_sandbox_account survey x "Survey"
-    echo " DONE"
-
-    echo -n "Fixing up exchange's PAYTO_URI in the config ..."
-    export LIBEUFIN_SANDBOX_USERNAME="exchange"
-    export LIBEUFIN_SANDBOX_PASSWORD="x"
-    EXCHANGE_PAYTO=$(libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri')
-    taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "PAYTO_URI" -V "$EXCHANGE_PAYTO"
+    echo -n "Set admin password..." 
+    AUSER="admin"
+    APASS="secret"
+    libeufin-bank passwd "$AUSER" "$APASS"
     echo " OK"
-
-    echo -n "Setting this exchange as the bank's default ..."
-    libeufin-sandbox default-exchange "$EXCHANGE_URL" "$EXCHANGE_PAYTO"
-    echo " OK"
-
-    # Prepare EBICS: create Ebics host and Exchange subscriber.
-    # Shortly becoming admin to setup Ebics.
-    export LIBEUFIN_SANDBOX_USERNAME="admin"
-    export LIBEUFIN_SANDBOX_PASSWORD="secret"
-    echo -n "Create EBICS host at Sandbox.."
-    # FIXME-MS: || true should be removed after we make 'create' idempotent!
-    libeufin-cli sandbox \
-       --sandbox-url "$LIBEUFIN_SANDBOX_URL" \
-       ebicshost create --host-id talerebics &> libeufin-sandbox-ebicshost-create.log || true
-    echo "OK"
-    echo -n "Create exchange EBICS subscriber at Sandbox.."
-    # FIXME-MS: || true should be removed after we make 'new-ebicssubscriber' idempotent!
-    libeufin-cli sandbox \
-       demobank new-ebicssubscriber --host-id talerebics \
-       --user-id exchangeebics --partner-id talerpartner \
-       --bank-account exchange &> libeufin-sandbox-ebicsscubscriber.log || true
-    # that's a username _and_ a bank account name
-    echo "OK"
-    unset LIBEUFIN_SANDBOX_USERNAME
-    unset LIBEUFIN_SANDBOX_PASSWORD
 fi
 
 if [ "1" = "$START_NEXUS" ]
 then
-    echo "Setting up Nexus ..."
+    echo "Nexus currently not supported ..."
+fi
 
-    # Prepare Nexus, which is the side actually talking
-    # to the exchange.
-    LIBEUFIN_NEXUS_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
+if [ "1" = "$START_FAKEBANK" ]
+then
+    echo -n "Setting up fakebank ..."
+    $USE_VALGRIND taler-fakebank-run \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  -n 4 \
+                  2> taler-fakebank-run.log &
+    echo " OK"
+fi
 
-    if [ -n "${PGHOST:+}" ]
-    then
-        EHOST=$(echo "$PGHOST" | sed -e "s/\//\\\\\//g")
-        LIBEUFIN_NEXUS_DB_CONNECTION=$(echo "$LIBEUFIN_NEXUS_DB_CONNECTION" | sed -e "s/\/var\/run\/postgresql/$EHOST/")
-        taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION" -V "$LIBEUFIN_NEXUS_DB_CONNECTION"
-    fi
-    export LIBEUFIN_NEXUS_DB_CONNECTION
-    libeufin-nexus reset-tables \
-        &> libeufin-nexus-reset.log
-
-    # For convenience, username and password are
-    # identical to those used at the Sandbox.
-    echo -n "Create exchange Nexus user ..."
-    libeufin-nexus superuser exchange --password x
-    echo "OK"
-    libeufin-nexus serve --port "$NEXUS_PORT" \
-      2> libeufin-nexus-stderr.log \
-      > libeufin-nexus-stdout.log &
-    echo $! > libeufin-nexus.pid
-    export LIBEUFIN_NEXUS_URL="http://localhost:$NEXUS_PORT"
-    echo -n "Waiting for Nexus ..."
+if [[ "1" = "$START_NEXUS" || "1" = "$START_FAKEBANK" ]]
+then
+    echo -n "Waiting for the bank"
+    # Wait for bank to be available (usually the slowest)
     OK="0"
-    for n in $(seq 1 100); do
+    for n in $(seq 1 300)
+    do
         echo -n "."
         sleep "$DEFAULT_SLEEP"
-        wget --timeout=1 \
-             --tries=3 \
+        # bank
+        wget --tries=1 \
              --waitretry=0 \
+             --timeout=1 \
+             --user admin \
+             --password secret \
+             "http://localhost:${BANK_PORT}/" \
              -o /dev/null \
-             -O /dev/null \
-             "$LIBEUFIN_NEXUS_URL" || continue
+             -O /dev/null >/dev/null || continue
         OK="1"
         break
     done
@@ -413,69 +346,36 @@ then
         exit_skip "Failed to launch services (bank)"
     fi
     echo " OK"
-
-    export LIBEUFIN_NEXUS_USERNAME=exchange
-    export LIBEUFIN_NEXUS_PASSWORD=x
-    echo -n "Creating a EBICS connection at Nexus ..."
-    # FIXME-MS: '||true' should be removed after we make 'new-ebics-connection' idempotent!
-    libeufin-cli connections new-ebics-connection \
-      --ebics-url "http://localhost:$SANDBOX_PORT/ebicsweb" \
-      --host-id talerebics \
-      --partner-id talerpartner \
-      --ebics-user-id exchangeebics \
-      talerconn
-    echo "OK"
-
-    echo -n "Setup EBICS keying ..."
-    libeufin-cli connections connect talerconn
-    echo "OK"
-    echo -n "Download bank account name from Sandbox ..."
-    libeufin-cli connections download-bank-accounts talerconn
-    echo "OK"
-    echo -n "Importing bank account info into Nexus ..."
-    libeufin-cli connections import-bank-account \
-      --offered-account-id exchange \
-      --nexus-bank-account-id exchange-nexus \
-      talerconn
-    echo "OK"
-    echo -n "Setup payments submission task..."
-    # Tries every second.
-    libeufin-cli accounts task-schedule \
-      --task-type submit \
-      --task-name exchange-payments \
-      --task-cronspec "* * *" \
-      exchange-nexus
-    echo "OK"
-    # Tries every second.  Ask C52
-    echo -n "Setup history fetch task..."
-    libeufin-cli accounts task-schedule \
-      --task-type fetch \
-      --task-name exchange-history \
-      --task-cronspec "* * *" \
-      --task-param-level report \
-      --task-param-range-type latest \
-      exchange-nexus
-    echo "OK"
-    # create Taler facade.
-    echo -n "Create the Taler facade at Nexus..."
-    libeufin-cli facades \
-      new-taler-wire-gateway-facade \
-      --currency TESTKUDOS --facade-name test-facade \
-      talerconn exchange-nexus
-    echo "OK"
-    # Facade schema: http://localhost:$NEXUS_PORT/facades/test-facade/taler-wire-gateway/
-    # FIXME: set the above URL automatically in the configuration?
 fi
 
 if [ "1" = "$START_FAKEBANK" ]
 then
-    echo -n "Setting up fakebank ..."
-    $USE_VALGRIND taler-fakebank-run\
-                  -c "$CONF" \
-                  -L "$LOGLEVEL" \
-                  -n 4 \
-                  2> taler-fakebank-run.log &
-    echo " OK"
+    echo -n "Register Fakebank users ..."
+    register_fakebank_account fortytwo x
+    register_fakebank_account fortythree x
+    register_fakebank_account exchange x
+    register_fakebank_account tor x
+    register_fakebank_account gnunet x
+    register_fakebank_account tutorial x
+    register_fakebank_account survey x
+    echo " DONE"
+fi
+
+if [ "1" = "$START_BANK" ]
+then
+    echo -n "Register bank users ..."
+    # The specified IBAN and name must match the ones hard-coded into
+    # the C helper for the add-incoming call.  Without this value,
+    # libeufin-bank  won't find the target account to debit along a /add-incoming
+    # call.
+    register_bank_account fortytwo x "User42" FR7630006000011234567890189
+    register_bank_account fortythree x "Forty Three"
+    register_bank_account exchange x "Exchange Company" DE989651
+    register_bank_account tor x "Tor Project"
+    register_bank_account gnunet x "GNUnet"
+    register_bank_account tutorial x "Tutorial"
+    register_bank_account survey x "Survey"
+    echo " DONE"
 fi
 
 if [ "1" = "$START_EXCHANGE" ]
@@ -592,47 +492,6 @@ then
     taler-auditor-dbinit -c "$CONF" --reset
     taler-auditor-exchange -c "$CONF" -m "$MAPUB" -u "$EXCHANGE_URL"
     $USE_VALGRIND taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
-    echo " DONE"
-fi
-
-if [[ "1" = "$START_NEXUS" || "1" = "$START_FAKEBANK" ]]
-then
-    echo -n "Waiting for the bank"
-    # Wait for bank to be available (usually the slowest)
-    OK="0"
-    for n in $(seq 1 300)
-    do
-        echo -n "."
-        sleep "$DEFAULT_SLEEP"
-        # bank
-        wget --tries=1 \
-             --waitretry=0 \
-             --timeout=1 \
-             --user admin \
-             --password secret \
-             "http://localhost:${BANK_PORT}/" \
-             -o /dev/null \
-             -O /dev/null >/dev/null || continue
-        OK="1"
-        break
-    done
-    if [ "1" != "$OK" ]
-    then
-        exit_skip "Failed to launch services (bank)"
-    fi
-    echo " OK"
-fi
-
-if [ "1" = "$START_FAKEBANK" ]
-then
-    echo -n "Register Fakebank users ..."
-    register_fakebank_account fortytwo x
-    register_fakebank_account fortythree x
-    register_fakebank_account exchange x
-    register_fakebank_account tor x
-    register_fakebank_account gnunet x
-    register_fakebank_account tutorial x
-    register_fakebank_account survey x
     echo " DONE"
 fi
 
