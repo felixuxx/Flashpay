@@ -440,12 +440,19 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   /* TODO: could use 'etag' mechanism to only fetch transactions
      we did not yet process, instead of going over them
      again and again. */
-  qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
-                                             coin_pub,
-                                             0,
-                                             0,
-                                             &etag_out,
-                                             &tl);
+  {
+    struct TALER_Amount balance;
+    struct TALER_DenominationHashP h_denom_pub;
+
+    qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
+                                               coin_pub,
+                                               0,
+                                               0,
+                                               &etag_out,
+                                               &balance,
+                                               &h_denom_pub,
+                                               &tl);
+  }
   if (0 >= qs)
     return qs;
   GNUNET_assert (GNUNET_OK ==

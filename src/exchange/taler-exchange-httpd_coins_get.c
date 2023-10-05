@@ -544,6 +544,8 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
   char etagp[24];
   struct MHD_Response *resp;
   unsigned int http_status;
+  struct TALER_DenominationHashP h_denom_pub;
+  struct TALER_Amount balance;
 
   TALER_MHD_parse_request_number (rc->connection,
                                   "start",
@@ -612,6 +614,8 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
                                             start_off,
                                             etag_in,
                                             &etag_out,
+                                            &balance,
+                                            &h_denom_pub,
                                             &tl);
     switch (qs)
     {
@@ -675,6 +679,10 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
                                          "Failed to compile coin history");
     }
     resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                  &h_denom_pub),
+      TALER_JSON_pack_amount ("balance",
+                              &balance),
       GNUNET_JSON_pack_array_steal ("history",
                                     history));
     http_status = MHD_HTTP_OK;

@@ -1576,6 +1576,324 @@ TALER_EXCHANGE_csr_withdraw_cancel (
   struct TALER_EXCHANGE_CsRWithdrawHandle *csrh);
 
 
+/* ********************* GET /coins/$COIN_PUB *********************** */
+
+/**
+ * Ways how a coin's balance may change.
+ */
+enum TALER_EXCHANGE_CoinTransactionType
+{
+
+  /**
+   * Reserved for uninitialized / none.
+   */
+  TALER_EXCHANGE_CTT_NONE,
+
+  /**
+   * Deposit into a contract.
+   */
+  TALER_EXCHANGE_CTT_DEPOSIT,
+
+  /**
+   * Spent on melt.
+   */
+  TALER_EXCHANGE_CTT_MELT,
+
+  /**
+   * Refunded by merchant.
+   */
+  TALER_EXCHANGE_CTT_REFUND,
+
+  /**
+   * Debited in recoup (to reserve) operation.
+   */
+  TALER_EXCHANGE_CTT_RECOUP,
+
+  /**
+   * Debited in recoup-and-refresh operation.
+   */
+  TALER_EXCHANGE_CTT_RECOUP_REFRESH,
+
+  /**
+   * Credited in recoup-refresh.
+   */
+  TALER_EXCHANGE_CTT_OLD_COIN_RECOUP,
+
+  /**
+   * Deposited into purse.
+   */
+  TALER_EXCHANGE_CTT_PURSE_DEPOSIT,
+
+  /**
+   * Refund from purse.
+   */
+  TALER_EXCHANGE_CTT_PURSE_REFUND,
+
+  /**
+   * Reserve open payment operation.
+   */
+  TALER_EXCHANGE_CTT_RESERVE_OPEN_DEPOSIT
+
+};
+
+
+/**
+ * @brief Entry in the coin's transaction history.
+ */
+struct TALER_EXCHANGE_CoinHistoryEntry
+{
+
+  /**
+   * Type of the transaction.
+   */
+  enum TALER_EXCHANGE_CoinTransactionType type;
+
+  /**
+   * Amount transferred (in or out).
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Details depending on @e type.
+   */
+  union
+  {
+
+    struct
+    {
+      struct TALER_MerchantWireHashP h_wire;
+      struct TALER_PrivateContractHashP h_contract_terms;
+      struct TALER_ExtensionPolicyHashP h_policy;
+      bool no_h_policy;
+      struct GNUNET_HashCode wallet_data_hash;
+      bool no_wallet_data_hash;
+      struct GNUNET_TIME_Timestamp wallet_timestamp;
+      struct TALER_MerchantPublicKeyP merchant_pub;
+      struct GNUNET_TIME_Timestamp refund_deadline;
+      struct TALER_CoinSpendSignatureP sig;
+      struct TALER_AgeCommitmentHash hac;
+      bool no_hac;
+      struct TALER_Amount deposit_fee;
+    } deposit;
+
+    struct
+    {
+      struct TALER_CoinSpendSignatureP sig;
+      struct TALER_RefreshCommitmentP rc;
+      struct TALER_AgeCommitmentHash h_age_commitment;
+      bool no_hac;
+      struct TALER_Amount melt_fee;
+    } melt;
+
+    struct
+    {
+      struct TALER_PrivateContractHashP h_contract_terms;
+      struct TALER_MerchantPublicKeyP merchant_pub;
+      struct TALER_MerchantSignatureP sig;
+      struct TALER_Amount refund_fee;
+      struct TALER_Amount sig_amount;
+      uint64_t rtransaction_id;
+    } refund;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_TIME_Timestamp timestamp;
+      union TALER_DenominationBlindingKeyP coin_bks;
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_CoinSpendSignatureP coin_sig;
+    } recoup;
+
+    struct
+    {
+      struct TALER_CoinSpendPublicKeyP old_coin_pub;
+      union TALER_DenominationBlindingKeyP coin_bks;
+      struct GNUNET_TIME_Timestamp timestamp;
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_CoinSpendSignatureP coin_sig;
+    } recoup_refresh;
+
+    struct
+    {
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_CoinSpendPublicKeyP new_coin_pub;
+      struct GNUNET_TIME_Timestamp timestamp;
+    } old_coin_recoup;
+
+    struct
+    {
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      const char *exchange_base_url;
+      bool refunded;
+      struct TALER_AgeCommitmentHash phac;
+    } purse_deposit;
+
+    struct
+    {
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_Amount refund_fee;
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+    } purse_refund;
+
+    struct
+    {
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_CoinSpendSignatureP coin_sig;
+    } reserve_open_deposit;
+
+  } details;
+
+};
+
+
+/**
+ * @brief A /coins/$RID/history Handle
+ */
+struct TALER_EXCHANGE_CoinsHistoryHandle;
+
+
+/**
+ * Parses and verifies a coin's transaction history as
+ * returned by the exchange.  Note that in case of
+ * incremental histories, the client must first combine
+ * the incremental histories into one complete history.
+ *
+ * @param keys /keys data of the exchange
+ * @param dk denomination key of the coin
+ * @param history JSON array with the coin's history
+ * @param coin_pub public key of the coin
+ * @param currency currency of the coin
+ * @param[out] total_in set to total amount credited to the coin in @a history
+ * @param[out] total_out set to total amount debited to the coin in @a history
+ * @param rlen length of the @a rhistory array
+ * @param[out] rhistory array where to write the parsed @a history
+ * @return #GNUNET_OK if @a history is valid,
+ *         #GNUNET_SYSERR if not
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_parse_coin_history (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_EXCHANGE_DenomPublicKey *dk,
+  const json_t *history,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct TALER_Amount *total_in,
+  struct TALER_Amount *total_out,
+  unsigned int rlen,
+  struct TALER_EXCHANGE_CoinHistoryEntry rhistory[static rlen]);
+
+
+/**
+ * Verify that @a coin_sig does NOT appear in the @a history of a coin's
+ * transactions and thus whatever transaction is authorized by @a coin_sig is
+ * a conflict with @a proof.
+ *
+ * @param history coin history to check
+ * @param coin_sig signature that must not be in @a history
+ * @return #GNUNET_OK if @a coin_sig is not in @a history
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_coin_signature_conflict (
+  const json_t *history,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Response to a GET /coins/$COIN_PUB/history request.
+ */
+struct TALER_EXCHANGE_CoinHistory
+{
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Coin transaction history (possibly partial).
+       * Not yet validated, combine with other already
+       * known history data for this coin and then use
+       * #TALER_EXCHANGE_parse_coin_history() to validate
+       * the complete history and obtain it in binary
+       * format.
+       */
+      const json_t *history;
+
+      /**
+       * The hash of the coin denomination's public key
+       */
+      struct TALER_DenominationHashP h_denom_pub;
+
+      /**
+       * Coin balance.
+       */
+      struct TALER_Amount balance;
+
+    } ok;
+
+  } details;
+
+};
+
+typedef void
+(*TALER_EXCHANGE_CoinsHistoryCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_CoinHistory *ch);
+
+/**
+ * Parses and verifies a coin's transaction history as
+ * returned by the exchange. Note that a client may
+ * have to combine multiple partial coin histories
+ * into one coherent history before calling this function.
+ *
+ * @param keys /keys data of the exchange
+ * @param dk denomination key of the coin
+ * @param history JSON array with the coin's full history
+ * @param coin_pub public key of the coin
+ * @param currency currency of the coin
+ * @param[out] total_in set to total amount credited to the coin in @a history
+ * @param[out] total_out set to total amount debited to the coin in @a history
+ * @param len length of the @a rhistory
+ * @param[out] rhistory where to write the parsed @a history
+ * @return #GNUNET_OK if @a history is valid,
+ *         #GNUNET_SYSERR if not
+ */
+struct TALER_EXCHANGE_CoinsHistoryHandle *
+TALER_EXCHANGE_coins_history (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  uint64_t start_off,
+  TALER_EXCHANGE_CoinsHistoryCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_coins_history() operation.
+ *
+ * @param[in] rsh operation to chancel
+ */
+void
+TALER_EXCHANGE_coins_history_cancel (
+  struct TALER_EXCHANGE_CoinsHistoryHandle *rsh);
+
+
 /* ********************* GET /reserves/$RESERVE_PUB *********************** */
 
 /**

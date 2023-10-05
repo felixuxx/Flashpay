@@ -810,6 +810,8 @@ TEH_PG_get_coin_transactions (
   uint64_t start_off,
   uint64_t etag_in,
   uint64_t *etag_out,
+  struct TALER_Amount *balance,
+  struct TALER_DenominationHashP *h_denom_pub,
   struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
   struct PostgresClosure *pg = cls;
@@ -833,10 +835,16 @@ TEH_PG_get_coin_transactions (
               "Getting transactions for coin %s\n",
               TALER_B2S (coin_pub));
   PREPARE (pg,
-           "get_coin_history_etag",
+           "get_coin_history_etag_balance",
            "SELECT"
-           " coin_history_serial_id"
-           " FROM coin_history"
+           " ch.coin_history_serial_id"
+           ",kc.remaining"
+           ",denom.denom_pub_hash"
+           " FROM coin_history ch"
+           " JOIN known_coins kc"
+           "   USING (coin_pub)"
+           " JOIN denominations denom"
+           "   USING (denominations_serial)"
            " WHERE coin_pub=$1"
            " ORDER BY coin_history_serial_id DESC"
            " LIMIT 1;");
@@ -1045,6 +1053,10 @@ TEH_PG_get_coin_transactions (
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("coin_history_serial_id",
                                     &end),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                            h_denom_pub),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("remaining",
+                                   balance),
       GNUNET_PQ_result_spec_end
     };
 

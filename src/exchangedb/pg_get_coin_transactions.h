@@ -39,6 +39,8 @@
  * @param etag_in up to this offset the client already has a response, do not
  *                   return anything unless @a etag_out will be larger
  * @param[out] etag_out set to the latest history offset known for this @a coin_pub
+ * @param[out] balance set to current balance of the coin
+ * @param[out] h_denom_pub set to denomination public key of the coin
  * @param[out] tlp set to list of transactions, set to NULL if coin has no
  *             transaction history past @a start_off or if @a etag_in is equal
  *             to the value written to @a etag_out.
@@ -51,6 +53,8 @@ TEH_PG_get_coin_transactions (
   uint64_t start_off,
   uint64_t etag_in,
   uint64_t *etag_out,
+  struct TALER_Amount *balance,
+  struct TALER_DenominationHashP *h_denom_pub,
   struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 

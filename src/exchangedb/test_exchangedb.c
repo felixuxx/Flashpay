@@ -1724,12 +1724,16 @@ run (void *cls)
       struct TALER_EXCHANGEDB_TransactionList *tl;
       enum GNUNET_DB_QueryStatus qs;
       uint64_t etag;
+      struct TALER_Amount balance;
+      struct TALER_DenominationHashP h_denom_pub;
 
       qs = plugin->get_coin_transactions (plugin->cls,
                                           &refresh.coin.coin_pub,
                                           0,
                                           0,
                                           &etag,
+                                          &balance,
+                                          &h_denom_pub,
                                           &tl);
       FAILIF (0 >= qs);
       FAILIF (NULL == tl);
@@ -1985,12 +1989,16 @@ run (void *cls)
   FAILIF (1 != auditor_row_cnt);
   {
     uint64_t etag = 0;
+    struct TALER_Amount balance;
+    struct TALER_DenominationHashP h_denom_pub;
 
     qs = plugin->get_coin_transactions (plugin->cls,
                                         &refund.coin.coin_pub,
                                         0,
                                         0,
                                         &etag,
+                                        &balance,
+                                        &h_denom_pub,
                                         &tl);
   }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
