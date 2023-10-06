@@ -1851,10 +1851,19 @@ struct TALER_EXCHANGE_CoinHistory
 
 };
 
+
+/**
+ * Signature of functions called with the result of
+ * a coin transaction history request.
+ *
+ * @param cls closure
+ * @param ch transaction history for the coin
+ */
 typedef void
 (*TALER_EXCHANGE_CoinsHistoryCallback)(
   void *cls,
   const struct TALER_EXCHANGE_CoinHistory *ch);
+
 
 /**
  * Parses and verifies a coin's transaction history as

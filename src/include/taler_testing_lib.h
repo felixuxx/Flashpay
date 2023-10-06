@@ -1272,7 +1272,7 @@ TALER_TESTING_cmd_reserve_poll_finish (const char *label,
 
 
 /**
- * Create a POST "/reserves/$RID/history" command.
+ * Create a GET "/reserves/$RID/history" command.
  *
  * @param label the command label.
  * @param reserve_reference reference to the reserve to check.
@@ -1285,6 +1285,22 @@ TALER_TESTING_cmd_reserve_history (const char *label,
                                    const char *reserve_reference,
                                    const char *expected_balance,
                                    unsigned int expected_response_code);
+
+
+/**
+ * Create a GET "/coins/$COIN_PUB/history" command.
+ *
+ * @param label the command label.
+ * @param coin_reference reference to the coin to check.
+ * @param expected_balance expected balance for the coin.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_coin_history (const char *label,
+                                const char *coin_reference,
+                                const char *expected_balance,
+                                unsigned int expected_response_code);
 
 
 /**
