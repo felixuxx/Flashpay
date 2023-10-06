@@ -302,12 +302,18 @@ coin_history_cb (void *cls,
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }
-    if (0 >=
+    if (0 >
         TALER_amount_subtract (&hbal,
                                &total_in,
                                &total_out))
     {
       GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Coin credits: %s\n",
+                  TALER_amount2s (&total_in));
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Coin debits: %s\n",
+                  TALER_amount2s (&total_out));
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }

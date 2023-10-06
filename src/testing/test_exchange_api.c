@@ -1169,6 +1169,10 @@ run (void *cls,
                                      "batch-withdraw-coin-1#1",
                                      "EUR:1",
                                      NULL),
+    TALER_TESTING_cmd_coin_history ("coin-history-batch-1",
+                                    "batch-withdraw-coin-1#0",
+                                    "EUR:0.0",
+                                    MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 
