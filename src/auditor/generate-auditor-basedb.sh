@@ -85,7 +85,7 @@ taler-wallet-cli \
     {
       amountToSpend: "TESTKUDOS:4",
       amountToWithdraw: "TESTKUDOS:10",
-      bankAccessApiBaseUrl: $BANK_URL,
+      corebankApiBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
       merchantBaseUrl: $MERCHANT_URL,
     }' \
