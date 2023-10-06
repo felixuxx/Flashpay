@@ -55,7 +55,7 @@ taler-wallet-cli \
   "$(jq -n '
     {
       amount: "TESTKUDOS:8",
-      bankAccessApiBaseUrl: $BANK_URL,
+      corebankApiBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
     }' \
     --arg BANK_URL "$BANK_URL/demobanks/default/access-api/" \
