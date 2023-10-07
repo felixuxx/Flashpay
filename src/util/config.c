@@ -166,3 +166,260 @@ TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
     }
   return GNUNET_OK;
 }
+
+
+/**
+ * Closure for #parse_currencies_cb().
+ */
+struct CurrencyParserContext
+{
+  /**
+   * Current offset in @e cspecs.
+   */
+  unsigned int num_currencies;
+
+  /**
+   * Length of the @e cspecs array.
+   */
+  unsigned int len_cspecs;
+
+  /**
+   * Array of currency specifications (see DD 51).
+   */
+  struct TALER_CurrencySpecification *cspecs;
+
+  /**
+   * Configuration we are parsing.
+   */
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
+   * Set to true if the configuration was malformed.
+   */
+  bool failure;
+};
+
+
+/**
+ * Function to iterate over section.
+ *
+ * @param cls closure with a `struct CurrencyParserContext *`
+ * @param section name of the section
+ */
+static void
+parse_currencies_cb (void *cls,
+                     const char *section)
+{
+  struct CurrencyParserContext *cpc = cls;
+  struct TALER_CurrencySpecification *cspec;
+  unsigned long long num;
+  char *str;
+
+  if (cpc->failure)
+    return;
+  if (0 != strncasecmp (section,
+                        "currency-",
+                        strlen ("currency-")))
+    return; /* not interesting */
+  if (GNUNET_YES !=
+      GNUNET_CONFIGURATION_get_value_yesno (cpc->cfg,
+                                            section,
+                                            "ENABLED"))
+    return; /* disabled */
+  if (cpc->len_cspecs == cpc->num_currencies)
+  {
+    GNUNET_array_grow (cpc->cspecs,
+                       cpc->len_cspecs,
+                       cpc->len_cspecs * 2 + 4);
+  }
+  cspec = &cpc->cspecs[cpc->num_currencies++];
+  cspec->is_currency_name_leading
+    = GNUNET_CONFIGURATION_get_value_yesno (cpc->cfg,
+                                            section,
+                                            "NAME_LEADING");
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
+                                             section,
+                                             "NAME",
+                                             &str))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "NAME");
+    cpc->failure = true;
+    return;
+  }
+  if (strlen (str) >= TALER_CURRENCY_LEN)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "NAME",
+                               "Name given is too long");
+    cpc->failure = true;
+    GNUNET_free (str);
+    return;
+  }
+  strcpy (cspec->currency,
+          str);
+  GNUNET_free (str);
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
+                                             section,
+                                             "DECIMAL_SEPARATOR",
+                                             &str))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "DECIMAL_SEPARATOR");
+    cpc->failure = true;
+    return;
+  }
+  cspec->decimal_separator = str;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cpc->cfg,
+                                             section,
+                                             "FRACTIONAL_INPUT_DIGITS",
+                                             &num))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FRACTIONAL_INPUT_DIGITS");
+    cpc->failure = true;
+    return;
+  }
+  if (num > TALER_AMOUNT_FRAC_LEN)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FRACTIONAL_INPUT_DIGITS",
+                               "Number given is too big");
+    cpc->failure = true;
+    return;
+  }
+  cspec->num_fractional_input_digits = num;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cpc->cfg,
+                                             section,
+                                             "FRACTIONAL_NORMAL_DIGITS",
+                                             &num))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FRACTIONAL_NORMAL_DIGITS");
+    cpc->failure = true;
+    return;
+  }
+  if (num > TALER_AMOUNT_FRAC_LEN)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FRACTIONAL_NORMAL_DIGITS",
+                               "Number given is too big");
+    cpc->failure = true;
+    return;
+  }
+  cspec->num_fractional_normal_digits = num;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cpc->cfg,
+                                             section,
+                                             "FRACTIONAL_TRAILING_ZERO_DIGITS",
+                                             &num))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FRACTIONAL_TRAILING_ZERO_DIGITS");
+    cpc->failure = true;
+    return;
+  }
+  if (num > TALER_AMOUNT_FRAC_LEN)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FRACTIONAL_TRAILING_ZERO_DIGITS",
+                               "Number given is too big");
+    cpc->failure = true;
+    return;
+  }
+  cspec->num_fractional_trailing_zero_digits = num;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
+                                             section,
+                                             "ALT_UNIT_NAMES",
+                                             &str))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "ALT_UNIT_NAMES");
+    cpc->failure = true;
+    return;
+  }
+  {
+    json_error_t err;
+
+    cspec->map_alt_unit_names = json_loads (str,
+                                            JSON_REJECT_DUPLICATES,
+                                            &err);
+    GNUNET_free (str);
+    if (NULL == cspec->map_alt_unit_names)
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "ALT_UNIT_NAMES",
+                                 err.text);
+      cpc->failure = true;
+      return;
+    }
+  }
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_CONFIG_parse_currencies (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                               unsigned int *num_currencies,
+                               struct TALER_CurrencySpecification **cspecs)
+{
+  struct CurrencyParserContext cpc = {
+    .cfg = cfg
+  };
+
+  GNUNET_CONFIGURATION_iterate_sections (cfg,
+                                         &parse_currencies_cb,
+                                         &cpc);
+  if (cpc.failure)
+  {
+    GNUNET_array_grow (cpc.cspecs,
+                       cpc.len_cspecs,
+                       0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_array_grow (cpc.cspecs,
+                     cpc.len_cspecs,
+                     cpc.num_currencies);
+  *num_currencies = cpc.num_currencies;
+  *cspecs = cpc.cspecs;
+  if (0 == *num_currencies)
+    return GNUNET_NO;
+  return GNUNET_OK;
+}
+
+
+void
+TALER_CONFIG_free_currencies (
+  unsigned int num_currencies,
+  struct TALER_CurrencySpecification cspecs[static num_currencies])
+{
+  for (unsigned int i = 0; i<num_currencies; i++)
+  {
+    struct TALER_CurrencySpecification *cspec = &cspecs[i];
+
+    GNUNET_free (cspec->decimal_separator);
+    json_decref (cspec->map_alt_unit_names);
+  }
+  GNUNET_array_grow (cspecs,
+                     num_currencies,
+                     0);
+}

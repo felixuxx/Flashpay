@@ -210,6 +210,83 @@ TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
+ * Details about how to render a currency.
+ */
+struct TALER_CurrencySpecification
+{
+  /**
+   * Name of the currency.
+   */
+  char currency[TALER_CURRENCY_LEN];
+
+  /**
+   * Character used to separate decimals.  String as
+   * multi-byte sequences may be required (UTF-8!).
+   */
+  char *decimal_separator;
+
+  /**
+   * how many digits the user may enter at most after the @e decimal_separator
+   */
+  unsigned int num_fractional_input_digits;
+
+  /**
+   * how many digits we render in normal scale after the @e decimal_separator
+   */
+  unsigned int num_fractional_normal_digits;
+
+  /**
+   * how many digits we render in after the @e decimal_separator even if all
+   * remaining digits are zero.
+   */
+  unsigned int num_fractional_trailing_zero_digits;
+
+  /**
+   * True to put the currency symbol before the number,
+   * false to put the currency symbol after the number.
+   */
+  bool is_currency_name_leading;
+
+  /**
+   * Mapping of powers of 10 to alternative currency names or symbols.
+   * Keys are the decimal powers, values the currency symbol to use.
+   * Map MUST contain an entry for "0" to the default currency symbol.
+   */
+  json_t *map_alt_unit_names;
+
+};
+
+
+/**
+ * Parse information about supported currencies from
+ * our configuration.
+ *
+ * @param cfg configuration to parse
+ * @param[out] num_currencies set to number of enabled currencies, length of @e cspecs
+ * @param[out] cspecs set to currency specification array
+ * @return #GNUNET_OK on success, #GNUNET_NO if zero
+ *  currency specifications were enabled,
+ *  #GNUNET_SYSERR if the configuration was malformed
+ */
+enum GNUNET_GenericReturnValue
+TALER_CONFIG_parse_currencies (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                               unsigned int *num_currencies,
+                               struct TALER_CurrencySpecification **cspecs);
+
+
+/**
+ * Free @a cspecs array.
+ *
+ * @param num_currencies length of @a cspecs array
+ * @param[in] cspecs array to free
+ */
+void
+TALER_CONFIG_free_currencies (
+  unsigned int num_currencies,
+  struct TALER_CurrencySpecification cspecs[static num_currencies]);
+
+
+/**
  * Allow user to specify an amount on the command line.
  *
  * @param shortName short name of the option
