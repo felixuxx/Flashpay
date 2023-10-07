@@ -267,7 +267,7 @@ fi
 if [ "1" = "$START_BANK" ]
 then
     echo -n "Setting up bank database ... "
-    libeufin-bank-dbinit \
+    libeufin-bank dbinit \
         -r \
         -c "$CONF" \
         &> libeufin-bank-reset.log

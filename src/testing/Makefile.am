@@ -144,9 +144,8 @@ libtalertesting_la_LIBADD = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
-# removed for now, due to bug(s) in libeufin!
-noinst_PROGRAMS = \
-  test_bank_api_with_nexus
+
+#  test_bank_api_with_nexus
 
 .NOTPARALLEL:
 check_PROGRAMS = \
