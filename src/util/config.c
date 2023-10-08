@@ -21,7 +21,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-
+#include <gnunet/gnunet_json_lib.h>
 
 enum GNUNET_GenericReturnValue
 TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
@@ -241,12 +241,12 @@ parse_currencies_cb (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
                                              section,
-                                             "NAME",
+                                             "CODE",
                                              &str))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "NAME");
+                               "CODE");
     cpc->failure = true;
     return;
   }
@@ -254,8 +254,8 @@ parse_currencies_cb (void *cls,
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "NAME",
-                               "Name given is too long");
+                               "CODE",
+                               "Currency code name given is too long");
     cpc->failure = true;
     GNUNET_free (str);
     return;
@@ -277,6 +277,20 @@ parse_currencies_cb (void *cls,
     return;
   }
   cspec->decimal_separator = str;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
+                                             section,
+                                             "NAME",
+                                             &str))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "NAME");
+    cpc->failure = true;
+    return;
+  }
+  cspec->name = str;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cpc->cfg,
@@ -407,6 +421,28 @@ TALER_CONFIG_parse_currencies (const struct GNUNET_CONFIGURATION_Handle *cfg,
 }
 
 
+json_t *
+TALER_CONFIG_currency_specs_to_json (const struct
+                                     TALER_CurrencySpecification *cspec)
+{
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("decimal_separator",
+                             cspec->decimal_separator),
+    GNUNET_JSON_pack_string ("name",
+                             cspec->name),
+    GNUNET_JSON_pack_uint64 ("num_fractional_input_digits",
+                             cspec->num_fractional_input_digits),
+    GNUNET_JSON_pack_uint64 ("num_fractional_normal_digits",
+                             cspec->num_fractional_normal_digits),
+    GNUNET_JSON_pack_uint64 ("num_fractional_trailing_zero_digits",
+                             cspec->num_fractional_trailing_zero_digits),
+    GNUNET_JSON_pack_bool ("is_currency_name_leading",
+                           cspec->is_currency_name_leading),
+    GNUNET_JSON_pack_object_incref ("alt_unit_names",
+                                    cspec->map_alt_unit_names));
+}
+
+
 void
 TALER_CONFIG_free_currencies (
   unsigned int num_currencies,
@@ -417,6 +453,7 @@ TALER_CONFIG_free_currencies (
     struct TALER_CurrencySpecification *cspec = &cspecs[i];
 
     GNUNET_free (cspec->decimal_separator);
+    GNUNET_free (cspec->name);
     json_decref (cspec->map_alt_unit_names);
   }
   GNUNET_array_grow (cspecs,

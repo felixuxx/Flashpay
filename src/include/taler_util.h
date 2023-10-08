@@ -220,6 +220,12 @@ struct TALER_CurrencySpecification
   char currency[TALER_CURRENCY_LEN];
 
   /**
+   * Human-readable long name of the currency, e.g.
+   * "Japanese Yen".
+   */
+  char *name;
+
+  /**
    * Character used to separate decimals.  String as
    * multi-byte sequences may be required (UTF-8!).
    */
@@ -284,6 +290,18 @@ void
 TALER_CONFIG_free_currencies (
   unsigned int num_currencies,
   struct TALER_CurrencySpecification cspecs[static num_currencies]);
+
+
+/**
+ * Convert a currency specification to the
+ * respective JSON object.
+ *
+ * @param cspec currency specification
+ * @return JSON object encoding @a cspec for `/config`.
+ */
+json_t *
+TALER_CONFIG_currency_specs_to_json (const struct
+                                     TALER_CurrencySpecification *cspec);
 
 
 /**
