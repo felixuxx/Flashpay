@@ -253,6 +253,22 @@ static unsigned long long active_connections;
 static unsigned long long req_max;
 
 /**
+ * Length of the cspecs array.
+ */
+static unsigned int num_cspecs;
+
+/**
+ * Rendering specs for currencies.
+ */
+static struct TALER_CurrencySpecification *cspecs;
+
+/**
+ * Rendering spec for our currency.
+ */
+const struct TALER_CurrencySpecification *TEH_cspec;
+
+
+/**
  * Context for all CURL operations (useful to the event loop)
  */
 struct GNUNET_CURL_Context *TEH_curl_ctx;
@@ -2039,24 +2055,31 @@ exchange_serve_process_config (void)
                                "CURRENCY");
     return GNUNET_SYSERR;
   }
-  {
-    unsigned long long cfd;
 
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
-                                               "exchange",
-                                               "CURRENCY_FRACTION_DIGITS",
-                                               &cfd))
-      cfd = 0;
-    if (cfd > 8)
+  if (GNUNET_OK !=
+      TALER_CONFIG_parse_currencies (TEH_cfg,
+                                     &num_cspecs,
+                                     &cspecs))
+    return GNUNET_SYSERR;
+  for (unsigned int i = 0; i<num_cspecs; i++)
+  {
+    struct TALER_CurrencySpecification *cspec;
+
+    cspec = &cspecs[i];
+    if (0 == strcmp (TEH_currency,
+                     cspec->currency))
     {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "taler",
-                                 "CURRENCY_FRACTION_DIGITS",
-                                 "Value must be below 8");
-      return GNUNET_SYSERR;
+      TEH_cspec = cspec;
+      break;
     }
-    TEH_currency_fraction_digits = (unsigned int) cfd;
+  }
+  if (NULL == TEH_cspec)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY",
+                               "Lacking enabled currency specification for the given currency");
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
@@ -2466,6 +2489,11 @@ do_shutdown (void *cls)
     exchange_curl_rc = NULL;
   }
   TALER_TEMPLATING_done ();
+  TEH_cspec = NULL;
+  TALER_CONFIG_free_currencies (num_cspecs,
+                                cspecs);
+  num_cspecs = 0;
+  cspecs = NULL;
 }
 
 

@@ -64,17 +64,6 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount)
 }
 
 
-json_t *
-TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount)
-{
-  struct TALER_Amount a;
-
-  TALER_amount_ntoh (&a,
-                     amount);
-  return TALER_JSON_from_amount (&a);
-}
-
-
 /**
  * Parse given JSON object to Amount
  *
@@ -160,7 +149,7 @@ TALER_JSON_spec_amount_any (const char *name,
 
 
 /**
- * Parse given JSON object to Amount in NBO.
+ * Parse given JSON object to currency spec.
  *
  * @param cls closure, NULL
  * @param root the json object representing data
@@ -168,73 +157,111 @@ TALER_JSON_spec_amount_any (const char *name,
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 static enum GNUNET_GenericReturnValue
-parse_amount_nbo (void *cls,
-                  json_t *root,
-                  struct GNUNET_JSON_Specification *spec)
+parse_cspec (void *cls,
+             json_t *root,
+             struct GNUNET_JSON_Specification *spec)
 {
-  const char *currency = cls;
-  struct TALER_AmountNBO *r_amount = spec->ptr;
-  const char *sv;
+  struct TALER_CurrencySpecification *r_cspec = spec->ptr;
+  const char *name;
+  const char *currency;
+  const char *decimal_separator;
+  uint32_t fid;
+  uint32_t fnd;
+  uint32_t ftzd;
+  const json_t *map;
+  struct GNUNET_JSON_Specification gspec[] = {
+    GNUNET_JSON_spec_string ("currency",
+                             &currency),
+    GNUNET_JSON_spec_string ("name",
+                             &name),
+    GNUNET_JSON_spec_string ("decimal_separator",
+                             &decimal_separator),
+    GNUNET_JSON_spec_uint32 ("num_fractional_input_digits",
+                             &fid),
+    GNUNET_JSON_spec_uint32 ("num_fractional_normal_digits",
+                             &fnd),
+    GNUNET_JSON_spec_uint32 ("num_fractional_trailing_zero_digits",
+                             &ftzd),
+    GNUNET_JSON_spec_bool ("is_currency_name_leading",
+                           &r_cspec->is_currency_name_leading),
+    GNUNET_JSON_spec_object_const ("alt_unit_names",
+                                   &map),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
 
   (void) cls;
-  if (! json_is_string (root))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  sv = json_string_value (root);
   if (GNUNET_OK !=
-      TALER_string_to_amount_nbo (sv,
-                                  r_amount))
+      GNUNET_JSON_parse (root,
+                         gspec,
+                         &emsg,
+                         &eline))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "`%s' is not a valid amount\n",
-                sv);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to parse %s at %u: %s\n",
+                spec[eline].field,
+                eline,
+                emsg);
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if ( (NULL != currency) &&
-       (0 !=
-        strcasecmp (currency,
-                    r_amount->currency)) )
+  if (strlen (currency) >= TALER_CURRENCY_LEN)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if ( (fid > TALER_AMOUNT_FRAC_LEN) ||
+       (fnd > TALER_AMOUNT_FRAC_LEN) ||
+       (ftzd > TALER_AMOUNT_FRAC_LEN) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  memset (r_cspec->currency,
+          0,
+          sizeof (r_cspec->currency));
+  /* FIXME: check currency consists only of legal characters! */
+  strcpy (r_cspec->currency,
+          currency);
+  /* FIXME: check map is valid! */
+  r_cspec->name = GNUNET_strdup (name);
+  r_cspec->decimal_separator = GNUNET_strdup (decimal_separator);
+  r_cspec->map_alt_unit_names = json_incref ((json_t *) map);
   return GNUNET_OK;
 }
 
 
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_amount_nbo (const char *name,
-                            const char *currency,
-                            struct TALER_AmountNBO *r_amount)
+/**
+ * Cleanup data left from parsing encrypted contract.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_cspec (void *cls,
+             struct GNUNET_JSON_Specification *spec)
 {
-  struct GNUNET_JSON_Specification ret = {
-    .parser = &parse_amount_nbo,
-    .cleaner = NULL,
-    .cls = (void *) currency,
-    .field = name,
-    .ptr = r_amount,
-    .ptr_size = 0,
-    .size_ptr = NULL
-  };
+  struct TALER_CurrencySpecification *cspec = spec->ptr;
 
-  GNUNET_assert (NULL != currency);
-  return ret;
+  (void) cls;
+  GNUNET_free (cspec->name);
+  GNUNET_free (cspec->decimal_separator);
+  json_decref (cspec->map_alt_unit_names);
 }
 
 
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_amount_any_nbo (const char *name,
-                                struct TALER_AmountNBO *r_amount)
+TALER_JSON_spec_currency_specification (
+  const char *name,
+  struct TALER_CurrencySpecification *r_cspec)
 {
   struct GNUNET_JSON_Specification ret = {
-    .parser = &parse_amount_nbo,
-    .cleaner = NULL,
+    .parser = &parse_cspec,
+    .cleaner = &clean_cspec,
     .cls = NULL,
     .field = name,
-    .ptr = r_amount,
+    .ptr = r_cspec,
     .ptr_size = 0,
     .size_ptr = NULL
   };

@@ -225,6 +225,7 @@ TALER_amount_set_zero (const char *cur,
           sizeof (struct TALER_Amount));
   for (unsigned int i = 0; i<slen; i++)
     amount->currency[i] = toupper (cur[i]);
+  /* FIXME: check currency consists only of legal characters! */
   return GNUNET_OK;
 }
 

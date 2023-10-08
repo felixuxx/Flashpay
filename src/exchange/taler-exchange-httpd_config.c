@@ -39,6 +39,9 @@ TEH_handler_config (struct TEH_RequestContext *rc,
     resp = TALER_MHD_MAKE_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("supported_kyc_requirements",
                                     TALER_KYCLOGIC_get_satisfiable ()),
+      GNUNET_JSON_pack_object_steal (
+        "currency_specification",
+        TALER_CONFIG_currency_specs_to_json (TEH_cspec)),
       GNUNET_JSON_pack_string ("currency",
                                TEH_currency),
       GNUNET_JSON_pack_string ("name",

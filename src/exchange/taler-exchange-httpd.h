@@ -113,10 +113,9 @@ extern struct TALER_Amount TEH_stefan_log;
 extern struct TALER_Amount TEH_stefan_lin;
 
 /**
- * Default number of fractional digits to render
- * amounts with.
+ * Default ways how to render #TEH_currency amounts.
  */
-extern unsigned int TEH_currency_fraction_digits;
+extern const struct TALER_CurrencySpecification *TEH_cspec;
 
 /**
  * Our currency.

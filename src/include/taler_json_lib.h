@@ -92,18 +92,6 @@ TALER_JSON_pack_time_abs_human (const char *name,
   GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)), \
   GNUNET_JSON_pack_uint64 ("code", ec)
 
-/**
- * Generate packer instruction for a JSON field of type
- * absolute time creating a human-readable timestamp.
- *
- * @param name name of the field to add to the object
- * @param at absolute time to pack
- * @return json pack specification
- */
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs_nbo_human (const char *name,
-                                    struct GNUNET_TIME_AbsoluteNBO at);
-
 
 /**
  * Generate packer instruction for a JSON field of type
@@ -191,19 +179,6 @@ TALER_JSON_pack_amount (const char *name,
 
 /**
  * Generate packer instruction for a JSON field of type
- * amount.
- *
- * @param name name of the field to add to the object
- * @param amount valid amount to pack
- * @return json pack specification
- */
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_amount_nbo (const char *name,
-                            const struct TALER_AmountNBO *amount);
-
-
-/**
- * Generate packer instruction for a JSON field of type
  * encrypted contract.
  *
  * @param name name of the field to add to the object
@@ -239,16 +214,6 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount);
 
 
 /**
- * Convert a TALER amount to a JSON object.
- *
- * @param amount the amount
- * @return a json object describing the amount
- */
-json_t *
-TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount);
-
-
-/**
  * Provide specification to parse given JSON object to an amount.
  * The @a currency must be a valid pointer while the
  * parsing is done, a copy is not made.
@@ -265,20 +230,17 @@ TALER_JSON_spec_amount (const char *name,
 
 
 /**
- * Provide specification to parse given JSON object to an amount
- * in network byte order.
- * The @a currency must be a valid pointer while the
- * parsing is done, a copy is not made.
+ * Provide specification to parse given JSON object to
+ * a currency specification.
  *
  * @param name name of the amount field in the JSON
- * @param currency the currency the amount must be in
- * @param[out] r_amount where the amount has to be written
+ * @param[out] r_cspec where the currency spec has to be written
  * @return spec for parsing an amount
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_amount_nbo (const char *name,
-                            const char *currency,
-                            struct TALER_AmountNBO *r_amount);
+TALER_JSON_spec_currency_specification (
+  const char *name,
+  struct TALER_CurrencySpecification *r_cspec);
 
 
 /**
@@ -316,18 +278,6 @@ TALER_JSON_spec_econtract (const char *name,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_age_commitment (const char *name,
                                 struct TALER_AgeCommitment *age_commitment);
-
-/**
- * Provide specification to parse given JSON object to an amount
- * in any currency in network byte order.
- *
- * @param name name of the amount field in the JSON
- * @param[out] r_amount where the amount has to be written
- * @return spec for parsing an amount
- */
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_amount_any_nbo (const char *name,
-                                struct TALER_AmountNBO *r_amount);
 
 
 /**

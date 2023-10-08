@@ -488,6 +488,11 @@ struct TALER_EXCHANGE_Keys
   struct TALER_EXCHANGE_WireFeesByMethod *fees;
 
   /**
+   * Currency rendering specification for this exchange.
+   */
+  struct TALER_CurrencySpecification cspec;
+
+  /**
    * How long after a reserve went idle will the exchange close it?
    * This is an approximate number, not cryptographically signed by
    * the exchange (advisory-only, may change anytime).
@@ -530,12 +535,6 @@ struct TALER_EXCHANGE_Keys
    * Linear STEFAN parameter.
    */
   struct TALER_Amount stefan_lin;
-
-  /**
-   * Default number of fractional digits to render
-   * amounts with.
-   */
-  uint32_t currency_fraction_digits;
 
   /**
    * Length of @e accounts array.

@@ -39,15 +39,6 @@ TALER_JSON_pack_time_abs_human (const char *name,
 
 
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs_nbo_human (const char *name,
-                                    struct GNUNET_TIME_AbsoluteNBO at)
-{
-  return TALER_JSON_pack_time_abs_human (name,
-                                         GNUNET_TIME_absolute_ntoh (at));
-}
-
-
-struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_econtract (
   const char *name,
   const struct TALER_EncryptedContract *econtract)
@@ -307,21 +298,6 @@ TALER_JSON_pack_amount (const char *name,
     .field_name = name,
     .object = (NULL != amount)
               ? TALER_JSON_from_amount (amount)
-              : NULL
-  };
-
-  return ps;
-}
-
-
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_amount_nbo (const char *name,
-                            const struct TALER_AmountNBO *amount)
-{
-  struct GNUNET_JSON_PackSpec ps = {
-    .field_name = name,
-    .object = (NULL != amount)
-              ? TALER_JSON_from_amount_nbo (amount)
               : NULL
   };
 

@@ -260,6 +260,7 @@ parse_currencies_cb (void *cls,
     GNUNET_free (str);
     return;
   }
+  /* FIXME: validate str has only legal characters in it! */
   strcpy (cspec->currency,
           str);
   GNUNET_free (str);
@@ -388,6 +389,7 @@ parse_currencies_cb (void *cls,
       return;
     }
   }
+  /* FIXME: validate map only maps from decimal numbers to strings! */
 }
 
 

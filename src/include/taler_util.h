@@ -300,8 +300,8 @@ TALER_CONFIG_free_currencies (
  * @return JSON object encoding @a cspec for `/config`.
  */
 json_t *
-TALER_CONFIG_currency_specs_to_json (const struct
-                                     TALER_CurrencySpecification *cspec);
+TALER_CONFIG_currency_specs_to_json (
+  const struct TALER_CurrencySpecification *cspec);
 
 
 /**

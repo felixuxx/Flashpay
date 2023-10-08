@@ -864,9 +864,9 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_JSON_spec_string (
         "currency",
         &currency),
-      GNUNET_JSON_spec_uint32 (
-        "currency_fraction_digits",
-        &key_data->currency_fraction_digits),
+      TALER_JSON_spec_currency_specification (
+        "currency_specification",
+        &key_data->cspec),
       GNUNET_JSON_spec_string (
         "asset_type",
         &asset_type),
@@ -2381,8 +2381,9 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                              kd->version),
     GNUNET_JSON_pack_string ("currency",
                              kd->currency),
-    GNUNET_JSON_pack_uint64 ("currency_fraction_digits",
-                             kd->currency_fraction_digits),
+    GNUNET_JSON_pack_object_steal ("currency_specification",
+                                   TALER_CONFIG_currency_specs_to_json (
+                                     &kd->cspec)),
     TALER_JSON_pack_amount ("stefan_abs",
                             &kd->stefan_abs),
     TALER_JSON_pack_amount ("stefan_log",
