@@ -10,6 +10,7 @@ endif
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
+  currencies.conf \
   paths.conf \
   taler-exchange-secmod-eddsa.conf \
   taler-exchange-secmod-rsa.conf \
