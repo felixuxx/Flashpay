@@ -432,6 +432,8 @@ TALER_CONFIG_currency_specs_to_json (const struct
                              cspec->decimal_separator),
     GNUNET_JSON_pack_string ("name",
                              cspec->name),
+    GNUNET_JSON_pack_string ("currency",
+                             cspec->currency),
     GNUNET_JSON_pack_uint64 ("num_fractional_input_digits",
                              cspec->num_fractional_input_digits),
     GNUNET_JSON_pack_uint64 ("num_fractional_normal_digits",

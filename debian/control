@@ -18,7 +18,7 @@ Build-Depends:
  libjansson-dev (>= 2.13),
  libltdl-dev (>=2.2),
  libmicrohttpd-dev (>=0.9.71),
- libpq-dev (>=15),
+ libpq-dev (>=14),
  libsodium-dev (>=1.0.11),
  libunistring-dev (>=0.9.2),
  python3-jinja2,
@@ -80,7 +80,7 @@ Depends:
 Recommends:
   taler-exchange-offline (= ${binary:Version}),
   apache2 | nginx | httpd,
-  postgresql (>=15.0)
+  postgresql (>=14.0)
 Description: GNU's payment system operator.
   GNU Taler is the privacy-preserving digital payment
   system from the GNU project. This package contains the
