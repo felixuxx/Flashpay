@@ -215,9 +215,10 @@ register_bank_account() {
         --method=DELETE \
         -o /dev/null \
         -O /dev/null \
+        -a wget-delete-account.log \
         "http://localhost:${BANK_PORT}/accounts/$1" \
         || true # deletion may fail, that's OK!
-    if [ "$3" = "exchange" || "$3" = "Exchange" ]
+    if [ "$1" = "exchange" ] || [ "$1" = "Exchange" ]
     then
         IS_EXCHANGE="true"
     else
@@ -226,19 +227,23 @@ register_bank_account() {
     MAYBE_IBAN="${4:-}"
     if test -n "$MAYBE_IBAN";
     then
+        ENAME=$(echo "$3" | sed -e "s/ /+/g")
         # Note: this assumes that $3 has no spaces. Should probably escape in the future..
-        PAYTO="payto://SANDBOXX/${MAYBE_IBAN}?receiver-name=$3"
-        BODY='{username="'"$1"'",password="'"$2"'",is_taler_exchange='"$IS_EXCHANGE"',name="'"$3"'",internal_payto_uri="'"$PAYTO"'"}'
+        PAYTO="payto://iban/SANDBOXX/${MAYBE_IBAN}?receiver-name=$ENAME"
+        BODY='{"username":"'"$1"'","password":"'"$2"'","is_taler_exchange":'"$IS_EXCHANGE"',"name":"'"$3"'","internal_payto_uri":"'"$PAYTO"'"}'
     else
-        BODY='{username="'"$1"'",password="'"$2"'",is_taler_exchange='"$IS_EXCHANGE"',name="'"$3"'"}'
+        BODY='{"username":"'"$1"'","password":"'"$2"'","is_taler_exchange":'"$IS_EXCHANGE"',"name":"'"$3"'"}'
     fi
     wget \
         --http-user="$AUSER" \
         --http-password="$APASS" \
         --method=POST \
+        --header='Content-type: application/json' \
         --body-data="${BODY}" \
-        -a wget.log \
-        "http://localhost:${BANK_PORT}/accounts/$1"
+        --content-on-error \
+        -a wget-register-account.log \
+        -O wget-register-account.err \
+        "http://localhost:${BANK_PORT}/accounts"
 }
 
 register_fakebank_account() {
@@ -274,7 +279,7 @@ then
     echo "DONE"
     echo -n "Launching bank ... "
     libeufin-bank serve \
-      --port "$BANK_PORT" \
+      -c "$CONF" \
       > libeufin-bank-stdout.log \
       2> libeufin-bank-stderr.log &
     echo $! > libeufin-bank.pid
@@ -300,7 +305,11 @@ then
     echo -n "Set admin password..." 
     AUSER="admin"
     APASS="secret"
-    libeufin-bank passwd "$AUSER" "$APASS"
+    libeufin-bank \
+      passwd \
+      -c "$CONF" \
+      "$AUSER" "$APASS" \
+      &> libeufin-bank-passwd.log
     echo " OK"
 fi
 
