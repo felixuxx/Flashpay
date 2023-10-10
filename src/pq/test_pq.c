@@ -38,13 +38,15 @@ postgres_prepare (struct GNUNET_PQ_Context *db)
                             " tamount"
                             ",json"
                             ",aamount"
+                            ",tamountc"
                             ") VALUES "
-                            "($1, $2, $3);"),
+                            "($1, $2, $3, $4);"),
     GNUNET_PQ_make_prepare ("test_select",
                             "SELECT"
                             " tamount"
                             ",json"
                             ",aamount"
+                            ",tamountc"
                             " FROM test_pq;"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -64,6 +66,7 @@ run_queries (struct GNUNET_PQ_Context *conn)
 {
   struct TALER_Amount tamount;
   struct TALER_Amount aamount[3];
+  struct TALER_Amount tamountc;
   json_t *json;
 
   GNUNET_assert (GNUNET_OK ==
@@ -78,6 +81,9 @@ run_queries (struct GNUNET_PQ_Context *conn)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:7.7",
                                          &tamount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("FOO:8.7",
+                                         &tamountc));
   json = json_object ();
   GNUNET_assert (NULL != json);
   GNUNET_assert (0 ==
@@ -92,6 +98,8 @@ run_queries (struct GNUNET_PQ_Context *conn)
       TALER_PQ_query_param_array_amount (3,
                                          aamount,
                                          conn),
+      TALER_PQ_query_param_amount_with_currency (conn,
+                                                 &tamountc),
       GNUNET_PQ_query_param_end
     };
     PGresult *result;
@@ -112,6 +120,7 @@ run_queries (struct GNUNET_PQ_Context *conn)
   }
   {
     struct TALER_Amount tamount2;
+    struct TALER_Amount tamountc2;
     struct TALER_Amount *pamount;
     size_t npamount;
     json_t *json2;
@@ -129,6 +138,8 @@ run_queries (struct GNUNET_PQ_Context *conn)
                                          "EUR",
                                          &npamount,
                                          &pamount),
+      TALER_PQ_result_spec_amount_with_currency ("tamountc",
+                                                 &tamountc2),
       GNUNET_PQ_result_spec_end
     };
 
@@ -154,6 +165,9 @@ run_queries (struct GNUNET_PQ_Context *conn)
                     TALER_amount_cmp (&aamount[i],
                                       &pamount[i]));
     }
+    GNUNET_break (0 ==
+                  TALER_amount_cmp (&tamountc,
+                                    &tamountc2));
     GNUNET_PQ_cleanup_result (results_select);
   }
   return 0;
@@ -173,10 +187,19 @@ main (int argc,
                             "   WHEN duplicate_object THEN null;"
                             " END "
                             "$$;"),
+    GNUNET_PQ_make_execute ("DO $$ "
+                            " BEGIN"
+                            " CREATE TYPE taler_amount_currency AS"
+                            "   (val INT8, frac INT4, curr VARCHAR(12));"
+                            " EXCEPTION"
+                            "   WHEN duplicate_object THEN null;"
+                            " END "
+                            "$$;"),
     GNUNET_PQ_make_execute ("CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
                             " tamount taler_amount NOT NULL"
                             ",json VARCHAR NOT NULL"
                             ",aamount taler_amount[]"
+                            ",tamountc taler_amount_currency"
                             ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };

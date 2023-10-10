@@ -81,7 +81,7 @@ extract_amount_currency_tuple (void *cls,
   {
     struct TALER_PQ_AmountCurrencyP ap;
     const char *in;
-    int size;
+    size_t size;
 
     size = PQgetlength (result,
                         row,
@@ -90,11 +90,11 @@ extract_amount_currency_tuple (void *cls,
          (size <= sizeof (ap) - TALER_CURRENCY_LEN) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Incorrect size of binary field `%s' (got %d, expected (%d-%d))\n",
+                  "Incorrect size of binary field `%s' (got %zu, expected (%zu-%zu))\n",
                   fname,
                   size,
-                  (int) (sizeof (ap) - TALER_CURRENCY_LEN),
-                  (int) sizeof (ap));
+                  sizeof (ap) - TALER_CURRENCY_LEN,
+                  sizeof (ap));
       return GNUNET_SYSERR;
     }
 
@@ -222,44 +222,36 @@ extract_amount_tuple (void *cls,
 
   /* Parse the tuple */
   {
-    const char *in;
-    uint32_t num;
     struct TALER_PQ_AmountP ap;
-    int size;
-    const static int expected_size = sizeof(uint32_t) /* length */
-                                     + sizeof(ap);
+    const char *in;
+    size_t size;
 
     size = PQgetlength (result,
                         row,
                         col);
-
-    if (expected_size != size)
+    if (sizeof(ap) != size)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Incorrect size of binary field `%s' (got %d, expected %d)\n",
+                  "Incorrect size of binary field `%s' (got %zu, expected %zu)\n",
                   fname,
                   size,
-                  expected_size);
+                  sizeof(ap));
       return GNUNET_SYSERR;
     }
 
     in = PQgetvalue (result,
                      row,
                      col);
-
-    num = ntohl (*(uint32_t *) in);
-    if (2 != num)
+    memcpy (&ap,
+            in,
+            size);
+    if (2 != ntohl (ap.cnt))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Incorrect number of elements in tuple-field `%s'\n",
                   fname);
       return GNUNET_SYSERR;
     }
-    in += sizeof(uint32_t);
-    memcpy (&ap,
-            in,
-            sizeof (ap));
-
     /* TODO[oec]: OID-checks? */
 
     r_amount->value = GNUNET_ntohll (ap.v);
@@ -1084,13 +1076,13 @@ extract_array_generic (
   *((void **) dst) = NULL;
 
   #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto FAIL; \
-    } \
-  } while(0)
+          do { \
+            if ((cond)) \
+            { \
+              GNUNET_break (! (cond)); \
+              goto FAIL; \
+            } \
+          } while (0)
 
   col_num = PQfnumber (result, fname);
   FAIL_IF (0 > col_num);
@@ -1140,20 +1132,23 @@ extract_array_generic (
         {
           struct TALER_PQ_AmountP ap;
           struct TALER_Amount *amount = &amounts[i];
-          size_t sz = ntohl (*(uint32_t *) in);
-          in += sizeof(uint32_t);
+          uint32_t val;
+          size_t sz;
+
+          GNUNET_memcpy (&val,
+                         in,
+                         sizeof(val));
+          sz =  ntohl (val);
+          in += sizeof(val);
 
           /* total size for this array-entry */
-          FAIL_IF ((sizeof(uint32_t)
-                    + sizeof(struct TALER_PQ_AmountP))
-                   > sz);
+          FAIL_IF (sizeof(ap) > sz);
 
-          /* number of elements in composite type*/
-          sz = ntohl (*(uint32_t *) in);
-          in += sizeof(uint32_t);
-          FAIL_IF (2 != sz);
+          GNUNET_memcpy (&ap,
+                         in,
+                         sz);
+          FAIL_IF (2 != ntohl (ap.cnt));
 
-          ap = *(struct TALER_PQ_AmountP *) in;
           amount->value = GNUNET_ntohll (ap.v);
           amount->fraction = ntohl (ap.f);
           GNUNET_memcpy (amount->currency,
@@ -1171,7 +1166,13 @@ extract_array_generic (
       *((void **) dst) = out;
       for (uint32_t i = 0; i < header.dim; i++)
       {
-        size_t sz =  ntohl (*(uint32_t *) in);
+        uint32_t val;
+        size_t sz;
+
+        GNUNET_memcpy (&val,
+                       in,
+                       sizeof(val));
+        sz =  ntohl (val);
         FAIL_IF (sz != sizeof(struct TALER_DenominationHashP));
         in += sizeof(uint32_t);
         *(struct TALER_DenominationHashP *) out =
@@ -1188,7 +1189,13 @@ extract_array_generic (
       *((void **) dst) = out;
       for (uint32_t i = 0; i < header.dim; i++)
       {
-        size_t sz =  ntohl (*(uint32_t *) in);
+        uint32_t val;
+        size_t sz;
+
+        GNUNET_memcpy (&val,
+                       in,
+                       sizeof(val));
+        sz =  ntohl (val);
         FAIL_IF (sz != sizeof(struct TALER_BlindedCoinHashP));
         in += sizeof(uint32_t);
         *(struct TALER_BlindedCoinHashP *) out =
@@ -1217,10 +1224,16 @@ extract_array_generic (
         {
           struct TALER_BlindedDenominationSignature *denom_sig = &denom_sigs[i];
           uint32_t be[2];
-          size_t sz =  ntohl (*(uint32_t *) in);
-          in += sizeof(uint32_t);
+          uint32_t val;
+          size_t sz;
 
+          GNUNET_memcpy (&val,
+                         in,
+                         sizeof(val));
+          sz = ntohl (val);
           FAIL_IF (sizeof(be) > sz);
+
+          in += sizeof(val);
           GNUNET_memcpy (&be,
                          in,
                          sizeof(be));

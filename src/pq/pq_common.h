@@ -58,6 +58,7 @@ enum TALER_PQ_ArrayType
  */
 struct TALER_PQ_AmountP
 {
+  uint32_t cnt;   /* # elements in the tuple (== 2) */
   uint32_t oid_v; /* oid of .v  */
   uint32_t sz_v;  /* size of .v */
   uint64_t v;     /* value      */
@@ -74,28 +75,16 @@ struct TALER_PQ_AmountP
  */
 struct TALER_PQ_AmountCurrencyP
 {
-  uint32_t cnt; /* number of OIDs in tuple  */
+  uint32_t cnt;   /* # elements in the tuple (== 3) */
   uint32_t oid_v; /* oid of .v  */
   uint32_t sz_v;  /* size of .v */
   uint64_t v;     /* value      */
   uint32_t oid_f; /* oid of .f  */
   uint32_t sz_f;  /* size of .f */
   uint32_t f;     /* fraction   */
-
-  /**
-   * oid of .c
-   */
-  uint32_t oid_c;
-
-  /**
-   * size of .c
-   */
-  uint32_t sz_c;
-
-  /**
-   * currency
-   */
-  uint8_t c[TALER_CURRENCY_LEN];
+  uint32_t oid_c; /* oid of .c  */
+  uint32_t sz_c;  /* size of .c */
+  uint8_t c[TALER_CURRENCY_LEN];  /* currency */
 } __attribute__((packed));
 
 

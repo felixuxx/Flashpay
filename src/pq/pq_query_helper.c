@@ -174,13 +174,12 @@ qconv_amount_tuple (void *cls,
                                           oid_v,
                                           oid_f);
 
-      sz = sizeof(uint32_t); /* number of elements in tuple */
-      sz += sizeof(d);
+      sz = sizeof(d);
       out = GNUNET_malloc (sz);
       scratch[0] = out;
-      *(uint32_t *) out = htonl (2);
-      out += sizeof(uint32_t);
-      *(struct TALER_PQ_AmountP*) out = d;
+      GNUNET_memcpy (out,
+                     &d,
+                     sizeof(d));
     }
   }
 
@@ -841,14 +840,14 @@ qconv_array (
   same_sized = (0 != meta->same_size);
 
 #define RETURN_UNLESS(cond) \
-  do { \
-    if (! (cond)) \
-    { \
-      GNUNET_break ((cond)); \
-      noerror = false; \
-      goto DONE; \
-    } \
-  } while(0)
+        do { \
+          if (! (cond)) \
+          { \
+            GNUNET_break ((cond)); \
+            noerror = false; \
+            goto DONE; \
+          } \
+        } while (0)
 
   /* Calculate sizes and check bounds */
   {
@@ -970,9 +969,6 @@ qconv_array (
                   oid_v,
                   oid_f);
 
-            *(uint32_t *) out = htonl (2); /* number of elements in tuple */
-            out += sizeof(uint32_t);
-            sz -= sizeof(uint32_t);
             GNUNET_memcpy (out,
                            &am,
                            sizeof(am));
@@ -1177,7 +1173,7 @@ TALER_PQ_query_param_array_amount (
     true,
     amounts,
     NULL,
-    sizeof(uint32_t) + sizeof(struct TALER_PQ_AmountP),
+    sizeof(struct TALER_PQ_AmountP),
     TALER_PQ_array_of_amount,
     oid,
     db);
