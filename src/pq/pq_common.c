@@ -28,6 +28,7 @@ TALER_PQ_make_taler_pq_amount_ (
   uint32_t oid_f)
 {
   struct TALER_PQ_AmountP rval = {
+    .cnt = htonl (2),
     .oid_v = htonl (oid_v),
     .oid_f = htonl (oid_f),
     .sz_v = htonl (sizeof((amount)->value)),
