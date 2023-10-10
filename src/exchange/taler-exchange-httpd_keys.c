@@ -2801,7 +2801,7 @@ append_signature (struct SignatureContext *sig_ctx,
     if (0 == sig_ctx->elements_size)
       new_size = 1024;
     else
-      new_size = sig_ctx->elements_size;
+      new_size = sig_ctx->elements_size * 2;
     GNUNET_array_grow (sig_ctx->elements,
                        sig_ctx->elements_size,
                        new_size);
