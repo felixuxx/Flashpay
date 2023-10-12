@@ -128,6 +128,16 @@ struct TALER_Amount
 
 
 /**
+ * Check that the currency code in @a str is well-formed.
+ *
+ * @param str currency code name to validate
+ * @return #GNUNET_OK if @a str is a valid currency code
+ */
+enum GNUNET_GenericReturnValue
+TALER_check_currency (const char *str);
+
+
+/**
  * Parse monetary amount, in the format "T:V.F".
  *
  * @param str amount string

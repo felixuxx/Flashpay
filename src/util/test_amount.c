@@ -78,31 +78,31 @@ main (int argc,
 
   /* test conversion with leading zero in fraction */
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("eur:0.02",
+                 TALER_string_to_amount ("EUR:0.02",
                                          &a2));
-  GNUNET_assert (0 == strcasecmp ("eur",
+  GNUNET_assert (0 == strcasecmp ("EUR",
                                   a2.currency));
   GNUNET_assert (0 == a2.value);
   GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 100 * 2 == a2.fraction);
   c = TALER_amount_to_string (&a2);
-  GNUNET_assert (0 == strcasecmp ("eur:0.02",
+  GNUNET_assert (0 == strcasecmp ("EUR:0.02",
                                   c));
   GNUNET_free (c);
 
   /* test conversion with leading space and with fraction */
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (" eur:4.12",
+                 TALER_string_to_amount (" EUR:4.12",
                                          &a2));
-  GNUNET_assert (0 == strcasecmp ("eur",
+  GNUNET_assert (0 == strcasecmp ("EUR",
                                   a2.currency));
   GNUNET_assert (4 == a2.value);
   GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 100 * 12 == a2.fraction);
 
   /* test use of local currency */
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (" *LOCAL:4444.1000",
+                 TALER_string_to_amount (" LOCAL:4444.1000",
                                          &a3));
-  GNUNET_assert (0 == strcasecmp ("*LOCAL",
+  GNUNET_assert (0 == strcasecmp ("LOCAL",
                                   a3.currency));
   GNUNET_assert (4444 == a3.value);
   GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 10 == a3.fraction);

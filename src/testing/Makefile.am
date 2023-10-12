@@ -145,14 +145,13 @@ libtalertesting_la_LIBADD = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 
-#  test_bank_api_with_nexus
-
 .NOTPARALLEL:
 check_PROGRAMS = \
   test_auditor_api_cs \
   test_auditor_api_rsa \
   test_auditor_api_version \
   test_bank_api_with_fakebank \
+  test_bank_api_with_nexus \
   test_exchange_api_cs \
   test_exchange_api_rsa \
   test_exchange_api_age_restriction_cs \

@@ -40,6 +40,31 @@ invalidate (struct TALER_Amount *a)
 
 
 enum GNUNET_GenericReturnValue
+TALER_check_currency (const char *str)
+{
+  if (strlen (str) >= TALER_CURRENCY_LEN)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Currency code name `%s' is too long\n",
+                str);
+    return GNUNET_SYSERR;
+  }
+  /* validate str has only legal characters in it! */
+  for (unsigned int i = 0; '\0' != str[i]; i++)
+  {
+    if ( ('A' > str[i]) || ('Z' < str[i]) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Currency code name `%s' contains illegal characters (only A-Z allowed)\n",
+                  str);
+      return GNUNET_SYSERR;
+    }
+  }
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
 TALER_string_to_amount (const char *str,
                         struct TALER_Amount *amount)
 {
@@ -73,12 +98,14 @@ TALER_string_to_amount (const char *str,
 
   GNUNET_assert (TALER_CURRENCY_LEN > (colon - str));
   for (unsigned int i = 0; i<colon - str; i++)
-    amount->currency[i] = toupper (str[i]);
+    amount->currency[i] = str[i];
   /* 0-terminate *and* normalize buffer by setting everything to '\0' */
   memset (&amount->currency [colon - str],
           0,
           TALER_CURRENCY_LEN - (colon - str));
-
+  if (GNUNET_OK !=
+      TALER_check_currency (amount->currency))
+    return GNUNET_SYSERR;
   /* skip colon */
   value = colon + 1;
   if ('\0' == value[0])
@@ -193,7 +220,7 @@ TALER_amount_hton (struct TALER_AmountNBO *res,
   res->value = GNUNET_htonll (d->value);
   res->fraction = htonl (d->fraction);
   for (unsigned int i = 0; i<TALER_CURRENCY_LEN; i++)
-    res->currency[i] = toupper (d->currency[i]);
+    res->currency[i] = d->currency[i];
 }
 
 
@@ -217,15 +244,15 @@ TALER_amount_set_zero (const char *cur,
 {
   size_t slen;
 
-  slen = strlen (cur);
-  if (slen >= TALER_CURRENCY_LEN)
+  if (GNUNET_OK !=
+      TALER_check_currency (cur))
     return GNUNET_SYSERR;
+  slen = strlen (cur);
   memset (amount,
           0,
           sizeof (struct TALER_Amount));
   for (unsigned int i = 0; i<slen; i++)
-    amount->currency[i] = toupper (cur[i]);
-  /* FIXME: check currency consists only of legal characters! */
+    amount->currency[i] = cur[i];
   return GNUNET_OK;
 }
 

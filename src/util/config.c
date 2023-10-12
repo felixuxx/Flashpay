@@ -250,17 +250,20 @@ parse_currencies_cb (void *cls,
     cpc->failure = true;
     return;
   }
-  if (strlen (str) >= TALER_CURRENCY_LEN)
+  if (GNUNET_OK !=
+      TALER_check_currency (str))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "CODE",
-                               "Currency code name given is too long");
+                               "Currency code name given is invalid");
     cpc->failure = true;
     GNUNET_free (str);
     return;
   }
-  /* FIXME: validate str has only legal characters in it! */
+  memset (cspec->currency,
+          0,
+          sizeof (cspec->currency));
   strcpy (cspec->currency,
           str);
   GNUNET_free (str);
