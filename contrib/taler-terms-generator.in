@@ -155,6 +155,12 @@ then
     exit 1
 fi
 
+if ! which latexmk > /dev/null
+then
+    echo "Command 'latexmk' not found, but required. Please install latexmk." 1>&2
+    exit 1
+fi
+
 # We append ".rst" if needed, remove if given on command-line
 # shellcheck disable=SC2001
 VERSION=$(echo "${VERSION}" | sed -e "s/\.rst$//")
