@@ -242,7 +242,6 @@ register_bank_account() {
         --body-data="${BODY}" \
         --content-on-error \
         -a wget-register-account.log \
-        -O wget-register-account.err \
         "http://localhost:${BANK_PORT}/accounts"
 }
 
