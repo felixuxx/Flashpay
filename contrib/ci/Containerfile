@@ -32,7 +32,8 @@ RUN apt-get install -yqq \
                    po-debconf \
                    build-essential \
                    debhelper-compat \
-                   devscripts
+                   devscripts \
+		   git-buildpackage
 
 # Documentation dependencies
 RUN apt-get install -yqq \
