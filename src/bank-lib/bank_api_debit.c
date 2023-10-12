@@ -82,13 +82,12 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
     .ec = TALER_EC_NONE,
     .response = history
   };
-  const char *debit_account_uri;
   const json_t *history_array;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("outgoing_transactions",
                                   &history_array),
     GNUNET_JSON_spec_string ("debit_account",
-                             &debit_account_uri),
+                             &dhr.details.ok.debit_account_uri),
     GNUNET_JSON_spec_end ()
   };
 
@@ -136,7 +135,6 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      td->debit_account_uri = debit_account_uri;
     }
     dhr.details.ok.details_length = len;
     dhr.details.ok.details = dd;

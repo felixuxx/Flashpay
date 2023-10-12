@@ -83,12 +83,11 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
     .response = history
   };
   const json_t *history_array;
-  const char *credit_account_uri;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("incoming_transactions",
                                   &history_array),
     GNUNET_JSON_spec_string ("credit_account",
-                             &credit_account_uri),
+                             &chr.details.ok.credit_account_uri),
     GNUNET_JSON_spec_end ()
   };
 
@@ -134,7 +133,6 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      td->credit_account_uri = credit_account_uri;
     }
     chr.details.ok.details_length = len;
     chr.details.ok.details = cd;

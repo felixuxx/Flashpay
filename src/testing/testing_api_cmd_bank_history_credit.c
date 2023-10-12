@@ -276,7 +276,6 @@ command_cb (void *cls,
   ic->h[ic->pos].details.amount = *amount;
   ic->h[ic->pos].row_id = *row_id;
   ic->h[ic->pos].details.reserve_pub = *reserve_pub;
-  ic->h[ic->pos].details.credit_account_uri = exchange_credit_url;
   ic->pos++;
 }
 

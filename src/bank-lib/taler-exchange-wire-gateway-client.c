@@ -187,7 +187,7 @@ credit_history_cb (void *cls,
       /* If credit/debit accounts were specified, use as a filter */
       if ( (NULL != credit_account) &&
            (0 != strcasecmp (credit_account,
-                             cd->credit_account_uri) ) )
+                             reply->details.ok.credit_account_uri) ) )
         continue;
       if ( (NULL != debit_account) &&
            (0 != strcasecmp (debit_account,
@@ -197,7 +197,7 @@ credit_history_cb (void *cls,
                "%llu: %s->%s (%s) over %s at %s\n",
                (unsigned long long) cd->serial_id,
                cd->debit_account_uri,
-               cd->credit_account_uri,
+               reply->details.ok.credit_account_uri,
                TALER_B2S (&cd->reserve_pub),
                TALER_amount2s (&cd->amount),
                GNUNET_TIME_timestamp2s (cd->execution_date));
@@ -291,12 +291,12 @@ debit_history_cb (void *cls,
         continue;
       if ( (NULL != debit_account) &&
            (0 != strcasecmp (debit_account,
-                             dd->debit_account_uri) ) )
+                             reply->details.ok.debit_account_uri) ) )
         continue;
       fprintf (stdout,
                "%llu: %s->%s (%s) over %s at %s\n",
                (unsigned long long) dd->serial_id,
-               dd->debit_account_uri,
+               reply->details.ok.debit_account_uri,
                dd->credit_account_uri,
                TALER_B2S (&dd->wtid),
                TALER_amount2s (&dd->amount),

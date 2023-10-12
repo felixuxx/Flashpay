@@ -112,8 +112,6 @@ run (void *cls,
                                                      cred.user42_payto,
                                                      "credit-1",
                                                      -1),
-      TALER_TESTING_cmd_sleep ("Waiting 4s for 'credit-1' to settle",
-                               4),
       /**
        * Check that the incoming payment with a duplicate
        * reserve public key didn't make it to the exchange.
@@ -137,18 +135,6 @@ run (void *cls,
                                   cred.user42_payto,
                                   &wtid,
                                   "http://exchange.example.com/"),
-
-      TALER_TESTING_cmd_sleep ("Waiting 5s for 'debit-1' to settle",
-                               5),
-      (bs == TALER_TESTING_BS_IBAN)
-      ? TALER_TESTING_cmd_nexus_fetch_transactions (
-        "fetch-transactions-at-nexus",
-        "exchange", /* from taler-nexus-prepare */
-        "x", /* from taler-nexus-prepare */
-        "http://localhost:8082",
-        "exchange-nexus") /* from taler-nexus-prepare */
-      : TALER_TESTING_cmd_sleep ("nop",
-                                 0),
       TALER_TESTING_cmd_bank_debits ("history-2b",
                                      &cred.ba,
                                      NULL,
@@ -181,6 +167,15 @@ main (int argc,
   {
     bs = TALER_TESTING_BS_IBAN;
     cfgfile = CONFIG_FILE_NEXUS;
+    if (GNUNET_SYSERR ==
+        GNUNET_OS_check_helper_binary ("libeufin-bank",
+                                       false,
+                                       NULL))
+    {
+      fprintf (stderr,
+               "libeufin-bank not found. Skipping test.\n");
+      return 77;
+    }
   }
   else
   {

@@ -285,6 +285,7 @@ then
     echo $! > libeufin-bank.pid
     echo "DONE"
     echo -n "Waiting for Bank ..."
+    OK="0"
     for n in $(seq 1 100); do
         echo -n "."
         sleep "$DEFAULT_SLEEP"

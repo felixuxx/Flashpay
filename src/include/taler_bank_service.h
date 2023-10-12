@@ -367,10 +367,6 @@ struct TALER_BANK_CreditDetails
    */
   const char *debit_account_uri;
 
-  /**
-   * payto://-URL of the target account that received the funds.
-   */
-  const char *credit_account_uri;
 };
 
 
@@ -408,6 +404,11 @@ struct TALER_BANK_CreditHistoryResponse
      */
     struct
     {
+
+      /**
+       * payto://-URL of the target account that received the funds.
+       */
+      const char *credit_account_uri;
 
       /**
        * Array of transactions received.
@@ -518,11 +519,6 @@ struct TALER_BANK_DebitDetails
   const char *exchange_base_url;
 
   /**
-   * payto://-URI of the source account that send the funds.
-   */
-  const char *debit_account_uri;
-
-  /**
    * payto://-URI of the target account that received the funds.
    */
   const char *credit_account_uri;
@@ -564,6 +560,11 @@ struct TALER_BANK_DebitHistoryResponse
      */
     struct
     {
+
+      /**
+       * payto://-URI of the source account that send the funds.
+       */
+      const char *debit_account_uri;
 
       /**
        * Array of transactions initiated.
