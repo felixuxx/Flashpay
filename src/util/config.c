@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -392,7 +392,36 @@ parse_currencies_cb (void *cls,
       return;
     }
   }
-  /* FIXME: validate map only maps from decimal numbers to strings! */
+
+  {
+    /* validate map only maps from decimal numbers to strings! */
+    const char *str;
+    json_t *val;
+
+    json_object_foreach (cspec->map_alt_unit_names, str, val)
+    {
+      int idx;
+      char dummy;
+
+      if ( (1 != sscanf (str,
+                         "%d%c",
+                         &idx,
+                         &dummy)) ||
+           (idx < -12) ||
+           (idx > 24) ||
+           (! json_is_string (val) ) )
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   section,
+                                   "ALT_UNIT_NAMES",
+                                   "invalid map entry detected");
+        cpc->failure = true;
+        json_decref (cspec->map_alt_unit_names);
+        cspec->map_alt_unit_names = NULL;
+        return;
+      }
+    }
+  }
 }
 
 
