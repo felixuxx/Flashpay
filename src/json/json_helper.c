@@ -192,6 +192,9 @@ parse_cspec (void *cls,
   unsigned int eline;
 
   (void) cls;
+  memset (r_cspec->currency,
+          0,
+          sizeof (r_cspec->currency));
   if (GNUNET_OK !=
       GNUNET_JSON_parse (root,
                          gspec,
@@ -218,13 +221,20 @@ parse_cspec (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  memset (r_cspec->currency,
-          0,
-          sizeof (r_cspec->currency));
-  /* FIXME: check currency consists only of legal characters! */
+  if (GNUNET_OK !=
+      TALER_check_currency (currency))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   strcpy (r_cspec->currency,
           currency);
-  /* FIXME: check map is valid! */
+  if (GNUNET_OK !=
+      TALER_check_currency_scale_map (map))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   r_cspec->name = GNUNET_strdup (name);
   r_cspec->decimal_separator = GNUNET_strdup (decimal_separator);
   r_cspec->map_alt_unit_names = json_incref ((json_t *) map);

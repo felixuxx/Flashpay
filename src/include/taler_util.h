@@ -305,6 +305,18 @@ TALER_CONFIG_currency_specs_to_json (
 
 
 /**
+ * Check that @a map contains a valid currency scale
+ * map that maps integers from [-12,24] to currency
+ * symbols given as strings.
+ *
+ * @param map map to check
+ * @return #GNUNET_OK if @a map is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_check_currency_scale_map (const json_t *map);
+
+
+/**
  * Allow user to specify an amount on the command line.
  *
  * @param shortName short name of the option

@@ -392,36 +392,63 @@ parse_currencies_cb (void *cls,
       return;
     }
   }
-
+  if (GNUNET_OK !=
+      TALER_check_currency_scale_map (cspec->map_alt_unit_names))
   {
-    /* validate map only maps from decimal numbers to strings! */
-    const char *str;
-    json_t *val;
-
-    json_object_foreach (cspec->map_alt_unit_names, str, val)
-    {
-      int idx;
-      char dummy;
-
-      if ( (1 != sscanf (str,
-                         "%d%c",
-                         &idx,
-                         &dummy)) ||
-           (idx < -12) ||
-           (idx > 24) ||
-           (! json_is_string (val) ) )
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   section,
-                                   "ALT_UNIT_NAMES",
-                                   "invalid map entry detected");
-        cpc->failure = true;
-        json_decref (cspec->map_alt_unit_names);
-        cspec->map_alt_unit_names = NULL;
-        return;
-      }
-    }
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "ALT_UNIT_NAMES",
+                               "invalid map entry detected");
+    cpc->failure = true;
+    json_decref (cspec->map_alt_unit_names);
+    cspec->map_alt_unit_names = NULL;
+    return;
   }
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_check_currency_scale_map (const json_t *map)
+{
+  /* validate map only maps from decimal numbers to strings! */
+  const char *str;
+  const json_t *val;
+  bool zf = false;
+
+  if (! json_is_object (map))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Object required for currency scale map\n");
+    return GNUNET_SYSERR;
+  }
+  json_object_foreach ((json_t *) map, str, val)
+  {
+    int idx;
+    char dummy;
+
+    if ( (1 != sscanf (str,
+                       "%d%c",
+                       &idx,
+                       &dummy)) ||
+         (idx < -12) ||
+         (idx > 24) ||
+         (! json_is_string (val) ) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Invalid entry `%s' in currency scale map\n",
+                  str);
+      return GNUNET_SYSERR;
+    }
+    if (0 == idx)
+      zf = true;
+  }
+  if (! zf)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Entry for 0 missing in currency scale map\n");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
 }
 
 
