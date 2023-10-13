@@ -933,9 +933,8 @@ decode_keys_json (const json_t *resp_obj,
           "stefan_log",
           currency,
           &key_data->stefan_log),
-        TALER_JSON_spec_amount (
+        GNUNET_JSON_spec_double (
           "stefan_lin",
-          currency,
           &key_data->stefan_lin),
         GNUNET_JSON_spec_end ()
       };
@@ -1346,10 +1345,11 @@ keys_completed_cb (void *cls,
               GNUNET_TIME_timestamp2s (gkh->expire));
   if (GNUNET_TIME_absolute_is_past (gkh->expire.abs_time))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Exchange failed to give expiration time, assuming in %s\n",
-                GNUNET_TIME_relative2s (DEFAULT_EXPIRATION,
-                                        true));
+    if (MHD_HTTP_OK == response_code)
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Exchange failed to give expiration time, assuming in %s\n",
+                  GNUNET_TIME_relative2s (DEFAULT_EXPIRATION,
+                                          true));
     gkh->expire
       = GNUNET_TIME_absolute_to_timestamp (
           GNUNET_TIME_relative_to_absolute (DEFAULT_EXPIRATION));
@@ -1689,7 +1689,7 @@ TALER_EXCHANGE_get_keys (
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  0));
+                                  1));
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_TIMEOUT,
@@ -2388,8 +2388,8 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                             &kd->stefan_abs),
     TALER_JSON_pack_amount ("stefan_log",
                             &kd->stefan_log),
-    TALER_JSON_pack_amount ("stefan_lin",
-                            &kd->stefan_lin),
+    GNUNET_JSON_pack_double ("stefan_lin",
+                             kd->stefan_lin),
     GNUNET_JSON_pack_string ("asset_type",
                              kd->asset_type),
     GNUNET_JSON_pack_data_auto ("master_public_key",

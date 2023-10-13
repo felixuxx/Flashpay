@@ -100,11 +100,7 @@ main (int argc,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("MAGIC:0.13",
                                          &keys.stefan_log));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("MAGIC:0.15",
-                                         &keys.stefan_lin));
-
-  /* stefan_lin >= unit value, not allowed, test we fail */
+  keys.stefan_lin = 1.15;
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("MAGIC:4",
                                          &brut));
@@ -123,12 +119,7 @@ main (int argc,
                  TALER_EXCHANGE_keys_stefan_n2b (&keys,
                                                  &net,
                                                  &brut));
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("MAGIC:0.13",
-                                         &keys.stefan_lin));
-
-  /* stefan_lin == unit value, not allowed, test we fail */
+  keys.stefan_lin = 1.0;
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("MAGIC:4",
                                          &brut));
@@ -148,14 +139,12 @@ main (int argc,
                                                  &net,
                                                  &brut));
   GNUNET_assert (0 == GNUNET_get_log_skip ());
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("MAGIC:0.1",
-                                         &keys.stefan_lin));
+  keys.stefan_lin = 0.1;
 
   /* try various values for lin and log STEFAN values */
   for (unsigned int li = 1; li < 13; li += 1)
   {
-    keys.stefan_lin.fraction = li * TALER_AMOUNT_FRAC_BASE / 100;
+    keys.stefan_lin = 1.0 * li / 100.0;
 
     for (unsigned int lx = 1; lx < 100; lx += 1)
     {

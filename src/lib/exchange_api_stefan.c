@@ -110,7 +110,7 @@ TALER_EXCHANGE_keys_stefan_b2n (
 {
   const struct TALER_Amount *min;
   double log_d = amount_to_double (&keys->stefan_log);
-  double lin_d = amount_to_double (&keys->stefan_lin);
+  double lin_d = keys->stefan_lin;
   double abs_d = amount_to_double (&keys->stefan_abs);
   double bru_d = amount_to_double (brut);
   double min_d;
@@ -125,9 +125,7 @@ TALER_EXCHANGE_keys_stefan_b2n (
   min = get_unit (keys);
   if (NULL == min)
     return GNUNET_SYSERR;
-  if (1 != TALER_amount_cmp (min,
-                             /* <= */
-                             &keys->stefan_lin))
+  if (1.0f <= keys->stefan_lin)
   {
     /* This cannot work, linear STEFAN fee estimate always
        exceed any gross amount. */
@@ -137,7 +135,7 @@ TALER_EXCHANGE_keys_stefan_b2n (
   min_d = amount_to_double (min);
   fee_d = abs_d
           + log_d * log2 (bru_d / min_d)
-          + lin_d * (bru_d / min_d);
+          + lin_d * bru_d;
   if (fee_d > bru_d)
   {
     GNUNET_assert (GNUNET_OK ==
@@ -155,7 +153,7 @@ TALER_EXCHANGE_keys_stefan_b2n (
 
 /**
  * Our function
- * f(x) := ne + ab + lo * log2(x/mi) + li * x / mi - x
+ * f(x) := ne + ab + lo * log2(x/mi) + li * x - x
  * for #newton().
  */
 static double
@@ -166,13 +164,13 @@ eval_f (double mi,
         double ne,
         double x)
 {
-  return ne + ab + lo * log2 (x / mi) + li * (x / mi) - x;
+  return ne + ab + lo * log2 (x / mi) + li * x - x;
 }
 
 
 /**
  * Our function
- * f'(x) := lo / log(2) / x + li / mi - 1
+ * f'(x) := lo / log(2) / x + li - 1
  * for #newton().
  */
 static double
@@ -182,7 +180,7 @@ eval_fp (double mi,
          double ne,
          double x)
 {
-  return lo / log (2) / x + li / mi - 1;
+  return lo / log (2) / x + li - 1;
 }
 
 
@@ -200,24 +198,23 @@ newton (double mi,
 {
   const double eps = 0.00000001; /* max error allowed */
   double min_ab = ne + ab; /* result cannot be smaller than this! */
-  double lin_factor = (mi - li); /* how many coins do we need per coin for linear factor? */
   /* compute lower bounds by various heuristics */
-  double min_ab_li = min_ab + min_ab * li / lin_factor;
+  double min_ab_li = min_ab + min_ab * li;
   double min_ab_li_lo = min_ab_li + log2 (min_ab_li / mi) * lo;
   double min_ab_lo = min_ab + log2 (min_ab / mi) * lo;
-  double min_ab_lo_li = min_ab_lo + min_ab_lo * li / lin_factor;
+  double min_ab_lo_li = min_ab_lo + min_ab_lo * li;
   /* take global lower bound */
   double x_min = GNUNET_MAX (min_ab_lo_li,
                              min_ab_li_lo);
   double x = x_min; /* use lower bound as starting point */
 
   /* Objective: invert
-     ne := br - ab - lo * log2 (br/mi) - li (br/mi)
+     ne := br - ab - lo * log2 (br/mi) - li * br
      to find 'br'.
      Method: use Newton's method to find root of:
-     f(x) := ne + ab + lo * log2 (x/mi) + li * x / mi - x
+     f(x) := ne + ab + lo * log2 (x/mi) + li * x - x
      using also
-     f'(x) := lo / log(2) / x  + li / mi - 1
+     f'(x) := lo / log(2) / x  + li - 1
   */
   /* Loop to abort in case of divergence;
      100 is already very high, 2-4 is normal! */
@@ -234,7 +231,7 @@ newton (double mi,
                   i,
                   x_min,
                   x_new,
-                  x_new - ab - li * (x_new / mi) - lo * log2 (x / mi));
+                  x_new - ab - li * x_new - lo * log2 (x / mi));
       return x_new;
     }
     if (x_new < x_min)
@@ -261,7 +258,7 @@ TALER_EXCHANGE_keys_stefan_n2b (
   struct TALER_Amount *brut)
 {
   const struct TALER_Amount *min;
-  double lin_d = amount_to_double (&keys->stefan_lin);
+  double lin_d = keys->stefan_lin;
   double log_d = amount_to_double (&keys->stefan_log);
   double abs_d = amount_to_double (&keys->stefan_abs);
   double net_d = amount_to_double (net);
@@ -276,9 +273,7 @@ TALER_EXCHANGE_keys_stefan_n2b (
   min = get_unit (keys);
   if (NULL == min)
     return GNUNET_SYSERR;
-  if (1 != TALER_amount_cmp (min,
-                             /* <= */
-                             &keys->stefan_lin))
+  if (1.0f <= keys->stefan_lin)
   {
     /* This cannot work, linear STEFAN fee estimate always
        exceed any gross amount. */

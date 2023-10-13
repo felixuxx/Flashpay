@@ -110,7 +110,7 @@ extern struct TALER_Amount TEH_stefan_log;
 /**
  * Linear STEFAN parameter.
  */
-extern struct TALER_Amount TEH_stefan_lin;
+extern float TEH_stefan_lin;
 
 /**
  * Default ways how to render #TEH_currency amounts.

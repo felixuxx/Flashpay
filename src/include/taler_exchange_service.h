@@ -534,7 +534,7 @@ struct TALER_EXCHANGE_Keys
   /**
    * Linear STEFAN parameter.
    */
-  struct TALER_Amount stefan_lin;
+  double stefan_lin;
 
   /**
    * Length of @e accounts array.

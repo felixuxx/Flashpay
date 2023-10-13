@@ -161,7 +161,7 @@ struct TALER_Amount TEH_stefan_log;
 /**
  * Linear STEFAN parameter.
  */
-struct TALER_Amount TEH_stefan_lin;
+float TEH_stefan_lin;
 
 /**
  * Default number of fractional digits to render
@@ -2112,14 +2112,12 @@ exchange_serve_process_config (void)
                                           &TEH_stefan_log));
   }
   if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               "exchange",
-                               "STEFAN_LIN",
-                               &TEH_stefan_lin))
+      GNUNET_CONFIGURATION_get_value_float (TEH_cfg,
+                                            "exchange",
+                                            "STEFAN_LIN",
+                                            &TEH_stefan_lin))
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TEH_currency,
-                                          &TEH_stefan_lin));
+    TEH_stefan_lin = 0.0f;
   }
 
   if (0 != strcmp (TEH_currency,
