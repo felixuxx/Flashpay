@@ -221,7 +221,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_do_batch_withdraw_insert.h pg_do_batch_withdraw_insert.c \
   pg_do_reserve_open.c pg_do_reserve_open.h \
   pg_do_purse_delete.c pg_do_purse_delete.h \
-  pg_do_withdraw.h pg_do_withdraw.c \
   pg_preflight.h pg_preflight.c \
   pg_iterate_active_signkeys.h pg_iterate_active_signkeys.c \
   pg_commit.h pg_commit.c \

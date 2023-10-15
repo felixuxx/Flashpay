@@ -3878,38 +3878,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Perform withdraw operation, checking for sufficient balance
-   * and possibly persisting the withdrawal details.
-   *
-   * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
-   * @param collectable corresponding collectable coin (blind signature)
-   * @param now current time (rounded)
-   * @param do_age_check set to true if age requirements must be checked.
-   * @param[out] found set to true if the reserve was found
-   * @param[out] balance_ok set to true if the balance was sufficient
-   * @param[out] nonce_ok set to false if the nonce was reused
-   * @param[out] age_ok set to true if no age requirements were defined on the reserve or @e do_age_check was false
-   * @param[out] allowed_maximum_age when @e age_ok is false, set to the allowed maximum age for withdrawal from the reserve.  The client MUST then use the age-withdraw endpoint
-   * @param[out] ruuid set to the reserve's UUID (reserves table row)
-   * @return query execution status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*do_withdraw)(
-    void *cls,
-    const struct TALER_CsNonce *nonce,
-    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
-    struct GNUNET_TIME_Timestamp now,
-    bool do_age_check,
-    bool *found,
-    bool *balance_ok,
-    bool *nonce_ok,
-    bool *age_ok,
-    uint16_t *allowed_maximum_age,
-    uint64_t *ruuid);
-
-
-  /**
    * FIXME: merge do_batch_withdraw and do_batch_withdraw_insert into one API,
    * which takes as input (among others)
    *   - denom_serial[]

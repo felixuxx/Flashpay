@@ -38,7 +38,6 @@
 #include "pg_get_link_data.h"
 #include "pg_helper.h"
 #include "pg_do_reserve_open.h"
-#include "pg_do_withdraw.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_get_expired_reserves.h"
 #include "pg_get_purse_request.h"
@@ -413,8 +412,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_do_reserve_open;
   plugin->drop_tables
     = &TEH_PG_drop_tables;
-  plugin->do_withdraw
-    = &TEH_PG_do_withdraw;
   plugin->free_coin_transaction_list
     = &TEH_COMMON_free_coin_transaction_list;
   plugin->free_reserve_history

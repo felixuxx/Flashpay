@@ -364,26 +364,38 @@ run (void *cls)
                                           &cbc.withdraw_fee));
     {
       bool found;
-      bool nonce_ok;
+      bool nonce_reuse;
       bool balance_ok;
       bool age_ok;
+      bool conflict;
+      bool denom_unknown;
+      struct TALER_Amount reserve_balance;
       uint16_t allowed_minimum_age;
       uint64_t ruuid;
       struct GNUNET_TIME_Timestamp now;
 
       now = GNUNET_TIME_timestamp_get ();
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->do_withdraw (plugin->cls,
-                                   NULL,
-                                   &cbc,
-                                   now,
-                                   false,
-                                   &found,
-                                   &balance_ok,
-                                   &nonce_ok,
-                                   &age_ok,
-                                   &allowed_minimum_age,
-                                   &ruuid));
+              plugin->do_batch_withdraw (plugin->cls,
+                                         now,
+                                         &reserve_pub,
+                                         &value,
+                                         true,
+                                         &found,
+                                         &balance_ok,
+                                         &reserve_balance,
+                                         &age_ok,
+                                         &allowed_minimum_age,
+                                         &ruuid));
+      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+              plugin->do_batch_withdraw_insert (plugin->cls,
+                                                NULL,
+                                                &cbc,
+                                                now,
+                                                ruuid,
+                                                &denom_unknown,
+                                                &conflict,
+                                                &nonce_reuse));
     }
     {
       /* ENSURE_COIN_KNOWN */

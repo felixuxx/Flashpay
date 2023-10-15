@@ -1410,26 +1410,39 @@ run (void *cls)
 
   {
     bool found;
-    bool nonce_ok;
+    bool nonce_reuse;
     bool balance_ok;
     bool age_ok;
+    bool conflict;
+    bool denom_unknown;
     uint16_t maximum_age;
     uint64_t ruuid;
+    struct TALER_Amount reserve_balance;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->do_withdraw (plugin->cls,
-                                 NULL,
-                                 &cbc,
-                                 now,
-                                 false,
-                                 &found,
-                                 &balance_ok,
-                                 &nonce_ok,
-                                 &age_ok,
-                                 &maximum_age,
-                                 &ruuid));
+            plugin->do_batch_withdraw (plugin->cls,
+                                       now,
+                                       &reserve_pub,
+                                       &value,
+                                       true,
+                                       &found,
+                                       &balance_ok,
+                                       &reserve_balance,
+                                       &age_ok,
+                                       &maximum_age,
+                                       &ruuid));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->do_batch_withdraw_insert (plugin->cls,
+                                              NULL,
+                                              &cbc,
+                                              now,
+                                              ruuid,
+                                              &denom_unknown,
+                                              &conflict,
+                                              &nonce_reuse));
     GNUNET_assert (found);
-    GNUNET_assert (nonce_ok);
+    GNUNET_assert (! nonce_reuse);
+    GNUNET_assert (! denom_unknown);
     GNUNET_assert (balance_ok);
   }
 
