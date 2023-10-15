@@ -22,9 +22,11 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
+#include "pg_compute_shard.h"
 #include "pg_event_notify.h"
 #include "pg_aggregate.h"
 #include "pg_helper.h"
+
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_aggregate (
@@ -35,6 +37,7 @@ TEH_PG_aggregate (
   struct TALER_Amount *total)
 {
   struct PostgresClosure *pg = cls;
+  uint64_t deposit_shard = TEH_PG_compute_shard (merchant_pub);
   struct GNUNET_TIME_Absolute now = {0};
   uint64_t sum_deposit_value;
   uint64_t sum_deposit_frac;
@@ -57,7 +60,7 @@ TEH_PG_aggregate (
            "     SET done=TRUE"
            "   WHERE NOT (done OR policy_blocked)" /* only actually executable deposits */
            "     AND refund_deadline<$1"
-           /* FIXME: maybe more efficient to add shard here, too? */
+           "     AND shard=$5" /* only for efficiency, merchant_pub is what we really filter by */
            "     AND merchant_pub=$2" /* filter by target merchant */
            "     AND wire_target_h_payto=$3" /* merchant could have a 2nd bank account */
            "   RETURNING"
@@ -135,6 +138,7 @@ TEH_PG_aggregate (
       GNUNET_PQ_query_param_auto_from_type (merchant_pub),
       GNUNET_PQ_query_param_auto_from_type (h_payto),
       GNUNET_PQ_query_param_auto_from_type (wtid),
+      GNUNET_PQ_query_param_uint64 (&deposit_shard),
       GNUNET_PQ_query_param_end
     };
     struct GNUNET_PQ_ResultSpec rs[] = {

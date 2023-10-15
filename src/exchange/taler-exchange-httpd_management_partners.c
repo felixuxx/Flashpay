@@ -113,7 +113,7 @@ TEH_handler_management_partners (
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
-      /* FIXME: check for idempotency! */
+      /* FIXME-#7271: check for idempotency! */
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_CONFLICT,
                                          TALER_EC_EXCHANGE_MANAGEMENT_ADD_PARTNER_DATA_CONFLICT,
