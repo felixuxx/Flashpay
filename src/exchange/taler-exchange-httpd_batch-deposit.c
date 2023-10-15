@@ -240,8 +240,8 @@ batch_deposit_transaction (void *cls,
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
           TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT,
-          &bd->cdis[0 /* SEE FIXME above! */].coin.denom_pub_hash,
-          &bd->cdis[0 /* SEE FIXME above! */].coin.coin_pub);
+          &bd->cdis[0 /* SEE FIXME-#7267 Oec above! */].coin.denom_pub_hash,
+          &bd->cdis[0 /* SEE FIXME-#7267 Oec above! */].coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (! balance_ok)
