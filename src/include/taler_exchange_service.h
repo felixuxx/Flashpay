@@ -2449,15 +2449,6 @@ TALER_EXCHANGE_reserves_history_cancel (
   struct TALER_EXCHANGE_ReservesHistoryHandle *rsh);
 
 
-/* ********************* POST /reserves/$RESERVE_PUB/withdraw *********************** */
-
-
-/**
- * @brief A /reserves/$RESERVE_PUB/withdraw Handle
- */
-struct TALER_EXCHANGE_WithdrawHandle;
-
-
 /**
  * Information input into the withdraw process per coin.
  */
@@ -2509,119 +2500,6 @@ struct TALER_EXCHANGE_PrivateCoinDetails
    */
   struct TALER_ExchangeWithdrawValues exchange_vals;
 };
-
-
-/**
- * Details about a response for a withdraw request.
- */
-struct TALER_EXCHANGE_WithdrawResponse
-{
-  /**
-   * HTTP response data.
-   */
-  struct TALER_EXCHANGE_HttpResponse hr;
-
-  /**
-   * Details about the response.
-   */
-  union
-  {
-    /**
-     * Details if the status is #MHD_HTTP_OK.
-     */
-    struct TALER_EXCHANGE_PrivateCoinDetails ok;
-
-    /**
-     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
-     */
-    struct
-    {
-      /**
-       * Requirement row that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t requirement_row;
-
-      /**
-       * Hash of the payto-URI of the account to KYC;
-       */
-      struct TALER_PaytoHashP h_payto;
-
-    } unavailable_for_legal_reasons;
-
-    /**
-     * Details if the status is #MHD_HTTP_CONFLICT.
-     */
-    struct
-    {
-      /* TODO: returning full details is not implemented */
-    } conflict;
-
-    /**
-     * Details if the status is #MHD_HTTP_GONE.
-     */
-    struct
-    {
-      /* TODO: returning full details is not implemented */
-    } gone;
-
-  } details;
-};
-
-
-/**
- * Callbacks of this type are used to serve the result of submitting a
- * withdraw request to a exchange.
- *
- * @param cls closure
- * @param wr response details
- */
-typedef void
-(*TALER_EXCHANGE_WithdrawCallback) (
-  void *cls,
-  const struct TALER_EXCHANGE_WithdrawResponse *wr);
-
-
-/**
- * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/withdraw
- * request.  This API is typically used by a wallet to withdraw from a
- * reserve.
- *
- * Note that to ensure that no money is lost in case of hardware
- * failures, the caller must have committed (most of) the arguments to
- * disk before calling, and be ready to repeat the request with the
- * same arguments in case of failures.
- *
- * @param curl_ctx The curl context to use
- * @param exchange_url The base-URL of the exchange
- * @param keys The /keys material from the exchange
- * @param reserve_priv private key of the reserve to withdraw from
- * @param wci inputs that determine the planchet
- * @param res_cb the callback to call when the final result for this request is available
- * @param res_cb_cls closure for @a res_cb
- * @return NULL
- *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         In this case, the callback is not called.
- */
-struct TALER_EXCHANGE_WithdrawHandle *
-TALER_EXCHANGE_withdraw (
-  struct GNUNET_CURL_Context *curl_ctx,
-  const char *exchange_url,
-  struct TALER_EXCHANGE_Keys *keys,
-  const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_EXCHANGE_WithdrawCoinInput *wci,
-  TALER_EXCHANGE_WithdrawCallback res_cb,
-  void *res_cb_cls);
-
-
-/**
- * Cancel a withdraw status request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param wh the withdraw handle
- */
-void
-TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh);
 
 
 /**
@@ -2883,6 +2761,21 @@ struct TALER_EXCHANGE_BatchWithdraw2Response
       unsigned int blind_sigs_length;
 
     } ok;
+
+    struct
+    {
+      /**
+       * Hash of the payto-URI of the account to KYC;
+       */
+      struct TALER_PaytoHashP h_payto;
+
+      /**
+       * ID identifying the KYC requirement to withdraw.
+       */
+      uint64_t kyc_requirement_id;
+
+    } unavailable_for_legal_reasons;
+
   } details;
 
 };
@@ -3083,6 +2976,7 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
     } ok;
   } details;
 };
+
 
 typedef void
 (*TALER_EXCHANGE_AgeWithdrawCallback)(

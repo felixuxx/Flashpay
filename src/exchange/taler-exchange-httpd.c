@@ -69,7 +69,6 @@
 #include "taler-exchange-httpd_reserves_purse.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
-#include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_extensions.h"
@@ -745,10 +744,6 @@ handle_post_reserves (struct TEH_RequestContext *rc,
     {
       .op = "age-withdraw",
       .handler = &TEH_handler_age_withdraw
-    },
-    {
-      .op = "withdraw",
-      .handler = &TEH_handler_withdraw
     },
     {
       .op = "purse",

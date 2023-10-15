@@ -36,6 +36,7 @@ TEH_PG_do_batch_withdraw (
   bool do_age_check,
   bool *found,
   bool *balance_ok,
+  struct TALER_Amount *reserve_balance,
   bool *age_ok,
   uint16_t *allowed_maximum_age,
   uint64_t *ruuid)
@@ -56,6 +57,8 @@ TEH_PG_do_batch_withdraw (
                                 found),
     GNUNET_PQ_result_spec_bool ("balance_ok",
                                 balance_ok),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",
+                                 reserve_balance),
     GNUNET_PQ_result_spec_bool ("age_ok",
                                 age_ok),
     GNUNET_PQ_result_spec_uint16 ("allowed_maximum_age",
@@ -73,6 +76,7 @@ TEH_PG_do_batch_withdraw (
            "SELECT "
            " reserve_found"
            ",balance_ok"
+           ",reserve_balance"
            ",age_ok"
            ",allowed_maximum_age"
            ",ruuid"

@@ -193,28 +193,6 @@ handle_reserve_batch_withdraw_finished (void *cls,
     GNUNET_assert (NULL == wh->cb);
     TALER_EXCHANGE_batch_withdraw2_cancel (wh);
     return;
-  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
-    /* only validate reply is well-formed */
-    {
-      uint64_t ptu;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("legitimization_uuid",
-                                 &ptu),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        bwr.hr.http_status = 0;
-        bwr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        break;
-      }
-    }
-    break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
@@ -249,6 +227,29 @@ handle_reserve_batch_withdraw_finished (void *cls,
     bwr.hr.ec = TALER_JSON_get_error_code (j);
     bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto (
+          "h_payto",
+          &bwr.details.unavailable_for_legal_reasons.h_payto),
+        GNUNET_JSON_spec_uint64 ("requirement_row",
+                                 &bwr.details.unavailable_for_legal_reasons.
+                                 kyc_requirement_id),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        bwr.hr.http_status = 0;
+        bwr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+    }
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */

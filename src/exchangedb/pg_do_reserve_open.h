@@ -39,6 +39,7 @@
  * @param now when did we the client initiate the action
  * @param open_fee annual fee to be charged for the open operation by the exchange
  * @param[out] no_funds set to true if reserve balance is insufficient
+ * @param[out] reserve_balance set to the original reserve balance (at the start of this transaction)
  * @param[out] open_cost set to the actual cost
  * @param[out] final_expiration when will the reserve expire now
  * @return transaction status code
@@ -55,6 +56,7 @@ TEH_PG_do_reserve_open (
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_Amount *open_fee,
   bool *no_funds,
+  struct TALER_Amount *reserve_balance,
   struct TALER_Amount *open_cost,
   struct GNUNET_TIME_Timestamp *final_expiration);
 

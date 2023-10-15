@@ -38,6 +38,7 @@ TEH_PG_do_reserve_open (
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_Amount *open_fee,
   bool *no_funds,
+  struct TALER_Amount *reserve_balance,
   struct TALER_Amount *open_cost,
   struct GNUNET_TIME_Timestamp *final_expiration)
 {
@@ -60,16 +61,23 @@ TEH_PG_do_reserve_open (
                                  open_fee),
     GNUNET_PQ_query_param_end
   };
+  bool no_reserve = true;
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("out_open_cost",
                                  pg->currency,
                                  open_cost),
+    TALER_PQ_result_spec_amount ("out_reserve_balance",
+                                 pg->currency,
+                                 reserve_balance),
     GNUNET_PQ_result_spec_timestamp ("out_final_expiration",
                                      final_expiration),
+    GNUNET_PQ_result_spec_bool ("out_no_reserve",
+                                &no_reserve),
     GNUNET_PQ_result_spec_bool ("out_no_funds",
                                 no_funds),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
            "do_reserve_open",
@@ -77,10 +85,17 @@ TEH_PG_do_reserve_open (
            " out_open_cost"
            ",out_final_expiration"
            ",out_no_funds"
+           ",out_no_reserve"
+           ",out_reserve_balance"
            " FROM exchange_do_reserve_open"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "do_reserve_open",
-                                                   params,
-                                                   rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "do_reserve_open",
+                                                 params,
+                                                 rs);
+  if (qs <= 0)
+    return qs;
+  if (no_reserve)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return qs;
 }

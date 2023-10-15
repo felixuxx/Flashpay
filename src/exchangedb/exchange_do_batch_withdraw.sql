@@ -24,6 +24,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
   IN do_age_check BOOLEAN,
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
+  OUT reserve_balance taler_amount,
   OUT age_ok BOOLEAN,
   OUT allowed_maximum_age INT2, -- in years
   OUT ruuid INT8)
@@ -40,7 +41,7 @@ BEGIN
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_h_payto
 
-
+-- FIXME-Oec: do not use select-*!
 SELECT *
   INTO reserve
   FROM exchange.reserves
@@ -51,13 +52,15 @@ THEN
   -- reserve unknown
   reserve_found=FALSE;
   balance_ok=FALSE;
+  reserve_balance.frac = 0;
+  reserve_balance.val = 0;
   age_ok=FALSE;
   allowed_maximum_age=0;
   ruuid=2;
   RETURN;
 END IF;
 reserve_found=TRUE;
-
+reserve_balance = reserve.current_balance;
 ruuid = reserve.reserve_uuid;
 
 -- Check if age requirements are present
@@ -79,24 +82,23 @@ ELSE
   RETURN;
 END IF;
 
-balance = reserve.current_balance;
 
 -- Check reserve balance is sufficient.
-IF (balance.val > amount.val)
+IF (reserve_balance.val > amount.val)
 THEN
-  IF (balance.frac >= amount.frac)
+  IF (reserve_balance.frac >= amount.frac)
   THEN
-    balance.val=balance.val - amount.val;
-    balance.frac=balance.frac - amount.frac;
+    balance.val=reserve_balance.val - amount.val;
+    balance.frac=reserve_balance.frac - amount.frac;
   ELSE
-    balance.val=balance.val - amount.val - 1;
-    balance.frac=balance.frac + 100000000 - amount.frac;
+    balance.val=reserve_balance.val - amount.val - 1;
+    balance.frac=reserve_balance.frac + 100000000 - amount.frac;
   END IF;
 ELSE
-  IF (balance.val = amount.val) AND (balance.frac >= amount.frac)
+  IF (reserve_balance.val = amount.val) AND (reserve_balance.frac >= amount.frac)
   THEN
     balance.val=0;
-    balance.frac=balance.frac - amount.frac;
+    balance.frac=reserve_balance.frac - amount.frac;
   ELSE
     balance_ok=FALSE;
     RETURN;

@@ -181,31 +181,16 @@ MHD_RESULT
 TEH_RESPONSE_reply_reserve_insufficient_balance (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
+  const struct TALER_Amount *reserve_balance,
   const struct TALER_Amount *balance_required,
   const struct TALER_ReservePublicKeyP *reserve_pub)
 {
-  struct TALER_Amount balance;
-  enum GNUNET_DB_QueryStatus qs;
-
-  // FIXME: pass balance as argument to this function,
-  // instead of getting it in another transaction!
-  qs = TEH_plugin->get_reserve_balance (TEH_plugin->cls,
-                                        reserve_pub,
-                                        &balance);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                       "reserve balance");
-  }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
     TALER_JSON_pack_ec (ec),
     TALER_JSON_pack_amount ("balance",
-                            &balance),
+                            reserve_balance),
     TALER_JSON_pack_amount ("requested_amount",
                             balance_required));
 }

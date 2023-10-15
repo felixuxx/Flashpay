@@ -399,8 +399,8 @@ denomination_is_valid (
  * @param[out] denom_serials On success, will be filled with the serial-id's of the denomination keys.  Caller must deallocate.
  * @param[out] amount_with_fee On success, will contain the committed amount including fees
  * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
- * @return GNUNET_OK if the denominations are valid and support age-restriction
- *   GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK if the denominations are valid and support age-restriction
+ *   #GNUNET_SYSERR otherwise
  */
 static enum GNUNET_GenericReturnValue
 are_denominations_valid (
@@ -737,12 +737,14 @@ age_withdraw_transaction (void *cls,
     bool conflict = false;
     uint16_t allowed_maximum_age = 0;
     uint32_t reserve_birthday = 0;
+    struct TALER_Amount reserve_balance;
 
     qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
                                       &awc->commitment,
                                       awc->now,
                                       &found,
                                       &balance_ok,
+                                      &reserve_balance,
                                       &age_ok,
                                       &allowed_maximum_age,
                                       &reserve_birthday,
@@ -755,14 +757,14 @@ age_withdraw_transaction (void *cls,
                                             "do_age_withdraw");
       return qs;
     }
-    else if (! found)
+    if (! found)
     {
       *mhd_ret = TALER_MHD_reply_with_ec (connection,
                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                           NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    else if (! age_ok)
+    if (! age_ok)
     {
       enum TALER_ErrorCode ec =
         TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE;
@@ -779,19 +781,20 @@ age_withdraw_transaction (void *cls,
 
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    else if (! balance_ok)
+    if (! balance_ok)
     {
       TEH_plugin->rollback (TEH_plugin->cls);
 
       *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
         connection,
         TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
+        &reserve_balance,
         &awc->commitment.amount_with_fee,
         &awc->commitment.reserve_pub);
 
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    else if (conflict)
+    if (conflict)
     {
       /* do_age_withdraw signaled a conflict, so there MUST be an entry
        * in the DB.  Put that into the response */

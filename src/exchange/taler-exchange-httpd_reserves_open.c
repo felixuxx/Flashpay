@@ -188,6 +188,7 @@ reserve_open_transaction (void *cls,
 {
   struct ReserveOpenContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_Amount reserve_balance;
 
   for (unsigned int i = 0; i<rsc->payments_len; i++)
   {
@@ -258,6 +259,7 @@ reserve_open_transaction (void *cls,
                                     &rsc->gf->fees.account,
                                     /* outputs */
                                     &rsc->no_funds,
+                                    &reserve_balance,
                                     &rsc->open_cost,
                                     &rsc->reserve_expiration);
   switch (qs)
@@ -289,6 +291,7 @@ reserve_open_transaction (void *cls,
       = TEH_RESPONSE_reply_reserve_insufficient_balance (
           connection,
           TALER_EC_EXCHANGE_RESERVES_OPEN_INSUFFICIENT_FUNDS,
+          &reserve_balance,
           &rsc->reserve_payment,
           rsc->reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;

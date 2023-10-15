@@ -3930,6 +3930,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param do_age_check if set, the batch-withdrawal can only succeed when the reserve has no age restriction (birthday) set.
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] reserve_balance set to original balance of the reserve
    * @param[out] age_ok set to true if no age requirements were defined on the reserve or @e do_age_check was false
    * @param[out] allowed_maximum_age when @e age_ok is false, set to the allowed maximum age for withdrawal from the reserve.  The client MUST then use the age-withdraw endpoint
    * @param[out] ruuid set to the reserve's UUID (reserves table row)
@@ -3944,6 +3945,7 @@ struct TALER_EXCHANGEDB_Plugin
     bool do_age_check,
     bool *found,
     bool *balance_ok,
+    struct TALER_Amount *reserve_balance,
     bool *age_ok,
     uint16_t *allowed_maximum_age,
     uint64_t *ruuid);
@@ -4001,6 +4003,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param commitment corresponding commitment for the age-withdraw
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] reserve_balance set to original balance of the reserve
    * @param[out] age_ok set to true if age requirements were met
    * @param[out] allowed_maximum_age if @e age_ok is FALSE, this is set to the allowed maximum age
    * @param[out] reserve_birthday if @e age_ok is FALSE, this is set to the reserve's birthday
@@ -4013,6 +4016,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
+    struct TALER_Amount *reserve_balance,
     bool *age_ok,
     uint16_t *allowed_maximum_age,
     uint32_t *reserve_birthday,
@@ -4923,6 +4927,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param now when did we the client initiate the action
    * @param open_fee annual fee to be charged for the open operation by the exchange
    * @param[out] no_funds set to true if reserve balance is insufficient
+   * @param[out] reserve_balance set to original balance of the reserve
    * @param[out] open_cost set to the actual cost
    * @param[out] final_expiration when will the reserve expire now
    * @return transaction status code
@@ -4938,6 +4943,7 @@ struct TALER_EXCHANGEDB_Plugin
                      struct GNUNET_TIME_Timestamp now,
                      const struct TALER_Amount *open_fee,
                      bool *no_funds,
+                     struct TALER_Amount *reserve_balance,
                      struct TALER_Amount *open_cost,
                      struct GNUNET_TIME_Timestamp *final_expiration);
 

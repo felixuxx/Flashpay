@@ -36,6 +36,7 @@
  * @param age_check_required if true, fail if age requirements are set on the reserve
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
+ * @param[out] reserve_balance set to the original reserve balance (at the start of this transaction)
  * @param[out] age_ok set to true if no age requirements are present on the reserve
  * @param[out] allowed_maximum_age if @e age_ok is false, set to the maximum allowed age when withdrawing from this reserve (client needs to call age-withdraw)
  * @param[out] ruuid set to the reserve's UUID (reserves table row)
@@ -50,6 +51,7 @@ TEH_PG_do_batch_withdraw (
   bool age_check_required,
   bool *found,
   bool *balance_ok,
+  struct TALER_Amount *reserve_balance,
   bool *age_ok,
   uint16_t *allowed_maximum_age,
   uint64_t *ruuid);

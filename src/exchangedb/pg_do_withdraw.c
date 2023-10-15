@@ -26,6 +26,8 @@
 #include "pg_helper.h"
 
 
+// FIXME: this function is currently only used in tests.
+// Replace by batch withdraw function in tests as well!
 enum GNUNET_DB_QueryStatus
 TEH_PG_do_withdraw (
   void *cls,

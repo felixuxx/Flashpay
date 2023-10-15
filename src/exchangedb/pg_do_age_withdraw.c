@@ -36,6 +36,7 @@ TEH_PG_do_age_withdraw (
   struct GNUNET_TIME_Timestamp now,
   bool *found,
   bool *balance_ok,
+  struct TALER_Amount *reserve_balance,
   bool *age_ok,
   uint16_t *required_age,
   uint32_t *reserve_birthday,
@@ -69,6 +70,8 @@ TEH_PG_do_age_withdraw (
                                 found),
     GNUNET_PQ_result_spec_bool ("balance_ok",
                                 balance_ok),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",
+                                 reserve_balance),
     GNUNET_PQ_result_spec_bool ("age_ok",
                                 age_ok),
     GNUNET_PQ_result_spec_uint16 ("required_age",
@@ -83,15 +86,12 @@ TEH_PG_do_age_withdraw (
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));
-
-
-  /* Used in #postgres_do_age_withdraw() to
-        update the reserve balance and check its status */
   PREPARE (pg,
            "call_age_withdraw",
            "SELECT "
            " reserve_found"
            ",balance_ok"
+           ",reserve_balance"
            ",age_ok"
            ",required_age"
            ",reserve_birthday"

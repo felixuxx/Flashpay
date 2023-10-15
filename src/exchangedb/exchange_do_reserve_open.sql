@@ -27,7 +27,9 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_open(
   IN in_open_fee taler_amount,
   OUT out_open_cost taler_amount,
   OUT out_final_expiration INT8,
-  OUT out_no_funds BOOLEAN)
+  OUT out_no_reserve BOOLEAN,
+  OUT out_no_funds BOOLEAN,
+  OUT out_reserve_balance taler_amount)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -41,6 +43,7 @@ DECLARE
   reserve RECORD;
 BEGIN
 
+-- FIXME: do not use SELECT-*
 -- FIXME: use SELECT FOR UPDATE?
 SELECT *
   INTO reserve
@@ -49,12 +52,19 @@ SELECT *
 
 IF NOT FOUND
 THEN
-  -- FIXME: do we need to set a 'not found'?
   RAISE NOTICE 'reserve not found';
+  out_no_reserve = TRUE;
+  out_no_funds = TRUE;
+  out_reserve_balance.val = 0;
+  out_reserve_balance.frac = 0;
+  out_open_cost.val = 0;
+  out_open_cost.frac = 0;
+  out_final_expiration = 0;
   RETURN;
 END IF;
 
-my_balance = reserve.current_balance;
+out_no_reserve = FALSE;
+out_reserve_balance = reserve.current_balance;
 
 -- Do not allow expiration time to start in the past already
 IF (reserve.expiration_date < in_now)
@@ -143,21 +153,21 @@ THEN
 END IF;
 
 -- Check reserve balance is sufficient.
-IF (my_balance.val > in_reserve_payment.val)
+IF (out_reserve_balance.val > in_reserve_payment.val)
 THEN
-  IF (my_balance.frac >= in_reserve_payment.frac)
+  IF (out_reserve_balance.frac >= in_reserve_payment.frac)
   THEN
-    my_balance.val=my_balance.val - in_reserve_payment.val;
-    my_balance.frac=my_balance.frac - in_reserve_payment.frac;
+    my_balance.val=out_reserve_balance.val - in_reserve_payment.val;
+    my_balance.frac=out_reserve_balance.frac - in_reserve_payment.frac;
   ELSE
-    my_balance.val=my_balance.val - in_reserve_payment.val - 1;
-    my_balance.frac=my_balance.frac + 100000000 - in_reserve_payment.frac;
+    my_balance.val=out_reserve_balance.val - in_reserve_payment.val - 1;
+    my_balance.frac=out_reserve_balance.frac + 100000000 - in_reserve_payment.frac;
   END IF;
 ELSE
-  IF (my_balance.val = in_reserve_payment.val) AND (my_balance.frac >= in_reserve_payment.frac)
+  IF (out_reserve_balance.val = in_reserve_payment.val) AND (out_reserve_balance.frac >= in_reserve_payment.frac)
   THEN
     my_balance.val=0;
-    my_balance.frac=my_balance.frac - in_reserve_payment.frac;
+    my_balance.frac=out_reserve_balance.frac - in_reserve_payment.frac;
   ELSE
     out_final_expiration = reserve.expiration_date;
     out_open_cost.val = my_cost.val;

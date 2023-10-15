@@ -29,6 +29,7 @@ CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
   IN denom_sigs BYTEA[],
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
+  OUT reserve_balance taler_amount,
   OUT age_ok BOOLEAN,
   OUT required_age INT2, -- in years ϵ [0,1..)
   OUT reserve_birthday INT4,
@@ -38,7 +39,7 @@ AS $$
 DECLARE
   reserve RECORD;
   difference RECORD;
-  balance  taler_amount;
+  balance taler_amount;
   not_before date;
   earliest_date date;
 BEGIN
@@ -48,6 +49,7 @@ BEGIN
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_h_payto
 
+-- FIXME-Oec: never select-*!
 SELECT *
   INTO reserve
   FROM exchange.reserves
@@ -59,6 +61,8 @@ THEN
   age_ok = FALSE;
   required_age=-1;
   conflict=FALSE;
+  reserve_balance.val = 0;
+  reserve_balance.frac = 0;
   balance_ok=FALSE;
   RETURN;
 END IF;
@@ -66,7 +70,7 @@ END IF;
 reserve_found = TRUE;
 conflict=FALSE;  -- not really yet determined
 
-balance = reserve.current_balance;
+reserve_balance = reserve.current_balance;
 reserve_birthday = reserve.birthday;
 
 -- Check age requirements
@@ -99,7 +103,7 @@ required_age=0;
 -- Check reserve balance is sufficient.
 SELECT *
 INTO difference
-FROM amount_left_minus_right(balance
+FROM amount_left_minus_right(reserve_balance
                             ,amount_with_fee);
 
 balance_ok = difference.ok;

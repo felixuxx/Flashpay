@@ -53,6 +53,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
  *
  * @param connection connection to the client
  * @param ec specific error code to return with the reserve history
+ * @param reserve_balance balance remaining in the reserve
  * @param balance_required the balance required for the operation
  * @param reserve_pub the reserve with insufficient balance
  * @return MHD result code
@@ -61,6 +62,7 @@ MHD_RESULT
 TEH_RESPONSE_reply_reserve_insufficient_balance (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
+  const struct TALER_Amount *reserve_balance,
   const struct TALER_Amount *balance_required,
   const struct TALER_ReservePublicKeyP *reserve_pub);
 

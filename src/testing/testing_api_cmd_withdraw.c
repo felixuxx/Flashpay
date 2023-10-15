@@ -158,7 +158,7 @@ struct WithdrawState
   /**
    * Withdraw handle (while operation is running).
    */
-  struct TALER_EXCHANGE_WithdrawHandle *wsh;
+  struct TALER_EXCHANGE_BatchWithdrawHandle *wsh;
 
   /**
    * Task scheduled to try later.
@@ -242,7 +242,7 @@ do_retry (void *cls)
  */
 static void
 reserve_withdraw_cb (void *cls,
-                     const struct TALER_EXCHANGE_WithdrawResponse *wr)
+                     const struct TALER_EXCHANGE_BatchWithdrawResponse *wr)
 {
   struct WithdrawState *ws = cls;
   struct TALER_TESTING_Interpreter *is = ws->is;
@@ -292,11 +292,12 @@ reserve_withdraw_cb (void *cls,
   switch (wr->hr.http_status)
   {
   case MHD_HTTP_OK:
+    GNUNET_assert (1 == wr->details.ok.num_coins);
     TALER_denom_sig_deep_copy (&ws->sig,
-                               &wr->details.ok.sig);
-    ws->coin_priv = wr->details.ok.coin_priv;
-    ws->bks = wr->details.ok.bks;
-    ws->exchange_vals = wr->details.ok.exchange_vals;
+                               &wr->details.ok.coins[0].sig);
+    ws->coin_priv = wr->details.ok.coins[0].coin_priv;
+    ws->bks = wr->details.ok.coins[0].bks;
+    ws->exchange_vals = wr->details.ok.coins[0].exchange_vals;
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -442,11 +443,13 @@ withdraw_run (void *cls,
       .ps = &ws->ps,
       .ach = 0 < ws->age ? &ws->h_age_commitment : NULL
     };
-    ws->wsh = TALER_EXCHANGE_withdraw (
+
+    ws->wsh = TALER_EXCHANGE_batch_withdraw (
       TALER_TESTING_interpreter_get_context (is),
       TALER_TESTING_get_exchange_url (is),
       TALER_TESTING_get_keys (is),
       rp,
+      1,
       &wci,
       &reserve_withdraw_cb,
       ws);
@@ -477,7 +480,7 @@ withdraw_cleanup (void *cls,
   {
     TALER_TESTING_command_incomplete (ws->is,
                                       cmd->label);
-    TALER_EXCHANGE_withdraw_cancel (ws->wsh);
+    TALER_EXCHANGE_batch_withdraw_cancel (ws->wsh);
     ws->wsh = NULL;
   }
   if (NULL != ws->retry_task)

@@ -312,6 +312,7 @@ batch_withdraw_transaction (void *cls,
   bool balance_ok = false;
   bool age_ok = false;
   uint16_t allowed_maximum_age = 0;
+  struct TALER_Amount reserve_balance;
   char *kyc_required;
   struct TALER_PaytoHashP reserve_h_payto;
 
@@ -476,6 +477,7 @@ batch_withdraw_transaction (void *cls,
                                       TEH_age_restriction_enabled,
                                       &found,
                                       &balance_ok,
+                                      &reserve_balance,
                                       &age_ok,
                                       &allowed_maximum_age,
                                       &ruuid);
@@ -521,6 +523,7 @@ batch_withdraw_transaction (void *cls,
     *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
       connection,
       TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
+      &reserve_balance,
       &wc->batch_total,
       wc->reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -553,7 +556,7 @@ batch_withdraw_transaction (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "do_withdraw");
+                                               "do_batch_withdraw_insert");
       return qs;
     }
     if (denom_unknown)
