@@ -280,10 +280,12 @@ do
         "${BUILDDIR}" \
         "${BUILDDIR}/pdf" \
         &> "${BUILDDIR}/pdf-sphinx.log"
+    # We pipe in /dev/null in case latexmk
+    # asks for input and would hang otherwise.
     make \
         -C "${BUILDDIR}/pdf" \
         all-pdf \
-        &> "${BUILDDIR}/pdf-latex.log"
+        < /dev/null &> "${BUILDDIR}/pdf-latex.log"
     mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
 done
 
