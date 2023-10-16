@@ -320,7 +320,9 @@ parse_coin (struct MHD_Connection *connection,
     if (NULL == dk)
     {
       GNUNET_JSON_parse_free (spec);
-      return mret;
+      return (MHD_YES == mret)
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
     if (0 > TALER_amount_cmp (&dk->meta.value,
                               &cdi->amount_with_fee))
