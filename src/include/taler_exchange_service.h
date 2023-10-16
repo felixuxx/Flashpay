@@ -7155,6 +7155,7 @@ typedef void
  *
  * @param ctx CURL context
  * @param url exchange base URL
+ * @param keys exchange key data
  * @param reserve_priv private key of the reserve to attest
  * @param attributes_length length of the @a attributes array
  * @param attributes array of names of attributes to get attestations for
@@ -7167,6 +7168,7 @@ struct TALER_EXCHANGE_ReservesAttestHandle *
 TALER_EXCHANGE_reserves_attest (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   unsigned int attributes_length,
   const char *attributes[const static attributes_length],

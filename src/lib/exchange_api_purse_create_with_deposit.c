@@ -281,7 +281,7 @@ handle_purse_create_deposit_finished (void *cls,
            checked in the GET /coins/$COIN_PUB handler */
         break;
       case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-        // FIXME: write check (add to exchange_api_common! */
+        // FIXME #7267: write check (add to exchange_api_common! */
         break;
       case TALER_EC_EXCHANGE_PURSE_DEPOSIT_CONFLICTING_META_DATA:
         {

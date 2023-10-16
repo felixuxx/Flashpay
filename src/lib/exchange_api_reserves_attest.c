@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -37,6 +37,11 @@
  */
 struct TALER_EXCHANGE_ReservesAttestHandle
 {
+
+  /**
+   * The keys of the this request handle will use
+   */
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -112,6 +117,19 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_test_signing_key (rsh->keys,
+                                       &rs.details.ok.exchange_pub))
+  {
+    GNUNET_break_op (0);
+    rs.hr.http_status = 0;
+    rs.hr.ec = TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_SIGNATURE_BY_EXCHANGE;
+    rsh->cb (rsh->cb_cls,
+             &rs);
+    rsh->cb = NULL;
+    GNUNET_JSON_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
   rs.details.ok.attributes = attributes;
   if (GNUNET_OK !=
       TALER_exchange_online_reserve_attest_details_verify (
@@ -126,8 +144,6 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
-  /* FIXME: validate exchange_pub is actually
-     a good exchange signing key */
   rsh->cb (rsh->cb_cls,
            &rs);
   rsh->cb = NULL;
@@ -227,6 +243,7 @@ struct TALER_EXCHANGE_ReservesAttestHandle *
 TALER_EXCHANGE_reserves_attest (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   unsigned int attributes_length,
   const char *attributes[const static attributes_length],
@@ -324,6 +341,7 @@ TALER_EXCHANGE_reserves_attest (
                                    rsh->post_ctx.headers,
                                    &handle_reserves_attest_finished,
                                    rsh);
+  rsh->keys = TALER_EXCHANGE_keys_incref (keys);
   return rsh;
 }
 
@@ -338,6 +356,7 @@ TALER_EXCHANGE_reserves_attest_cancel (
     rsh->job = NULL;
   }
   TALER_curl_easy_post_finished (&rsh->post_ctx);
+  TALER_EXCHANGE_keys_decref (rsh->keys);
   GNUNET_free (rsh->url);
   GNUNET_free (rsh);
 }

@@ -185,6 +185,7 @@ attest_run (void *cls,
   ss->rsh = TALER_EXCHANGE_reserves_attest (
     TALER_TESTING_interpreter_get_context (is),
     exchange_url,
+    TALER_TESTING_get_keys (is),
     ss->reserve_priv,
     ss->attrs_len,
     ss->attrs,
