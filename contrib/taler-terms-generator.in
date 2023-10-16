@@ -218,7 +218,7 @@ then
 fi
 
 # shellcheck disable=SC2086
-for d in en $(ls -d ${LOCALE_DIR}/?? 2> /dev/null || true)
+for d in en $(ls -d ${LOCALE_DIR}/?? | grep -v "en" 2> /dev/null || true)
 do
     LANGUAGE=$(basename "$d")
     if [ "en" != "${LANGUAGE}" ] && [ ! -f "${LOCALE_DIR}/${LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]
