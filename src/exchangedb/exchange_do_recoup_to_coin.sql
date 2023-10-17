@@ -67,7 +67,7 @@ THEN
       recoup_timestamp
     INTO
       out_recoup_timestamp
-    FROM exchange.recoup_refresh
+    FROM recoup_refresh
     WHERE coin_pub=in_coin_pub;
   out_recoup_ok=FOUND;
   RETURN;
@@ -106,7 +106,7 @@ THEN
 END IF;
 
 
-INSERT INTO exchange.recoup_refresh
+INSERT INTO recoup_refresh
   (coin_pub
   ,known_coin_id
   ,coin_sig

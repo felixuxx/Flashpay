@@ -81,13 +81,13 @@ THEN
   -- operations, and then see if any of these
   -- reveal operations was involved in a recoup.
   PERFORM
-    FROM exchange.recoup_refresh
+    FROM recoup_refresh
    WHERE rrc_serial IN
     (SELECT rrc_serial
-       FROM exchange.refresh_revealed_coins
+       FROM refresh_revealed_coins
       WHERE melt_serial_id IN
       (SELECT melt_serial_id
-         FROM exchange.refresh_commitments
+         FROM refresh_commitments
         WHERE old_coin_pub=in_old_coin_pub));
   IF NOT FOUND
   THEN

@@ -82,13 +82,17 @@ DECLARE
   table_name TEXT DEFAULT 'recoup_refresh';
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
-  -- FIXME: any query using this index will be slow. Materialize index or change query?
-  -- Also: which query uses this index?
+
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_rrc_serial_index'
     ' ON ' || table_name || ' '
     '(rrc_serial);'
   );
+  EXECUTE FORMAT (
+    'COMMENT ON INDEX ' || table_name || '_by_rrc_serial_index '
+    'IS ' || quote_literal('used in exchange_do_melt for zombie coins (rare)') || ';'
+  );
+
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_coin_pub_index'
     ' ON ' || table_name || ' '
