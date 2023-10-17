@@ -35,12 +35,11 @@ SELECT purse_pub
       ,in_reserve_quota
   INTO my_purse_pub
       ,my_in_reserve_quota
-  FROM exchange.purse_requests
+  FROM purse_requests
  WHERE (purse_expiration >= in_start_time) AND
        (purse_expiration < in_end_time) AND
-   purse_pub NOT IN (SELECT purse_pub
-                       FROM purse_decision)
- ORDER BY purse_expiration ASC
+       NOT was_decided
+  ORDER BY purse_expiration ASC
  LIMIT 1;
 out_found = FOUND;
 IF NOT FOUND
