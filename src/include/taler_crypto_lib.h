@@ -1162,6 +1162,7 @@ TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
 
 /**
  * Types of public keys used for denominations in Taler.
+ * FIXME: rename to BlindCipher
  */
 enum TALER_DenominationCipher
 {
@@ -1185,6 +1186,7 @@ enum TALER_DenominationCipher
 
 /**
  * @brief Type of (unblinded) coin signatures for Taler.
+ * FIXME: rename to BlindSignature
  */
 struct TALER_DenominationSignature
 {
@@ -1234,6 +1236,7 @@ struct TALER_BlindedDenominationCsSignAnswer
 /**
  * @brief Type for *blinded* denomination signatures for Taler.
  * Must be unblinded before it becomes valid.
+ * FIXME: rename to BlindedSignature
  */
 struct TALER_BlindedDenominationSignature
 {
@@ -1317,6 +1320,7 @@ struct TALER_AgeAttestation
 
 /**
  * @brief Type of public signing keys for verifying blindly signed coins.
+ * FIXME: rename to BlindPublicKey
  */
 struct TALER_DenominationPublicKey
 {
@@ -1352,6 +1356,7 @@ struct TALER_DenominationPublicKey
 
 /**
  * @brief Type of private signing keys for blind signing of coins.
+ * FIXME: rename to BlindPrivateKey
  */
 struct TALER_DenominationPrivateKey
 {
@@ -1382,6 +1387,7 @@ struct TALER_DenominationPrivateKey
 /**
  * @brief RSA Parameters to create blinded signature
  *
+ * FIXME: rename to BlindedMessage or so???
  */
 struct TALER_BlindedRsaPlanchet
 {
@@ -1429,6 +1435,7 @@ struct TALER_BlindedCsPlanchet
 
 /**
  * @brief Type including Parameters to create blinded signature
+ * FIXME: rename to BlindedXXX
  */
 struct TALER_BlindedPlanchet
 {
@@ -1542,6 +1549,7 @@ struct TALER_TrackTransferDetails
 
 /**
  * @brief Type of algorithm specific Values for withdrawal
+ * FIXME: rename to BlindedInputValues or so???
  */
 struct TALER_ExchangeWithdrawValues
 {
