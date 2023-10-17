@@ -62,12 +62,17 @@ BEGIN
              rc.amount,
              rc.recoup_timestamp
       FROM (
-        SELECT * --FIXME: bad code, we never use '*'!
+        SELECT denom_sig
+              ,denominations_serial
         FROM exchange.known_coins
         WHERE known_coins.coin_pub = c_pub
       ) kc
       JOIN (
-        SELECT *  --FIXME: bad code, we never use '*'!
+        SELECT coin_pub
+              ,coin_sig
+              ,coin_blind
+              ,amount
+              ,recoup_timestamp
         FROM exchange.recoup
         WHERE recoup.coin_pub = c_pub
       ) rc USING (coin_pub);

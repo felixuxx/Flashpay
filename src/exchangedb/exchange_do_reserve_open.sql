@@ -43,9 +43,9 @@ DECLARE
   reserve RECORD;
 BEGIN
 
--- FIXME: do not use SELECT-*
--- FIXME: use SELECT FOR UPDATE?
-SELECT *
+SELECT current_balance
+      ,expiration_time
+      ,purses_allowed
   INTO reserve
   FROM reserves
  WHERE reserve_pub=in_reserve_pub;

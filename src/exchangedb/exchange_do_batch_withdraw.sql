@@ -41,8 +41,10 @@ BEGIN
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_h_payto
 
--- FIXME-Oec: do not use select-*!
-SELECT *
+SELECT current_balance
+      ,reserve_uuid
+      ,birthday
+      ,gc_date
   INTO reserve
   FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
