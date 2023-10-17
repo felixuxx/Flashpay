@@ -36,13 +36,11 @@ TEH_PG_wire_prepare_data_mark_finished (
     GNUNET_PQ_query_param_end
   };
 
-  /* Used in #postgres_wire_prepare_data_mark_finished() */
   PREPARE (pg,
            "wire_prepare_data_mark_done",
            "UPDATE prewire"
            " SET finished=TRUE"
            " WHERE prewire_uuid=$1;");
-
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_prepare_data_mark_done",
                                              params);

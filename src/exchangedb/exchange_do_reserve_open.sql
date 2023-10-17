@@ -44,7 +44,7 @@ DECLARE
 BEGIN
 
 SELECT current_balance
-      ,expiration_time
+      ,expiration_date
       ,purses_allowed
   INTO reserve
   FROM reserves

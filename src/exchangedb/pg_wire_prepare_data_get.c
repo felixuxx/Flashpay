@@ -117,8 +117,6 @@ TEH_PG_wire_prepare_data_get (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-
-  /* Used in #postgres_wire_prepare_data_get() */
   PREPARE (pg,
            "wire_prepare_data_get",
            "SELECT"
