@@ -6081,4 +6081,169 @@ TALER_denomination_group_get_key (
   struct GNUNET_HashCode *key);
 
 
+/**
+ * Possible token family key ciphers.
+ */
+enum TALER_TokenFamilyCipher
+{
+  /**
+   * RSA based token key.
+   */
+  TALER_TOKEN_FAMILY_CIPHER_RSA = 0,
+
+  /**
+   * Schnorr based token key.
+   */
+  TALER_TOKEN_FAMILY_CIPHER_CS = 1
+};
+
+/**
+ * Token family public key.
+ */
+struct TALER_TokenFamilyPublicKey
+{
+  /**
+   * Type of the signature.
+   */
+  enum TALER_TokenFamilyCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsPublicKey cs;
+
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaPublicKey rsa;
+  } key;
+};
+
+/**
+ * Hash of a public key of a token family.
+ */
+struct TALER_TokenFamilyPublicKeyHash
+{
+  /**
+   * Hash of the token public key.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+/**
+ * Token family private key.
+ */
+struct TALER_TokenFamilyPrivateKey
+{
+  /**
+   * Type of the signature.
+   */
+  enum TALER_TokenFamilyCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsPrivateKey cs;
+
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaPrivateKey rsa;
+  } key;
+};
+
+/**
+ * Token public key.
+ */
+struct TALER_TokenPublicKey
+{
+  /**
+   * Type of the signature.
+   */
+  enum TALER_TokenFamilyCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsPublicKey cs;
+
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaPublicKey rsa;
+  } key;
+};
+
+/**
+ * Signature made using a token private key.
+ */
+struct TALER_TokenSignature
+{
+  // TODO: Do we need a separate type for this?
+  //       Like TALER_TokenCipher (not token family)
+  /**
+   * Type of the signature.
+   */
+  enum TALER_TokenFamilyCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsSignature cs;
+
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaSignature rsa;
+  } signature;
+};
+
+/**
+ * Blind signature for a token.
+ */
+struct TALER_TokenBlindSignature
+{
+  /**
+   * Type of the signature.
+   */
+  enum TALER_TokenFamilyCipher cipher;
+
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsSignature cs;
+
+    /**
+     * If we use #TALER_TOKEN_FAMILY_CIPHER_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaSignature rsa;
+  } signature;
+};
+
 #endif
