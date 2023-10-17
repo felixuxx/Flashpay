@@ -24,6 +24,8 @@
 #include "taler_pq_lib.h"
 #include "pg_select_reserves_in_above_serial_id_by_account.h"
 #include "pg_helper.h"
+
+
 /**
  * Closure for #reserves_in_serial_helper_cb().
  */
@@ -152,8 +154,9 @@ TEH_PG_select_reserves_in_above_serial_id_by_account (
            "   USING (reserve_pub)"
            " JOIN wire_targets"
            "   ON (wire_source_h_payto = wire_target_h_payto)"
-           " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
-           " ORDER BY reserve_in_serial_id;");
+           " WHERE reserve_in_serial_id>=$1"
+           "   AND exchange_account_section=$2"
+           " ORDER BY reserve_in_serial_id ASC;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_reserves_in_get_transactions_incr_by_account",
                                              params,

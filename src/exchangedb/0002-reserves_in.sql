@@ -83,22 +83,18 @@ BEGIN
     'ON ' || table_name || ' '
     '(reserve_in_serial_id);'
   );
-  -- FIXME: where do we need this index? Can we do better?
-  EXECUTE FORMAT (
-    'CREATE INDEX ' || table_name || '_by_exch_accnt_section_execution_date_idx '
-    'ON ' || table_name || ' '
-    '(exchange_account_section '
-    ',execution_date'
-    ');'
-  );
-  -- FIXME: where do we need this index? Can we do better?
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_exch_accnt_reserve_in_serial_id_idx '
     'ON ' || table_name || ' '
     '(exchange_account_section'
-    ',reserve_in_serial_id DESC'
+    ',reserve_in_serial_id ASC'
     ');'
   );
+  EXECUTE FORMAT (
+    'COMMENT ON INDEX ' || table_name || '_by_exch_accnt_reserve_in_serial_id_idx '
+    'IS ' || quote_literal ('for pg_select_reserves_in_above_serial_id_by_account') || ';'
+  ); 
+
 END
 $$;
 
