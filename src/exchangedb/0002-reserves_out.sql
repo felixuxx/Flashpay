@@ -74,7 +74,6 @@ BEGIN
     ' ADD CONSTRAINT ' || table_name || '_reserve_out_serial_id_key'
     ' UNIQUE (reserve_out_serial_id)'
   );
-  -- FIXME: change query to use reserves_out_by_reserve instead and materialize execution_date there as well???
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_reserve_uuid_and_execution_date_index '
     'ON ' || table_name || ' '
@@ -82,7 +81,7 @@ BEGIN
   );
   EXECUTE FORMAT (
     'COMMENT ON INDEX ' || table_name || '_by_reserve_uuid_and_execution_date_index '
-    'IS ' || quote_literal('for get_reserves_out and exchange_do_withdraw_limit_check') || ';'
+    'IS ' || quote_literal('for do_gc, do_recoup_by_reserve, select_kyc_relevant_withdraw_events and a few others') || ';'
   );
 END
 $$;
@@ -108,61 +107,11 @@ END
 $$;
 
 
-CREATE FUNCTION create_table_reserves_out_by_reserve(
-  IN partition_suffix TEXT DEFAULT NULL
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  table_name TEXT DEFAULT 'reserves_out_by_reserve';
-BEGIN
-  PERFORM create_partitioned_table(
-  'CREATE TABLE %I'
-    '(reserve_uuid INT8 NOT NULL' -- REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
-    ',h_blind_ev BYTEA CHECK (LENGTH(h_blind_ev)=64)'
-    ') %s '
-    ,table_name
-    ,'PARTITION BY HASH (reserve_uuid)'
-    ,partition_suffix
-  );
-  PERFORM comment_partitioned_table (
-     'Information in this table is strictly redundant with that of reserves_out, but saved by a different primary key for fast lookups by reserve public key/uuid.'
-    ,table_name
-    ,partition_suffix
-  );
-END $$;
-
-
-CREATE FUNCTION constrain_table_reserves_out_by_reserve(
-  IN partition_suffix TEXT DEFAULT NULL
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  table_name TEXT DEFAULT 'reserves_out_by_reserve';
-BEGIN
-  table_name = concat_ws('_', table_name, partition_suffix);
-  EXECUTE FORMAT (
-    'CREATE INDEX ' || table_name || '_main_index '
-    'ON ' || table_name || ' '
-    '(reserve_uuid);'
-  );
-END $$;
-
-
-CREATE FUNCTION reserves_out_by_reserve_insert_trigger()
+CREATE FUNCTION reserves_out_insert_trigger()
   RETURNS trigger
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  INSERT INTO reserves_out_by_reserve
-    (reserve_uuid
-    ,h_blind_ev)
-  VALUES
-    (NEW.reserve_uuid
-    ,NEW.h_blind_ev);
   INSERT INTO reserve_history
     (reserve_pub
     ,table_name
@@ -176,21 +125,8 @@ BEGIN
   WHERE res.reserve_uuid = NEW.reserve_uuid;
   RETURN NEW;
 END $$;
-COMMENT ON FUNCTION reserves_out_by_reserve_insert_trigger()
-  IS 'Replicate reserve_out inserts into reserve_out_by_reserve table.';
-
-
-CREATE FUNCTION reserves_out_by_reserve_delete_trigger()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  AS $$
-BEGIN
-  DELETE FROM reserves_out_by_reserve
-   WHERE reserve_uuid = OLD.reserve_uuid;
-  RETURN OLD;
-END $$;
-COMMENT ON FUNCTION reserves_out_by_reserve_delete_trigger()
-  IS 'Replicate reserve_out deletions into reserve_out_by_reserve table.';
+COMMENT ON FUNCTION reserves_out_insert_trigger()
+  IS 'Replicate reserve_out inserts into reserve_history table.';
 
 
 CREATE FUNCTION master_table_reserves_out()
@@ -201,14 +137,11 @@ BEGIN
   CREATE TRIGGER reserves_out_on_insert
   AFTER INSERT
    ON reserves_out
-   FOR EACH ROW EXECUTE FUNCTION reserves_out_by_reserve_insert_trigger();
-  CREATE TRIGGER reserves_out_on_delete
-  AFTER DELETE
-    ON reserves_out
-   FOR EACH ROW EXECUTE FUNCTION reserves_out_by_reserve_delete_trigger();
+   FOR EACH ROW EXECUTE FUNCTION reserves_out_insert_trigger();
 END $$;
 COMMENT ON FUNCTION master_table_reserves_out()
-  IS 'Setup triggers to replicate reserve_out into reserve_out_by_reserve.';
+  IS 'Setup triggers to replicate reserve_out into reserve_history.';
+
 
 
 INSERT INTO exchange_tables
@@ -231,16 +164,6 @@ INSERT INTO exchange_tables
     ('reserves_out'
     ,'exchange-0002'
     ,'foreign'
-    ,TRUE
-    ,FALSE),
-    ('reserves_out_by_reserve'
-    ,'exchange-0002'
-    ,'create'
-    ,TRUE
-    ,FALSE),
-    ('reserves_out_by_reserve'
-    ,'exchange-0002'
-    ,'constrain'
     ,TRUE
     ,FALSE),
     ('reserves_out'

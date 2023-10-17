@@ -36,22 +36,25 @@ DECLARE
   c_pub    BYTEA;
 BEGIN
   SELECT reserve_uuid
-  INTO res_uuid
-  FROM exchange.reserves
-  WHERE reserves.reserve_pub = res_pub;
+   INTO res_uuid
+   FROM reserves
+   WHERE reserve_pub = res_pub;
 
   FOR blind_ev IN
     SELECT h_blind_ev
-      FROM exchange.reserves_out_by_reserve
-    WHERE reserves_out_by_reserve.reserve_uuid = res_uuid
+      FROM reserves_out ro
+      JOIN reserve_history rh
+        ON (rh.serial_id = ro.reserve_out_serial_id)
+    WHERE rh.reserve_pub = res_pub
+      AND rh.table_name='reserves_out'
   LOOP
     SELECT robr.coin_pub
       INTO c_pub
       FROM exchange.recoup_by_reserve robr
     WHERE robr.reserve_out_serial_id = (
-      SELECT reserves_out.reserve_out_serial_id
-        FROM exchange.reserves_out
-      WHERE reserves_out.h_blind_ev = blind_ev
+      SELECT reserve_out_serial_id
+        FROM reserves_out
+      WHERE h_blind_ev = blind_ev
     );
     RETURN QUERY
       SELECT kc.denom_sig,
