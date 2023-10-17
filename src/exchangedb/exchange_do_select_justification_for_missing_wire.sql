@@ -15,8 +15,6 @@
 --
 -- @author: Christian Grothoff
 
--- FIXME: this function is not working as intended at all yet, work in progress!
-
 CREATE OR REPLACE FUNCTION exchange_do_select_justification_missing_wire(
   IN in_wire_target_h_payto BYTEA,
   IN in_current_time INT8,
