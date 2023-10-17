@@ -137,10 +137,11 @@ TEH_PG_select_purse_deposits_by_purse (
            ",pd.coin_pub"
            ",denom.denom_pub"
            " FROM purse_deposits pd"
-           " JOIN known_coins kc USING (coin_pub)"
-           " JOIN denominations denom USING (denominations_serial)"
+           " JOIN known_coins kc"
+           "   USING (coin_pub)"
+           " JOIN denominations denom"
+           "   USING (denominations_serial)"
            " WHERE purse_pub=$1;");
-
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_purse_deposits_by_purse",
                                              params,

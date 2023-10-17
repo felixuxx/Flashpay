@@ -74,7 +74,6 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
-  -- FIXME: change to materialized index by reserve_pub!?
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_reserve_pub '
     'ON ' || table_name || ' '

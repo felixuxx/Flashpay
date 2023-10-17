@@ -59,9 +59,7 @@ TEH_PG_get_purse_deposit (
     GNUNET_PQ_result_spec_end
   };
 
-
   *partner_url = NULL;
-  /* Used in #postgres_get_purse_deposit */
   PREPARE (pg,
            "select_purse_deposit_by_coin_pub",
            "SELECT "
@@ -71,12 +69,14 @@ TEH_PG_get_purse_deposit (
            ",age_commitment_hash"
            ",partner_base_url"
            " FROM purse_deposits"
-           " LEFT JOIN partners USING (partner_serial_id)"
-           " JOIN known_coins kc USING (coin_pub)"
-           " JOIN denominations USING (denominations_serial)"
-           " WHERE coin_pub=$2"
-           "   AND purse_pub=$1;");
-
+           " LEFT JOIN partners"
+           "   USING (partner_serial_id)"
+           " JOIN known_coins kc"
+           "   USING (coin_pub)"
+           " JOIN denominations"
+           "   USING (denominations_serial)"
+           " WHERE purse_pub=$1"
+           "   AND coin_pub=$2;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_purse_deposit_by_coin_pub",
                                                    params,

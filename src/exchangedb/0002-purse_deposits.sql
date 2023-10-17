@@ -87,11 +87,6 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
-  -- FIXME: change to materialized index by coin_pub!
-  EXECUTE FORMAT (
-    'CREATE INDEX ' || table_name || '_by_coin_pub'
-    ' ON ' || table_name || ' (coin_pub);'
-  );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_purse_deposit_serial_id_key'

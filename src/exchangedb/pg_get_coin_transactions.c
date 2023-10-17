@@ -925,8 +925,8 @@ TEH_PG_get_coin_transactions (
            "   ON (pd.coin_pub = kc.coin_pub)"
            " JOIN denominations denoms"
            "   USING (denominations_serial)"
-           " WHERE pd.coin_pub=$1"
-           "   AND pd.purse_deposit_serial_id=$2;");
+           " WHERE pd.purse_deposit_serial_id=$2"
+           "   AND pd.coin_pub=$1;");
   PREPARE (pg,
            "get_purse_decision_by_coin_pub",
            "SELECT"

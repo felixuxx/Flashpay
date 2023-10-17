@@ -45,7 +45,7 @@ DECLARE
 BEGIN
 
 -- Store the deposit request.
-INSERT INTO exchange.purse_deposits
+INSERT INTO purse_deposits
   (partner_serial_id
   ,purse_pub
   ,coin_pub
@@ -65,9 +65,9 @@ THEN
   -- if so, success, otherwise conflict!
 
   PERFORM
-  FROM exchange.purse_deposits
-  WHERE coin_pub = in_coin_pub
-    AND purse_pub = in_purse_pub
+  FROM purse_deposits
+  WHERE purse_pub = in_purse_pub
+    AND coin_pub = in_coin_pub
     AND coin_sig = in_coin_sig;
   IF NOT FOUND
   THEN
