@@ -108,8 +108,9 @@ BEGIN
         'UNIQUE (kyc_attributes_serial_id)'
   );
   -- The legitimization_serial is a foreign key.
-  -- TODO: due to partitioning by h_payto, we can not simply reference
-  -- the serial id of the legitimization_processes
+  -- But, due to partitioning by h_payto, we can not simply reference
+  -- the serial id of the legitimization_processes. Thus, the following
+  -- is commented out.
   --  EXECUTE FORMAT (
   --    'ALTER TABLE ' || table_name ||
   --    ' ADD CONSTRAINT ' || table_name || '_foreign_legitimization_processes'
@@ -131,6 +132,22 @@ BEGIN
 END $$;
 
 
+CREATE OR REPLACE FUNCTION foreign_table_kyc_attributes()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT DEFAULT 'kyc_attributes';
+BEGIN
+  EXECUTE FORMAT (
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_foreign_legitimization_processes'
+    ' FOREIGN KEY (legitimization_serial) '
+    ' REFERENCES legitimization_processes (legitimization_process_serial_id)' -- ON DELETE CASCADE
+  );
+END $$;
+
+
 INSERT INTO exchange_tables
     (name
     ,version
@@ -146,5 +163,10 @@ INSERT INTO exchange_tables
     ('kyc_attributes'
     ,'exchange-0002'
     ,'constrain'
+    ,TRUE
+    ,FALSE),
+    ('kyc_attributes'
+    ,'exchange-0002'
+    ,'foreign'
     ,TRUE
     ,FALSE);
