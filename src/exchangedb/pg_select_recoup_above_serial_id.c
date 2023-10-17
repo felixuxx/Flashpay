@@ -157,7 +157,6 @@ TEH_PG_select_recoup_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Used in #postgres_select_recoup_above_serial_id() to obtain recoup transactions */
   PREPARE (pg,
            "recoup_get_incr",
            "SELECT"
