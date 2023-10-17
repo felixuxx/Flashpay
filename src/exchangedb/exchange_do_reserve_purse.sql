@@ -33,7 +33,7 @@ AS $$
 BEGIN
 
 -- Store purse merge signature, checks for purse_pub uniqueness
-INSERT INTO exchange.purse_merges
+INSERT INTO purse_merges
     (partner_serial_id
     ,reserve_pub
     ,purse_pub
@@ -53,7 +53,7 @@ THEN
   -- Note that by checking 'merge_sig', we implicitly check
   -- identity over everything that the signature covers.
   PERFORM
-  FROM exchange.purse_merges
+  FROM purse_merges
   WHERE purse_pub=in_purse_pub
      AND merge_sig=in_merge_sig;
   IF NOT FOUND
@@ -145,7 +145,7 @@ out_no_funds=FALSE;
 
 
 -- Store account merge signature.
-INSERT INTO exchange.account_merges
+INSERT INTO account_merges
   (reserve_pub
   ,reserve_sig
   ,purse_pub

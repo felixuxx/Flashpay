@@ -155,7 +155,7 @@ SELECT COALESCE(partner_serial_id,0)
       ,reserve_pub
   INTO psi
       ,my_reserve_pub
-  FROM exchange.purse_merges
+  FROM purse_merges
  WHERE purse_pub=in_purse_pub;
 
 IF NOT FOUND
@@ -212,7 +212,7 @@ THEN
     SET purses_active=purses_active-1
   WHERE reserve_pub IN
     (SELECT reserve_pub
-       FROM exchange.purse_merges
+       FROM purse_merges
       WHERE purse_pub=my_purse_pub
      LIMIT 1);
 END IF;

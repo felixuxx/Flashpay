@@ -104,7 +104,7 @@ my_in_reserve_quota := rval.in_reserve_quota;
 out_no_balance=FALSE;
 
 -- Store purse merge signature, checks for purse_pub uniqueness
-INSERT INTO exchange.purse_merges
+INSERT INTO purse_merges
     (partner_serial_id
     ,reserve_pub
     ,purse_pub
@@ -124,7 +124,7 @@ THEN
   -- Note that by checking 'merge_sig', we implicitly check
   -- identity over everything that the signature covers.
   PERFORM
-  FROM exchange.purse_merges
+  FROM purse_merges
   WHERE purse_pub=in_purse_pub
      AND merge_sig=in_merge_sig;
   IF NOT FOUND
@@ -169,13 +169,13 @@ THEN
     SET purses_active=purses_active-1
   WHERE reserve_pub IN
     (SELECT reserve_pub
-       FROM exchange.purse_merges
+       FROM purse_merges
       WHERE purse_pub=my_purse_pub
      LIMIT 1);
 END IF;
 
 -- Store account merge signature.
-INSERT INTO exchange.account_merges
+INSERT INTO account_merges
   (reserve_pub
   ,reserve_sig
   ,purse_pub

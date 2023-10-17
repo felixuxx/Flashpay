@@ -74,6 +74,13 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
+  -- Note: this index *may* be useful in
+  -- pg_get_reserve_history depending on how
+  -- smart the DB is when computing the JOIN.
+  -- Removing it MAY boost performance slightly, at
+  -- the expense of trouble if the "merge_by_reserve"
+  -- query planner goes off the rails. Needs benchmarking
+  -- to be sure.
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_reserve_pub '
     'ON ' || table_name || ' '
