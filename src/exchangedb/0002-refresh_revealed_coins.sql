@@ -62,9 +62,12 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
-  --
-  -- FIXME: Add comment for link_sig
-  --
+  PERFORM comment_partitioned_column(
+     'Signature of type WALLET_COIN_LINK, proves exchange did not tamper with the link data'
+    ,'link_sig'
+    ,table_name
+    ,partition_suffix
+  );
   PERFORM comment_partitioned_column(
      'envelope of the new coin to be signed'
     ,'coin_ev'

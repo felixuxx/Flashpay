@@ -127,16 +127,6 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
-  -- FIXME: change to materialized index by reserve_pub!
-  EXECUTE FORMAT (
-    'CREATE INDEX ' || table_name || '_reserve_pub '
-    'ON ' || table_name || ' '
-    '(reserve_pub);'
-  );
-  EXECUTE FORMAT (
-    'COMMENT ON INDEX ' || table_name || '_reserve_pub '
-    'IS ' || quote_literal('needed in reserve history computation') || ';'
-  );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_wad_in_entry_serial_id_key'

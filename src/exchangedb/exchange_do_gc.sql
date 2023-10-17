@@ -34,8 +34,8 @@ DELETE FROM exchange.prewire
 DELETE FROM exchange.wire_fee
   WHERE end_date < in_ancient_date;
 
--- TODO: use closing fee as threshold?
-DELETE FROM exchange.reserves
+-- FIXME: use closing fee as threshold?
+DELETE FROM reserves
   WHERE gc_date < in_now
     AND current_balance = (0, 0);
 
@@ -43,7 +43,7 @@ SELECT
      reserve_out_serial_id
   INTO
      reserve_out_min
-  FROM exchange.reserves_out
+  FROM reserves_out
   ORDER BY reserve_out_serial_id ASC
   LIMIT 1;
 
@@ -59,19 +59,19 @@ SELECT
   ORDER BY reserve_uuid ASC
   LIMIT 1;
 
-DELETE FROM exchange.reserves_out
+DELETE FROM reserves_out
   WHERE reserve_uuid < reserve_uuid_min;
 
 -- FIXME: this query will be horribly slow;
 -- need to find another way to formulate it...
-DELETE FROM exchange.denominations
+DELETE FROM denominations
   WHERE expire_legal < in_now
     AND denominations_serial NOT IN
       (SELECT DISTINCT denominations_serial
-         FROM exchange.reserves_out)
+         FROM reserves_out)
     AND denominations_serial NOT IN
       (SELECT DISTINCT denominations_serial
-         FROM exchange.known_coins
+         FROM known_coins
         WHERE coin_pub IN
           (SELECT DISTINCT coin_pub
              FROM exchange.recoup))
