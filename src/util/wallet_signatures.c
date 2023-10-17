@@ -1543,6 +1543,7 @@ struct TALER_ReserveOpenDepositPS
 GNUNET_NETWORK_STRUCT_END
 
 
+// FIXME-#7267: add h_age_commitment, h_denom_pub to have proof!
 void
 TALER_wallet_reserve_open_deposit_sign (
   const struct TALER_Amount *coin_contribution,
