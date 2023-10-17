@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -34,6 +34,7 @@ BEGIN
       ',age_limit INT4 NOT NULL'
       ',flags INT4 NOT NULL'
       ',in_reserve_quota BOOLEAN NOT NULL DEFAULT(FALSE)'
+      ',was_decided BOOLEAN NOT NULL DEFAULT(FALSE)'
       ',amount_with_fee taler_amount NOT NULL'
       ',purse_fee taler_amount NOT NULL'
       ',balance taler_amount NOT NULL DEFAULT (0,0)'
@@ -123,18 +124,16 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
-  -- FIXME: change to materialized index by merge_pub!
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_merge_pub '
     'ON ' || table_name || ' '
     '(merge_pub);'
   );
-  -- FIXME: drop index on master (crosses partitions)?
-  -- Or use materialized index? (needed?)
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_purse_expiration '
     'ON ' || table_name || ' '
-    '(purse_expiration);'
+    '(purse_expiration) ' ||
+    'WHERE NOT was_decided;'
   );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||

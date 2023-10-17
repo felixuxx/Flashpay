@@ -74,6 +74,9 @@ CREATE OR REPLACE FUNCTION purse_decision_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
+  UPDATE purse_requests
+     SET was_decided=TRUE
+   WHERE purse_pub=NEW.purse_pub;
   IF NEW.refunded
   THEN
     INSERT INTO coin_history
@@ -101,7 +104,7 @@ BEGIN
   RETURN NEW;
 END $$;
 COMMENT ON FUNCTION purse_decision_insert_trigger()
-  IS 'Automatically generate coin history entry.';
+  IS 'Automatically generate coin history entry and update decision status for the purse.';
 
 
 CREATE FUNCTION master_table_purse_decision()
