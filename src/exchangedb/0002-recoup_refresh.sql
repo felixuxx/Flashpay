@@ -51,7 +51,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'FIXME: (To be) used for garbage collection (in the absence of foreign constraints, in the future)'
+     'Used for garbage collection (in the absence of foreign constraints, in the future)'
     ,'known_coin_id'
     ,table_name
     ,partition_suffix

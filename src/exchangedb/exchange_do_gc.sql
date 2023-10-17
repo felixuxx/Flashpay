@@ -28,10 +28,10 @@ DECLARE
   denom_min INT8; -- minimum denomination still alive
 BEGIN
 
-DELETE FROM exchange.prewire
+DELETE FROM prewire
   WHERE finished=TRUE;
 
-DELETE FROM exchange.wire_fee
+DELETE FROM wire_fee
   WHERE end_date < in_ancient_date;
 
 -- FIXME: use closing fee as threshold?
@@ -47,15 +47,14 @@ SELECT
   ORDER BY reserve_out_serial_id ASC
   LIMIT 1;
 
-DELETE FROM exchange.recoup
+DELETE FROM recoup
   WHERE reserve_out_serial_id < reserve_out_min;
--- FIXME: recoup_refresh lacks GC!
 
 SELECT
      reserve_uuid
   INTO
      reserve_uuid_min
-  FROM exchange.reserves
+  FROM reserves
   ORDER BY reserve_uuid ASC
   LIMIT 1;
 
@@ -74,52 +73,55 @@ DELETE FROM denominations
          FROM known_coins
         WHERE coin_pub IN
           (SELECT DISTINCT coin_pub
-             FROM exchange.recoup))
+             FROM recoup))
     AND denominations_serial NOT IN
       (SELECT DISTINCT denominations_serial
-         FROM exchange.known_coins
+         FROM known_coins
         WHERE coin_pub IN
           (SELECT DISTINCT coin_pub
-             FROM exchange.recoup_refresh));
+             FROM recoup_refresh));
 
 SELECT
      melt_serial_id
   INTO
      melt_min
-  FROM exchange.refresh_commitments
+  FROM refresh_commitments
   ORDER BY melt_serial_id ASC
   LIMIT 1;
 
-DELETE FROM exchange.refresh_revealed_coins
+DELETE FROM refresh_revealed_coins
   WHERE melt_serial_id < melt_min;
 
-DELETE FROM exchange.refresh_transfer_keys
+DELETE FROM refresh_transfer_keys
   WHERE melt_serial_id < melt_min;
 
 SELECT
      known_coin_id
   INTO
      coin_min
-  FROM exchange.known_coins
+  FROM known_coins
   ORDER BY known_coin_id ASC
   LIMIT 1;
 
-DELETE FROM exchange.batch_deposits
+DELETE FROM recoup_refresh
+  WHERE known_coin_id < coin_min;
+
+DELETE FROM batch_deposits
   WHERE wire_deadline < in_ancient_date;
 
 SELECT
      batch_deposit_serial_id
   INTO
      batch_deposit_min
-  FROM exchange.coin_deposits
+  FROM coin_deposits
   ORDER BY batch_deposit_serial_id ASC
   LIMIT 1;
 
-DELETE FROM exchange.refunds
+DELETE FROM refunds
   WHERE batch_deposit_serial_id < batch_deposit_min;
-DELETE FROM exchange.aggregation_tracking
+DELETE FROM aggregation_tracking
   WHERE batch_deposit_serial_id < batch_deposit_min;
-DELETE FROM exchange.coin_deposits
+DELETE FROM coin_deposits
   WHERE batch_deposit_serial_id < batch_deposit_min;
 
 
@@ -128,11 +130,11 @@ SELECT
      denominations_serial
   INTO
      denom_min
-  FROM exchange.denominations
+  FROM denominations
   ORDER BY denominations_serial ASC
   LIMIT 1;
 
-DELETE FROM exchange.cs_nonce_locks
+DELETE FROM cs_nonce_locks
   WHERE max_denomination_serial <= denom_min;
 
 END $$;
