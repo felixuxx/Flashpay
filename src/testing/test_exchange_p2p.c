@@ -396,7 +396,7 @@ run (void *cls,
                                     "EUR:0",
                                     GNUNET_TIME_UNIT_YEARS,
                                     5, /* min purses */
-                                    MHD_HTTP_PAYMENT_REQUIRED, // FIXME: or CONFLICT?
+                                    MHD_HTTP_PAYMENT_REQUIRED,
                                     NULL,
                                     NULL),
     TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok-a",
