@@ -1185,12 +1185,20 @@ check_dk (void *cls,
 
   (void) cls;
   (void) hc;
-  GNUNET_assert (TALER_DENOMINATION_INVALID != dk->denom_pub.cipher);
-  if (TALER_DENOMINATION_RSA == dk->denom_pub.cipher)
+  switch (dk->denom_pub.bsign_pub_key->cipher)
+  {
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     GNUNET_assert (GNUNET_CRYPTO_rsa_public_key_check (
-                     dk->denom_pub.details.rsa_public_key));
-  // nothing to do for TALER_DENOMINATION_CS
-  return GNUNET_OK;
+                     dk->denom_pub.bsign_pub_key->details.rsa_public_key));
+    return GNUNET_OK;
+  case GNUNET_CRYPTO_BSA_CS:
+    /* nothing to do for GNUNET_CRYPTO_BSA_CS */
+    return GNUNET_OK;
+  }
+  GNUNET_assert (0);
+  return GNUNET_SYSERR;
 }
 
 
@@ -1471,7 +1479,7 @@ load_age_mask (const char *section_name)
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_rsa hash of the @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -1483,7 +1491,7 @@ helper_rsa_cb (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_RsaPubHashP *h_rsa,
-  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
@@ -1513,10 +1521,9 @@ helper_rsa_cb (
   hd->validity_duration = validity_duration;
   hd->h_details.h_rsa = *h_rsa;
   hd->sm_sig = *sm_sig;
-  GNUNET_assert (TALER_DENOMINATION_RSA == denom_pub->cipher);
-  TALER_denom_pub_deep_copy (&hd->denom_pub,
-                             denom_pub);
-  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_RSA == bs_pub->cipher);
+  hd->denom_pub.bsign_pub_key =
+    GNUNET_CRYPTO_bsign_pub_incref (bs_pub);
   /* load the age mask for the denomination, if applicable */
   hd->denom_pub.age_mask = load_age_mask (section_name);
   TALER_denom_pub_hash (&hd->denom_pub,
@@ -1552,7 +1559,7 @@ helper_rsa_cb (
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_cs hash of the @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -1564,7 +1571,7 @@ helper_cs_cb (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
@@ -1594,9 +1601,9 @@ helper_cs_cb (
   hd->validity_duration = validity_duration;
   hd->h_details.h_cs = *h_cs;
   hd->sm_sig = *sm_sig;
-  GNUNET_assert (TALER_DENOMINATION_CS == denom_pub->cipher);
-  TALER_denom_pub_deep_copy (&hd->denom_pub,
-                             denom_pub);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_CS == bs_pub->cipher);
+  hd->denom_pub.bsign_pub_key
+    = GNUNET_CRYPTO_bsign_pub_incref (bs_pub);
   /* load the age mask for the denomination, if applicable */
   hd->denom_pub.age_mask = load_age_mask (section_name);
   TALER_denom_pub_hash (&hd->denom_pub,
@@ -1975,7 +1982,8 @@ denomination_info_cb (
     return;
   }
 
-  GNUNET_assert (TALER_DENOMINATION_INVALID != denom_pub->cipher);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_INVALID !=
+                 denom_pub->bsign_pub_key->cipher);
   if (GNUNET_TIME_absolute_is_zero (meta->start.abs_time) ||
       GNUNET_TIME_absolute_is_zero (meta->expire_withdraw.abs_time) ||
       GNUNET_TIME_absolute_is_zero (meta->expire_deposit.abs_time) ||
@@ -2995,7 +3003,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         json_t *entry;
         struct GNUNET_HashCode key;
         struct TALER_DenominationGroup meta = {
-          .cipher = dk->denom_pub.cipher,
+          .cipher = dk->denom_pub.bsign_pub_key->cipher,
           .value = dk->meta.value,
           .fees = dk->meta.fees,
           .age_mask = dk->meta.age_mask,
@@ -3016,10 +3024,10 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           group = GNUNET_new (struct GroupData);
           switch (meta.cipher)
           {
-          case TALER_DENOMINATION_RSA:
+          case GNUNET_CRYPTO_BSA_RSA:
             cipher = age_restricted ? "RSA+age_restricted" : "RSA";
             break;
-          case TALER_DENOMINATION_CS:
+          case GNUNET_CRYPTO_BSA_CS:
             cipher = age_restricted ? "CS+age_restricted" : "CS";
             break;
           default:
@@ -3080,18 +3088,18 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                   hd->validity_duration));
           switch (meta.cipher)
           {
-          case TALER_DENOMINATION_RSA:
+          case GNUNET_CRYPTO_BSA_RSA:
             key_spec =
               GNUNET_JSON_pack_rsa_public_key (
                 "rsa_pub",
-                dk->denom_pub.details.rsa_public_key);
+                dk->denom_pub.bsign_pub_key->details.rsa_public_key);
             break;
-          case TALER_DENOMINATION_CS:
+          case GNUNET_CRYPTO_BSA_CS:
             key_spec =
               GNUNET_JSON_pack_data_varsize (
                 "cs_pub",
-                &dk->denom_pub.details.cs_public_key,
-                sizeof (dk->denom_pub.details.cs_public_key));
+                &dk->denom_pub.bsign_pub_key->details.cs_public_key,
+                sizeof (dk->denom_pub.bsign_pub_key->details.cs_public_key));
             break;
           default:
             GNUNET_assert (false);
@@ -3564,17 +3572,21 @@ TEH_keys_denomination_sign (
                                           &h_denom_pub->hash);
   if (NULL == hd)
     return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-  if (bp->cipher != hd->denom_pub.cipher)
+  if (bp->blinded_message->cipher !=
+      hd->denom_pub.bsign_pub_key->cipher)
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  switch (hd->denom_pub.cipher)
+  switch (hd->denom_pub.bsign_pub_key->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
     {
       struct TALER_CRYPTO_RsaSignRequest rsr = {
         .h_rsa = &hd->h_details.h_rsa,
-        .msg = bp->details.rsa_blinded_planchet.blinded_msg,
-        .msg_size = bp->details.rsa_blinded_planchet.blinded_msg_size
+        .msg = bp->blinded_message->details.rsa_blinded_message.blinded_msg,
+        .msg_size =
+          bp->blinded_message->details.rsa_blinded_message.blinded_msg_size
       };
 
       return TALER_CRYPTO_helper_rsa_sign (
@@ -3582,31 +3594,30 @@ TEH_keys_denomination_sign (
         &rsr,
         bs);
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
     {
       struct TALER_CRYPTO_CsSignRequest csr;
 
       csr.h_cs = &hd->h_details.h_cs;
-      csr.blinded_planchet = &bp->details.cs_blinded_planchet;
+      csr.blinded_planchet = &bp->blinded_message->details.cs_blinded_message;
       return TALER_CRYPTO_helper_cs_sign (
         ksh->helpers->csdh,
         &csr,
         for_melt,
         bs);
     }
-  default:
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
+  return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
 }
 
 
 enum TALER_ErrorCode
 TEH_keys_denomination_batch_sign (
-  const struct TEH_CoinSignData *csds,
   unsigned int csds_length,
+  const struct TEH_CoinSignData csds[static csds_length],
   bool for_melt,
-  struct TALER_BlindedDenominationSignature *bss)
+  struct TALER_BlindedDenominationSignature bss[static csds_length])
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -3630,21 +3641,23 @@ TEH_keys_denomination_batch_sign (
                                             &h_denom_pub->hash);
     if (NULL == hd)
       return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-    if (bp->cipher != hd->denom_pub.cipher)
+    if (bp->blinded_message->cipher !=
+        hd->denom_pub.bsign_pub_key->cipher)
       return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-    switch (hd->denom_pub.cipher)
+    switch (hd->denom_pub.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       rsrs[rsrs_pos].h_rsa = &hd->h_details.h_rsa;
       rsrs[rsrs_pos].msg
-        = bp->details.rsa_blinded_planchet.blinded_msg;
+        = bp->blinded_message->details.rsa_blinded_message.blinded_msg;
       rsrs[rsrs_pos].msg_size
-        = bp->details.rsa_blinded_planchet.blinded_msg_size;
+        = bp->blinded_message->details.rsa_blinded_message.blinded_msg_size;
       rsrs_pos++;
       break;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       csrs[csrs_pos].h_cs = &hd->h_details.h_cs;
-      csrs[csrs_pos].blinded_planchet = &bp->details.cs_blinded_planchet;
+      csrs[csrs_pos].blinded_planchet
+        = &bp->blinded_message->details.cs_blinded_message;
       csrs_pos++;
       break;
     default:
@@ -3667,8 +3680,8 @@ TEH_keys_denomination_batch_sign (
   {
     ec = TALER_CRYPTO_helper_cs_batch_sign (
       ksh->helpers->csdh,
-      csrs,
       csrs_pos,
+      csrs,
       for_melt,
       (0 == rsrs_pos) ? bss : cs);
     if (TALER_EC_NONE != ec)
@@ -3683,8 +3696,8 @@ TEH_keys_denomination_batch_sign (
   {
     ec = TALER_CRYPTO_helper_rsa_batch_sign (
       ksh->helpers->rsadh,
-      rsrs,
       rsrs_pos,
+      rsrs,
       (0 == csrs_pos) ? bss : rs);
     if (TALER_EC_NONE != ec)
     {
@@ -3706,12 +3719,12 @@ TEH_keys_denomination_batch_sign (
     {
       const struct TALER_BlindedPlanchet *bp = csds[i].bp;
 
-      switch (bp->cipher)
+      switch (bp->blinded_message->cipher)
       {
-      case TALER_DENOMINATION_RSA:
+      case GNUNET_CRYPTO_BSA_RSA:
         bss[i] = rs[rsrs_pos++];
         break;
-      case TALER_DENOMINATION_CS:
+      case GNUNET_CRYPTO_BSA_CS:
         bss[i] = cs[csrs_pos++];
         break;
       default:
@@ -3727,10 +3740,10 @@ enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub (
   const struct TEH_CsDeriveData *cdd,
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *r_pub)
+  struct GNUNET_CRYPTO_CSPublicRPairP *r_pub)
 {
   const struct TALER_DenominationHashP *h_denom_pub = cdd->h_denom_pub;
-  const struct TALER_CsNonce *nonce = cdd->nonce;
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce = cdd->nonce;
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
 
@@ -3745,7 +3758,8 @@ TEH_keys_denomination_cs_r_pub (
   {
     return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
   }
-  if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+  if (GNUNET_CRYPTO_BSA_CS !=
+      hd->denom_pub.bsign_pub_key->cipher)
   {
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
@@ -3765,10 +3779,10 @@ TEH_keys_denomination_cs_r_pub (
 
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_batch_r_pub (
-  const struct TEH_CsDeriveData *cdds,
   unsigned int cdds_length,
+  const struct TEH_CsDeriveData cdds[static cdds_length],
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *r_pubs)
+  struct GNUNET_CRYPTO_CSPublicRPairP r_pubs[static cdds_length])
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -3782,7 +3796,7 @@ TEH_keys_denomination_cs_batch_r_pub (
   for (unsigned int i = 0; i<cdds_length; i++)
   {
     const struct TALER_DenominationHashP *h_denom_pub = cdds[i].h_denom_pub;
-    const struct TALER_CsNonce *nonce = cdds[i].nonce;
+    const struct GNUNET_CRYPTO_CsSessionNonce *nonce = cdds[i].nonce;
 
     hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
                                             &h_denom_pub->hash);
@@ -3790,7 +3804,8 @@ TEH_keys_denomination_cs_batch_r_pub (
     {
       return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
     }
-    if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+    if (GNUNET_CRYPTO_BSA_CS !=
+        hd->denom_pub.bsign_pub_key->cipher)
     {
       return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
     }
@@ -3799,8 +3814,8 @@ TEH_keys_denomination_cs_batch_r_pub (
   }
 
   return TALER_CRYPTO_helper_cs_r_batch_derive (ksh->helpers->csdh,
-                                                cdrs,
                                                 cdds_length,
+                                                cdrs,
                                                 for_melt,
                                                 r_pubs);
 }
@@ -3825,22 +3840,23 @@ TEH_keys_denomination_revoke (const struct TALER_DenominationHashP *h_denom_pub)
     GNUNET_break (0);
     return;
   }
-  switch (hd->denom_pub.cipher)
+  switch (hd->denom_pub.bsign_pub_key->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     TALER_CRYPTO_helper_rsa_revoke (ksh->helpers->rsadh,
                                     &hd->h_details.h_rsa);
     TEH_keys_update_states ();
     return;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     TALER_CRYPTO_helper_cs_revoke (ksh->helpers->csdh,
                                    &hd->h_details.h_cs);
     TEH_keys_update_states ();
     return;
-  default:
-    GNUNET_break (0);
-    return;
   }
+  GNUNET_break (0);
+  return;
 }
 
 
@@ -4170,7 +4186,8 @@ TEH_keys_load_fees (struct TEH_KeyStateHandle *ksh,
                             meta);
   if (GNUNET_OK == ok)
   {
-    GNUNET_assert (TALER_DENOMINATION_INVALID != hd->denom_pub.cipher);
+    GNUNET_assert (GNUNET_CRYPTO_BSA_INVALID !=
+                   hd->denom_pub.bsign_pub_key->cipher);
     TALER_denom_pub_deep_copy (denom_pub,
                                &hd->denom_pub);
   }

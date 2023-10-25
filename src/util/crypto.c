@@ -214,7 +214,7 @@ TALER_planchet_secret_to_transfer_priv (
 void
 TALER_cs_withdraw_nonce_derive (
   const struct TALER_PlanchetMasterSecretP *ps,
-  struct TALER_CsNonce *nonce)
+  struct GNUNET_CRYPTO_CsSessionNonce *nonce)
 {
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (nonce,
@@ -232,7 +232,7 @@ void
 TALER_cs_refresh_nonce_derive (
   const struct TALER_RefreshMasterSecretP *rms,
   uint32_t coin_num_salt,
-  struct TALER_CsNonce *nonce)
+  struct GNUNET_CRYPTO_CsSessionNonce *nonce)
 {
   uint32_t be_salt = htonl (coin_num_salt);
 
@@ -250,10 +250,31 @@ TALER_cs_refresh_nonce_derive (
 }
 
 
+void
+TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
+                    struct TALER_RsaPubHashP *h_rsa)
+{
+  GNUNET_CRYPTO_rsa_public_key_hash (rsa,
+                                     &h_rsa->hash);
+
+}
+
+
+void
+TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
+                   struct TALER_CsPubHashP *h_cs)
+{
+  GNUNET_CRYPTO_hash (cs,
+                      sizeof(*cs),
+                      &h_cs->hash);
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_ExchangeWithdrawValues *alg_values,
-                        const union TALER_DenominationBlindingKeyP *bks,
+                        const union GNUNET_CRYPTO_BlindingSecretP *bks,
+                        const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                         const struct TALER_AgeCommitmentHash *ach,
                         struct TALER_CoinPubHashP *c_hash,
@@ -262,12 +283,14 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
-  GNUNET_assert (alg_values->cipher == dk->cipher);
+  GNUNET_assert (alg_values->blinding_inputs->cipher ==
+                 dk->bsign_pub_key->cipher);
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   if (GNUNET_OK !=
       TALER_denom_blind (dk,
                          bks,
+                         nonce,
                          ach,
                          &coin_pub,
                          alg_values,
@@ -294,15 +317,17 @@ enum GNUNET_GenericReturnValue
 TALER_planchet_to_coin (
   const struct TALER_DenominationPublicKey *dk,
   const struct TALER_BlindedDenominationSignature *blind_sig,
-  const union TALER_DenominationBlindingKeyP *bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   const struct TALER_AgeCommitmentHash *ach,
   const struct TALER_CoinPubHashP *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin)
 {
-  if ( (dk->cipher != blind_sig->cipher) ||
-       (dk->cipher != alg_values->cipher) )
+  if ( (dk->bsign_pub_key->cipher !=
+        blind_sig->blinded_sig->cipher) ||
+       (dk->bsign_pub_key->cipher !=
+        alg_values->blinding_inputs->cipher) )
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

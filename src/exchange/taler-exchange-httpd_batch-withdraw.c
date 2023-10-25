@@ -534,14 +534,22 @@ batch_withdraw_transaction (void *cls,
   {
     struct PlanchetContext *pc = &wc->planchets[i];
     const struct TALER_BlindedPlanchet *bp = &pc->blinded_planchet;
-    const struct TALER_CsNonce *nonce;
+    const union GNUNET_CRYPTO_BlindSessionNonce *nonce = NULL;
     bool denom_unknown = true;
     bool conflict = true;
     bool nonce_reuse = true;
 
-    nonce = (TALER_DENOMINATION_CS == bp->cipher)
-            ? &bp->details.cs_blinded_planchet.nonce
-            : NULL;
+    switch (bp->blinded_message->cipher)
+    {
+    case GNUNET_CRYPTO_BSA_INVALID:
+      break;
+    case GNUNET_CRYPTO_BSA_RSA:
+      break;
+    case GNUNET_CRYPTO_BSA_CS:
+      nonce = (const union GNUNET_CRYPTO_BlindSessionNonce *)
+              &bp->blinded_message->details.cs_blinded_message.nonce;
+      break;
+    }
     qs = TEH_plugin->do_batch_withdraw_insert (TEH_plugin->cls,
                                                nonce,
                                                &pc->collectable,
@@ -626,8 +634,8 @@ prepare_transaction (const struct TEH_RequestContext *rc,
     enum TALER_ErrorCode ec;
 
     ec = TEH_keys_denomination_batch_sign (
-      csds,
       wc->planchets_length,
+      csds,
       false,
       bss);
     if (TALER_EC_NONE != ec)
@@ -797,7 +805,8 @@ parse_planchets (const struct TEH_RequestContext *rc,
       }
       return mret;
     }
-    if (dk->denom_pub.cipher != pc->blinded_planchet.cipher)
+    if (dk->denom_pub.bsign_pub_key->cipher !=
+        pc->blinded_planchet.blinded_message->cipher)
     {
       /* denomination cipher and blinded planchet cipher not the same */
       GNUNET_break_op (0);

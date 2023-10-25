@@ -458,7 +458,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 static enum GNUNET_GenericReturnValue
 parse_json_denomkey_partially (
   struct TALER_EXCHANGE_DenomPublicKey *denom_key,
-  enum TALER_DenominationCipher cipher,
+  enum GNUNET_CRYPTO_BlindSignatureAlgorithm cipher,
   bool check_sigs,
   const json_t *denom_key_obj,
   struct TALER_MasterPublicKeyP *master_key,
@@ -1111,7 +1111,6 @@ decode_keys_json (const json_t *resp_obj,
            denomination.  Required to make the validity check inside
            parse_json_denomkey_partially pass */
         struct TALER_EXCHANGE_DenomPublicKey dk = {
-          .key.cipher = group.cipher,
           .value = group.value,
           .fees = group.fees,
           .key.age_mask = group.age_mask
@@ -1978,10 +1977,10 @@ add_grp (void *cls,
   (void) key;
   switch (gd->meta.cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     cipher = age_restricted ? "RSA+age_restricted" : "RSA";
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     cipher = age_restricted ? "CS+age_restricted" : "CS";
     break;
   default:
@@ -2125,7 +2124,6 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
     {
       const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
       struct TALER_DenominationGroup meta = {
-        .cipher = dk->key.cipher,
         .value = dk->value,
         .fees = dk->fees,
         .age_mask = dk->key.age_mask
@@ -2159,18 +2157,18 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
       }
       switch (meta.cipher)
       {
-      case TALER_DENOMINATION_RSA:
+      case GNUNET_CRYPTO_BSA_RSA:
         key_spec =
           GNUNET_JSON_pack_rsa_public_key (
             "rsa_pub",
-            dk->key.details.rsa_public_key);
+            dk->key.bsign_pub_key->details.rsa_public_key);
         break;
-      case TALER_DENOMINATION_CS:
+      case GNUNET_CRYPTO_BSA_CS:
         key_spec =
           GNUNET_JSON_pack_data_varsize (
             "cs_pub",
-            &dk->key.details.cs_public_key,
-            sizeof (dk->key.details.cs_public_key));
+            &dk->key.bsign_pub_key->details.cs_public_key,
+            sizeof (dk->key.bsign_pub_key->details.cs_public_key));
         break;
       default:
         GNUNET_assert (false);

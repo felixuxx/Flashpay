@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015, 2020-2022 Taler Systems SA
+  (C) 2015, 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -37,14 +37,21 @@ test_high_level (void)
   struct TALER_TransferPublicKeyP trans_pub;
   struct TALER_TransferSecretP secret;
   struct TALER_TransferSecretP secret2;
-  union TALER_DenominationBlindingKeyP bks1;
-  union TALER_DenominationBlindingKeyP bks2;
+  union GNUNET_CRYPTO_BlindingSecretP bks1;
+  union GNUNET_CRYPTO_BlindingSecretP bks2;
   struct TALER_CoinSpendPrivateKeyP coin_priv1;
   struct TALER_CoinSpendPrivateKeyP coin_priv2;
   struct TALER_PlanchetMasterSecretP ps1;
   struct TALER_PlanchetMasterSecretP ps2;
-  struct TALER_ExchangeWithdrawValues alg1;
-  struct TALER_ExchangeWithdrawValues alg2;
+  struct GNUNET_CRYPTO_BlindingInputValues bi = {
+    .cipher = GNUNET_CRYPTO_BSA_RSA
+  };
+  struct TALER_ExchangeWithdrawValues alg1 = {
+    .blinding_inputs = &bi
+  };
+  struct TALER_ExchangeWithdrawValues alg2 = {
+    .blinding_inputs = &bi
+  };
 
   GNUNET_CRYPTO_eddsa_key_create (&coin_priv.eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
@@ -70,14 +77,12 @@ test_high_level (void)
   TALER_transfer_secret_to_planchet_secret (&secret,
                                             0,
                                             &ps1);
-  alg1.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps1,
                                   &alg1,
                                   &coin_priv1);
   TALER_planchet_blinding_secret_create (&ps1,
                                          &alg1,
                                          &bks1);
-  alg2.cipher = TALER_DENOMINATION_RSA;
   TALER_transfer_secret_to_planchet_secret (&secret,
                                             1,
                                             &ps2);
@@ -116,10 +121,10 @@ test_planchets_rsa (uint8_t age)
 {
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
   struct TALER_DenominationPrivateKey dk_priv;
   struct TALER_DenominationPublicKey dk_pub;
-  struct TALER_ExchangeWithdrawValues alg_values;
+  const struct TALER_ExchangeWithdrawValues *alg_values;
   struct TALER_PlanchetDetail pd;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
@@ -127,6 +132,7 @@ test_planchets_rsa (uint8_t age)
   struct TALER_AgeCommitmentHash *ach = NULL;
   struct TALER_AgeCommitmentHash ah = {0};
 
+  alg_values = TALER_denom_ewv_rsa_singleton ();
   if (0 < age)
   {
     struct TALER_AgeCommitmentProof acp;
@@ -152,7 +158,7 @@ test_planchets_rsa (uint8_t age)
   GNUNET_assert (GNUNET_SYSERR ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
-                                          TALER_DENOMINATION_INVALID));
+                                          GNUNET_CRYPTO_BSA_INVALID));
   GNUNET_log_skip (1, GNUNET_YES);
   GNUNET_assert (GNUNET_SYSERR ==
                  TALER_denom_priv_create (&dk_priv,
@@ -162,19 +168,19 @@ test_planchets_rsa (uint8_t age)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
-                                          TALER_DENOMINATION_RSA,
+                                          GNUNET_CRYPTO_BSA_RSA,
                                           1024));
-  alg_values.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps,
-                                  &alg_values,
+                                  alg_values,
                                   &coin_priv);
   TALER_planchet_blinding_secret_create (&ps,
-                                         &alg_values,
+                                         alg_values,
                                          &bks);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
-                                         &alg_values,
+                                         alg_values,
                                          &bks,
+                                         NULL,
                                          &coin_priv,
                                          ach,
                                          &c_hash,
@@ -192,46 +198,13 @@ test_planchets_rsa (uint8_t age)
                                          &coin_priv,
                                          ach,
                                          &c_hash,
-                                         &alg_values,
+                                         alg_values,
                                          &coin));
   TALER_blinded_denom_sig_free (&blind_sig);
   TALER_denom_sig_free (&coin.sig);
   TALER_denom_priv_free (&dk_priv);
   TALER_denom_pub_free (&dk_pub);
   return 0;
-}
-
-
-/**
- * @brief Function for CS signatures to derive public R_0 and R_1
- *
- * @param nonce withdraw nonce from a client
- * @param denom_priv denomination privkey as long-term secret
- * @param r_pub the resulting R_0 and R_1
- * @return enum GNUNET_GenericReturnValue
- */
-static enum GNUNET_GenericReturnValue
-derive_r_public (
-  const struct TALER_CsNonce *nonce,
-  const struct TALER_DenominationPrivateKey *denom_priv,
-  struct TALER_DenominationCSPublicRPairP *r_pub)
-{
-  struct GNUNET_CRYPTO_CsRSecret r[2];
-
-  if (denom_priv->cipher != TALER_DENOMINATION_CS)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
-                             "rw",
-                             &denom_priv->details.cs_private_key,
-                             r);
-  GNUNET_CRYPTO_cs_r_get_public (&r[0],
-                                 &r_pub->r_pub[0]);
-  GNUNET_CRYPTO_cs_r_get_public (&r[1],
-                                 &r_pub->r_pub[1]);
-  return GNUNET_OK;
 }
 
 
@@ -246,11 +219,12 @@ test_planchets_cs (uint8_t age)
 {
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
   struct TALER_DenominationPrivateKey dk_priv;
   struct TALER_DenominationPublicKey dk_pub;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHashP c_hash;
+  union GNUNET_CRYPTO_BlindSessionNonce nonce;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
   struct TALER_ExchangeWithdrawValues alg_values;
@@ -281,16 +255,17 @@ test_planchets_cs (uint8_t age)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
-                                          TALER_DENOMINATION_CS));
-  alg_values.cipher = TALER_DENOMINATION_CS;
+                                          GNUNET_CRYPTO_BSA_CS));
   TALER_cs_withdraw_nonce_derive (
     &ps,
-    &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
-  GNUNET_assert (GNUNET_OK ==
-                 derive_r_public (
-                   &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
-                   &dk_priv,
-                   &alg_values.details.cs_values));
+    &nonce.cs_nonce);
+  // FIXME: define Taler abstraction for this:
+  alg_values.blinding_inputs
+    = GNUNET_CRYPTO_get_blinding_input_values (dk_priv.bsign_priv_key,
+                                               &nonce,
+                                               "rw");
+  TALER_denom_pub_hash (&dk_pub,
+                        &pd.denom_pub_hash);
   TALER_planchet_setup_coin_priv (&ps,
                                   &alg_values,
                                   &coin_priv);
@@ -301,6 +276,7 @@ test_planchets_cs (uint8_t age)
                  TALER_planchet_prepare (&dk_pub,
                                          &alg_values,
                                          &bks,
+                                         &nonce,
                                          &coin_priv,
                                          ach,
                                          &c_hash,
@@ -310,7 +286,6 @@ test_planchets_cs (uint8_t age)
                                            &dk_priv,
                                            false,
                                            &pd.blinded_planchet));
-  TALER_planchet_detail_free (&pd);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
                                          &blind_sig,

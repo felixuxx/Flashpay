@@ -409,15 +409,13 @@ generate_response (struct DenominationKey *dk)
  * Do the actual signing work.
  *
  * @param h_rsa key to sign with
- * @param blinded_msg message to sign
- * @param blinded_msg_size number of bytes in @a blinded_msg
+ * @param bm blinded message to sign
  * @param[out] rsa_signaturep set to the RSA signature
  * @return #TALER_EC_NONE on success
  */
 static enum TALER_ErrorCode
 do_sign (const struct TALER_RsaPubHashP *h_rsa,
-         const void *blinded_msg,
-         size_t blinded_msg_size,
+         const struct GNUNET_CRYPTO_RsaBlindedMessage *bm,
          struct GNUNET_CRYPTO_RsaSignature **rsa_signaturep)
 {
   struct DenominationKey *dk;
@@ -447,15 +445,14 @@ do_sign (const struct TALER_RsaPubHashP *h_rsa,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to sign over %u bytes with key %s\n",
-              (unsigned int) blinded_msg_size,
+              (unsigned int) bm->blinded_msg_size,
               GNUNET_h2s (&h_rsa->hash));
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
   rsa_signature
     = GNUNET_CRYPTO_rsa_sign_blinded (dk->denom_priv,
-                                      blinded_msg,
-                                      blinded_msg_size);
+                                      bm);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   GNUNET_assert (dk->rc > 0);
   dk->rc--;
@@ -548,14 +545,15 @@ static enum GNUNET_GenericReturnValue
 handle_sign_request (struct TES_Client *client,
                      const struct TALER_CRYPTO_SignRequest *sr)
 {
-  const void *blinded_msg = &sr[1];
-  size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
+  struct GNUNET_CRYPTO_RsaBlindedMessage bm = {
+    .blinded_msg = (void *) &sr[1],
+    .blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr)
+  };
   struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
   enum TALER_ErrorCode ec;
 
   ec = do_sign (&sr->h_rsa,
-                blinded_msg,
-                blinded_msg_size,
+                &bm,
                 &rsa_signature);
   if (TALER_EC_NONE != ec)
   {
@@ -660,12 +658,13 @@ worker (void *cls)
     {
       struct BatchJob *bj = w->job;
       const struct TALER_CRYPTO_SignRequest *sr = bj->sr;
-      const void *blinded_msg = &sr[1];
-      size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
+      struct GNUNET_CRYPTO_RsaBlindedMessage bm = {
+        .blinded_msg = (void *) &sr[1],
+        .blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr)
+      };
 
       bj->ec = do_sign (&sr->h_rsa,
-                        blinded_msg,
-                        blinded_msg_size,
+                        &bm,
                         &bj->rsa_signature);
       sem_up (&bj->sem);
       w->job = NULL;
@@ -880,8 +879,8 @@ setup_key (struct DenominationKey *dk,
   }
   buf_size = GNUNET_CRYPTO_rsa_private_key_encode (priv,
                                                    &buf);
-  TALER_rsa_pub_hash (pub,
-                      &dk->h_rsa);
+  GNUNET_CRYPTO_rsa_public_key_hash (pub,
+                                     &dk->h_rsa.hash);
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
@@ -1545,8 +1544,8 @@ parse_key (struct Denomination *denom,
     dk->denom = denom;
     dk->anchor = anchor;
     dk->filename = GNUNET_strdup (filename);
-    TALER_rsa_pub_hash (pub,
-                        &dk->h_rsa);
+    GNUNET_CRYPTO_rsa_public_key_hash (pub,
+                                       &dk->h_rsa.hash);
     dk->denom_pub = pub;
     generate_response (dk);
     if (GNUNET_OK !=

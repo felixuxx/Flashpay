@@ -307,50 +307,47 @@ calculate_blinded_hash (
     struct TALER_CoinPubHashP c_hash;
     struct TALER_PlanchetDetail detail = {0};
     struct TALER_CoinSpendPrivateKeyP coin_priv;
-    union TALER_DenominationBlindingKeyP bks;
-    struct TALER_ExchangeWithdrawValues alg_values = {
-      .cipher = denom_key->denom_pub.cipher,
+    union GNUNET_CRYPTO_BlindingSecretP bks;
+    struct GNUNET_CRYPTO_BlindingInputValues bi = {
+      .cipher = denom_key->denom_pub.bsign_pub_key->cipher
     };
+    struct TALER_ExchangeWithdrawValues alg_values = {
+      .blinding_inputs = &bi
+    };
+    union GNUNET_CRYPTO_BlindSessionNonce nonce;
+    union GNUNET_CRYPTO_BlindSessionNonce *noncep = NULL;
 
-    if (TALER_DENOMINATION_CS == alg_values.cipher)
+    // FIXME: add logic to denom.c to do this!
+    if (GNUNET_CRYPTO_BSA_CS == bi.cipher)
     {
-      struct TALER_CsNonce nonce;
+      struct TEH_CsDeriveData cdd = {
+        .h_denom_pub = &denom_key->h_denom_pub,
+        .nonce = &nonce.cs_nonce,
+      };
 
       TALER_cs_withdraw_nonce_derive (secret,
-                                      &nonce);
-
-      {
-        struct TEH_CsDeriveData cdd = {
-          .h_denom_pub = &denom_key->h_denom_pub,
-          .nonce = &nonce,
-        };
-
-        GNUNET_assert (TALER_EC_NONE ==
-                       TEH_keys_denomination_cs_r_pub (
-                         &cdd,
-                         false,
-                         &alg_values.details.cs_values));
-      }
-
-      detail.blinded_planchet.details.cs_blinded_planchet.nonce = nonce;
+                                      &nonce.cs_nonce);
+      noncep = &nonce;
+      GNUNET_assert (TALER_EC_NONE ==
+                     TEH_keys_denomination_cs_r_pub (
+                       &cdd,
+                       false,
+                       &bi.details.cs_values));
     }
-
     TALER_planchet_blinding_secret_create (secret,
                                            &alg_values,
                                            &bks);
-
     TALER_planchet_setup_coin_priv (secret,
                                     &alg_values,
                                     &coin_priv);
-
     ret = TALER_planchet_prepare (&denom_key->denom_pub,
                                   &alg_values,
                                   &bks,
+                                  noncep,
                                   &coin_priv,
                                   &ach,
                                   &c_hash,
                                   &detail);
-
     if (GNUNET_OK != ret)
     {
       GNUNET_break (0);

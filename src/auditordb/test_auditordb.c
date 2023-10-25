@@ -248,7 +248,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&denom_priv,
                                           &denom_pub,
-                                          TALER_DENOMINATION_RSA,
+                                          GNUNET_CRYPTO_BSA_RSA,
                                           1024));
   TALER_denom_pub_hash (&denom_pub,
                         &denom_pub_hash);

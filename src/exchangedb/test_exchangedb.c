@@ -278,7 +278,7 @@ create_denom_key_pair (unsigned int size,
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dkp->priv,
                                           &dkp->pub,
-                                          TALER_DENOMINATION_RSA,
+                                          GNUNET_CRYPTO_BSA_RSA,
                                           size));
   /* Using memset() as fields like master key and signature
      are not properly initialized for this test. */
@@ -1092,9 +1092,9 @@ recoup_cb (void *cls,
            const struct TALER_CoinPublicInfo *coin,
            const struct TALER_DenominationPublicKey *denom_pub,
            const struct TALER_CoinSpendSignatureP *coin_sig,
-           const union TALER_DenominationBlindingKeyP *coin_blind)
+           const union GNUNET_CRYPTO_BlindingSecretP *coin_blind)
 {
-  const union TALER_DenominationBlindingKeyP *cb = cls;
+  const union GNUNET_CRYPTO_BlindingSecretP *cb = cls;
 
   (void) rowid;
   (void) timestamp;
@@ -1177,7 +1177,7 @@ run (void *cls)
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Timestamp deadline;
-  union TALER_DenominationBlindingKeyP coin_blind;
+  union GNUNET_CRYPTO_BlindingSecretP coin_blind;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReservePublicKeyP reserve_pub2;
   struct TALER_ReservePublicKeyP reserve_pub3;
@@ -1212,11 +1212,11 @@ run (void *cls)
   uint64_t reserve_out_serial_id;
   uint64_t melt_serial_id;
   struct TALER_PlanchetMasterSecretP ps;
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
   struct TALER_ExchangeWithdrawValues alg_values = {
     /* RSA is simpler, and for the DB there is no real difference between
        CS and RSA, just one should be used, so we use RSA */
-    .cipher = TALER_DENOMINATION_RSA
+    .cipher = GNUNET_CRYPTO_BSA_RSA
   };
 
   memset (&deposit,
@@ -1667,7 +1667,7 @@ run (void *cls)
       new_denom_pubs[cnt] = new_dkp[cnt]->pub;
       ccoin = &revealed_coins[cnt];
       bp = &ccoin->blinded_planchet;
-      bp->cipher = TALER_DENOMINATION_RSA;
+      bp->cipher = GNUNET_CRYPTO_BSA_RSA;
       rp = &bp->details.rsa_blinded_planchet;
       rp->blinded_msg_size = 1 + (size_t) GNUNET_CRYPTO_random_u64 (
         GNUNET_CRYPTO_QUALITY_WEAK,
@@ -1759,7 +1759,7 @@ run (void *cls)
   {
     struct GNUNET_TIME_Timestamp recoup_timestamp
       = GNUNET_TIME_timestamp_get ();
-    union TALER_DenominationBlindingKeyP coin_bks;
+    union GNUNET_CRYPTO_BlindingSecretP coin_bks;
     uint64_t new_known_coin_id;
     struct TALER_CoinPublicInfo new_coin;
     struct TALER_DenominationHashP dph;

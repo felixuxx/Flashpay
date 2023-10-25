@@ -235,7 +235,7 @@ TALER_EXCHANGE_recoup_refresh (
   CURL *eh;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
   struct TALER_CoinSpendPrivateKeyP coin_priv;
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
 
   GNUNET_assert (NULL != recoup_cb);
   ph = GNUNET_new (struct TALER_EXCHANGE_RecoupRefreshHandle);
@@ -271,23 +271,34 @@ TALER_EXCHANGE_recoup_refresh (
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
                                 &bks));
 
-  if (TALER_DENOMINATION_CS == denom_sig->cipher)
+  switch (denom_sig->unblinded_sig->cipher)
   {
-    struct TALER_CsNonce nonce;
+  case GNUNET_CRYPTO_BSA_INVALID:
+    json_decref (recoup_obj);
+    GNUNET_break (0);
+    GNUNET_free (ph);
+    return NULL;
+  case GNUNET_CRYPTO_BSA_RSA:
+    break;
+  case GNUNET_CRYPTO_BSA_CS:
+    {
+      union GNUNET_CRYPTO_BlindSessionNonce nonce;
 
-    /* NOTE: this is not elegant, and as per the note in TALER_coin_ev_hash()
-       it is not strictly clear that the nonce is needed. Best case would be
-       to find a way to include it more 'naturally' somehow, for example with
-       the variant union version of bks! */
-    TALER_cs_refresh_nonce_derive (rms,
-                                   idx,
-                                   &nonce);
-    GNUNET_assert (
-      0 ==
-      json_object_set_new (recoup_obj,
-                           "cs_nonce",
-                           GNUNET_JSON_from_data_auto (
-                             &nonce)));
+      /* NOTE: this is not elegant, and as per the note in TALER_coin_ev_hash()
+         it is not strictly clear that the nonce is needed. Best case would be
+         to find a way to include it more 'naturally' somehow, for example with
+         the variant union version of bks! */
+      TALER_cs_refresh_nonce_derive (rms,
+                                     idx,
+                                     &nonce.cs_nonce);
+      GNUNET_assert (
+        0 ==
+        json_object_set_new (recoup_obj,
+                             "cs_nonce",
+                             GNUNET_JSON_from_data_auto (
+                               &nonce)));
+    }
+    break;
   }
 
   {

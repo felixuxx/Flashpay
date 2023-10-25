@@ -320,7 +320,7 @@ struct TALER_RecoupRequestPS
   /**
    * Blinding factor that was used to withdraw the coin.
    */
-  union TALER_DenominationBlindingKeyP coin_blind;
+  union GNUNET_CRYPTO_BlindingSecretP coin_blind;
 
 };
 
@@ -330,7 +330,7 @@ GNUNET_NETWORK_STRUCT_END
 enum GNUNET_GenericReturnValue
 TALER_wallet_recoup_verify (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -351,7 +351,7 @@ TALER_wallet_recoup_verify (
 void
 TALER_wallet_recoup_sign (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -371,7 +371,7 @@ TALER_wallet_recoup_sign (
 enum GNUNET_GenericReturnValue
 TALER_wallet_recoup_refresh_verify (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -392,7 +392,7 @@ TALER_wallet_recoup_refresh_verify (
 void
 TALER_wallet_recoup_refresh_sign (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {

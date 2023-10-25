@@ -138,7 +138,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
       GNUNET_JSON_spec_end ()
     };
     struct TALER_FreshCoin coin;
-    union TALER_DenominationBlindingKeyP bks;
+    union GNUNET_CRYPTO_BlindingSecretP bks;
     const struct TALER_AgeCommitmentHash *pah = NULL;
 
     rci->ps = fcd->ps[rrh->noreveal_index];
@@ -360,7 +360,8 @@ TALER_EXCHANGE_refreshes_reveal (
     const struct TALER_RefreshCoinData *rcd = &md.rcd[noreveal_index][i];
     struct TALER_DenominationHashP denom_hash;
 
-    if (TALER_DENOMINATION_CS == md.fcds[i].fresh_pk.cipher)
+    if (GNUNET_CRYPTO_BSA_CS ==
+        md.fcds[i].fresh_pk.bsign_pub_key->cipher)
       send_rms = true;
     TALER_denom_pub_hash (&md.fcds[i].fresh_pk,
                           &denom_hash);

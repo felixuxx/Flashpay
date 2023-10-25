@@ -109,7 +109,7 @@ struct FreshCoinData
    * Blinding key secrets for the coins, depending on the
    * cut-and-choose.
    */
-  union TALER_DenominationBlindingKeyP bks[TALER_CNC_KAPPA];
+  union GNUNET_CRYPTO_BlindingSecretP bks[TALER_CNC_KAPPA];
 
 };
 

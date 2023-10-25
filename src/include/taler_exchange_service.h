@@ -1558,7 +1558,7 @@ TALER_EXCHANGE_csr_withdraw (
   struct GNUNET_CURL_Context *curl_ctx,
   const char *exchange_url,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
-  const struct TALER_CsNonce *nonce,
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce,
   TALER_EXCHANGE_CsRWithdrawCallback res_cb,
   void *res_cb_cls);
 
@@ -1698,7 +1698,7 @@ struct TALER_EXCHANGE_CoinHistoryEntry
     {
       struct TALER_ReservePublicKeyP reserve_pub;
       struct GNUNET_TIME_Timestamp timestamp;
-      union TALER_DenominationBlindingKeyP coin_bks;
+      union GNUNET_CRYPTO_BlindingSecretP coin_bks;
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct TALER_CoinSpendSignatureP coin_sig;
@@ -1707,7 +1707,7 @@ struct TALER_EXCHANGE_CoinHistoryEntry
     struct
     {
       struct TALER_CoinSpendPublicKeyP old_coin_pub;
-      union TALER_DenominationBlindingKeyP coin_bks;
+      union GNUNET_CRYPTO_BlindingSecretP coin_bks;
       struct GNUNET_TIME_Timestamp timestamp;
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
@@ -2487,7 +2487,7 @@ struct TALER_EXCHANGE_PrivateCoinDetails
    * Value used to blind the key for the signature.
    * Needed for recoup operations.
    */
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
 
   /**
    * Signature over the coin.
@@ -2890,7 +2890,7 @@ struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails
    * Value used to blind the key for the signature.
    * Needed for recoup operations.
    */
-  union TALER_DenominationBlindingKeyP blinding_key;
+  union GNUNET_CRYPTO_BlindingSecretP blinding_key;
 
   /**
    * The age commitment, proof for the coin, derived from the
@@ -3464,7 +3464,7 @@ struct TALER_EXCHANGE_RevealedCoinInfo
   /**
    * Blinding keys used to blind the fresh coin.
    */
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
 
   /**
    * Signature affirming the validity of the coin.

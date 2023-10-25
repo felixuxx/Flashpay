@@ -610,24 +610,6 @@ enum TALER_MerchantConfirmationAlgorithm
 
 
 /**
- * @brief Type of blinding keys for Taler.
- * must be 32 bytes (DB)
- */
-union TALER_DenominationBlindingKeyP
-{
-  /**
-   * Clause Schnorr Signatures have 2 blinding secrets, each containing two unpredictable values. (must be 32 bytes)
-   */
-  struct GNUNET_CRYPTO_CsNonce nonce;
-
-  /**
-   * Taler uses RSA for blind signatures.
-   */
-  struct GNUNET_CRYPTO_RsaBlindingKeySecret rsa_bks;
-};
-
-
-/**
  * Commitment value for the refresh protocol.
  * See #TALER_refresh_get_commitment().
  */
@@ -1149,6 +1131,17 @@ void
 TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
                     struct TALER_RsaPubHashP *h_rsa);
 
+
+/**
+ * Return the alg value singleton for creation of
+ * blinding secrets for RSA.
+ *
+ * @return singleton to use for RSA blinding
+ */
+const struct TALER_ExchangeWithdrawValues *
+TALER_denom_ewv_rsa_singleton (void);
+
+
 /**
  * Hash @a cs.
  *
@@ -1161,111 +1154,29 @@ TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
 
 
 /**
- * Types of public keys used for denominations in Taler.
- * FIXME: rename to BlindCipher
- */
-enum TALER_DenominationCipher
-{
-
-  /**
-   * Invalid type of signature.
-   */
-  TALER_DENOMINATION_INVALID = 0,
-
-  /**
-   * RSA blind signature.
-   */
-  TALER_DENOMINATION_RSA = 1,
-
-  /**
-   * Clause Blind Schnorr signature.
-   */
-  TALER_DENOMINATION_CS = 2
-};
-
-
-/**
  * @brief Type of (unblinded) coin signatures for Taler.
- * FIXME: rename to BlindSignature
  */
 struct TALER_DenominationSignature
 {
-
   /**
-   * Type of the signature.
+   * Denominations use blind signatures.
    */
-  enum TALER_DenominationCipher cipher;
-
-  /**
-   * Details, depending on @e cipher.
-   */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct GNUNET_CRYPTO_CsSignature cs_signature;
-
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
-
-  } details;
-
+  struct GNUNET_CRYPTO_UnblindedSignature *unblinded_sig;
 };
 
-/**
- * The Sign Answer for Clause Blind Schnorr signature.
- * The sign operation returns a parameter @param b and the signature
- * scalar @param s_scalar.
- */
-struct TALER_BlindedDenominationCsSignAnswer
-{
-  /**
-   * To make ROS problem harder, the signer chooses an unpredictable b and only calculates signature of c_b
-   */
-  unsigned int b;
-
-  /**
-   * The blinded s scalar calculated from c_b
-   */
-  struct GNUNET_CRYPTO_CsBlindS s_scalar;
-};
 
 /**
  * @brief Type for *blinded* denomination signatures for Taler.
  * Must be unblinded before it becomes valid.
- * FIXME: rename to BlindedSignature
  */
 struct TALER_BlindedDenominationSignature
 {
-
   /**
-   * Type of the signature.
+   * Denominations use blind signatures.
    */
-  enum TALER_DenominationCipher cipher;
-
-  /**
-   * Details, depending on @e cipher.
-   */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     * At this point only the blinded s scalar is used.
-     * The final signature consisting of r,s is built after unblinding.
-     */
-    struct TALER_BlindedDenominationCsSignAnswer blinded_cs_answer;
-
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct GNUNET_CRYPTO_RsaSignature *blinded_rsa_signature;
-
-  } details;
-
+  struct GNUNET_CRYPTO_BlindedSignature *blinded_sig;
 };
+
 
 /* *************** Age Restriction *********************************** */
 
@@ -1320,15 +1231,9 @@ struct TALER_AgeAttestation
 
 /**
  * @brief Type of public signing keys for verifying blindly signed coins.
- * FIXME: rename to BlindPublicKey
  */
 struct TALER_DenominationPublicKey
 {
-
-  /**
-   * Type of the public key.
-   */
-  enum TALER_DenominationCipher cipher;
 
   /**
    * Age restriction mask used for the key.
@@ -1336,148 +1241,34 @@ struct TALER_DenominationPublicKey
   struct TALER_AgeMask age_mask;
 
   /**
-   * Details, depending on @e cipher.
+   * Type of the public key.
    */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct GNUNET_CRYPTO_CsPublicKey cs_public_key;
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bsign_pub_key;
 
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct GNUNET_CRYPTO_RsaPublicKey *rsa_public_key;
-
-  } details;
 };
 
 
 /**
  * @brief Type of private signing keys for blind signing of coins.
- * FIXME: rename to BlindPrivateKey
  */
 struct TALER_DenominationPrivateKey
 {
 
-  /**
-   * Type of the public key.
-   */
-  enum TALER_DenominationCipher cipher;
+  struct GNUNET_CRYPTO_BlindSignPrivateKey *bsign_priv_key;
 
-  /**
-   * Details, depending on @e cipher.
-   */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct GNUNET_CRYPTO_CsPrivateKey cs_private_key;
-
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct GNUNET_CRYPTO_RsaPrivateKey *rsa_private_key;
-
-  } details;
-};
-
-/**
- * @brief RSA Parameters to create blinded signature
- *
- * FIXME: rename to BlindedMessage or so???
- */
-struct TALER_BlindedRsaPlanchet
-{
-  /**
-   * Blinded message to be signed
-   * Note: is malloc()'ed!
-   */
-  void *blinded_msg;
-
-  /**
-   * Size of the @e blinded_msg to be signed.
-   */
-  size_t blinded_msg_size;
 };
 
 
 /**
- * Withdraw nonce for CS denominations
- */
-struct TALER_CsNonce
-{
-  /**
-   * 32 bit nonce to include in withdrawals when using CS.
-   */
-  struct GNUNET_CRYPTO_CsNonce nonce;
-};
-
-
-/**
- * @brief CS Parameters to create blinded signature
- */
-struct TALER_BlindedCsPlanchet
-{
-  /**
-   * The Clause Schnorr c_0 and c_1 containing the blinded message
-   */
-  struct GNUNET_CRYPTO_CsC c[2];
-
-  /**
-   * Public nonce.
-   */
-  struct TALER_CsNonce nonce;
-};
-
-
-/**
- * @brief Type including Parameters to create blinded signature
- * FIXME: rename to BlindedXXX
+ * @brief Blinded planchet send to exchange for blind signing.
  */
 struct TALER_BlindedPlanchet
 {
   /**
-   * Type of the sign blinded message
+   * A blinded message.
    */
-  enum TALER_DenominationCipher cipher;
+  struct GNUNET_CRYPTO_BlindedMessage *blinded_message;
 
-  /**
-   * Details, depending on @e cipher.
-   */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct TALER_BlindedCsPlanchet cs_blinded_planchet;
-
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct TALER_BlindedRsaPlanchet rsa_blinded_planchet;
-
-  } details;
-};
-
-
-/**
- * Pair of Public R values for Cs denominations
- */
-struct TALER_DenominationCSPublicRPairP
-{
-  struct GNUNET_CRYPTO_CsRPublic r_pub[2];
-};
-
-
-/**
- * Secret r for Cs denominations
- */
-struct TALER_DenominationCSPrivateRPairP
-{
-  struct GNUNET_CRYPTO_CsRSecret r[2];
 };
 
 
@@ -1548,39 +1339,16 @@ struct TALER_TrackTransferDetails
 
 
 /**
- * @brief Type of algorithm specific Values for withdrawal
- * FIXME: rename to BlindedInputValues or so???
+ * @brief Inputs needed from the exchange for blind signing.
  */
 struct TALER_ExchangeWithdrawValues
 {
 
   /**
-   * Type of the signature.
+   * Input values.
    */
-  enum TALER_DenominationCipher cipher;
-
-  /**
-   * Details, depending on @e cipher.
-   */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct TALER_DenominationCSPublicRPairP cs_values;
-
-  } details;
-
+  struct GNUNET_CRYPTO_BlindingInputValues *blinding_inputs;
 };
-
-
-/**
- * Free internals of @a denom_pub, but not @a denom_pub itself.
- *
- * @param[in] denom_pub key to free
- */
-void
-TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -1605,7 +1373,7 @@ TALER_planchet_setup_coin_priv (
 void
 TALER_cs_withdraw_nonce_derive (
   const struct TALER_PlanchetMasterSecretP *ps,
-  struct TALER_CsNonce *nonce);
+  struct GNUNET_CRYPTO_CsSessionNonce *nonce);
 
 
 /**
@@ -1620,13 +1388,13 @@ void
 TALER_cs_refresh_nonce_derive (
   const struct TALER_RefreshMasterSecretP *rms,
   uint32_t idx,
-  struct TALER_CsNonce *nonce);
+  struct GNUNET_CRYPTO_CsSessionNonce *nonce);
 
 
 /**
  * Initialize denomination public-private key pair.
  *
- * For #TALER_DENOMINATION_RSA, an additional "unsigned int"
+ * For #GNUNET_CRYPTO_BSA_RSA, an additional "unsigned int"
  * argument with the number of bits for 'n' (e.g. 2048) must
  * be passed.
  *
@@ -1639,8 +1407,17 @@ TALER_cs_refresh_nonce_derive (
 enum GNUNET_GenericReturnValue
 TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
                          struct TALER_DenominationPublicKey *denom_pub,
-                         enum TALER_DenominationCipher cipher,
+                         enum GNUNET_CRYPTO_BlindSignatureAlgorithm cipher,
                          ...);
+
+
+/**
+ * Free internals of @a denom_pub, but not @a denom_pub itself.
+ *
+ * @param[in] denom_pub key to free
+ */
+void
+TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -1670,6 +1447,8 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
  *
  * @param dk denomination public key to blind for
  * @param coin_bks blinding secret to use
+ * @param nonce nonce used to derive session values,
+ *        could be NULL for ciphers that do not use it
  * @param age_commitment_hash hash of the age commitment to be used for the coin. NULL if no commitment is made.
  * @param coin_pub public key of the coin to blind
  * @param alg_values algorithm specific values to blind the planchet
@@ -1679,7 +1458,8 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
  */
 enum GNUNET_GenericReturnValue
 TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
-                   const union TALER_DenominationBlindingKeyP *coin_bks,
+                   const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
+                   const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
                    const struct TALER_AgeCommitmentHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_ExchangeWithdrawValues *alg_values,
@@ -1718,7 +1498,7 @@ enum GNUNET_GenericReturnValue
 TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
-  const union TALER_DenominationBlindingKeyP *bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *bks,
   const struct TALER_CoinPubHashP *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   const struct TALER_DenominationPublicKey *denom_pub);
@@ -1830,19 +1610,6 @@ int
 TALER_blinded_planchet_cmp (
   const struct TALER_BlindedPlanchet *bp1,
   const struct TALER_BlindedPlanchet *bp2);
-
-
-/**
- * Obtain denomination public key from a denomination private key.
- *
- * @param denom_priv private key to convert
- * @param age_mask age mask to be applied
- * @param[out] denom_pub where to return the public key
- */
-void
-TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
-                         const struct TALER_AgeMask age_mask,
-                         struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -2160,7 +1927,7 @@ void
 TALER_planchet_blinding_secret_create (
   const struct TALER_PlanchetMasterSecretP *ps,
   const struct TALER_ExchangeWithdrawValues *alg_values,
-  union TALER_DenominationBlindingKeyP *bks);
+  union GNUNET_CRYPTO_BlindingSecretP *bks);
 
 
 /**
@@ -2169,6 +1936,7 @@ TALER_planchet_blinding_secret_create (
  * @param dk denomination key for the coin to be created
  * @param alg_values algorithm specific values
  * @param bks blinding secrets
+ * @param nonce session nonce used to get @a alg_values
  * @param coin_priv coin private key
  * @param ach hash of age commitment to bind to this coin, maybe NULL
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
@@ -2180,7 +1948,8 @@ TALER_planchet_blinding_secret_create (
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_ExchangeWithdrawValues *alg_values,
-                        const union TALER_DenominationBlindingKeyP *bks,
+                        const union GNUNET_CRYPTO_BlindingSecretP *bks,
+                        const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                         const struct TALER_AgeCommitmentHash *ach,
                         struct TALER_CoinPubHashP *c_hash,
@@ -2224,7 +1993,7 @@ enum GNUNET_GenericReturnValue
 TALER_planchet_to_coin (
   const struct TALER_DenominationPublicKey *dk,
   const struct TALER_BlindedDenominationSignature *blind_sig,
-  const union TALER_DenominationBlindingKeyP *bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   const struct TALER_AgeCommitmentHash *ach,
   const struct TALER_CoinPubHashP *c_hash,
@@ -2540,7 +2309,7 @@ typedef void
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_RsaPubHashP *h_rsa,
-  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig);
 
@@ -2641,9 +2410,9 @@ TALER_CRYPTO_helper_rsa_sign (
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_rsa_batch_sign (
   struct TALER_CRYPTO_RsaDenominationHelper *dh,
-  const struct TALER_CRYPTO_RsaSignRequest *rsrs,
   unsigned int rsrs_length,
-  struct TALER_BlindedDenominationSignature *bss);
+  const struct TALER_CRYPTO_RsaSignRequest rsrs[static rsrs_length],
+  struct TALER_BlindedDenominationSignature bss[static rsrs_length]);
 
 
 /**
@@ -2697,7 +2466,7 @@ struct TALER_CRYPTO_CsDenominationHelper;
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_cs hash of the CS @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bsign_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -2709,7 +2478,7 @@ typedef void
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bsign_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig);
 
@@ -2755,7 +2524,8 @@ struct TALER_CRYPTO_CsSignRequest
   /**
    * Blinded planchet containing c and the nonce.
    */
-  const struct TALER_BlindedCsPlanchet *blinded_planchet;
+  const struct GNUNET_CRYPTO_CsBlindedMessage *blinded_planchet;
+
 };
 
 
@@ -2801,10 +2571,10 @@ TALER_CRYPTO_helper_cs_sign (
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_batch_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsSignRequest *reqs,
   unsigned int reqs_length,
+  const struct TALER_CRYPTO_CsSignRequest reqs[static reqs_length],
   bool for_melt,
-  struct TALER_BlindedDenominationSignature *bss);
+  struct TALER_BlindedDenominationSignature bss[static reqs_length]);
 
 
 /**
@@ -2839,9 +2609,9 @@ struct TALER_CRYPTO_CsDeriveRequest
   const struct TALER_CsPubHashP *h_cs;
 
   /**
-   * Nonce to use.
+   * Nonce to use for the /csr request.
    */
-  const struct TALER_CsNonce *nonce;
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce;
 };
 
 
@@ -2866,7 +2636,7 @@ TALER_CRYPTO_helper_cs_r_derive (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CRYPTO_CsDeriveRequest *cdr,
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *crp);
+  struct GNUNET_CRYPTO_CSPublicRPairP *crp);
 
 
 /**
@@ -2879,8 +2649,8 @@ TALER_CRYPTO_helper_cs_r_derive (
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper to process connection
- * @param cdrs array with derivation input data
  * @param cdrs_length length of the @a cdrs array
+ * @param cdrs array with derivation input data
  * @param for_melt true if this is for a melt operation
  * @param[out] crps array set to the pair of R values, must be of length @a cdrs_length
  * @return set to the error code (or #TALER_EC_NONE on success)
@@ -2888,10 +2658,10 @@ TALER_CRYPTO_helper_cs_r_derive (
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_batch_derive (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
   unsigned int cdrs_length,
+  const struct TALER_CRYPTO_CsDeriveRequest cdrs[static cdrs_length],
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *crps);
+  struct GNUNET_CRYPTO_CSPublicRPairP crps[static cdrs_length]);
 
 
 /**
@@ -3805,7 +3575,7 @@ TALER_exchange_melt_confirmation_verify (
 enum GNUNET_GenericReturnValue
 TALER_wallet_recoup_verify (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -3821,7 +3591,7 @@ TALER_wallet_recoup_verify (
 void
 TALER_wallet_recoup_sign (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -3838,7 +3608,7 @@ TALER_wallet_recoup_sign (
 enum GNUNET_GenericReturnValue
 TALER_wallet_recoup_refresh_verify (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -3854,7 +3624,7 @@ TALER_wallet_recoup_refresh_verify (
 void
 TALER_wallet_recoup_refresh_sign (
   const struct TALER_DenominationHashP *h_denom_pub,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -6067,7 +5837,7 @@ struct TALER_DenominationGroup
   /**
    * Cipher used for the denomination.
    */
-  enum TALER_DenominationCipher cipher;
+  enum GNUNET_CRYPTO_BlindSignatureAlgorithm cipher;
 
   /**
    * Age mask for the denomiation.

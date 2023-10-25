@@ -112,7 +112,8 @@ add_revealed_coins (void *cls,
         GNUNET_PQ_result_spec_end
       };
 
-      if (TALER_DENOMINATION_INVALID != rrc->blinded_planchet.cipher)
+      if (NULL !=
+          rrc->blinded_planchet.blinded_message)
       {
         /* duplicate offset, not allowed */
         GNUNET_break (0);

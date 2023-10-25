@@ -460,18 +460,16 @@ csr_cb (void *cls,
       &mh->rd->fresh_pks[i];
     struct TALER_ExchangeWithdrawValues *wv = &mh->mbds[i].alg_value;
 
-    switch (fresh_pk->key.cipher)
+    switch (fresh_pk->key.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_INVALID:
+    case GNUNET_CRYPTO_BSA_INVALID:
       GNUNET_break (0);
       fail_mh (mh,
                TALER_EC_GENERIC_CLIENT_INTERNAL_ERROR);
       return;
-    case TALER_DENOMINATION_RSA:
-      GNUNET_assert (TALER_DENOMINATION_RSA == wv->cipher);
+    case GNUNET_CRYPTO_BSA_RSA:
       break;
-    case TALER_DENOMINATION_CS:
-      GNUNET_assert (TALER_DENOMINATION_CS == wv->cipher);
+    case GNUNET_CRYPTO_BSA_CS:
       *wv = csrr->details.ok.alg_values[nks_off];
       nks_off++;
       break;
@@ -521,20 +519,17 @@ TALER_EXCHANGE_melt (
   for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
-    struct TALER_ExchangeWithdrawValues *wv = &mh->mbds[i].alg_value;
 
-    switch (fresh_pk->key.cipher)
+    switch (fresh_pk->key.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_INVALID:
+    case GNUNET_CRYPTO_BSA_INVALID:
       GNUNET_break (0);
       GNUNET_free (mh->mbds);
       GNUNET_free (mh);
       return NULL;
-    case TALER_DENOMINATION_RSA:
-      wv->cipher = TALER_DENOMINATION_RSA;
+    case GNUNET_CRYPTO_BSA_RSA:
       break;
-    case TALER_DENOMINATION_CS:
-      wv->cipher = TALER_DENOMINATION_CS;
+    case GNUNET_CRYPTO_BSA_CS:
       nks[nks_off].pk = fresh_pk;
       nks[nks_off].cnc_num = nks_off;
       nks_off++;

@@ -67,25 +67,40 @@ struct CoinCandidate
  */
 struct CSRClosure
 {
-  /* Points to the actual candidate in CoinData.coin_candidates, to continue
-   * to build its contents based on the results from /csr-withdraw */
+  /**
+   * Points to the actual candidate in CoinData.coin_candidates, to continue
+   * to build its contents based on the results from /csr-withdraw
+   */
   struct CoinCandidate *candidate;
 
-  /* The planchet to finally generate.  Points to the corresponding candidate
-   * in CoindData.planchet_details */
+  /**
+   * The planchet to finally generate.  Points to the corresponding candidate
+   * in CoindData.planchet_details
+   */
   struct TALER_PlanchetDetail *planchet;
 
-  /* Handler to the originating call to /age-withdraw, needed to either
+  /**
+   * Handler to the originating call to /age-withdraw, needed to either
    * cancel the running age-withdraw request (on failure of the current call
    * to /csr-withdraw), or to eventually perform the protocol, once all
-   * csr-withdraw requests have successfully finished. */
+   * csr-withdraw requests have successfully finished.
+   */
   struct TALER_EXCHANGE_AgeWithdrawHandle *age_withdraw_handle;
 
-  /* Denomination information, needed for CS coins for the
-   * step after /csr-withdraw */
+  /**
+   * Session nonce.
+   */
+  union GNUNET_CRYPTO_BlindSessionNonce nonce;
+
+  /**
+   * Denomination information, needed for CS coins for the
+   * step after /csr-withdraw
+   */
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
 
-  /* Handler for the CS R request */
+  /**
+   * Handler for the CS R request
+   */
   struct TALER_EXCHANGE_CsRWithdrawHandle *csr_withdraw_handle;
 };
 
@@ -663,13 +678,19 @@ copy_results (
   struct TALER_EXCHANGE_AgeWithdrawResponse resp = {
     .hr = awbr->hr,
     .details = {
-      .ok = { .noreveal_index = awbr->details.ok.noreveal_index,
-              .h_commitment = awbr->details.ok.h_commitment,
-              .exchange_pub = awbr->details.ok.exchange_pub,
-              .num_coins = awh->num_coins,
-              .coin_details = details,
-              .blinded_coin_hs = blinded_coin_hs},
-    },
+      .ok = {
+        .noreveal_index = awbr->details.ok.noreveal_index,
+        .h_commitment = awbr->details.ok.h_commitment,
+        .exchange_pub = awbr->details.ok.exchange_pub,
+        .num_coins = awh->num_coins,
+        .coin_details = details,
+        .blinded_coin_hs = blinded_coin_hs
+      }
+
+
+    }
+
+
   };
 
   for (size_t n = 0; n< awh->num_coins; n++)
@@ -678,10 +699,8 @@ copy_results (
     details[n].planchet = awh->coin_data[n].planchet_details[k];
     blinded_coin_hs[n] = awh->coin_data[n].coin_candidates[k].blinded_coin_h;
   }
-
   awh->callback (awh->callback_cls,
                  &resp);
-
   awh->callback = NULL;
 }
 
@@ -795,8 +814,8 @@ csr_withdraw_done (
       bool success = false;
       /* Complete the initialization of the coin with CS denomination */
       can->details.alg_values = csrr->details.ok.alg_values;
-      GNUNET_assert (can->details.alg_values.cipher
-                     == TALER_DENOMINATION_CS);
+      GNUNET_assert (can->details.alg_values.blinding_inputs->cipher
+                     == GNUNET_CRYPTO_BSA_CS);
       TALER_planchet_setup_coin_priv (&can->secret,
                                       &can->details.alg_values,
                                       &can->details.coin_priv);
@@ -810,6 +829,7 @@ csr_withdraw_done (
             TALER_planchet_prepare (&csr->denom_pub->key,
                                     &can->details.alg_values,
                                     &can->details.blinding_key,
+                                    &csr->nonce,
                                     &can->details.coin_priv,
                                     &can->details.h_age_commitment,
                                     &can->details.h_coin_pub,
@@ -912,11 +932,10 @@ prepare_coins (
       TALER_age_commitment_hash (&can->details.age_commitment_proof.commitment,
                                  &can->details.h_age_commitment);
 
-      switch (input->denom_pub->key.cipher)
+      switch (input->denom_pub->key.bsign_pub_key->cipher)
       {
-      case TALER_DENOMINATION_RSA:
+      case GNUNET_CRYPTO_BSA_RSA:
         {
-          can->details.alg_values.cipher = TALER_DENOMINATION_RSA;
           TALER_planchet_setup_coin_priv (&can->secret,
                                           &can->details.alg_values,
                                           &can->details.coin_priv);
@@ -925,8 +944,9 @@ prepare_coins (
                                                  &can->details.blinding_key);
           FAIL_IF (GNUNET_OK !=
                    TALER_planchet_prepare (&cd->denom_pub.key,
-                                           &can->details.alg_values,
+                                           NULL,
                                            &can->details.blinding_key,
+                                           NULL,
                                            &can->details.coin_priv,
                                            &can->details.h_age_commitment,
                                            &can->details.h_coin_pub,
@@ -937,10 +957,8 @@ prepare_coins (
                                        &can->blinded_coin_h));
           break;
         }
-      case TALER_DENOMINATION_CS:
+      case GNUNET_CRYPTO_BSA_CS:
         {
-          can->details.alg_values.cipher = TALER_DENOMINATION_CS;
-
           struct CSRClosure *cls = &cd->csr_cls[k];
           /**
            * Save the handler and the denomination for the callback
@@ -949,21 +967,15 @@ prepare_coins (
           cls->candidate = can;
           cls->planchet = planchet;
           cls->denom_pub = &cd->denom_pub;
-
           TALER_cs_withdraw_nonce_derive (
             &can->secret,
-            &planchet->blinded_planchet.details.cs_blinded_planchet.nonce);
-
-          /* Note that we only initialize the first half
-             of the blinded_planchet here; the other part
-             will be done after the /csr-withdraw request! */
-          planchet->blinded_planchet.cipher = TALER_DENOMINATION_CS;
+            &cls->nonce.cs_nonce);
           cls->csr_withdraw_handle =
             TALER_EXCHANGE_csr_withdraw (
               awh->curl_ctx,
               awh->exchange_url,
               &cd->denom_pub,
-              &planchet->blinded_planchet.details.cs_blinded_planchet.nonce,
+              &cls->nonce.cs_nonce,
               &csr_withdraw_done,
               cls);
           FAIL_IF (NULL == cls->csr_withdraw_handle);

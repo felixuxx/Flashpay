@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -228,14 +228,15 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
 
       TALER_denom_pub_hash (&denom_key->key,
                             &h_denom_pub);
-      switch (denom_key->key.cipher)
+      switch (denom_key->key.bsign_pub_key->cipher)
       {
-      case TALER_DENOMINATION_RSA:
+      case GNUNET_CRYPTO_BSA_RSA:
         {
           struct TALER_RsaPubHashP h_rsa;
 
-          TALER_rsa_pub_hash (denom_key->key.details.rsa_public_key,
-                              &h_rsa);
+          TALER_rsa_pub_hash (
+            denom_key->key.bsign_pub_key->details.rsa_public_key,
+            &h_rsa);
           if (GNUNET_OK !=
               TALER_exchange_secmod_rsa_verify (&h_rsa,
                                                 section_name,
@@ -250,12 +251,13 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
           }
         }
         break;
-      case TALER_DENOMINATION_CS:
+      case GNUNET_CRYPTO_BSA_CS:
         {
           struct TALER_CsPubHashP h_cs;
 
-          TALER_cs_pub_hash (&denom_key->key.details.cs_public_key,
-                             &h_cs);
+          TALER_cs_pub_hash (
+            &denom_key->key.bsign_pub_key->details.cs_public_key,
+            &h_cs);
           if (GNUNET_OK !=
               TALER_exchange_secmod_cs_verify (&h_cs,
                                                section_name,

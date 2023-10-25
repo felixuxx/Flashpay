@@ -110,7 +110,7 @@ create_denom_key_pair (unsigned int size,
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dkp->priv,
                                           &dkp->pub,
-                                          TALER_DENOMINATION_RSA,
+                                          GNUNET_CRYPTO_BSA_RSA,
                                           size));
   memset (&dki,
           0,
@@ -208,8 +208,12 @@ run (void *cls)
   struct TALER_EXCHANGEDB_Refund *ref = NULL;
   unsigned int *perm;
   unsigned long long duration_sq;
+  struct GNUNET_CRYPTO_BlindingInputValues bi = {
+    .cipher = GNUNET_CRYPTO_BSA_RSA,
+    .rc = 0
+  };
   struct TALER_ExchangeWithdrawValues alg_values = {
-    .cipher = TALER_DENOMINATION_RSA
+    .blinding_inputs = &bi
   };
 
   ref = GNUNET_new_array (ROUNDS + 1,
@@ -280,7 +284,7 @@ run (void *cls)
                          "Transaction"));
   for (unsigned int j = 0; j < NUM_ROWS; j++)
   {
-    union TALER_DenominationBlindingKeyP bks;
+    union GNUNET_CRYPTO_BlindingSecretP bks;
     struct TALER_CoinPubHashP c_hash;
     unsigned int i = perm[j];
     uint64_t known_coin_id;
@@ -303,13 +307,16 @@ run (void *cls)
         struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coin =
           &revealed_coins[p];
         struct TALER_BlindedPlanchet *bp = &revealed_coin->blinded_planchet;
-        struct TALER_BlindedRsaPlanchet *rp = &bp->details.rsa_blinded_planchet;
+        bp->blinded_message = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
+        struct GNUNET_CRYPTO_RsaBlindedMessage *rp =
+          &bp->blinded_message->details.rsa_blinded_message;
 
         /* h_coin_ev must be unique, but we only have MELT_NEW_COINS created
            above for NUM_ROWS iterations; instead of making "all new" coins,
            we simply randomize the hash here as nobody is checking for consistency
            anyway ;-) */
-        bp->cipher = TALER_DENOMINATION_RSA;
+        bp->blinded_message->rc = 1;
+        bp->blinded_message->cipher = GNUNET_CRYPTO_BSA_RSA;
         rp->blinded_msg_size = 1 + (size_t) GNUNET_CRYPTO_random_u64 (
           GNUNET_CRYPTO_QUALITY_WEAK,
           (RSA_KEY_SIZE / 8) - 1);

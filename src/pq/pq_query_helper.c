@@ -234,6 +234,7 @@ qconv_denom_pub (void *cls,
                  unsigned int scratch_length)
 {
   const struct TALER_DenominationPublicKey *denom_pub = data;
+  const struct GNUNET_CRYPTO_BlindSignPublicKey *bsp = denom_pub->bsign_pub_key;
   size_t tlen;
   size_t len;
   uint32_t be[2];
@@ -245,17 +246,17 @@ qconv_denom_pub (void *cls,
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
-  be[0] = htonl ((uint32_t) denom_pub->cipher);
+  be[0] = htonl ((uint32_t) bsp->cipher);
   be[1] = htonl (denom_pub->age_mask.bits);
-  switch (denom_pub->cipher)
+  switch (bsp->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     tlen = GNUNET_CRYPTO_rsa_public_key_encode (
-      denom_pub->details.rsa_public_key,
+      bsp->details.rsa_public_key,
       &tbuf);
     break;
-  case TALER_DENOMINATION_CS:
-    tlen = sizeof (denom_pub->details.cs_public_key);
+  case GNUNET_CRYPTO_BSA_CS:
+    tlen = sizeof (bsp->details.cs_public_key);
     break;
   default:
     GNUNET_assert (0);
@@ -265,17 +266,17 @@ qconv_denom_pub (void *cls,
   GNUNET_memcpy (buf,
                  be,
                  sizeof (be));
-  switch (denom_pub->cipher)
+  switch (bsp->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     GNUNET_memcpy (&buf[sizeof (be)],
                    tbuf,
                    tlen);
     GNUNET_free (tbuf);
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     GNUNET_memcpy (&buf[sizeof (be)],
-                   &denom_pub->details.cs_public_key,
+                   &bsp->details.cs_public_key,
                    tlen);
     break;
   default:
@@ -330,6 +331,7 @@ qconv_denom_sig (void *cls,
                  unsigned int scratch_length)
 {
   const struct TALER_DenominationSignature *denom_sig = data;
+  const struct GNUNET_CRYPTO_UnblindedSignature *ubs = denom_sig->unblinded_sig;
   size_t tlen;
   size_t len;
   uint32_t be[2];
@@ -341,17 +343,17 @@ qconv_denom_sig (void *cls,
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
-  be[0] = htonl ((uint32_t) denom_sig->cipher);
+  be[0] = htonl ((uint32_t) ubs->cipher);
   be[1] = htonl (0x00); /* magic marker: unblinded */
-  switch (denom_sig->cipher)
+  switch (ubs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     tlen = GNUNET_CRYPTO_rsa_signature_encode (
-      denom_sig->details.rsa_signature,
+      ubs->details.rsa_signature,
       &tbuf);
     break;
-  case TALER_DENOMINATION_CS:
-    tlen = sizeof (denom_sig->details.cs_signature);
+  case GNUNET_CRYPTO_BSA_CS:
+    tlen = sizeof (ubs->details.cs_signature);
     break;
   default:
     GNUNET_assert (0);
@@ -361,17 +363,17 @@ qconv_denom_sig (void *cls,
   GNUNET_memcpy (buf,
                  &be,
                  sizeof (be));
-  switch (denom_sig->cipher)
+  switch (ubs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     GNUNET_memcpy (&buf[sizeof (be)],
                    tbuf,
                    tlen);
     GNUNET_free (tbuf);
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     GNUNET_memcpy (&buf[sizeof (be)],
-                   &denom_sig->details.cs_signature,
+                   &ubs->details.cs_signature,
                    tlen);
     break;
   default:
@@ -426,6 +428,7 @@ qconv_blinded_denom_sig (void *cls,
                          unsigned int scratch_length)
 {
   const struct TALER_BlindedDenominationSignature *denom_sig = data;
+  const struct GNUNET_CRYPTO_BlindedSignature *bs = denom_sig->blinded_sig;
   size_t tlen;
   size_t len;
   uint32_t be[2];
@@ -437,17 +440,17 @@ qconv_blinded_denom_sig (void *cls,
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
-  be[0] = htonl ((uint32_t) denom_sig->cipher);
+  be[0] = htonl ((uint32_t) bs->cipher);
   be[1] = htonl (0x01); /* magic marker: blinded */
-  switch (denom_sig->cipher)
+  switch (bs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     tlen = GNUNET_CRYPTO_rsa_signature_encode (
-      denom_sig->details.blinded_rsa_signature,
+      bs->details.blinded_rsa_signature,
       &tbuf);
     break;
-  case TALER_DENOMINATION_CS:
-    tlen = sizeof (denom_sig->details.blinded_cs_answer);
+  case GNUNET_CRYPTO_BSA_CS:
+    tlen = sizeof (bs->details.blinded_cs_answer);
     break;
   default:
     GNUNET_assert (0);
@@ -457,17 +460,17 @@ qconv_blinded_denom_sig (void *cls,
   GNUNET_memcpy (buf,
                  &be,
                  sizeof (be));
-  switch (denom_sig->cipher)
+  switch (bs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     GNUNET_memcpy (&buf[sizeof (be)],
                    tbuf,
                    tlen);
     GNUNET_free (tbuf);
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     GNUNET_memcpy (&buf[sizeof (be)],
-                   &denom_sig->details.blinded_cs_answer,
+                   &bs->details.blinded_cs_answer,
                    tlen);
     break;
   default:
@@ -522,6 +525,7 @@ qconv_blinded_planchet (void *cls,
                         unsigned int scratch_length)
 {
   const struct TALER_BlindedPlanchet *bp = data;
+  const struct GNUNET_CRYPTO_BlindedMessage *bm = bp->blinded_message;
   size_t tlen;
   size_t len;
   uint32_t be[2];
@@ -532,15 +536,15 @@ qconv_blinded_planchet (void *cls,
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
-  be[0] = htonl ((uint32_t) bp->cipher);
+  be[0] = htonl ((uint32_t) bm->cipher);
   be[1] = htonl (0x0100); /* magic marker: blinded */
-  switch (bp->cipher)
+  switch (bm->cipher)
   {
-  case TALER_DENOMINATION_RSA:
-    tlen = bp->details.rsa_blinded_planchet.blinded_msg_size;
+  case GNUNET_CRYPTO_BSA_RSA:
+    tlen = bm->details.rsa_blinded_message.blinded_msg_size;
     break;
-  case TALER_DENOMINATION_CS:
-    tlen = sizeof (bp->details.cs_blinded_planchet);
+  case GNUNET_CRYPTO_BSA_CS:
+    tlen = sizeof (bm->details.cs_blinded_message);
     break;
   default:
     GNUNET_assert (0);
@@ -550,16 +554,16 @@ qconv_blinded_planchet (void *cls,
   GNUNET_memcpy (buf,
                  &be,
                  sizeof (be));
-  switch (bp->cipher)
+  switch (bm->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     GNUNET_memcpy (&buf[sizeof (be)],
-                   bp->details.rsa_blinded_planchet.blinded_msg,
+                   bm->details.rsa_blinded_message.blinded_msg,
                    tlen);
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     GNUNET_memcpy (&buf[sizeof (be)],
-                   &bp->details.cs_blinded_planchet,
+                   &bm->details.cs_blinded_message,
                    tlen);
     break;
   default:
@@ -613,6 +617,8 @@ qconv_exchange_withdraw_values (void *cls,
                                 unsigned int scratch_length)
 {
   const struct TALER_ExchangeWithdrawValues *alg_values = data;
+  const struct GNUNET_CRYPTO_BlindingInputValues *bi =
+    alg_values->blinding_inputs;
   size_t tlen;
   size_t len;
   uint32_t be[2];
@@ -623,15 +629,15 @@ qconv_exchange_withdraw_values (void *cls,
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
-  be[0] = htonl ((uint32_t) alg_values->cipher);
+  be[0] = htonl ((uint32_t) bi->cipher);
   be[1] = htonl (0x010000); /* magic marker: EWV */
-  switch (alg_values->cipher)
+  switch (bi->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     tlen = 0;
     break;
-  case TALER_DENOMINATION_CS:
-    tlen = sizeof (struct TALER_DenominationCSPublicRPairP);
+  case GNUNET_CRYPTO_BSA_CS:
+    tlen = sizeof (struct GNUNET_CRYPTO_CSPublicRPairP);
     break;
   default:
     GNUNET_assert (0);
@@ -641,13 +647,13 @@ qconv_exchange_withdraw_values (void *cls,
   GNUNET_memcpy (buf,
                  &be,
                  sizeof (be));
-  switch (alg_values->cipher)
+  switch (bi->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     GNUNET_memcpy (&buf[sizeof (be)],
-                   &alg_values->details.cs_values,
+                   &bi->details.cs_values,
                    tlen);
     break;
   default:
@@ -840,14 +846,14 @@ qconv_array (
   same_sized = (0 != meta->same_size);
 
 #define RETURN_UNLESS(cond) \
-        do { \
-          if (! (cond)) \
-          { \
-            GNUNET_break ((cond)); \
-            noerror = false; \
-            goto DONE; \
-          } \
-        } while (0)
+  do { \
+    if (! (cond)) \
+    { \
+      GNUNET_break ((cond)); \
+      noerror = false; \
+      goto DONE; \
+    } \
+  } while (0)
 
   /* Calculate sizes and check bounds */
   {
@@ -885,16 +891,19 @@ qconv_array (
 
           for (size_t i = 0; i<num; i++)
           {
-            switch (denom_sigs[i].cipher)
+            const struct GNUNET_CRYPTO_BlindedSignature *bs =
+              denom_sigs[i].blinded_sig;
+
+            switch (bs->cipher)
             {
-            case TALER_DENOMINATION_RSA:
+            case GNUNET_CRYPTO_BSA_RSA:
               len = GNUNET_CRYPTO_rsa_signature_encode (
-                denom_sigs[i].details.blinded_rsa_signature,
+                bs->details.blinded_rsa_signature,
                 &buffers[i]);
               RETURN_UNLESS (len != 0);
               break;
-            case TALER_DENOMINATION_CS:
-              len = sizeof (denom_sigs[i].details.blinded_cs_answer);
+            case GNUNET_CRYPTO_BSA_CS:
+              len = sizeof (bs->details.blinded_cs_answer);
               break;
             default:
               GNUNET_assert (0);
@@ -978,9 +987,11 @@ qconv_array (
       case TALER_PQ_array_of_blinded_denom_sig:
         {
           const struct TALER_BlindedDenominationSignature *denom_sigs = data;
+          const struct GNUNET_CRYPTO_BlindedSignature *bs =
+            denom_sigs[i].blinded_sig;
           uint32_t be[2];
 
-          be[0] = htonl ((uint32_t) denom_sigs[i].cipher);
+          be[0] = htonl ((uint32_t) bs->cipher);
           be[1] = htonl (0x01);     /* magic margker: blinded */
           GNUNET_memcpy (out,
                          &be,
@@ -988,18 +999,18 @@ qconv_array (
           out += sizeof(be);
           sz -= sizeof(be);
 
-          switch (denom_sigs[i].cipher)
+          switch (bs->cipher)
           {
-          case TALER_DENOMINATION_RSA:
+          case GNUNET_CRYPTO_BSA_RSA:
             /* For RSA, 'same_sized' must have been false */
             GNUNET_assert (NULL != buffers);
             GNUNET_memcpy (out,
                            buffers[i],
                            sz);
             break;
-          case TALER_DENOMINATION_CS:
+          case GNUNET_CRYPTO_BSA_CS:
             GNUNET_memcpy (out,
-                           &denom_sigs[i].details.blinded_cs_answer,
+                           &bs->details.blinded_cs_answer,
                            sz);
             break;
           default:

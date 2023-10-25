@@ -54,9 +54,14 @@ struct CoinData
   const struct TALER_AgeCommitmentHash *ach;
 
   /**
-   *  blinding secret
+   * blinding secret
    */
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
+
+  /**
+   * Session nonce.
+   */
+  union GNUNET_CRYPTO_BlindSessionNonce nonce;
 
   /**
    * Private key of the coin we are withdrawing.
@@ -79,7 +84,7 @@ struct CoinData
   struct TALER_CoinPubHashP c_hash;
 
   /**
-   * Handler for the CS R request (only used for TALER_DENOMINATION_CS denominations)
+   * Handler for the CS R request (only used for GNUNET_CRYPTO_BSA_CS denominations)
    */
   struct TALER_EXCHANGE_CsRWithdrawHandle *csrh;
 
@@ -295,7 +300,8 @@ withdraw_cs_stage_two_callback (
   };
 
   cd->csrh = NULL;
-  GNUNET_assert (TALER_DENOMINATION_CS == cd->pk.key.cipher);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_CS ==
+                 cd->pk.key.bsign_pub_key->cipher);
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
@@ -306,12 +312,11 @@ withdraw_cs_stage_two_callback (
     TALER_planchet_blinding_secret_create (&cd->ps,
                                            &cd->alg_values,
                                            &cd->bks);
-    /* This initializes the 2nd half of the
-       wh->pd.blinded_planchet! */
     if (GNUNET_OK !=
         TALER_planchet_prepare (&cd->pk.key,
                                 &cd->alg_values,
                                 &cd->bks,
+                                &cd->nonce,
                                 &cd->priv,
                                 cd->ach,
                                 &cd->c_hash,
@@ -367,11 +372,10 @@ TALER_EXCHANGE_batch_withdraw (
     cd->pk = *wci->pk;
     TALER_denom_pub_deep_copy (&cd->pk.key,
                                &wci->pk->key);
-    switch (wci->pk->key.cipher)
+    switch (wci->pk->key.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       {
-        cd->alg_values.cipher = TALER_DENOMINATION_RSA;
         TALER_planchet_setup_coin_priv (&cd->ps,
                                         &cd->alg_values,
                                         &cd->priv);
@@ -380,8 +384,9 @@ TALER_EXCHANGE_batch_withdraw (
                                                &cd->bks);
         if (GNUNET_OK !=
             TALER_planchet_prepare (&cd->pk.key,
-                                    &cd->alg_values,
+                                    NULL,
                                     &cd->bks,
+                                    NULL,
                                     &cd->priv,
                                     cd->ach,
                                     &cd->c_hash,
@@ -393,20 +398,16 @@ TALER_EXCHANGE_batch_withdraw (
         }
         break;
       }
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       {
         TALER_cs_withdraw_nonce_derive (
           &cd->ps,
-          &cd->pd.blinded_planchet.details.cs_blinded_planchet.nonce);
-        /* Note that we only initialize the first half
-           of the blinded_planchet here; the other part
-           will be done after the /csr-withdraw request! */
-        cd->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+          &cd->nonce.cs_nonce);
         cd->csrh = TALER_EXCHANGE_csr_withdraw (
           curl_ctx,
           exchange_url,
           &cd->pk,
-          &cd->pd.blinded_planchet.details.cs_blinded_planchet.nonce,
+          &cd->nonce.cs_nonce,
           &withdraw_cs_stage_two_callback,
           cd);
         if (NULL == cd->csrh)

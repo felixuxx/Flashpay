@@ -58,7 +58,7 @@ struct RecoupContext
   /**
    * Key used to blind the coin.
    */
-  const union TALER_DenominationBlindingKeyP *coin_bks;
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks;
 
   /**
    * Signature of the coin requesting recoup.
@@ -178,8 +178,8 @@ verify_and_execute_recoup (
   struct MHD_Connection *connection,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_ExchangeWithdrawValues *exchange_vals,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
-  const struct TALER_CsNonce *nonce,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
+  const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct RecoupContext pc;
@@ -221,12 +221,12 @@ verify_and_execute_recoup (
   }
 
   /* check denomination signature */
-  switch (dk->denom_pub.cipher)
+  switch (dk->denom_pub.bsign_pub_key->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
     break;
   default:
@@ -270,6 +270,7 @@ verify_and_execute_recoup (
     if (GNUNET_OK !=
         TALER_denom_blind (&dk->denom_pub,
                            coin_bks,
+                           nonce,
                            &coin->h_age_commitment,
                            &coin->coin_pub,
                            exchange_vals,
@@ -283,9 +284,6 @@ verify_and_execute_recoup (
         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
         NULL);
     }
-    if (TALER_DENOMINATION_CS == blinded_planchet.cipher)
-      blinded_planchet.details.cs_blinded_planchet.nonce
-        = *nonce;
     if (GNUNET_OK !=
         TALER_coin_ev_hash (&blinded_planchet,
                             &coin->denom_pub_hash,
@@ -388,10 +386,11 @@ TEH_handler_recoup (struct MHD_Connection *connection,
 {
   enum GNUNET_GenericReturnValue ret;
   struct TALER_CoinPublicInfo coin;
-  union TALER_DenominationBlindingKeyP coin_bks;
+  union GNUNET_CRYPTO_BlindingSecretP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_ExchangeWithdrawValues exchange_vals;
-  struct TALER_CsNonce nonce;
+  union GNUNET_CRYPTO_BlindSessionNonce nonce;
+  bool no_nonce;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &coin.denom_pub_hash),
@@ -407,19 +406,17 @@ TEH_handler_recoup (struct MHD_Connection *connection,
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &coin.h_age_commitment),
       &coin.no_age_commitment),
+    // FIXME: should be renamed to just 'nonce'!
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("cs_nonce",
                                    &nonce),
-      NULL),
+      &no_nonce),
     GNUNET_JSON_spec_end ()
   };
 
   memset (&coin,
           0,
           sizeof (coin));
-  memset (&nonce,
-          0,
-          sizeof (nonce));
   coin.coin_pub = *coin_pub;
   ret = TALER_MHD_parse_json_data (connection,
                                    root,
@@ -435,7 +432,9 @@ TEH_handler_recoup (struct MHD_Connection *connection,
                                      &coin,
                                      &exchange_vals,
                                      &coin_bks,
-                                     &nonce,
+                                     no_nonce
+                                     ? NULL
+                                     : &nonce,
                                      &coin_sig);
     GNUNET_JSON_parse_free (spec);
     return res;

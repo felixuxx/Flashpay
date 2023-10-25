@@ -1940,7 +1940,7 @@ check_recoup (struct CoinContext *cc,
               const struct TALER_CoinPublicInfo *coin,
               const struct TALER_DenominationPublicKey *denom_pub,
               const struct TALER_CoinSpendSignatureP *coin_sig,
-              const union TALER_DenominationBlindingKeyP *coin_blind)
+              const union GNUNET_CRYPTO_BlindingSecretP *coin_blind)
 {
   struct DenominationSummary *ds;
   enum GNUNET_DB_QueryStatus qs;
@@ -2071,7 +2071,7 @@ recoup_cb (void *cls,
            const struct TALER_CoinPublicInfo *coin,
            const struct TALER_DenominationPublicKey *denom_pub,
            const struct TALER_CoinSpendSignatureP *coin_sig,
-           const union TALER_DenominationBlindingKeyP *coin_blind)
+           const union GNUNET_CRYPTO_BlindingSecretP *coin_blind)
 {
   struct CoinContext *cc = cls;
 
@@ -2139,7 +2139,7 @@ recoup_refresh_cb (void *cls,
                    const struct TALER_CoinPublicInfo *coin,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    const struct TALER_CoinSpendSignatureP *coin_sig,
-                   const union TALER_DenominationBlindingKeyP *coin_blind)
+                   const union GNUNET_CRYPTO_BlindingSecretP *coin_blind)
 {
   struct CoinContext *cc = cls;
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;

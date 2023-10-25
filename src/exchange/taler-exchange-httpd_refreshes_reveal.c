@@ -156,14 +156,17 @@ check_commitment (struct RevealContext *rctx,
                   struct MHD_Connection *connection,
                   MHD_RESULT *mhd_ret)
 {
-  struct TALER_CsNonce nonces[rctx->num_fresh_coins];
-  unsigned int aoff = 0;
+  const union GNUNET_CRYPTO_BlindSessionNonce *nonces[rctx->num_fresh_coins];
 
+  memset (nonces,
+          0,
+          sizeof (nonces));
   for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
   {
     const struct TALER_DenominationPublicKey *dk = &rctx->dks[j]->denom_pub;
 
-    if (dk->cipher != rctx->rcds[j].blinded_planchet.cipher)
+    if (dk->bsign_pub_key->cipher !=
+        rctx->rcds[j].blinded_planchet.blinded_message->cipher)
     {
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (
@@ -173,9 +176,9 @@ check_commitment (struct RevealContext *rctx,
         NULL);
       return GNUNET_SYSERR;
     }
-    switch (dk->cipher)
+    switch (dk->bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_INVALID:
+    case GNUNET_CRYPTO_BSA_INVALID:
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (
         connection,
@@ -183,44 +186,48 @@ check_commitment (struct RevealContext *rctx,
         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
         NULL);
       return GNUNET_SYSERR;
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       continue;
-    case TALER_DENOMINATION_CS:
-      nonces[aoff]
-        = rctx->rcds[j].blinded_planchet.details.cs_blinded_planchet.nonce;
-      aoff++;
+    case GNUNET_CRYPTO_BSA_CS:
+      nonces[j]
+        = (const union GNUNET_CRYPTO_BlindSessionNonce *)
+          &rctx->rcds[j].blinded_planchet.blinded_message->details.
+          cs_blinded_message.nonce;
       break;
     }
   }
 
   // OPTIMIZE: do this in batch later!
-  aoff = 0;
   for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
   {
     const struct TALER_DenominationPublicKey *dk = &rctx->dks[j]->denom_pub;
     struct TALER_ExchangeWithdrawValues *alg_values
       = &rctx->rrcs[j].exchange_vals;
+    struct GNUNET_CRYPTO_BlindingInputValues *bi;
 
-    alg_values->cipher = dk->cipher;
-    switch (dk->cipher)
+    bi = GNUNET_new (struct GNUNET_CRYPTO_BlindingInputValues);
+    alg_values->blinding_inputs = bi;
+    bi->rc = 1;
+    bi->cipher = dk->bsign_pub_key->cipher;
+    switch (dk->bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_INVALID:
+    case GNUNET_CRYPTO_BSA_INVALID:
       GNUNET_assert (0);
       return GNUNET_SYSERR;
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       continue;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       {
         enum TALER_ErrorCode ec;
         const struct TEH_CsDeriveData cdd = {
           .h_denom_pub = &rctx->rrcs[j].h_denom_pub,
-          .nonce = &nonces[aoff]
+          .nonce = &nonces[j]->cs_nonce
         };
 
         ec = TEH_keys_denomination_cs_r_pub (
           &cdd,
           true,
-          &alg_values->details.cs_values);
+          &bi->details.cs_values);
         if (TALER_EC_NONE != ec)
         {
           *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -229,7 +236,6 @@ check_commitment (struct RevealContext *rctx,
                                                  NULL);
           return GNUNET_SYSERR;
         }
-        aoff++;
       }
     }
   }
@@ -271,14 +277,11 @@ check_commitment (struct RevealContext *rctx,
                                            &ts);
         rce->new_coins = GNUNET_new_array (rctx->num_fresh_coins,
                                            struct TALER_RefreshCoinData);
-        aoff = 0;
         for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
         {
-          const struct TALER_DenominationPublicKey *dk
-            = &rctx->dks[j]->denom_pub;
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_CoinSpendPrivateKeyP coin_priv;
-          union TALER_DenominationBlindingKeyP bks;
+          union GNUNET_CRYPTO_BlindingSecretP bks;
           const struct TALER_ExchangeWithdrawValues *alg_value
             = &rctx->rrcs[j].exchange_vals;
           struct TALER_PlanchetDetail pd = {0};
@@ -312,7 +315,8 @@ check_commitment (struct RevealContext *rctx,
                              &ts.key,
                              &nacp));
 
-            TALER_age_commitment_hash (&nacp.commitment, &h);
+            TALER_age_commitment_hash (&nacp.commitment,
+                                       &h);
             hac = &h;
           }
 
@@ -320,16 +324,11 @@ check_commitment (struct RevealContext *rctx,
                          TALER_planchet_prepare (rcd->dk,
                                                  alg_value,
                                                  &bks,
+                                                 nonces[j],
                                                  &coin_priv,
                                                  hac,
                                                  &c_hash,
                                                  &pd));
-          if (TALER_DENOMINATION_CS == dk->cipher)
-          {
-            pd.blinded_planchet.details.cs_blinded_planchet.nonce =
-              nonces[aoff];
-            aoff++;
-          }
           rcd->blinded_planchet = pd.blinded_planchet;
         }
       }
@@ -539,7 +538,8 @@ resolve_refreshes_reveal_denominations (
                                                        &ret);
     if (NULL == dks[i])
       return ret;
-    if ( (TALER_DENOMINATION_CS == dks[i]->denom_pub.cipher) &&
+    if ( (GNUNET_CRYPTO_BSA_CS ==
+          dks[i]->denom_pub.bsign_pub_key->cipher) &&
          (rctx->no_rms) )
     {
       return TALER_MHD_reply_with_error (
@@ -721,7 +721,8 @@ clean_age:
 
     rcd->blinded_planchet = rrc->blinded_planchet;
     rcd->dk = &dks[i]->denom_pub;
-    if (rcd->blinded_planchet.cipher != rcd->dk->cipher)
+    if (rcd->blinded_planchet.blinded_message->cipher !=
+        rcd->dk->bsign_pub_key->cipher)
     {
       GNUNET_break_op (0);
       ret = TALER_MHD_REPLY_JSON_PACK (
@@ -758,8 +759,8 @@ clean_age:
       csds[i].bp = &rcds[i].blinded_planchet;
     }
     ec = TEH_keys_denomination_batch_sign (
-      csds,
       rctx->num_fresh_coins,
+      csds,
       true,
       bss);
     if (TALER_EC_NONE != ec)
@@ -862,7 +863,10 @@ cleanup:
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
+    struct TALER_ExchangeWithdrawValues *alg_values
+      = &rrcs[i].exchange_vals;
 
+    GNUNET_free (alg_values->blinding_inputs);
     TALER_blinded_denom_sig_free (&rrc->coin_sig);
     TALER_blinded_planchet_free (&rrc->blinded_planchet);
   }

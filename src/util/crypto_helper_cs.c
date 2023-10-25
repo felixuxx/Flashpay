@@ -201,13 +201,18 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
   }
 
   {
-    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_CRYPTO_BlindSignPublicKey *bsign_pub;
     struct TALER_CsPubHashP h_cs;
 
-    denom_pub.cipher = TALER_DENOMINATION_CS;
-    denom_pub.details.cs_public_key = kan->denom_pub;
+    bsign_pub = GNUNET_new (struct GNUNET_CRYPTO_BlindSignPublicKey);
+    bsign_pub->cipher = GNUNET_CRYPTO_BSA_CS;
+    bsign_pub->rc = 1;
+    bsign_pub->details.cs_public_key = kan->denom_pub;
 
-    TALER_cs_pub_hash (&denom_pub.details.cs_public_key, &h_cs);
+    GNUNET_CRYPTO_hash (&bsign_pub->details.cs_public_key,
+                        sizeof (bsign_pub->details.cs_public_key),
+                        &bsign_pub->pub_key_hash);
+    h_cs.hash = bsign_pub->pub_key_hash;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received CS key %s (%s)\n",
                 GNUNET_h2s (&h_cs.hash),
@@ -222,7 +227,7 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
           &kan->secm_sig))
     {
       GNUNET_break_op (0);
-      TALER_denom_pub_free (&denom_pub);
+      GNUNET_CRYPTO_blind_sign_pub_decref (bsign_pub);
       return GNUNET_SYSERR;
     }
     dh->dkc (dh->dkc_cls,
@@ -230,10 +235,10 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
              GNUNET_TIME_timestamp_ntoh (kan->anchor_time),
              GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
              &h_cs,
-             &denom_pub,
+             bsign_pub,
              &kan->secm_pub,
              &kan->secm_sig);
-    TALER_denom_pub_free (&denom_pub);
+    GNUNET_CRYPTO_blind_sign_pub_decref (bsign_pub);
   }
   return GNUNET_OK;
 }
@@ -387,10 +392,10 @@ TALER_CRYPTO_helper_cs_sign (
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
   const struct TALER_CsPubHashP *h_cs = req->h_cs;
-  const struct TALER_BlindedCsPlanchet *blinded_planchet =
-    req->blinded_planchet;
 
-  bs->cipher = TALER_DENOMINATION_INVALID;
+  memset (bs,
+          0,
+          sizeof (*bs));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting signature process\n");
   if (GNUNET_OK !=
@@ -412,7 +417,7 @@ TALER_CRYPTO_helper_cs_sign (
     sr->header.type = htons (TALER_HELPER_CS_MT_REQ_SIGN);
     sr->for_melt = htonl (for_melt ? 1 : 0);
     sr->h_cs = *h_cs;
-    sr->planchet = *blinded_planchet;
+    sr->message = *req->blinded_planchet;
     if (GNUNET_OK !=
         TALER_crypto_helper_send_all (dh->sock,
                                       buf,
@@ -495,13 +500,18 @@ more:
         {
           const struct TALER_CRYPTO_SignResponse *sr =
             (const struct TALER_CRYPTO_SignResponse *) buf;
+          struct GNUNET_CRYPTO_BlindedSignature *blinded_sig;
 
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Received signature\n");
           ec = TALER_EC_NONE;
           finished = true;
-          bs->cipher = TALER_DENOMINATION_CS;
-          bs->details.blinded_cs_answer = sr->cs_answer;
+          blinded_sig = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+          blinded_sig->cipher = GNUNET_CRYPTO_BSA_CS;
+          blinded_sig->rc = 1;
+          blinded_sig->details.blinded_cs_answer.b = ntohl (sr->b);
+          blinded_sig->details.blinded_cs_answer.s_scalar = sr->cs_answer;
+          bs->blinded_sig = blinded_sig;
           break;
         }
       case TALER_HELPER_CS_MT_RES_SIGN_FAILURE:
@@ -611,11 +621,11 @@ enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
                                  bool for_melt,
-                                 struct TALER_DenominationCSPublicRPairP *crp)
+                                 struct GNUNET_CRYPTO_CSPublicRPairP *crp)
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
   const struct TALER_CsPubHashP *h_cs = cdr->h_cs;
-  const struct TALER_CsNonce *nonce = cdr->nonce;
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce = cdr->nonce;
 
   memset (crp,
           0,
@@ -795,10 +805,10 @@ more:
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_batch_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsSignRequest *reqs,
   unsigned int reqs_length,
+  const struct TALER_CRYPTO_CsSignRequest reqs[static reqs_length],
   bool for_melt,
-  struct TALER_BlindedDenominationSignature *bss)
+  struct TALER_BlindedDenominationSignature bss[static reqs_length])
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
   unsigned int rpos;
@@ -854,7 +864,7 @@ TALER_CRYPTO_helper_cs_batch_sign (
         csm->header.type = htons (TALER_HELPER_CS_MT_REQ_SIGN);
         csm->for_melt = htonl (for_melt ? 1 : 0);
         csm->h_cs = *csr->h_cs;
-        csm->planchet = *csr->blinded_planchet;
+        csm->message = *csr->blinded_planchet;
         wbuf += sizeof (*csm);
       }
       GNUNET_assert (wbuf == &obuf[mlen]);
@@ -945,12 +955,17 @@ more:
           {
             const struct TALER_CRYPTO_SignResponse *sr =
               (const struct TALER_CRYPTO_SignResponse *) buf;
-
+            struct GNUNET_CRYPTO_BlindedSignature *blinded_sig;
             GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                         "Received %u signature\n",
                         wpos);
-            bss[wpos].cipher = TALER_DENOMINATION_CS;
-            bss[wpos].details.blinded_cs_answer = sr->cs_answer;
+            blinded_sig = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+            blinded_sig->cipher = GNUNET_CRYPTO_BSA_CS;
+            blinded_sig->rc = 1;
+            blinded_sig->details.blinded_cs_answer.b = ntohl (sr->b);
+            blinded_sig->details.blinded_cs_answer.s_scalar = sr->cs_answer;
+
+            bss[wpos].blinded_sig = blinded_sig;
             wpos++;
             if (wpos == rend)
             {
@@ -1040,10 +1055,10 @@ more:
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_batch_derive (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
   unsigned int cdrs_length,
+  const struct TALER_CRYPTO_CsDeriveRequest cdrs[static cdrs_length],
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *crps)
+  struct GNUNET_CRYPTO_CSPublicRPairP crps[static cdrs_length])
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
   unsigned int rpos;

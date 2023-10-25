@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -89,9 +89,9 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_BlindedDenominationSignature bsig;
   struct TALER_DenominationPublicKey rpub;
   struct TALER_CoinSpendSignatureP link_sig;
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
   struct TALER_ExchangeWithdrawValues alg_values;
-  struct TALER_CsNonce nonce;
+  union GNUNET_CRYPTO_BlindSessionNonce nonce;
   bool no_nonce;
   uint32_t coin_idx;
   struct GNUNET_JSON_Specification spec[] = {
@@ -163,6 +163,9 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
         &rpub,
         &alg_values,
         &bks,
+        no_nonce
+        ? NULL
+        : &nonce,
         &lci->coin_priv,
         pah,
         &c_hash,
@@ -171,16 +174,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
-  }
-  if (TALER_DENOMINATION_CS == alg_values.cipher)
-  {
-    if (no_nonce)
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-    pd.blinded_planchet.details.cs_blinded_planchet.nonce = nonce;
   }
   /* extract coin and signature */
   if (GNUNET_OK !=

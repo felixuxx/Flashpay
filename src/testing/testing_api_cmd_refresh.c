@@ -80,7 +80,7 @@ struct TALER_TESTING_FreshCoinData
   /**
    * The blinding key (needed for recoup operations).
    */
-  union TALER_DenominationBlindingKeyP blinding_key;
+  union GNUNET_CRYPTO_BlindingSecretP blinding_key;
 
 };
 

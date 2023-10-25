@@ -41,7 +41,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_do_batch_withdraw_insert (
   void *cls,
-  const struct TALER_CsNonce *nonce,
+  const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
   const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
   struct GNUNET_TIME_Timestamp now,
   uint64_t ruuid,

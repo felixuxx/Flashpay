@@ -30,7 +30,7 @@ TEH_PG_do_recoup_refresh (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   uint64_t rrc_serial,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   uint64_t known_coin_id,
   const struct TALER_CoinSpendSignatureP *coin_sig,
