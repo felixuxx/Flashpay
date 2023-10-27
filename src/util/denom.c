@@ -76,7 +76,10 @@ TALER_denom_sig_unblind (
                                        alg_values->blinding_inputs,
                                        denom_pub->bsign_pub_key);
   if (NULL == denom_sig->unblinded_sig)
+  {
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -181,24 +184,33 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
 void
 TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub)
 {
-  GNUNET_CRYPTO_blind_sign_pub_decref (denom_pub->bsign_pub_key);
-  denom_pub->bsign_pub_key = NULL;
+  if (NULL != denom_pub->bsign_pub_key)
+  {
+    GNUNET_CRYPTO_blind_sign_pub_decref (denom_pub->bsign_pub_key);
+    denom_pub->bsign_pub_key = NULL;
+  }
 }
 
 
 void
 TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv)
 {
-  GNUNET_CRYPTO_blind_sign_priv_decref (denom_priv->bsign_priv_key);
-  denom_priv->bsign_priv_key = NULL;
+  if (NULL != denom_priv->bsign_priv_key)
+  {
+    GNUNET_CRYPTO_blind_sign_priv_decref (denom_priv->bsign_priv_key);
+    denom_priv->bsign_priv_key = NULL;
+  }
 }
 
 
 void
 TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig)
 {
-  GNUNET_CRYPTO_unblinded_sig_decref (denom_sig->unblinded_sig);
-  denom_sig->unblinded_sig = NULL;
+  if (NULL != denom_sig->unblinded_sig)
+  {
+    GNUNET_CRYPTO_unblinded_sig_decref (denom_sig->unblinded_sig);
+    denom_sig->unblinded_sig = NULL;
+  }
 }
 
 
@@ -206,8 +218,11 @@ void
 TALER_blinded_denom_sig_free (
   struct TALER_BlindedDenominationSignature *denom_sig)
 {
-  GNUNET_CRYPTO_blinded_sig_decref (denom_sig->blinded_sig);
-  denom_sig->blinded_sig = NULL;
+  if (NULL != denom_sig->blinded_sig)
+  {
+    GNUNET_CRYPTO_blinded_sig_decref (denom_sig->blinded_sig);
+    denom_sig->blinded_sig = NULL;
+  }
 }
 
 

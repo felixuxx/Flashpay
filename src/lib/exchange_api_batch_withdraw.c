@@ -192,6 +192,10 @@ handle_reserve_batch_withdraw_finished (
         struct CoinData *cd = &wh->coins[i];
         struct TALER_EXCHANGE_PrivateCoinDetails *coin = &coins[i];
         struct TALER_FreshCoin fc;
+        const struct TALER_ExchangeWithdrawValues *alg_values
+          = (GNUNET_CRYPTO_BSA_RSA != cd->pk.key.bsign_pub_key->cipher)
+          ? &cd->alg_values
+          : TALER_denom_ewv_rsa_singleton ();
 
         if (GNUNET_OK !=
             TALER_planchet_to_coin (&cd->pk.key,
@@ -200,7 +204,7 @@ handle_reserve_batch_withdraw_finished (
                                     &cd->priv,
                                     cd->ach,
                                     &cd->c_hash,
-                                    &cd->alg_values,
+                                    alg_values,
                                     &fc))
         {
           wr.hr.http_status = 0;
