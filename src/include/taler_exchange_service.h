@@ -1513,6 +1513,7 @@ struct TALER_EXCHANGE_CsRWithdrawResponse
        * respective coin's withdraw operation.
        */
       struct TALER_ExchangeWithdrawValues alg_values;
+
     } ok;
 
     /**

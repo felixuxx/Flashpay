@@ -1133,16 +1133,6 @@ TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
 
 
 /**
- * Return the alg value singleton for creation of
- * blinding secrets for RSA.
- *
- * @return singleton to use for RSA blinding
- */
-const struct TALER_ExchangeWithdrawValues *
-TALER_denom_ewv_rsa_singleton (void);
-
-
-/**
  * Hash @a cs.
  *
  * @param cs key to hash
@@ -1349,6 +1339,16 @@ struct TALER_ExchangeWithdrawValues
    */
   struct GNUNET_CRYPTO_BlindingInputValues *blinding_inputs;
 };
+
+
+/**
+ * Return the alg value singleton for creation of
+ * blinding secrets for RSA.
+ *
+ * @return singleton to use for RSA blinding
+ */
+const struct TALER_ExchangeWithdrawValues *
+TALER_denom_ewv_rsa_singleton (void);
 
 
 /**
@@ -1946,14 +1946,15 @@ TALER_planchet_blinding_secret_create (
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
-                        const struct TALER_ExchangeWithdrawValues *alg_values,
-                        const union GNUNET_CRYPTO_BlindingSecretP *bks,
-                        const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
-                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                        const struct TALER_AgeCommitmentHash *ach,
-                        struct TALER_CoinPubHashP *c_hash,
-                        struct TALER_PlanchetDetail *pd);
+TALER_planchet_prepare (
+  const struct TALER_DenominationPublicKey *dk,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  const union GNUNET_CRYPTO_BlindingSecretP *bks,
+  const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitmentHash *ach,
+  struct TALER_CoinPubHashP *c_hash,
+  struct TALER_PlanchetDetail *pd);
 
 
 /**

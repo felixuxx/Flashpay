@@ -623,13 +623,13 @@ extract_denom_sig (void *cls,
     if (sizeof (ubs->details.cs_signature) != len)
     {
       GNUNET_break (0);
+      GNUNET_free (ubs);
       return GNUNET_SYSERR;
     }
     GNUNET_memcpy (&ubs->details.cs_signature,
                    res,
                    len);
     sig->unblinded_sig = ubs;
-    GNUNET_free (ubs);
     return GNUNET_OK;
   }
   GNUNET_break (0);

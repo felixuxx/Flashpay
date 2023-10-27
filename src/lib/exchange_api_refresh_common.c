@@ -99,6 +99,9 @@ TALER_EXCHANGE_get_melt_data_ (
   {
     struct FreshCoinData *fcd = &md->fcds[j];
 
+    TALER_denom_pub_deep_copy (&fcd->fresh_pk,
+                               &rd->fresh_pks[j].key);
+    GNUNET_assert (NULL != fcd->fresh_pk.bsign_pub_key);
     switch (fcd->fresh_pk.bsign_pub_key->cipher)
     {
     case GNUNET_CRYPTO_BSA_INVALID:
@@ -121,8 +124,6 @@ TALER_EXCHANGE_get_melt_data_ (
                                      &nonces[j].cs_nonce);
       break;
     }
-    TALER_denom_pub_deep_copy (&fcd->fresh_pk,
-                               &rd->fresh_pks[j].key);
     if ( (0 >
           TALER_amount_add (&total,
                             &total,

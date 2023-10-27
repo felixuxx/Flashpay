@@ -51,9 +51,6 @@ TEH_PG_get_known_coin (void *cls,
               "Getting known coin data for coin %s\n",
               TALER_B2S (coin_pub));
   coin_info->coin_pub = *coin_pub;
-  /* Used in #postgres_get_known_coin() to fetch
-     the denomination public key and signature for
-     a coin known to the exchange. */
   PREPARE (pg,
            "get_known_coin",
            "SELECT"
@@ -63,7 +60,6 @@ TEH_PG_get_known_coin (void *cls,
            " FROM known_coins"
            " JOIN denominations USING (denominations_serial)"
            " WHERE coin_pub=$1;");
-
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_known_coin",
                                                    params,

@@ -116,7 +116,6 @@ struct TALER_EXCHANGE_BatchWithdrawHandle
    */
   const struct TALER_EXCHANGE_Keys *keys;
 
-
   /**
    * Handle for the actual (internal) batch withdraw operation.
    */
@@ -305,7 +304,9 @@ withdraw_cs_stage_two_callback (
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    cd->alg_values = csrr->details.ok.alg_values;
+    cd->alg_values.blinding_inputs
+      = GNUNET_CRYPTO_blinding_input_values_incref (
+          csrr->details.ok.alg_values.blinding_inputs);
     TALER_planchet_setup_coin_priv (&cd->ps,
                                     &cd->alg_values,
                                     &cd->priv);
@@ -376,15 +377,18 @@ TALER_EXCHANGE_batch_withdraw (
     {
     case GNUNET_CRYPTO_BSA_RSA:
       {
+        const struct TALER_ExchangeWithdrawValues *alg_values
+          = TALER_denom_ewv_rsa_singleton ();
+
         TALER_planchet_setup_coin_priv (&cd->ps,
-                                        &cd->alg_values,
+                                        alg_values,
                                         &cd->priv);
         TALER_planchet_blinding_secret_create (&cd->ps,
-                                               &cd->alg_values,
+                                               alg_values,
                                                &cd->bks);
         if (GNUNET_OK !=
             TALER_planchet_prepare (&cd->pk.key,
-                                    NULL,
+                                    alg_values,
                                     &cd->bks,
                                     NULL,
                                     &cd->priv,
@@ -443,6 +447,12 @@ TALER_EXCHANGE_batch_withdraw_cancel (
     {
       TALER_EXCHANGE_csr_withdraw_cancel (cd->csrh);
       cd->csrh = NULL;
+    }
+    if (NULL != cd->alg_values.blinding_inputs)
+    {
+      GNUNET_CRYPTO_blinding_input_values_decref (
+        cd->alg_values.blinding_inputs);
+      cd->alg_values.blinding_inputs = NULL;
     }
     TALER_blinded_planchet_free (&cd->pd.blinded_planchet);
     TALER_denom_pub_free (&cd->pk.key);
