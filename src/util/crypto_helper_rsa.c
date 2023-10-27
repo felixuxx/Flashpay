@@ -776,6 +776,7 @@ more:
                         wpos);
             blind_sig = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
             blind_sig->cipher = GNUNET_CRYPTO_BSA_RSA;
+            blind_sig->rc = 1;
             blind_sig->details.blinded_rsa_signature = rsa_signature;
             bss[wpos].blinded_sig = blind_sig;
             wpos++;

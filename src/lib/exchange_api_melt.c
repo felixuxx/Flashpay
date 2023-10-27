@@ -308,7 +308,13 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   struct TALER_ExchangeWithdrawValues alg_values[mh->rd->fresh_pks_len];
 
   for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
-    alg_values[i] = mh->mbds[i].alg_value;
+  {
+    if (GNUNET_CRYPTO_BSA_RSA ==
+        mh->rd->fresh_pks[i].key.bsign_pub_key->cipher)
+      alg_values[i] = *TALER_denom_ewv_rsa_singleton ();
+    else
+      alg_values[i] = mh->mbds[i].alg_value;
+  }
   if (GNUNET_OK !=
       TALER_EXCHANGE_get_melt_data_ (&mh->rms,
                                      mh->rd,
@@ -470,7 +476,8 @@ csr_cb (void *cls,
     case GNUNET_CRYPTO_BSA_RSA:
       break;
     case GNUNET_CRYPTO_BSA_CS:
-      *wv = csrr->details.ok.alg_values[nks_off];
+      TALER_denom_ewv_deep_copy (wv,
+                                 &csrr->details.ok.alg_values[nks_off]);
       nks_off++;
       break;
     }
@@ -528,6 +535,8 @@ TALER_EXCHANGE_melt (
       GNUNET_free (mh);
       return NULL;
     case GNUNET_CRYPTO_BSA_RSA:
+      TALER_denom_ewv_deep_copy (&mh->mbds[i].alg_value,
+                                 TALER_denom_ewv_rsa_singleton ());
       break;
     case GNUNET_CRYPTO_BSA_CS:
       nks[nks_off].pk = fresh_pk;
@@ -568,6 +577,8 @@ TALER_EXCHANGE_melt (
 void
 TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
 {
+  for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
+    TALER_denom_ewv_free (&mh->mbds[i].alg_value);
   if (NULL != mh->job)
   {
     GNUNET_CURL_job_cancel (mh->job);

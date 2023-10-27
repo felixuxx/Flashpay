@@ -1352,6 +1352,19 @@ TALER_denom_ewv_rsa_singleton (void);
 
 
 /**
+ * Make a (deep) copy of the given @a bi_src to
+ * @a bi_dst.
+ *
+ * @param[out] bi_dst target to copy to
+ * @param bi_src blinding input values to copy
+ */
+void
+TALER_denom_ewv_deep_copy (
+  struct TALER_ExchangeWithdrawValues *bi_dst,
+  const struct TALER_ExchangeWithdrawValues *bi_src);
+
+
+/**
  * Create private key for a Taler coin.
  * @param ps planchet secret to derive coin priv key
  * @param alg_values includes algorithm specific values
@@ -1418,6 +1431,15 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
  */
 void
 TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Free internals of @a ewv, but not @a ewv itself.
+ *
+ * @param[in] ewv input values to free
+ */
+void
+TALER_denom_ewv_free (struct TALER_ExchangeWithdrawValues *ewv);
 
 
 /**

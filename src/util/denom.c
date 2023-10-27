@@ -31,6 +31,12 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
   enum GNUNET_GenericReturnValue ret;
   va_list ap;
 
+  memset (denom_pub,
+          0,
+          sizeof (*denom_pub));
+  memset (denom_priv,
+          0,
+          sizeof (*denom_priv));
   va_start (ap,
             cipher);
   ret = GNUNET_CRYPTO_blind_sign_keys_create_va (
@@ -223,6 +229,39 @@ TALER_blinded_denom_sig_free (
     GNUNET_CRYPTO_blinded_sig_decref (denom_sig->blinded_sig);
     denom_sig->blinded_sig = NULL;
   }
+}
+
+
+void
+TALER_denom_ewv_free (struct TALER_ExchangeWithdrawValues *ewv)
+{
+  if (ewv == TALER_denom_ewv_rsa_singleton ())
+    return;
+  if (ewv->blinding_inputs ==
+      TALER_denom_ewv_rsa_singleton ()->blinding_inputs)
+  {
+    ewv->blinding_inputs = NULL;
+    return;
+  }
+  if (NULL != ewv->blinding_inputs)
+  {
+    GNUNET_CRYPTO_blinding_input_values_decref (ewv->blinding_inputs);
+    ewv->blinding_inputs = NULL;
+  }
+}
+
+
+void
+TALER_denom_ewv_deep_copy (struct TALER_ExchangeWithdrawValues *bi_dst,
+                           const struct TALER_ExchangeWithdrawValues *bi_src)
+{
+  if (bi_src == TALER_denom_ewv_rsa_singleton ())
+  {
+    *bi_dst = *bi_src;
+    return;
+  }
+  bi_dst->blinding_inputs
+    = GNUNET_CRYPTO_blinding_input_values_incref (bi_src->blinding_inputs);
 }
 
 

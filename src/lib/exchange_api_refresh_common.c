@@ -102,6 +102,13 @@ TALER_EXCHANGE_get_melt_data_ (
     TALER_denom_pub_deep_copy (&fcd->fresh_pk,
                                &rd->fresh_pks[j].key);
     GNUNET_assert (NULL != fcd->fresh_pk.bsign_pub_key);
+    if (alg_values[j].blinding_inputs->cipher !=
+        fcd->fresh_pk.bsign_pub_key->cipher)
+    {
+      GNUNET_break (0);
+      TALER_EXCHANGE_free_melt_data_ (md);
+      return GNUNET_SYSERR;
+    }
     switch (fcd->fresh_pk.bsign_pub_key->cipher)
     {
     case GNUNET_CRYPTO_BSA_INVALID:
@@ -111,13 +118,6 @@ TALER_EXCHANGE_get_melt_data_ (
     case GNUNET_CRYPTO_BSA_RSA:
       break;
     case GNUNET_CRYPTO_BSA_CS:
-      if (alg_values[j].blinding_inputs->cipher !=
-          fcd->fresh_pk.bsign_pub_key->cipher)
-      {
-        GNUNET_break (0);
-        TALER_EXCHANGE_free_melt_data_ (md);
-        return GNUNET_SYSERR;
-      }
       uses_cs = true;
       TALER_cs_refresh_nonce_derive (rms,
                                      j,
