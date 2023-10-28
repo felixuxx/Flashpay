@@ -462,8 +462,11 @@ TALER_planchet_setup_coin_priv (
 void
 TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
 {
-  GNUNET_CRYPTO_blinded_message_decref (blinded_planchet->blinded_message);
-  blinded_planchet->blinded_message = NULL;
+  if (NULL != blinded_planchet->blinded_message)
+  {
+    GNUNET_CRYPTO_blinded_message_decref (blinded_planchet->blinded_message);
+    blinded_planchet->blinded_message = NULL;
+  }
 }
 
 
