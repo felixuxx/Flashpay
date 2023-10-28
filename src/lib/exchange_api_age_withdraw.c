@@ -945,7 +945,7 @@ prepare_coins (
                                                &can->details.blinding_key);
         FAIL_IF (GNUNET_OK !=
                  TALER_planchet_prepare (&cd->denom_pub.key,
-                                         NULL,
+                                         &can->details.alg_values,
                                          &can->details.blinding_key,
                                          NULL,
                                          &can->details.coin_priv,
