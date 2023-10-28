@@ -813,7 +813,9 @@ csr_withdraw_done (
     {
       bool success = false;
       /* Complete the initialization of the coin with CS denomination */
-      can->details.alg_values = csrr->details.ok.alg_values;
+
+      TALER_denom_ewv_deep_copy (&can->details.alg_values,
+                                 &csrr->details.ok.alg_values);
       GNUNET_assert (can->details.alg_values.blinding_inputs->cipher
                      == GNUNET_CRYPTO_BSA_CS);
       TALER_planchet_setup_coin_priv (&can->secret,
@@ -863,7 +865,6 @@ csr_withdraw_done (
   default:
     break;
   }
-
   TALER_EXCHANGE_age_withdraw_cancel (awh);
 }
 
@@ -907,11 +908,10 @@ prepare_coins (
   {
     struct CoinData *cd = &awh->coin_data[i];
     const struct TALER_EXCHANGE_AgeWithdrawCoinInput *input = &coin_inputs[i];
-    cd->denom_pub = *input->denom_pub;
 
+    cd->denom_pub = *input->denom_pub;
     /* The mask must be the same for all coins */
     FAIL_IF (awh->age_mask.bits != input->denom_pub->key.age_mask.bits);
-
     TALER_denom_pub_deep_copy (&cd->denom_pub.key,
                                &input->denom_pub->key);
 
@@ -935,28 +935,28 @@ prepare_coins (
       switch (input->denom_pub->key.bsign_pub_key->cipher)
       {
       case GNUNET_CRYPTO_BSA_RSA:
-        {
-          TALER_planchet_setup_coin_priv (&can->secret,
-                                          &can->details.alg_values,
-                                          &can->details.coin_priv);
-          TALER_planchet_blinding_secret_create (&can->secret,
-                                                 &can->details.alg_values,
-                                                 &can->details.blinding_key);
-          FAIL_IF (GNUNET_OK !=
-                   TALER_planchet_prepare (&cd->denom_pub.key,
-                                           NULL,
-                                           &can->details.blinding_key,
-                                           NULL,
-                                           &can->details.coin_priv,
-                                           &can->details.h_age_commitment,
-                                           &can->details.h_coin_pub,
-                                           planchet));
-          FAIL_IF (GNUNET_OK !=
-                   TALER_coin_ev_hash (&planchet->blinded_planchet,
-                                       &planchet->denom_pub_hash,
-                                       &can->blinded_coin_h));
-          break;
-        }
+        TALER_denom_ewv_deep_copy (&can->details.alg_values,
+                                   TALER_denom_ewv_rsa_singleton ());
+        TALER_planchet_setup_coin_priv (&can->secret,
+                                        &can->details.alg_values,
+                                        &can->details.coin_priv);
+        TALER_planchet_blinding_secret_create (&can->secret,
+                                               &can->details.alg_values,
+                                               &can->details.blinding_key);
+        FAIL_IF (GNUNET_OK !=
+                 TALER_planchet_prepare (&cd->denom_pub.key,
+                                         NULL,
+                                         &can->details.blinding_key,
+                                         NULL,
+                                         &can->details.coin_priv,
+                                         &can->details.h_age_commitment,
+                                         &can->details.h_coin_pub,
+                                         planchet));
+        FAIL_IF (GNUNET_OK !=
+                 TALER_coin_ev_hash (&planchet->blinded_planchet,
+                                     &planchet->denom_pub_hash,
+                                     &can->blinded_coin_h));
+        break;
       case GNUNET_CRYPTO_BSA_CS:
         {
           struct CSRClosure *cls = &cd->csr_cls[k];
@@ -1052,6 +1052,7 @@ TALER_EXCHANGE_age_withdraw_cancel (
     {
       struct TALER_PlanchetDetail *planchet = &cd->planchet_details[k];
       struct CSRClosure *cls = &cd->csr_cls[k];
+      struct CoinCandidate *can = &cd->coin_candidates[k];
 
       if (NULL != cls->csr_withdraw_handle)
       {
@@ -1059,6 +1060,7 @@ TALER_EXCHANGE_age_withdraw_cancel (
         cls->csr_withdraw_handle = NULL;
       }
       TALER_blinded_planchet_free (&planchet->blinded_planchet);
+      TALER_denom_ewv_free (&can->details.alg_values);
     }
     TALER_denom_pub_free (&cd->denom_pub.key);
   }

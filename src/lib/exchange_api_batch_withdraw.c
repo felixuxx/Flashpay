@@ -192,10 +192,6 @@ handle_reserve_batch_withdraw_finished (
         struct CoinData *cd = &wh->coins[i];
         struct TALER_EXCHANGE_PrivateCoinDetails *coin = &coins[i];
         struct TALER_FreshCoin fc;
-        const struct TALER_ExchangeWithdrawValues *alg_values
-          = (GNUNET_CRYPTO_BSA_RSA != cd->pk.key.bsign_pub_key->cipher)
-          ? &cd->alg_values
-          : TALER_denom_ewv_rsa_singleton ();
 
         if (GNUNET_OK !=
             TALER_planchet_to_coin (&cd->pk.key,
@@ -204,7 +200,7 @@ handle_reserve_batch_withdraw_finished (
                                     &cd->priv,
                                     cd->ach,
                                     &cd->c_hash,
-                                    alg_values,
+                                    &cd->alg_values,
                                     &fc))
         {
           wr.hr.http_status = 0;
@@ -308,9 +304,8 @@ withdraw_cs_stage_two_callback (
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    cd->alg_values.blinding_inputs
-      = GNUNET_CRYPTO_blinding_input_values_incref (
-          csrr->details.ok.alg_values.blinding_inputs);
+    TALER_denom_ewv_deep_copy (&cd->alg_values,
+                               &csrr->details.ok.alg_values);
     TALER_planchet_setup_coin_priv (&cd->ps,
                                     &cd->alg_values,
                                     &cd->priv);
@@ -380,53 +375,48 @@ TALER_EXCHANGE_batch_withdraw (
     switch (wci->pk->key.bsign_pub_key->cipher)
     {
     case GNUNET_CRYPTO_BSA_RSA:
+      TALER_denom_ewv_deep_copy (&cd->alg_values,
+                                 TALER_denom_ewv_rsa_singleton ());
+      TALER_planchet_setup_coin_priv (&cd->ps,
+                                      &cd->alg_values,
+                                      &cd->priv);
+      TALER_planchet_blinding_secret_create (&cd->ps,
+                                             &cd->alg_values,
+                                             &cd->bks);
+      if (GNUNET_OK !=
+          TALER_planchet_prepare (&cd->pk.key,
+                                  &cd->alg_values,
+                                  &cd->bks,
+                                  NULL,
+                                  &cd->priv,
+                                  cd->ach,
+                                  &cd->c_hash,
+                                  &cd->pd))
       {
-        const struct TALER_ExchangeWithdrawValues *alg_values
-          = TALER_denom_ewv_rsa_singleton ();
-
-        TALER_planchet_setup_coin_priv (&cd->ps,
-                                        alg_values,
-                                        &cd->priv);
-        TALER_planchet_blinding_secret_create (&cd->ps,
-                                               alg_values,
-                                               &cd->bks);
-        if (GNUNET_OK !=
-            TALER_planchet_prepare (&cd->pk.key,
-                                    alg_values,
-                                    &cd->bks,
-                                    NULL,
-                                    &cd->priv,
-                                    cd->ach,
-                                    &cd->c_hash,
-                                    &cd->pd))
-        {
-          GNUNET_break (0);
-          TALER_EXCHANGE_batch_withdraw_cancel (wh);
-          return NULL;
-        }
-        break;
+        GNUNET_break (0);
+        TALER_EXCHANGE_batch_withdraw_cancel (wh);
+        return NULL;
       }
+      break;
     case GNUNET_CRYPTO_BSA_CS:
+      TALER_cs_withdraw_nonce_derive (
+        &cd->ps,
+        &cd->nonce.cs_nonce);
+      cd->csrh = TALER_EXCHANGE_csr_withdraw (
+        curl_ctx,
+        exchange_url,
+        &cd->pk,
+        &cd->nonce.cs_nonce,
+        &withdraw_cs_stage_two_callback,
+        cd);
+      if (NULL == cd->csrh)
       {
-        TALER_cs_withdraw_nonce_derive (
-          &cd->ps,
-          &cd->nonce.cs_nonce);
-        cd->csrh = TALER_EXCHANGE_csr_withdraw (
-          curl_ctx,
-          exchange_url,
-          &cd->pk,
-          &cd->nonce.cs_nonce,
-          &withdraw_cs_stage_two_callback,
-          cd);
-        if (NULL == cd->csrh)
-        {
-          GNUNET_break (0);
-          TALER_EXCHANGE_batch_withdraw_cancel (wh);
-          return NULL;
-        }
-        wh->cs_pending++;
-        break;
+        GNUNET_break (0);
+        TALER_EXCHANGE_batch_withdraw_cancel (wh);
+        return NULL;
       }
+      wh->cs_pending++;
+      break;
     default:
       GNUNET_break (0);
       TALER_EXCHANGE_batch_withdraw_cancel (wh);
@@ -452,12 +442,7 @@ TALER_EXCHANGE_batch_withdraw_cancel (
       TALER_EXCHANGE_csr_withdraw_cancel (cd->csrh);
       cd->csrh = NULL;
     }
-    if (NULL != cd->alg_values.blinding_inputs)
-    {
-      GNUNET_CRYPTO_blinding_input_values_decref (
-        cd->alg_values.blinding_inputs);
-      cd->alg_values.blinding_inputs = NULL;
-    }
+    TALER_denom_ewv_free (&cd->alg_values);
     TALER_blinded_planchet_free (&cd->pd.blinded_planchet);
     TALER_denom_pub_free (&cd->pk.key);
   }

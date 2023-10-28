@@ -144,17 +144,13 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     rci->ps = fcd->ps[rrh->noreveal_index];
     rci->bks = fcd->bks[rrh->noreveal_index];
     rci->age_commitment_proof = NULL;
-
     pk = &fcd->fresh_pk;
     jsonai = json_array_get (jsona, i);
-
     GNUNET_assert (NULL != jsonai);
-
     if (NULL != rrh->md.melted_coin.age_commitment_proof)
     {
-      rci->age_commitment_proof =
-        fcd->age_commitment_proofs[rrh->noreveal_index];
-
+      rci->age_commitment_proof
+        = fcd->age_commitment_proofs[rrh->noreveal_index];
       TALER_age_commitment_hash (&rci->age_commitment_proof->commitment,
                                  &rci->h_age_commitment);
       pah = &rci->h_age_commitment;
@@ -474,10 +470,8 @@ TALER_EXCHANGE_refreshes_reveal (
     = GNUNET_new_array (md.num_fresh_coins,
                         struct TALER_ExchangeWithdrawValues);
   for (unsigned int i = 0; i<md.num_fresh_coins; i++)
-  {
     TALER_denom_ewv_deep_copy (&rrh->alg_values[i],
                                &alg_values[i]);
-  }
   rrh->url = TALER_url_join (url,
                              arg_str,
                              NULL);
