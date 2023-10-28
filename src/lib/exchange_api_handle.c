@@ -2124,6 +2124,7 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
     {
       const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
       struct TALER_DenominationGroup meta = {
+        .cipher = dk->key.bsign_pub_key->cipher,
         .value = dk->value,
         .fees = dk->fees,
         .age_mask = dk->key.age_mask
