@@ -269,6 +269,7 @@ void
 TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
                            const struct TALER_DenominationPublicKey *denom_src)
 {
+  denom_dst->age_mask = denom_src->age_mask;
   denom_dst->bsign_pub_key
     = GNUNET_CRYPTO_bsign_pub_incref (denom_src->bsign_pub_key);
 }
