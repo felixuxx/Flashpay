@@ -499,8 +499,6 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
 
       for (unsigned int i = 0; i<batch_size; i++)
       {
-        pd[i].blinded_planchet.blinded_message->cipher
-          = GNUNET_CRYPTO_BSA_RSA;
         GNUNET_assert (GNUNET_YES ==
                        TALER_planchet_prepare (&keys[k].denom_pub,
                                                alg_values,
