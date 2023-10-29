@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1238,6 +1238,24 @@ parse_exchange_withdraw_values (void *cls,
 }
 
 
+/**
+ * Cleanup data left from parsing withdraw values
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_exchange_withdraw_values (
+  void *cls,
+  struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_ExchangeWithdrawValues *ewv = spec->ptr;
+
+  (void) cls;
+  TALER_denom_ewv_free (ewv);
+}
+
+
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_exchange_withdraw_values (
   const char *field,
@@ -1245,6 +1263,7 @@ TALER_JSON_spec_exchange_withdraw_values (
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_exchange_withdraw_values,
+    .cleaner = &clean_exchange_withdraw_values,
     .field = field,
     .ptr = ewv
   };

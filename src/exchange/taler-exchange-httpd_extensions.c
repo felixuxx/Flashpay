@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021, 2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -208,16 +208,20 @@ TEH_extensions_init ()
   {
     const struct TALER_Extension *ext = it->extension;
     uint32_t typ = htonl (ext->type);
-    char *manifest = json_dumps (ext->manifest (ext), JSON_COMPACT);
+    json_t *jmani;
+    char *manifest;
 
+    jmani = ext->manifest (ext);
+    manifest = json_dumps (jmani,
+                           JSON_COMPACT);
+    json_decref (jmani);
     TEH_plugin->set_extension_manifest (TEH_plugin->cls,
                                         ext->name,
                                         manifest);
-
+    free (manifest);
     extension_update_event_cb (NULL,
                                &typ,
                                sizeof(typ));
-    free (manifest);
   }
 
   return GNUNET_OK;

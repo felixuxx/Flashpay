@@ -737,13 +737,6 @@ struct AddContext
   json_t *a;
 
   /**
-   * Context we hash "everything" we add into. This is used
-   * to compute the etag. Technically, we only hash the
-   * master_sigs, as they imply the rest.
-   */
-  struct GNUNET_HashContext *hc;
-
-  /**
    * Set to the maximum end-date seen.
    */
   struct GNUNET_TIME_Absolute max_seen;
@@ -783,9 +776,6 @@ add_wire_fee (void *cls,
                 "Database has wire fee with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
     return;
   }
-  GNUNET_CRYPTO_hash_context_read (ac->hc,
-                                   master_sig,
-                                   sizeof (*master_sig));
   ac->max_seen = GNUNET_TIME_absolute_max (ac->max_seen,
                                            end_date.abs_time);
   wfs = GNUNET_new (struct WireFeeSet);
@@ -830,7 +820,6 @@ build_wire_state (void)
   uint64_t wg = wire_generation; /* must be obtained FIRST */
   enum GNUNET_DB_QueryStatus qs;
   struct WireStateHandle *wsh;
-  struct GNUNET_HashContext *hc;
   json_t *wads;
 
   wsh = GNUNET_new (struct WireStateHandle);
@@ -853,12 +842,14 @@ build_wire_state (void)
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
   wsh->cache_expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
-  hc = GNUNET_CRYPTO_hash_context_start ();
   {
     json_t *account;
     size_t index;
 
-    json_array_foreach (wire_accounts_array, index, account) {
+    json_array_foreach (wire_accounts_array,
+                        index,
+                        account)
+    {
       char *wire_method;
       const char *payto_uri = json_string_value (json_object_get (account,
                                                                   "payto_uri"));
@@ -873,7 +864,6 @@ build_wire_state (void)
         wsh->ready = false;
         json_decref (wire_accounts_array);
         json_decref (wire_fee_object);
-        GNUNET_CRYPTO_hash_context_abort (hc);
         return wsh;
       }
       if (NULL == json_object_get (wire_fee_object,
@@ -882,8 +872,7 @@ build_wire_state (void)
         struct AddContext ac = {
           .wire_method = wire_method,
           .wsh = wsh,
-          .a = json_array (),
-          .hc = hc
+          .a = json_array ()
         };
 
         GNUNET_assert (NULL != ac.a);
@@ -899,7 +888,6 @@ build_wire_state (void)
           json_decref (wire_accounts_array);
           GNUNET_free (wire_method);
           wsh->ready = false;
-          GNUNET_CRYPTO_hash_context_abort (hc);
           return wsh;
         }
         if (0 != json_array_size (ac.a))
@@ -924,12 +912,12 @@ build_wire_state (void)
   wads = json_array (); /* #7271 */
   GNUNET_assert (NULL != wads);
   wsh->json_reply = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_array_incref ("accounts",
-                                   wire_accounts_array),
-    GNUNET_JSON_pack_array_incref ("wads",
-                                   wads),
-    GNUNET_JSON_pack_object_incref ("fees",
-                                    wire_fee_object));
+    GNUNET_JSON_pack_array_steal ("accounts",
+                                  wire_accounts_array),
+    GNUNET_JSON_pack_array_steal ("wads",
+                                  wads),
+    GNUNET_JSON_pack_object_steal ("fees",
+                                   wire_fee_object));
   wsh->ready = true;
   return wsh;
 }
