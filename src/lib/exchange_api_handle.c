@@ -1871,8 +1871,8 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys)
   free_fees (keys->fees,
              keys->fees_len);
   json_decref (keys->extensions);
-  TALER_CONFIG_free_currencies (1,
-                                &keys->cspec);
+  GNUNET_free (keys->cspec.name);
+  json_decref (keys->cspec.map_alt_unit_names);
   GNUNET_free (keys->wallet_balance_limit_without_kyc);
   GNUNET_free (keys->version);
   GNUNET_free (keys->currency);
