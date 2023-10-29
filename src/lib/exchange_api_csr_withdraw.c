@@ -105,6 +105,7 @@ csr_ok (struct TALER_EXCHANGE_CsRWithdrawHandle *csrh,
   }
   csrh->cb (csrh->cb_cls,
             &csrr);
+  TALER_denom_ewv_free (&csrr.details.ok.alg_values);
   return GNUNET_OK;
 }
 
@@ -266,8 +267,8 @@ TALER_EXCHANGE_csr_withdraw (
 
 
 void
-TALER_EXCHANGE_csr_withdraw_cancel (struct
-                                    TALER_EXCHANGE_CsRWithdrawHandle *csrh)
+TALER_EXCHANGE_csr_withdraw_cancel (
+  struct TALER_EXCHANGE_CsRWithdrawHandle *csrh)
 {
   if (NULL != csrh->job)
   {

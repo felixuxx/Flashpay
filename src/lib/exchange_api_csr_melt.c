@@ -116,6 +116,8 @@ csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
   }
   csrh->cb (csrh->cb_cls,
             &csrr);
+  for (unsigned int i = 0; i<alen; i++)
+    TALER_denom_ewv_free (&alg_values[i]);
   return GNUNET_OK;
 }
 
