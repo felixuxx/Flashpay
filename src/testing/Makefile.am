@@ -548,6 +548,7 @@ test_kyc_api_LDADD = \
 
 EXTRA_DIST = \
   $(bin_SCRIPTS) \
+  valgrind.h \
   coins-cs.conf \
   coins-rsa.conf \
   test_auditor_api-cs.conf \

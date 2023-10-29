@@ -4,7 +4,7 @@
 exec 1>&2
 
 RET=0
-changed=$(git diff --cached --name-only | grep -v mustach | grep -v templating/test./)
+changed=$(git diff --cached --name-only | grep -v mustach | grep -v templating/test./ | grep -v valgrind.h)
 crustified=""
 
 for f in $changed;

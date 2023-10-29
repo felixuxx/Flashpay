@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2020, 2021 Taler Systems SA
+  (C) 2020, 2021, 2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -345,6 +345,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                              NULL, /* no age commitment */
                                              &c_hash,
                                              &pd));
+      TALER_blinded_planchet_free (&pd.blinded_planchet);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Successfully prepared planchet");
       success = true;
@@ -485,6 +486,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
         &csr,
         false,
         &ds);
+      TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
     switch (ec)
     {
@@ -496,6 +498,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       {
         /* key worked too early */
         GNUNET_break (0);
+        TALER_blinded_denom_sig_free (&ds);
         return 4;
       }
       if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_duration (
@@ -505,6 +508,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       {
         /* key worked too later */
         GNUNET_break (0);
+        TALER_blinded_denom_sig_free (&ds);
         return 5;
       }
       {
@@ -521,8 +525,11 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                     &coin))
         {
           GNUNET_break (0);
+          TALER_blinded_denom_sig_free (&ds);
           return 6;
         }
+        TALER_blinded_denom_sig_free (&ds);
+        TALER_denom_sig_free (&coin.sig);
       }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Received valid signature for key %s\n",
@@ -587,6 +594,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       &csr,
       false,
       &ds);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
       if (TALER_EC_NONE == ec)
@@ -687,6 +695,10 @@ test_batch_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
         csr,
         false,
         ds);
+      for (unsigned int i = 0; i<batch_size; i++)
+      {
+        TALER_blinded_planchet_free (&pd[i].blinded_planchet);
+      }
     }
     switch (ec)
     {
@@ -728,10 +740,17 @@ test_batch_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
             GNUNET_break (0);
             return 6;
           }
+          TALER_blinded_denom_sig_free (&ds[i]);
+          TALER_denom_sig_free (&coin.sig);
         }
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Received valid signature for key %s\n",
                     GNUNET_h2s (&keys[k].h_cs.hash));
+      }
+      else
+      {
+        for (unsigned int i = 0; i<batch_size; i++)
+          TALER_blinded_denom_sig_free (&ds[i]);
       }
       success = true;
       break;
@@ -795,10 +814,11 @@ test_batch_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
       &csr,
       false,
       &ds[0]);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
       if (TALER_EC_NONE == ec)
-        TALER_blinded_denom_sig_free (ds);
+        TALER_blinded_denom_sig_free (&ds[0]);
       GNUNET_break (0);
       return 17;
     }
@@ -911,9 +931,10 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
           if (NUM_SIGN_PERFS <= j)
             break;
         }
+        TALER_blinded_planchet_free (&pd.blinded_planchet);
       }
-    } /* for i */
-  } /* for j */
+    }   /* for i */
+  }   /* for j */
   fprintf (stderr,
            "%u (%s) signature operations took %s\n",
            (unsigned int) NUM_SIGN_PERFS,
