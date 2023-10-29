@@ -671,11 +671,9 @@ TALER_age_restriction_from_secret (
   ncp->commitment.num = num_pub;
   ncp->proof.num = num_priv;
   ncp->proof.keys = NULL;
-
   ncp->commitment.keys = GNUNET_new_array (
     num_pub,
     struct TALER_AgeCommitmentPublicKeyP);
-
   if (0 < num_priv)
     ncp->proof.keys = GNUNET_new_array (
       num_priv,

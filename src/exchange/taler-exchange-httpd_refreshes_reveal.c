@@ -314,9 +314,9 @@ check_commitment (struct RevealContext *rctx,
                              &acp,
                              &ts.key,
                              &nacp));
-
             TALER_age_commitment_hash (&nacp.commitment,
                                        &h);
+            TALER_age_commitment_proof_free (&nacp);
             hac = &h;
           }
 

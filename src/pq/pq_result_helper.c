@@ -1068,28 +1068,43 @@ TALER_PQ_result_spec_exchange_withdraw_values (
  */
 struct ArrayResultCls
 {
-  /* Oid of the expected type, must match the oid in the header of the PQResult struct */
+  /**
+   * Oid of the expected type, must match the oid in the header of the PQResult struct
+   */
   Oid oid;
 
-  /* Target type */
+  /**
+   * Target type
+   */
   enum TALER_PQ_ArrayType typ;
 
-  /* If not 0, defines the expected size of each entry */
+  /**
+   * If not 0, defines the expected size of each entry
+   */
   size_t same_size;
 
-  /* Out-pointer to write the number of elements in the array */
+  /**
+   * Out-pointer to write the number of elements in the array
+   */
   size_t *num;
 
-  /* Out-pointer. If @a typ is TALER_PQ_array_of_byte and @a same_size is 0,
-   * allocate and put the array of @a num sizes here. NULL otherwise */
+  /**
+   * Out-pointer. If @a typ is TALER_PQ_array_of_byte and @a same_size is 0,
+   * allocate and put the array of @a num sizes here. NULL otherwise
+   */
   size_t **sizes;
 
-  /* DB_connection, needed for OID-lookup for composite types */
+  /**
+   * DB_connection, needed for OID-lookup for composite types
+   */
   const struct GNUNET_PQ_Context *db;
 
-  /* Currency information for amount composites */
+  /**
+   * Currency information for amount composites
+   */
   char currency[TALER_CURRENCY_LEN];
 };
+
 
 /**
  * Extract data from a Postgres database @a result as array of a specific type
@@ -1175,7 +1190,8 @@ extract_array_generic (
         if (NULL != dst_size)
           *dst_size = sizeof(struct TALER_Amount) * (header.dim);
 
-        amounts = GNUNET_new_array (header.dim, struct TALER_Amount);
+        amounts = GNUNET_new_array (header.dim,
+                                    struct TALER_Amount);
         *((void **) dst) = amounts;
 
         for (uint32_t i = 0; i < header.dim; i++)
@@ -1212,7 +1228,8 @@ extract_array_generic (
     case TALER_PQ_array_of_denom_hash:
       if (NULL != dst_size)
         *dst_size = sizeof(struct TALER_DenominationHashP) * (header.dim);
-      out = GNUNET_new_array (header.dim, struct TALER_DenominationHashP);
+      out = GNUNET_new_array (header.dim,
+                              struct TALER_DenominationHashP);
       *((void **) dst) = out;
       for (uint32_t i = 0; i < header.dim; i++)
       {
@@ -1235,7 +1252,8 @@ extract_array_generic (
     case TALER_PQ_array_of_blinded_coin_hash:
       if (NULL != dst_size)
         *dst_size = sizeof(struct TALER_BlindedCoinHashP) * (header.dim);
-      out = GNUNET_new_array (header.dim, struct TALER_BlindedCoinHashP);
+      out = GNUNET_new_array (header.dim,
+                              struct TALER_BlindedCoinHashP);
       *((void **) dst) = out;
       for (uint32_t i = 0; i < header.dim; i++)
       {
@@ -1294,12 +1312,13 @@ extract_array_generic (
           sz -= sizeof(be);
           bs = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
           bs->cipher = ntohl (be[0]);
+          bs->rc = 1;
           switch (bs->cipher)
           {
           case GNUNET_CRYPTO_BSA_RSA:
-            bs->details.blinded_rsa_signature =
-              GNUNET_CRYPTO_rsa_signature_decode (in,
-                                                  sz);
+            bs->details.blinded_rsa_signature
+              = GNUNET_CRYPTO_rsa_signature_decode (in,
+                                                    sz);
             if (NULL == bs->details.blinded_rsa_signature)
             {
               GNUNET_free (bs);
@@ -1329,12 +1348,10 @@ extract_array_generic (
       FAIL_IF (true);
     }
   }
-
 FAIL:
   GNUNET_free (*(void **) dst);
   return GNUNET_SYSERR;
-  #undef FAIL_IF
-
+#undef FAIL_IF
 }
 
 
@@ -1345,10 +1362,11 @@ static void
 array_cleanup (void *cls,
                void *rd)
 {
-
   struct ArrayResultCls *info = cls;
   void **dst = rd;
 
+  /* FIXME-Oec: this does not properly clean up
+     denomination signatures! */
   if ((0 == info->same_size) &&
       (NULL != info->sizes))
     GNUNET_free (*(info->sizes));

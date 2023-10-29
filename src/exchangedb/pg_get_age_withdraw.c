@@ -61,22 +61,16 @@ TEH_PG_get_age_withdraw (
     TALER_PQ_result_spec_array_blinded_denom_sig (
       pg->conn,
       "denom_sigs",
-      NULL, /* we assume that this is the same size as h_coin_evs */
+      NULL, /* FIXME-Oec: this assumes that this is the same size as h_coin_evs, but we should check! */
       &aw->denom_sigs),
     TALER_PQ_result_spec_array_denom_hash (
       pg->conn,
       "denom_pub_hashes",
-      NULL, /* we assume that this is the same size as h_coin_evs */
+      NULL, /* FIXME-Oec: this assumes that this is the same size as h_coin_evs, but we should check! */
       &aw->denom_pub_hashes),
     GNUNET_PQ_result_spec_end
   };
 
-  GNUNET_assert (NULL != aw);
-
-  /* Used in #postgres_get_age_withdraw() to
-     locate the response for a /reserve/$RESERVE_PUB/age-withdraw request
-     using the hash of the blinded message.  Also needed to ensure
-     idempotency of /reserve/$RESERVE_PUB/age-withdraw requests. */
   PREPARE (pg,
            "get_age_withdraw",
            "SELECT"
