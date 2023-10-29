@@ -164,7 +164,6 @@ parse_cspec (void *cls,
   struct TALER_CurrencySpecification *r_cspec = spec->ptr;
   const char *name;
   const char *currency;
-  const char *decimal_separator;
   uint32_t fid;
   uint32_t fnd;
   uint32_t ftzd;
@@ -174,8 +173,6 @@ parse_cspec (void *cls,
                              &currency),
     GNUNET_JSON_spec_string ("name",
                              &name),
-    GNUNET_JSON_spec_string ("decimal_separator",
-                             &decimal_separator),
     GNUNET_JSON_spec_uint32 ("num_fractional_input_digits",
                              &fid),
     GNUNET_JSON_spec_uint32 ("num_fractional_normal_digits",
@@ -236,7 +233,6 @@ parse_cspec (void *cls,
     return GNUNET_SYSERR;
   }
   r_cspec->name = GNUNET_strdup (name);
-  r_cspec->decimal_separator = GNUNET_strdup (decimal_separator);
   r_cspec->map_alt_unit_names = json_incref ((json_t *) map);
   return GNUNET_OK;
 }
@@ -256,7 +252,6 @@ clean_cspec (void *cls,
 
   (void) cls;
   GNUNET_free (cspec->name);
-  GNUNET_free (cspec->decimal_separator);
   json_decref (cspec->map_alt_unit_names);
 }
 
