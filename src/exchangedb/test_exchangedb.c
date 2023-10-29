@@ -1213,11 +1213,8 @@ run (void *cls)
   uint64_t melt_serial_id;
   struct TALER_PlanchetMasterSecretP ps;
   union GNUNET_CRYPTO_BlindingSecretP bks;
-  struct TALER_ExchangeWithdrawValues alg_values = {
-    /* RSA is simpler, and for the DB there is no real difference between
-       CS and RSA, just one should be used, so we use RSA */
-    .cipher = GNUNET_CRYPTO_BSA_RSA
-  };
+  const struct TALER_ExchangeWithdrawValues *alg_values
+    = TALER_denom_ewv_rsa_singleton ();
 
   memset (&deposit,
           0,
@@ -1359,7 +1356,7 @@ run (void *cls)
   RND_BLK (&cbc.reserve_sig);
   RND_BLK (&ps);
   TALER_planchet_blinding_secret_create (&ps,
-                                         &alg_values,
+                                         alg_values,
                                          &bks);
   {
     struct TALER_PlanchetDetail pd;
@@ -1380,9 +1377,10 @@ run (void *cls)
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_blind (&dkp->pub,
                                         &bks,
+                                        NULL,
                                         p_ah[i],
                                         &coin_pub,
-                                        &alg_values,
+                                        alg_values,
                                         &c_hash,
                                         &pd.blinded_planchet));
       GNUNET_assert (GNUNET_OK ==
@@ -1483,7 +1481,7 @@ run (void *cls)
                                             &cbc2.sig,
                                             &bks,
                                             &c_hash,
-                                            &alg_values,
+                                            alg_values,
                                             &dkp->pub));
     FAILIF (GNUNET_OK !=
             TALER_denom_pub_verify (&dkp->pub,
@@ -1502,7 +1500,7 @@ run (void *cls)
                                           &cbc.sig,
                                           &bks,
                                           &c_hash,
-                                          &alg_values,
+                                          alg_values,
                                           &dkp->pub));
   deadline = GNUNET_TIME_timestamp_get ();
   {
@@ -1655,7 +1653,8 @@ run (void *cls)
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
       struct GNUNET_TIME_Timestamp now;
-      struct TALER_BlindedRsaPlanchet *rp;
+      struct GNUNET_CRYPTO_BlindedMessage *rp;
+      struct GNUNET_CRYPTO_RsaBlindedMessage *rsa;
       struct TALER_BlindedPlanchet *bp;
 
       now = GNUNET_TIME_timestamp_get ();
@@ -1667,18 +1666,22 @@ run (void *cls)
       new_denom_pubs[cnt] = new_dkp[cnt]->pub;
       ccoin = &revealed_coins[cnt];
       bp = &ccoin->blinded_planchet;
-      bp->cipher = GNUNET_CRYPTO_BSA_RSA;
-      rp = &bp->details.rsa_blinded_planchet;
-      rp->blinded_msg_size = 1 + (size_t) GNUNET_CRYPTO_random_u64 (
+      rp = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
+      bp->blinded_message = rp;
+      rp->cipher = GNUNET_CRYPTO_BSA_RSA;
+      rp->rc = 1;
+      rsa = &rp->details.rsa_blinded_message;
+      rsa->blinded_msg_size = 1 + (size_t) GNUNET_CRYPTO_random_u64 (
         GNUNET_CRYPTO_QUALITY_WEAK,
         (RSA_KEY_SIZE / 8) - 1);
-      rp->blinded_msg = GNUNET_malloc (rp->blinded_msg_size);
+      rsa->blinded_msg = GNUNET_malloc (rsa->blinded_msg_size);
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                  rp->blinded_msg,
-                                  rp->blinded_msg_size);
+                                  rsa->blinded_msg,
+                                  rsa->blinded_msg_size);
       TALER_denom_pub_hash (&new_dkp[cnt]->pub,
                             &ccoin->h_denom_pub);
-      ccoin->exchange_vals = alg_values;
+      TALER_denom_ewv_deep_copy (&ccoin->exchange_vals,
+                                 alg_values);
       TALER_coin_ev_hash (bp,
                           &ccoin->h_denom_pub,
                           &ccoin->coin_envelope_hash);
@@ -2129,7 +2132,7 @@ run (void *cls)
                                           &cbc.sig,
                                           &bks,
                                           &c_hash,
-                                          &alg_values,
+                                          alg_values,
                                           &dkp->pub));
   RND_BLK (&deposit.csig);
   RND_BLK (&bd.merchant_pub);
