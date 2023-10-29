@@ -246,6 +246,7 @@ TEH_PG_reserves_in_insert (
                                                params,
                                                &helper_cb,
                                                &ctx);
+    GNUNET_PQ_cleanup_query_params_closures (params);
     if ( (qs < 0) ||
          (GNUNET_OK != ctx.status) )
     {

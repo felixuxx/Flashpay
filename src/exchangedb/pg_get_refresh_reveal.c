@@ -206,6 +206,7 @@ cleanup:
 
     TALER_blinded_denom_sig_free (&rrc->coin_sig);
     TALER_blinded_planchet_free (&rrc->blinded_planchet);
+    TALER_denom_ewv_free (&rrc->exchange_vals);
   }
   GNUNET_free (grctx.rrcs);
   return qs;

@@ -99,9 +99,9 @@ TEH_PG_insert_kyc_attributes (
                                                  "insert_kyc_attributes",
                                                  params,
                                                  rs);
+  GNUNET_PQ_cleanup_query_params_closures (params);
   GNUNET_free (kyc_completed_notify_s);
   GNUNET_PQ_event_do_poll (pg->conn);
-
   if (qs < 0)
     return qs;
   if (! ok)

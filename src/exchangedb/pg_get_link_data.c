@@ -69,6 +69,7 @@ free_link_data_list (struct TALER_EXCHANGEDB_LinkList *ldl)
     next = ldl->next;
     TALER_denom_pub_free (&ldl->denom_pub);
     TALER_blinded_denom_sig_free (&ldl->ev_sig);
+    TALER_denom_ewv_free (&ldl->alg_values);
     GNUNET_free (ldl);
     ldl = next;
   }
