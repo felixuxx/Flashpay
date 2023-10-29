@@ -432,10 +432,6 @@ struct WireFeeSet
  */
 struct WireStateHandle
 {
-  /**
-   * Cached reply for /wire response.
-   */
-  struct MHD_Response *wire_reply;
 
   /**
    * JSON reply for /wire response.
@@ -474,9 +470,9 @@ struct WireStateHandle
   uint64_t wire_generation;
 
   /**
-   * HTTP status to return with this response.
+   * Is the wire data ready?
    */
-  unsigned int http_status;
+  bool ready;
 
 };
 
@@ -594,7 +590,6 @@ destroy_wire_state (struct WireStateHandle *wsh)
     GNUNET_free (wfs->method);
     GNUNET_free (wfs);
   }
-  MHD_destroy_response (wsh->wire_reply);
   json_decref (wsh->json_reply);
   GNUNET_free (wsh->etag);
   GNUNET_free (wsh);
@@ -849,10 +844,7 @@ build_wire_state (void)
   {
     GNUNET_break (0);
     json_decref (wire_accounts_array);
-    wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    wsh->wire_reply
-      = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
-                              "get_wire_accounts");
+    wsh->ready = false;
     return wsh;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -878,11 +870,7 @@ build_wire_state (void)
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "No wire method in `%s'\n",
                     payto_uri);
-        wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        wsh->wire_reply
-          = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
-              payto_uri);
+        wsh->ready = false;
         json_decref (wire_accounts_array);
         json_decref (wire_fee_object);
         GNUNET_CRYPTO_hash_context_abort (hc);
@@ -910,10 +898,7 @@ build_wire_state (void)
           json_decref (wire_fee_object);
           json_decref (wire_accounts_array);
           GNUNET_free (wire_method);
-          wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-          wsh->wire_reply
-            = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "get_wire_fees");
+          wsh->ready = false;
           GNUNET_CRYPTO_hash_context_abort (hc);
           return wsh;
         }
@@ -945,59 +930,7 @@ build_wire_state (void)
                                    wads),
     GNUNET_JSON_pack_object_incref ("fees",
                                     wire_fee_object));
-  wsh->wire_reply = TALER_MHD_MAKE_JSON_PACK (
-    GNUNET_JSON_pack_array_steal ("accounts",
-                                  wire_accounts_array),
-    GNUNET_JSON_pack_array_steal ("wads",
-                                  wads),
-    GNUNET_JSON_pack_object_steal ("fees",
-                                   wire_fee_object),
-    GNUNET_JSON_pack_data_auto ("master_public_key",
-                                &TEH_master_public_key));
-  {
-    struct GNUNET_TIME_Timestamp m;
-
-    m = GNUNET_TIME_absolute_to_timestamp (wsh->cache_expiration);
-    TALER_MHD_get_date_string (m.abs_time,
-                               wsh->dat);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Setting 'Expires' header for '/wire' to '%s'\n",
-                wsh->dat);
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
-                                           MHD_HTTP_HEADER_EXPIRES,
-                                           wsh->dat));
-  }
-  /* Set cache control headers: our response varies depending on these headers */
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (wsh->wire_reply,
-                                         MHD_HTTP_HEADER_VARY,
-                                         MHD_HTTP_HEADER_ACCEPT_ENCODING));
-  /* Information is always public, revalidate after 1 day */
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (wsh->wire_reply,
-                                         MHD_HTTP_HEADER_CACHE_CONTROL,
-                                         "public,max-age=86400"));
-
-  {
-    struct GNUNET_HashCode h;
-    char etag[sizeof (h) * 2];
-    char *end;
-
-    GNUNET_CRYPTO_hash_context_finish (hc,
-                                       &h);
-    end = GNUNET_STRINGS_data_to_string (&h,
-                                         sizeof (h),
-                                         etag,
-                                         sizeof (etag));
-    *end = '\0';
-    wsh->etag = GNUNET_strdup (etag);
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
-                                           MHD_HTTP_HEADER_ETAG,
-                                           etag));
-  }
-  wsh->http_status = MHD_HTTP_OK;
+  wsh->ready = true;
   return wsh;
 }
 
@@ -2437,7 +2370,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   json_t *keys;
 
   wsh = get_wire_state ();
-  if (MHD_HTTP_OK != wsh->http_status)
+  if (! wsh->ready)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -2686,12 +2619,12 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                     krd.response_compressed);
     /* Set cache control headers: our response varies depending on these headers */
     GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
+                  MHD_add_response_header (krd.response_compressed,
                                            MHD_HTTP_HEADER_VARY,
                                            MHD_HTTP_HEADER_ACCEPT_ENCODING));
     /* Information is always public, revalidate after 1 day */
     GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
+                  MHD_add_response_header (krd.response_compressed,
                                            MHD_HTTP_HEADER_CACHE_CONTROL,
                                            "public,max-age=86400"));
     GNUNET_break (MHD_YES ==
@@ -2910,22 +2843,48 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
   enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   json_t *recoup;
-  struct SignKeyCtx sctx;
+  struct SignKeyCtx sctx = {
+    .min_sk_frequency = GNUNET_TIME_UNIT_FOREVER_REL
+  };
   json_t *grouped_denominations = NULL;
   struct GNUNET_TIME_Timestamp last_cherry_pick_date;
   struct GNUNET_CONTAINER_Heap *heap;
   struct SignatureContext sig_ctx = { 0 };
   /* Remember if we have any denomination with age restriction */
   bool has_age_restricted_denomination = false;
+  struct WireStateHandle *wsh;
 
+  wsh = get_wire_state ();
+  if (! wsh->ready)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 ==
+      json_array_size (json_object_get (wsh->json_reply,
+                                        "accounts")) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No wire accounts available. Refusing to generate /keys response.\n");
+    return GNUNET_NO;
+  }
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
-  sctx.min_sk_frequency = GNUNET_TIME_UNIT_FOREVER_REL;
+  recoup = json_array ();
+  GNUNET_assert (NULL != recoup);
+  grouped_denominations = json_array ();
+  GNUNET_assert (NULL != grouped_denominations);
+
   GNUNET_CONTAINER_multipeermap_iterate (ksh->signkey_map,
                                          &add_sign_key_cb,
                                          &sctx);
-  recoup = json_array ();
-  GNUNET_assert (NULL != recoup);
+  if (0 == json_array_size (sctx.signkeys))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No online signing keys available. Refusing to generate /keys response.\n");
+    ret = GNUNET_NO;
+    goto CLEANUP;
+  }
   heap = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MAX);
   {
     struct DenomKeyCtx dkc = {
@@ -2941,9 +2900,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       = GNUNET_TIME_relative_min (dkc.min_dk_frequency,
                                   sctx.min_sk_frequency);
   }
-
-  grouped_denominations = json_array ();
-  GNUNET_assert (NULL != grouped_denominations);
 
   last_cherry_pick_date = GNUNET_TIME_UNIT_ZERO_TS;
 
@@ -3147,8 +3103,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                            NULL);
     GNUNET_CONTAINER_multihashmap_destroy (denominations_by_group);
   }
-
   GNUNET_CONTAINER_heap_destroy (heap);
+
   if (! GNUNET_TIME_absolute_is_zero (last_cherry_pick_date.abs_time))
   {
     struct GNUNET_HashCode hc;
@@ -3197,7 +3153,8 @@ CLEANUP:
                      sig_ctx.elements_size,
                      0);
   json_decref (grouped_denominations);
-  json_decref (sctx.signkeys);
+  if (NULL != sctx.signkeys)
+    json_decref (sctx.signkeys);
   json_decref (recoup);
   return ret;
 }
@@ -3395,7 +3352,7 @@ build_key_state (struct HelperState *hs,
       finish_keys_response (ksh))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Could not finish /keys response (likely no signing keys available yet)\n");
+                "Could not finish /keys response (required data not configured yet)\n");
     destroy_key_state (ksh,
                        true);
     return NULL;
