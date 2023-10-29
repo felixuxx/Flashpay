@@ -482,6 +482,9 @@ extract_denom_pub (void *cls,
       return GNUNET_SYSERR;
     }
     pk->bsign_pub_key = bpk;
+    GNUNET_CRYPTO_hash (res,
+                        len,
+                        &bpk->pub_key_hash);
     return GNUNET_OK;
   case GNUNET_CRYPTO_BSA_CS:
     if (sizeof (bpk->details.cs_public_key) != len)
@@ -494,6 +497,9 @@ extract_denom_pub (void *cls,
                    res,
                    len);
     pk->bsign_pub_key = bpk;
+    GNUNET_CRYPTO_hash (res,
+                        len,
+                        &bpk->pub_key_hash);
     return GNUNET_OK;
   }
   GNUNET_break (0);
