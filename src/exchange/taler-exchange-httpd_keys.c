@@ -4179,6 +4179,11 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   pid.public_key = exchange_pub->eddsa_pub;
   hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers->esign_keys,
                                            &pid);
+  if (NULL == hsk)
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
   meta->start = hsk->start_time;
 
   meta->expire_sign = GNUNET_TIME_absolute_to_timestamp (
