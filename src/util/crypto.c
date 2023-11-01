@@ -324,10 +324,14 @@ TALER_planchet_to_coin (
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin)
 {
-  if ( (dk->bsign_pub_key->cipher !=
-        blind_sig->blinded_sig->cipher) ||
-       (dk->bsign_pub_key->cipher !=
-        alg_values->blinding_inputs->cipher) )
+  if (dk->bsign_pub_key->cipher !=
+      blind_sig->blinded_sig->cipher)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (dk->bsign_pub_key->cipher !=
+      alg_values->blinding_inputs->cipher)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
