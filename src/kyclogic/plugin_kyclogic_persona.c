@@ -1022,6 +1022,12 @@ start_conversion (const struct TALER_KYCLOGIC_ProviderDetails *pd,
                   TALER_JSON_JsonCallback cb,
                   void *cb_cls)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Calling converter `%s' with JSON\n",
+              pd->conversion_binary);
+  json_dumpf (attr,
+              stderr,
+              JSON_INDENT (2));
   return TALER_JSON_external_conversion_start (
     attr,
     cb,
