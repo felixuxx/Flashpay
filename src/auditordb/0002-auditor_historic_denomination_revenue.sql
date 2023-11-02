@@ -14,6 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
+SET search_path TO auditor;
 CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue
   (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,revenue_timestamp INT8 NOT NULL

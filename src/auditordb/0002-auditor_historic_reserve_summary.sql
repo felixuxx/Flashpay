@@ -14,6 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
+SET search_path TO auditor;
 CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary
   (start_date INT8 PRIMARY KEY
   ,end_date INT8 NOT NULL
