@@ -336,6 +336,21 @@ oauth2_load_configuration (void *cls,
     oauth2_unload_configuration (pd);
     return NULL;
   }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_CLIENT_ID",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_CLIENT_ID");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  pd->client_id = s;
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
@@ -414,9 +429,10 @@ oauth2_load_configuration (void *cls,
     pd->authorize_url = GNUNET_strndup (s,
                                         extra - s);
     GNUNET_asprintf (&pd->setup_url,
-                     "%.*s/setup",
+                     "%.*s/setup/s",
                      (int) (slash - s),
-                     s);
+                     s,
+                     pd->client_id);
     GNUNET_free (s);
   }
   else
@@ -453,20 +469,6 @@ oauth2_load_configuration (void *cls,
     return NULL;
   }
   pd->info_url = s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
-                                             provider_section_name,
-                                             "KYC_OAUTH2_CLIENT_ID",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               provider_section_name,
-                               "KYC_OAUTH2_CLIENT_ID");
-    oauth2_unload_configuration (pd);
-    return NULL;
-  }
-  pd->client_id = s;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
