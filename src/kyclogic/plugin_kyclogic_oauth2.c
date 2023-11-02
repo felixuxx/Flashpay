@@ -429,7 +429,7 @@ oauth2_load_configuration (void *cls,
     pd->authorize_url = GNUNET_strndup (s,
                                         extra - s);
     GNUNET_asprintf (&pd->setup_url,
-                     "%.*s/setup/s",
+                     "%.*s/setup/%s",
                      (int) (slash - s),
                      s,
                      pd->client_id);
