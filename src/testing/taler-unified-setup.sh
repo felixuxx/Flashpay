@@ -238,6 +238,7 @@ register_bank_account() {
     MAYBE_IBAN="${4:-}"
     if test -n "$MAYBE_IBAN";
     then
+        # shellcheck disable=SC2001
         ENAME=$(echo "$3" | sed -e "s/ /+/g")
         # Note: this assumes that $3 has no spaces. Should probably escape in the future..
         PAYTO="payto://iban/SANDBOXX/${MAYBE_IBAN}?receiver-name=$ENAME"
@@ -526,6 +527,13 @@ then
             then
                 echo -n "Enabling Challenger client for $SECTION"
                 CLIENT_SECRET=$(taler-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_CLIENT_SECRET")
+                RFC_8959_PREFIX="secret-token:"
+                if ! echo "${CLIENT_SECRET}" | grep ^${RFC_8959_PREFIX} > /dev/null
+                then
+                    exit_fail "Client secret does not begin with ${RFC_8959_PREFIX}"
+                fi
+                # shellcheck disable=SC2001
+                CLIENT_SECRET=$(echo "${CLIENT_SECRET}" | sed -e "s/^${RFC_8959_PREFIX}//")
                 REDIRECT_URI="${EXCHANGE_URL}kyc-proof/kyc-provider-example-challeger"
                 CLIENT_ID=$(challenger-admin --add="${CLIENT_SECRET}" --quiet "${REDIRECT_URI}")
                 taler-config -c "$CONF" -s "$SECTION" -o KYC_OAUTH2_CLIENT_ID -V "$CLIENT_ID"
