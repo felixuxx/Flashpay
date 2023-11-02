@@ -516,6 +516,23 @@ then
     challenger-dbinit -c "$CONF" --reset
     $USE_VALGRIND challenger-httpd -c "$CONF" -L "$LOGLEVEL" 2> challenger-httpd.log &
     echo " DONE"
+    for SECTION in $(taler-config -c "$CONF" -S | grep kyc-provider)
+    do
+        LOGIC=$(taler-config -c "$CONF" -s "$SECTION" -o "LOGIC")
+        if [ "${LOGIC}" = "oauth2" ]
+        then
+            INFO=$(taler-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_INFO_URL")
+            if [ "${CHALLENGER_URL}info" = "$INFO" ]
+            then
+                echo -n "Enabling Challenger client for $SECTION"
+                CLIENT_SECRET=$(taler-config -c "$CONF" -s "$SECTION" -o "CLIENT_SECRET")
+                REDIRECT_URI="${EXCHANGE_URL}kyc-proof/kyc-provider-example-challeger"
+                CLIENT_ID=$(challenger-admin --add="${CLIENT_SECRET}" "${REDIRECT_URI}")
+                taler-config -c "$CONF" -s "$SECTION" -o KYC_OAUTH2_CLIENT_ID -V "$CLIENT_ID"
+                echo " DONE"
+            fi
+        fi
+    done
 fi
 
 
