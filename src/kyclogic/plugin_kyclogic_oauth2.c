@@ -630,7 +630,7 @@ handle_curl_setup_finished (void *cls,
       }
       GNUNET_asprintf (&url,
                        "%s/%s",
-                       pd->setup_url,
+                       pd->authorize_url,
                        nonce);
       initiate_with_url (ih,
                          url);
