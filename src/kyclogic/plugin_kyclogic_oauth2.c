@@ -695,6 +695,22 @@ initiate_task (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    pd->setup_url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_POST,
+                                   1));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_POSTFIELDS,
+                                   ""));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_FOLLOWLOCATION,
+                                   1L));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_MAXREDIRS,
+                                   5L));
   GNUNET_asprintf (&hdr,
                    "%s: Bearer %s",
                    MHD_HTTP_HEADER_AUTHORIZATION,
