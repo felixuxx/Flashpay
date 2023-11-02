@@ -530,7 +530,7 @@ then
                 RFC_8959_PREFIX="secret-token:"
                 if ! echo "${CLIENT_SECRET}" | grep ^${RFC_8959_PREFIX} > /dev/null
                 then
-                    exit_fail "Client secret does not begin with ${RFC_8959_PREFIX}"
+                    exit_fail "Client secret does not begin with '${RFC_8959_PREFIX}'"
                 fi
                 # shellcheck disable=SC2001
                 CLIENT_SECRET=$(echo "${CLIENT_SECRET}" | sed -e "s/^${RFC_8959_PREFIX}//")
