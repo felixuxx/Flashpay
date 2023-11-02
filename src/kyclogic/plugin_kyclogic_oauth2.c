@@ -549,18 +549,18 @@ initiate_with_url (struct TALER_KYCLOGIC_InitiateHandle *ih,
       char *redirect_uri;
 
       GNUNET_asprintf (&redirect_uri,
-                       "%skyc-proof/%s?state=%s",
+                       "%skyc-proof/%s",
                        ps->exchange_base_url,
-                       pd->section,
-                       hps);
+                       pd->section);
       redirect_uri_encoded = TALER_urlencode (redirect_uri);
       GNUNET_free (redirect_uri);
     }
     GNUNET_asprintf (&url,
-                     "%s?response_type=code&client_id=%s&redirect_uri=%s",
+                     "%s?response_type=code&client_id=%s&redirect_uri=%s&state=%s",
                      authorize_url,
                      pd->client_id,
-                     redirect_uri_encoded);
+                     redirect_uri_encoded,
+                     hps);
     GNUNET_free (redirect_uri_encoded);
   }
   ih->cb (ih->cb_cls,
@@ -1339,10 +1339,9 @@ oauth2_proof (void *cls,
       char *redirect_uri;
 
       GNUNET_asprintf (&redirect_uri,
-                       "%skyc-proof/%s?state=%s",
+                       "%skyc-proof/%s",
                        ps->exchange_base_url,
-                       pd->section,
-                       hps);
+                       pd->section);
       redirect_uri_encoded = TALER_urlencode (redirect_uri);
       GNUNET_free (redirect_uri);
     }
@@ -1360,9 +1359,10 @@ oauth2_proof (void *cls,
                                            0);
     GNUNET_assert (NULL != authorization_code);
     GNUNET_asprintf (&ph->post_body,
-                     "client_id=%s&redirect_uri=%s&client_secret=%s&code=%s&grant_type=authorization_code",
+                     "client_id=%s&redirect_uri=%s&state=%s&client_secret=%s&code=%s&grant_type=authorization_code",
                      client_id,
                      redirect_uri_encoded,
+                     hps,
                      client_secret,
                      authorization_code);
     curl_free (authorization_code);
