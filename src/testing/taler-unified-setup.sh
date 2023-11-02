@@ -532,8 +532,6 @@ then
                 then
                     exit_fail "Client secret does not begin with '${RFC_8959_PREFIX}'"
                 fi
-                # shellcheck disable=SC2001
-                CLIENT_SECRET=$(echo "${CLIENT_SECRET}" | sed -e "s/^${RFC_8959_PREFIX}//")
                 REDIRECT_URI="${EXCHANGE_URL}kyc-proof/kyc-provider-example-challeger"
                 CLIENT_ID=$(challenger-admin --add="${CLIENT_SECRET}" --quiet "${REDIRECT_URI}")
                 taler-config -c "$CONF" -s "$SECTION" -o KYC_OAUTH2_CLIENT_ID -V "$CLIENT_ID"
