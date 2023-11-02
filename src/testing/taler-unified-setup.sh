@@ -490,7 +490,13 @@ if [ "1" = "$START_BACKUP" ]
 then
     echo -n "Starting sync ..."
     SYNC_PORT=$(taler-config -c "$CONF" -s SYNC -o PORT)
-    SYNC_URL="http://localhost:${SYNC_PORT}/"
+    SERVE=$(taler-config -c "$CONF" -s SYNC -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        SYNC_URL=$(taler-config -c "$CONF" -s SYNC -o BASE_URL)
+    else
+        SYNC_URL="http://localhost:${SYNC_PORT}/"
+    fi
     sync-dbinit -c "$CONF" --reset
     $USE_VALGRIND sync-httpd -c "$CONF" -L "$LOGLEVEL" 2> sync-httpd.log &
     echo " DONE"
@@ -500,7 +506,13 @@ if [ "1" = "$START_CHALLENGER" ]
 then
     echo -n "Starting challenger ..."
     CHALLENGER_PORT=$(challenger-config -c "$CONF" -s CHALLENGER -o PORT)
-    CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
+    SERVE=$(taler-config -c "$CONF" -s CHALLENGER -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        CHALLENGER_URL=$(taler-config -c "$CHALLENGER" -s SYNC -o BASE_URL)
+    else
+        CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
+    fi
     challenger-dbinit -c "$CONF" --reset
     $USE_VALGRIND challenger-httpd -c "$CONF" -L "$LOGLEVEL" 2> challenger-httpd.log &
     echo " DONE"
@@ -533,6 +545,7 @@ echo -n "Waiting for Taler services ..."
 E_DONE=0
 M_DONE=0
 S_DONE=0
+K_DONE=0
 A_DONE=0
 for n in $(seq 1 20)
 do
@@ -571,16 +584,16 @@ do
             -O /dev/null >/dev/null || continue
         S_DONE=1
     fi
-    if [ "0" = "$S_DONE" ] && [ "1" = "$START_CHALLENGER" ]
+    if [ "0" = "$K_DONE" ] && [ "1" = "$START_CHALLENGER" ]
     then
-        echo -n "S"
+        echo -n "K"
         wget \
             --tries=1 \
             --timeout=1 \
             "${CHALLENGER_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
-        S_DONE=1
+        K_DONE=1
     fi
     if [ "0" = "$A_DONE" ] && [ "1" = "$START_AUDITOR" ]
     then
