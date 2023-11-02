@@ -509,7 +509,7 @@ then
     SERVE=$(taler-config -c "$CONF" -s CHALLENGER -o SERVE)
     if [ "${SERVE}" = "unix" ]
     then
-        CHALLENGER_URL=$(taler-config -c "$CHALLENGER" -s SYNC -o BASE_URL)
+        CHALLENGER_URL=$(taler-config -c "$CONF" -s CHALLENGER -o BASE_URL)
     else
         CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
     fi
