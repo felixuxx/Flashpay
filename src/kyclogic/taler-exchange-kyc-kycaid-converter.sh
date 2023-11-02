@@ -78,7 +78,6 @@ then
 else
   # Combine into final result for business.
   echo "$J" | jq \
-    --arg full_name "${FULLNAME}" \
     $DOCS_RAW \
     "{\"company_name\":.company_name,\"phone\":.phone,\"email\":.email,\"registration_country\":.registration_country,\"documents\":[${DOCS_JSON}]}"
 fi
