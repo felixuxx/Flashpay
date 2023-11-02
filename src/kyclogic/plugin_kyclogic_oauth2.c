@@ -968,6 +968,9 @@ static void
 parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
                            const json_t *j)
 {
+  // FIXME: this is not OAuth2.0, this is
+  // already implementation-specific!
+  // => move into helper shell script!
   const char *state;
   const json_t *data;
   struct GNUNET_JSON_Specification spec[] = {
