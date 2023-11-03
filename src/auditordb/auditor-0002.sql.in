@@ -45,6 +45,6 @@ END $$;
 #include "0002-auditor_progress.sql"
 #include "0002-auditor_purses.sql"
 #include "0002-auditor_reserves.sql"
-#include "0002-deposit_confirmations.sql"
+#include "0002-auditor_deposit_confirmations.sql"
 
 COMMIT;
