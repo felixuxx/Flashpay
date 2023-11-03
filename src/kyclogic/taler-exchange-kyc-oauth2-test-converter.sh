@@ -11,13 +11,19 @@ set -eu
 
 
 # First, extract everything from stdin.
-J=$(jq '{"first":.first_name,"last".last_name"}')
+J=$(jq '{"id":.data.id,"first":.data.first_name,"last":.data.last_name,"birthdate":.data.birthdate,"status":.status}')
 
 # Next, combine some fields into larger values.
+STATUS=$(echo "$J" | jq -r '.status')
+if [ "$STATUS" != "success" ]
+then
+  return 1
+fi
+
 FULLNAME=$(echo "$J" | jq -r '[.first,.last]|join(" ")')
 
-jq \
+echo $J | jq \
    --arg full_name "${FULLNAME}" \
-  '{$full_name}'
+  '{$full_name,"birthdate":.birthdate,"id":.id}'
 
 exit 0
