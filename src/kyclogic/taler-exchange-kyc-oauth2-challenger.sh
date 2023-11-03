@@ -22,6 +22,6 @@ fi
 echo "$J" \
   | jq \
    --arg id "${ROWID}" \
-  '{$id,"email":.email,"expires",.expires}'
+  '{$id,"email":.email,"expires":.expires}'
 
 exit 0
