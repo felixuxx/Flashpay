@@ -113,10 +113,10 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *post_kyc_redirect_url;
 
   /**
-   * Template for converting user-data returned by
-   * the provider into our KYC attribute data.
+   * Name of the program we use to convert outputs
+   * from Persona into our JSON inputs.
    */
-  char *attribute_template;
+  char *conversion_binary;
 
   /**
    * Validity time for a successful KYC process.
@@ -186,6 +186,12 @@ struct TALER_KYCLOGIC_ProofHandle
    * HTTP connection we are processing.
    */
   struct MHD_Connection *connection;
+
+  /**
+   * Handle to an external process that converts the
+   * Persona response to our internal format.
+   */
+  struct TALER_JSON_ExternalConversion *ec;
 
   /**
    * Hash of the payto URI that this is about.
@@ -301,7 +307,7 @@ oauth2_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
   GNUNET_free (pd->client_id);
   GNUNET_free (pd->client_secret);
   GNUNET_free (pd->post_kyc_redirect_url);
-  GNUNET_free (pd->attribute_template);
+  GNUNET_free (pd->conversion_binary);
   GNUNET_free (pd);
 }
 
@@ -501,16 +507,14 @@ oauth2_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_OAUTH2_ATTRIBUTE_TEMPLATE",
-                                             &s))
+                                             "KYC_OAUTH2_CONVERTER_HELPER",
+                                             &pd->conversion_binary))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_OAUTH2_ATTRIBUTE_TEMPLATE");
-  }
-  else
-  {
-    pd->attribute_template = s;
+                               "KYC_OAUTH2_CONVERTER_HELPER");
+    oauth2_unload_configuration (pd);
+    return NULL;
   }
 
   return pd;
@@ -791,6 +795,11 @@ oauth2_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 static void
 oauth2_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 {
+  if (NULL != ph->ec)
+  {
+    TALER_JSON_external_conversion_stop (ph->ec);
+    ph->ec = NULL;
+  }
   if (NULL != ph->task)
   {
     GNUNET_SCHEDULER_cancel (ph->task);
@@ -907,53 +916,84 @@ handle_proof_error (struct TALER_KYCLOGIC_ProofHandle *ph,
 
 
 /**
- * Convert user data returned by the provider into
- * standardized attribute data.
+ * Type of a callback that receives a JSON @a result.
  *
- * @param pd our provider configuration
- * @param data user-data given by the provider
- * @return converted KYC attribute data object
+ * @param cls closure with a `struct TALER_KYCLOGIC_ProofHandle *`
+ * @param status_type how did the process die
+ * @param code termination status code from the process
+ * @param attr result some JSON result, NULL if we failed to get an JSON output
  */
-static json_t *
-data2attributes (const struct TALER_KYCLOGIC_ProviderDetails *pd,
-                 const json_t *data)
+static void
+converted_proof_cb (void *cls,
+                    enum GNUNET_OS_ProcessStatusType status_type,
+                    unsigned long code,
+                    const json_t *attr)
 {
-  json_t *ret;
-  void *attr_data;
-  size_t attr_size;
-  int rv;
-  json_error_t err;
+  struct TALER_KYCLOGIC_ProofHandle *ph = cls;
 
-  if (NULL == pd->attribute_template)
-    return json_object ();
-  if (0 !=
-      (rv = TALER_TEMPLATING_fill (pd->attribute_template,
-                                   data,
-                                   &attr_data,
-                                   &attr_size)))
+  ph->ec = NULL;
+  if ( (NULL == attr) ||
+       (0 != code) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to convert KYC provider data to attributes: %d\n",
-                rv);
-    json_dumpf (data,
-                stderr,
-                JSON_INDENT (2));
-    return NULL;
+    GNUNET_break_op (0);
+    ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
+    ph->response
+      = TALER_MHD_make_error (
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+          "Unexpected response from KYC gateway: proof success must contain data and status");
+    ph->http_status
+      = MHD_HTTP_BAD_GATEWAY;
+    ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
+                                         ph);
+    return;
   }
-  ret = json_loadb (attr_data,
-                    attr_size,
-                    JSON_REJECT_DUPLICATES,
-                    &err);
-  GNUNET_free (attr_data);
-  if (NULL == ret)
+
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse converted KYC attributes as JSON: %s (at offset %d)\n",
-                err.text,
-                err.position);
-    return NULL;
+    const char *id;
+    struct GNUNET_JSON_Specification ispec[] = {
+      GNUNET_JSON_spec_string ("id",
+                               &id),
+      GNUNET_JSON_spec_end ()
+    };
+    enum GNUNET_GenericReturnValue res;
+    const char *emsg;
+    unsigned int line;
+
+    res = GNUNET_JSON_parse (attr,
+                             ispec,
+                             &emsg,
+                             &line);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break_op (0);
+      json_dumpf (attr,
+                  stderr,
+                  JSON_INDENT (2));
+      ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
+      ph->response
+        = TALER_MHD_make_error (
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            "Unexpected response from KYC gateway: data must contain id");
+      ph->http_status
+        = MHD_HTTP_BAD_GATEWAY;
+      return;
+    }
+    ph->provider_user_id = GNUNET_strdup (id);
   }
-  return ret;
+  ph->status = TALER_KYCLOGIC_STATUS_SUCCESS;
+  ph->response = MHD_create_response_from_buffer (0,
+                                                  "",
+                                                  MHD_RESPMEM_PERSISTENT);
+  GNUNET_assert (NULL != ph->response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (
+                  ph->response,
+                  MHD_HTTP_HEADER_LOCATION,
+                  ph->pd->post_kyc_redirect_url));
+  ph->http_status = MHD_HTTP_SEE_OTHER;
+  ph->attributes = json_incref ((json_t *) attr);
+  ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
+                                       ph);
 }
 
 
@@ -968,91 +1008,21 @@ static void
 parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
                            const json_t *j)
 {
-  // FIXME: this is not OAuth2.0, this is
-  // already implementation-specific!
-  // => move into helper shell script!
-  const char *state;
-  const json_t *data;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("status",
-                             &state),
-    GNUNET_JSON_spec_object_const ("data",
-                                   &data),
-    GNUNET_JSON_spec_end ()
-  };
-  enum GNUNET_GenericReturnValue res;
-  const char *emsg;
-  unsigned int line;
+  const struct TALER_KYCLOGIC_ProviderDetails *pd = ph->pd;
 
-  res = GNUNET_JSON_parse (j,
-                           spec,
-                           &emsg,
-                           &line);
-  if (GNUNET_OK != res)
-  {
-    GNUNET_break_op (0);
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-    ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-    ph->response
-      = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "Unexpected response from KYC gateway: proof success must contain data and status");
-    ph->http_status
-      = MHD_HTTP_BAD_GATEWAY;
-    return;
-  }
-  if (0 != strcasecmp (state,
-                       "success"))
-  {
-    GNUNET_break_op (0);
-    handle_proof_error (ph,
-                        j);
-    return;
-  }
-  {
-    const char *id;
-    struct GNUNET_JSON_Specification ispec[] = {
-      GNUNET_JSON_spec_string ("id",
-                               &id),
-      GNUNET_JSON_spec_end ()
-    };
-
-    res = GNUNET_JSON_parse (data,
-                             ispec,
-                             &emsg,
-                             &line);
-    if (GNUNET_OK != res)
-    {
-      GNUNET_break_op (0);
-      json_dumpf (data,
-                  stderr,
-                  JSON_INDENT (2));
-      ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-      ph->response
-        = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway: data must contain id");
-      ph->http_status
-        = MHD_HTTP_BAD_GATEWAY;
-      return;
-    }
-    ph->status = TALER_KYCLOGIC_STATUS_SUCCESS;
-    ph->response = MHD_create_response_from_buffer (0,
-                                                    "",
-                                                    MHD_RESPMEM_PERSISTENT);
-    GNUNET_assert (NULL != ph->response);
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (
-                    ph->response,
-                    MHD_HTTP_HEADER_LOCATION,
-                    ph->pd->post_kyc_redirect_url));
-    ph->http_status = MHD_HTTP_SEE_OTHER;
-    ph->provider_user_id = GNUNET_strdup (id);
-  }
-  ph->attributes = data2attributes (ph->pd,
-                                    data);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Calling converter `%s' with JSON\n",
+              pd->conversion_binary);
+  json_dumpf (j,
+              stderr,
+              JSON_INDENT (2));
+  ph->ec = TALER_JSON_external_conversion_start (
+    j,
+    &converted_proof_cb,
+    ph,
+    pd->conversion_binary,
+    pd->conversion_binary,
+    NULL);
 }
 
 
@@ -1079,7 +1049,7 @@ handle_curl_proof_finished (void *cls,
   case MHD_HTTP_OK:
     parse_proof_success_reply (ph,
                                j);
-    break;
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "OAuth2.0 info URL returned HTTP status %u\n",

@@ -16,7 +16,10 @@ pkgcfg_DATA = \
 
 bin_SCRIPTS = \
   taler-exchange-kyc-kycaid-converter.sh \
-  taler-exchange-kyc-persona-converter.sh
+  taler-exchange-kyc-persona-converter.sh \
+  taler-exchange-kyc-oauth2-test-converter.sh \
+  taler-exchange-kyc-oauth2-challenger.sh \
+  taler-exchange-kyc-oauth2-nda.sh 
 
 EXTRA_DIST = \
   $(pkgcfg_DATA) \
