@@ -105,6 +105,7 @@ csr_ok (struct TALER_EXCHANGE_CsRWithdrawHandle *csrh,
   }
   csrh->cb (csrh->cb_cls,
             &csrr);
+  TALER_denom_ewv_free (&csrr.details.ok.alg_values);
   return GNUNET_OK;
 }
 
@@ -203,13 +204,14 @@ TALER_EXCHANGE_csr_withdraw (
   struct GNUNET_CURL_Context *curl_ctx,
   const char *exchange_url,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
-  const struct TALER_CsNonce *nonce,
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce,
   TALER_EXCHANGE_CsRWithdrawCallback res_cb,
   void *res_cb_cls)
 {
   struct TALER_EXCHANGE_CsRWithdrawHandle *csrh;
 
-  if (TALER_DENOMINATION_CS != pk->key.cipher)
+  if (GNUNET_CRYPTO_BSA_CS !=
+      pk->key.bsign_pub_key->cipher)
   {
     GNUNET_break (0);
     return NULL;
@@ -233,10 +235,10 @@ TALER_EXCHANGE_csr_withdraw (
     req = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_data_varsize ("nonce",
                                      nonce,
-                                     sizeof(struct TALER_CsNonce)),
+                                     sizeof(*nonce)),
       GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
                                      &pk->h_key,
-                                     sizeof(struct TALER_DenominationHashP)));
+                                     sizeof(pk->h_key)));
     GNUNET_assert (NULL != req);
     eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);
     if ( (NULL == eh) ||
@@ -265,8 +267,8 @@ TALER_EXCHANGE_csr_withdraw (
 
 
 void
-TALER_EXCHANGE_csr_withdraw_cancel (struct
-                                    TALER_EXCHANGE_CsRWithdrawHandle *csrh)
+TALER_EXCHANGE_csr_withdraw_cancel (
+  struct TALER_EXCHANGE_CsRWithdrawHandle *csrh)
 {
   if (NULL != csrh->job)
   {

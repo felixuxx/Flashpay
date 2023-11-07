@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020, 2021 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -47,6 +47,16 @@ struct DenomSig
    */
   struct TALER_MasterSignatureP master_sig;
 
+  /**
+   * Fee structure for this key, as per our configuration.
+   */
+  struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
+
+  /**
+   * The full public key.
+   */
+  struct TALER_DenominationPublicKey denom_pub;
+
 };
 
 
@@ -64,6 +74,11 @@ struct SigningSig
    * Master signature for the @e exchange_pub.
    */
   struct TALER_MasterSignatureP master_sig;
+
+  /**
+   * Our meta data on this key.
+   */
+  struct TALER_EXCHANGEDB_SignkeyMetaData meta;
 
 };
 
@@ -128,14 +143,9 @@ add_keys (void *cls,
   {
     struct DenomSig *d = &akc->d_sigs[i];
     enum GNUNET_DB_QueryStatus qs;
-    bool is_active = false;
     struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
-    struct TALER_DenominationPublicKey denom_pub;
 
     /* For idempotency, check if the key is already active */
-    memset (&denom_pub,
-            0,
-            sizeof (denom_pub));
     qs = TEH_plugin->lookup_denomination_key (
       TEH_plugin->cls,
       &d->h_denom_pub,
@@ -151,66 +161,9 @@ add_keys (void *cls,
                                              "lookup denomination key");
       return qs;
     }
-    if (0 == qs)
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     {
-      enum GNUNET_GenericReturnValue rv;
-
-      rv = TEH_keys_load_fees (akc->ksh,
-                               &d->h_denom_pub,
-                               &denom_pub,
-                               &meta);
-      switch (rv)
-      {
-      case GNUNET_SYSERR:
-        *mhd_ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_INTERNAL_SERVER_ERROR,
-          TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-          GNUNET_h2s (&d->h_denom_pub.hash));
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      case GNUNET_NO:
-        *mhd_ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_NOT_FOUND,
-          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-          GNUNET_h2s (&d->h_denom_pub.hash));
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      case GNUNET_OK:
-        break;
-      }
-    }
-    else
-    {
-      is_active = true;
-    }
-
-    /* check signature is valid */
-    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-    if (GNUNET_OK !=
-        TALER_exchange_offline_denom_validity_verify (
-          &d->h_denom_pub,
-          meta.start,
-          meta.expire_withdraw,
-          meta.expire_deposit,
-          meta.expire_legal,
-          &meta.value,
-          &meta.fees,
-          &TEH_master_public_key,
-          &d->master_sig))
-    {
-      GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
-        GNUNET_h2s (&d->h_denom_pub.hash));
-      if (! is_active)
-        TALER_denom_pub_free (&denom_pub);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-
-    if (is_active)
-    {
+      /* FIXME: assert meta === d->meta might be good */
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Denomination key %s already active, skipping\n",
                   GNUNET_h2s (&d->h_denom_pub.hash));
@@ -220,10 +173,9 @@ add_keys (void *cls,
     qs = TEH_plugin->add_denomination_key (
       TEH_plugin->cls,
       &d->h_denom_pub,
-      &denom_pub,
-      &meta,
+      &d->denom_pub,
+      &d->meta,
       &d->master_sig);
-    TALER_denom_pub_free (&denom_pub);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -245,7 +197,6 @@ add_keys (void *cls,
   {
     struct SigningSig *s = &akc->s_sigs[i];
     enum GNUNET_DB_QueryStatus qs;
-    bool is_active = false;
     struct TALER_EXCHANGEDB_SignkeyMetaData meta;
 
     qs = TEH_plugin->lookup_signing_key (
@@ -263,47 +214,9 @@ add_keys (void *cls,
                                              "lookup signing key");
       return qs;
     }
-    if (0 == qs)
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     {
-      if (GNUNET_OK !=
-          TEH_keys_get_timing (&s->exchange_pub,
-                               &meta))
-      {
-        /* For idempotency, check if the key is already active */
-        *mhd_ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_NOT_FOUND,
-          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_UNKNOWN,
-          TALER_B2S (&s->exchange_pub));
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      }
-    }
-    else
-    {
-      is_active = true; /* if we pass, it's active! */
-    }
-
-    /* check signature is valid */
-    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-    if (GNUNET_OK !=
-        TALER_exchange_offline_signkey_validity_verify (
-          &s->exchange_pub,
-          meta.start,
-          meta.expire_sign,
-          meta.expire_legal,
-          &TEH_master_public_key,
-          &s->master_sig))
-    {
-      GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
-        TALER_B2S (&s->exchange_pub));
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if (is_active)
-    {
+      /* FIXME: assert meta === d->meta might be good */
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Signing key %s already active, skipping\n",
                   TALER_B2S (&s->exchange_pub));
@@ -312,7 +225,7 @@ add_keys (void *cls,
     qs = TEH_plugin->activate_signing_key (
       TEH_plugin->cls,
       &s->exchange_pub,
-      &meta,
+      &s->meta,
       &s->master_sig);
     if (qs < 0)
     {
@@ -334,6 +247,25 @@ add_keys (void *cls,
 }
 
 
+/**
+ * Clean up state in @a akc, but do not free @a akc itself
+ *
+ * @param[in,out] akc state to clean up
+ */
+static void
+cleanup_akc (struct AddKeysContext *akc)
+{
+  for (unsigned int i = 0; i<akc->nd_sigs; i++)
+  {
+    struct DenomSig *d = &akc->d_sigs[i];
+
+    TALER_denom_pub_free (&d->denom_pub);
+  }
+  GNUNET_free (akc->d_sigs);
+  GNUNET_free (akc->s_sigs);
+}
+
+
 MHD_RESULT
 TEH_handler_management_post_keys (
   struct MHD_Connection *connection,
@@ -349,7 +281,6 @@ TEH_handler_management_post_keys (
                                   &signkey_sigs),
     GNUNET_JSON_spec_end ()
   };
-  bool ok;
   MHD_RESULT ret;
 
   {
@@ -364,7 +295,8 @@ TEH_handler_management_post_keys (
       return MHD_YES; /* failure */
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received /management/keys\n");
+              "Received POST /management/keys request\n");
+
   akc.ksh = TEH_keys_get_state_for_management_only (); /* may start its own transaction, thus must be done here, before we run ours! */
   if (NULL == akc.ksh)
   {
@@ -375,10 +307,10 @@ TEH_handler_management_post_keys (
       TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
       "no key state (not even for management)");
   }
+
   akc.nd_sigs = json_array_size (denom_sigs);
   akc.d_sigs = GNUNET_new_array (akc.nd_sigs,
                                  struct DenomSig);
-  ok = true;
   for (unsigned int i = 0; i<akc.nd_sigs; i++)
   {
     struct DenomSig *d = &akc.d_sigs[i];
@@ -395,26 +327,64 @@ TEH_handler_management_post_keys (
                                      json_array_get (denom_sigs,
                                                      i),
                                      ispec);
-    if (GNUNET_SYSERR == res)
+    if (GNUNET_OK != res)
     {
-      ret = MHD_NO; /* hard failure */
-      ok = false;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failure to handle /management/keys\n");
+      cleanup_akc (&akc);
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    }
+
+    res = TEH_keys_load_fees (akc.ksh,
+                              &d->h_denom_pub,
+                              &d->denom_pub,
+                              &d->meta);
+    switch (res)
+    {
+    case GNUNET_SYSERR:
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+        GNUNET_h2s (&d->h_denom_pub.hash));
+      cleanup_akc (&akc);
+      return ret;
+    case GNUNET_NO:
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+        GNUNET_h2s (&d->h_denom_pub.hash));
+      cleanup_akc (&akc);
+      return ret;
+    case GNUNET_OK:
       break;
     }
-    if (GNUNET_NO == res)
+    /* check signature is valid */
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+    if (GNUNET_OK !=
+        TALER_exchange_offline_denom_validity_verify (
+          &d->h_denom_pub,
+          d->meta.start,
+          d->meta.expire_withdraw,
+          d->meta.expire_deposit,
+          d->meta.expire_legal,
+          &d->meta.value,
+          &d->meta.fees,
+          &TEH_master_public_key,
+          &d->master_sig))
     {
-      ret = MHD_YES;
-      ok = false;
-      break;
+      GNUNET_break_op (0);
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
+        GNUNET_h2s (&d->h_denom_pub.hash));
+      cleanup_akc (&akc);
+      return ret;
     }
   }
-  if (! ok)
-  {
-    GNUNET_free (akc.d_sigs);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failure to handle /management/keys\n");
-    return ret;
-  }
+
   akc.ns_sigs = json_array_size (signkey_sigs);
   akc.s_sigs = GNUNET_new_array (akc.ns_sigs,
                                  struct SigningSig);
@@ -434,26 +404,58 @@ TEH_handler_management_post_keys (
                                      json_array_get (signkey_sigs,
                                                      i),
                                      ispec);
-    if (GNUNET_SYSERR == res)
+    if (GNUNET_OK != res)
     {
-      ret = MHD_NO; /* hard failure */
-      ok = false;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failure to handle /management/keys\n");
+      cleanup_akc (&akc);
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    }
+    res = TEH_keys_get_timing (&s->exchange_pub,
+                               &s->meta);
+    switch (res)
+    {
+    case GNUNET_SYSERR:
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+        TALER_B2S (&s->exchange_pub));
+      cleanup_akc (&akc);
+      return ret;
+    case GNUNET_NO:
+      /* For idempotency, check if the key is already active */
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_UNKNOWN,
+        TALER_B2S (&s->exchange_pub));
+      cleanup_akc (&akc);
+      return ret;
+    case GNUNET_OK:
       break;
     }
-    if (GNUNET_NO == res)
+
+    /* check signature is valid */
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+    if (GNUNET_OK !=
+        TALER_exchange_offline_signkey_validity_verify (
+          &s->exchange_pub,
+          s->meta.start,
+          s->meta.expire_sign,
+          s->meta.expire_legal,
+          &TEH_master_public_key,
+          &s->master_sig))
     {
-      ret = MHD_YES;
-      ok = false;
-      break;
+      GNUNET_break_op (0);
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
+        TALER_B2S (&s->exchange_pub));
+      cleanup_akc (&akc);
+      return ret;
     }
-  }
-  if (! ok)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failure to handle /management/keys\n");
-    GNUNET_free (akc.d_sigs);
-    GNUNET_free (akc.s_sigs);
-    return ret;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received %u denomination and %u signing key signatures\n",
@@ -468,8 +470,7 @@ TEH_handler_management_post_keys (
                                   &ret,
                                   &add_keys,
                                   &akc);
-    GNUNET_free (akc.d_sigs);
-    GNUNET_free (akc.s_sigs);
+    cleanup_akc (&akc);
     if (GNUNET_SYSERR == res)
       return ret;
   }

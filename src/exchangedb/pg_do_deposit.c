@@ -87,6 +87,7 @@ TEH_PG_do_deposit (
                                 ctr_conflict),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   for (unsigned int i = 0; i < bd->num_cdis; i++)
   {
@@ -109,8 +110,10 @@ TEH_PG_do_deposit (
            ",out_conflict AS conflicted"
            " FROM exchange_do_deposit"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_deposit",
-                                                   params,
-                                                   rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "call_deposit",
+                                                 params,
+                                                 rs);
+  GNUNET_PQ_cleanup_query_params_closures (params);
+  return qs;
 }

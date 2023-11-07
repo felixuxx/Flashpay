@@ -135,7 +135,8 @@ TEH_common_purse_deposit_parse_coin (
                 "PURSE CREATE"))
              ? GNUNET_NO : GNUNET_SYSERR;
     }
-    if (dk->denom_pub.cipher != coin->cpi.denom_sig.cipher)
+    if (dk->denom_pub.bsign_pub_key->cipher !=
+        coin->cpi.denom_sig.unblinded_sig->cipher)
     {
       /* denomination cipher and denomination signature cipher not the same */
       GNUNET_JSON_parse_free (spec);
@@ -164,12 +165,12 @@ TEH_common_purse_deposit_parse_coin (
                                           &coin->deposit_fee));
 
     /* check coin signature */
-    switch (dk->denom_pub.cipher)
+    switch (dk->denom_pub.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
       break;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
       break;
     default:

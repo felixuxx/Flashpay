@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -32,20 +32,20 @@
  * @param cipher_s input string
  * @return numeric cipher value
  */
-static enum TALER_DenominationCipher
+static enum GNUNET_CRYPTO_BlindSignatureAlgorithm
 string_to_cipher (const char *cipher_s)
 {
   if ((0 == strcasecmp (cipher_s,
                         "RSA")) ||
       (0 == strcasecmp (cipher_s,
                         "RSA+age_restricted")))
-    return TALER_DENOMINATION_RSA;
+    return GNUNET_CRYPTO_BSA_RSA;
   if ((0 == strcasecmp (cipher_s,
                         "CS")) ||
       (0 == strcasecmp (cipher_s,
                         "CS+age_restricted")))
-    return TALER_DENOMINATION_CS;
-  return TALER_DENOMINATION_INVALID;
+    return GNUNET_CRYPTO_BSA_CS;
+  return GNUNET_CRYPTO_BSA_INVALID;
 }
 
 
@@ -164,7 +164,6 @@ parse_cspec (void *cls,
   struct TALER_CurrencySpecification *r_cspec = spec->ptr;
   const char *name;
   const char *currency;
-  const char *decimal_separator;
   uint32_t fid;
   uint32_t fnd;
   uint32_t ftzd;
@@ -174,8 +173,6 @@ parse_cspec (void *cls,
                              &currency),
     GNUNET_JSON_spec_string ("name",
                              &name),
-    GNUNET_JSON_spec_string ("decimal_separator",
-                             &decimal_separator),
     GNUNET_JSON_spec_uint32 ("num_fractional_input_digits",
                              &fid),
     GNUNET_JSON_spec_uint32 ("num_fractional_normal_digits",
@@ -236,7 +233,6 @@ parse_cspec (void *cls,
     return GNUNET_SYSERR;
   }
   r_cspec->name = GNUNET_strdup (name);
-  r_cspec->decimal_separator = GNUNET_strdup (decimal_separator);
   r_cspec->map_alt_unit_names = json_incref ((json_t *) map);
   return GNUNET_OK;
 }
@@ -256,7 +252,6 @@ clean_cspec (void *cls,
 
   (void) cls;
   GNUNET_free (cspec->name);
-  GNUNET_free (cspec->decimal_separator);
   json_decref (cspec->map_alt_unit_names);
 }
 
@@ -324,7 +319,7 @@ parse_denomination_group (void *cls,
   }
 
   group->cipher = string_to_cipher (cipher);
-  if (TALER_DENOMINATION_INVALID == group->cipher)
+  if (GNUNET_CRYPTO_BSA_INVALID == group->cipher)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -560,6 +555,7 @@ parse_denom_pub (void *cls,
                  struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bsign_pub;
   const char *cipher;
   bool age_mask_missing = false;
   struct GNUNET_JSON_Specification dspec[] = {
@@ -587,16 +583,19 @@ parse_denom_pub (void *cls,
 
   if (age_mask_missing)
     denom_pub->age_mask.bits = 0;
-
-  denom_pub->cipher = string_to_cipher (cipher);
-  switch (denom_pub->cipher)
+  bsign_pub = GNUNET_new (struct GNUNET_CRYPTO_BlindSignPublicKey);
+  bsign_pub->rc = 1;
+  bsign_pub->cipher = string_to_cipher (cipher);
+  switch (bsign_pub->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_rsa_public_key (
           "rsa_public_key",
-          &denom_pub->details.rsa_public_key),
+          &bsign_pub->details.rsa_public_key),
         GNUNET_JSON_spec_end ()
       };
 
@@ -607,16 +606,18 @@ parse_denom_pub (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (bsign_pub);
         return GNUNET_SYSERR;
       }
+      denom_pub->bsign_pub_key = bsign_pub;
       return GNUNET_OK;
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed ("cs_public_key",
-                                &denom_pub->details.cs_public_key,
-                                sizeof (denom_pub->details.cs_public_key)),
+                                &bsign_pub->details.cs_public_key,
+                                sizeof (bsign_pub->details.cs_public_key)),
         GNUNET_JSON_spec_end ()
       };
 
@@ -627,14 +628,16 @@ parse_denom_pub (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (bsign_pub);
         return GNUNET_SYSERR;
       }
+      denom_pub->bsign_pub_key = bsign_pub;
       return GNUNET_OK;
     }
-  default:
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
   }
+  GNUNET_break_op (0);
+  GNUNET_free (bsign_pub);
+  return GNUNET_SYSERR;
 }
 
 
@@ -666,7 +669,7 @@ TALER_JSON_spec_denom_pub (const char *field,
     .ptr = pk
   };
 
-  pk->cipher = TALER_DENOMINATION_INVALID;
+  pk->bsign_pub_key = NULL;
   return ret;
 }
 
@@ -676,7 +679,7 @@ TALER_JSON_spec_denom_pub (const char *field,
  *
  * Depending on the cipher in cls, it parses the corresponding public key type.
  *
- * @param cls closure, enum TALER_DenominationCipher
+ * @param cls closure, enum GNUNET_CRYPTO_BlindSignatureAlgorithm
  * @param root the json object representing data
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
@@ -687,19 +690,25 @@ parse_denom_pub_cipher (void *cls,
                         struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
-  enum TALER_DenominationCipher cipher =
-    (enum TALER_DenominationCipher) (long) cls;
+  enum GNUNET_CRYPTO_BlindSignatureAlgorithm cipher =
+    (enum GNUNET_CRYPTO_BlindSignatureAlgorithm) (long) cls;
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bsign_pub;
   const char *emsg;
   unsigned int eline;
 
+  bsign_pub = GNUNET_new (struct GNUNET_CRYPTO_BlindSignPublicKey);
+  bsign_pub->cipher = cipher;
+  bsign_pub->rc = 1;
   switch (cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_rsa_public_key (
           "rsa_pub",
-          &denom_pub->details.rsa_public_key),
+          &bsign_pub->details.rsa_public_key),
         GNUNET_JSON_spec_end ()
       };
 
@@ -710,17 +719,18 @@ parse_denom_pub_cipher (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (bsign_pub);
         return GNUNET_SYSERR;
       }
-      denom_pub->cipher = cipher;
+      denom_pub->bsign_pub_key = bsign_pub;
       return GNUNET_OK;
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed ("cs_pub",
-                                &denom_pub->details.cs_public_key,
-                                sizeof (denom_pub->details.cs_public_key)),
+                                &bsign_pub->details.cs_public_key,
+                                sizeof (bsign_pub->details.cs_public_key)),
         GNUNET_JSON_spec_end ()
       };
 
@@ -731,22 +741,23 @@ parse_denom_pub_cipher (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (bsign_pub);
         return GNUNET_SYSERR;
       }
-      denom_pub->cipher = cipher;
+      denom_pub->bsign_pub_key = bsign_pub;
       return GNUNET_OK;
     }
-  default:
-    GNUNET_break_op (0);
-    denom_pub->cipher = 0;
-    return GNUNET_SYSERR;
   }
+  GNUNET_break_op (0);
+  GNUNET_free (bsign_pub);
+  return GNUNET_SYSERR;
 }
 
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denom_pub_cipher (const char *field,
-                                  enum TALER_DenominationCipher cipher,
+                                  enum GNUNET_CRYPTO_BlindSignatureAlgorithm
+                                  cipher,
                                   struct TALER_DenominationPublicKey *pk)
 {
   struct GNUNET_JSON_Specification ret = {
@@ -775,6 +786,7 @@ parse_denom_sig (void *cls,
                  struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_DenominationSignature *denom_sig = spec->ptr;
+  struct GNUNET_CRYPTO_UnblindedSignature *unblinded_sig;
   const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
     GNUNET_JSON_spec_string ("cipher",
@@ -794,15 +806,19 @@ parse_denom_sig (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  denom_sig->cipher = string_to_cipher (cipher);
-  switch (denom_sig->cipher)
+  unblinded_sig = GNUNET_new (struct GNUNET_CRYPTO_UnblindedSignature);
+  unblinded_sig->cipher = string_to_cipher (cipher);
+  unblinded_sig->rc = 1;
+  switch (unblinded_sig->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_rsa_signature (
           "rsa_signature",
-          &denom_sig->details.rsa_signature),
+          &unblinded_sig->details.rsa_signature),
         GNUNET_JSON_spec_end ()
       };
 
@@ -813,17 +829,21 @@ parse_denom_sig (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (unblinded_sig);
         return GNUNET_SYSERR;
       }
+      denom_sig->unblinded_sig = unblinded_sig;
       return GNUNET_OK;
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed_auto ("cs_signature_r",
-                                     &denom_sig->details.cs_signature.r_point),
+                                     &unblinded_sig->details.cs_signature.
+                                     r_point),
         GNUNET_JSON_spec_fixed_auto ("cs_signature_s",
-                                     &denom_sig->details.cs_signature.s_scalar),
+                                     &unblinded_sig->details.cs_signature.
+                                     s_scalar),
         GNUNET_JSON_spec_end ()
       };
 
@@ -834,14 +854,16 @@ parse_denom_sig (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (unblinded_sig);
         return GNUNET_SYSERR;
       }
+      denom_sig->unblinded_sig = unblinded_sig;
       return GNUNET_OK;
     }
-  default:
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
   }
+  GNUNET_break_op (0);
+  GNUNET_free (unblinded_sig);
+  return GNUNET_SYSERR;
 }
 
 
@@ -873,7 +895,7 @@ TALER_JSON_spec_denom_sig (const char *field,
     .ptr = sig
   };
 
-  sig->cipher = TALER_DENOMINATION_INVALID;
+  sig->unblinded_sig = NULL;
   return ret;
 }
 
@@ -892,6 +914,7 @@ parse_blinded_denom_sig (void *cls,
                          struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_BlindedDenominationSignature *denom_sig = spec->ptr;
+  struct GNUNET_CRYPTO_BlindedSignature *blinded_sig;
   const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
     GNUNET_JSON_spec_string ("cipher",
@@ -911,15 +934,19 @@ parse_blinded_denom_sig (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  denom_sig->cipher = string_to_cipher (cipher);
-  switch (denom_sig->cipher)
+  blinded_sig = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+  blinded_sig->cipher = string_to_cipher (cipher);
+  blinded_sig->rc = 1;
+  switch (blinded_sig->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_rsa_signature (
           "blinded_rsa_signature",
-          &denom_sig->details.blinded_rsa_signature),
+          &blinded_sig->details.blinded_rsa_signature),
         GNUNET_JSON_spec_end ()
       };
 
@@ -930,17 +957,19 @@ parse_blinded_denom_sig (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (blinded_sig);
         return GNUNET_SYSERR;
       }
+      denom_sig->blinded_sig = blinded_sig;
       return GNUNET_OK;
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_uint32 ("b",
-                                 &denom_sig->details.blinded_cs_answer.b),
+                                 &blinded_sig->details.blinded_cs_answer.b),
         GNUNET_JSON_spec_fixed_auto ("s",
-                                     &denom_sig->details.blinded_cs_answer.
+                                     &blinded_sig->details.blinded_cs_answer.
                                      s_scalar),
         GNUNET_JSON_spec_end ()
       };
@@ -952,15 +981,16 @@ parse_blinded_denom_sig (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (blinded_sig);
         return GNUNET_SYSERR;
       }
+      denom_sig->blinded_sig = blinded_sig;
       return GNUNET_OK;
     }
-    break;
-  default:
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
   }
+  GNUNET_break_op (0);
+  GNUNET_free (blinded_sig);
+  return GNUNET_SYSERR;
 }
 
 
@@ -993,7 +1023,7 @@ TALER_JSON_spec_blinded_denom_sig (
     .ptr = sig
   };
 
-  sig->cipher = TALER_DENOMINATION_INVALID;
+  sig->blinded_sig = NULL;
   return ret;
 }
 
@@ -1012,6 +1042,7 @@ parse_blinded_planchet (void *cls,
                         struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_BlindedPlanchet *blinded_planchet = spec->ptr;
+  struct GNUNET_CRYPTO_BlindedMessage *blinded_message;
   const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
     GNUNET_JSON_spec_string ("cipher",
@@ -1031,16 +1062,20 @@ parse_blinded_planchet (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  blinded_planchet->cipher = string_to_cipher (cipher);
-  switch (blinded_planchet->cipher)
+  blinded_message = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
+  blinded_message->rc = 1;
+  blinded_message->cipher = string_to_cipher (cipher);
+  switch (blinded_message->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_varsize (
           "rsa_blinded_planchet",
-          &blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
-          &blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size),
+          &blinded_message->details.rsa_blinded_message.blinded_msg,
+          &blinded_message->details.rsa_blinded_message.blinded_msg_size),
         GNUNET_JSON_spec_end ()
       };
 
@@ -1051,22 +1086,24 @@ parse_blinded_planchet (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (blinded_message);
         return GNUNET_SYSERR;
       }
+      blinded_planchet->blinded_message = blinded_message;
       return GNUNET_OK;
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed_auto (
           "cs_nonce",
-          &blinded_planchet->details.cs_blinded_planchet.nonce),
+          &blinded_message->details.cs_blinded_message.nonce),
         GNUNET_JSON_spec_fixed_auto (
           "cs_blinded_c0",
-          &blinded_planchet->details.cs_blinded_planchet.c[0]),
+          &blinded_message->details.cs_blinded_message.c[0]),
         GNUNET_JSON_spec_fixed_auto (
           "cs_blinded_c1",
-          &blinded_planchet->details.cs_blinded_planchet.c[1]),
+          &blinded_message->details.cs_blinded_message.c[1]),
         GNUNET_JSON_spec_end ()
       };
 
@@ -1077,15 +1114,16 @@ parse_blinded_planchet (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (blinded_message);
         return GNUNET_SYSERR;
       }
+      blinded_planchet->blinded_message = blinded_message;
       return GNUNET_OK;
     }
-    break;
-  default:
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
   }
+  GNUNET_break_op (0);
+  GNUNET_free (blinded_message);
+  return GNUNET_SYSERR;
 }
 
 
@@ -1117,7 +1155,7 @@ TALER_JSON_spec_blinded_planchet (const char *field,
     .ptr = blinded_planchet
   };
 
-  blinded_planchet->cipher = TALER_DENOMINATION_INVALID;
+  blinded_planchet->blinded_message = NULL;
   return ret;
 }
 
@@ -1136,6 +1174,7 @@ parse_exchange_withdraw_values (void *cls,
                                 struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_ExchangeWithdrawValues *ewv = spec->ptr;
+  struct GNUNET_CRYPTO_BlindingInputValues *bi;
   const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
     GNUNET_JSON_spec_string ("cipher",
@@ -1155,21 +1194,26 @@ parse_exchange_withdraw_values (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  ewv->cipher = string_to_cipher (cipher);
-  switch (ewv->cipher)
+  bi = GNUNET_new (struct GNUNET_CRYPTO_BlindingInputValues);
+  bi->cipher = string_to_cipher (cipher);
+  bi->rc = 1;
+  switch (bi->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    ewv->blinding_inputs = bi;
     return GNUNET_OK;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed (
           "r_pub_0",
-          &ewv->details.cs_values.r_pub[0],
+          &bi->details.cs_values.r_pub[0],
           sizeof (struct GNUNET_CRYPTO_CsRPublic)),
         GNUNET_JSON_spec_fixed (
           "r_pub_1",
-          &ewv->details.cs_values.r_pub[1],
+          &bi->details.cs_values.r_pub[1],
           sizeof (struct GNUNET_CRYPTO_CsRPublic)),
         GNUNET_JSON_spec_end ()
       };
@@ -1181,14 +1225,34 @@ parse_exchange_withdraw_values (void *cls,
                              &eline))
       {
         GNUNET_break_op (0);
+        GNUNET_free (bi);
         return GNUNET_SYSERR;
       }
+      ewv->blinding_inputs = bi;
       return GNUNET_OK;
     }
-  default:
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
   }
+  GNUNET_break_op (0);
+  GNUNET_free (bi);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Cleanup data left from parsing withdraw values
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_exchange_withdraw_values (
+  void *cls,
+  struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_ExchangeWithdrawValues *ewv = spec->ptr;
+
+  (void) cls;
+  TALER_denom_ewv_free (ewv);
 }
 
 
@@ -1199,11 +1263,12 @@ TALER_JSON_spec_exchange_withdraw_values (
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_exchange_withdraw_values,
+    .cleaner = &clean_exchange_withdraw_values,
     .field = field,
     .ptr = ewv
   };
 
-  ewv->cipher = TALER_DENOMINATION_INVALID;
+  ewv->blinding_inputs = NULL;
   return ret;
 }
 

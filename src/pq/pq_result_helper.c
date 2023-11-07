@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -425,6 +425,7 @@ extract_denom_pub (void *cls,
                    void *dst)
 {
   struct TALER_DenominationPublicKey *pk = dst;
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bpk;
   size_t len;
   const char *res;
   int fnum;
@@ -462,33 +463,47 @@ extract_denom_pub (void *cls,
                  sizeof (be));
   res += sizeof (be);
   len -= sizeof (be);
-  pk->cipher = ntohl (be[0]);
+  bpk = GNUNET_new (struct GNUNET_CRYPTO_BlindSignPublicKey);
+  bpk->cipher = ntohl (be[0]);
+  bpk->rc = 1;
   pk->age_mask.bits = ntohl (be[1]);
-  switch (pk->cipher)
+  switch (bpk->cipher)
   {
-  case TALER_DENOMINATION_RSA:
-    pk->details.rsa_public_key
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    bpk->details.rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_decode (res,
                                              len);
-    if (NULL == pk->details.rsa_public_key)
+    if (NULL == bpk->details.rsa_public_key)
     {
       GNUNET_break (0);
+      GNUNET_free (bpk);
       return GNUNET_SYSERR;
     }
+    pk->bsign_pub_key = bpk;
+    GNUNET_CRYPTO_hash (res,
+                        len,
+                        &bpk->pub_key_hash);
     return GNUNET_OK;
-  case TALER_DENOMINATION_CS:
-    if (sizeof (pk->details.cs_public_key) != len)
+  case GNUNET_CRYPTO_BSA_CS:
+    if (sizeof (bpk->details.cs_public_key) != len)
     {
       GNUNET_break (0);
+      GNUNET_free (bpk);
       return GNUNET_SYSERR;
     }
-    GNUNET_memcpy (&pk->details.cs_public_key,
+    GNUNET_memcpy (&bpk->details.cs_public_key,
                    res,
                    len);
+    pk->bsign_pub_key = bpk;
+    GNUNET_CRYPTO_hash (res,
+                        len,
+                        &bpk->pub_key_hash);
     return GNUNET_OK;
-  default:
-    GNUNET_break (0);
   }
+  GNUNET_break (0);
+  GNUNET_free (bpk);
   return GNUNET_SYSERR;
 }
 
@@ -548,6 +563,7 @@ extract_denom_sig (void *cls,
                    void *dst)
 {
   struct TALER_DenominationSignature *sig = dst;
+  struct GNUNET_CRYPTO_UnblindedSignature *ubs;
   size_t len;
   const char *res;
   int fnum;
@@ -590,32 +606,40 @@ extract_denom_sig (void *cls,
   }
   res += sizeof (be);
   len -= sizeof (be);
-  sig->cipher = ntohl (be[0]);
-  switch (sig->cipher)
+  ubs = GNUNET_new (struct GNUNET_CRYPTO_UnblindedSignature);
+  ubs->rc = 1;
+  ubs->cipher = ntohl (be[0]);
+  switch (ubs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
-    sig->details.rsa_signature
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    ubs->details.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_decode (res,
                                             len);
-    if (NULL == sig->details.rsa_signature)
+    if (NULL == ubs->details.rsa_signature)
     {
       GNUNET_break (0);
+      GNUNET_free (ubs);
       return GNUNET_SYSERR;
     }
+    sig->unblinded_sig = ubs;
     return GNUNET_OK;
-  case TALER_DENOMINATION_CS:
-    if (sizeof (sig->details.cs_signature) != len)
+  case GNUNET_CRYPTO_BSA_CS:
+    if (sizeof (ubs->details.cs_signature) != len)
     {
       GNUNET_break (0);
+      GNUNET_free (ubs);
       return GNUNET_SYSERR;
     }
-    GNUNET_memcpy (&sig->details.cs_signature,
+    GNUNET_memcpy (&ubs->details.cs_signature,
                    res,
                    len);
+    sig->unblinded_sig = ubs;
     return GNUNET_OK;
-  default:
-    GNUNET_break (0);
   }
+  GNUNET_break (0);
+  GNUNET_free (ubs);
   return GNUNET_SYSERR;
 }
 
@@ -675,6 +699,7 @@ extract_blinded_denom_sig (void *cls,
                            void *dst)
 {
   struct TALER_BlindedDenominationSignature *sig = dst;
+  struct GNUNET_CRYPTO_BlindedSignature *bs;
   size_t len;
   const char *res;
   int fnum;
@@ -717,32 +742,40 @@ extract_blinded_denom_sig (void *cls,
   }
   res += sizeof (be);
   len -= sizeof (be);
-  sig->cipher = ntohl (be[0]);
-  switch (sig->cipher)
+  bs = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+  bs->rc = 1;
+  bs->cipher = ntohl (be[0]);
+  switch (bs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
-    sig->details.blinded_rsa_signature
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    bs->details.blinded_rsa_signature
       = GNUNET_CRYPTO_rsa_signature_decode (res,
                                             len);
-    if (NULL == sig->details.blinded_rsa_signature)
+    if (NULL == bs->details.blinded_rsa_signature)
     {
       GNUNET_break (0);
+      GNUNET_free (bs);
       return GNUNET_SYSERR;
     }
+    sig->blinded_sig = bs;
     return GNUNET_OK;
-  case TALER_DENOMINATION_CS:
-    if (sizeof (sig->details.blinded_cs_answer) != len)
+  case GNUNET_CRYPTO_BSA_CS:
+    if (sizeof (bs->details.blinded_cs_answer) != len)
     {
       GNUNET_break (0);
+      GNUNET_free (bs);
       return GNUNET_SYSERR;
     }
-    GNUNET_memcpy (&sig->details.blinded_cs_answer,
+    GNUNET_memcpy (&bs->details.blinded_cs_answer,
                    res,
                    len);
+    sig->blinded_sig = bs;
     return GNUNET_OK;
-  default:
-    GNUNET_break (0);
   }
+  GNUNET_break (0);
+  GNUNET_free (bs);
   return GNUNET_SYSERR;
 }
 
@@ -803,6 +836,7 @@ extract_blinded_planchet (void *cls,
                           void *dst)
 {
   struct TALER_BlindedPlanchet *bp = dst;
+  struct GNUNET_CRYPTO_BlindedMessage *bm;
   size_t len;
   const char *res;
   int fnum;
@@ -845,29 +879,36 @@ extract_blinded_planchet (void *cls,
   }
   res += sizeof (be);
   len -= sizeof (be);
-  bp->cipher = ntohl (be[0]);
-  switch (bp->cipher)
+  bm = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
+  bm->rc = 1;
+  bm->cipher = ntohl (be[0]);
+  switch (bm->cipher)
   {
-  case TALER_DENOMINATION_RSA:
-    bp->details.rsa_blinded_planchet.blinded_msg_size
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    bm->details.rsa_blinded_message.blinded_msg_size
       = len;
-    bp->details.rsa_blinded_planchet.blinded_msg
+    bm->details.rsa_blinded_message.blinded_msg
       = GNUNET_memdup (res,
                        len);
+    bp->blinded_message = bm;
     return GNUNET_OK;
-  case TALER_DENOMINATION_CS:
-    if (sizeof (bp->details.cs_blinded_planchet) != len)
+  case GNUNET_CRYPTO_BSA_CS:
+    if (sizeof (bm->details.cs_blinded_message) != len)
     {
       GNUNET_break (0);
+      GNUNET_free (bm);
       return GNUNET_SYSERR;
     }
-    GNUNET_memcpy (&bp->details.cs_blinded_planchet,
+    GNUNET_memcpy (&bm->details.cs_blinded_message,
                    res,
                    len);
+    bp->blinded_message = bm;
     return GNUNET_OK;
-  default:
-    GNUNET_break (0);
   }
+  GNUNET_break (0);
+  GNUNET_free (bm);
   return GNUNET_SYSERR;
 }
 
@@ -928,6 +969,7 @@ extract_exchange_withdraw_values (void *cls,
                                   void *dst)
 {
   struct TALER_ExchangeWithdrawValues *alg_values = dst;
+  struct GNUNET_CRYPTO_BlindingInputValues *bi;
   size_t len;
   const char *res;
   int fnum;
@@ -970,29 +1012,37 @@ extract_exchange_withdraw_values (void *cls,
   }
   res += sizeof (be);
   len -= sizeof (be);
-  alg_values->cipher = ntohl (be[0]);
-  switch (alg_values->cipher)
+  bi = GNUNET_new (struct GNUNET_CRYPTO_BlindingInputValues);
+  bi->rc = 1;
+  bi->cipher = ntohl (be[0]);
+  switch (bi->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     if (0 != len)
     {
       GNUNET_break (0);
+      GNUNET_free (bi);
       return GNUNET_SYSERR;
     }
+    alg_values->blinding_inputs = bi;
     return GNUNET_OK;
-  case TALER_DENOMINATION_CS:
-    if (sizeof (struct TALER_DenominationCSPublicRPairP) != len)
+  case GNUNET_CRYPTO_BSA_CS:
+    if (sizeof (bi->details.cs_values) != len)
     {
       GNUNET_break (0);
+      GNUNET_free (bi);
       return GNUNET_SYSERR;
     }
-    GNUNET_memcpy (&alg_values->details.cs_values,
+    GNUNET_memcpy (&bi->details.cs_values,
                    res,
                    len);
+    alg_values->blinding_inputs = bi;
     return GNUNET_OK;
-  default:
-    GNUNET_break (0);
   }
+  GNUNET_break (0);
+  GNUNET_free (bi);
   return GNUNET_SYSERR;
 }
 
@@ -1018,28 +1068,43 @@ TALER_PQ_result_spec_exchange_withdraw_values (
  */
 struct ArrayResultCls
 {
-  /* Oid of the expected type, must match the oid in the header of the PQResult struct */
+  /**
+   * Oid of the expected type, must match the oid in the header of the PQResult struct
+   */
   Oid oid;
 
-  /* Target type */
+  /**
+   * Target type
+   */
   enum TALER_PQ_ArrayType typ;
 
-  /* If not 0, defines the expected size of each entry */
+  /**
+   * If not 0, defines the expected size of each entry
+   */
   size_t same_size;
 
-  /* Out-pointer to write the number of elements in the array */
+  /**
+   * Out-pointer to write the number of elements in the array
+   */
   size_t *num;
 
-  /* Out-pointer. If @a typ is TALER_PQ_array_of_byte and @a same_size is 0,
-   * allocate and put the array of @a num sizes here. NULL otherwise */
+  /**
+   * Out-pointer. If @a typ is TALER_PQ_array_of_byte and @a same_size is 0,
+   * allocate and put the array of @a num sizes here. NULL otherwise
+   */
   size_t **sizes;
 
-  /* DB_connection, needed for OID-lookup for composite types */
+  /**
+   * DB_connection, needed for OID-lookup for composite types
+   */
   const struct GNUNET_PQ_Context *db;
 
-  /* Currency information for amount composites */
+  /**
+   * Currency information for amount composites
+   */
   char currency[TALER_CURRENCY_LEN];
 };
+
 
 /**
  * Extract data from a Postgres database @a result as array of a specific type
@@ -1076,13 +1141,13 @@ extract_array_generic (
   *((void **) dst) = NULL;
 
   #define FAIL_IF(cond) \
-          do { \
-            if ((cond)) \
-            { \
-              GNUNET_break (! (cond)); \
-              goto FAIL; \
-            } \
-          } while (0)
+  do { \
+    if ((cond)) \
+    { \
+      GNUNET_break (! (cond)); \
+      goto FAIL; \
+    } \
+  } while (0)
 
   col_num = PQfnumber (result, fname);
   FAIL_IF (0 > col_num);
@@ -1125,7 +1190,8 @@ extract_array_generic (
         if (NULL != dst_size)
           *dst_size = sizeof(struct TALER_Amount) * (header.dim);
 
-        amounts = GNUNET_new_array (header.dim, struct TALER_Amount);
+        amounts = GNUNET_new_array (header.dim,
+                                    struct TALER_Amount);
         *((void **) dst) = amounts;
 
         for (uint32_t i = 0; i < header.dim; i++)
@@ -1162,7 +1228,8 @@ extract_array_generic (
     case TALER_PQ_array_of_denom_hash:
       if (NULL != dst_size)
         *dst_size = sizeof(struct TALER_DenominationHashP) * (header.dim);
-      out = GNUNET_new_array (header.dim, struct TALER_DenominationHashP);
+      out = GNUNET_new_array (header.dim,
+                              struct TALER_DenominationHashP);
       *((void **) dst) = out;
       for (uint32_t i = 0; i < header.dim; i++)
       {
@@ -1185,7 +1252,8 @@ extract_array_generic (
     case TALER_PQ_array_of_blinded_coin_hash:
       if (NULL != dst_size)
         *dst_size = sizeof(struct TALER_BlindedCoinHashP) * (header.dim);
-      out = GNUNET_new_array (header.dim, struct TALER_BlindedCoinHashP);
+      out = GNUNET_new_array (header.dim,
+                              struct TALER_BlindedCoinHashP);
       *((void **) dst) = out;
       for (uint32_t i = 0; i < header.dim; i++)
       {
@@ -1223,6 +1291,7 @@ extract_array_generic (
         for (uint32_t i = 0; i < header.dim; i++)
         {
           struct TALER_BlindedDenominationSignature *denom_sig = &denom_sigs[i];
+          struct GNUNET_CRYPTO_BlindedSignature *bs;
           uint32_t be[2];
           uint32_t val;
           size_t sz;
@@ -1241,28 +1310,36 @@ extract_array_generic (
 
           in += sizeof(be);
           sz -= sizeof(be);
-
-          denom_sig->cipher = ntohl (be[0]);
-          switch (denom_sig->cipher)
+          bs = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+          bs->cipher = ntohl (be[0]);
+          bs->rc = 1;
+          switch (bs->cipher)
           {
-          case TALER_DENOMINATION_RSA:
-            denom_sig->details.blinded_rsa_signature =
-              GNUNET_CRYPTO_rsa_signature_decode (in,
-                                                  sz);
-            FAIL_IF (NULL == denom_sig->details.blinded_rsa_signature);
+          case GNUNET_CRYPTO_BSA_RSA:
+            bs->details.blinded_rsa_signature
+              = GNUNET_CRYPTO_rsa_signature_decode (in,
+                                                    sz);
+            if (NULL == bs->details.blinded_rsa_signature)
+            {
+              GNUNET_free (bs);
+              FAIL_IF (true);
+            }
             break;
-
-          case TALER_DENOMINATION_CS:
-            FAIL_IF (sizeof(denom_sig->details.blinded_cs_answer) != sz);
-            GNUNET_memcpy (&denom_sig->details.blinded_cs_answer,
+          case GNUNET_CRYPTO_BSA_CS:
+            if (sizeof(bs->details.blinded_cs_answer) != sz)
+            {
+              GNUNET_free (bs);
+              FAIL_IF (true);
+            }
+            GNUNET_memcpy (&bs->details.blinded_cs_answer,
                            in,
                            sz);
             break;
-
           default:
+            GNUNET_free (bs);
             FAIL_IF (true);
           }
-
+          denom_sig->blinded_sig = bs;
           in += sz;
         }
         return GNUNET_OK;
@@ -1271,12 +1348,10 @@ extract_array_generic (
       FAIL_IF (true);
     }
   }
-
 FAIL:
   GNUNET_free (*(void **) dst);
   return GNUNET_SYSERR;
-  #undef FAIL_IF
-
+#undef FAIL_IF
 }
 
 
@@ -1287,10 +1362,11 @@ static void
 array_cleanup (void *cls,
                void *rd)
 {
-
   struct ArrayResultCls *info = cls;
   void **dst = rd;
 
+  /* FIXME-Oec: this does not properly clean up
+     denomination signatures! */
   if ((0 == info->same_size) &&
       (NULL != info->sizes))
     GNUNET_free (*(info->sizes));

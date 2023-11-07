@@ -150,7 +150,7 @@ read_cb (void *cls)
       ec->read_size = ns;
     }
     ret = GNUNET_DISK_file_read (ec->chld_stdout,
-                                 ec->read_buf,
+                                 ec->read_buf + ec->read_pos,
                                  ec->read_size - ec->read_pos);
     if (ret < 0)
     {
@@ -255,6 +255,11 @@ child_done_cb (void *cls,
   json_error_t err;
 
   ec->cwh = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Conversion helper exited with status %d and code %llu after outputting %llu bytes of data\n",
+              (int) type,
+              (unsigned long long) exit_code,
+              (unsigned long long) ec->read_pos);
   if (NULL != ec->read_task)
   {
     GNUNET_SCHEDULER_cancel (ec->read_task);

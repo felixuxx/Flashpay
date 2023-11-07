@@ -489,18 +489,18 @@ run (void *cls,
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetMasterSecretP ps;
-    struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_AgeCommitmentHash hac;
-    union TALER_DenominationBlindingKeyP bks;
+    union GNUNET_CRYPTO_BlindingSecretP bks;
+    const struct TALER_ExchangeWithdrawValues *alg_values;
 
     RANDOMIZE (&coin_pub);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_priv_create (&pk,
                                             &denom_pub,
-                                            TALER_DENOMINATION_RSA,
+                                            GNUNET_CRYPTO_BSA_RSA,
                                             1024));
-    alg_values.cipher = TALER_DENOMINATION_RSA;
+    alg_values = TALER_denom_ewv_rsa_singleton ();
     denom_pub.age_mask = issue.age_mask;
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
@@ -522,7 +522,7 @@ run (void *cls,
     }
 
     TALER_planchet_blinding_secret_create (&ps,
-                                           &alg_values,
+                                           TALER_denom_ewv_rsa_singleton (),
                                            &bks);
 
     {
@@ -546,9 +546,10 @@ run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&denom_pub,
                                       &bks,
+                                      NULL,
                                       &hac,
                                       &coin_pub,
-                                      &alg_values,
+                                      alg_values,
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==
@@ -562,7 +563,7 @@ run (void *cls,
                                             &bds,
                                             &bks,
                                             &c_hash,
-                                            &alg_values,
+                                            alg_values,
                                             &denom_pub));
     TALER_blinded_denom_sig_free (&bds);
     TALER_denom_pub_free (&denom_pub);

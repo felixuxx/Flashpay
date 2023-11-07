@@ -203,23 +203,27 @@ handle_mt_avail (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   }
 
   {
-    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub;
     struct TALER_RsaPubHashP h_rsa;
 
-    denom_pub.cipher = TALER_DENOMINATION_RSA;
-    denom_pub.details.rsa_public_key
+    bs_pub = GNUNET_new (struct GNUNET_CRYPTO_BlindSignPublicKey);
+    bs_pub->cipher = GNUNET_CRYPTO_BSA_RSA;
+    bs_pub->details.rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_decode (buf,
                                              ntohs (kan->pub_size));
-    if (NULL == denom_pub.details.rsa_public_key)
+    if (NULL == bs_pub->details.rsa_public_key)
     {
       GNUNET_break_op (0);
+      GNUNET_free (bs_pub);
       return GNUNET_SYSERR;
     }
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.details.rsa_public_key,
-                                       &h_rsa.hash);
+    bs_pub->rc = 1;
+    GNUNET_CRYPTO_rsa_public_key_hash (bs_pub->details.rsa_public_key,
+                                       &bs_pub->pub_key_hash);
+    h_rsa.hash = bs_pub->pub_key_hash;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received RSA key %s (%s)\n",
-                GNUNET_h2s (&h_rsa.hash),
+                GNUNET_h2s (&bs_pub->pub_key_hash),
                 section_name);
     if (GNUNET_OK !=
         TALER_exchange_secmod_rsa_verify (
@@ -231,7 +235,7 @@ handle_mt_avail (struct TALER_CRYPTO_RsaDenominationHelper *dh,
           &kan->secm_sig))
     {
       GNUNET_break_op (0);
-      TALER_denom_pub_free (&denom_pub);
+      GNUNET_CRYPTO_blind_sign_pub_decref (bs_pub);
       return GNUNET_SYSERR;
     }
     dh->dkc (dh->dkc_cls,
@@ -239,10 +243,10 @@ handle_mt_avail (struct TALER_CRYPTO_RsaDenominationHelper *dh,
              GNUNET_TIME_timestamp_ntoh (kan->anchor_time),
              GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
              &h_rsa,
-             &denom_pub,
+             bs_pub,
              &kan->secm_pub,
              &kan->secm_sig);
-    TALER_denom_pub_free (&denom_pub);
+    GNUNET_CRYPTO_blind_sign_pub_decref (bs_pub);
   }
   return GNUNET_OK;
 }
@@ -395,7 +399,9 @@ TALER_CRYPTO_helper_rsa_sign (
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
 
-  bs->cipher = TALER_DENOMINATION_INVALID;
+  memset (bs,
+          0,
+          sizeof (*bs));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting signature process\n");
   if (GNUNET_OK !=
@@ -503,6 +509,7 @@ more:
           const struct TALER_CRYPTO_SignResponse *sr =
             (const struct TALER_CRYPTO_SignResponse *) buf;
           struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+          struct GNUNET_CRYPTO_BlindedSignature *blind_sig;
 
           rsa_signature = GNUNET_CRYPTO_rsa_signature_decode (
             &sr[1],
@@ -518,8 +525,11 @@ more:
                       "Received signature\n");
           ec = TALER_EC_NONE;
           finished = true;
-          bs->cipher = TALER_DENOMINATION_RSA;
-          bs->details.blinded_rsa_signature = rsa_signature;
+          blind_sig = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+          blind_sig->cipher = GNUNET_CRYPTO_BSA_RSA;
+          blind_sig->rc = 1;
+          blind_sig->details.blinded_rsa_signature = rsa_signature;
+          bs->blinded_sig = blind_sig;
           break;
         }
       case TALER_HELPER_RSA_MT_RES_SIGN_FAILURE:
@@ -597,9 +607,9 @@ end:
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_rsa_batch_sign (
   struct TALER_CRYPTO_RsaDenominationHelper *dh,
-  const struct TALER_CRYPTO_RsaSignRequest *rsrs,
   unsigned int rsrs_length,
-  struct TALER_BlindedDenominationSignature *bss)
+  const struct TALER_CRYPTO_RsaSignRequest rsrs[static rsrs_length],
+  struct TALER_BlindedDenominationSignature bss[static rsrs_length])
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
   unsigned int rpos;
@@ -750,6 +760,7 @@ more:
             const struct TALER_CRYPTO_SignResponse *sr =
               (const struct TALER_CRYPTO_SignResponse *) buf;
             struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+            struct GNUNET_CRYPTO_BlindedSignature *blind_sig;
 
             rsa_signature = GNUNET_CRYPTO_rsa_signature_decode (
               &sr[1],
@@ -763,8 +774,11 @@ more:
             GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                         "Received %u signature\n",
                         wpos);
-            bss[wpos].cipher = TALER_DENOMINATION_RSA;
-            bss[wpos].details.blinded_rsa_signature = rsa_signature;
+            blind_sig = GNUNET_new (struct GNUNET_CRYPTO_BlindedSignature);
+            blind_sig->cipher = GNUNET_CRYPTO_BSA_RSA;
+            blind_sig->rc = 1;
+            blind_sig->details.blinded_rsa_signature = rsa_signature;
+            bss[wpos].blinded_sig = blind_sig;
             wpos++;
             if (wpos == rend)
             {

@@ -194,8 +194,8 @@ EXIT:
  * @param reserve_pub Reserve public key used in the original age-withdraw request
  * @param[out] commitment Data from the original age-withdraw request
  * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
- * @return GNUNET_OK if the withdraw request has been found,
- *   GNUNET_SYSERROR if we did not find the request in the DB
+ * @return #GNUNET_OK if the withdraw request has been found,
+ *   #GNUNET_SYSERR if we did not find the request in the DB
  */
 static enum GNUNET_GenericReturnValue
 find_original_commitment (
@@ -217,20 +217,17 @@ find_original_commitment (
     {
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       return GNUNET_OK; /* Only happy case */
-
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       *result = TALER_MHD_reply_with_error (connection,
                                             MHD_HTTP_NOT_FOUND,
                                             TALER_EC_EXCHANGE_AGE_WITHDRAW_COMMITMENT_UNKNOWN,
                                             NULL);
       return GNUNET_SYSERR;
-
     case GNUNET_DB_STATUS_HARD_ERROR:
       *result = TALER_MHD_reply_with_ec (connection,
                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
                                          "get_age_withdraw_info");
       return GNUNET_SYSERR;
-
     case GNUNET_DB_STATUS_SOFT_ERROR:
       break; /* try again */
     default:
@@ -300,6 +297,7 @@ calculate_blinded_hash (
                                        &acp);
     TALER_age_commitment_hash (&acp.commitment,
                                &ach);
+    TALER_age_commitment_proof_free (&acp);
   }
 
   /* Next: calculate planchet */
@@ -307,50 +305,47 @@ calculate_blinded_hash (
     struct TALER_CoinPubHashP c_hash;
     struct TALER_PlanchetDetail detail = {0};
     struct TALER_CoinSpendPrivateKeyP coin_priv;
-    union TALER_DenominationBlindingKeyP bks;
-    struct TALER_ExchangeWithdrawValues alg_values = {
-      .cipher = denom_key->denom_pub.cipher,
+    union GNUNET_CRYPTO_BlindingSecretP bks;
+    struct GNUNET_CRYPTO_BlindingInputValues bi = {
+      .cipher = denom_key->denom_pub.bsign_pub_key->cipher
     };
+    struct TALER_ExchangeWithdrawValues alg_values = {
+      .blinding_inputs = &bi
+    };
+    union GNUNET_CRYPTO_BlindSessionNonce nonce;
+    union GNUNET_CRYPTO_BlindSessionNonce *noncep = NULL;
 
-    if (TALER_DENOMINATION_CS == alg_values.cipher)
+    // FIXME: add logic to denom.c to do this!
+    if (GNUNET_CRYPTO_BSA_CS == bi.cipher)
     {
-      struct TALER_CsNonce nonce;
+      struct TEH_CsDeriveData cdd = {
+        .h_denom_pub = &denom_key->h_denom_pub,
+        .nonce = &nonce.cs_nonce,
+      };
 
       TALER_cs_withdraw_nonce_derive (secret,
-                                      &nonce);
-
-      {
-        struct TEH_CsDeriveData cdd = {
-          .h_denom_pub = &denom_key->h_denom_pub,
-          .nonce = &nonce,
-        };
-
-        GNUNET_assert (TALER_EC_NONE ==
-                       TEH_keys_denomination_cs_r_pub (
-                         &cdd,
-                         false,
-                         &alg_values.details.cs_values));
-      }
-
-      detail.blinded_planchet.details.cs_blinded_planchet.nonce = nonce;
+                                      &nonce.cs_nonce);
+      noncep = &nonce;
+      GNUNET_assert (TALER_EC_NONE ==
+                     TEH_keys_denomination_cs_r_pub (
+                       &cdd,
+                       false,
+                       &bi.details.cs_values));
     }
-
     TALER_planchet_blinding_secret_create (secret,
                                            &alg_values,
                                            &bks);
-
     TALER_planchet_setup_coin_priv (secret,
                                     &alg_values,
                                     &coin_priv);
-
     ret = TALER_planchet_prepare (&denom_key->denom_pub,
                                   &alg_values,
                                   &bks,
+                                  noncep,
                                   &coin_priv,
                                   &ach,
                                   &c_hash,
                                   &detail);
-
     if (GNUNET_OK != ret)
     {
       GNUNET_break (0);
@@ -365,7 +360,7 @@ calculate_blinded_hash (
     ret = TALER_coin_ev_hash (&detail.blinded_planchet,
                               &denom_key->h_denom_pub,
                               bch);
-
+    TALER_blinded_planchet_free (&detail.blinded_planchet);
     GNUNET_assert (GNUNET_OK == ret);
   }
 
@@ -602,6 +597,11 @@ TEH_handler_age_withdraw_reveal (
   } while(0);
 
   GNUNET_JSON_parse_free (spec);
+  for (unsigned int i = 0; i<actx.num_coins; i++)
+    TALER_blinded_denom_sig_free (&actx.commitment.denom_sigs[i]);
+  GNUNET_free (actx.commitment.denom_sigs);
+  GNUNET_free (actx.commitment.denom_pub_hashes);
+  GNUNET_free (actx.commitment.denom_serials);
   GNUNET_free (actx.disclosed_coin_secrets);
   return result;
 }

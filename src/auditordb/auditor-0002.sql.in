@@ -24,13 +24,18 @@ COMMENT ON SCHEMA auditor IS 'taler-auditor data';
 SELECT _v.register_patch('auditor-0002', NULL, NULL);
 SET search_path TO auditor;
 
-CREATE TYPE taler_amount
-  AS
-  (val INT8
-  ,frac INT4
-  );
-COMMENT ON TYPE taler_amount
-  IS 'Stores an amount, fraction is in units of 1/100000000 of the base value';
+DO $$ BEGIN
+    CREATE TYPE taler_amount
+      AS
+      (val INT8
+      ,frac INT4
+      );
+    COMMENT ON TYPE taler_amount
+      IS 'Stores an amount, fraction is in units of 1/100000000 of the base value';
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 
 #include "0002-auditor_balances.sql"
 #include "0002-auditor_denomination_pending.sql"
@@ -40,6 +45,6 @@ COMMENT ON TYPE taler_amount
 #include "0002-auditor_progress.sql"
 #include "0002-auditor_purses.sql"
 #include "0002-auditor_reserves.sql"
-#include "0002-deposit_confirmations.sql"
+#include "0002-auditor_deposit_confirmations.sql"
 
 COMMIT;

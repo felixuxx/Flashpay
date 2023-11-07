@@ -136,9 +136,9 @@ struct TALER_CRYPTO_CsSignRequestMessage
   struct TALER_CsPubHashP h_cs;
 
   /**
-   * Planchet containing message to sign and nonce to derive R from
+   * Message to sign.
    */
-  struct TALER_BlindedCsPlanchet planchet;
+  struct GNUNET_CRYPTO_CsBlindedMessage message;
 
 };
 
@@ -188,7 +188,7 @@ struct TALER_CRYPTO_CsRDeriveRequest
   /**
    * Withdraw nonce to derive R from
    */
-  struct TALER_CsNonce nonce;
+  struct GNUNET_CRYPTO_CsSessionNonce nonce;
 };
 
 
@@ -248,14 +248,14 @@ struct TALER_CRYPTO_SignResponse
   struct GNUNET_MessageHeader header;
 
   /**
-   * For now, always zero.
+   * The chosen 'b' (0 or 1).
    */
-  uint32_t reserved;
+  uint32_t b;
 
   /**
-   * Contains the blindided s and the chosen b
+   * Contains the blindided s.
    */
-  struct TALER_BlindedDenominationCsSignAnswer cs_answer;
+  struct GNUNET_CRYPTO_CsBlindS cs_answer;
 };
 
 /**
@@ -274,9 +274,9 @@ struct TALER_CRYPTO_RDeriveResponse
   uint32_t reserved;
 
   /**
-   * derived R
+   * Pair of derived R values
    */
-  struct TALER_DenominationCSPublicRPairP r_pub;
+  struct GNUNET_CRYPTO_CSPublicRPairP r_pub;
 };
 
 

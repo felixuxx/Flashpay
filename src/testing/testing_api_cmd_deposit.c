@@ -313,6 +313,22 @@ deposit_run (void *cls,
     return;
   }
   ds->is = is;
+  if (! GNUNET_TIME_absolute_is_zero (ds->refund_deadline.abs_time))
+  {
+    struct GNUNET_TIME_Relative refund_deadline;
+
+    refund_deadline
+      = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline.abs_time);
+    ds->wire_deadline
+      = GNUNET_TIME_relative_to_timestamp (
+          GNUNET_TIME_relative_multiply (refund_deadline,
+                                         2));
+  }
+  else
+  {
+    ds->refund_deadline = ds->wallet_timestamp;
+    ds->wire_deadline = GNUNET_TIME_timestamp_get ();
+  }
   if (NULL != ds->deposit_reference)
   {
     /* We're copying another deposit operation, initialize here. */
@@ -335,6 +351,7 @@ deposit_run (void *cls,
     ds->contract_terms = json_incref (ods->contract_terms);
     ds->wallet_timestamp = ods->wallet_timestamp;
     ds->refund_deadline = ods->refund_deadline;
+    ds->wire_deadline = ods->wire_deadline;
     ds->amount = ods->amount;
     ds->merchant_priv = ods->merchant_priv;
     ds->command_initialized = GNUNET_YES;
@@ -415,23 +432,6 @@ deposit_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
-  if (! GNUNET_TIME_absolute_is_zero (ds->refund_deadline.abs_time))
-  {
-    struct GNUNET_TIME_Relative refund_deadline;
-
-    refund_deadline
-      = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline.abs_time);
-    ds->wire_deadline
-      =
-        GNUNET_TIME_relative_to_timestamp (
-          GNUNET_TIME_relative_multiply (refund_deadline,
-                                         2));
-  }
-  else
-  {
-    ds->refund_deadline = ds->wallet_timestamp;
-    ds->wire_deadline = GNUNET_TIME_timestamp_get ();
-  }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
                                       &merchant_pub.eddsa_pub);
   {
@@ -631,14 +631,15 @@ deposit_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit (const char *label,
-                           const char *coin_reference,
-                           unsigned int coin_index,
-                           const char *target_account_payto,
-                           const char *contract_terms,
-                           struct GNUNET_TIME_Relative refund_deadline,
-                           const char *amount,
-                           unsigned int expected_response_code)
+TALER_TESTING_cmd_deposit (
+  const char *label,
+  const char *coin_reference,
+  unsigned int coin_index,
+  const char *target_account_payto,
+  const char *contract_terms,
+  struct GNUNET_TIME_Relative refund_deadline,
+  const char *amount,
+  unsigned int expected_response_code)
 {
   struct DepositState *ds;
 
@@ -694,15 +695,16 @@ TALER_TESTING_cmd_deposit (const char *label,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_with_ref (const char *label,
-                                    const char *coin_reference,
-                                    unsigned int coin_index,
-                                    const char *target_account_payto,
-                                    const char *contract_terms,
-                                    struct GNUNET_TIME_Relative refund_deadline,
-                                    const char *amount,
-                                    unsigned int expected_response_code,
-                                    const char *merchant_priv_reference)
+TALER_TESTING_cmd_deposit_with_ref (
+  const char *label,
+  const char *coin_reference,
+  unsigned int coin_index,
+  const char *target_account_payto,
+  const char *contract_terms,
+  struct GNUNET_TIME_Relative refund_deadline,
+  const char *amount,
+  unsigned int expected_response_code,
+  const char *merchant_priv_reference)
 {
   struct DepositState *ds;
 
@@ -758,9 +760,10 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_replay (const char *label,
-                                  const char *deposit_reference,
-                                  unsigned int expected_response_code)
+TALER_TESTING_cmd_deposit_replay (
+  const char *label,
+  const char *deposit_reference,
+  unsigned int expected_response_code)
 {
   struct DepositState *ds;
 

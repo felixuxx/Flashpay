@@ -129,7 +129,7 @@ free_keys (void)
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_rsa hash of the @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -140,7 +140,7 @@ key_cb (void *cls,
         struct GNUNET_TIME_Timestamp start_time,
         struct GNUNET_TIME_Relative validity_duration,
         const struct TALER_RsaPubHashP *h_rsa,
-        const struct TALER_DenominationPublicKey *denom_pub,
+        struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
         const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
@@ -155,7 +155,7 @@ key_cb (void *cls,
   {
     bool found = false;
 
-    GNUNET_break (NULL == denom_pub);
+    GNUNET_break (NULL == bs_pub);
     GNUNET_break (NULL == section_name);
     for (unsigned int i = 0; i<MAX_KEYS; i++)
       if (0 == GNUNET_memcmp (h_rsa,
@@ -176,7 +176,7 @@ key_cb (void *cls,
     return;
   }
 
-  GNUNET_break (NULL != denom_pub);
+  GNUNET_break (NULL != bs_pub);
   for (unsigned int i = 0; i<MAX_KEYS; i++)
     if (! keys[i].valid)
     {
@@ -184,8 +184,8 @@ key_cb (void *cls,
       keys[i].h_rsa = *h_rsa;
       keys[i].start_time = start_time;
       keys[i].validity_duration = validity_duration;
-      TALER_denom_pub_deep_copy (&keys[i].denom_pub,
-                                 denom_pub);
+      keys[i].denom_pub.bsign_pub_key
+        = GNUNET_CRYPTO_bsign_pub_incref (bs_pub);
       num_keys++;
       return;
     }
@@ -268,19 +268,22 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   enum TALER_ErrorCode ec;
   bool success = false;
   struct TALER_PlanchetMasterSecretP ps;
-  struct TALER_ExchangeWithdrawValues alg_values;
+  const struct TALER_ExchangeWithdrawValues *alg_values
+    = TALER_denom_ewv_rsa_singleton ();
   struct TALER_AgeCommitmentHash ach;
   struct TALER_CoinPubHashP c_hash;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
                               sizeof (ps));
-
-  alg_values.cipher = TALER_DENOMINATION_RSA;
-  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
-  TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
+  TALER_planchet_setup_coin_priv (&ps,
+                                  alg_values,
+                                  &coin_priv);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         alg_values,
+                                         &bks);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &ach,
                               sizeof(ach));
@@ -289,17 +292,17 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   {
     if (! keys[i].valid)
       continue;
-    if (TALER_DENOMINATION_RSA != keys[i].denom_pub.cipher)
+    if (GNUNET_CRYPTO_BSA_RSA !=
+        keys[i].denom_pub.bsign_pub_key->cipher)
       continue;
     {
-      struct TALER_PlanchetDetail pd = {
-        .blinded_planchet.cipher = TALER_DENOMINATION_RSA
-      };
+      struct TALER_PlanchetDetail pd;
 
       GNUNET_assert (GNUNET_YES ==
                      TALER_planchet_prepare (&keys[i].denom_pub,
-                                             &alg_values,
+                                             alg_values,
                                              &bks,
+                                             NULL,
                                              &coin_priv,
                                              &ach,
                                              &c_hash,
@@ -308,9 +311,11 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
         struct TALER_CRYPTO_RsaSignRequest rsr = {
           .h_rsa = &keys[i].h_rsa,
           .msg =
-            pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+            pd.blinded_planchet.blinded_message->details.rsa_blinded_message.
+            blinded_msg,
           .msg_size =
-            pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size
+            pd.blinded_planchet.blinded_message->details.rsa_blinded_message.
+            blinded_msg_size
         };
 
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -352,7 +357,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
                                      &ds,
                                      &bks,
                                      &c_hash,
-                                     &alg_values,
+                                     alg_values,
                                      &keys[i].denom_pub))
         {
           GNUNET_break (0);
@@ -457,11 +462,11 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   enum TALER_ErrorCode ec;
   bool success = false;
   struct TALER_PlanchetMasterSecretP ps[batch_size];
-  struct TALER_ExchangeWithdrawValues alg_values[batch_size];
+  const struct TALER_ExchangeWithdrawValues *alg_values;
   struct TALER_AgeCommitmentHash ach[batch_size];
   struct TALER_CoinPubHashP c_hash[batch_size];
   struct TALER_CoinSpendPrivateKeyP coin_priv[batch_size];
-  union TALER_DenominationBlindingKeyP bks[batch_size];
+  union GNUNET_CRYPTO_BlindingSecretP bks[batch_size];
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
@@ -469,14 +474,14 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &ach,
                               sizeof(ach));
+  alg_values = TALER_denom_ewv_rsa_singleton ();
   for (unsigned int i = 0; i<batch_size; i++)
   {
-    alg_values[i].cipher = TALER_DENOMINATION_RSA;
     TALER_planchet_setup_coin_priv (&ps[i],
-                                    &alg_values[i],
+                                    alg_values,
                                     &coin_priv[i]);
     TALER_planchet_blinding_secret_create (&ps[i],
-                                           &alg_values[i],
+                                           alg_values,
                                            &bks[i]);
   }
   for (unsigned int k = 0; k<MAX_KEYS; k++)
@@ -485,7 +490,8 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
       break; /* only do one round */
     if (! keys[k].valid)
       continue;
-    if (TALER_DENOMINATION_RSA != keys[k].denom_pub.cipher)
+    if (GNUNET_CRYPTO_BSA_RSA !=
+        keys[k].denom_pub.bsign_pub_key->cipher)
       continue;
     {
       struct TALER_PlanchetDetail pd[batch_size];
@@ -493,11 +499,11 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
 
       for (unsigned int i = 0; i<batch_size; i++)
       {
-        pd[i].blinded_planchet.cipher = TALER_DENOMINATION_RSA;
         GNUNET_assert (GNUNET_YES ==
                        TALER_planchet_prepare (&keys[k].denom_pub,
-                                               &alg_values[i],
+                                               alg_values,
                                                &bks[i],
+                                               NULL,
                                                &coin_priv[i],
                                                &ach[i],
                                                &c_hash[i],
@@ -505,19 +511,21 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
         rsr[i].h_rsa
           = &keys[k].h_rsa;
         rsr[i].msg
-          = pd[i].blinded_planchet.details.rsa_blinded_planchet.blinded_msg;
+          = pd[i].blinded_planchet.blinded_message->details.rsa_blinded_message.
+            blinded_msg;
         rsr[i].msg_size
-          = pd[i].blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size;
+          = pd[i].blinded_planchet.blinded_message->details.rsa_blinded_message.
+            blinded_msg_size;
       }
       ec = TALER_CRYPTO_helper_rsa_batch_sign (dh,
-                                               rsr,
                                                batch_size,
+                                               rsr,
                                                ds);
       for (unsigned int i = 0; i<batch_size; i++)
       {
         if (TALER_EC_NONE == ec)
-          GNUNET_break (TALER_DENOMINATION_RSA ==
-                        ds[i].cipher);
+          GNUNET_break (GNUNET_CRYPTO_BSA_RSA ==
+                        ds[i].blinded_sig->cipher);
         TALER_blinded_planchet_free (&pd[i].blinded_planchet);
       }
     }
@@ -553,7 +561,7 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
                                        &ds[i],
                                        &bks[i],
                                        &c_hash[i],
-                                       &alg_values[i],
+                                       alg_values,
                                        &keys[k].denom_pub))
           {
             GNUNET_break (0);
@@ -637,8 +645,8 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
                                 &rnd,
                                 sizeof (rnd));
     ec = TALER_CRYPTO_helper_rsa_batch_sign (dh,
-                                             &rsr,
                                              1,
+                                             &rsr,
                                              ds);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
@@ -674,13 +682,17 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   struct TALER_AgeCommitmentHash ach;
-  union TALER_DenominationBlindingKeyP bks;
-  struct TALER_ExchangeWithdrawValues alg_values;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
+  const struct TALER_ExchangeWithdrawValues *alg_values
+    = TALER_denom_ewv_rsa_singleton ();
 
   TALER_planchet_master_setup_random (&ps);
-  alg_values.cipher = TALER_DENOMINATION_RSA;
-  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
-  TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
+  TALER_planchet_setup_coin_priv (&ps,
+                                  alg_values,
+                                  &coin_priv);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         alg_values,
+                                         &bks);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &ach,
                               sizeof(ach));
@@ -692,7 +704,8 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
     {
       if (! keys[i].valid)
         continue;
-      if (TALER_DENOMINATION_RSA != keys[i].denom_pub.cipher)
+      if (GNUNET_CRYPTO_BSA_RSA !=
+          keys[i].denom_pub.bsign_pub_key->cipher)
         continue;
       if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_remaining (
                                       keys[i].start_time.abs_time),
@@ -710,8 +723,9 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
 
         GNUNET_assert (GNUNET_YES ==
                        TALER_planchet_prepare (&keys[i].denom_pub,
-                                               &alg_values,
+                                               alg_values,
                                                &bks,
+                                               NULL,
                                                &coin_priv,
                                                &ach,
                                                &c_hash,
@@ -724,9 +738,11 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
           struct TALER_CRYPTO_RsaSignRequest rsr = {
             .h_rsa = &keys[i].h_rsa,
             .msg =
-              pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+              pd.blinded_planchet.blinded_message->details.rsa_blinded_message.
+              blinded_msg,
             .msg_size =
-              pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size
+              pd.blinded_planchet.blinded_message->details.rsa_blinded_message.
+              blinded_msg_size
           };
 
           ec = TALER_CRYPTO_helper_rsa_sign (dh,

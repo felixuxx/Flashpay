@@ -325,10 +325,10 @@ TEH_keys_denomination_sign (
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_batch_sign (
-  const struct TEH_CoinSignData *csds,
   unsigned int csds_length,
+  const struct TEH_CoinSignData csds[static csds_length],
   bool for_melt,
-  struct TALER_BlindedDenominationSignature *bss);
+  struct TALER_BlindedDenominationSignature bss[static csds_length]);
 
 
 /**
@@ -344,7 +344,7 @@ struct TEH_CsDeriveData
   /**
    * Nonce to use.
    */
-  const struct TALER_CsNonce *nonce;
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce;
 };
 
 
@@ -360,7 +360,7 @@ enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub (
   const struct TEH_CsDeriveData *cdd,
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *r_pub);
+  struct GNUNET_CRYPTO_CSPublicRPairP *r_pub);
 
 
 /**
@@ -375,10 +375,10 @@ TEH_keys_denomination_cs_r_pub (
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_batch_r_pub (
-  const struct TEH_CsDeriveData *cdds,
   unsigned int cdds_length,
+  const struct TEH_CsDeriveData cdds[static cdds_length],
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *r_pubs);
+  struct GNUNET_CRYPTO_CSPublicRPairP r_pubs[static cdds_length]);
 
 
 /**

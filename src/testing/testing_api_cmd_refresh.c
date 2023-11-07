@@ -80,7 +80,7 @@ struct TALER_TESTING_FreshCoinData
   /**
    * The blinding key (needed for recoup operations).
    */
-  union TALER_DenominationBlindingKeyP blinding_key;
+  union GNUNET_CRYPTO_BlindingSecretP blinding_key;
 
 };
 
@@ -964,10 +964,12 @@ melt_cb (void *cls,
       return;
     }
     GNUNET_free (rms->mbds);
-    rms->mbds = GNUNET_memdup (mr->details.ok.mbds,
-                               mr->details.ok.num_mbds
-                               * sizeof (struct
-                                         TALER_EXCHANGE_MeltBlindingDetail));
+    rms->mbds = GNUNET_new_array (
+      mr->details.ok.num_mbds,
+      struct TALER_EXCHANGE_MeltBlindingDetail);
+    for (unsigned int i = 0; i<mr->details.ok.num_mbds; i++)
+      TALER_denom_ewv_deep_copy (&rms->mbds[i].alg_value,
+                                 &mr->details.ok.mbds[i].alg_value);
   }
   if (0 != rms->total_backoff.rel_value_us)
   {
@@ -1059,7 +1061,6 @@ melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_age_commitment_proof (coin_command,
                                                       0,
@@ -1079,7 +1080,6 @@ melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_sig (coin_command,
                                            0,
@@ -1089,7 +1089,6 @@ melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_pub (coin_command,
                                            0,
@@ -1217,8 +1216,12 @@ melt_cleanup (void *cls,
       TALER_denom_pub_free (&rms->fresh_pks[i].key);
     GNUNET_free (rms->fresh_pks);
   }
-
-  GNUNET_free (rms->mbds);
+  if (NULL != rms->mbds)
+  {
+    for (unsigned int i = 0; i < rms->num_fresh_coins; i++)
+      TALER_denom_ewv_free (&rms->mbds[i].alg_value);
+    GNUNET_free (rms->mbds);
+  }
   GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
 }

@@ -1,7 +1,7 @@
-﻿Terms Of Service
+﻿Terms of Service
 ================
 
-Last Updated: 12.4.2019
+Last updated: 1.11.2023
 
 Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment service
 through our Internet presence (collectively the “Services”). Before using our
@@ -21,21 +21,20 @@ carefully.
 
 Highlights:
 ~~~~~~~~~~~
-
-    • You are responsible for keeping the data in your Taler Wallet at all times
+- You are responsible for keeping the data in your Taler Wallet at all times
       under your control. Any losses arising from you not being in control of
       your private information are your problem.
-    • We will try to transfer funds we hold in escrow for our users to any legal
+- We will try to transfer funds we hold in escrow for our users to any legal
       recipient to the best of our ability within the limitations of the law and
       our implementation. However, the Services offered today are highly
       experimental and the set of recipients of funds is severely restricted.
-    • For our Services, we may charge transaction fees. The specific fee structure
+- For our Services, we may charge transaction fees. The specific fee structure
       is provided based on the Taler protocol and should be shown to you when you
       withdraw electronic coins using a Taler Wallet. You agree and understand
       that the Taler protocol allows for the fee structure to change.
-    • You agree to not intentionally overwhelm our systems with requests and
+- You agree to not intentionally overwhelm our systems with requests and
       follow responsible disclosure if you find security issues in our services.
-    • We cannot be held accountable for our Services not being available due to
+- We cannot be held accountable for our Services not being available due to
       circumstances beyond our control. If we modify or terminate our services,
       we will try to give you the opportunity to recover your funds. However,
       given the experimental state of the Services today, this may not be

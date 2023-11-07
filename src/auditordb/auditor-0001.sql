@@ -296,10 +296,17 @@ CREATE TABLE IF NOT EXISTS deposit_confirmations
   ,exchange_sig BYTEA NOT NULL CHECK (LENGTH(exchange_sig)=64)
   ,exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
+  ,suppressed BOOLEAN NOT NULL DEFAULT FALSE
+  ,ancient BOOLEAN NOT NULL DEFAULT FALSE
   ,PRIMARY KEY (h_contract_terms,h_wire,merchant_pub,exchange_sig,exchange_pub,master_sig)
   );
 COMMENT ON TABLE deposit_confirmations
   IS 'deposit confirmation sent to us by merchants; we must check that the exchange reported these properly.';
+
+CREATE INDEX IF NOT EXISTS auditor_deposit_confirmations_not_ancient
+  ON deposit_confirmations
+  (exchange_timestamp ASC)
+  WHERE NOT ancient;
 
 
 CREATE TABLE IF NOT EXISTS auditor_predicted_result

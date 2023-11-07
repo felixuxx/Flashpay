@@ -32,9 +32,10 @@ libtalertemplating_la_SOURCES = \
 libtalertemplating_la_LIBADD = \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -ljansson \
   -lmicrohttpd \
+  -lgnunetjson \
   -lgnunetutil \
+  -ljansson \
   $(XLIB)
 libtalertemplating_la_LDFLAGS = \
   -version-info 0:0:0 \

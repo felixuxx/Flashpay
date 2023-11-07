@@ -511,14 +511,19 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
 }
 
 
+#include "valgrind.h"
+
 void
 TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands)
 {
   TALER_TESTING_run2 (is,
                       commands,
-                      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES,
-                                                     5));
+                      0 == RUNNING_ON_VALGRIND
+                      ? GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES,
+                                                       5)
+                      : GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES,
+                                                       50));
 }
 
 

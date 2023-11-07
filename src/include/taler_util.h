@@ -226,12 +226,6 @@ struct TALER_CurrencySpecification
   char *name;
 
   /**
-   * Character used to separate decimals.  String as
-   * multi-byte sequences may be required (UTF-8!).
-   */
-  char *decimal_separator;
-
-  /**
    * how many digits the user may enter at most after the @e decimal_separator
    */
   unsigned int num_fractional_input_digits;

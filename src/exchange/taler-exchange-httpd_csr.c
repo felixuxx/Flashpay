@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -21,6 +21,7 @@
  * @brief Handle /csr requests
  * @author Lucien Heuzeveldt
  * @author Gian Demarmles
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -74,12 +75,12 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
   }
 
   {
-    struct TALER_ExchangeWithdrawValues ewvs[csr_requests_num];
+    struct GNUNET_CRYPTO_BlindingInputValues ewvs[csr_requests_num];
     {
-      struct TALER_CsNonce nonces[csr_requests_num];
+      struct GNUNET_CRYPTO_CsSessionNonce nonces[csr_requests_num];
       struct TALER_DenominationHashP denom_pub_hashes[csr_requests_num];
       struct TEH_CsDeriveData cdds[csr_requests_num];
-      struct TALER_DenominationCSPublicRPairP r_pubs[csr_requests_num];
+      struct GNUNET_CRYPTO_CSPublicRPairP r_pubs[csr_requests_num];
 
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {
@@ -110,11 +111,11 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
 
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {
-        const struct TALER_CsNonce *nonce = &nonces[i];
+        const struct GNUNET_CRYPTO_CsSessionNonce *nonce = &nonces[i];
         const struct TALER_DenominationHashP *denom_pub_hash =
           &denom_pub_hashes[i];
 
-        ewvs[i].cipher = TALER_DENOMINATION_CS;
+        ewvs[i].cipher = GNUNET_CRYPTO_BSA_CS;
         /* check denomination referenced by denom_pub_hash */
         {
           struct TEH_KeyStateHandle *ksh;
@@ -165,7 +166,8 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
               TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
               "csr-melt");
           }
-          if (TALER_DENOMINATION_CS != dk->denom_pub.cipher)
+          if (GNUNET_CRYPTO_BSA_CS !=
+              dk->denom_pub.bsign_pub_key->cipher)
           {
             /* denomination is valid but not for CS */
             return TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
@@ -176,8 +178,8 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
         cdds[i].h_denom_pub = denom_pub_hash;
         cdds[i].nonce = nonce;
       } /* for (i) */
-      ec = TEH_keys_denomination_cs_batch_r_pub (cdds,
-                                                 csr_requests_num,
+      ec = TEH_keys_denomination_cs_batch_r_pub (csr_requests_num,
+                                                 cdds,
                                                  true,
                                                  r_pubs);
       if (TALER_EC_NONE != ec)
@@ -200,10 +202,13 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {
         json_t *csr_obj;
+        struct TALER_ExchangeWithdrawValues exw = {
+          .blinding_inputs = &ewvs[i]
+        };
 
         csr_obj = GNUNET_JSON_PACK (
           TALER_JSON_pack_exchange_withdraw_values ("ewv",
-                                                    &ewvs[i]));
+                                                    &exw));
         GNUNET_assert (NULL != csr_obj);
         GNUNET_assert (0 ==
                        json_array_append_new (csr_response_ewvs,
@@ -226,10 +231,10 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
                           const json_t *root,
                           const char *const args[])
 {
-  struct TALER_CsNonce nonce;
+  struct GNUNET_CRYPTO_CsSessionNonce nonce;
   struct TALER_DenominationHashP denom_pub_hash;
-  struct TALER_ExchangeWithdrawValues ewv = {
-    .cipher = TALER_DENOMINATION_CS
+  struct GNUNET_CRYPTO_BlindingInputValues ewv = {
+    .cipher = GNUNET_CRYPTO_BSA_CS
   };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("nonce",
@@ -300,7 +305,8 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
         "csr-withdraw");
     }
-    if (TALER_DENOMINATION_CS != dk->denom_pub.cipher)
+    if (GNUNET_CRYPTO_BSA_CS !=
+        dk->denom_pub.bsign_pub_key->cipher)
     {
       /* denomination is valid but not for CS */
       return TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
@@ -328,12 +334,17 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
                                       NULL);
     }
   }
+  {
+    struct TALER_ExchangeWithdrawValues exw = {
+      .blinding_inputs = &ewv
+    };
 
-  return TALER_MHD_REPLY_JSON_PACK (
-    rc->connection,
-    MHD_HTTP_OK,
-    TALER_JSON_pack_exchange_withdraw_values ("ewv",
-                                              &ewv));
+    return TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_OK,
+      TALER_JSON_pack_exchange_withdraw_values ("ewv",
+                                                &exw));
+  }
 }
 
 

@@ -338,12 +338,12 @@ check_melt_valid (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_MELT_FEES_EXCEED_CONTRIBUTION,
                                        NULL);
   }
-  switch (dk->denom_pub.cipher)
+  switch (dk->denom_pub.bsign_pub_key->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_RSA:
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
     break;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
     break;
   default:

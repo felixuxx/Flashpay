@@ -432,10 +432,6 @@ struct WireFeeSet
  */
 struct WireStateHandle
 {
-  /**
-   * Cached reply for /wire response.
-   */
-  struct MHD_Response *wire_reply;
 
   /**
    * JSON reply for /wire response.
@@ -474,9 +470,9 @@ struct WireStateHandle
   uint64_t wire_generation;
 
   /**
-   * HTTP status to return with this response.
+   * Is the wire data ready?
    */
-  unsigned int http_status;
+  bool ready;
 
 };
 
@@ -594,7 +590,6 @@ destroy_wire_state (struct WireStateHandle *wsh)
     GNUNET_free (wfs->method);
     GNUNET_free (wfs);
   }
-  MHD_destroy_response (wsh->wire_reply);
   json_decref (wsh->json_reply);
   GNUNET_free (wsh->etag);
   GNUNET_free (wsh);
@@ -742,13 +737,6 @@ struct AddContext
   json_t *a;
 
   /**
-   * Context we hash "everything" we add into. This is used
-   * to compute the etag. Technically, we only hash the
-   * master_sigs, as they imply the rest.
-   */
-  struct GNUNET_HashContext *hc;
-
-  /**
    * Set to the maximum end-date seen.
    */
   struct GNUNET_TIME_Absolute max_seen;
@@ -788,9 +776,6 @@ add_wire_fee (void *cls,
                 "Database has wire fee with invalid signature. Skipping entry. Did the exchange offline public key change?\n");
     return;
   }
-  GNUNET_CRYPTO_hash_context_read (ac->hc,
-                                   master_sig,
-                                   sizeof (*master_sig));
   ac->max_seen = GNUNET_TIME_absolute_max (ac->max_seen,
                                            end_date.abs_time);
   wfs = GNUNET_new (struct WireFeeSet);
@@ -835,7 +820,6 @@ build_wire_state (void)
   uint64_t wg = wire_generation; /* must be obtained FIRST */
   enum GNUNET_DB_QueryStatus qs;
   struct WireStateHandle *wsh;
-  struct GNUNET_HashContext *hc;
   json_t *wads;
 
   wsh = GNUNET_new (struct WireStateHandle);
@@ -849,10 +833,7 @@ build_wire_state (void)
   {
     GNUNET_break (0);
     json_decref (wire_accounts_array);
-    wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    wsh->wire_reply
-      = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
-                              "get_wire_accounts");
+    wsh->ready = false;
     return wsh;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -861,12 +842,14 @@ build_wire_state (void)
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
   wsh->cache_expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
-  hc = GNUNET_CRYPTO_hash_context_start ();
   {
     json_t *account;
     size_t index;
 
-    json_array_foreach (wire_accounts_array, index, account) {
+    json_array_foreach (wire_accounts_array,
+                        index,
+                        account)
+    {
       char *wire_method;
       const char *payto_uri = json_string_value (json_object_get (account,
                                                                   "payto_uri"));
@@ -878,14 +861,9 @@ build_wire_state (void)
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "No wire method in `%s'\n",
                     payto_uri);
-        wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        wsh->wire_reply
-          = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
-              payto_uri);
+        wsh->ready = false;
         json_decref (wire_accounts_array);
         json_decref (wire_fee_object);
-        GNUNET_CRYPTO_hash_context_abort (hc);
         return wsh;
       }
       if (NULL == json_object_get (wire_fee_object,
@@ -894,8 +872,7 @@ build_wire_state (void)
         struct AddContext ac = {
           .wire_method = wire_method,
           .wsh = wsh,
-          .a = json_array (),
-          .hc = hc
+          .a = json_array ()
         };
 
         GNUNET_assert (NULL != ac.a);
@@ -910,11 +887,7 @@ build_wire_state (void)
           json_decref (wire_fee_object);
           json_decref (wire_accounts_array);
           GNUNET_free (wire_method);
-          wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-          wsh->wire_reply
-            = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "get_wire_fees");
-          GNUNET_CRYPTO_hash_context_abort (hc);
+          wsh->ready = false;
           return wsh;
         }
         if (0 != json_array_size (ac.a))
@@ -939,65 +912,13 @@ build_wire_state (void)
   wads = json_array (); /* #7271 */
   GNUNET_assert (NULL != wads);
   wsh->json_reply = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_array_incref ("accounts",
-                                   wire_accounts_array),
-    GNUNET_JSON_pack_array_incref ("wads",
-                                   wads),
-    GNUNET_JSON_pack_object_incref ("fees",
-                                    wire_fee_object));
-  wsh->wire_reply = TALER_MHD_MAKE_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("accounts",
                                   wire_accounts_array),
     GNUNET_JSON_pack_array_steal ("wads",
                                   wads),
     GNUNET_JSON_pack_object_steal ("fees",
-                                   wire_fee_object),
-    GNUNET_JSON_pack_data_auto ("master_public_key",
-                                &TEH_master_public_key));
-  {
-    struct GNUNET_TIME_Timestamp m;
-
-    m = GNUNET_TIME_absolute_to_timestamp (wsh->cache_expiration);
-    TALER_MHD_get_date_string (m.abs_time,
-                               wsh->dat);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Setting 'Expires' header for '/wire' to '%s'\n",
-                wsh->dat);
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
-                                           MHD_HTTP_HEADER_EXPIRES,
-                                           wsh->dat));
-  }
-  /* Set cache control headers: our response varies depending on these headers */
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (wsh->wire_reply,
-                                         MHD_HTTP_HEADER_VARY,
-                                         MHD_HTTP_HEADER_ACCEPT_ENCODING));
-  /* Information is always public, revalidate after 1 day */
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (wsh->wire_reply,
-                                         MHD_HTTP_HEADER_CACHE_CONTROL,
-                                         "public,max-age=86400"));
-
-  {
-    struct GNUNET_HashCode h;
-    char etag[sizeof (h) * 2];
-    char *end;
-
-    GNUNET_CRYPTO_hash_context_finish (hc,
-                                       &h);
-    end = GNUNET_STRINGS_data_to_string (&h,
-                                         sizeof (h),
-                                         etag,
-                                         sizeof (etag));
-    *end = '\0';
-    wsh->etag = GNUNET_strdup (etag);
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
-                                           MHD_HTTP_HEADER_ETAG,
-                                           etag));
-  }
-  wsh->http_status = MHD_HTTP_OK;
+                                   wire_fee_object));
+  wsh->ready = true;
   return wsh;
 }
 
@@ -1185,12 +1106,20 @@ check_dk (void *cls,
 
   (void) cls;
   (void) hc;
-  GNUNET_assert (TALER_DENOMINATION_INVALID != dk->denom_pub.cipher);
-  if (TALER_DENOMINATION_RSA == dk->denom_pub.cipher)
+  switch (dk->denom_pub.bsign_pub_key->cipher)
+  {
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     GNUNET_assert (GNUNET_CRYPTO_rsa_public_key_check (
-                     dk->denom_pub.details.rsa_public_key));
-  // nothing to do for TALER_DENOMINATION_CS
-  return GNUNET_OK;
+                     dk->denom_pub.bsign_pub_key->details.rsa_public_key));
+    return GNUNET_OK;
+  case GNUNET_CRYPTO_BSA_CS:
+    /* nothing to do for GNUNET_CRYPTO_BSA_CS */
+    return GNUNET_OK;
+  }
+  GNUNET_assert (0);
+  return GNUNET_SYSERR;
 }
 
 
@@ -1471,7 +1400,7 @@ load_age_mask (const char *section_name)
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_rsa hash of the @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -1483,7 +1412,7 @@ helper_rsa_cb (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_RsaPubHashP *h_rsa,
-  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
@@ -1513,10 +1442,9 @@ helper_rsa_cb (
   hd->validity_duration = validity_duration;
   hd->h_details.h_rsa = *h_rsa;
   hd->sm_sig = *sm_sig;
-  GNUNET_assert (TALER_DENOMINATION_RSA == denom_pub->cipher);
-  TALER_denom_pub_deep_copy (&hd->denom_pub,
-                             denom_pub);
-  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_RSA == bs_pub->cipher);
+  hd->denom_pub.bsign_pub_key =
+    GNUNET_CRYPTO_bsign_pub_incref (bs_pub);
   /* load the age mask for the denomination, if applicable */
   hd->denom_pub.age_mask = load_age_mask (section_name);
   TALER_denom_pub_hash (&hd->denom_pub,
@@ -1552,7 +1480,7 @@ helper_rsa_cb (
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_cs hash of the @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -1564,7 +1492,7 @@ helper_cs_cb (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bs_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
@@ -1594,9 +1522,9 @@ helper_cs_cb (
   hd->validity_duration = validity_duration;
   hd->h_details.h_cs = *h_cs;
   hd->sm_sig = *sm_sig;
-  GNUNET_assert (TALER_DENOMINATION_CS == denom_pub->cipher);
-  TALER_denom_pub_deep_copy (&hd->denom_pub,
-                             denom_pub);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_CS == bs_pub->cipher);
+  hd->denom_pub.bsign_pub_key
+    = GNUNET_CRYPTO_bsign_pub_incref (bs_pub);
   /* load the age mask for the denomination, if applicable */
   hd->denom_pub.age_mask = load_age_mask (section_name);
   TALER_denom_pub_hash (&hd->denom_pub,
@@ -1975,7 +1903,8 @@ denomination_info_cb (
     return;
   }
 
-  GNUNET_assert (TALER_DENOMINATION_INVALID != denom_pub->cipher);
+  GNUNET_assert (GNUNET_CRYPTO_BSA_INVALID !=
+                 denom_pub->bsign_pub_key->cipher);
   if (GNUNET_TIME_absolute_is_zero (meta->start.abs_time) ||
       GNUNET_TIME_absolute_is_zero (meta->expire_withdraw.abs_time) ||
       GNUNET_TIME_absolute_is_zero (meta->expire_deposit.abs_time) ||
@@ -2429,7 +2358,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   json_t *keys;
 
   wsh = get_wire_state ();
-  if (MHD_HTTP_OK != wsh->http_status)
+  if (! wsh->ready)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -2678,12 +2607,12 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                     krd.response_compressed);
     /* Set cache control headers: our response varies depending on these headers */
     GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
+                  MHD_add_response_header (krd.response_compressed,
                                            MHD_HTTP_HEADER_VARY,
                                            MHD_HTTP_HEADER_ACCEPT_ENCODING));
     /* Information is always public, revalidate after 1 day */
     GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (wsh->wire_reply,
+                  MHD_add_response_header (krd.response_compressed,
                                            MHD_HTTP_HEADER_CACHE_CONTROL,
                                            "public,max-age=86400"));
     GNUNET_break (MHD_YES ==
@@ -2902,22 +2831,48 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
   enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   json_t *recoup;
-  struct SignKeyCtx sctx;
+  struct SignKeyCtx sctx = {
+    .min_sk_frequency = GNUNET_TIME_UNIT_FOREVER_REL
+  };
   json_t *grouped_denominations = NULL;
   struct GNUNET_TIME_Timestamp last_cherry_pick_date;
   struct GNUNET_CONTAINER_Heap *heap;
   struct SignatureContext sig_ctx = { 0 };
   /* Remember if we have any denomination with age restriction */
   bool has_age_restricted_denomination = false;
+  struct WireStateHandle *wsh;
 
+  wsh = get_wire_state ();
+  if (! wsh->ready)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 ==
+      json_array_size (json_object_get (wsh->json_reply,
+                                        "accounts")) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No wire accounts available. Refusing to generate /keys response.\n");
+    return GNUNET_NO;
+  }
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
-  sctx.min_sk_frequency = GNUNET_TIME_UNIT_FOREVER_REL;
+  recoup = json_array ();
+  GNUNET_assert (NULL != recoup);
+  grouped_denominations = json_array ();
+  GNUNET_assert (NULL != grouped_denominations);
+
   GNUNET_CONTAINER_multipeermap_iterate (ksh->signkey_map,
                                          &add_sign_key_cb,
                                          &sctx);
-  recoup = json_array ();
-  GNUNET_assert (NULL != recoup);
+  if (0 == json_array_size (sctx.signkeys))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No online signing keys available. Refusing to generate /keys response.\n");
+    ret = GNUNET_NO;
+    goto CLEANUP;
+  }
   heap = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MAX);
   {
     struct DenomKeyCtx dkc = {
@@ -2933,9 +2888,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       = GNUNET_TIME_relative_min (dkc.min_dk_frequency,
                                   sctx.min_sk_frequency);
   }
-
-  grouped_denominations = json_array ();
-  GNUNET_assert (NULL != grouped_denominations);
 
   last_cherry_pick_date = GNUNET_TIME_UNIT_ZERO_TS;
 
@@ -2995,7 +2947,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         json_t *entry;
         struct GNUNET_HashCode key;
         struct TALER_DenominationGroup meta = {
-          .cipher = dk->denom_pub.cipher,
+          .cipher = dk->denom_pub.bsign_pub_key->cipher,
           .value = dk->meta.value,
           .fees = dk->meta.fees,
           .age_mask = dk->meta.age_mask,
@@ -3016,10 +2968,10 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           group = GNUNET_new (struct GroupData);
           switch (meta.cipher)
           {
-          case TALER_DENOMINATION_RSA:
+          case GNUNET_CRYPTO_BSA_RSA:
             cipher = age_restricted ? "RSA+age_restricted" : "RSA";
             break;
-          case TALER_DENOMINATION_CS:
+          case GNUNET_CRYPTO_BSA_CS:
             cipher = age_restricted ? "CS+age_restricted" : "CS";
             break;
           default:
@@ -3080,18 +3032,18 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                   hd->validity_duration));
           switch (meta.cipher)
           {
-          case TALER_DENOMINATION_RSA:
+          case GNUNET_CRYPTO_BSA_RSA:
             key_spec =
               GNUNET_JSON_pack_rsa_public_key (
                 "rsa_pub",
-                dk->denom_pub.details.rsa_public_key);
+                dk->denom_pub.bsign_pub_key->details.rsa_public_key);
             break;
-          case TALER_DENOMINATION_CS:
+          case GNUNET_CRYPTO_BSA_CS:
             key_spec =
               GNUNET_JSON_pack_data_varsize (
                 "cs_pub",
-                &dk->denom_pub.details.cs_public_key,
-                sizeof (dk->denom_pub.details.cs_public_key));
+                &dk->denom_pub.bsign_pub_key->details.cs_public_key,
+                sizeof (dk->denom_pub.bsign_pub_key->details.cs_public_key));
             break;
           default:
             GNUNET_assert (false);
@@ -3139,8 +3091,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                            NULL);
     GNUNET_CONTAINER_multihashmap_destroy (denominations_by_group);
   }
-
   GNUNET_CONTAINER_heap_destroy (heap);
+
   if (! GNUNET_TIME_absolute_is_zero (last_cherry_pick_date.abs_time))
   {
     struct GNUNET_HashCode hc;
@@ -3189,7 +3141,8 @@ CLEANUP:
                      sig_ctx.elements_size,
                      0);
   json_decref (grouped_denominations);
-  json_decref (sctx.signkeys);
+  if (NULL != sctx.signkeys)
+    json_decref (sctx.signkeys);
   json_decref (recoup);
   return ret;
 }
@@ -3387,7 +3340,7 @@ build_key_state (struct HelperState *hs,
       finish_keys_response (ksh))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Could not finish /keys response (likely no signing keys available yet)\n");
+                "Could not finish /keys response (required data not configured yet)\n");
     destroy_key_state (ksh,
                        true);
     return NULL;
@@ -3564,17 +3517,21 @@ TEH_keys_denomination_sign (
                                           &h_denom_pub->hash);
   if (NULL == hd)
     return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-  if (bp->cipher != hd->denom_pub.cipher)
+  if (bp->blinded_message->cipher !=
+      hd->denom_pub.bsign_pub_key->cipher)
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  switch (hd->denom_pub.cipher)
+  switch (hd->denom_pub.bsign_pub_key->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
     {
       struct TALER_CRYPTO_RsaSignRequest rsr = {
         .h_rsa = &hd->h_details.h_rsa,
-        .msg = bp->details.rsa_blinded_planchet.blinded_msg,
-        .msg_size = bp->details.rsa_blinded_planchet.blinded_msg_size
+        .msg = bp->blinded_message->details.rsa_blinded_message.blinded_msg,
+        .msg_size =
+          bp->blinded_message->details.rsa_blinded_message.blinded_msg_size
       };
 
       return TALER_CRYPTO_helper_rsa_sign (
@@ -3582,31 +3539,30 @@ TEH_keys_denomination_sign (
         &rsr,
         bs);
     }
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
     {
       struct TALER_CRYPTO_CsSignRequest csr;
 
       csr.h_cs = &hd->h_details.h_cs;
-      csr.blinded_planchet = &bp->details.cs_blinded_planchet;
+      csr.blinded_planchet = &bp->blinded_message->details.cs_blinded_message;
       return TALER_CRYPTO_helper_cs_sign (
         ksh->helpers->csdh,
         &csr,
         for_melt,
         bs);
     }
-  default:
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
+  return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
 }
 
 
 enum TALER_ErrorCode
 TEH_keys_denomination_batch_sign (
-  const struct TEH_CoinSignData *csds,
   unsigned int csds_length,
+  const struct TEH_CoinSignData csds[static csds_length],
   bool for_melt,
-  struct TALER_BlindedDenominationSignature *bss)
+  struct TALER_BlindedDenominationSignature bss[static csds_length])
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -3630,21 +3586,23 @@ TEH_keys_denomination_batch_sign (
                                             &h_denom_pub->hash);
     if (NULL == hd)
       return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-    if (bp->cipher != hd->denom_pub.cipher)
+    if (bp->blinded_message->cipher !=
+        hd->denom_pub.bsign_pub_key->cipher)
       return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-    switch (hd->denom_pub.cipher)
+    switch (hd->denom_pub.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       rsrs[rsrs_pos].h_rsa = &hd->h_details.h_rsa;
       rsrs[rsrs_pos].msg
-        = bp->details.rsa_blinded_planchet.blinded_msg;
+        = bp->blinded_message->details.rsa_blinded_message.blinded_msg;
       rsrs[rsrs_pos].msg_size
-        = bp->details.rsa_blinded_planchet.blinded_msg_size;
+        = bp->blinded_message->details.rsa_blinded_message.blinded_msg_size;
       rsrs_pos++;
       break;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       csrs[csrs_pos].h_cs = &hd->h_details.h_cs;
-      csrs[csrs_pos].blinded_planchet = &bp->details.cs_blinded_planchet;
+      csrs[csrs_pos].blinded_planchet
+        = &bp->blinded_message->details.cs_blinded_message;
       csrs_pos++;
       break;
     default:
@@ -3667,8 +3625,8 @@ TEH_keys_denomination_batch_sign (
   {
     ec = TALER_CRYPTO_helper_cs_batch_sign (
       ksh->helpers->csdh,
-      csrs,
       csrs_pos,
+      csrs,
       for_melt,
       (0 == rsrs_pos) ? bss : cs);
     if (TALER_EC_NONE != ec)
@@ -3683,8 +3641,8 @@ TEH_keys_denomination_batch_sign (
   {
     ec = TALER_CRYPTO_helper_rsa_batch_sign (
       ksh->helpers->rsadh,
-      rsrs,
       rsrs_pos,
+      rsrs,
       (0 == csrs_pos) ? bss : rs);
     if (TALER_EC_NONE != ec)
     {
@@ -3706,12 +3664,12 @@ TEH_keys_denomination_batch_sign (
     {
       const struct TALER_BlindedPlanchet *bp = csds[i].bp;
 
-      switch (bp->cipher)
+      switch (bp->blinded_message->cipher)
       {
-      case TALER_DENOMINATION_RSA:
+      case GNUNET_CRYPTO_BSA_RSA:
         bss[i] = rs[rsrs_pos++];
         break;
-      case TALER_DENOMINATION_CS:
+      case GNUNET_CRYPTO_BSA_CS:
         bss[i] = cs[csrs_pos++];
         break;
       default:
@@ -3727,10 +3685,10 @@ enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub (
   const struct TEH_CsDeriveData *cdd,
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *r_pub)
+  struct GNUNET_CRYPTO_CSPublicRPairP *r_pub)
 {
   const struct TALER_DenominationHashP *h_denom_pub = cdd->h_denom_pub;
-  const struct TALER_CsNonce *nonce = cdd->nonce;
+  const struct GNUNET_CRYPTO_CsSessionNonce *nonce = cdd->nonce;
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
 
@@ -3745,7 +3703,8 @@ TEH_keys_denomination_cs_r_pub (
   {
     return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
   }
-  if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+  if (GNUNET_CRYPTO_BSA_CS !=
+      hd->denom_pub.bsign_pub_key->cipher)
   {
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
@@ -3765,10 +3724,10 @@ TEH_keys_denomination_cs_r_pub (
 
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_batch_r_pub (
-  const struct TEH_CsDeriveData *cdds,
   unsigned int cdds_length,
+  const struct TEH_CsDeriveData cdds[static cdds_length],
   bool for_melt,
-  struct TALER_DenominationCSPublicRPairP *r_pubs)
+  struct GNUNET_CRYPTO_CSPublicRPairP r_pubs[static cdds_length])
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -3782,7 +3741,7 @@ TEH_keys_denomination_cs_batch_r_pub (
   for (unsigned int i = 0; i<cdds_length; i++)
   {
     const struct TALER_DenominationHashP *h_denom_pub = cdds[i].h_denom_pub;
-    const struct TALER_CsNonce *nonce = cdds[i].nonce;
+    const struct GNUNET_CRYPTO_CsSessionNonce *nonce = cdds[i].nonce;
 
     hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
                                             &h_denom_pub->hash);
@@ -3790,7 +3749,8 @@ TEH_keys_denomination_cs_batch_r_pub (
     {
       return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
     }
-    if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+    if (GNUNET_CRYPTO_BSA_CS !=
+        hd->denom_pub.bsign_pub_key->cipher)
     {
       return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
     }
@@ -3799,8 +3759,8 @@ TEH_keys_denomination_cs_batch_r_pub (
   }
 
   return TALER_CRYPTO_helper_cs_r_batch_derive (ksh->helpers->csdh,
-                                                cdrs,
                                                 cdds_length,
+                                                cdrs,
                                                 for_melt,
                                                 r_pubs);
 }
@@ -3825,22 +3785,23 @@ TEH_keys_denomination_revoke (const struct TALER_DenominationHashP *h_denom_pub)
     GNUNET_break (0);
     return;
   }
-  switch (hd->denom_pub.cipher)
+  switch (hd->denom_pub.bsign_pub_key->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     TALER_CRYPTO_helper_rsa_revoke (ksh->helpers->rsadh,
                                     &hd->h_details.h_rsa);
     TEH_keys_update_states ();
     return;
-  case TALER_DENOMINATION_CS:
+  case GNUNET_CRYPTO_BSA_CS:
     TALER_CRYPTO_helper_cs_revoke (ksh->helpers->csdh,
                                    &hd->h_details.h_cs);
     TEH_keys_update_states ();
     return;
-  default:
-    GNUNET_break (0);
-    return;
   }
+  GNUNET_break (0);
+  return;
 }
 
 
@@ -4170,7 +4131,8 @@ TEH_keys_load_fees (struct TEH_KeyStateHandle *ksh,
                             meta);
   if (GNUNET_OK == ok)
   {
-    GNUNET_assert (TALER_DENOMINATION_INVALID != hd->denom_pub.cipher);
+    GNUNET_assert (GNUNET_CRYPTO_BSA_INVALID !=
+                   hd->denom_pub.bsign_pub_key->cipher);
     TALER_denom_pub_deep_copy (denom_pub,
                                &hd->denom_pub);
   }
@@ -4205,6 +4167,11 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   pid.public_key = exchange_pub->eddsa_pub;
   hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers->esign_keys,
                                            &pid);
+  if (NULL == hsk)
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
   meta->start = hsk->start_time;
 
   meta->expire_sign = GNUNET_TIME_absolute_to_timestamp (

@@ -14,13 +14,19 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE TABLE IF NOT EXISTS auditor_balances (
-    balance_key TEXT PRIMARY KEY
-   ,balance_value taler_amount
-  );
-COMMENT ON TABLE auditor_balances
+SET search_path TO auditor;
+CREATE TABLE IF NOT EXISTS auditor_balances
+(
+    balance_key TEXT
+    ,balance_value taler_amount
+    ,PRIMARY KEY (balance_key)
+);
+COMMENT
+ON TABLE auditor_balances
   IS 'table storing various global balances of the auditor';
-COMMENT ON COLUMN auditor_balances.balance_key
+COMMENT
+ON COLUMN auditor_balances.balance_key
  IS 'unique name for the balance value';
-COMMENT ON COLUMN auditor_balances.balance_value
+COMMENT
+ON COLUMN auditor_balances.balance_value
  IS 'balance amount';

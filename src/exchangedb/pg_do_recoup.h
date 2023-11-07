@@ -45,7 +45,7 @@ TEH_PG_do_recoup (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t reserve_out_serial_id,
-  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   uint64_t known_coin_id,
   const struct TALER_CoinSpendSignatureP *coin_sig,

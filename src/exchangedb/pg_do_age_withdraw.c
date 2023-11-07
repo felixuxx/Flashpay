@@ -82,6 +82,7 @@ TEH_PG_do_age_withdraw (
                                 conflict),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
@@ -98,8 +99,10 @@ TEH_PG_do_age_withdraw (
            ",conflict"
            " FROM exchange_do_age_withdraw"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_age_withdraw",
-                                                   params,
-                                                   rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "call_age_withdraw",
+                                                 params,
+                                                 rs);
+  GNUNET_PQ_cleanup_query_params_closures (params);
+  return qs;
 }

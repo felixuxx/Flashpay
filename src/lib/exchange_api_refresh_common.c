@@ -68,7 +68,7 @@ TALER_EXCHANGE_get_melt_data_ (
 {
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TALER_CsNonce nonces[rd->fresh_pks_len];
+  union GNUNET_CRYPTO_BlindSessionNonce nonces[rd->fresh_pks_len];
   bool uses_cs = false;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&rd->melt_priv.eddsa_priv,
@@ -99,22 +99,31 @@ TALER_EXCHANGE_get_melt_data_ (
   {
     struct FreshCoinData *fcd = &md->fcds[j];
 
-    if (alg_values[j].cipher != rd->fresh_pks[j].key.cipher)
+    TALER_denom_pub_deep_copy (&fcd->fresh_pk,
+                               &rd->fresh_pks[j].key);
+    GNUNET_assert (NULL != fcd->fresh_pk.bsign_pub_key);
+    if (alg_values[j].blinding_inputs->cipher !=
+        fcd->fresh_pk.bsign_pub_key->cipher)
     {
       GNUNET_break (0);
       TALER_EXCHANGE_free_melt_data_ (md);
       return GNUNET_SYSERR;
     }
-    if (TALER_DENOMINATION_CS == alg_values[j].cipher)
+    switch (fcd->fresh_pk.bsign_pub_key->cipher)
     {
+    case GNUNET_CRYPTO_BSA_INVALID:
+      GNUNET_break (0);
+      TALER_EXCHANGE_free_melt_data_ (md);
+      return GNUNET_SYSERR;
+    case GNUNET_CRYPTO_BSA_RSA:
+      break;
+    case GNUNET_CRYPTO_BSA_CS:
       uses_cs = true;
-      TALER_cs_refresh_nonce_derive (
-        rms,
-        j,
-        &nonces[j]);
+      TALER_cs_refresh_nonce_derive (rms,
+                                     j,
+                                     &nonces[j].cs_nonce);
+      break;
     }
-    TALER_denom_pub_deep_copy (&fcd->fresh_pk,
-                               &rd->fresh_pks[j].key);
     if ( (0 >
           TALER_amount_add (&total,
                             &total,
@@ -170,7 +179,7 @@ TALER_EXCHANGE_get_melt_data_ (
       struct TALER_CoinSpendPrivateKeyP *coin_priv = &fcd->coin_priv;
       struct TALER_PlanchetMasterSecretP *ps = &fcd->ps[i];
       struct TALER_RefreshCoinData *rcd = &md->rcd[i][j];
-      union TALER_DenominationBlindingKeyP *bks = &fcd->bks[i];
+      union GNUNET_CRYPTO_BlindingSecretP *bks = &fcd->bks[i];
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHashP c_hash;
       struct TALER_AgeCommitmentHash ach;
@@ -205,13 +214,11 @@ TALER_EXCHANGE_get_melt_data_ (
         pah = &ach;
       }
 
-      if (TALER_DENOMINATION_CS == alg_values[j].cipher)
-        pd.blinded_planchet.details.cs_blinded_planchet.nonce = nonces[j];
-
       if (GNUNET_OK !=
           TALER_planchet_prepare (&fcd->fresh_pk,
                                   &alg_values[j],
                                   bks,
+                                  &nonces[j],
                                   coin_priv,
                                   pah,
                                   &c_hash,

@@ -101,37 +101,41 @@ TALER_JSON_pack_denom_pub (
   const char *name,
   const struct TALER_DenominationPublicKey *pk)
 {
+  const struct GNUNET_CRYPTO_BlindSignPublicKey *bsp;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
 
   if (NULL == pk)
     return ps;
-  switch (pk->cipher)
+  bsp = pk->bsign_pub_key;
+  switch (bsp->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     ps.object
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_string ("cipher", "RSA"),
+          GNUNET_JSON_pack_string ("cipher",
+                                   "RSA"),
           GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask.bits),
           GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
-                                           pk->details.rsa_public_key));
-    break;
-  case TALER_DENOMINATION_CS:
+                                           bsp->details.rsa_public_key));
+    return ps;
+  case GNUNET_CRYPTO_BSA_CS:
     ps.object
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_string ("cipher", "CS"),
+          GNUNET_JSON_pack_string ("cipher",
+                                   "CS"),
           GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask.bits),
           GNUNET_JSON_pack_data_varsize ("cs_public_key",
-                                         &pk->details.cs_public_key,
-                                         sizeof (pk->details.cs_public_key)));
-    break;
-  default:
-    GNUNET_assert (0);
+                                         &bsp->details.cs_public_key,
+                                         sizeof (bsp->details.cs_public_key)));
+    return ps;
   }
-
+  GNUNET_assert (0);
   return ps;
 }
 
@@ -141,33 +145,36 @@ TALER_JSON_pack_denom_sig (
   const char *name,
   const struct TALER_DenominationSignature *sig)
 {
+  const struct GNUNET_CRYPTO_UnblindedSignature *bs;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
 
   if (NULL == sig)
     return ps;
-  switch (sig->cipher)
+  bs = sig->unblinded_sig;
+  switch (bs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "RSA"),
       GNUNET_JSON_pack_rsa_signature ("rsa_signature",
-                                      sig->details.rsa_signature));
-    break;
-  case TALER_DENOMINATION_CS:
+                                      bs->details.rsa_signature));
+    return ps;
+  case GNUNET_CRYPTO_BSA_CS:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "CS"),
       GNUNET_JSON_pack_data_auto ("cs_signature_r",
-                                  &sig->details.cs_signature.r_point),
+                                  &bs->details.cs_signature.r_point),
       GNUNET_JSON_pack_data_auto ("cs_signature_s",
-                                  &sig->details.cs_signature.s_scalar));
-    break;
-  default:
-    GNUNET_assert (0);
+                                  &bs->details.cs_signature.s_scalar));
+    return ps;
   }
+  GNUNET_assert (0);
   return ps;
 }
 
@@ -177,36 +184,39 @@ TALER_JSON_pack_exchange_withdraw_values (
   const char *name,
   const struct TALER_ExchangeWithdrawValues *ewv)
 {
+  const struct GNUNET_CRYPTO_BlindingInputValues *biv;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
 
   if (NULL == ewv)
     return ps;
-  switch (ewv->cipher)
+  biv = ewv->blinding_inputs;
+  switch (biv->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "RSA"));
-    break;
-  case TALER_DENOMINATION_CS:
+    return ps;
+  case GNUNET_CRYPTO_BSA_CS:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "CS"),
       GNUNET_JSON_pack_data_varsize (
         "r_pub_0",
-        &ewv->details.cs_values.r_pub[0],
+        &biv->details.cs_values.r_pub[0],
         sizeof(struct GNUNET_CRYPTO_CsRPublic)),
       GNUNET_JSON_pack_data_varsize (
         "r_pub_1",
-        &ewv->details.cs_values.r_pub[1],
+        &biv->details.cs_values.r_pub[1],
         sizeof(struct GNUNET_CRYPTO_CsRPublic))
       );
-    break;
-  default:
-    GNUNET_assert (0);
+    return ps;
   }
+  GNUNET_assert (0);
   return ps;
 }
 
@@ -216,33 +226,36 @@ TALER_JSON_pack_blinded_denom_sig (
   const char *name,
   const struct TALER_BlindedDenominationSignature *sig)
 {
+  const struct GNUNET_CRYPTO_BlindedSignature *bs;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
 
   if (NULL == sig)
     return ps;
-  switch (sig->cipher)
+  bs = sig->blinded_sig;
+  switch (bs->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "RSA"),
       GNUNET_JSON_pack_rsa_signature ("blinded_rsa_signature",
-                                      sig->details.blinded_rsa_signature));
-    break;
-  case TALER_DENOMINATION_CS:
+                                      bs->details.blinded_rsa_signature));
+    return ps;
+  case GNUNET_CRYPTO_BSA_CS:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "CS"),
       GNUNET_JSON_pack_uint64 ("b",
-                               sig->details.blinded_cs_answer.b),
+                               bs->details.blinded_cs_answer.b),
       GNUNET_JSON_pack_data_auto ("s",
-                                  &sig->details.blinded_cs_answer.s_scalar));
-    break;
-  default:
-    GNUNET_assert (0);
+                                  &bs->details.blinded_cs_answer.s_scalar));
+    return ps;
   }
+  GNUNET_assert (0);
   return ps;
 }
 
@@ -252,40 +265,43 @@ TALER_JSON_pack_blinded_planchet (
   const char *name,
   const struct TALER_BlindedPlanchet *blinded_planchet)
 {
+  const struct GNUNET_CRYPTO_BlindedMessage *bm;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
 
   if (NULL == blinded_planchet)
     return ps;
-  switch (blinded_planchet->cipher)
+  bm = blinded_planchet->blinded_message;
+  switch (bm->cipher)
   {
-  case TALER_DENOMINATION_RSA:
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "RSA"),
       GNUNET_JSON_pack_data_varsize (
         "rsa_blinded_planchet",
-        blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
-        blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size));
-    break;
-  case TALER_DENOMINATION_CS:
+        bm->details.rsa_blinded_message.blinded_msg,
+        bm->details.rsa_blinded_message.blinded_msg_size));
+    return ps;
+  case GNUNET_CRYPTO_BSA_CS:
     ps.object = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("cipher",
                                "CS"),
       GNUNET_JSON_pack_data_auto (
         "cs_nonce",
-        &blinded_planchet->details.cs_blinded_planchet.nonce),
+        &bm->details.cs_blinded_message.nonce),
       GNUNET_JSON_pack_data_auto (
         "cs_blinded_c0",
-        &blinded_planchet->details.cs_blinded_planchet.c[0]),
+        &bm->details.cs_blinded_message.c[0]),
       GNUNET_JSON_pack_data_auto (
         "cs_blinded_c1",
-        &blinded_planchet->details.cs_blinded_planchet.c[1]));
-    break;
-  default:
-    GNUNET_assert (0);
+        &bm->details.cs_blinded_message.c[1]));
+    return ps;
   }
+  GNUNET_assert (0);
   return ps;
 }
 

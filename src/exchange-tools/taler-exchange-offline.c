@@ -4305,13 +4305,13 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       stamp_expire_withdraw.abs_time);
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
-    switch (denom_pub.cipher)
+    switch (denom_pub.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       {
         struct TALER_RsaPubHashP h_rsa;
 
-        TALER_rsa_pub_hash (denom_pub.details.rsa_public_key,
+        TALER_rsa_pub_hash (denom_pub.bsign_pub_key->details.rsa_public_key,
                             &h_rsa);
         ok = TALER_exchange_secmod_rsa_verify (&h_rsa,
                                                section_name,
@@ -4321,11 +4321,11 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                                                &secm_sig);
       }
       break;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       {
         struct TALER_CsPubHashP h_cs;
 
-        TALER_cs_pub_hash (&denom_pub.details.cs_public_key,
+        TALER_cs_pub_hash (&denom_pub.bsign_pub_key->details.cs_public_key,
                            &h_cs);
         ok = TALER_exchange_secmod_cs_verify (&h_cs,
                                               section_name,
@@ -4785,13 +4785,14 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
 
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
-    switch (denom_pub.cipher)
+
+    switch (denom_pub.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       {
         struct TALER_RsaPubHashP h_rsa;
 
-        TALER_rsa_pub_hash (denom_pub.details.rsa_public_key,
+        TALER_rsa_pub_hash (denom_pub.bsign_pub_key->details.rsa_public_key,
                             &h_rsa);
         if (GNUNET_OK !=
             TALER_exchange_secmod_rsa_verify (&h_rsa,
@@ -4811,11 +4812,11 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
         }
       }
       break;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       {
         struct TALER_CsPubHashP h_cs;
 
-        TALER_cs_pub_hash (&denom_pub.details.cs_public_key,
+        TALER_cs_pub_hash (&denom_pub.bsign_pub_key->details.cs_public_key,
                            &h_cs);
         if (GNUNET_OK !=
             TALER_exchange_secmod_cs_verify (&h_cs,

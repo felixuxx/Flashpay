@@ -30,6 +30,27 @@
 #include "taler_signatures.h"
 #include "report-lib.h"
 
+/*
+--
+-- SELECT serial_id,h_contract_terms,h_wire,merchant_pub ...
+--   FROM auditor.depoist_confirmations
+--   WHERE NOT ancient
+--    ORDER BY exchange_timestamp ASC;
+--  SELECT 1
+-      FROM exchange.deposits dep
+       WHERE ($RESULT.contract_terms = dep.h_contract_terms) AND ($RESULT.h_wire = dep.h_wire) AND ...);
+-- IF FOUND
+-- DELETE FROM auditor.depoist_confirmations
+--   WHERE serial_id = $RESULT.serial_id;
+-- SELECT exchange_timestamp AS latest
+--   FROM exchange.deposits ORDER BY exchange_timestamp DESC;
+-- latest -= 1 hour; // time is not exactly monotonic...
+-- UPDATE auditor.deposit_confirmations
+--   SET ancient=TRUE
+--  WHERE exchange_timestamp < latest
+--    AND NOT ancient;
+*/
+
 
 /**
  * Return value from main().

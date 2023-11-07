@@ -54,13 +54,12 @@ TEH_PG_get_extension_manifest (void *cls,
   };
 
   *manifest = NULL;
-  /* Used in #postgres_get_extension_manifest */
   PREPARE (pg,
            "get_extension_manifest",
-           "SELECT "
-           " manifest "
-           "FROM extensions"
-           "   WHERE name=$1;");
+           "SELECT"
+           " manifest"
+           " FROM extensions"
+           " WHERE name=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_extension_manifest",
                                                    params,

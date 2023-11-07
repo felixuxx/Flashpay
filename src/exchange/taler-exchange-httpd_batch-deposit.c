@@ -376,7 +376,8 @@ parse_coin (struct MHD_Connection *connection,
         ? GNUNET_NO
         : GNUNET_SYSERR;
     }
-    if (dk->denom_pub.cipher != cdi->coin.denom_sig.cipher)
+    if (dk->denom_pub.bsign_pub_key->cipher !=
+        cdi->coin.denom_sig.unblinded_sig->cipher)
     {
       /* denomination cipher and denomination signature cipher not the same */
       GNUNET_JSON_parse_free (spec);
@@ -391,12 +392,12 @@ parse_coin (struct MHD_Connection *connection,
 
     *deposit_fee = dk->meta.fees.deposit;
     /* check coin signature */
-    switch (dk->denom_pub.cipher)
+    switch (dk->denom_pub.bsign_pub_key->cipher)
     {
-    case TALER_DENOMINATION_RSA:
+    case GNUNET_CRYPTO_BSA_RSA:
       TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
       break;
-    case TALER_DENOMINATION_CS:
+    case GNUNET_CRYPTO_BSA_CS:
       TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
       break;
     default:

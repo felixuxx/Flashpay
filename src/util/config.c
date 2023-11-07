@@ -271,20 +271,6 @@ parse_currencies_cb (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
                                              section,
-                                             "DECIMAL_SEPARATOR",
-                                             &str))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "DECIMAL_SEPARATOR");
-    cpc->failure = true;
-    return;
-  }
-  cspec->decimal_separator = str;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
-                                             section,
                                              "NAME",
                                              &str))
   {
@@ -487,8 +473,6 @@ TALER_CONFIG_currency_specs_to_json (const struct
                                      TALER_CurrencySpecification *cspec)
 {
   return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("decimal_separator",
-                             cspec->decimal_separator),
     GNUNET_JSON_pack_string ("name",
                              cspec->name),
     GNUNET_JSON_pack_string ("currency",
@@ -515,7 +499,6 @@ TALER_CONFIG_free_currencies (
   {
     struct TALER_CurrencySpecification *cspec = &cspecs[i];
 
-    GNUNET_free (cspec->decimal_separator);
     GNUNET_free (cspec->name);
     json_decref (cspec->map_alt_unit_names);
   }

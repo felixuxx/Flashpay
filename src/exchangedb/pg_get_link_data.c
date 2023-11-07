@@ -69,6 +69,7 @@ free_link_data_list (struct TALER_EXCHANGEDB_LinkList *ldl)
     next = ldl->next;
     TALER_denom_pub_free (&ldl->denom_pub);
     TALER_blinded_denom_sig_free (&ldl->ev_sig);
+    TALER_denom_ewv_free (&ldl->alg_values);
     GNUNET_free (ldl);
     ldl = next;
   }
@@ -147,9 +148,10 @@ add_ldl (void *cls,
         ldctx->status = GNUNET_SYSERR;
         return;
       }
-      if (TALER_DENOMINATION_CS == bp.cipher)
+      if (GNUNET_CRYPTO_BSA_CS == bp.blinded_message->cipher)
       {
-        pos->nonce = bp.details.cs_blinded_planchet.nonce;
+        pos->nonce.cs_nonce
+          = bp.blinded_message->details.cs_blinded_message.nonce;
         pos->have_nonce = true;
       }
       TALER_blinded_planchet_free (&bp);

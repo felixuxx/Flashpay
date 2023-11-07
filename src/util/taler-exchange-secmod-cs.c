@@ -269,7 +269,7 @@ struct BatchJob
       /**
        * Result with the signature.
        */
-      struct TALER_BlindedDenominationCsSignAnswer cs_answer;
+      struct GNUNET_CRYPTO_CsBlindSignature cs_answer;
     } sign;
 
     /**
@@ -285,7 +285,7 @@ struct BatchJob
       /**
        * Pair of points to return.
        */
-      struct TALER_DenominationCSPublicRPairP rpairp;
+      struct GNUNET_CRYPTO_CSPublicRPairP rpairp;
 
     } rderive;
 
@@ -433,7 +433,7 @@ generate_response (struct DenominationKey *dk)
 /**
  * Do the actual signing work.
  *
- * @param h_cs key to sign with
+ * @param h_cs hash of key to sign with
  * @param planchet message to sign
  * @param for_melt true if for melting
  * @param[out] cs_sigp set to the CS signature
@@ -441,9 +441,9 @@ generate_response (struct DenominationKey *dk)
  */
 static enum TALER_ErrorCode
 do_sign (const struct TALER_CsPubHashP *h_cs,
-         const struct TALER_BlindedCsPlanchet *planchet,
+         const struct GNUNET_CRYPTO_CsBlindedMessage *planchet,
          bool for_melt,
-         struct TALER_BlindedDenominationCsSignAnswer *cs_sigp)
+         struct GNUNET_CRYPTO_CsBlindSignature *cs_sigp)
 {
   struct GNUNET_CRYPTO_CsRSecret r[2];
   struct DenominationKey *dk;
@@ -473,15 +473,14 @@ do_sign (const struct TALER_CsPubHashP *h_cs,
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  GNUNET_CRYPTO_cs_r_derive (&planchet->nonce.nonce,
+  GNUNET_CRYPTO_cs_r_derive (&planchet->nonce,
                              for_melt ? "rm" : "rw",
                              &dk->denom_priv,
                              r);
-  cs_sigp->b = GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
-                                             r,
-                                             planchet->c,
-                                             &planchet->nonce.nonce,
-                                             &cs_sigp->s_scalar);
+  GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
+                                r,
+                                planchet,
+                                cs_sigp);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   GNUNET_assert (dk->rc > 0);
   dk->rc--;
@@ -543,14 +542,14 @@ fail_derive (struct TES_Client *client,
  */
 static enum GNUNET_GenericReturnValue
 send_signature (struct TES_Client *client,
-                const struct TALER_BlindedDenominationCsSignAnswer *cs_answer)
+                const struct GNUNET_CRYPTO_CsBlindSignature *cs_answer)
 {
   struct TALER_CRYPTO_SignResponse sres;
 
   sres.header.size = htons (sizeof (sres));
   sres.header.type = htons (TALER_HELPER_CS_MT_RES_SIGNATURE);
-  sres.reserved = htonl (0);
-  sres.cs_answer = *cs_answer;
+  sres.b = htonl (cs_answer->b);
+  sres.cs_answer = cs_answer->s_scalar;
   return TES_transmit (client->csock,
                        &sres.header);
 }
@@ -569,13 +568,13 @@ static enum GNUNET_GenericReturnValue
 handle_sign_request (struct TES_Client *client,
                      const struct TALER_CRYPTO_CsSignRequestMessage *sr)
 {
-  struct TALER_BlindedDenominationCsSignAnswer cs_answer;
+  struct GNUNET_CRYPTO_CsBlindSignature cs_answer;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   enum TALER_ErrorCode ec;
   enum GNUNET_GenericReturnValue ret;
 
   ec = do_sign (&sr->h_cs,
-                &sr->planchet,
+                &sr->message,
                 (0 != ntohl (sr->for_melt)),
                 &cs_answer);
   if (TALER_EC_NONE != ec)
@@ -605,12 +604,12 @@ handle_sign_request (struct TES_Client *client,
  */
 static enum TALER_ErrorCode
 do_derive (const struct TALER_CsPubHashP *h_cs,
-           const struct TALER_CsNonce *nonce,
+           const struct GNUNET_CRYPTO_CsSessionNonce *nonce,
            bool for_melt,
-           struct TALER_DenominationCSPublicRPairP *rpairp)
+           struct GNUNET_CRYPTO_CSPublicRPairP *rpairp)
 {
   struct DenominationKey *dk;
-  struct TALER_DenominationCSPrivateRPairP r_priv;
+  struct GNUNET_CRYPTO_CSPrivateRPairP r_priv;
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
@@ -637,7 +636,7 @@ do_derive (const struct TALER_CsPubHashP *h_cs,
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
+  GNUNET_CRYPTO_cs_r_derive (nonce,
                              for_melt ? "rm" : "rw",
                              &dk->denom_priv,
                              r_priv.r);
@@ -662,10 +661,10 @@ do_derive (const struct TALER_CsPubHashP *h_cs,
  */
 static enum GNUNET_GenericReturnValue
 send_derivation (struct TES_Client *client,
-                 const struct TALER_DenominationCSPublicRPairP *r_pub)
+                 const struct GNUNET_CRYPTO_CSPublicRPairP *r_pub)
 {
   struct TALER_CRYPTO_RDeriveResponse rdr = {
-    .header.size = htons (sizeof (struct TALER_CRYPTO_RDeriveResponse)),
+    .header.size = htons (sizeof (rdr)),
     .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE),
     .r_pub = *r_pub
   };
@@ -776,7 +775,7 @@ worker (void *cls)
             = bj->details.sign.sr;
 
           bj->ec = do_sign (&sr->h_cs,
-                            &sr->planchet,
+                            &sr->message,
                             (0 != ntohl (sr->for_melt)),
                             &bj->details.sign.cs_answer);
           break;
@@ -1093,8 +1092,9 @@ setup_key (struct DenominationKey *dk,
   GNUNET_CRYPTO_cs_private_key_generate (&priv);
   GNUNET_CRYPTO_cs_private_key_get_public (&priv,
                                            &pub);
-  TALER_cs_pub_hash (&pub,
-                     &dk->h_cs);
+  GNUNET_CRYPTO_hash (&pub,
+                      sizeof (pub),
+                      &dk->h_cs.hash);
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
@@ -1242,7 +1242,7 @@ static enum GNUNET_GenericReturnValue
 handle_r_derive_request (struct TES_Client *client,
                          const struct TALER_CRYPTO_CsRDeriveRequest *rdr)
 {
-  struct TALER_DenominationCSPublicRPairP r_pub;
+  struct GNUNET_CRYPTO_CSPublicRPairP r_pub;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   enum TALER_ErrorCode ec;
   enum GNUNET_GenericReturnValue ret;
@@ -1773,20 +1773,19 @@ parse_key (struct Denomination *denom,
     return;
   }
   {
-    struct GNUNET_CRYPTO_CsPublicKey pub;
     struct DenominationKey *dk;
     struct DenominationKey *before;
 
-    GNUNET_CRYPTO_cs_private_key_get_public (priv,
-                                             &pub);
     dk = GNUNET_new (struct DenominationKey);
     dk->denom_priv = *priv;
     dk->denom = denom;
     dk->anchor = anchor;
     dk->filename = GNUNET_strdup (filename);
-    TALER_cs_pub_hash (&pub,
-                       &dk->h_cs);
-    dk->denom_pub = pub;
+    GNUNET_CRYPTO_cs_private_key_get_public (priv,
+                                             &dk->denom_pub);
+    GNUNET_CRYPTO_hash (&dk->denom_pub,
+                        sizeof (dk->denom_pub),
+                        &dk->h_cs.hash);
     generate_response (dk);
     if (GNUNET_OK !=
         GNUNET_CONTAINER_multihashmap_put (
@@ -1808,7 +1807,9 @@ parse_key (struct Denomination *denom,
          NULL != pos;
          pos = pos->next)
     {
-      if (GNUNET_TIME_timestamp_cmp (pos->anchor, >, anchor))
+      if (GNUNET_TIME_timestamp_cmp (pos->anchor,
+                                     >,
+                                     anchor))
         break;
       before = pos;
     }

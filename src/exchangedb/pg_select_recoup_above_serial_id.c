@@ -76,7 +76,7 @@ recoup_serial_helper_cb (void *cls,
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_CoinPublicInfo coin;
     struct TALER_CoinSpendSignatureP coin_sig;
-    union TALER_DenominationBlindingKeyP coin_blind;
+    union GNUNET_CRYPTO_BlindingSecretP coin_blind;
     struct TALER_Amount amount;
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_BlindedCoinHashP h_blind_ev;

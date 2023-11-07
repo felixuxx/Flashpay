@@ -116,6 +116,8 @@ csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
   }
   csrh->cb (csrh->cb_cls,
             &csrr);
+  for (unsigned int i = 0; i<alen; i++)
+    TALER_denom_ewv_free (&alg_values[i]);
   return GNUNET_OK;
 }
 
@@ -234,7 +236,8 @@ TALER_EXCHANGE_csr_melt (
     return NULL;
   }
   for (unsigned int i = 0; i<nks_len; i++)
-    if (TALER_DENOMINATION_CS != nks[i].pk->key.cipher)
+    if (GNUNET_CRYPTO_BSA_CS !=
+        nks[i].pk->key.bsign_pub_key->cipher)
     {
       GNUNET_break (0);
       return NULL;

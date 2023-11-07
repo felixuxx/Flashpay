@@ -59,7 +59,7 @@ struct CoinState
   /**
    * Blinding key used during the operation.
    */
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
 
   /**
    * Values contributed from the exchange during the

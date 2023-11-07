@@ -127,12 +127,13 @@ age_restriction_manifest (
     GNUNET_JSON_pack_string ("age_groups",
                              TALER_age_mask_to_string (&AR_config.mask))
     );
-
-
   return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_bool ("critical", ext->critical),
-    GNUNET_JSON_pack_string ("version", ext->version),
-    GNUNET_JSON_pack_object_steal ("config", conf)
+    GNUNET_JSON_pack_bool ("critical",
+                           ext->critical),
+    GNUNET_JSON_pack_string ("version",
+                             ext->version),
+    GNUNET_JSON_pack_object_steal ("config",
+                                   conf)
     );
 }
 

@@ -113,7 +113,7 @@ struct WithdrawState
   /**
    * Blinding key used during the operation.
    */
-  union TALER_DenominationBlindingKeyP bks;
+  union GNUNET_CRYPTO_BlindingSecretP bks;
 
   /**
    * Values contributed from the exchange during the
@@ -297,7 +297,8 @@ reserve_withdraw_cb (void *cls,
                                &wr->details.ok.coins[0].sig);
     ws->coin_priv = wr->details.ok.coins[0].coin_priv;
     ws->bks = wr->details.ok.coins[0].bks;
-    ws->exchange_vals = wr->details.ok.coins[0].exchange_vals;
+    TALER_denom_ewv_deep_copy (&ws->exchange_vals,
+                               &wr->details.ok.coins[0].exchange_vals);
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -489,6 +490,7 @@ withdraw_cleanup (void *cls,
     ws->retry_task = NULL;
   }
   TALER_denom_sig_free (&ws->sig);
+  TALER_denom_ewv_free (&ws->exchange_vals);
   if (NULL != ws->pk)
   {
     TALER_EXCHANGE_destroy_denomination_key (ws->pk);

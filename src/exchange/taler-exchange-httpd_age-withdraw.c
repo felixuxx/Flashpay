@@ -231,11 +231,17 @@ parse_age_withdraw_json (
 
       json_array_foreach (j_kappa_coin_evs, kappa, value) {
         struct GNUNET_JSON_Specification spec[] = {
-          TALER_JSON_spec_blinded_planchet (NULL, &awc->coin_evs[off + kappa]),
+          /* FIXME-Oec: This allocation is never freed! */
+          TALER_JSON_spec_blinded_planchet (NULL,
+                                            &awc->coin_evs[off + kappa]),
           GNUNET_JSON_spec_end ()
         };
+
         if (GNUNET_OK !=
-            GNUNET_JSON_parse (value, spec, NULL, NULL))
+            GNUNET_JSON_parse (value,
+                               spec,
+                               NULL,
+                               NULL))
         {
           GNUNET_snprintf (buf,
                            sizeof(buf),
@@ -249,12 +255,11 @@ parse_age_withdraw_json (
         /* Continue to hash of the coin candidates */
         {
           struct TALER_BlindedCoinHashP bch;
+
           ret = TALER_coin_ev_hash (&awc->coin_evs[off + kappa],
                                     &awc->denom_hs[idx],
                                     &bch);
-
           GNUNET_assert (GNUNET_OK == ret);
-
           GNUNET_CRYPTO_hash_context_read (hash_context,
                                            &bch,
                                            sizeof(bch));
@@ -448,7 +453,8 @@ are_denominations_valid (
       return GNUNET_SYSERR;
 
     /* Ensure the ciphers from the planchets match the denominations' */
-    if (dk->denom_pub.cipher != coin_evs[i].cipher)
+    if (dk->denom_pub.bsign_pub_key->cipher !=
+        coin_evs[i].blinded_message->cipher)
     {
       GNUNET_break_op (0);
       *result = TALER_MHD_reply_with_ec (connection,
@@ -829,7 +835,7 @@ age_withdraw_transaction (void *cls,
  * @param connection HTTP-connection to the client
  * @param awc The context for the current age withdraw request
  * @param[out] result On error, a HTTP-response will be queued and result set accordingly
- * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
 static enum GNUNET_GenericReturnValue
 sign_and_do_age_withdraw (
@@ -863,8 +869,8 @@ sign_and_do_age_withdraw (
       csds[i].h_denom_pub = &awc->denom_hs[i];
     }
 
-    ec = TEH_keys_denomination_batch_sign (csds,
-                                           awc->num_coins,
+    ec = TEH_keys_denomination_batch_sign (awc->num_coins,
+                                           csds,
                                            false,
                                            denom_sigs);
     if (TALER_EC_NONE != ec)

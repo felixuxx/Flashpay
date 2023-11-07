@@ -569,7 +569,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
-      union TALER_DenominationBlindingKeyP coin_blind;
+      union GNUNET_CRYPTO_BlindingSecretP coin_blind;
       struct TALER_Amount amount;
       struct GNUNET_TIME_Timestamp timestamp;
       uint64_t reserve_out_serial_id;
@@ -580,7 +580,7 @@ struct TALER_EXCHANGEDB_TableData
       uint64_t known_coin_id;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
-      union TALER_DenominationBlindingKeyP coin_blind;
+      union GNUNET_CRYPTO_BlindingSecretP coin_blind;
       struct TALER_Amount amount;
       struct GNUNET_TIME_Timestamp timestamp;
       uint64_t rrc_serial;
@@ -1278,7 +1278,7 @@ struct TALER_EXCHANGEDB_Recoup
    * Blinding factor supplied to prove to the exchange that
    * the coin came from this reserve.
    */
-  union TALER_DenominationBlindingKeyP coin_blind;
+  union GNUNET_CRYPTO_BlindingSecretP coin_blind;
 
   /**
    * Signature of the coin of type
@@ -1332,7 +1332,7 @@ struct TALER_EXCHANGEDB_RecoupListEntry
    * Blinding factor supplied to prove to the exchange that
    * the coin came from this reserve.
    */
-  union TALER_DenominationBlindingKeyP coin_blind;
+  union GNUNET_CRYPTO_BlindingSecretP coin_blind;
 
   /**
    * Signature of the coin of type
@@ -1380,7 +1380,7 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
    * Blinding factor supplied to prove to the exchange that
    * the coin came from this @e old_coin_pub.
    */
-  union TALER_DenominationBlindingKeyP coin_blind;
+  union GNUNET_CRYPTO_BlindingSecretP coin_blind;
 
   /**
    * Signature of the coin of type
@@ -2423,9 +2423,9 @@ struct TALER_EXCHANGEDB_LinkList
   struct TALER_CoinSpendSignatureP orig_coin_link_sig;
 
   /**
-   * CS nonce, if cipher is CS.
+   * Session nonce, if cipher has one.
    */
-  struct TALER_CsNonce nonce;
+  union GNUNET_CRYPTO_BlindSessionNonce nonce;
 
   /**
    * Offset that generated this coin in the refresh
@@ -3245,7 +3245,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const union TALER_DenominationBlindingKeyP *coin_blind);
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_blind);
 
 
 /**
@@ -3275,7 +3275,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const union TALER_DenominationBlindingKeyP *coin_blind);
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_blind);
 
 
 /**
@@ -3388,7 +3388,7 @@ typedef void
   uint64_t rowid,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const union TALER_DenominationBlindingKeyP *coin_blind,
+  const union GNUNET_CRYPTO_BlindingSecretP *coin_blind,
   const struct TALER_BlindedCoinHashP *h_blinded_ev,
   const struct TALER_Amount *amount);
 
@@ -3855,7 +3855,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*lock_nonce)(void *cls,
-                const struct TALER_CsNonce *nonce,
+                const struct GNUNET_CRYPTO_CsSessionNonce *nonce,
                 const struct TALER_DenominationHashP *denom_pub_hash,
                 const union TALER_EXCHANGEDB_NonceLockTargetP *target);
 
@@ -3936,7 +3936,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*do_batch_withdraw_insert)(
     void *cls,
-    const struct TALER_CsNonce *nonce,
+    const union GNUNET_CRYPTO_BlindSessionNonce *nonce,
     const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
     struct GNUNET_TIME_Timestamp now,
     uint64_t ruuid,
@@ -4100,7 +4100,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*cs_refreshes_reveal)(
     void *cls,
-    const struct TALER_CsNonce *nonce,
+    const struct GNUNET_CRYPTO_CsSessionNonce *nonce,
     const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
     unsigned int num_fresh_coins,
     struct TALER_EXCHANGEDB_CsRevealFreshCoinData *crfcds);
@@ -4153,7 +4153,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     uint64_t reserve_out_serial_id,
-    const union TALER_DenominationBlindingKeyP *coin_bks,
+    const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     uint64_t known_coin_id,
     const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -4183,7 +4183,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
     uint64_t rrc_serial,
-    const union TALER_DenominationBlindingKeyP *coin_bks,
+    const union GNUNET_CRYPTO_BlindingSecretP *coin_bks,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     uint64_t known_coin_id,
     const struct TALER_CoinSpendSignatureP *coin_sig,

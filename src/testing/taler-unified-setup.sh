@@ -67,6 +67,7 @@ START_AUDITOR=0
 START_BACKUP=0
 START_EXCHANGE=0
 START_FAKEBANK=0
+START_CHALLENGER=0
 START_AGGREGATOR=0
 START_MERCHANT=0
 START_NEXUS=0
@@ -81,7 +82,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
+while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -129,6 +130,9 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
             ;;
         g)
             START_AGGREGATOR="1"
+            ;;
+        k)
+            START_CHALLENGER="1"
             ;;
         L)
             LOGLEVEL="$OPTARG"
@@ -189,6 +193,13 @@ then
     echo " FOUND"
 fi
 
+if [ "1" = "$START_CHALLENGER" ]
+then
+    echo -n "Testing for Taler challenger"
+    challenger-httpd -h > /dev/null || exit_skip " challenger-httpd required"
+    echo " FOUND"
+fi
+
 if [ "1" = "$START_BACKUP" ]
 then
     echo -n "Testing for sync-httpd"
@@ -227,6 +238,7 @@ register_bank_account() {
     MAYBE_IBAN="${4:-}"
     if test -n "$MAYBE_IBAN";
     then
+        # shellcheck disable=SC2001
         ENAME=$(echo "$3" | sed -e "s/ /+/g")
         # Note: this assumes that $3 has no spaces. Should probably escape in the future..
         PAYTO="payto://iban/SANDBOXX/${MAYBE_IBAN}?receiver-name=$ENAME"
@@ -304,7 +316,7 @@ then
         exit_skip "Failed to launch services (bank)"
     fi
     echo "OK"
-    echo -n "Set admin password..." 
+    echo -n "Set admin password..."
     AUSER="admin"
     APASS="secret"
     libeufin-bank \
@@ -479,10 +491,54 @@ if [ "1" = "$START_BACKUP" ]
 then
     echo -n "Starting sync ..."
     SYNC_PORT=$(taler-config -c "$CONF" -s SYNC -o PORT)
-    SYNC_URL="http://localhost:${SYNC_PORT}/"
+    SERVE=$(taler-config -c "$CONF" -s SYNC -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        SYNC_URL=$(taler-config -c "$CONF" -s SYNC -o BASE_URL)
+    else
+        SYNC_URL="http://localhost:${SYNC_PORT}/"
+    fi
     sync-dbinit -c "$CONF" --reset
     $USE_VALGRIND sync-httpd -c "$CONF" -L "$LOGLEVEL" 2> sync-httpd.log &
     echo " DONE"
+fi
+
+if [ "1" = "$START_CHALLENGER" ]
+then
+    echo -n "Starting challenger ..."
+    CHALLENGER_PORT=$(challenger-config -c "$CONF" -s CHALLENGER -o PORT)
+    SERVE=$(taler-config -c "$CONF" -s CHALLENGER -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        CHALLENGER_URL=$(taler-config -c "$CONF" -s CHALLENGER -o BASE_URL)
+    else
+        CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
+    fi
+    challenger-dbinit -c "$CONF" --reset
+    $USE_VALGRIND challenger-httpd -c "$CONF" -L "$LOGLEVEL" 2> challenger-httpd.log &
+    echo " DONE"
+    for SECTION in $(taler-config -c "$CONF" -S | grep kyc-provider)
+    do
+        LOGIC=$(taler-config -c "$CONF" -s "$SECTION" -o "LOGIC")
+        if [ "${LOGIC}" = "oauth2" ]
+        then
+            INFO=$(taler-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_INFO_URL")
+            if [ "${CHALLENGER_URL}info" = "$INFO" ]
+            then
+                echo -n "Enabling Challenger client for $SECTION"
+                CLIENT_SECRET=$(taler-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_CLIENT_SECRET")
+                RFC_8959_PREFIX="secret-token:"
+                if ! echo "${CLIENT_SECRET}" | grep ^${RFC_8959_PREFIX} > /dev/null
+                then
+                    exit_fail "Client secret does not begin with '${RFC_8959_PREFIX}'"
+                fi
+                REDIRECT_URI="${EXCHANGE_URL}kyc-proof/kyc-provider-example-challeger"
+                CLIENT_ID=$(challenger-admin --add="${CLIENT_SECRET}" --quiet "${REDIRECT_URI}")
+                taler-config -c "$CONF" -s "$SECTION" -o KYC_OAUTH2_CLIENT_ID -V "$CLIENT_ID"
+                echo " DONE"
+            fi
+        fi
+    done
 fi
 
 
@@ -512,6 +568,7 @@ echo -n "Waiting for Taler services ..."
 E_DONE=0
 M_DONE=0
 S_DONE=0
+K_DONE=0
 A_DONE=0
 for n in $(seq 1 20)
 do
@@ -549,6 +606,17 @@ do
             -o /dev/null \
             -O /dev/null >/dev/null || continue
         S_DONE=1
+    fi
+    if [ "0" = "$K_DONE" ] && [ "1" = "$START_CHALLENGER" ]
+    then
+        echo -n "K"
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "${CHALLENGER_URL}config" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
+        K_DONE=1
     fi
     if [ "0" = "$A_DONE" ] && [ "1" = "$START_AUDITOR" ]
     then

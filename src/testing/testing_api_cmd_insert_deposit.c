@@ -158,7 +158,7 @@ insert_deposit_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&denom_priv,
                                           &dpk,
-                                          TALER_DENOMINATION_RSA,
+                                          GNUNET_CRYPTO_BSA_RSA,
                                           1024));
   TALER_denom_pub_hash (&dpk,
                         &issue.denom_hash);
@@ -223,19 +223,20 @@ insert_deposit_run (void *cls,
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetMasterSecretP ps;
-    struct TALER_ExchangeWithdrawValues alg_values;
-    union TALER_DenominationBlindingKeyP bks;
+    union GNUNET_CRYPTO_BlindingSecretP bks;
+    const struct TALER_ExchangeWithdrawValues *alg_values;
 
-    alg_values.cipher = TALER_DENOMINATION_RSA;
+    alg_values = TALER_denom_ewv_rsa_singleton ();
     TALER_planchet_blinding_secret_create (&ps,
-                                           &alg_values,
+                                           alg_values,
                                            &bks);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dpk,
                                       &bks,
                                       NULL, /* no age restriction active */
+                                      NULL, /* no nonce needed */
                                       &deposit.coin.coin_pub,
-                                      &alg_values,
+                                      alg_values,
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==
@@ -249,7 +250,7 @@ insert_deposit_run (void *cls,
                                             &bds,
                                             &bks,
                                             &c_hash,
-                                            &alg_values,
+                                            alg_values,
                                             &dpk));
     TALER_blinded_denom_sig_free (&bds);
   }
