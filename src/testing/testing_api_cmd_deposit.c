@@ -106,6 +106,11 @@ struct DepositState
   struct TALER_EXCHANGE_BatchDepositHandle *dh;
 
   /**
+   * Denomination public key of the deposited coin.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+
+  /**
    * Timestamp of the /deposit operation in the wallet (contract signing time).
    */
   struct GNUNET_TIME_Timestamp wallet_timestamp;
@@ -295,7 +300,6 @@ deposit_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_AgeCommitmentHash *phac;
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHashP h_contract_terms;
@@ -420,7 +424,7 @@ deposit_run (void *cls,
        (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_pub (coin_cmd,
                                            ds->coin_index,
-                                           &denom_pub)) ||
+                                           &ds->denom_pub)) ||
        (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_sig (coin_cmd,
                                            ds->coin_index,
@@ -434,7 +438,7 @@ deposit_run (void *cls,
     return;
   }
 
-  ds->deposit_fee = denom_pub->fees.deposit;
+  ds->deposit_fee = ds->denom_pub->fees.deposit;
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -447,13 +451,13 @@ deposit_run (void *cls,
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
                                                             &h_wire));
     TALER_wallet_deposit_sign (&ds->amount,
-                               &denom_pub->fees.deposit,
+                               &ds->denom_pub->fees.deposit,
                                &h_wire,
                                &h_contract_terms,
                                NULL, /* wallet data hash */
                                phac,
                                NULL, /* hash of extensions */
-                               &denom_pub->h_key,
+                               &ds->denom_pub->h_key,
                                ds->wallet_timestamp,
                                &merchant_pub,
                                ds->refund_deadline,
@@ -470,7 +474,7 @@ deposit_run (void *cls,
     ds->che.details.deposit.refund_deadline = ds->refund_deadline;
     ds->che.details.deposit.sig = ds->coin_sig;
     ds->che.details.deposit.no_hac = true;
-    ds->che.details.deposit.deposit_fee = denom_pub->fees.deposit;
+    ds->che.details.deposit.deposit_fee = ds->denom_pub->fees.deposit;
   }
   GNUNET_assert (NULL == ds->dh);
   {
@@ -479,7 +483,7 @@ deposit_run (void *cls,
       .coin_pub = coin_pub,
       .coin_sig = ds->coin_sig,
       .denom_sig = *denom_pub_sig,
-      .h_denom_pub = denom_pub->h_key,
+      .h_denom_pub = ds->denom_pub->h_key,
       .h_age_commitment = {{{0}}},
     };
     struct TALER_EXCHANGE_DepositContractDetail dcd = {
@@ -624,6 +628,8 @@ deposit_traits (void *cls,
                                           coin_spent_priv),
       TALER_TESTING_make_trait_coin_pub (0,
                                          &coin_spent_pub),
+      TALER_TESTING_make_trait_denom_pub (0,
+                                          ds->denom_pub),
       TALER_TESTING_make_trait_coin_sig (0,
                                          &ds->coin_sig),
       TALER_TESTING_make_trait_age_commitment_proof (0,
