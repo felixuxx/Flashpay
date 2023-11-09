@@ -127,6 +127,15 @@ history_entry_cmp (
     GNUNET_break (0);
     break;
   case TALER_EXCHANGE_CTT_DEPOSIT:
+    if (0 != GNUNET_memcmp (&h1->details.deposit.h_contract_terms,
+                            &h2->details.deposit.h_contract_terms))
+      return 1;
+    if (0 != GNUNET_memcmp (&h1->details.deposit.merchant_pub,
+                            &h2->details.deposit.merchant_pub))
+      return 1;
+    if (0 != GNUNET_memcmp (&h1->details.deposit.h_wire,
+                            &h2->details.deposit.h_wire))
+      return 1;
     if (0 != GNUNET_memcmp (&h1->details.deposit.sig,
                             &h2->details.deposit.sig))
       return 1;
@@ -255,7 +264,13 @@ analyze_command (void *cls,
     if (0 !=
         GNUNET_memcmp (rp,
                        coin_pub))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Command `%s#%u' is about another coin\n",
+                  cmd->label,
+                  j);
       continue; /* command affects some _other_ coin */
+    }
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_coin_history (cmd,
                                               j,
@@ -417,7 +432,7 @@ coin_history_cb (void *cls,
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }
-#if FIXME
+#if 1
     for (unsigned int i = 0; i<hlen; i++)
     {
       if (found[i])

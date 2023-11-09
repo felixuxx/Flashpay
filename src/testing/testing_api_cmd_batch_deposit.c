@@ -480,7 +480,7 @@ batch_deposit_traits (void *cls,
                       unsigned int index)
 {
   struct BatchDepositState *ds = cls;
-  struct Coin *coin = &ds->coins[index];
+  const struct Coin *coin = &ds->coins[index];
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
   struct TALER_CoinSpendPublicKeyP coin_spent_pub;
@@ -528,6 +528,8 @@ batch_deposit_traits (void *cls,
       TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),
       TALER_TESTING_make_trait_age_commitment_proof (index,
                                                      age_commitment_proof),
+      TALER_TESTING_make_trait_coin_history (index,
+                                             &coin->che),
       TALER_TESTING_make_trait_coin_pub (index,
                                          &coin_spent_pub),
       TALER_TESTING_make_trait_denom_pub (index,
@@ -540,7 +542,6 @@ batch_deposit_traits (void *cls,
                                                &coin->amount),
       TALER_TESTING_make_trait_deposit_fee_amount (index,
                                                    &coin->deposit_fee),
-
       TALER_TESTING_make_trait_timestamp (index,
                                           &ds->exchange_timestamp),
       TALER_TESTING_make_trait_wire_deadline (index,
