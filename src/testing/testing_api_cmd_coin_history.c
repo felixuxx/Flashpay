@@ -132,9 +132,12 @@ history_entry_cmp (
       return 1;
     return 0;
   case TALER_EXCHANGE_CTT_MELT:
-    if (0 != GNUNET_memcmp (&h1->details.melt.sig,
-                            &h2->details.melt.sig))
+    if (0 != GNUNET_memcmp (&h1->details.melt.h_age_commitment,
+                            &h2->details.melt.h_age_commitment))
       return 1;
+    /* Note: most other fields are not initialized
+       in the trait as they are hard to extract from
+       the API */
     return 0;
   case TALER_EXCHANGE_CTT_REFUND:
     if (0 != GNUNET_memcmp (&h1->details.refund.sig,

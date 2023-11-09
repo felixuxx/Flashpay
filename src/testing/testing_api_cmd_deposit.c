@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2021 Taler Systems SA
+  Copyright (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -568,6 +568,7 @@ deposit_traits (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
+  struct TALER_CoinSpendPublicKeyP coin_spent_pub;
   const struct TALER_AgeCommitmentProof *age_commitment_proof;
   const struct TALER_AgeCommitmentHash *h_age_commitment;
 
@@ -605,10 +606,13 @@ deposit_traits (void *cls,
     return GNUNET_NO;
   }
 
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_spent_priv->eddsa_priv,
+                                      &coin_spent_pub.eddsa_pub);
+
   {
     struct TALER_TESTING_Trait traits[] = {
       /* First two traits are only available if
-         ds->traits is #GNUNET_YES */
+         ds->traits is true */
       TALER_TESTING_make_trait_exchange_pub (0,
                                              &ds->exchange_pub),
       TALER_TESTING_make_trait_exchange_sig (0,
@@ -618,6 +622,8 @@ deposit_traits (void *cls,
                                              &ds->che),
       TALER_TESTING_make_trait_coin_priv (0,
                                           coin_spent_priv),
+      TALER_TESTING_make_trait_coin_pub (0,
+                                         &coin_spent_pub),
       TALER_TESTING_make_trait_coin_sig (0,
                                          &ds->coin_sig),
       TALER_TESTING_make_trait_age_commitment_proof (0,
