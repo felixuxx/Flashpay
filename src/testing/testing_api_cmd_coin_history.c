@@ -184,11 +184,10 @@ history_entry_cmp (
       return 1;
     return 0;
   case TALER_EXCHANGE_CTT_PURSE_REFUND:
-    if (0 != GNUNET_memcmp (&h1->details.purse_refund.exchange_sig,
-                            &h2->details.purse_refund.exchange_sig))
-      return 1;
+    /* NOTE: not supported yet (trait not returned) */
     return 0;
   case TALER_EXCHANGE_CTT_RESERVE_OPEN_DEPOSIT:
+    /* NOTE: not supported yet (trait not returned) */
     if (0 != GNUNET_memcmp (&h1->details.reserve_open_deposit.coin_sig,
                             &h2->details.reserve_open_deposit.coin_sig))
       return 1;
