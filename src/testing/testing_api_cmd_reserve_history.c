@@ -105,6 +105,162 @@ struct AnalysisContext
 
 
 /**
+ * Compare @a h1 and @a h2.
+ *
+ * @param h1 a history entry
+ * @param h2 a history entry
+ * @return 0 if @a h1 and @a h2 are equal
+ */
+static int
+history_entry_cmp (
+  const struct TALER_EXCHANGE_ReserveHistoryEntry *h1,
+  const struct TALER_EXCHANGE_ReserveHistoryEntry *h2)
+{
+  if (h1->type != h2->type)
+    return 1;
+  switch (h1->type)
+  {
+  case TALER_EXCHANGE_RTT_CREDIT:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 == strcasecmp (h1->details.in_details.sender_url,
+                           h2->details.in_details.sender_url)) &&
+         (h1->details.in_details.wire_reference ==
+          h2->details.in_details.wire_reference) &&
+         (GNUNET_TIME_timestamp_cmp (h1->details.in_details.timestamp,
+                                     ==,
+                                     h2->details.in_details.timestamp)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_WITHDRAWAL:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.withdraw.fee,
+                            &h2->details.withdraw.fee)) )
+      /* testing_api_cmd_withdraw doesn't set the out_authorization_sig,
+         so we cannot test for it here. but if the amount matches,
+         that should be good enough. */
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_AGEWITHDRAWAL:
+    /* testing_api_cmd_age_withdraw doesn't set the out_authorization_sig,
+       so we cannot test for it here. but if the amount matches,
+       that should be good enough. */
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.age_withdraw.fee,
+                            &h2->details.age_withdraw.fee)) &&
+         (h1->details.age_withdraw.max_age ==
+          h2->details.age_withdraw.max_age))
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_RECOUP:
+    /* exchange_sig, exchange_pub and timestamp are NOT available
+       from the original recoup response, hence here NOT check(able/ed) */
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.recoup_details.coin_pub,
+                         &h2->details.recoup_details.coin_pub)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_CLOSING:
+    /* testing_api_cmd_exec_closer doesn't set the
+       receiver_account_details, exchange_sig, exchange_pub or wtid or timestamp
+       so we cannot test for it here. but if the amount matches,
+       that should be good enough. */
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.close_details.fee,
+                            &h2->details.close_details.fee)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_MERGE:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.merge_details.purse_fee,
+                            &h2->details.merge_details.purse_fee)) &&
+         (GNUNET_TIME_timestamp_cmp (h1->details.merge_details.merge_timestamp,
+                                     ==,
+                                     h2->details.merge_details.merge_timestamp))
+         &&
+         (GNUNET_TIME_timestamp_cmp (h1->details.merge_details.purse_expiration,
+                                     ==,
+                                     h2->details.merge_details.purse_expiration))
+         &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.merge_pub,
+                         &h2->details.merge_details.merge_pub)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.h_contract_terms,
+                         &h2->details.merge_details.h_contract_terms)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.purse_pub,
+                         &h2->details.merge_details.purse_pub)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.reserve_sig,
+                         &h2->details.merge_details.reserve_sig)) &&
+         (h1->details.merge_details.min_age ==
+          h2->details.merge_details.min_age) &&
+         (h1->details.merge_details.flags ==
+          h2->details.merge_details.flags) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_OPEN:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.open_request.request_timestamp,
+            ==,
+            h2->details.open_request.request_timestamp)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.open_request.reserve_expiration,
+            ==,
+            h2->details.open_request.reserve_expiration)) &&
+         (h1->details.open_request.purse_limit ==
+          h2->details.open_request.purse_limit) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.open_request.reserve_payment,
+                            &h2->details.open_request.reserve_payment)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.open_request.reserve_sig,
+                         &h2->details.open_request.reserve_sig)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_CLOSE:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.close_request.request_timestamp,
+            ==,
+            h2->details.close_request.request_timestamp)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.close_request.target_account_h_payto,
+                         &h2->details.close_request.target_account_h_payto)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.close_request.reserve_sig,
+                         &h2->details.close_request.reserve_sig)) )
+      return 0;
+    return 1;
+  }
+  GNUNET_assert (0);
+  return 1;
+}
+
+
+/**
  * Check if @a cmd changed the reserve, if so, find the
  * entry in our history and set the respective index in found
  * to true. If the entry is not found, set failure.
@@ -188,8 +344,8 @@ analyze_command (void *cls,
         if (found[i])
           continue; /* already found, skip */
         if (0 ==
-            TALER_TESTING_history_entry_cmp (he,
-                                             &history[i]))
+            history_entry_cmp (he,
+                               &history[i]))
         {
           found[i] = true;
           matched = true;

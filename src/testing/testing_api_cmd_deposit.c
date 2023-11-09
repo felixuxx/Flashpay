@@ -136,10 +136,16 @@ struct DepositState
   unsigned int do_retry;
 
   /**
-   * Set to #GNUNET_YES if the /deposit succeeded
+   * Set to true if the /deposit succeeded
    * and we now can provide the resulting traits.
    */
-  int deposit_succeeded;
+  bool deposit_succeeded;
+
+  /**
+   * Expected entry in the coin history created by this
+   * operation.
+   */
+  struct TALER_EXCHANGE_CoinHistoryEntry che;
 
   /**
    * When did the exchange receive the deposit?
@@ -170,7 +176,7 @@ struct DepositState
    * When we're referencing another deposit operation,
    * this will only be set after the command has been started.
    */
-  int command_initialized;
+  bool command_initialized;
 
   /**
    * Reference to fetch the merchant private key from.
@@ -263,7 +269,7 @@ deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
-    ds->deposit_succeeded = GNUNET_YES;
+    ds->deposit_succeeded = true;
     ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
     ds->exchange_pub = *dr->details.ok.exchange_pub;
     ds->exchange_sig = *dr->details.ok.exchange_sig;
@@ -354,7 +360,7 @@ deposit_run (void *cls,
     ds->wire_deadline = ods->wire_deadline;
     ds->amount = ods->amount;
     ds->merchant_priv = ods->merchant_priv;
-    ds->command_initialized = GNUNET_YES;
+    ds->command_initialized = true;
   }
   else if (NULL != ds->merchant_priv_reference)
   {
@@ -453,6 +459,18 @@ deposit_run (void *cls,
                                ds->refund_deadline,
                                coin_priv,
                                &ds->coin_sig);
+    ds->che.type = TALER_EXCHANGE_CTT_DEPOSIT;
+    ds->che.amount = ds->amount;
+    ds->che.details.deposit.h_wire = h_wire;
+    ds->che.details.deposit.h_contract_terms = h_contract_terms;
+    ds->che.details.deposit.no_h_policy = true;
+    ds->che.details.deposit.no_wallet_data_hash = true;
+    ds->che.details.deposit.wallet_timestamp = ds->wallet_timestamp;
+    ds->che.details.deposit.merchant_pub = merchant_pub;
+    ds->che.details.deposit.refund_deadline = ds->refund_deadline;
+    ds->che.details.deposit.sig = ds->coin_sig;
+    ds->che.details.deposit.no_hac = true;
+    ds->che.details.deposit.deposit_fee = denom_pub->fees.deposit;
   }
   GNUNET_assert (NULL == ds->dh);
   {
@@ -553,7 +571,7 @@ deposit_traits (void *cls,
   const struct TALER_AgeCommitmentProof *age_commitment_proof;
   const struct TALER_AgeCommitmentHash *h_age_commitment;
 
-  if (GNUNET_YES != ds->command_initialized)
+  if (! ds->command_initialized)
   {
     /* No access to traits yet. */
     GNUNET_break (0);
@@ -596,6 +614,8 @@ deposit_traits (void *cls,
       TALER_TESTING_make_trait_exchange_sig (0,
                                              &ds->exchange_sig),
       /* These traits are always available */
+      TALER_TESTING_make_trait_coin_history (0,
+                                             &ds->che),
       TALER_TESTING_make_trait_coin_priv (0,
                                           coin_spent_priv),
       TALER_TESTING_make_trait_coin_sig (0,
@@ -679,7 +699,7 @@ TALER_TESTING_cmd_deposit (
                  TALER_string_to_amount (amount,
                                          &ds->amount));
   ds->expected_response_code = expected_response_code;
-  ds->command_initialized = GNUNET_YES;
+  ds->command_initialized = true;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,
@@ -744,7 +764,7 @@ TALER_TESTING_cmd_deposit_with_ref (
                  TALER_string_to_amount (amount,
                                          &ds->amount));
   ds->expected_response_code = expected_response_code;
-  ds->command_initialized = GNUNET_YES;
+  ds->command_initialized = true;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,

@@ -591,19 +591,6 @@ TALER_TESTING_parse_coin_reference (
   unsigned int *idx);
 
 
-/**
- * Compare @a h1 and @a h2.
- *
- * @param h1 a history entry
- * @param h2 a history entry
- * @return 0 if @a h1 and @a h2 are equal
- */
-int
-TALER_TESTING_history_entry_cmp (
-  const struct TALER_EXCHANGE_ReserveHistoryEntry *h1,
-  const struct TALER_EXCHANGE_ReserveHistoryEntry *h2);
-
-
 /* ************** Specific interpreter commands ************ */
 
 
@@ -2721,6 +2708,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (age_commitment_proof, const struct TALER_AgeCommitmentProof)      \
   op (h_age_commitment, const struct TALER_AgeCommitmentHash)           \
   op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
+  op (coin_history, const struct TALER_EXCHANGE_CoinHistoryEntry) \
   op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)       \
   op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)     \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)               \
