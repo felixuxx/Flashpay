@@ -166,8 +166,12 @@ history_entry_cmp (
        fundamentally not available in the initiating command */
     return 0;
   case TALER_EXCHANGE_CTT_PURSE_DEPOSIT:
-    if (0 != GNUNET_memcmp (&h1->details.purse_deposit.coin_sig,
-                            &h2->details.purse_deposit.coin_sig))
+    /* coin_sig is not initialized */
+    if (0 != GNUNET_memcmp (&h1->details.purse_deposit.purse_pub,
+                            &h2->details.purse_deposit.purse_pub))
+      return 1;
+    if (0 != strcmp (h1->details.purse_deposit.exchange_base_url,
+                     h2->details.purse_deposit.exchange_base_url))
       return 1;
     return 0;
   case TALER_EXCHANGE_CTT_PURSE_REFUND:
@@ -414,7 +418,7 @@ coin_history_cb (void *cls,
       return;
     }
 #if FIXME
-    for (unsigned int i = 0; i<rs->details.ok.history_len; i++)
+    for (unsigned int i = 0; i<hlen; i++)
     {
       if (found[i])
         continue;
