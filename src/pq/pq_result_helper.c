@@ -1141,13 +1141,13 @@ extract_array_generic (
   *((void **) dst) = NULL;
 
   #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto FAIL; \
-    } \
-  } while (0)
+          do { \
+            if ((cond)) \
+            { \
+              GNUNET_break (! (cond)); \
+              goto FAIL; \
+            } \
+          } while (0)
 
   col_num = PQfnumber (result, fname);
   FAIL_IF (0 > col_num);
@@ -1365,11 +1365,18 @@ array_cleanup (void *cls,
   struct ArrayResultCls *info = cls;
   void **dst = rd;
 
-  /* FIXME-Oec: this does not properly clean up
-     denomination signatures! */
   if ((0 == info->same_size) &&
       (NULL != info->sizes))
     GNUNET_free (*(info->sizes));
+
+  /* Clean up signatures, if applicable */
+  if (TALER_PQ_array_of_blinded_denom_sig == info->typ)
+  {
+    struct TALER_BlindedDenominationSignature *denom_sigs = *dst;
+    GNUNET_assert (NULL != info->num);
+    for (size_t i = 0; i < *info->num; i++)
+      GNUNET_free (denom_sigs[i].blinded_sig);
+  }
 
   GNUNET_free (cls);
   GNUNET_free (*dst);

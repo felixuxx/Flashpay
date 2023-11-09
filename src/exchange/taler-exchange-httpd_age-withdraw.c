@@ -69,10 +69,9 @@ struct AgeWithdrawContext
   uint32_t num_coins;
 
   /**
-   * kappa * #num_coins hashes of blinded coin planchets.
-   * FIXME[oec]: Make the [][] structure more explicit.
+   * #num_coins * #kappa hashes of blinded coin planchets.
    */
-  struct TALER_BlindedPlanchet *coin_evs;
+  struct TALER_BlindedPlanchet (*coin_evs)[TALER_CNC_KAPPA];
 
   /**
    * #num_coins hashes of the denominations from which the coins are withdrawn.
@@ -189,13 +188,13 @@ parse_age_withdraw_json (
     }
   };
 
-  /* no overflow because
-   *   num_coins <= TALER_MAX_FRESH_COINS
-   * and
-   *    TALER_MAX_FRESH_COINS * TALER_CNC_KAPPA < INT_MAX
-   */
-  awc->coin_evs = GNUNET_new_array (awc->num_coins * TALER_CNC_KAPPA,
-                                    struct TALER_BlindedPlanchet);
+  {
+    typedef struct TALER_BlindedPlanchet
+      _array_of_kappa_planchets[TALER_CNC_KAPPA];
+
+    awc->coin_evs = GNUNET_new_array (awc->num_coins,
+                                      _array_of_kappa_planchets);
+  }
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   GNUNET_assert (NULL != hash_context);
@@ -225,15 +224,13 @@ parse_age_withdraw_json (
     /* Now parse the individual kappa envelopes and calculate the hash of
      * the commitment along the way. */
     {
-      size_t off = idx * TALER_CNC_KAPPA;
       unsigned int kappa = 0;
       enum GNUNET_GenericReturnValue ret;
 
       json_array_foreach (j_kappa_coin_evs, kappa, value) {
         struct GNUNET_JSON_Specification spec[] = {
-          /* FIXME-Oec: This allocation is never freed! */
           TALER_JSON_spec_blinded_planchet (NULL,
-                                            &awc->coin_evs[off + kappa]),
+                                            &awc->coin_evs[idx][kappa]),
           GNUNET_JSON_spec_end ()
         };
 
@@ -256,7 +253,7 @@ parse_age_withdraw_json (
         {
           struct TALER_BlindedCoinHashP bch;
 
-          ret = TALER_coin_ev_hash (&awc->coin_evs[off + kappa],
+          ret = TALER_coin_ev_hash (&awc->coin_evs[idx][kappa],
                                     &awc->denom_hs[idx],
                                     &bch);
           GNUNET_assert (GNUNET_OK == ret);
@@ -268,17 +265,17 @@ parse_age_withdraw_json (
         /* Check for duplicate planchets. Technically a bug on
          * the client side that is harmless for us, but still
          * not allowed per protocol */
-        for (unsigned int i = 0; i < off + kappa; i++)
+        for (unsigned int i = 0; i < idx; i++)
         {
-          if (0 == TALER_blinded_planchet_cmp (&awc->coin_evs[off + kappa],
-                                               &awc->coin_evs[i]))
+          if (0 == TALER_blinded_planchet_cmp (&awc->coin_evs[idx][kappa],
+                                               &awc->coin_evs[i][kappa]))
           {
+            GNUNET_JSON_parse_free (spec);
             error = "duplicate planchet";
             goto EXIT;
           }
         }
       }
-
     }
   }; /* json_array_foreach over j_blinded_coin_evs */
 
@@ -400,7 +397,7 @@ denomination_is_valid (
  * @param connection The HTTP connection to the client
  * @param len The lengths of the array @a denoms_h
  * @param denom_hs array of hashes of denomination public keys
- * @param coin_evs array of blinded coin planchets
+ * @param coin_evs array of blinded coin planchet candidates
  * @param[out] denom_serials On success, will be filled with the serial-id's of the denomination keys.  Caller must deallocate.
  * @param[out] amount_with_fee On success, will contain the committed amount including fees
  * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
@@ -412,7 +409,7 @@ are_denominations_valid (
   struct MHD_Connection *connection,
   uint32_t len,
   const struct TALER_DenominationHashP *denom_hs,
-  const struct TALER_BlindedPlanchet *coin_evs,
+  const struct TALER_BlindedPlanchet (*coin_evs)[TALER_CNC_KAPPA],
   uint64_t **denom_serials,
   struct TALER_Amount *amount_with_fee,
   MHD_RESULT *result)
@@ -453,14 +450,17 @@ are_denominations_valid (
       return GNUNET_SYSERR;
 
     /* Ensure the ciphers from the planchets match the denominations' */
-    if (dk->denom_pub.bsign_pub_key->cipher !=
-        coin_evs[i].blinded_message->cipher)
+    for (uint8_t k=0; k < TALER_CNC_KAPPA; k++)
     {
-      GNUNET_break_op (0);
-      *result = TALER_MHD_reply_with_ec (connection,
-                                         TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
-                                         NULL);
-      return GNUNET_SYSERR;
+      if (dk->denom_pub.bsign_pub_key->cipher !=
+          coin_evs[i][k].blinded_message->cipher)
+      {
+        GNUNET_break_op (0);
+        *result = TALER_MHD_reply_with_ec (connection,
+                                           TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
+                                           NULL);
+        return GNUNET_SYSERR;
+      }
     }
 
     /* Accumulate the values */
@@ -865,7 +865,7 @@ sign_and_do_age_withdraw (
     /* Pick the chosen blinded coins */
     for (uint32_t i = 0; i<awc->num_coins; i++)
     {
-      csds[i].bp = &awc->coin_evs[TALER_CNC_KAPPA * i + noreveal_index];
+      csds[i].bp = &awc->coin_evs[i][noreveal_index];
       csds[i].h_denom_pub = &awc->denom_hs[i];
     }
 
@@ -889,7 +889,7 @@ sign_and_do_age_withdraw (
   /* Prepare the hashes of the coins for insertion */
   for (uint32_t i = 0; i<awc->num_coins; i++)
   {
-    TALER_coin_ev_hash (&awc->coin_evs[TALER_CNC_KAPPA * i + noreveal_index],
+    TALER_coin_ev_hash (&awc->coin_evs[i][noreveal_index],
                         &awc->denom_hs[i],
                         &h_coin_evs[i]);
   }
@@ -1009,7 +1009,7 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
                                             &awc.commitment.h_commitment,
                                             awc.commitment.noreveal_index);
 
-  } while(0);
+  } while (0);
 
   GNUNET_JSON_parse_free (spec);
   free_age_withdraw_context_resources (&awc);
