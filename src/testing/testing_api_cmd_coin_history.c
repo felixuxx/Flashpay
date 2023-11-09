@@ -148,9 +148,8 @@ history_entry_cmp (
     if (0 != GNUNET_memcmp (&h1->details.recoup.coin_sig,
                             &h2->details.recoup.coin_sig))
       return 1;
-    if (0 != GNUNET_memcmp (&h1->details.recoup.exchange_sig,
-                            &h2->details.recoup.exchange_sig))
-      return 1;
+    /* Note: exchange_sig, exchange_pub and timestamp are
+       fundamentally not available in the initiating command */
     return 0;
   case TALER_EXCHANGE_CTT_RECOUP_REFRESH:
     if (0 != GNUNET_memcmp (&h1->details.recoup_refresh.coin_sig,
