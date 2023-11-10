@@ -17,7 +17,7 @@ J=$(jq '{"id":.data.id,"first":.data.first_name,"last":.data.last_name,"birthdat
 STATUS=$(echo "$J" | jq -r '.status')
 if [ "$STATUS" != "success" ]
 then
-  return 1
+  exit 1
 fi
 
 FULLNAME=$(echo "$J" | jq -r '[.first,.last]|join(" ")')
