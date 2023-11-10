@@ -118,6 +118,23 @@ TALER_TESTING_get_credentials (
     }
     GNUNET_free (csn);
   }
+  {
+    char *csn;
+
+    GNUNET_asprintf (&csn,
+                     "admin-accountcredentials-%s",
+                     &exchange_account_section[strlen ("exchange-account-")]);
+    if (GNUNET_OK !=
+        TALER_BANK_auth_parse_cfg (ua->cfg,
+                                   csn,
+                                   &ua->ba_admin))
+    {
+      GNUNET_break (0);
+      GNUNET_free (csn);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (csn);
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ua->cfg,
                                              "exchange",

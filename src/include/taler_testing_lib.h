@@ -126,6 +126,12 @@ struct TALER_TESTING_Credentials
   struct TALER_BANK_AuthenticationData ba;
 
   /**
+   * Bank authentication details for the admin bank
+   * account.
+   */
+  struct TALER_BANK_AuthenticationData ba_admin;
+
+  /**
    * Configuration file data.
    */
   struct GNUNET_CONFIGURATION_Handle *cfg;
