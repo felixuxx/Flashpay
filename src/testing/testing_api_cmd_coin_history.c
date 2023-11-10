@@ -120,7 +120,12 @@ history_entry_cmp (
     return 1;
   if (0 != TALER_amount_cmp (&h1->amount,
                              &h2->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Amount mismatch (%s)\n",
+                TALER_amount2s (&h1->amount));
     return 1;
+  }
   switch (h1->type)
   {
   case TALER_EXCHANGE_CTT_NONE:
@@ -178,10 +183,21 @@ history_entry_cmp (
     /* coin_sig is not initialized */
     if (0 != GNUNET_memcmp (&h1->details.purse_deposit.purse_pub,
                             &h2->details.purse_deposit.purse_pub))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Purse public key mismatch\n");
       return 1;
+    }
     if (0 != strcmp (h1->details.purse_deposit.exchange_base_url,
                      h2->details.purse_deposit.exchange_base_url))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Exchange base URL mismatch (%s/%s)\n",
+                  h1->details.purse_deposit.exchange_base_url,
+                  h2->details.purse_deposit.exchange_base_url);
+      GNUNET_break (0);
       return 1;
+    }
     return 0;
   case TALER_EXCHANGE_CTT_PURSE_REFUND:
     /* NOTE: not supported yet (trait not returned) */
@@ -259,12 +275,18 @@ analyze_command (void *cls,
         TALER_TESTING_get_trait_coin_pub (cmd,
                                           j,
                                           &rp))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Command `%s#%u' has no public key for a coin\n",
+                  cmd->label,
+                  j);
       break; /* command does nothing for coins */
+    }
     if (0 !=
         GNUNET_memcmp (rp,
                        coin_pub))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Command `%s#%u' is about another coin\n",
                   cmd->label,
                   j);
