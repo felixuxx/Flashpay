@@ -1329,6 +1329,9 @@ kycaid_webhook (void *cls,
     /* We don't need to re-confirm the failure by
        asking the API again. */
     log_failure (verifications);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Webhook called with non-completion status: %s\n",
+                type);
     wh->response_code = MHD_HTTP_NO_CONTENT;
     wh->resp = MHD_create_response_from_buffer (0,
                                                 "",

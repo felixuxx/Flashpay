@@ -227,8 +227,9 @@ webhook_finished_cb (
       response = TALER_MHD_make_error (
         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
         "[exchange] AML_KYC_TRIGGER");
+      break;
     }
-    break;
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC status of %s/%s (Row #%llu) is %d\n",
@@ -238,10 +239,10 @@ webhook_finished_cb (
                 status);
     break;
   }
-  if (NULL == kwh->kat)
-    kyc_aml_webhook_finished (kwh,
-                              http_status,
-                              response);
+  GNUNET_break (NULL == kwh->kat);
+  kyc_aml_webhook_finished (kwh,
+                            http_status,
+                            response);
 }
 
 
@@ -343,13 +344,17 @@ handler_kyc_webhook_generic (
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
   }
+  GNUNET_break (GNUNET_NO == kwh->suspended);
 
   if (NULL != kwh->response)
   {
-    /* handle _failed_ resumed cases */
-    return MHD_queue_response (rc->connection,
-                               kwh->response_code,
-                               kwh->response);
+    MHD_RESULT res;
+
+    res = MHD_queue_response (rc->connection,
+                              kwh->response_code,
+                              kwh->response);
+    GNUNET_break (MHD_YES == res);
+    return res;
   }
 
   /* We resumed, but got no response? This should

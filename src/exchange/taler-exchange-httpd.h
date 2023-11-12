@@ -199,6 +199,11 @@ struct TEH_RequestContext
   struct MHD_Connection *connection;
 
   /**
+   * JSON root of uploaded data (or NULL, if none).
+   */
+  json_t *root;
+
+  /**
    * @e rh-specific cleanup routine. Function called
    * upon completion of the request that should
    * clean up @a rh_ctx. Can be NULL.
