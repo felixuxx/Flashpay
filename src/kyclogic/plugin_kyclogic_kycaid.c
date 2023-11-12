@@ -429,11 +429,14 @@ handle_initiate_finished (void *cls,
     {
       const char *verification_id;
       const char *form_url;
+      const char *form_id;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("verification_id",
                                  &verification_id),
         GNUNET_JSON_spec_string ("form_url",
                                  &form_url),
+        GNUNET_JSON_spec_string ("form_id",
+                                 &form_id),
         GNUNET_JSON_spec_end ()
       };
 
@@ -455,6 +458,10 @@ handle_initiate_finished (void *cls,
                                                     "type")));
         break;
       }
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Started new verification `%s' using form %s\n",
+                  verification_id,
+                  form_id);
       ih->cb (ih->cb_cls,
               TALER_EC_NONE,
               form_url,
@@ -905,6 +912,15 @@ handle_webhook_finished (void *cls,
   struct MHD_Response *resp;
 
   wh->job = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Webhook returned with HTTP status %u\n",
+              (unsigned int) response_code);
+#if 1
+  if (NULL != j)
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+#endif
   wh->kycaid_response_code = response_code;
   wh->json_response = json_incref ((json_t *) j);
   switch (response_code)
@@ -1209,7 +1225,15 @@ kycaid_webhook (void *cls,
   wh->ps = ps;
   wh->pd = pd;
   wh->connection = connection;
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYCAID webhook triggered with %s\n",
+              http_method);
+#if 1
+  if (NULL != body)
+    json_dumpf (body,
+                stderr,
+                JSON_INDENT (2));
+#endif
   if (NULL == pd)
   {
     GNUNET_break_op (0);
