@@ -51,6 +51,10 @@ TEH_PG_update_kyc_process_by_row (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Updating KYC data for %llu (%s)\n",
+              (unsigned long long) process_row,
+              provider_section);
   PREPARE (pg,
            "update_legitimization_process",
            "UPDATE legitimization_processes"

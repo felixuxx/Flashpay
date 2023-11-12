@@ -261,7 +261,7 @@ initiate_cb (
     provider_user_id,
     provider_legitimization_id,
     GNUNET_TIME_UNIT_ZERO_ABS);
-  if (qs < 0)
+  if (qs <= 0)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "KYC requirement update failed for %s with status %d at %s:%u\n",
                 TALER_B2S (&kyp->h_payto),
