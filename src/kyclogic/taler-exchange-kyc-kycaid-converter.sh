@@ -29,7 +29,7 @@ J=$(jq '{"type":.type,"email":.email,"phone":.phone,"first_name":.first_name,"na
 # TODO:
 # log_failure (json_object_get (j, "decline_reasons"));
 
-TYPE=$(echo "$J" | jq -r '.person')
+TYPE=$(echo "$J" | jq -r '.type')
 
 N=0
 DOCS_RAW=""
@@ -39,7 +39,7 @@ do
     TYPE=$(jq -r ".documents[]|select(.id==\"$ID\")|.type")
     EXPIRY=$(jq -r ".documents[]|select(.id==\"$ID\")|.expiry_date")
     DOCUMENT_FILE=$(mktemp -t tmp.XXXXXXXXXX)
-    # Authoriazation: Token $TOKEN
+    # Authorization: Token $TOKEN
     DOCUMENT_URL="https://api.kycaid.com/documents/$ID"
     if [ -z "${TOKEN:-}" ]
     then
@@ -61,7 +61,7 @@ do
 done
 
 
-if [ "person" = "${TYPE}" ]
+if [ "PERSON" = "${TYPE}" ]
 then
 
   # Next, combine some fields into larger values.
