@@ -46,6 +46,7 @@
 #include "taler-exchange-httpd_kyc-check.h"
 #include "taler-exchange-httpd_kyc-proof.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
+#include "taler-exchange-httpd_kyc-webhook.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
@@ -1722,6 +1723,20 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &TEH_handler_kyc_wallet,
       .nargs = 0
+    },
+    {
+      .url = "kyc-webhook",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_kyc_webhook_get,
+      .nargs = UINT_MAX,
+      .nargs_is_upper_bound = true
+    },
+    {
+      .url = "kyc-webhook",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_kyc_webhook_post,
+      .nargs = UINT_MAX,
+      .nargs_is_upper_bound = true
     },
     /* POST management endpoints */
     {
