@@ -22,8 +22,10 @@ fi
 
 FULLNAME=$(echo "$J" | jq -r '[.first,.last]|join(" ")')
 
-echo $J | jq \
-   --arg full_name "${FULLNAME}" \
-  '{$full_name,"birthdate":.birthdate,"id":.id}'
-
+echo $J \
+    | jq \
+          --arg full_name "${FULLNAME}" \
+          '{$full_name,"birthdate":.birthdate,"id":.id}' \
+    | jq \
+          'del(..|select(.==null))'
 exit 0

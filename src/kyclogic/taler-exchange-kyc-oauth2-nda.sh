@@ -20,8 +20,11 @@ fi
 # Next, combine some fields into larger values.
 FULLNAME=$(echo "$J" | jq -r '[.first_name,.last_name]|join(" ")')
 
-echo "$J" | jq \
-  --arg full_name "${FULLNAME}" \
-  '{$full_name,"phone":.phone,"id":.id}'
+echo "$J" \
+    | jq \
+          --arg full_name "${FULLNAME}" \
+          '{$full_name,"phone":.phone,"id":.id}' \
+    | jq \
+          'del(..|select(.==null))'
 
 exit 0

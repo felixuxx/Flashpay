@@ -70,16 +70,21 @@ then
 #  CITY=$(echo $J | jq -r '[.postcode,.city,."address-subdivision,.cc"]|join(" ")')
 
   # Combine into final result for individual.
-  # FIXME: does jq tolerate 'pep = NULL' here?
-  echo "$J" | jq \
-    --arg full_name "${FULLNAME}" \
-    '{$full_name,"birthdate":.dob,"pep":.pep,"phone":."phone","email",.email,"residences":.residence_country}'
+  echo "$J" \
+      | jq \
+            --arg full_name "${FULLNAME}" \
+            '{$full_name,"birthdate":.dob,"pep":.pep,"phone":.phone,"email":.email,"residences":.residence_country}' \
+      | jq \
+            'del(..|select(.==null))'
 
 else
   # Combine into final result for business.
-  echo "$J" | jq \
-    $DOCS_RAW \
-    "{\"company_name\":.company_name,\"phone\":.phone,\"email\":.email,\"registration_country\":.registration_country,\"documents\":[${DOCS_JSON}]}"
+    echo "$J" \
+        | jq \
+              $DOCS_RAW \
+              "{\"company_name\":.company_name,\"phone\":.phone,\"email\":.email,\"registration_country\":.registration_country,\"documents\":[${DOCS_JSON}]}" \
+        | jq \
+              'del(..|select(.==null))'
 fi
 
 exit 0
