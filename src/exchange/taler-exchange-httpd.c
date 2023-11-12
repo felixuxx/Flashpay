@@ -1728,14 +1728,14 @@ handle_mhd_request (void *cls,
       .url = "kyc-webhook",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_kyc_webhook_get,
-      .nargs = UINT_MAX,
+      .nargs = 16, /* more is not plausible */
       .nargs_is_upper_bound = true
     },
     {
       .url = "kyc-webhook",
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &TEH_handler_kyc_webhook_post,
-      .nargs = UINT_MAX,
+      .nargs = 16, /* more is not plausible */
       .nargs_is_upper_bound = true
     },
     /* POST management endpoints */
