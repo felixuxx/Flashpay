@@ -6669,6 +6669,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Fetch information about pending KYC requirement process.
+   *
+   * @param cls closure
+   * @param h_payto account that must be KYC'ed
+   * @param provider_section provider that must be checked
+   * @param[out] redirect_url set to redirect URL for the process
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_pending_kyc_requirement_process)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const char *provider_section,
+    char **redirect_url);
+
+
+  /**
    * Update KYC process with updated provider-linkage and/or
    * expiration data.
    *
@@ -6678,6 +6695,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_payto account that must be KYC'ed (helps access by shard, otherwise also redundant)
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
+   * @param redirect_url where the user should be redirected to start the KYC process
    * @param expiration how long is this KYC check set to be valid (in the past if invalid)
    * @return database transaction status
    */
@@ -6689,6 +6707,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     const char *provider_account_id,
     const char *provider_legitimization_id,
+    const char *redirect_url,
     struct GNUNET_TIME_Absolute expiration);
 
 

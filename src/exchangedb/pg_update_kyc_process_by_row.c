@@ -25,6 +25,7 @@
 #include "pg_update_kyc_process_by_row.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_kyc_process_by_row (
   void *cls,
@@ -33,6 +34,7 @@ TEH_PG_update_kyc_process_by_row (
   const struct TALER_PaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,
+  const char *redirect_url,
   struct GNUNET_TIME_Absolute expiration)
 {
   struct PostgresClosure *pg = cls;
@@ -46,6 +48,7 @@ TEH_PG_update_kyc_process_by_row (
     (NULL != provider_legitimization_id)
     ? GNUNET_PQ_query_param_string (provider_legitimization_id)
     : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_string (redirect_url),
     GNUNET_PQ_query_param_absolute_time (&expiration),
     GNUNET_PQ_query_param_end
   };
@@ -60,7 +63,8 @@ TEH_PG_update_kyc_process_by_row (
            "UPDATE legitimization_processes"
            " SET provider_user_id=$4"
            "    ,provider_legitimization_id=$5"
-           "    ,expiration_time=GREATEST(expiration_time,$6)"
+           "    ,redirect_url=$6"
+           "    ,expiration_time=GREATEST(expiration_time,$7)"
            " WHERE"
            "      h_payto=$3"
            "  AND legitimization_process_serial_id=$1"

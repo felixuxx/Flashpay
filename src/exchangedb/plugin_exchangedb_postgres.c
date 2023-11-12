@@ -46,6 +46,7 @@
 #include "pg_insert_close_request.h"
 #include "pg_insert_records_by_table.h"
 #include "pg_insert_reserve_open_deposit.h"
+#include "pg_get_pending_kyc_requirement_process.h"
 #include "pg_iterate_kyc_reference.h"
 #include "pg_iterate_reserve_close_info.h"
 #include "pg_lookup_records_by_table.h"
@@ -744,6 +745,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_purse_by_merge_pub;
   plugin->set_purse_balance
     = &TEH_PG_set_purse_balance;
+  plugin->get_pending_kyc_requirement_process
+    = &TEH_PG_get_pending_kyc_requirement_process;
   plugin->insert_kyc_attributes
     = &TEH_PG_insert_kyc_attributes;
   plugin->select_similar_kyc_attributes

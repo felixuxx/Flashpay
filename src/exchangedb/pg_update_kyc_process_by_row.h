@@ -35,6 +35,7 @@
  * @param h_payto account that must be KYC'ed (helps access by shard, otherwise also redundant)
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
+ * @param redirect_url where the user should be redirected to start the KYC process
  * @param expiration how long is this KYC check set to be valid (in the past if invalid)
  * @return database transaction status
  */
@@ -46,6 +47,7 @@ TEH_PG_update_kyc_process_by_row (
   const struct TALER_PaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,
+  const char *redirect_url,
   struct GNUNET_TIME_Absolute expiration);
 
 #endif

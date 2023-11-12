@@ -260,6 +260,7 @@ initiate_cb (
     &kyp->h_payto,
     provider_user_id,
     provider_legitimization_id,
+    redirect_url,
     GNUNET_TIME_UNIT_ZERO_ABS);
   if (qs <= 0)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -303,6 +304,7 @@ kyc_check (void *cls,
   enum GNUNET_GenericReturnValue ret;
   struct TALER_PaytoHashP h_payto;
   char *requirements;
+  char *redirect_url;
   bool satisfied;
 
   qs = TEH_plugin->lookup_kyc_requirement_by_row (
@@ -388,7 +390,27 @@ kyc_check (void *cls,
 
   if (kyp->ih_done)
     return qs;
-
+  qs = TEH_plugin->get_pending_kyc_requirement_process (
+    THE_plugin->cls,
+    &h_payto,
+    kyp->section_name,
+    &redirect_url);
+  if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      return qs;
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_GENERIC_DB_STORE_FAILED,
+                                           "insert_kyc_requirement_process");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (qs > 0)
+  {
+    kyp->kyc_url = redirect_url;
+    return qs;
+  }
   qs = TEH_plugin->insert_kyc_requirement_process (
     TEH_plugin->cls,
     &h_payto,
@@ -525,6 +547,17 @@ TEH_handler_kyc_check (
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &kyp->timeout);
   }
+  /* KYC plugin generated reply? */
+  if (NULL != kyp->kyc_url)
+  {
+    return TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_uint64 ("aml_status",
+                               kyp->aml_status),
+      GNUNET_JSON_pack_string ("kyc_url",
+                               kyp->kyc_url));
+  }
 
   if ( (NULL == kyp->eh) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout) )
@@ -557,6 +590,17 @@ TEH_handler_kyc_check (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Transaction failed.\n");
     return res;
+  }
+  /* KYC plugin generated reply? */
+  if (NULL != kyp->kyc_url)
+  {
+    return TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_uint64 ("aml_status",
+                               kyp->aml_status),
+      GNUNET_JSON_pack_string ("kyc_url",
+                               kyp->kyc_url));
   }
 
   if ( (NULL == kyp->ih) &&
@@ -614,18 +658,6 @@ TEH_handler_kyc_check (
                                  kyp);
     MHD_suspend_connection (kyp->connection);
     return MHD_YES;
-  }
-
-  /* KYC plugin generated reply? */
-  if (NULL != kyp->kyc_url)
-  {
-    return TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_ACCEPTED,
-      GNUNET_JSON_pack_uint64 ("aml_status",
-                               kyp->aml_status),
-      GNUNET_JSON_pack_string ("kyc_url",
-                               kyp->kyc_url));
   }
 
   if (TALER_EC_NONE != kyp->ec)
