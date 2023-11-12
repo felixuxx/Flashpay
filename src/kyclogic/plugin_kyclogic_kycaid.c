@@ -1190,6 +1190,7 @@ kycaid_webhook (void *cls,
   const char *type;
   const char *verification_id;
   const char *applicant_id;
+  const char *form_id;
   const char *status = NULL;
   bool verified = false;
   bool no_verified = true;
@@ -1203,6 +1204,8 @@ kycaid_webhook (void *cls,
                              &verification_id),
     GNUNET_JSON_spec_string ("applicant_id",
                              &applicant_id),
+    GNUNET_JSON_spec_string ("form_id",
+                             &form_id),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_string ("status",
                                &status),
@@ -1226,7 +1229,8 @@ kycaid_webhook (void *cls,
   wh->pd = pd;
   wh->connection = connection;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYCAID webhook triggered with %s\n",
+              "KYCAID webhook of `%s' triggered with %s\n",
+              pd->section,
               http_method);
 #if 1
   if (NULL != body)
@@ -1283,8 +1287,9 @@ kycaid_webhook (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Received webhook for unknown verification ID `%s'\n",
-                verification_id);
+                "Received webhook for unknown verification ID `%s' and section %s\n",
+                verification_id,
+                pd->section);
     wh->resp = TALER_MHD_make_error (
       TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
       verification_id);

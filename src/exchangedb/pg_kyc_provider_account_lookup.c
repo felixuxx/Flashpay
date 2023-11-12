@@ -47,7 +47,7 @@ TEH_PG_kyc_provider_account_lookup (
                                   process_row),
     GNUNET_PQ_result_spec_end
   };
-  /* Used in #postgres_kyc_provider_account_lookup() */
+
   PREPARE (pg,
            "get_wire_target_by_legitimization_id",
            "SELECT "
