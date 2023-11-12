@@ -391,7 +391,7 @@ kyc_check (void *cls,
   if (kyp->ih_done)
     return qs;
   qs = TEH_plugin->get_pending_kyc_requirement_process (
-    THE_plugin->cls,
+    TEH_plugin->cls,
     &h_payto,
     kyp->section_name,
     &redirect_url);
