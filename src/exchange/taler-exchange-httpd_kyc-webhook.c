@@ -314,7 +314,7 @@ handler_kyc_webhook_generic (
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
                                          args[0]);
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC logic `%s' mapped to section %s\n",
                 args[0],
                 kwh->provider_section);

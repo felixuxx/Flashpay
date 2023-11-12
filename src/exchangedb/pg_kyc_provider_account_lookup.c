@@ -36,8 +36,8 @@ TEH_PG_kyc_provider_account_lookup (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (provider_section),
     GNUNET_PQ_query_param_string (provider_legitimization_id),
+    GNUNET_PQ_query_param_string (provider_section),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
