@@ -99,7 +99,13 @@ enum TALER_KYCLOGIC_KycStatus
    * Return code set to not update the KYC status
    * at all.
    */
-  TALER_KYCLOGIC_STATUS_KEEP = 16
+  TALER_KYCLOGIC_STATUS_KEEP = 16,
+
+  /**
+   * We had an internal logic failure.
+   */
+  TALER_KYCLOGIC_STATUS_INTERNAL_ERROR = 32
+
 };
 
 

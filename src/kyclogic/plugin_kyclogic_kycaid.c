@@ -361,10 +361,10 @@ kycaid_load_configuration (void *cls,
     return NULL;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (ps->cfg,
-                                               provider_section_name,
-                                               "KYC_KYCAID_CONVERTER_HELPER",
-                                               &pd->conversion_helper))
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_KYCAID_CONVERTER_HELPER",
+                                             &pd->conversion_helper))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
@@ -968,6 +968,27 @@ handle_webhook_finished (void *cls,
             "-a",
             wh->pd->auth_token,
             NULL);
+      if (NULL == wh->econ)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to start KYCAID conversion helper `%s'\n",
+                    wh->pd->conversion_helper);
+        resp = TALER_MHD_make_error (
+          TALER_EC_EXCHANGE_GENERIC_KYC_CONVERTER_FAILED,
+          NULL);
+        wh->cb (wh->cb_cls,
+                wh->process_row,
+                &wh->h_payto,
+                wh->pd->section,
+                wh->applicant_id,
+                wh->verification_id,
+                TALER_KYCLOGIC_STATUS_INTERNAL_ERROR,
+                GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+                NULL,
+                MHD_HTTP_INTERNAL_SERVER_ERROR,
+                resp);
+        break;
+      }
       return;
     }
     break;

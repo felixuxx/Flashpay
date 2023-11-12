@@ -1257,6 +1257,20 @@ handle_proof_finished (void *cls,
                                    j,
                                    &proof_post_conversion_cb,
                                    ph);
+        if (NULL == ph->ec)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Failed to start Persona conversion helper\n");
+          proof_reply_error (
+            ph,
+            ph->inquiry_id,
+            MHD_HTTP_BAD_GATEWAY,
+            "persona-logic-failure",
+            GNUNET_JSON_PACK (
+              TALER_JSON_pack_ec (
+                TALER_EC_EXCHANGE_GENERIC_KYC_CONVERTER_FAILED)));
+          break;
+        }
       }
       return; /* continued in proof_post_conversion_cb */
     }
@@ -1771,6 +1785,15 @@ handle_webhook_finished (void *cls,
                                    j,
                                    &webhook_post_conversion_cb,
                                    wh);
+        if (NULL == wh->ec)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Failed to start Persona conversion helper\n");
+          webhook_reply_error (wh,
+                               inquiry_id,
+                               MHD_HTTP_INTERNAL_SERVER_ERROR);
+          break;
+        }
       }
       return; /* continued in webhook_post_conversion_cb */
     }
