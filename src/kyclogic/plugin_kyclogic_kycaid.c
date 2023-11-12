@@ -822,7 +822,7 @@ webhook_conversion_cb (void *cls,
   struct MHD_Response *resp;
 
   wh->econ = NULL;
-  if ( (0 == code) ||
+  if ( (0 == code) &&
        (NULL == result) )
   {
     /* No result, but *our helper* was OK => bad input */
@@ -852,7 +852,9 @@ webhook_conversion_cb (void *cls,
   if (NULL == result)
   {
     /* Failure in our helper */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Helper exited with status code %d\n",
+                (int) code);
     json_dumpf (wh->json_response,
                 stderr,
                 JSON_INDENT (2));
