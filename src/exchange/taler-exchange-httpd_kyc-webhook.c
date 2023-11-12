@@ -315,9 +315,8 @@ handler_kyc_webhook_generic (
                                          args[0]);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYC logic `%s' mapped to section %s/%s\n",
+                "KYC logic `%s' mapped to section %s\n",
                 args[0],
-                kwh->pd->section,
                 kwh->provider_section);
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
                                     kwh->pd,
