@@ -128,6 +128,42 @@ fd = epoll_create1(EPOLL_CLOEXEC);]])],
     AC_DEFINE([[HAVE_EPOLL_CREATE1]], [[1]], [Define if you have epoll_create1 function.])]))
 
 
+# check for libmicrohttpd
+AC_MSG_CHECKING([for microhttpd])
+AC_ARG_WITH([microhttpd],
+            [AS_HELP_STRING([--with-microhttpd=PFX], [base of microhttpd installation])],
+            [AC_MSG_RESULT([given as $with_microhttpd])],
+            [AC_MSG_RESULT([not given])
+             with_microhttpd=yes])
+AS_CASE([$with_microhttpd],
+        [yes], [],
+        [no], [AC_MSG_ERROR([--with-microhttpd is required])],
+        [LDFLAGS="-L$with_microhttpd/lib $LDFLAGS"
+         CPPFLAGS="-I$with_microhttpd/include $CPPFLAGS"])
+MHD_VERSION_AT_LEAST([0.9.71])
+
+# check for libjansson (Jansson JSON library)
+jansson=0
+AC_MSG_CHECKING([for jansson])
+AC_ARG_WITH([jansson],
+            [AS_HELP_STRING([--with-jansson=PFX], [base of jansson installation])],
+            [AC_MSG_RESULT([given as $with_jansson])],
+            [AC_MSG_RESULT([not given])
+             with_jansson=yes])
+AS_CASE([$with_jansson],
+        [yes], [],
+        [no], [AC_MSG_ERROR([--with-jansson is required])],
+        [LDFLAGS="-L$with_jansson/lib $LDFLAGS"
+         CPPFLAGS="-I$with_jansson/include $CPPFLAGS"])
+AC_CHECK_LIB(jansson,json_dumpb,
+  [AC_CHECK_HEADER([jansson.h],[jansson=1])])
+AS_IF([test $jansson = 0],
+  [AC_MSG_ERROR([[
+***
+*** You need libjansson >= 2.10 to build this program.
+*** ]])])
+
+
 # Check for GNUnet's libgnunetutil.
 libgnunetutil=0
 AC_MSG_CHECKING([for libgnunetutil])
@@ -293,42 +329,6 @@ libgnunetsq=0
 AC_MSG_CHECKING([for libgnunetsq])
 AC_CHECK_HEADERS([gnunet/gnunet_sq_lib.h],
  [AC_CHECK_LIB([gnunetsq], [GNUNET_SQ_result_spec_string], libgnunetsq=1)])
-
-
-# check for libmicrohttpd
-AC_MSG_CHECKING([for microhttpd])
-AC_ARG_WITH([microhttpd],
-            [AS_HELP_STRING([--with-microhttpd=PFX], [base of microhttpd installation])],
-            [AC_MSG_RESULT([given as $with_microhttpd])],
-            [AC_MSG_RESULT([not given])
-             with_microhttpd=yes])
-AS_CASE([$with_microhttpd],
-        [yes], [],
-        [no], [AC_MSG_ERROR([--with-microhttpd is required])],
-        [LDFLAGS="-L$with_microhttpd/lib $LDFLAGS"
-         CPPFLAGS="-I$with_microhttpd/include $CPPFLAGS"])
-MHD_VERSION_AT_LEAST([0.9.71])
-
-# check for libjansson (Jansson JSON library)
-jansson=0
-AC_MSG_CHECKING([for jansson])
-AC_ARG_WITH([jansson],
-            [AS_HELP_STRING([--with-jansson=PFX], [base of jansson installation])],
-            [AC_MSG_RESULT([given as $with_jansson])],
-            [AC_MSG_RESULT([not given])
-             with_jansson=yes])
-AS_CASE([$with_jansson],
-        [yes], [],
-        [no], [AC_MSG_ERROR([--with-jansson is required])],
-        [LDFLAGS="-L$with_jansson/lib $LDFLAGS"
-         CPPFLAGS="-I$with_jansson/include $CPPFLAGS"])
-AC_CHECK_LIB(jansson,json_dumpb,
-  [AC_CHECK_HEADER([jansson.h],[jansson=1])])
-AS_IF([test $jansson = 0],
-  [AC_MSG_ERROR([[
-***
-*** You need libjansson >= 2.10 to build this program.
-*** ]])])
 
 
 
