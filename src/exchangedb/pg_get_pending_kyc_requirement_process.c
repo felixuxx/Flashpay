@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,51 +14,50 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_kyc_provider_account_lookup.c
- * @brief Implementation of the kyc_provider_account_lookup function for Postgres
+ * @file exchangedb/pg_get_pending_kyc_requirement_process.c
+ * @brief Implementation of the get_pending_kyc_requirement_process function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_kyc_provider_account_lookup.h"
+#include "pg_get_pending_kyc_requirement_process.h"
 #include "pg_helper.h"
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_kyc_provider_account_lookup (
+TEH_PG_get_pending_kyc_requirement_process (
   void *cls,
+  const struct TALER_PaytoHashP *h_payto,
   const char *provider_section,
-  const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto,
-  uint64_t *process_row)
+  char **redirect_url)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (provider_legitimization_id),
     GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
-                                          h_payto),
-    GNUNET_PQ_result_spec_uint64 ("legitimization_process_serial_id",
-                                  process_row),
+    GNUNET_PQ_result_spec_string ("redirect_url",
+                                  redirect_url),
     GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
-           "get_wire_target_by_legitimization_id",
-           "SELECT "
-           " h_payto"
-           ",legitimization_process_serial_id"
+           "get_pending_kyc_requirement_process",
+           "SELECT"
+           "  redirect_url"
            " FROM legitimization_processes"
-           " WHERE provider_legitimization_id=$1"
-           "   AND provider_section=$2;");
+           " WHERE provider_section=$1"
+           "  AND h_payto=$2"
+           "  AND NOT finished"
+           " ORDER BY start_time DESC"
+           "  LIMIT 1");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
-    "get_wire_target_by_legitimization_id",
+    "get_pending_kyc_requirement_process",
     params,
     rs);
 }

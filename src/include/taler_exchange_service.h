@@ -3277,11 +3277,16 @@ struct TALER_EXCHANGE_RefreshData
    */
   struct TALER_CoinSpendPrivateKeyP melt_priv;
 
-  /*
-   * age commitment and proof and its hash that went into the original coin,
+  /**
+   * age commitment and proof that went into the original coin,
    * might be NULL.
    */
   const struct TALER_AgeCommitmentProof *melt_age_commitment_proof;
+
+  /**
+   * Hash of age commitment and proof that went into the original coin,
+   * might be NULL.
+   */
   const struct TALER_AgeCommitmentHash *melt_h_age_commitment;
 
   /**

@@ -104,7 +104,116 @@ struct AnalysisContext
 };
 
 
-#if 0
+/**
+ * Compare @a h1 and @a h2.
+ *
+ * @param h1 a history entry
+ * @param h2 a history entry
+ * @return 0 if @a h1 and @a h2 are equal
+ */
+static int
+history_entry_cmp (
+  const struct TALER_EXCHANGE_CoinHistoryEntry *h1,
+  const struct TALER_EXCHANGE_CoinHistoryEntry *h2)
+{
+  if (h1->type != h2->type)
+    return 1;
+  if (0 != TALER_amount_cmp (&h1->amount,
+                             &h2->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Amount mismatch (%s)\n",
+                TALER_amount2s (&h1->amount));
+    return 1;
+  }
+  switch (h1->type)
+  {
+  case TALER_EXCHANGE_CTT_NONE:
+    GNUNET_break (0);
+    break;
+  case TALER_EXCHANGE_CTT_DEPOSIT:
+    if (0 != GNUNET_memcmp (&h1->details.deposit.h_contract_terms,
+                            &h2->details.deposit.h_contract_terms))
+      return 1;
+    if (0 != GNUNET_memcmp (&h1->details.deposit.merchant_pub,
+                            &h2->details.deposit.merchant_pub))
+      return 1;
+    if (0 != GNUNET_memcmp (&h1->details.deposit.h_wire,
+                            &h2->details.deposit.h_wire))
+      return 1;
+    if (0 != GNUNET_memcmp (&h1->details.deposit.sig,
+                            &h2->details.deposit.sig))
+      return 1;
+    return 0;
+  case TALER_EXCHANGE_CTT_MELT:
+    if (0 != GNUNET_memcmp (&h1->details.melt.h_age_commitment,
+                            &h2->details.melt.h_age_commitment))
+      return 1;
+    /* Note: most other fields are not initialized
+       in the trait as they are hard to extract from
+       the API */
+    return 0;
+  case TALER_EXCHANGE_CTT_REFUND:
+    if (0 != GNUNET_memcmp (&h1->details.refund.sig,
+                            &h2->details.refund.sig))
+      return 1;
+    return 0;
+  case TALER_EXCHANGE_CTT_RECOUP:
+    if (0 != GNUNET_memcmp (&h1->details.recoup.coin_sig,
+                            &h2->details.recoup.coin_sig))
+      return 1;
+    /* Note: exchange_sig, exchange_pub and timestamp are
+       fundamentally not available in the initiating command */
+    return 0;
+  case TALER_EXCHANGE_CTT_RECOUP_REFRESH:
+    if (0 != GNUNET_memcmp (&h1->details.recoup_refresh.coin_sig,
+                            &h2->details.recoup_refresh.coin_sig))
+      return 1;
+    /* Note: exchange_sig, exchange_pub and timestamp are
+       fundamentally not available in the initiating command */
+    return 0;
+  case TALER_EXCHANGE_CTT_OLD_COIN_RECOUP:
+    if (0 != GNUNET_memcmp (&h1->details.old_coin_recoup.new_coin_pub,
+                            &h2->details.old_coin_recoup.new_coin_pub))
+      return 1;
+    /* Note: exchange_sig, exchange_pub and timestamp are
+       fundamentally not available in the initiating command */
+    return 0;
+  case TALER_EXCHANGE_CTT_PURSE_DEPOSIT:
+    /* coin_sig is not initialized */
+    if (0 != GNUNET_memcmp (&h1->details.purse_deposit.purse_pub,
+                            &h2->details.purse_deposit.purse_pub))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Purse public key mismatch\n");
+      return 1;
+    }
+    if (0 != strcmp (h1->details.purse_deposit.exchange_base_url,
+                     h2->details.purse_deposit.exchange_base_url))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Exchange base URL mismatch (%s/%s)\n",
+                  h1->details.purse_deposit.exchange_base_url,
+                  h2->details.purse_deposit.exchange_base_url);
+      GNUNET_break (0);
+      return 1;
+    }
+    return 0;
+  case TALER_EXCHANGE_CTT_PURSE_REFUND:
+    /* NOTE: not supported yet (trait not returned) */
+    return 0;
+  case TALER_EXCHANGE_CTT_RESERVE_OPEN_DEPOSIT:
+    /* NOTE: not supported yet (trait not returned) */
+    if (0 != GNUNET_memcmp (&h1->details.reserve_open_deposit.coin_sig,
+                            &h2->details.reserve_open_deposit.coin_sig))
+      return 1;
+    return 0;
+  }
+  GNUNET_assert (0);
+  return -1;
+}
+
+
 /**
  * Check if @a cmd changed the coin, if so, find the
  * entry in our history and set the respective index in found
@@ -156,62 +265,69 @@ analyze_command (void *cls,
     return;
   }
 
+  for (unsigned int j = 0; true; j++)
   {
-    const struct TALER_CoinPublicKeyP *rp;
+    const struct TALER_CoinSpendPublicKeyP *rp;
+    const struct TALER_EXCHANGE_CoinHistoryEntry *he;
+    bool matched = false;
 
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_coin_pub (cmd,
+                                          j,
                                           &rp))
-      return; /* command does nothing for coins */
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Command `%s#%u' has no public key for a coin\n",
+                  cmd->label,
+                  j);
+      break; /* command does nothing for coins */
+    }
     if (0 !=
         GNUNET_memcmp (rp,
                        coin_pub))
-      return; /* command affects some _other_ coin */
-    for (unsigned int j = 0; true; j++)
     {
-      const struct TALER_EXCHANGE_CoinHistoryEntry *he;
-      bool matched = false;
-
-      if (GNUNET_OK !=
-          TALER_TESTING_get_trait_coin_history (cmd,
-                                                j,
-                                                &he))
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Command `%s#%u' is about another coin\n",
+                  cmd->label,
+                  j);
+      continue; /* command affects some _other_ coin */
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_coin_history (cmd,
+                                              j,
+                                              &he))
+    {
+      /* NOTE: only for debugging... */
+      if (0 == j)
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Command `%s' has the coin_pub, but lacks coin history trait\n",
+                    cmd->label);
+      return; /* command does nothing for coins */
+    }
+    for (unsigned int i = 0; i<history_length; i++)
+    {
+      if (found[i])
+        continue; /* already found, skip */
+      if (0 ==
+          history_entry_cmp (he,
+                             &history[i]))
       {
-        /* NOTE: only for debugging... */
-        if (0 == j)
-          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                      "Command `%s' has the coin_pub, but lacks coin history trait\n",
-                      cmd->label);
-        return; /* command does nothing for coins */
+        found[i] = true;
+        matched = true;
+        break;
       }
-      for (unsigned int i = 0; i<history_length; i++)
-      {
-        if (found[i])
-          continue; /* already found, skip */
-        if (0 ==
-            TALER_TESTING_coin_history_entry_cmp (he,
-                                                  &history[i]))
-        {
-          found[i] = true;
-          matched = true;
-          break;
-        }
-      }
-      if (! matched)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Command `%s' coin history entry #%u not found\n",
-                    cmd->label,
-                    j);
-        ac->failure = true;
-        return;
-      }
+    }
+    if (! matched)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Command `%s' coin history entry #%u not found\n",
+                  cmd->label,
+                  j);
+      ac->failure = true;
+      return;
     }
   }
 }
-
-
-#endif
 
 
 /**
@@ -325,7 +441,6 @@ coin_history_cb (void *cls,
       return;
     }
     (void) ac;
-#if FIXME
     TALER_TESTING_iterate (is,
                            true,
                            &analyze_command,
@@ -338,7 +453,8 @@ coin_history_cb (void *cls,
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }
-    for (unsigned int i = 0; i<rs->details.ok.history_len; i++)
+#if 1
+    for (unsigned int i = 0; i<hlen; i++)
     {
       if (found[i])
         continue;

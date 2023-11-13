@@ -46,6 +46,7 @@
 #include "taler-exchange-httpd_kyc-check.h"
 #include "taler-exchange-httpd_kyc-proof.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
+#include "taler-exchange-httpd_kyc-webhook.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
@@ -1021,6 +1022,11 @@ handle_mhd_completion_callback (void *cls,
   TEH_check_invariants ();
   if (NULL != rc->rh_cleaner)
     rc->rh_cleaner (rc);
+  if (NULL != rc->root)
+  {
+    json_decref (rc->root);
+    rc->root = NULL;
+  }
   TEH_check_invariants ();
   {
 #if MHD_VERSION >= 0x00097304
@@ -1087,7 +1093,6 @@ proceed_with_handler (struct TEH_RequestContext *rc,
   const struct TEH_RequestHandler *rh = rc->rh;
   const char *args[rh->nargs + 2];
   size_t ulen = strlen (url) + 1;
-  json_t *root = NULL;
   MHD_RESULT ret;
 
   /* We do check for "ulen" here, because we'll later stack-allocate a buffer
@@ -1108,8 +1113,9 @@ proceed_with_handler (struct TEH_RequestContext *rc,
 
   /* All POST endpoints come with a body in JSON format. So we parse
      the JSON here. */
-  if (0 == strcasecmp (rh->method,
-                       MHD_HTTP_METHOD_POST))
+  if ( (0 == strcasecmp (rh->method,
+                         MHD_HTTP_METHOD_POST)) &&
+       (NULL == rc->root) )
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -1117,16 +1123,16 @@ proceed_with_handler (struct TEH_RequestContext *rc,
                                      &rc->opaque_post_parsing_context,
                                      upload_data,
                                      upload_data_size,
-                                     &root);
+                                     &rc->root);
     if (GNUNET_SYSERR == res)
     {
-      GNUNET_assert (NULL == root);
+      GNUNET_assert (NULL == rc->root);
       return MHD_NO; /* bad upload, could not even generate error */
     }
     if ( (GNUNET_NO == res) ||
-         (NULL == root) )
+         (NULL == rc->root) )
     {
-      GNUNET_assert (NULL == root);
+      GNUNET_assert (NULL == rc->root);
       return MHD_YES; /* so far incomplete upload or parser error */
     }
   }
@@ -1163,7 +1169,6 @@ proceed_with_handler (struct TEH_RequestContext *rc,
                        rh->url,
                        url);
       GNUNET_break_op (0);
-      json_decref (root);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
@@ -1176,7 +1181,7 @@ proceed_with_handler (struct TEH_RequestContext *rc,
     if (0 == strcasecmp (rh->method,
                          MHD_HTTP_METHOD_POST))
       ret = rh->handler.post (rc,
-                              root,
+                              rc->root,
                               args);
     else if (0 == strcasecmp (rh->method,
                               MHD_HTTP_METHOD_DELETE))
@@ -1186,7 +1191,6 @@ proceed_with_handler (struct TEH_RequestContext *rc,
       ret = rh->handler.get (rc,
                              args);
   }
-  json_decref (root);
   return ret;
 }
 
@@ -1722,6 +1726,20 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &TEH_handler_kyc_wallet,
       .nargs = 0
+    },
+    {
+      .url = "kyc-webhook",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_kyc_webhook_get,
+      .nargs = 16, /* more is not plausible */
+      .nargs_is_upper_bound = true
+    },
+    {
+      .url = "kyc-webhook",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_kyc_webhook_post,
+      .nargs = 16, /* more is not plausible */
+      .nargs_is_upper_bound = true
     },
     /* POST management endpoints */
     {

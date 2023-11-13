@@ -36,8 +36,11 @@ TEH_PG_insert_kyc_requirement_process (
   uint64_t *process_row)
 {
   struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Absolute now
+    = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_string (provider_section),
     (NULL != provider_account_id)
     ? GNUNET_PQ_query_param_string (provider_account_id)
@@ -53,20 +56,16 @@ TEH_PG_insert_kyc_requirement_process (
     GNUNET_PQ_result_spec_end
   };
 
-  /* Used in #postgres_insert_kyc_requirement_process() */
   PREPARE (pg,
            "insert_legitimization_process",
            "INSERT INTO legitimization_processes"
            "  (h_payto"
+           "  ,start_time"
            "  ,provider_section"
            "  ,provider_user_id"
            "  ,provider_legitimization_id"
            "  ) VALUES "
-           "  ($1, $2, $3, $4)"
-           " ON CONFLICT (h_payto,provider_section) "
-           "   DO UPDATE SET"
-           "      provider_user_id=$3"
-           "     ,provider_legitimization_id=$4"
+           "  ($1, $2, $3, $4, $5)"
            " RETURNING legitimization_process_serial_id");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

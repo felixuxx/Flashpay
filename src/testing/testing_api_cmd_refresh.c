@@ -118,6 +118,12 @@ struct RefreshMeltState
   struct TALER_EXCHANGE_MeltHandle *rmh;
 
   /**
+   * Expected entry in the coin history created by this
+   * operation.
+   */
+  struct TALER_EXCHANGE_CoinHistoryEntry che;
+
+  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -143,6 +149,11 @@ struct RefreshMeltState
    * Private key of the dirty coin being melted.
    */
   const struct TALER_CoinSpendPrivateKeyP *melt_priv;
+
+  /**
+   * Public key of the dirty coin being melted.
+   */
+  struct TALER_CoinSpendPublicKeyP melt_pub;
 
   /**
    * Task scheduled to try later.
@@ -1147,6 +1158,8 @@ melt_run (void *cls,
     } /* end for */
 
     rms->refresh_data.melt_priv = *rms->melt_priv;
+    GNUNET_CRYPTO_eddsa_key_get_public (&rms->melt_priv->eddsa_priv,
+                                        &rms->melt_pub.eddsa_pub);
     rms->refresh_data.melt_amount = melt_amount;
     rms->refresh_data.melt_sig = *melt_sig;
     rms->refresh_data.melt_pk = *melt_denom_pub;
@@ -1164,6 +1177,13 @@ melt_run (void *cls,
                    (NULL != age_commitment_proof));
     GNUNET_assert ((NULL == age_commitment_proof) ||
                    (0 < age_commitment_proof->commitment.num));
+
+    rms->che.type = TALER_EXCHANGE_CTT_MELT;
+    rms->che.amount = melt_amount;
+    if (NULL != age_commitment_proof)
+      rms->che.details.melt.h_age_commitment = *h_age_commitment;
+    else
+      rms->che.details.melt.no_hac = true;
 
     rms->rmh = TALER_EXCHANGE_melt (
       TALER_TESTING_interpreter_get_context (is),
@@ -1253,8 +1273,12 @@ melt_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_denom_pub (index,
                                           &rms->fresh_pks[index]),
-      TALER_TESTING_make_trait_coin_priv (index,
+      TALER_TESTING_make_trait_coin_priv (0,
                                           rms->melt_priv),
+      TALER_TESTING_make_trait_coin_pub (0,
+                                         &rms->melt_pub),
+      TALER_TESTING_make_trait_coin_history (0,
+                                             &rms->che),
       TALER_TESTING_make_trait_age_commitment_proof (
         index,
         rms->refresh_data.melt_age_commitment_proof),

@@ -44,11 +44,14 @@ else
 fi
 
 # Combine into final result.
-echo "$J" | jq \
-   --arg full_name "${FULLNAME}" \
-   --arg street "${STREET}" \
-   --arg city "${CITY}" \
-   --rawfile photo "${PHOTO_FILE}" \
-   '{$full_name,$street,$city,"birthdate":.birthdate,"residences":.cc,"identification_number":."identification-number",$photo}'
+echo "$J" \
+    | jq \
+          --arg full_name "${FULLNAME}" \
+          --arg street "${STREET}" \
+          --arg city "${CITY}" \
+          --rawfile photo "${PHOTO_FILE}" \
+          '{$full_name,$street,$city,"birthdate":.birthdate,"residences":.cc,"identification_number":."identification-number",$photo}' \
+    | jq \
+          'del(..|select(.==null))'
 
 exit 0

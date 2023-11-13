@@ -1147,7 +1147,6 @@ lrbt_cb_table_batch_deposits (void *cls,
                               unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
-  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_BATCH_DEPOSITS
   };

@@ -255,11 +255,6 @@ child_done_cb (void *cls,
   json_error_t err;
 
   ec->cwh = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Conversion helper exited with status %d and code %llu after outputting %llu bytes of data\n",
-              (int) type,
-              (unsigned long long) exit_code,
-              (unsigned long long) ec->read_pos);
   if (NULL != ec->read_task)
   {
     GNUNET_SCHEDULER_cancel (ec->read_task);
@@ -267,11 +262,11 @@ child_done_cb (void *cls,
        the read buffer. So drain it now, just in case. */
     read_cb (ec);
   }
-  if (NULL != ec->read_task)
-  {
-    GNUNET_SCHEDULER_cancel (ec->read_task);
-    ec->read_task = NULL;
-  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Conversion helper exited with status %d and code %llu after outputting %llu bytes of data\n",
+              (int) type,
+              (unsigned long long) exit_code,
+              (unsigned long long) ec->read_pos);
   GNUNET_OS_process_destroy (ec->helper);
   ec->helper = NULL;
   if (0 != ec->read_pos)

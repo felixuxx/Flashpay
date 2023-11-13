@@ -802,11 +802,10 @@ TALER_EXCHANGE_parse_coin_history (
     json_t *transaction = json_array_get (history,
                                           off);
     enum GNUNET_GenericReturnValue add;
-    struct TALER_Amount amount;
     const char *type;
     struct GNUNET_JSON_Specification spec_glob[] = {
       TALER_JSON_spec_amount_any ("amount",
-                                  &amount),
+                                  &rh->amount),
       GNUNET_JSON_spec_string ("type",
                                &type),
       GNUNET_JSON_spec_end ()
@@ -821,7 +820,7 @@ TALER_EXCHANGE_parse_coin_history (
       return GNUNET_SYSERR;
     }
     if (GNUNET_YES !=
-        TALER_amount_cmp_currency (&amount,
+        TALER_amount_cmp_currency (&rh->amount,
                                    total_in))
     {
       GNUNET_break_op (0);
@@ -830,7 +829,7 @@ TALER_EXCHANGE_parse_coin_history (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Operation of type %s with amount %s\n",
                 type,
-                TALER_amount2s (&amount));
+                TALER_amount2s (&rh->amount));
     add = GNUNET_SYSERR;
     for (unsigned int i = 0; NULL != map[i].type; i++)
     {
@@ -840,7 +839,7 @@ TALER_EXCHANGE_parse_coin_history (
         rh->type = map[i].ctt;
         add = map[i].helper (&pc,
                              rh,
-                             &amount,
+                             &rh->amount,
                              transaction);
         break;
       }
@@ -860,7 +859,7 @@ TALER_EXCHANGE_parse_coin_history (
       if (0 >
           TALER_amount_add (total_out,
                             total_out,
-                            &amount))
+                            &rh->amount))
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
         GNUNET_break_op (0);
@@ -872,7 +871,7 @@ TALER_EXCHANGE_parse_coin_history (
       if (0 >
           TALER_amount_add (total_in,
                             total_in,
-                            &amount))
+                            &rh->amount))
       {
         /* overflow in refund history? inconceivable! Bad exchange! */
         GNUNET_break_op (0);

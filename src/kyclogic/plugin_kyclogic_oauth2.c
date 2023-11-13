@@ -1023,6 +1023,20 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     pd->conversion_binary,
     pd->conversion_binary,
     NULL);
+  if (NULL == ph->ec)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to start KYCAID conversion helper `%s'\n",
+                pd->conversion_binary);
+    ph->status = TALER_KYCLOGIC_STATUS_INTERNAL_ERROR;
+    ph->response
+      = TALER_MHD_make_error (
+          TALER_EC_EXCHANGE_GENERIC_KYC_CONVERTER_FAILED,
+          "Failed to launch KYC conversion helper");
+    ph->http_status
+      = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    return;
+  }
 }
 
 

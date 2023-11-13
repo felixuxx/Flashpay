@@ -361,10 +361,10 @@ kycaid_load_configuration (void *cls,
     return NULL;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (ps->cfg,
-                                               provider_section_name,
-                                               "KYC_KYCAID_CONVERTER_HELPER",
-                                               &pd->conversion_helper))
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_KYCAID_CONVERTER_HELPER",
+                                             &pd->conversion_helper))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
@@ -429,11 +429,14 @@ handle_initiate_finished (void *cls,
     {
       const char *verification_id;
       const char *form_url;
+      const char *form_id;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("verification_id",
                                  &verification_id),
         GNUNET_JSON_spec_string ("form_url",
                                  &form_url),
+        GNUNET_JSON_spec_string ("form_id",
+                                 &form_id),
         GNUNET_JSON_spec_end ()
       };
 
@@ -455,6 +458,10 @@ handle_initiate_finished (void *cls,
                                                     "type")));
         break;
       }
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Started new verification `%s' using form %s\n",
+                  verification_id,
+                  form_id);
       ih->cb (ih->cb_cls,
               TALER_EC_NONE,
               form_url,
@@ -815,7 +822,7 @@ webhook_conversion_cb (void *cls,
   struct MHD_Response *resp;
 
   wh->econ = NULL;
-  if ( (0 == code) ||
+  if ( (0 == code) &&
        (NULL == result) )
   {
     /* No result, but *our helper* was OK => bad input */
@@ -845,7 +852,9 @@ webhook_conversion_cb (void *cls,
   if (NULL == result)
   {
     /* Failure in our helper */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Helper exited with status code %d\n",
+                (int) code);
     json_dumpf (wh->json_response,
                 stderr,
                 JSON_INDENT (2));
@@ -905,6 +914,15 @@ handle_webhook_finished (void *cls,
   struct MHD_Response *resp;
 
   wh->job = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Webhook returned with HTTP status %u\n",
+              (unsigned int) response_code);
+#if 1
+  if (NULL != j)
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+#endif
   wh->kycaid_response_code = response_code;
   wh->json_response = json_incref ((json_t *) j);
   switch (response_code)
@@ -952,6 +970,27 @@ handle_webhook_finished (void *cls,
             "-a",
             wh->pd->auth_token,
             NULL);
+      if (NULL == wh->econ)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to start KYCAID conversion helper `%s'\n",
+                    wh->pd->conversion_helper);
+        resp = TALER_MHD_make_error (
+          TALER_EC_EXCHANGE_GENERIC_KYC_CONVERTER_FAILED,
+          NULL);
+        wh->cb (wh->cb_cls,
+                wh->process_row,
+                &wh->h_payto,
+                wh->pd->section,
+                wh->applicant_id,
+                wh->verification_id,
+                TALER_KYCLOGIC_STATUS_INTERNAL_ERROR,
+                GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+                NULL,
+                MHD_HTTP_INTERNAL_SERVER_ERROR,
+                resp);
+        break;
+      }
       return;
     }
     break;
@@ -1174,6 +1213,7 @@ kycaid_webhook (void *cls,
   const char *type;
   const char *verification_id;
   const char *applicant_id;
+  const char *form_id;
   const char *status = NULL;
   bool verified = false;
   bool no_verified = true;
@@ -1187,6 +1227,8 @@ kycaid_webhook (void *cls,
                              &verification_id),
     GNUNET_JSON_spec_string ("applicant_id",
                              &applicant_id),
+    GNUNET_JSON_spec_string ("form_id",
+                             &form_id),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_string ("status",
                                &status),
@@ -1209,7 +1251,16 @@ kycaid_webhook (void *cls,
   wh->ps = ps;
   wh->pd = pd;
   wh->connection = connection;
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYCAID webhook of `%s' triggered with %s\n",
+              pd->section,
+              http_method);
+#if 1
+  if (NULL != body)
+    json_dumpf (body,
+                stderr,
+                JSON_INDENT (2));
+#endif
   if (NULL == pd)
   {
     GNUNET_break_op (0);
@@ -1259,8 +1310,9 @@ kycaid_webhook (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Received webhook for unknown verification ID `%s'\n",
-                verification_id);
+                "Received webhook for unknown verification ID `%s' and section %s\n",
+                verification_id,
+                pd->section);
     wh->resp = TALER_MHD_make_error (
       TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
       verification_id);
@@ -1279,6 +1331,9 @@ kycaid_webhook (void *cls,
     /* We don't need to re-confirm the failure by
        asking the API again. */
     log_failure (verifications);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Webhook called with non-completion status: %s\n",
+                type);
     wh->response_code = MHD_HTTP_NO_CONTENT;
     wh->resp = MHD_create_response_from_buffer (0,
                                                 "",

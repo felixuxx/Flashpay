@@ -57,6 +57,11 @@ struct CoinState
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
+   * Public key of the coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
    * Blinding key used during the operation.
    */
   union GNUNET_CRYPTO_BlindingSecretP bks;
@@ -207,6 +212,9 @@ reserve_batch_withdraw_cb (void *cls,
       TALER_denom_sig_deep_copy (&cs->sig,
                                  &pcd->sig);
       cs->coin_priv = pcd->coin_priv;
+      GNUNET_CRYPTO_eddsa_key_get_public (&cs->coin_priv.eddsa_priv,
+                                          &cs->coin_pub.eddsa_pub);
+
       cs->bks = pcd->bks;
       cs->exchange_vals = pcd->exchange_vals;
     }
@@ -402,6 +410,8 @@ batch_withdraw_traits (void *cls,
                                               &cs->reserve_history),
     TALER_TESTING_make_trait_coin_priv (index,
                                         &cs->coin_priv),
+    TALER_TESTING_make_trait_coin_pub (index,
+                                       &cs->coin_pub),
     TALER_TESTING_make_trait_planchet_secrets (index,
                                                &cs->ps),
     TALER_TESTING_make_trait_blinding_key (index,

@@ -70,9 +70,20 @@ struct Coin
   char *coin_reference;
 
   /**
+   * Denomination public key of the coin.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+
+  /**
    * The command being referenced.
    */
   const struct TALER_TESTING_Command *coin_cmd;
+
+  /**
+   * Expected entry in the coin history created by this
+   * coin.
+   */
+  struct TALER_EXCHANGE_CoinHistoryEntry che;
 
   /**
    * Index of the coin at @e coin_cmd.
@@ -231,7 +242,6 @@ batch_deposit_run (void *cls,
                    struct TALER_TESTING_Interpreter *is)
 {
   struct BatchDepositState *ds = cls;
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHashP h_contract_terms;
@@ -335,7 +345,7 @@ batch_deposit_run (void *cls,
          (GNUNET_OK !=
           TALER_TESTING_get_trait_denom_pub (coin->coin_cmd,
                                              coin->coin_idx,
-                                             &denom_pub)) ||
+                                             &coin->denom_pub)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_denom_sig (coin->coin_cmd,
                                              coin->coin_idx,
@@ -350,25 +360,38 @@ batch_deposit_run (void *cls,
       TALER_age_commitment_hash (&age_commitment_proof->commitment,
                                  &cdd->h_age_commitment);
     }
-    coin->deposit_fee = denom_pub->fees.deposit;
+    coin->deposit_fee = coin->denom_pub->fees.deposit;
     GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                         &cdd->coin_pub.eddsa_pub);
     cdd->denom_sig = *denom_pub_sig;
-    cdd->h_denom_pub = denom_pub->h_key;
+    cdd->h_denom_pub = coin->denom_pub->h_key;
     TALER_wallet_deposit_sign (&coin->amount,
-                               &denom_pub->fees.deposit,
+                               &coin->denom_pub->fees.deposit,
                                &h_wire,
                                &h_contract_terms,
                                NULL, /* wallet_data_hash */
                                &cdd->h_age_commitment,
                                NULL, /* hash of extensions */
-                               &denom_pub->h_key,
+                               &coin->denom_pub->h_key,
                                ds->wallet_timestamp,
                                &merchant_pub,
                                ds->refund_deadline,
                                coin_priv,
                                &cdd->coin_sig);
     coin->coin_sig = cdd->coin_sig;
+    coin->che.type = TALER_EXCHANGE_CTT_DEPOSIT;
+    coin->che.amount = coin->amount;
+    coin->che.details.deposit.h_wire = h_wire;
+    coin->che.details.deposit.h_contract_terms = h_contract_terms;
+    coin->che.details.deposit.no_h_policy = true;
+    coin->che.details.deposit.no_wallet_data_hash = true;
+    coin->che.details.deposit.wallet_timestamp = ds->wallet_timestamp;
+    coin->che.details.deposit.merchant_pub = merchant_pub;
+    coin->che.details.deposit.refund_deadline = ds->refund_deadline;
+    coin->che.details.deposit.sig = cdd->coin_sig;
+    coin->che.details.deposit.no_hac = GNUNET_is_zero (&cdd->h_age_commitment);
+    coin->che.details.deposit.hac = cdd->h_age_commitment;
+    coin->che.details.deposit.deposit_fee = coin->denom_pub->fees.deposit;
   }
 
   GNUNET_assert (NULL == ds->dh);
@@ -457,9 +480,10 @@ batch_deposit_traits (void *cls,
                       unsigned int index)
 {
   struct BatchDepositState *ds = cls;
-  struct Coin *coin = &ds->coins[index];
+  const struct Coin *coin = &ds->coins[index];
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
+  struct TALER_CoinSpendPublicKeyP coin_spent_pub;
   const struct TALER_AgeCommitmentProof *age_commitment_proof;
 
   if (index >= ds->num_coins)
@@ -486,6 +510,10 @@ batch_deposit_traits (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return GNUNET_NO;
   }
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_spent_priv->eddsa_priv,
+                                      &coin_spent_pub.eddsa_pub);
+
   {
     struct TALER_TESTING_Trait traits[] = {
       /* First two traits are only available if
@@ -500,6 +528,12 @@ batch_deposit_traits (void *cls,
       TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),
       TALER_TESTING_make_trait_age_commitment_proof (index,
                                                      age_commitment_proof),
+      TALER_TESTING_make_trait_coin_history (index,
+                                             &coin->che),
+      TALER_TESTING_make_trait_coin_pub (index,
+                                         &coin_spent_pub),
+      TALER_TESTING_make_trait_denom_pub (index,
+                                          coin->denom_pub),
       TALER_TESTING_make_trait_coin_priv (index,
                                           coin_spent_priv),
       TALER_TESTING_make_trait_coin_sig (index,
@@ -508,7 +542,6 @@ batch_deposit_traits (void *cls,
                                                &coin->amount),
       TALER_TESTING_make_trait_deposit_fee_amount (index,
                                                    &coin->deposit_fee),
-
       TALER_TESTING_make_trait_timestamp (index,
                                           &ds->exchange_timestamp),
       TALER_TESTING_make_trait_wire_deadline (index,
