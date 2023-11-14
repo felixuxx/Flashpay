@@ -917,12 +917,6 @@ handle_webhook_finished (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Webhook returned with HTTP status %u\n",
               (unsigned int) response_code);
-#if 1
-  if (NULL != j)
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-#endif
   wh->kycaid_response_code = response_code;
   wh->json_response = json_incref ((json_t *) j);
   switch (response_code)
