@@ -179,8 +179,6 @@ parse_cspec (void *cls,
                              &fnd),
     GNUNET_JSON_spec_uint32 ("num_fractional_trailing_zero_digits",
                              &ftzd),
-    GNUNET_JSON_spec_bool ("is_currency_name_leading",
-                           &r_cspec->is_currency_name_leading),
     GNUNET_JSON_spec_object_const ("alt_unit_names",
                                    &map),
     GNUNET_JSON_spec_end ()
