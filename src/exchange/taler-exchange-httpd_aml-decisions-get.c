@@ -81,7 +81,7 @@ TEH_handler_aml_decisions_get (
 {
   enum TALER_AmlDecisionState decision;
   int delta = -20;
-  unsigned long long start = INT64_MAX;
+  unsigned long long start;
   const char *state_str = args[0];
 
   if (NULL == state_str)
@@ -123,25 +123,6 @@ TEH_handler_aml_decisions_get (
 
     p = MHD_lookup_connection_value (rc->connection,
                                      MHD_GET_ARGUMENT_KIND,
-                                     "start");
-    if (NULL != p)
-    {
-      char dummy;
-
-      if (1 != sscanf (p,
-                       "%llu%c",
-                       &start,
-                       &dummy))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "start");
-      }
-    }
-    p = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
                                      "delta");
     if (NULL != p)
     {
@@ -157,6 +138,29 @@ TEH_handler_aml_decisions_get (
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                            "delta");
+      }
+    }
+    if (delta > 0)
+      start = 0;
+    else
+      start = INT64_MAX;
+    p = MHD_lookup_connection_value (rc->connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "start");
+    if (NULL != p)
+    {
+      char dummy;
+
+      if (1 != sscanf (p,
+                       "%llu%c",
+                       &start,
+                       &dummy))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                           "start");
       }
     }
   }
