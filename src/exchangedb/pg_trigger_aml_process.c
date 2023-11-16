@@ -46,9 +46,9 @@ TEH_PG_trigger_aml_process (
            "(h_payto"
            ",threshold"
            ",status)"
-           "VALUES"
-           "($1, $2, 1)" // 1: decision needed
-           " ON CONFLICT DO"
+           " VALUES"
+           " ($1, $2, 1)" // 1: decision needed
+           " ON CONFLICT (h_payto) DO"
            " UPDATE SET"
            "   threshold=$2"
            "  ,status=status | 1;"); // do not clear 'frozen' status
