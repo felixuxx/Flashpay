@@ -51,7 +51,7 @@ TEH_PG_trigger_aml_process (
            " ON CONFLICT (h_payto) DO"
            " UPDATE SET"
            "   threshold=$2"
-           "  ,status=status | 1;"); // do not clear 'frozen' status
+           "  ,status=aml_status.status | 1;"); // do not clear 'frozen' status
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "trigger_aml_process",
                                              params);
