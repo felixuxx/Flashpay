@@ -39,4 +39,17 @@ else
     echo "Uncrustify not detected, hook not installed. Please install uncrustify if you plan on doing development"
 fi
 
+
+# Generate Makefile.am in contrib/
+cd contrib
+rm -f Makefile.am
+find wallet-core/aml-backoffice/ -type f -printf '  %p \\\n' | sort > Makefile.am.ext
+# Remove extra '\' at the end of the file
+truncate -s -2 Makefile.am.ext
+cat Makefile.am.in Makefile.am.ext >> Makefile.am
+# Prevent accidental editing of the generated Makefile.am
+chmod -w Makefile.am
+cd ..
+
+echo "$0: Running autoreconf"
 autoreconf -fi

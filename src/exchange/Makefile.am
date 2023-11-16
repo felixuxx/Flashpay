@@ -181,8 +181,9 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_reserves_open.c taler-exchange-httpd_reserves_open.h \
   taler-exchange-httpd_reserves_purse.c taler-exchange-httpd_reserves_purse.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
+  taler-exchange-httpd_spa.c taler-exchange-httpd_spa.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
-  taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h 
+  taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h
 
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
