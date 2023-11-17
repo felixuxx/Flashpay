@@ -307,7 +307,7 @@ TALER_EXCHANGE_keys_stefan_round (
   if (NULL == min)
     return;
   frac = min->fraction;
-  while (0 == frac % 10)
+  while (0 != frac % 10)
   {
     mod *= 10;
     frac /= 10;
