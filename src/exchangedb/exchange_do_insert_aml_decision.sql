@@ -77,7 +77,7 @@ ELSE
     ,in_requirement_row)
     ON CONFLICT (h_payto) DO
     UPDATE SET
-       threshold=in_new_threshod
+       threshold=in_new_threshold
       ,status=in_new_status;
 END IF;
 
