@@ -260,9 +260,13 @@ register_bank_account() {
 }
 
 register_fakebank_account() {
-    # FIXME: may need to pass 'is_taler_exchange' here
-    # in the future to get exchange facade from libeufin!
-    BODY='{"username":"'"$1"'","password":"'"$2"'","name":"'"$1"'"}'
+    if [ "$1" = "exchange" ] || [ "$1" = "Exchange" ]
+    then
+        IS_EXCHANGE="true"
+    else
+        IS_EXCHANGE="false"
+    fi
+    BODY='{"username":"'"$1"'","password":"'"$2"'","name":"'"$1"'","is_taler_exchange":'"$IS_EXCHANGE"'}'
     wget \
         --post-data="$BODY" \
         --header='Content-type: application/json' \
@@ -270,6 +274,7 @@ register_fakebank_account() {
         --waitretry=1 \
         --timeout=30 \
         "http://localhost:$BANK_PORT/accounts" \
+        -a wget-register-account.log \
         -o /dev/null \
         -O /dev/null \
         >/dev/null
@@ -705,18 +710,19 @@ then
         sleep "$DEFAULT_SLEEP"
         wget \
             --tries=1 \
-            --timeout=1 \
+            --timeout=5 \
             "${EXCHANGE_URL}keys" \
+            -a wget-keys-check.log \
             -o /dev/null \
             -O "$LAST_RESPONSE" \
-             >/dev/null || continue
+            >/dev/null || continue
         OK="1"
         break
     done
     if [ "1" != "$OK" ]
     then
         cat "$LAST_RESPONSE"
-        exit_fail " Failed to setup keys"
+        exit_fail " Failed to fetch ${EXCHANGE_URL}keys"
     fi
     rm "$LAST_RESPONSE"
     echo " OK"
