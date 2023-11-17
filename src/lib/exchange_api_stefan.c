@@ -299,22 +299,30 @@ TALER_EXCHANGE_keys_stefan_round (
   struct TALER_Amount *val)
 {
   const struct TALER_Amount *min;
-  uint32_t mod = 1;
+  uint32_t mod;
   uint32_t frac;
-  uint32_t rst;
+  uint32_t lim;
 
+  if (0 == val->fraction)
+  {
+    /* rounding of non-fractions not supported */
+    return;
+  }
   min = get_unit (keys);
   if (NULL == min)
     return;
-  frac = min->fraction;
-  while (0 != frac % 10)
+  if (0 == min->fraction)
   {
-    mod *= 10;
-    frac /= 10;
+    frac = TALER_AMOUNT_FRAC_BASE;
   }
-  rst = val->fraction % mod;
-  if (rst < mod / 2)
-    val->fraction -= rst;
   else
-    val->fraction += mod - rst;
+  {
+    frac = min->fraction;
+  }
+  lim = frac / 2;
+  mod = val->fraction % frac;
+  if (mod < lim)
+    val->fraction -= mod; /* round down */
+  else
+    val->fraction += frac - mod; /* round up */
 }
