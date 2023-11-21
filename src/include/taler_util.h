@@ -242,12 +242,6 @@ struct TALER_CurrencySpecification
   unsigned int num_fractional_trailing_zero_digits;
 
   /**
-   * True to put the currency symbol before the number,
-   * false to put the currency symbol after the number.
-   */
-  bool is_currency_name_leading;
-
-  /**
    * Mapping of powers of 10 to alternative currency names or symbols.
    * Keys are the decimal powers, values the currency symbol to use.
    * Map MUST contain an entry for "0" to the default currency symbol.

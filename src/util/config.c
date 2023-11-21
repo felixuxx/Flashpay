@@ -233,11 +233,6 @@ parse_currencies_cb (void *cls,
                        cpc->len_cspecs * 2 + 4);
   }
   cspec = &cpc->cspecs[cpc->num_currencies++];
-  cspec->is_currency_name_leading
-    = GNUNET_CONFIGURATION_get_value_yesno (cpc->cfg,
-                                            section,
-                                            "NAME_LEADING");
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cpc->cfg,
                                              section,
@@ -483,8 +478,6 @@ TALER_CONFIG_currency_specs_to_json (const struct
                              cspec->num_fractional_normal_digits),
     GNUNET_JSON_pack_uint64 ("num_fractional_trailing_zero_digits",
                              cspec->num_fractional_trailing_zero_digits),
-    GNUNET_JSON_pack_bool ("is_currency_name_leading",
-                           cspec->is_currency_name_leading),
     GNUNET_JSON_pack_object_incref ("alt_unit_names",
                                     cspec->map_alt_unit_names));
 }

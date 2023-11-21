@@ -68,6 +68,7 @@
 #include "taler-exchange-httpd_reserves_history.h"
 #include "taler-exchange-httpd_reserves_open.h"
 #include "taler-exchange-httpd_reserves_purse.h"
+#include "taler-exchange-httpd_spa.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
 #include "taler_exchangedb_lib.h"
@@ -1508,6 +1509,56 @@ handle_post_auditors (struct TEH_RequestContext *rc,
 
 
 /**
+ * Generates the response for "/", redirecting the
+ * client to the "/webui/" from where we serve the SPA.
+ *
+ * @param rc request context
+ * @param args remaining arguments (should be empty)
+ * @return MHD result code
+ */
+static MHD_RESULT
+spa_redirect (struct TEH_RequestContext *rc,
+              const char *const args[])
+{
+  const char *text = "Redirecting to /webui/";
+  struct MHD_Response *response;
+
+  response = MHD_create_response_from_buffer (strlen (text),
+                                              (void *) text,
+                                              MHD_RESPMEM_PERSISTENT);
+  if (NULL == response)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  TALER_MHD_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         "text/plain"));
+  if (MHD_NO ==
+      MHD_add_response_header (response,
+                               MHD_HTTP_HEADER_LOCATION,
+                               "/webui/"))
+  {
+    GNUNET_break (0);
+    MHD_destroy_response (response);
+    return MHD_NO;
+  }
+
+  {
+    MHD_RESULT ret;
+
+    ret = MHD_queue_response (rc->connection,
+                              MHD_HTTP_FOUND,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
@@ -1540,15 +1591,11 @@ handle_mhd_request (void *cls,
       .data = "User-agent: *\nDisallow: /\n",
       .response_code = MHD_HTTP_OK
     },
-    /* Landing page, tell humans to go away. */
+    /* Landing page, redirect to SPA */
     {
       .url = "",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = TEH_handler_static_response,
-      .mime_type = "text/plain",
-      .data =
-        "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n",
-      .response_code = MHD_HTTP_OK
+      .handler.get = &spa_redirect
     },
     /* AGPL licensing page, redirect to source. As per the AGPL-license, every
        deployment is required to offer the user a download of the source of
@@ -1778,7 +1825,13 @@ handle_mhd_request (void *cls,
       .handler.post = &handle_post_aml,
       .nargs = 2
     },
-
+    {
+      .url = "webui",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_spa,
+      .nargs = 1,
+      .nargs_is_upper_bound = true
+    },
 
     /* mark end of list */
     {
@@ -2537,6 +2590,13 @@ run (void *cls,
 
   if (GNUNET_OK !=
       exchange_serve_process_config ())
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TEH_spa_init ())
   {
     global_ret = EXIT_NOTCONFIGURED;
     GNUNET_SCHEDULER_shutdown ();

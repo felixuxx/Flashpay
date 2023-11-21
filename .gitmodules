@@ -8,3 +8,7 @@
 [submodule "contrib/gana"]
 	path = contrib/gana
 	url = https://git.gnunet.org/gana.git
+[submodule "contrib/wallet-core"]
+	path = contrib/wallet-core
+	url = https://git.taler.net/wallet-core.git
+	branch = prebuilt

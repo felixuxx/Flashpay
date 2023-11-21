@@ -100,7 +100,7 @@ lookup_template (struct MHD_Connection *connection,
   if (NULL == best)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "No templates found in `%s'\n",
+                "No templates found for `%s'\n",
                 name);
     return NULL;
   }
@@ -360,7 +360,6 @@ load_template (void *cls,
   (void) cls;
   if ('.' == filename[0])
     return GNUNET_OK;
-
   name = strrchr (filename,
                   '/');
   if (NULL == name)
@@ -395,7 +394,7 @@ load_template (void *cls,
              &sb))
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
-                              "open",
+                              "fstat",
                               filename);
     GNUNET_break (0 == close (fd));
     return GNUNET_OK;

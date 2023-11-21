@@ -61,3 +61,11 @@ EXTRA_DIST = \
   gnunet.tag \
   microhttpd.tag \
   packages
+
+spapkgdatadir = $(prefix)/share/taler/exchange/spa/
+
+# This is for the single-page-app imported from the wallet-core.git
+# prebuilt branch. This MUST be the last line in the
+# Makefile.am.in, as it will be combined with the
+# actual SPA data by 'bootstrap'!
+dist_spapkgdata_DATA = \

@@ -32,7 +32,7 @@ AS $$
 BEGIN
 -- Check officer is eligible to make decisions.
 PERFORM
-  FROM exchange.aml_staff
+  FROM aml_staff
   WHERE decider_pub=in_decider_pub
     AND is_active
     AND NOT read_only;
@@ -47,7 +47,7 @@ out_invalid_officer=FALSE;
 -- Check no more recent decision exists.
 SELECT decision_time
   INTO out_last_date
-  FROM exchange.aml_history
+  FROM aml_history
   WHERE h_payto=in_h_payto
   ORDER BY decision_time DESC;
 IF FOUND
@@ -57,7 +57,7 @@ THEN
     -- Refuse to insert older decision.
     RETURN;
   END IF;
-  UPDATE exchange.aml_status
+  UPDATE aml_status
     SET threshold=in_new_threshold
        ,status=in_new_status
        ,kyc_requirement=in_requirement_row
@@ -65,7 +65,7 @@ THEN
   ASSERT FOUND, 'cannot have AML decision history but no AML status';
 ELSE
   out_last_date = 0;
-  INSERT INTO exchange.aml_status
+  INSERT INTO aml_status
     (h_payto
     ,threshold
     ,status
@@ -74,11 +74,15 @@ ELSE
     (in_h_payto
     ,in_new_threshold
     ,in_new_status
-    ,in_requirement_row);
+    ,in_requirement_row)
+    ON CONFLICT (h_payto) DO
+    UPDATE SET
+       threshold=in_new_threshold
+      ,status=in_new_status;
 END IF;
 
 
-INSERT INTO exchange.aml_history
+INSERT INTO aml_history
   (h_payto
   ,new_threshold
   ,new_status

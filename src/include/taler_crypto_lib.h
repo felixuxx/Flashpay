@@ -50,6 +50,54 @@
 #define TALER_CNC_KAPPA_MINUS_ONE_STR "2"
 
 
+/**
+ * Possible AML decision states.
+ */
+enum TALER_AmlDecisionState
+{
+
+  /**
+   * All AML requirements are currently satisfied.
+   */
+  TALER_AML_NORMAL = 0,
+
+  /**
+   * An AML investigation is pending.
+   */
+  TALER_AML_PENDING = 1,
+
+  /**
+   * An AML decision has concluded that the funds must be frozen.
+   */
+  TALER_AML_FROZEN = 2
+
+};
+
+
+/**
+ * Possible algorithms for confirmation code generation.
+ */
+enum TALER_MerchantConfirmationAlgorithm
+{
+
+  /**
+   * No purchase confirmation.
+   */
+  TALER_MCA_NONE = 0,
+
+  /**
+   * Purchase confirmation without payment
+   */
+  TALER_MCA_WITHOUT_PRICE = 1,
+
+  /**
+   * Purchase confirmation with payment
+   */
+  TALER_MCA_WITH_PRICE = 2
+
+};
+
+
 /* ****************** Coin crypto primitives ************* */
 
 GNUNET_NETWORK_STRUCT_BEGIN
@@ -558,54 +606,6 @@ struct TALER_AmlOfficerSignatureP
    * Taler uses EdDSA for AML decision signing.
    */
   struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
-};
-
-
-/**
- * Possible AML decision states.
- */
-enum TALER_AmlDecisionState
-{
-
-  /**
-   * All AML requirements are currently satisfied.
-   */
-  TALER_AML_NORMAL = 0,
-
-  /**
-   * An AML investigation is pending.
-   */
-  TALER_AML_PENDING = 1,
-
-  /**
-   * An AML decision has concluded that the funds must be frozen.
-   */
-  TALER_AML_FROZEN = 2
-
-};
-
-
-/**
- * Possible algorithms for confirmation code generation.
- */
-enum TALER_MerchantConfirmationAlgorithm
-{
-
-  /**
-   * No purchase confirmation.
-   */
-  TALER_MCA_NONE = 0,
-
-  /**
-   * Purchase confirmation without payment
-   */
-  TALER_MCA_WITHOUT_PRICE = 1,
-
-  /**
-   * Purchase confirmation with payment
-   */
-  TALER_MCA_WITH_PRICE = 2
-
 };
 
 
