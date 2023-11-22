@@ -259,6 +259,9 @@ parse_currencies_cb (void *cls,
   memset (cspec->currency,
           0,
           sizeof (cspec->currency));
+  /* Already checked in TALER_check_currency(), repeated here
+     just to make static analysis happy */
+  GNUNET_assert (strlen (str) < TALER_CURRENCY_LEN);
   strcpy (cspec->currency,
           str);
   GNUNET_free (str);
