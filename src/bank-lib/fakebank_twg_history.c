@@ -59,6 +59,7 @@ TALER_FAKEBANK_twg_get_debit_history_ (
   struct Transaction *pos;
   enum GNUNET_GenericReturnValue ret;
   bool in_shutdown;
+  const char *acc_payto_uri;
 
   if (NULL == cc)
   {
@@ -266,6 +267,7 @@ TALER_FAKEBANK_twg_get_debit_history_ (
     return MHD_YES;
   }
   in_shutdown = h->in_shutdown;
+  acc_payto_uri = hc->acc->payto_uri;
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
 finish:
@@ -288,7 +290,7 @@ finish:
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string (
         "debit_account",
-        hc->acc->payto_uri),
+        acc_payto_uri),
       GNUNET_JSON_pack_array_steal (
         "outgoing_transactions",
         h));
