@@ -187,9 +187,10 @@ refund_run (void *cls,
     &rs->che.details.refund.merchant_pub.eddsa_pub);
   rs->che.details.refund.refund_fee = denom_pub->fees.refund;
   rs->che.details.refund.sig_amount = refund_amount;
-  TALER_amount_subtract (&rs->che.amount,
-                         &refund_amount,
-                         &rs->che.details.refund.refund_fee);
+  GNUNET_assert (0 <=
+                 TALER_amount_subtract (&rs->che.amount,
+                                        &refund_amount,
+                                        &rs->che.details.refund.refund_fee));
   rs->che.details.refund.rtransaction_id = rs->refund_transaction_id;
   TALER_merchant_refund_sign (&rs->coin,
                               &h_contract_terms,
