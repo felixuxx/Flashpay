@@ -60,6 +60,7 @@ TALER_FAKEBANK_tbr_get_history_incoming (
   struct HistoryContext *hc;
   const struct Transaction *pos;
   enum GNUNET_GenericReturnValue ret;
+  bool in_shutdown;
 
   if (NULL == cc)
   {
@@ -267,12 +268,13 @@ TALER_FAKEBANK_tbr_get_history_incoming (
                    pthread_mutex_unlock (&h->big_lock));
     return MHD_YES;
   }
+  in_shutdown = h->in_shutdown;
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
 finish:
   if (0 == json_array_size (hc->history))
   {
-    GNUNET_break (h->in_shutdown ||
+    GNUNET_break (in_shutdown ||
                   (! GNUNET_TIME_absolute_is_future (hc->timeout)));
     return TALER_MHD_reply_static (connection,
                                    MHD_HTTP_NO_CONTENT,
