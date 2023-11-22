@@ -112,7 +112,7 @@ TALER_FAKEBANK_common_parse_history_args (
            : GNUNET_SYSERR;
   }
   if (NULL == start)
-    ha->start_idx = (d > 0) ? 0 : h->serial_counter;
+    ha->start_idx = (d > 0) ? 0 : UINT64_MAX;
   else
     ha->start_idx = (uint64_t) sval;
   ha->delta = (int64_t) d;

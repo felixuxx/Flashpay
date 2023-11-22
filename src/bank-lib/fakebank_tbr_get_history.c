@@ -84,6 +84,8 @@ TALER_FAKEBANK_tbr_get_history_incoming (
     }
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&h->big_lock));
+    if (UINT64_MAX == hc->ha.start_idx)
+      hc->ha.start_idx = h->serial_counter;
     hc->acc = TALER_FAKEBANK_lookup_account_ (h,
                                               account,
                                               NULL);

@@ -82,6 +82,8 @@ TALER_FAKEBANK_twg_get_debit_history_ (
     }
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&h->big_lock));
+    if (UINT64_MAX == hc->ha.start_idx)
+      hc->ha.start_idx = h->serial_counter;
     hc->acc = TALER_FAKEBANK_lookup_account_ (h,
                                               account,
                                               NULL);
@@ -333,6 +335,8 @@ TALER_FAKEBANK_twg_get_credit_history_ (
     }
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&h->big_lock));
+    if (UINT64_MAX == hc->ha.start_idx)
+      hc->ha.start_idx = h->serial_counter;
     hc->acc = TALER_FAKEBANK_lookup_account_ (h,
                                               account,
                                               NULL);
