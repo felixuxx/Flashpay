@@ -1093,6 +1093,7 @@ TALER_EXCHANGE_coins_history (
     if (NULL == job_headers)
     {
       GNUNET_break (0);
+      curl_easy_cleanup (eh);
       return NULL;
     }
   }
