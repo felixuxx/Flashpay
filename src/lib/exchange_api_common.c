@@ -119,7 +119,7 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("partner_url",
+      TALER_JSON_spec_web_url ("partner_url",
                                &partner_url),
       NULL),
     GNUNET_JSON_spec_timestamp ("merge_timestamp",
@@ -191,7 +191,7 @@ TALER_EXCHANGE_check_purse_coin_conflict_ (
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
                                  coin_pub),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("partner_url",
+      TALER_JSON_spec_web_url ("partner_url",
                                &partner_url),
       NULL),
     TALER_JSON_spec_amount_any ("amount",
@@ -515,10 +515,10 @@ TALER_EXCHANGE_parse_accounts (
     const json_t *credit_restrictions;
     const json_t *debit_restrictions;
     struct GNUNET_JSON_Specification spec_account[] = {
-      GNUNET_JSON_spec_string ("payto_uri",
-                               &payto_uri),
+      TALER_JSON_spec_payto_uri ("payto_uri",
+                                 &payto_uri),
       GNUNET_JSON_spec_mark_optional (
-        GNUNET_JSON_spec_string ("conversion_url",
+        TALER_JSON_spec_web_url ("conversion_url",
                                  &conversion_url),
         NULL),
       GNUNET_JSON_spec_array_const ("credit_restrictions",
@@ -542,18 +542,6 @@ TALER_EXCHANGE_parse_accounts (
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    {
-      char *err;
-
-      err = TALER_payto_validate (payto_uri);
-      if (NULL != err)
-      {
-        GNUNET_break_op (0);
-        GNUNET_free (err);
-        return GNUNET_SYSERR;
-      }
-    }
-
     if ( (NULL != master_pub) &&
          (GNUNET_OK !=
           TALER_exchange_wire_signature_check (

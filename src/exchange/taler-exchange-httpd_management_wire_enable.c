@@ -170,10 +170,10 @@ TEH_handler_management_post_wire (
                                  &awc.master_sig_wire),
     GNUNET_JSON_spec_fixed_auto ("master_sig_add",
                                  &awc.master_sig_add),
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &awc.payto_uri),
+    TALER_JSON_spec_payto_uri ("payto_uri",
+                               &awc.payto_uri),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("conversion_url",
+      TALER_JSON_spec_web_url ("conversion_url",
                                &awc.conversion_url),
       NULL),
     GNUNET_JSON_spec_array_const ("credit_restrictions",

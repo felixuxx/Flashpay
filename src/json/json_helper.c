@@ -1426,4 +1426,274 @@ TALER_JSON_spec_i18n_str (const char *name,
 }
 
 
+/**
+ * Parse given JSON object with Taler error code.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_ec (void *cls,
+          json_t *root,
+          struct GNUNET_JSON_Specification *spec)
+{
+  enum TALER_ErrorCode *ec = spec->ptr;
+  uint32_t num;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_uint32 (spec->field,
+                             &num),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    *ec = TALER_EC_INVALID;
+    return GNUNET_SYSERR;
+  }
+  *ec = (enum TALER_ErrorCode) num;
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_ec (const char *field,
+                    enum TALER_ErrorCode *ec)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_ec,
+    .field = field,
+    .ptr = ec
+  };
+
+  *ec = TALER_EC_NONE;
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object with AML decision.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_aml_decision (void *cls,
+                    json_t *root,
+                    struct GNUNET_JSON_Specification *spec)
+{
+  enum TALER_AmlDecisionState *aml = spec->ptr;
+  uint32_t num;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_uint32 (spec->field,
+                             &num),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (num > TALER_AML_MAX)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  *aml = (enum TALER_AmlDecisionState) num;
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_aml_decision (const char *field,
+                              enum TALER_AmlDecisionState *aml_state)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_aml_decision,
+    .field = field,
+    .ptr = aml_state
+  };
+
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to web URL.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_web_url (void *cls,
+               json_t *root,
+               struct GNUNET_JSON_Specification *spec)
+{
+  const char *str;
+
+  (void) cls;
+  str = json_string_value (root);
+  if (NULL == str)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (! TALER_is_web_url (str))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  *(const char **) spec->ptr = str;
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_web_url (const char *field,
+                         const char **url)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_web_url,
+    .field = field,
+    .ptr = url
+  };
+
+  *url = NULL;
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to payto:// URI.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_payto_uri (void *cls,
+                 json_t *root,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  const char *str;
+  char *err;
+
+  (void) cls;
+  str = json_string_value (root);
+  if (NULL == str)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  err = TALER_payto_validate (str);
+  if (NULL != err)
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (err);
+    return GNUNET_SYSERR;
+  }
+  *(const char **) spec->ptr = str;
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_payto_uri (const char *field,
+                           const char **payto_uri)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_payto_uri,
+    .field = field,
+    .ptr = payto_uri
+  };
+
+  *payto_uri = NULL;
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object with protocol version.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_protocol_version (void *cls,
+                        json_t *root,
+                        struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_JSON_ProtocolVersion *pv = spec->ptr;
+  const char *ver;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_string (spec->field,
+                             &ver),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+  char dummy;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (3 != sscanf (ver,
+                   "%u:%u:%u%c",
+                   &pv->current,
+                   &pv->revision,
+                   &pv->age,
+                   &dummy))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_version (const char *field,
+                         struct TALER_JSON_ProtocolVersion *ver)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_protocol_version,
+    .field = field,
+    .ptr = ver
+  };
+
+  return ret;
+}
+
+
 /* end of json/json_helper.c */

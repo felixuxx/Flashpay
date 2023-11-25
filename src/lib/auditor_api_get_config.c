@@ -104,12 +104,11 @@ decode_config_json (const json_t *resp_obj,
                     struct TALER_AUDITOR_ConfigInformation *vi,
                     enum TALER_AUDITOR_VersionCompatibility *vc)
 {
-  unsigned int age;
-  unsigned int revision;
-  unsigned int current;
-  char dummy;
+  struct TALER_JSON_ProtocolVersion pv;
   const char *ver;
   struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_version ("version",
+                             &pv),
     GNUNET_JSON_spec_string ("version",
                              &ver),
     GNUNET_JSON_spec_fixed_auto ("auditor_public_key",
@@ -131,28 +130,18 @@ decode_config_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return TALER_EC_GENERIC_JSON_INVALID;
   }
-  if (3 != sscanf (ver,
-                   "%u:%u:%u%c",
-                   &current,
-                   &revision,
-                   &age,
-                   &dummy))
-  {
-    GNUNET_break_op (0);
-    return TALER_EC_GENERIC_VERSION_MALFORMED;
-  }
   vi->version = ver;
   *vc = TALER_AUDITOR_VC_MATCH;
-  if (TALER_PROTOCOL_CURRENT < current)
+  if (TALER_PROTOCOL_CURRENT < pv.current)
   {
     *vc |= TALER_AUDITOR_VC_NEWER;
-    if (TALER_PROTOCOL_CURRENT < current - age)
+    if (TALER_PROTOCOL_CURRENT < pv.current - pv.age)
       *vc |= TALER_AUDITOR_VC_INCOMPATIBLE;
   }
-  if (TALER_PROTOCOL_CURRENT > current)
+  if (TALER_PROTOCOL_CURRENT > pv.current)
   {
     *vc |= TALER_AUDITOR_VC_OLDER;
-    if (TALER_PROTOCOL_CURRENT - TALER_PROTOCOL_AGE > current)
+    if (TALER_PROTOCOL_CURRENT - TALER_PROTOCOL_AGE > pv.current)
       *vc |= TALER_AUDITOR_VC_INCOMPATIBLE;
   }
   return TALER_EC_NONE;

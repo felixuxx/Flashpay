@@ -69,8 +69,12 @@ enum TALER_AmlDecisionState
   /**
    * An AML decision has concluded that the funds must be frozen.
    */
-  TALER_AML_FROZEN = 2
+  TALER_AML_FROZEN = 2,
 
+  /**
+   * Maximum allowed numeric value for AML status.
+   */
+  TALER_AML_MAX = 2
 };
 
 

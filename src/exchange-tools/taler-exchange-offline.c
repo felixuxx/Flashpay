@@ -1350,7 +1350,7 @@ upload_auditor_add (const char *exchange_url,
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("auditor_url",
+    TALER_JSON_spec_web_url ("auditor_url",
                              &auditor_url),
     GNUNET_JSON_spec_string ("auditor_name",
                              &auditor_name),
@@ -1547,10 +1547,10 @@ upload_wire_add (const char *exchange_url,
   const json_t *credit_restrictions;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &payto_uri),
+    TALER_JSON_spec_payto_uri ("payto_uri",
+                               &payto_uri),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("conversion_url",
+      TALER_JSON_spec_web_url ("conversion_url",
                                &conversion_url),
       NULL),
     GNUNET_JSON_spec_array_const ("debit_restrictions",
@@ -1683,8 +1683,8 @@ upload_wire_del (const char *exchange_url,
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &payto_uri),
+    TALER_JSON_spec_payto_uri ("payto_uri",
+                               &payto_uri),
     GNUNET_JSON_spec_timestamp ("validity_end",
                                 &end_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -2012,8 +2012,8 @@ upload_drain (const char *exchange_url,
                                 &date),
     GNUNET_JSON_spec_string ("account_section",
                              &account_section),
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &payto_uri),
+    TALER_JSON_spec_payto_uri ("payto_uri",
+                               &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
     GNUNET_JSON_spec_end ()
@@ -2424,7 +2424,7 @@ add_partner (const char *exchange_url,
                                 &start_date),
     GNUNET_JSON_spec_timestamp ("end_date",
                                 &end_date),
-    GNUNET_JSON_spec_string ("partner_base_url",
+    TALER_JSON_spec_web_url ("partner_base_url",
                              &partner_base_url),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),

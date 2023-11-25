@@ -80,7 +80,6 @@ parse_aml_history (const json_t *aml_history,
   json_array_foreach (aml_history, idx, obj)
   {
     struct TALER_EXCHANGE_AmlDecisionDetail *aml = &aml_history_ar[idx];
-    uint32_t state32;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_timestamp ("decision_time",
                                   &aml->decision_time),
@@ -88,8 +87,8 @@ parse_aml_history (const json_t *aml_history,
                                &aml->justification),
       TALER_JSON_spec_amount_any ("new_threshold",
                                   &aml->new_threshold),
-      GNUNET_JSON_spec_uint32 ("new_state",
-                               &state32),
+      TALER_JSON_spec_aml_decision ("new_state",
+                                    &aml->new_state),
       GNUNET_JSON_spec_fixed_auto ("decider_pub",
                                    &aml->decider_pub),
       GNUNET_JSON_spec_end ()
@@ -104,7 +103,6 @@ parse_aml_history (const json_t *aml_history,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    aml->new_state = (enum TALER_AmlDecisionState) state32;
   }
   return GNUNET_OK;
 }

@@ -143,8 +143,8 @@ TEH_handler_management_post_wire_disable (
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig_del",
                                  &awc.master_sig),
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &awc.payto_uri),
+    TALER_JSON_spec_payto_uri ("payto_uri",
+                               &awc.payto_uri),
     GNUNET_JSON_spec_timestamp ("validity_end",
                                 &awc.validity_end),
     GNUNET_JSON_spec_end ()

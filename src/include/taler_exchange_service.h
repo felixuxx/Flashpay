@@ -2075,7 +2075,7 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
     struct
     {
       /**
-       * Receiver account information for the outgoing wire transfer.
+       * Receiver account information for the outgoing wire transfer as a payto://-URI.
        */
       const char *receiver_account_details;
 

@@ -177,7 +177,6 @@ handle_deposit_wtid_finished (void *cls,
     {
       /* Transaction known, but not executed yet */
       bool no_legi = false;
-      uint32_t state32;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_timestamp ("execution_time",
                                     &dr.details.accepted.execution_time),
@@ -185,8 +184,8 @@ handle_deposit_wtid_finished (void *cls,
           GNUNET_JSON_spec_uint64 ("requirement_row",
                                    &dr.details.accepted.requirement_row),
           &no_legi),
-        GNUNET_JSON_spec_uint32 ("aml_decision",
-                                 &state32),
+        TALER_JSON_spec_aml_decision ("aml_decision",
+                                      &dr.details.accepted.aml_decision),
         GNUNET_JSON_spec_bool ("kyc_ok",
                                &dr.details.accepted.kyc_ok),
         GNUNET_JSON_spec_end ()
@@ -202,8 +201,6 @@ handle_deposit_wtid_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      dr.details.accepted.aml_decision
-        = (enum TALER_AmlDecisionState) state32;
       if (no_legi)
         dr.details.accepted.requirement_row = 0;
       dwh->cb (dwh->cb_cls,

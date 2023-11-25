@@ -476,8 +476,8 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   const json_t *coins;
   bool no_refund_deadline = true;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("merchant_payto_uri",
-                             &bd->receiver_wire_account),
+    TALER_JSON_spec_payto_uri ("merchant_payto_uri",
+                               &bd->receiver_wire_account),
     GNUNET_JSON_spec_fixed_auto ("wire_salt",
                                  &bd->wire_salt),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub",

@@ -48,7 +48,7 @@ TEH_handler_management_partners (
                                  &partner_pub),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
-    GNUNET_JSON_spec_string ("partner_base_url",
+    TALER_JSON_spec_web_url ("partner_base_url",
                              &partner_base_url),
     TALER_JSON_spec_amount ("wad_fee",
                             TEH_currency,

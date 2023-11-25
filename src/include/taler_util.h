@@ -367,6 +367,17 @@ TALER_url_valid_charset (const char *url);
 
 
 /**
+ * Test if the URL is a valid "http" (or "https")
+ * URL (includes test for #TALER_url_valid_charset()).
+ *
+ * @param url a string to test if it could be a valid URL
+ * @return true if @a url is well-formed
+ */
+bool
+TALER_is_web_url (const char *url);
+
+
+/**
  * Check if @a lang matches the @a language_pattern, and if so with
  * which preference.
  * See also: https://tools.ietf.org/html/rfc7231#section-5.3.1

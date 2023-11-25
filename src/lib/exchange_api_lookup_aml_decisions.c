@@ -80,12 +80,11 @@ parse_aml_decisions (const json_t *decisions,
   json_array_foreach (decisions, idx, obj)
   {
     struct TALER_EXCHANGE_AmlDecisionSummary *decision = &decision_ar[idx];
-    uint32_t state32;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("h_payto",
                                    &decision->h_payto),
-      GNUNET_JSON_spec_uint32 ("current_state",
-                               &state32),
+      TALER_JSON_spec_aml_decision ("current_state",
+                                    &decision->current_state),
       TALER_JSON_spec_amount_any ("threshold",
                                   &decision->threshold),
       GNUNET_JSON_spec_uint64 ("rowid",
@@ -102,7 +101,6 @@ parse_aml_decisions (const json_t *decisions,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    decision->current_state = (enum TALER_AmlDecisionState) state32;
   }
   return GNUNET_OK;
 }

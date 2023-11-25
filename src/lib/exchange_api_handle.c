@@ -550,7 +550,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                                  &auditor->auditor_pub),
-    GNUNET_JSON_spec_string ("auditor_url",
+    TALER_JSON_spec_web_url ("auditor_url",
                              &auditor_url),
     GNUNET_JSON_spec_array_const ("denomination_keys",
                                   &keys),
@@ -791,14 +791,10 @@ decode_keys_json (const json_t *resp_obj,
 #endif
   /* check the version first */
   {
-    const char *ver;
-    unsigned int age;
-    unsigned int revision;
-    unsigned int current;
-    char dummy;
+    struct TALER_JSON_ProtocolVersion pv;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_string ("version",
-                               &ver),
+      TALER_JSON_spec_version ("version",
+                               &pv),
       GNUNET_JSON_spec_end ()
     };
 
@@ -810,33 +806,23 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    if (3 != sscanf (ver,
-                     "%u:%u:%u%c",
-                     &current,
-                     &revision,
-                     &age,
-                     &dummy))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
     *vc = TALER_EXCHANGE_VC_MATCH;
-    if (EXCHANGE_PROTOCOL_CURRENT < current)
+    if (EXCHANGE_PROTOCOL_CURRENT < pv.current)
     {
       *vc |= TALER_EXCHANGE_VC_NEWER;
-      if (EXCHANGE_PROTOCOL_CURRENT < current - age)
+      if (EXCHANGE_PROTOCOL_CURRENT < pv.current - pv.age)
         *vc |= TALER_EXCHANGE_VC_INCOMPATIBLE;
     }
-    if (EXCHANGE_PROTOCOL_CURRENT > current)
+    if (EXCHANGE_PROTOCOL_CURRENT > pv.current)
     {
       *vc |= TALER_EXCHANGE_VC_OLDER;
-      if (EXCHANGE_PROTOCOL_CURRENT - EXCHANGE_PROTOCOL_AGE > current)
+      if (EXCHANGE_PROTOCOL_CURRENT - EXCHANGE_PROTOCOL_AGE > pv.current)
         *vc |= TALER_EXCHANGE_VC_INCOMPATIBLE;
     }
-    key_data->version = GNUNET_strdup (ver);
   }
 
   {
+    const char *ver;
     const char *currency;
     const char *asset_type;
     struct GNUNET_JSON_Specification mspec[] = {
@@ -901,6 +887,8 @@ decode_keys_json (const json_t *resp_obj,
           "extensions_sig",
           &key_data->extensions_sig),
         &no_signature),
+      GNUNET_JSON_spec_string ("version",
+                               &ver),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_array_const (
           "wallet_balance_limit_without_kyc",
@@ -946,6 +934,7 @@ decode_keys_json (const json_t *resp_obj,
     }
 
     key_data->currency = GNUNET_strdup (currency);
+    key_data->version = GNUNET_strdup (ver);
     key_data->asset_type = GNUNET_strdup (asset_type);
     if (! no_extensions)
       key_data->extensions = json_incref ((json_t *) manifests);
@@ -1896,7 +1885,7 @@ TALER_EXCHANGE_keys_from_json (const json_t *j)
                              &version),
     GNUNET_JSON_spec_object_const ("keys",
                                    &jkeys),
-    GNUNET_JSON_spec_string ("exchange_url",
+    TALER_JSON_spec_web_url ("exchange_url",
                              &url),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_timestamp ("expire",

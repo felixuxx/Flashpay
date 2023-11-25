@@ -360,7 +360,7 @@ handle_deposit_finished (void *cls,
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("transaction_base_url",
+          TALER_JSON_spec_web_url ("transaction_base_url",
                                    &dr->details.ok.transaction_base_url),
           NULL),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",

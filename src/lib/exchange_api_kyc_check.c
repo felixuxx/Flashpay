@@ -97,7 +97,6 @@ handle_kyc_check_finished (void *cls,
   case MHD_HTTP_OK:
     {
       const json_t *kyc_details;
-      uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &ks.details.ok.exchange_sig),
@@ -107,8 +106,8 @@ handle_kyc_check_finished (void *cls,
                                     &ks.details.ok.timestamp),
         GNUNET_JSON_spec_object_const ("kyc_details",
                                        &kyc_details),
-        GNUNET_JSON_spec_uint32 ("aml_status",
-                                 &status),
+        TALER_JSON_spec_aml_decision ("aml_status",
+                                      &ks.details.ok.aml_status),
         GNUNET_JSON_spec_end ()
       };
 
@@ -123,8 +122,6 @@ handle_kyc_check_finished (void *cls,
         break;
       }
       ks.details.ok.kyc_details = kyc_details;
-      ks.details.ok.aml_status
-        = (enum TALER_AmlDecisionState) status;
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (kch->keys,
                                            &ks.details.ok.exchange_pub))
@@ -158,12 +155,11 @@ handle_kyc_check_finished (void *cls,
     }
   case MHD_HTTP_ACCEPTED:
     {
-      uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("kyc_url",
+        TALER_JSON_spec_web_url ("kyc_url",
                                  &ks.details.accepted.kyc_url),
-        GNUNET_JSON_spec_uint32 ("aml_status",
-                                 &status),
+        TALER_JSON_spec_aml_decision ("aml_status",
+                                      &ks.details.accepted.aml_status),
         GNUNET_JSON_spec_end ()
       };
 
@@ -177,8 +173,6 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      ks.details.accepted.aml_status
-        = (enum TALER_AmlDecisionState) status;
       kch->cb (kch->cb_cls,
                &ks);
       GNUNET_JSON_parse_free (spec);
@@ -200,10 +194,10 @@ handle_kyc_check_finished (void *cls,
     break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     {
-      uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint32 ("aml_status",
-                                 &status),
+        TALER_JSON_spec_aml_decision (
+          "aml_status",
+          &ks.details.unavailable_for_legal_reasons.aml_status),
         GNUNET_JSON_spec_end ()
       };
 
@@ -217,8 +211,6 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      ks.details.unavailable_for_legal_reasons.aml_status
-        = (enum TALER_AmlDecisionState) status;
       kch->cb (kch->cb_cls,
                &ks);
       GNUNET_JSON_parse_free (spec);
