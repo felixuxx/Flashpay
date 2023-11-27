@@ -92,7 +92,7 @@ main (int argc,
                     "INFO",
                     NULL);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("MAGIC:0.13",
+                 TALER_string_to_amount ("MAGIC:0.00001",
                                          &dk.value));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("MAGIC:1",
