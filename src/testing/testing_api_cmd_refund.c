@@ -97,6 +97,34 @@ refund_cb (void *cls,
                                      rs->expected_response_code);
     return;
   }
+  if (MHD_HTTP_OK == hr->http_status)
+  {
+    struct TALER_Amount refund_amount;
+
+    if (GNUNET_OK !=
+        TALER_string_to_amount (rs->refund_amount,
+                                &refund_amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse amount `%s'\n",
+                  rs->refund_amount);
+      TALER_TESTING_interpreter_fail (rs->is);
+      return;
+    }
+    if (0 >
+        TALER_amount_subtract (&rs->che.amount,
+                               &refund_amount,
+                               &rs->che.details.refund.refund_fee))
+    {
+      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to subtract %s from %s\n",
+                  TALER_amount2s (&rs->che.details.refund.refund_fee),
+                  rs->refund_amount);
+      TALER_TESTING_interpreter_fail (rs->is);
+      return;
+    }
+  }
   TALER_TESTING_interpreter_next (rs->is);
 }
 
@@ -187,10 +215,6 @@ refund_run (void *cls,
     &rs->che.details.refund.merchant_pub.eddsa_pub);
   rs->che.details.refund.refund_fee = denom_pub->fees.refund;
   rs->che.details.refund.sig_amount = refund_amount;
-  GNUNET_assert (0 <=
-                 TALER_amount_subtract (&rs->che.amount,
-                                        &refund_amount,
-                                        &rs->che.details.refund.refund_fee));
   rs->che.details.refund.rtransaction_id = rs->refund_transaction_id;
   TALER_merchant_refund_sign (&rs->coin,
                               &h_contract_terms,

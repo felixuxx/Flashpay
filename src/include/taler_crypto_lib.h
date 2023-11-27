@@ -5867,7 +5867,7 @@ struct TALER_DenominationGroup
   enum GNUNET_CRYPTO_BlindSignatureAlgorithm cipher;
 
   /**
-   * Age mask for the denomiation.
+   * Age mask for the denomination.
    */
   struct TALER_AgeMask age_mask;
 

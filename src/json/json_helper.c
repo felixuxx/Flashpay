@@ -1440,21 +1440,16 @@ parse_ec (void *cls,
           struct GNUNET_JSON_Specification *spec)
 {
   enum TALER_ErrorCode *ec = spec->ptr;
-  uint32_t num;
-  struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 (spec->field,
-                             &num),
-    GNUNET_JSON_spec_end ()
-  };
-  const char *emsg;
-  unsigned int eline;
+  json_int_t num;
 
   (void) cls;
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (root,
-                         dspec,
-                         &emsg,
-                         &eline))
+  if (! json_is_integer (root))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  num = json_integer_value (root);
+  if (num < 0)
   {
     GNUNET_break_op (0);
     *ec = TALER_EC_INVALID;
@@ -1494,26 +1489,17 @@ parse_aml_decision (void *cls,
                     struct GNUNET_JSON_Specification *spec)
 {
   enum TALER_AmlDecisionState *aml = spec->ptr;
-  uint32_t num;
-  struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 (spec->field,
-                             &num),
-    GNUNET_JSON_spec_end ()
-  };
-  const char *emsg;
-  unsigned int eline;
+  json_int_t num;
 
   (void) cls;
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (root,
-                         dspec,
-                         &emsg,
-                         &eline))
+  if (! json_is_integer (root))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (num > TALER_AML_MAX)
+  num = json_integer_value (root);
+  if ( (num > TALER_AML_MAX) ||
+       (num < 0) )
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1649,25 +1635,15 @@ parse_protocol_version (void *cls,
 {
   struct TALER_JSON_ProtocolVersion *pv = spec->ptr;
   const char *ver;
-  struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_string (spec->field,
-                             &ver),
-    GNUNET_JSON_spec_end ()
-  };
-  const char *emsg;
-  unsigned int eline;
   char dummy;
 
   (void) cls;
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (root,
-                         dspec,
-                         &emsg,
-                         &eline))
+  if (! json_is_string (root))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  ver = json_string_value (root);
   if (3 != sscanf (ver,
                    "%u:%u:%u%c",
                    &pv->current,
