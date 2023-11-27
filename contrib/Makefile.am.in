@@ -32,8 +32,8 @@ bin_SCRIPTS = \
   taler-auditor-dbconfig \
   taler-exchange-dbconfig \
   taler-terms-generator \
-  taler-bank-manage-testing \
-  taler-nexus-prepare
+  taler-bank-manage-testing
+
 
 edit_script = $(SED) -e 's,%termsdir%,$(termsdir),'g -e 's,%localedir%,$(localedir),'g $(NULL)
 taler-terms-generator: taler-terms-generator.in
