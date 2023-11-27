@@ -1208,7 +1208,7 @@ extract_array_generic (
           in += sizeof(val);
 
           /* total size for this array-entry */
-          FAIL_IF (sizeof(ap) > sz);
+          FAIL_IF (sizeof(ap) != sz);
 
           GNUNET_memcpy (&ap,
                          in,
