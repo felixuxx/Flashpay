@@ -332,4 +332,20 @@ TALER_url_valid_charset (const char *url)
 }
 
 
+bool
+TALER_is_web_url (const char *url)
+{
+  if ( (0 != strncasecmp (url,
+                          "https://",
+                          strlen ("https://"))) &&
+       (0 != strncasecmp (url,
+                          "http://",
+                          strlen ("http://"))) )
+    return false;
+  if (! TALER_url_valid_charset (url) )
+    return false;
+  return true;
+}
+
+
 /* end of url.c */

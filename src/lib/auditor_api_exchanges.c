@@ -125,7 +125,7 @@ handle_exchanges_finished (void *cls,
         struct GNUNET_JSON_Specification spec[] = {
           GNUNET_JSON_spec_fixed_auto ("master_pub",
                                        &ei[i].master_pub),
-          GNUNET_JSON_spec_string ("exchange_url",
+          TALER_JSON_spec_web_url ("exchange_url",
                                    &ei[i].exchange_url),
           GNUNET_JSON_spec_end ()
         };

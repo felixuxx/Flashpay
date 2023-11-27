@@ -421,8 +421,8 @@ TEH_handler_purses_merge (
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()
   };
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &pcc.payto_uri),
+    TALER_JSON_spec_payto_uri ("payto_uri",
+                               &pcc.payto_uri),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &pcc.reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("merge_sig",

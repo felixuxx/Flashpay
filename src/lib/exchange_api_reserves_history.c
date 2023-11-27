@@ -148,7 +148,7 @@ parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
               struct HistoryParseContext *uc,
               const json_t *transaction)
 {
-  const char *wire_url;
+  const char *wire_uri;
   uint64_t wire_reference;
   struct GNUNET_TIME_Timestamp timestamp;
   struct GNUNET_JSON_Specification withdraw_spec[] = {
@@ -156,8 +156,8 @@ parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
                              &wire_reference),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &timestamp),
-    GNUNET_JSON_spec_string ("sender_account_url",
-                             &wire_url),
+    TALER_JSON_spec_payto_uri ("sender_account_url",
+                               &wire_uri),
     GNUNET_JSON_spec_end ()
   };
 
@@ -179,7 +179,7 @@ parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  rh->details.in_details.sender_url = GNUNET_strdup (wire_url);
+  rh->details.in_details.sender_url = GNUNET_strdup (wire_uri);
   rh->details.in_details.wire_reference = wire_reference;
   rh->details.in_details.timestamp = timestamp;
   return GNUNET_OK;
@@ -379,7 +379,7 @@ parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification closing_spec[] = {
-    GNUNET_JSON_spec_string (
+    TALER_JSON_spec_payto_uri (
       "receiver_account_details",
       &rh->details.close_details.receiver_account_details),
     GNUNET_JSON_spec_fixed_auto ("wtid",

@@ -153,7 +153,7 @@ TEH_handler_management_auditors (
                                  &aac.master_sig),
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                                  &aac.auditor_pub),
-    GNUNET_JSON_spec_string ("auditor_url",
+    TALER_JSON_spec_web_url ("auditor_url",
                              &aac.auditor_url),
     GNUNET_JSON_spec_string ("auditor_name",
                              &aac.auditor_name),

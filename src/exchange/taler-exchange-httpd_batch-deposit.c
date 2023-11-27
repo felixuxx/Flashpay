@@ -476,8 +476,8 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   const json_t *coins;
   bool no_refund_deadline = true;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("merchant_payto_uri",
-                             &bd->receiver_wire_account),
+    TALER_JSON_spec_payto_uri ("merchant_payto_uri",
+                               &bd->receiver_wire_account),
     GNUNET_JSON_spec_fixed_auto ("wire_salt",
                                  &bd->wire_salt),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub",
@@ -523,8 +523,9 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
       return MHD_YES; /* failure */
     }
   }
-  TALER_amount_set_zero (TEH_currency,
-                         &dc.policy_details.accumulated_total);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &dc.policy_details.accumulated_total));
   /* validate merchant's wire details (as far as we can) */
   {
     char *emsg;

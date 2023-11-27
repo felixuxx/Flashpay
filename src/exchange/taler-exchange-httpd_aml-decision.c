@@ -246,7 +246,6 @@ TEH_handler_post_aml_decision (
   struct DecisionContext dc = {
     .officer_pub = officer_pub
   };
-  uint32_t new_state32;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("officer_sig",
                                  &dc.officer_sig),
@@ -259,8 +258,8 @@ TEH_handler_post_aml_decision (
                              &dc.justification),
     GNUNET_JSON_spec_timestamp ("decision_time",
                                 &dc.decision_time),
-    GNUNET_JSON_spec_uint32 ("new_state",
-                             &new_state32),
+    TALER_JSON_spec_aml_decision ("new_state",
+                                  &dc.new_state),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_array_const ("kyc_requirements",
                                     &dc.kyc_requirements),
@@ -282,7 +281,6 @@ TEH_handler_post_aml_decision (
       return MHD_YES; /* failure */
     }
   }
-  dc.new_state = (enum TALER_AmlDecisionState) new_state32;
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_officer_aml_decision_verify (dc.justification,

@@ -60,6 +60,8 @@ TALER_FAKEBANK_tbr_get_history_incoming (
   struct HistoryContext *hc;
   const struct Transaction *pos;
   enum GNUNET_GenericReturnValue ret;
+  bool in_shutdown;
+  const char *acc_payto_uri;
 
   if (NULL == cc)
   {
@@ -82,6 +84,8 @@ TALER_FAKEBANK_tbr_get_history_incoming (
     }
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&h->big_lock));
+    if (UINT64_MAX == hc->ha.start_idx)
+      hc->ha.start_idx = h->serial_counter;
     hc->acc = TALER_FAKEBANK_lookup_account_ (h,
                                               account,
                                               NULL);
@@ -267,12 +271,14 @@ TALER_FAKEBANK_tbr_get_history_incoming (
                    pthread_mutex_unlock (&h->big_lock));
     return MHD_YES;
   }
+  in_shutdown = h->in_shutdown;
+  acc_payto_uri = hc->acc->payto_uri;
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
 finish:
   if (0 == json_array_size (hc->history))
   {
-    GNUNET_break (h->in_shutdown ||
+    GNUNET_break (in_shutdown ||
                   (! GNUNET_TIME_absolute_is_future (hc->timeout)));
     return TALER_MHD_reply_static (connection,
                                    MHD_HTTP_NO_CONTENT,
@@ -289,7 +295,7 @@ finish:
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string (
         "credit_account",
-        hc->acc->payto_uri),
+        acc_payto_uri),
       GNUNET_JSON_pack_array_steal (
         "incoming_transactions",
         h));

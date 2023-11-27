@@ -271,7 +271,7 @@ TEH_handler_management_post_keys (
   struct MHD_Connection *connection,
   const json_t *root)
 {
-  struct AddKeysContext akc;
+  struct AddKeysContext akc = { 0 };
   const json_t *denom_sigs;
   const json_t *signkey_sigs;
   struct GNUNET_JSON_Specification spec[] = {

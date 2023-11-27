@@ -355,6 +355,98 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_denom_pub (const char *field,
                            struct TALER_DenominationPublicKey *pk);
 
+
+/**
+ * Generate line in parser specification for error codes.
+ *
+ * @param field name of the field
+ * @param[out] ec error code to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_ec (const char *field,
+                    enum TALER_ErrorCode *ec);
+
+
+/**
+ * Generate line in parser specification for
+ * HTTP/HTTPS URLs.
+ *
+ * @param field name of the field
+ * @param[out] url web URL to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_web_url (const char *field,
+                         const char **url);
+
+
+/**
+ * Generate line in parser specification for
+ * "payto://" URIs.
+ *
+ * @param field name of the field
+ * @param[out] payto_uri RFC 8905 URI to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_payto_uri (const char *field,
+                           const char **payto_uri);
+
+
+/**
+ * Generate line in parser specification for AML decision states.
+ *
+ * @param field name of the field
+ * @param[out] aml_state AML state to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_aml_decision (const char *field,
+                              enum TALER_AmlDecisionState *aml_state);
+
+
+/**
+ * Representation of a protocol version.
+ */
+struct TALER_JSON_ProtocolVersion
+{
+  /**
+   * Current version of the protocol.
+   */
+  unsigned int current;
+
+  /**
+   * Implementation revision for the @e current
+   * version.
+   */
+  unsigned int revision;
+
+  /**
+   * Number of protocol versions this @e revision is
+   * backwards-compatible with.  Subtract this number
+   * from @a current to get the minimum protocol version
+   * required from the client.
+   */
+  unsigned int age;
+};
+
+
+/**
+ * Generate line in parser specification for protocol
+ * versions (``/config``). The field must be a string
+ * encoding the version as "$CURRENT:$REVISION:$AGE".
+ *
+ * @param field name of the field (usually "version")
+ * @param[out] current protocol current to initialize
+ * @param[out] revision protocol revision to initialize
+ * @param[out] age protocol age to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_version (const char *field,
+                         struct TALER_JSON_ProtocolVersion *ver);
+
 /**
  * Generate a parser specification for a denomination public key of a given
  * cipher.
@@ -365,10 +457,10 @@ TALER_JSON_spec_denom_pub (const char *field,
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_denom_pub_cipher (const char *field,
-                                  enum GNUNET_CRYPTO_BlindSignatureAlgorithm
-                                  cipher,
-                                  struct TALER_DenominationPublicKey *pk);
+TALER_JSON_spec_denom_pub_cipher (
+  const char *field,
+  enum GNUNET_CRYPTO_BlindSignatureAlgorithm cipher,
+  struct TALER_DenominationPublicKey *pk);
 
 
 /**

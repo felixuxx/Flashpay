@@ -584,11 +584,11 @@ eddsa_client_init (struct TES_Client *client)
 static enum GNUNET_GenericReturnValue
 eddsa_update_client_keys (struct TES_Client *client)
 {
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Updating client %p to generation %llu\n",
               client,
               (unsigned long long) key_gen);
-  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   for (struct Key *key = keys_head;
        NULL != key;
        key = key->next)

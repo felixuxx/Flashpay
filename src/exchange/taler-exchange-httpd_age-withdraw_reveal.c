@@ -597,8 +597,9 @@ TEH_handler_age_withdraw_reveal (
   } while(0);
 
   GNUNET_JSON_parse_free (spec);
-  for (unsigned int i = 0; i<actx.num_coins; i++)
-    TALER_blinded_denom_sig_free (&actx.commitment.denom_sigs[i]);
+  if (NULL != actx.commitment.denom_sigs)
+    for (unsigned int i = 0; i<actx.num_coins; i++)
+      TALER_blinded_denom_sig_free (&actx.commitment.denom_sigs[i]);
   GNUNET_free (actx.commitment.denom_sigs);
   GNUNET_free (actx.commitment.denom_pub_hashes);
   GNUNET_free (actx.commitment.denom_serials);

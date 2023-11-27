@@ -131,7 +131,9 @@ TALER_TWISTER_run_twister (const char *config_filename)
                                      &code))
   {
     GNUNET_OS_process_destroy (client_proc);
-    GNUNET_OS_process_kill (proc, SIGTERM);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (proc,
+                                          SIGTERM));
     GNUNET_OS_process_wait (proc);
     GNUNET_OS_process_destroy (proc);
     TWISTER_FAIL ();
@@ -142,7 +144,9 @@ TALER_TWISTER_run_twister (const char *config_filename)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to check twister works.\n");
     GNUNET_OS_process_destroy (client_proc);
-    GNUNET_OS_process_kill (proc, SIGTERM);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (proc,
+                                          SIGTERM));
     GNUNET_OS_process_wait (proc);
     GNUNET_OS_process_destroy (proc);
     TWISTER_FAIL ();
@@ -153,7 +157,9 @@ TALER_TWISTER_run_twister (const char *config_filename)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected error running `taler-twister'!\n");
     GNUNET_OS_process_destroy (client_proc);
-    GNUNET_OS_process_kill (proc, SIGTERM);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (proc,
+                                          SIGTERM));
     GNUNET_OS_process_wait (proc);
     GNUNET_OS_process_destroy (proc);
     TWISTER_FAIL ();

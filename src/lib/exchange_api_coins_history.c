@@ -576,7 +576,7 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &rh->details.purse_deposit.phac),
       NULL),
-    GNUNET_JSON_spec_string ("exchange_base_url",
+    TALER_JSON_spec_web_url ("exchange_base_url",
                              &rh->details.purse_deposit.exchange_base_url),
     GNUNET_JSON_spec_bool ("refunded",
                            &rh->details.purse_deposit.refunded),
@@ -1093,6 +1093,7 @@ TALER_EXCHANGE_coins_history (
     if (NULL == job_headers)
     {
       GNUNET_break (0);
+      curl_easy_cleanup (eh);
       return NULL;
     }
   }
