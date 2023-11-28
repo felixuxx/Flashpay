@@ -288,7 +288,7 @@ static MHD_RESULT
 check_melt_valid (struct MHD_Connection *connection,
                   struct MeltContext *rmc)
 {
-  /* Baseline: check if deposits/refreshs are generally
+  /* Baseline: check if deposits/refreshes are generally
      simply still allowed for this denomination */
   struct TEH_DenominationKey *dk;
   MHD_RESULT mret;

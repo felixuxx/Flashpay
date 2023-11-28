@@ -5530,7 +5530,7 @@ struct TALER_EXCHANGEDB_Plugin
    * above a given @a min_batch_deposit_serial_id.
    *
    * @param cls closure
-   * @param min_batch_deposit_serial_id only return entries stricly above this row (and in order)
+   * @param min_batch_deposit_serial_id only return entries strictly above this row (and in order)
    * @param cb function to call on all such deposits
    * @param cb_cls closure for @a cb
    * @return transaction status code
@@ -5548,7 +5548,7 @@ struct TALER_EXCHANGEDB_Plugin
    * above a given @a min_tracking_serial_id.
    *
    * @param cls closure
-   * @param min_tracking_serial_id only return entries stricly above this row (and in order)
+   * @param min_tracking_serial_id only return entries strictly above this row (and in order)
    * @param cb function to call on all such aggregations
    * @param cb_cls closure for @a cb
    * @return transaction status code
@@ -7088,7 +7088,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param new_status AML decision status
    * @param decision_time when was the decision made
    * @param justification human-readable text justifying the decision
-   * @param kyc_requirements specific KYC requiremnts being imposed
+   * @param kyc_requirements specific KYC requirements being imposed
    * @param requirements_row row in the KYC table for this process, 0 for none
    * @param decider_pub public key of the staff member
    * @param decider_sig signature of the staff member

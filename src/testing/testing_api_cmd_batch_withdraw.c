@@ -85,7 +85,7 @@ struct CoinState
 
   /**
    * If age > 0, put here the corresponding age commitment with its proof and
-   * its hash, respectivelly.
+   * its hash, respectively.
    */
   struct TALER_AgeCommitmentProof age_commitment_proof;
   struct TALER_AgeCommitmentHash h_age_commitment;

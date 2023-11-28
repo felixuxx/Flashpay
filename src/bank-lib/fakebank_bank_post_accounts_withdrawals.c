@@ -38,7 +38,7 @@
  * @param h our fakebank handle
  * @param connection the connection
  * @param account_name name of the account
- * @param amount amont to withdraw
+ * @param amount amount to withdraw
  * @return MHD result code
  */
 static MHD_RESULT

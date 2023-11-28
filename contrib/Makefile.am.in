@@ -48,7 +48,6 @@ CLEANFILES = \
 EXTRA_DIST = \
   locale/de/LC_MESSAGES/exchange-tos-v0.po \
   taler-bank-manage-testing \
-  taler-nexus-prepare \
   taler-terms-generator.in \
   taler-auditor-dbconfig \
   taler-exchange-dbconfig \

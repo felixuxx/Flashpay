@@ -481,7 +481,7 @@ TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection
  * @param name name of the query parameter
- * @param[out] off set to the offet, unchanged if the
+ * @param[out] off set to the offset, unchanged if the
  *             option was not given
  * @return #GNUNET_OK on success,
  *         #GNUNET_NO if an error was returned on @a connection (caller should return #MHD_YES) and

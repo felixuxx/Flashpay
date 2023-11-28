@@ -62,7 +62,7 @@ struct WithdrawState
 
   /**
    * Reference to a withdraw or reveal operation from which we should
-   * re-use the private coin key, or NULL for regular withdrawal.
+   * reuse the private coin key, or NULL for regular withdrawal.
    */
   const char *reuse_coin_key_ref;
 
@@ -144,7 +144,7 @@ struct WithdrawState
 
   /**
    * If age > 0, put here the corresponding age commitment with its proof and
-   * its hash, respectivelly.
+   * its hash, respectively.
    */
   struct TALER_AgeCommitmentProof age_commitment_proof;
   struct TALER_AgeCommitmentHash h_age_commitment;

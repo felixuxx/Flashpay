@@ -48,7 +48,7 @@ struct TALER_TESTING_Credentials cred;
 
 /**
  * Some tests behave differently when using CS as we cannot
- * re-use the coin private key for different denominations
+ * reuse the coin private key for different denominations
  * due to the derivation of it with the /csr values. Hence
  * some tests behave differently in CS mode, hence this
  * flag.

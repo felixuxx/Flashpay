@@ -815,7 +815,7 @@ TALER_EXCHANGE_keys_incref (struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
- * Deccrement reference counter for @a keys.
+ * Decrement reference counter for @a keys.
  * Frees @a keys if reference counter becomes zero.
  *
  * @param[in,out] keys object to decrement reference counter for
@@ -1892,7 +1892,7 @@ TALER_EXCHANGE_coins_history (
 /**
  * Cancel #TALER_EXCHANGE_coins_history() operation.
  *
- * @param[in] rsh operation to chancel
+ * @param[in] rsh operation to cancel
  */
 void
 TALER_EXCHANGE_coins_history_cancel (
@@ -2992,7 +2992,7 @@ typedef void
  * @param curl_ctx The curl context
  * @param exchange_url The base url of the exchange
  * @param keys The denomination keys from the exchange
- * @param reserve_priv The pivate key to the reserve
+ * @param reserve_priv The private key to the reserve
  * @param num_coins The number of elements in @e coin_inputs
  * @param coin_inputs The input for the coins to withdraw
  * @param max_age The maximum age we commit to.

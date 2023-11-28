@@ -54,12 +54,12 @@ static struct TALER_AUDITORDB_ProgressPointPurse ppp_start;
 static struct TALER_AUDITORDB_PurseBalance balance;
 
 /**
- * Array of reports about row inconsitencies.
+ * Array of reports about row inconsistencies.
  */
 static json_t *report_row_inconsistencies;
 
 /**
- * Array of reports about purse balance insufficient inconsitencies.
+ * Array of reports about purse balance insufficient inconsistencies.
  */
 static json_t *report_purse_balance_insufficient_inconsistencies;
 
@@ -74,7 +74,7 @@ static struct TALER_Amount total_balance_insufficient_loss;
 static struct TALER_Amount total_delayed_decisions;
 
 /**
- * Array of reports about purses's not being closed inconsitencies.
+ * Array of reports about purses's not being closed inconsistencies.
  */
 static json_t *report_purse_not_closed_inconsistencies;
 

@@ -186,12 +186,12 @@ static struct TALER_AUDITORDB_WireProgressPoint pp;
 static struct TALER_AUDITORDB_WireProgressPoint start_pp;
 
 /**
- * Array of reports about row inconsitencies in wire_out table.
+ * Array of reports about row inconsistencies in wire_out table.
  */
 static json_t *report_wire_out_inconsistencies;
 
 /**
- * Array of reports about row inconsitencies in reserves_in table.
+ * Array of reports about row inconsistencies in reserves_in table.
  */
 static json_t *report_reserve_in_inconsistencies;
 
@@ -1386,7 +1386,7 @@ wire_out_cb (void *cls,
   {
     /* Wire transfer was not made (yet) at all (but would have been
        justified), so the entire amount is missing / still to be done.
-       This is moderately harmless, it might just be that the aggreator
+       This is moderately harmless, it might just be that the aggregator
        has not yet fully caught up with the transfers it should do. */
     TALER_ARL_report (
       report_wire_out_inconsistencies,

@@ -71,7 +71,7 @@ struct AgeWithdrawContext
   /**
    * #num_coins * #kappa hashes of blinded coin planchets.
    */
-  struct TALER_BlindedPlanchet (*coin_evs)[TALER_CNC_KAPPA];
+  struct TALER_BlindedPlanchet (*coin_evs) [ TALER_CNC_KAPPA];
 
   /**
    * #num_coins hashes of the denominations from which the coins are withdrawn.
@@ -310,7 +310,7 @@ EXIT:
  * @param ksh The handle to the current state of (denomination) keys in the exchange
  * @param denom_h Hash of the denomination key to check
  * @param[out] pdk On success, will contain the denomination key details
- * @param[out] result On failure, an MHD-response will be qeued and result will be set to accordingly
+ * @param[out] result On failure, an MHD-response will be queued and result will be set to accordingly
  * @return true on success (denomination valid), false otherwise
  */
 static bool
@@ -409,7 +409,7 @@ are_denominations_valid (
   struct MHD_Connection *connection,
   uint32_t len,
   const struct TALER_DenominationHashP *denom_hs,
-  const struct TALER_BlindedPlanchet (*coin_evs)[TALER_CNC_KAPPA],
+  const struct TALER_BlindedPlanchet (*coin_evs) [ TALER_CNC_KAPPA],
   uint64_t **denom_serials,
   struct TALER_Amount *amount_with_fee,
   MHD_RESULT *result)
@@ -450,7 +450,7 @@ are_denominations_valid (
       return GNUNET_SYSERR;
 
     /* Ensure the ciphers from the planchets match the denominations' */
-    for (uint8_t k=0; k < TALER_CNC_KAPPA; k++)
+    for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
     {
       if (dk->denom_pub.bsign_pub_key->cipher !=
           coin_evs[i][k].blinded_message->cipher)
