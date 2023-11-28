@@ -68,7 +68,7 @@ struct TALER_PolicyDetails
   /* Content of the policy in its original JSON form */
   json_t *policy_json;
 
-  /* When the deadline is meat and the policy is still in "Ready" state,
+  /* When the deadline is met and the policy is still in "Ready" state,
    * a timeout-handler will transfer the amount
    *    (total_amount - policy_fee - refreshable_amount)
    * to the payto-URI from the corresponding deposit.  The value
