@@ -1117,8 +1117,9 @@ generate_report (void *cls,
  * and have not yet seen a wire transfer.
  *
  * @param cls closure, points to a `struct ReportMissingWireContext`
+ * @param batch_deposit_serial_id row in the database for which the wire transfer is missing
  * @param total_amount value of the missing deposits, including fee
- * @param payto_uri where should the funds be wired
+ * @param wire_target_h_payto hash of payto-URI where the funds should have been wired
  * @param deadline what was the earliest requested wire transfer deadline
  */
 static void

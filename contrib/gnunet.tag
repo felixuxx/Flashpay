@@ -18,6 +18,18 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <name>GNUNET_CRYPTO_BSA_RSA</name>
+      <anchorfile>gnunet_crypto_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>GNUNET_CRYPTO_BSA_CS</name>
+      <anchorfile>gnunet_crypto_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <name>GNUNET_NO</name>
       <anchorfile>gnunet_util_lib.h</anchorfile>
       <arglist></arglist>

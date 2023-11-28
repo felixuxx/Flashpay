@@ -2324,7 +2324,7 @@ struct TALER_CRYPTO_RsaDenominationHelper;
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_rsa hash of the RSA @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.

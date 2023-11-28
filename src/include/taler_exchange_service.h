@@ -1767,7 +1767,6 @@ struct TALER_EXCHANGE_CoinsHistoryHandle;
  * @param dk denomination key of the coin
  * @param history JSON array with the coin's history
  * @param coin_pub public key of the coin
- * @param currency currency of the coin
  * @param[out] total_in set to total amount credited to the coin in @a history
  * @param[out] total_out set to total amount debited to the coin in @a history
  * @param rlen length of the @a rhistory array
@@ -1871,15 +1870,12 @@ typedef void
  * have to combine multiple partial coin histories
  * into one coherent history before calling this function.
  *
- * @param keys /keys data of the exchange
- * @param dk denomination key of the coin
- * @param history JSON array with the coin's full history
- * @param coin_pub public key of the coin
- * @param currency currency of the coin
- * @param[out] total_in set to total amount credited to the coin in @a history
- * @param[out] total_out set to total amount debited to the coin in @a history
- * @param len length of the @a rhistory
- * @param[out] rhistory where to write the parsed @a history
+ * @param ctx context for managing request
+ * @param url base URL of the exchange
+ * @param coin_priv private key of the coin
+ * @param start_off offset from which on to request history
+ * @param cb function to call with results
+ * @param cb_cls closure for @a cb
  * @return #GNUNET_OK if @a history is valid,
  *         #GNUNET_SYSERR if not
  */

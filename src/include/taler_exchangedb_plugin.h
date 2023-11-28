@@ -3401,7 +3401,7 @@ typedef void
  * @param batch_deposit_serial_id where in the table are we
  * @param total_amount value of all missing deposits, including fees
  * @param wire_target_h_payto hash of the recipient account's payto URI
- * @param earliest_deadline what was the earliest requested wire transfer deadline
+ * @param deadline what was the earliest requested wire transfer deadline
  */
 typedef void
 (*TALER_EXCHANGEDB_WireMissingCallback)(

@@ -155,7 +155,8 @@ handle_deposit_confirmation_finished (void *cls,
  * @param wire_deadline by what time must the amount be wired to the merchant
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
- * @param coin_pub coin’s public key
+ * @param num_coins number of coins involved
+ * @param coin_sigs array of @a num_coins coin signatures
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param exchange_sig the signature made with purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT
  * @param exchange_pub the public key of the exchange that matches @a exchange_sig
