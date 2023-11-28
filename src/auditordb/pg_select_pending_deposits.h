@@ -30,6 +30,8 @@
  * Return (batch) deposits for which we have not yet
  * seen the required wire transfer.
  *
+ * @param cls closure
+ * @param master_pub master public key of the exchange
  * @param deadline only return up to this deadline
  * @param cb function to call on each entry
  * @param cb_cls closure for @a cb

@@ -75,7 +75,7 @@ struct BatchWithdrawContext
 {
 
   /**
-   * Public key of the reserv.
+   * Public key of the reserve.
    */
   const struct TALER_ReservePublicKeyP *reserve_pub;
 

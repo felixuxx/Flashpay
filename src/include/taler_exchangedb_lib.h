@@ -69,13 +69,13 @@ struct TALER_EXCHANGEDB_AccountInfo
   const char *method;
 
   /**
-   * true if this account is enabed to be debited
+   * true if this account is enabled to be debited
    * by the taler-exchange-aggregator.
    */
   bool debit_enabled;
 
   /**
-   * true if this account is enabed to be credited by wallets
+   * true if this account is enabled to be credited by wallets
    * and needs to be watched by the taler-exchange-wirewatch.
    * Also, the account will only be included in /wire if credit
    * is enabled.

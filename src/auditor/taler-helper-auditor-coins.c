@@ -126,7 +126,7 @@ static json_t *report_bad_sig_losses;
  * Array of refresh transactions where the /refresh/reveal has not yet
  * happened (and may of course never happen).
  */
-static json_t *report_refreshs_hanging;
+static json_t *report_refreshes_hanging;
 
 /**
  * Total amount lost by operations for which signatures were invalid.
@@ -1340,7 +1340,7 @@ refresh_session_cb (void *cls,
       /* This can legitimately happen if reveal was not yet called or only
          with invalid data, even if the exchange is correctly operating. We
          still report it. */
-      TALER_ARL_report (report_refreshs_hanging,
+      TALER_ARL_report (report_refreshes_hanging,
                         GNUNET_JSON_PACK (
                           GNUNET_JSON_pack_uint64 ("row",
                                                    rowid),
@@ -2554,7 +2554,7 @@ analyze_coins (void *cls)
   if (0 > cc.qs)
     return cc.qs;
 
-  /* process refreshs */
+  /* process refreshes */
   if (0 >
       (qs = TALER_ARL_edb->select_refreshes_above_serial_id (
          TALER_ARL_edb->cls,
@@ -2739,7 +2739,7 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_bad_sig_losses = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_refreshs_hanging = json_array ()));
+                 (report_refreshes_hanging = json_array ()));
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_coins,
                                         NULL))
@@ -2792,7 +2792,7 @@ run (void *cls,
                                     report_bad_sig_losses),
       /* Tested in test-auditor.sh #12 */
       GNUNET_JSON_pack_array_steal ("refresh_hanging",
-                                    report_refreshs_hanging),
+                                    report_refreshes_hanging),
       /* Tested in test-auditor.sh #18 */
       GNUNET_JSON_pack_array_steal ("emergencies_by_count",
                                     report_emergencies_by_count),

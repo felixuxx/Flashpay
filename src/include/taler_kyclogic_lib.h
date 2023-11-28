@@ -259,7 +259,7 @@ TALER_KYCLOGIC_check_satisfied (char **requirements,
  * Iterate over all thresholds that are applicable
  * to a particular type of @a event
  *
- * @param event tresholds to look up
+ * @param event thresholds to look up
  * @param it function to call on each
  * @param it_cls closure for @a it
  */

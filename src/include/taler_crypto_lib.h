@@ -1717,7 +1717,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * Compute the hash of a blinded coin.
  *
  * @param blinded_planchet blinded planchet
- * @param denom_hash hash of the denomination publick key
+ * @param denom_hash hash of the denomination public key
  * @param[out] bch where to write the hash
  * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occurred
  */
@@ -2324,7 +2324,7 @@ struct TALER_CRYPTO_RsaDenominationHelper;
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
  * @param h_rsa hash of the RSA @a denom_pub that is available (or was purged)
- * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param bs_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
@@ -4682,7 +4682,7 @@ TALER_exchange_online_age_withdraw_confirmation_sign (
 
 
 /**
- * Verfiy an exchange age-withdraw confirmation
+ * Verify an exchange age-withdraw confirmation
  *
  * @param h_commitment Commitment over all n*kappa coin candidates from the original request to age-withdraw
  * @param noreveal_index The index returned by the exchange
@@ -5727,7 +5727,7 @@ TALER_age_commitment_derive (
  *
  * @param comm_proof The age commitment to be used for attestation.  For successful attestation, it must contain the private key for the corresponding age group.
  * @param age Age (not age group) for which the an attestation should be done
- * @param[out] attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
+ * @param[out] attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicable.
  * @return #GNUNET_OK on success, #GNUNET_NO when no attestation can be made for that age with the given commitment, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
@@ -5742,7 +5742,7 @@ TALER_age_commitment_attest (
  *
  * @param commitment The age commitment that went into the attestation.  Only the public keys are needed.
  * @param age Age (not age group) for which the an attestation should be done
- * @param attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
+ * @param attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicable.
  * @return #GNUNET_OK when the attestation was successful, #GNUNET_NO no attestation couldn't be verified, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue

@@ -260,7 +260,7 @@ TALER_ARL_get_denomination_info (
  *
  * @param analysis analysis to run
  * @param analysis_cls closure for @a analysis
- * @return #GNUNET_OK if @a analysis succeessfully committed,
+ * @return #GNUNET_OK if @a analysis successfully committed,
  *         #GNUNET_NO if we had an error on commit (retry may help)
  *         #GNUNET_SYSERR on hard errors
  */

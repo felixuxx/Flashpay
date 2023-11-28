@@ -114,7 +114,7 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle
   struct TALER_Amount purse_value_after_fees;
 
   /**
-   * Our encryped contract (if we had any).
+   * Our encrypted contract (if we had any).
    */
   struct TALER_EncryptedContract econtract;
 

@@ -681,7 +681,7 @@ TALER_age_restriction_from_secret (
 
   /* Create as many private keys as allow with max_age and derive the
    * corresponding public keys.  The rest of the needed public keys are created
-   * by scalar mulitplication with the TALER_age_commitment_base_public_key. */
+   * by scalar multiplication with the TALER_age_commitment_base_public_key. */
   for (size_t i = 0; i < num_pub; i++)
   {
     enum GNUNET_GenericReturnValue ret;

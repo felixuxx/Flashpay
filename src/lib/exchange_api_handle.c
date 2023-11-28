@@ -59,7 +59,7 @@
 #define EXCHANGE_SERIALIZATION_FORMAT_VERSION 0
 
 /**
- * How far off do we allow key liftimes to be?
+ * How far off do we allow key lifetimes to be?
  */
 #define LIFETIME_TOLERANCE GNUNET_TIME_UNIT_HOURS
 

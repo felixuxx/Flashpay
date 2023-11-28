@@ -34,14 +34,6 @@
 #include "fakebank_common_make_admin_transfer.h"
 
 
-/**
- * Handle POST /withdrawals/{withdrawal_id}/confirm request.
- *
- * @param h our fakebank handle
- * @param connection the connection
- * @param withdrawal_id the withdrawal operation identifier
- * @return MHD result code
- */
 MHD_RESULT
 TALER_FAKEBANK_bank_withdrawals_confirm_ (
   struct TALER_FAKEBANK_Handle *h,

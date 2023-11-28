@@ -390,7 +390,6 @@ handle_post_coins (struct TEH_RequestContext *rc,
  * EdDSA key of the coin and demultiplexes based on $OP.
  *
  * @param rc request context
- * @param root uploaded JSON data
  * @param args array of additional options
  * @return MHD result code
  */

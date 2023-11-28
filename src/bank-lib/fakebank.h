@@ -551,7 +551,7 @@ struct TALER_FAKEBANK_Handle
   /**
    * Hashmap of reserve public keys to
    * `struct Transaction` with that reserve public
-   * key. Used to prevent public-key re-use.
+   * key. Used to prevent public-key reuse.
    */
   struct GNUNET_CONTAINER_MultiPeerMap *rpubs;
 

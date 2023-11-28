@@ -425,7 +425,7 @@ struct TALER_JSON_ProtocolVersion
   /**
    * Number of protocol versions this @e revision is
    * backwards-compatible with.  Subtract this number
-   * from @a current to get the minimum protocol version
+   * from @e current to get the minimum protocol version
    * required from the client.
    */
   unsigned int age;
@@ -438,14 +438,13 @@ struct TALER_JSON_ProtocolVersion
  * encoding the version as "$CURRENT:$REVISION:$AGE".
  *
  * @param field name of the field (usually "version")
- * @param[out] current protocol current to initialize
- * @param[out] revision protocol revision to initialize
- * @param[out] age protocol age to initialize
+ * @param[out] ver protocol versions to initialize
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_version (const char *field,
                          struct TALER_JSON_ProtocolVersion *ver);
+
 
 /**
  * Generate a parser specification for a denomination public key of a given
