@@ -163,6 +163,19 @@ TALER_PQ_query_param_array_blinded_coin_hash (
   struct GNUNET_PQ_Context *db);
 
 /**
+ * Generate query parameter for an array of GNUNET_HashCode
+ *
+ * @param num number of elements in @e hash_codes
+ * @param hashes array of GNUNET_HashCode
+ * @param db context for the db-connection
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_hash_code (
+  size_t num,
+  const struct GNUNET_HashCode *hashes,
+  struct GNUNET_PQ_Context *db);
+
+/**
  * Generate query parameter for an array of mounts
  *
  * @param num of elements in @e amounts
@@ -329,6 +342,22 @@ TALER_PQ_result_spec_array_denom_hash (
   const char *name,
   size_t *num,
   struct TALER_DenominationHashP **denom_hs);
+
+/**
+ * Array of GNUNET_HashCode
+ *
+ * @param db context of the database connection
+ * @param name name of the field in the table
+ * @param[out] num number of elements in @e denom_sigs
+ * @param[out] hashes where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_hash_code (
+  struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct GNUNET_HashCode **hashes);
 
 /**
  * Array of amounts
