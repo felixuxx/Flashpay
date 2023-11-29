@@ -357,44 +357,39 @@ TEH_extensions_post_handler (
   }
 
 
+  if (GNUNET_OK !=
+      ext->policy_post_handler (root,
+                                &args[1],
+                                policy_details,
+                                policy_details_count,
+                                &output))
   {
-    enum GNUNET_GenericReturnValue ret;
+    return TALER_MHD_reply_json_steal (
+      rc->connection,
+      output,
+      MHD_HTTP_BAD_REQUEST);
+  }
 
-    ret = ext->policy_post_handler (root,
-                                    &args[1],
-                                    policy_details,
-                                    policy_details_count,
-                                    &output);
+  /* execute fulfillment transaction */
+  {
+    MHD_RESULT mhd_ret;
+    struct TALER_PolicyFulfillmentTransactionData fulfillment = {
+      .proof = root,
+      .timestamp = GNUNET_TIME_timestamp_get (),
+      .details = policy_details,
+      .details_count = policy_details_count
+    };
 
-    if (GNUNET_OK != ret)
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (rc->connection,
+                                "execute policy fulfillment",
+                                TEH_MT_REQUEST_POLICY_FULFILLMENT,
+                                &mhd_ret,
+                                &policy_fulfillment_transaction,
+                                &fulfillment))
     {
-      TALER_MHD_reply_json_steal (
-        rc->connection,
-        output,
-        MHD_HTTP_BAD_REQUEST);
-    }
-
-    /* execute fulfillment transaction */
-    {
-      MHD_RESULT mhd_ret;
-      struct TALER_PolicyFulfillmentTransactionData fulfillment = {
-        .proof = root,
-        .timestamp = GNUNET_TIME_timestamp_get (),
-        .details = policy_details,
-        .details_count = policy_details_count
-      };
-
-      if (GNUNET_OK !=
-          TEH_DB_run_transaction (rc->connection,
-                                  "execute policy fulfillment",
-                                  TEH_MT_REQUEST_POLICY_FULFILLMENT,
-                                  &mhd_ret,
-                                  &policy_fulfillment_transaction,
-                                  &fulfillment))
-      {
-        json_decref (output);
-        return mhd_ret;
-      }
+      json_decref (output);
+      return mhd_ret;
     }
   }
 
