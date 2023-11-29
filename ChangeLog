@@ -1,3 +1,6 @@
+Wed Nov 29 09:06:49 AM JST 2023
+    Creating bugfix release for taler-exchange 0.9.3a. -CG
+
 Sat Nov  5 11:32:45 AM CET 2022
     Added support for P2P payments.
     Added support for explicit reserve lifetime control.
