@@ -111,9 +111,13 @@ BEGIN
     ' PRIMARY KEY (batch_deposit_serial_id) '
     ',ADD CONSTRAINT ' || table_name || '_merchant_pub_h_contract_terms'
     ' UNIQUE (shard, merchant_pub, h_contract_terms)'
-    ',ADD CONSTRAINT ' || table_name || '_foreign_policy_details'
-    ' FOREIGN KEY (policy_details_serial_id) '
-    ' REFERENCES policy_details (policy_details_serial_id) ON DELETE RESTRICT'
+    -- The policy_details_serial_id is a foreign key.
+    -- But, due to partitioning its table by a different column, we can not
+    -- simply reference policy_details_serial_id of the policy_details.  Thus,
+    -- the following is commented out:
+    -- ',ADD CONSTRAINT ' || table_name || '_foreign_policy_details'
+    -- ' FOREIGN KEY (policy_details_serial_id) '
+    -- ' REFERENCES policy_details (policy_details_serial_id) ON DELETE RESTRICT'
   );
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_ready '
