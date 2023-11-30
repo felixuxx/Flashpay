@@ -111,13 +111,6 @@ BEGIN
     ' PRIMARY KEY (batch_deposit_serial_id) '
     ',ADD CONSTRAINT ' || table_name || '_merchant_pub_h_contract_terms'
     ' UNIQUE (shard, merchant_pub, h_contract_terms)'
-    -- The policy_details_serial_id is a foreign key.
-    -- But, due to partitioning its table by a different column, we can not
-    -- simply reference policy_details_serial_id of the policy_details.  Thus,
-    -- the following is commented out:
-    -- ',ADD CONSTRAINT ' || table_name || '_foreign_policy_details'
-    -- ' FOREIGN KEY (policy_details_serial_id) '
-    -- ' REFERENCES policy_details (policy_details_serial_id) ON DELETE RESTRICT'
   );
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_ready '
@@ -133,6 +126,22 @@ BEGIN
     ',refund_deadline ASC'
     ',wire_target_h_payto'
     ') WHERE NOT (done OR policy_blocked);'
+  );
+END
+$$;
+
+CREATE OR REPLACE FUNCTION foreign_table_batch_deposits()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT DEFAULT 'batch_deposits';
+BEGIN
+  EXECUTE FORMAT (
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_foreign_policy_details'
+    ' FOREIGN KEY (policy_details_serial_id) '
+    ' REFERENCES policy_details (policy_details_serial_id) ON DELETE RESTRICT'
   );
 END
 $$;
@@ -153,6 +162,11 @@ INSERT INTO exchange_tables
     ('batch_deposits'
     ,'exchange-0002'
     ,'constrain'
+    ,TRUE
+    ,FALSE),
+    ('batch_deposits'
+    ,'exchange-0002'
+    ,'foreign'
     ,TRUE
     ,FALSE)
     ;

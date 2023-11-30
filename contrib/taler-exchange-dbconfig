@@ -134,7 +134,7 @@ fi
 if [ 0 = "$SKIP_DBINIT" ]
 then
     echo "Initializing database '$DBNAME'." 1>&2
-    sudo -u "$DBUSER" taler-exchange-dbinit
+    sudo -u "$DBUSER" taler-exchange-dbinit -c "$CFGFILE"
 fi
 
 if [ 0 = "$SKIP_DBINIT" ] || [ 1 = "$FORCE_PERMS" ]
