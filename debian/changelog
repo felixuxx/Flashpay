@@ -1,3 +1,9 @@
+taler-exchange (0.9.3-4) unstable; urgency=low
+
+  * Minor hot-fixes to the database setup automation script.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Fri, 1 Dec 2023 10:50:12 -0800
+
 taler-exchange (0.9.3-3) unstable; urgency=low
 
   * This packages the v0.9.3b bugfix release.
