@@ -25,14 +25,22 @@ FORCE_PERMS=0
 DBUSER="taler-exchange-httpd"
 DBGROUP="taler-exchange-db"
 DBNAME="exchange"
-CFGFILE="/etc/taler/secrets/exchange-db.secret.conf"
+CFGFILE="/etc/taler/taler.conf"
+DBCFGFILE="/etc/taler/secrets/exchange-db.secret.conf"
 
 # Parse command-line options
-while getopts ':g:hn:prsu:' OPTION; do
+while getopts 'c:d:g:hn:prsu:' OPTION; do
     case "$OPTION" in
+        c)
+            CFGFILE="$OPTARG"
+            ;;
+        d)
+            DBCFGFILE="$OPTARG"
+            ;;
         h)
             echo 'Supported options:'
             echo "  -c FILENAME  -- write configuration to FILENAME (default: $CFGFILE)"
+            echo "  -d FILENAME  -- write database access configuration to FILENAME (default: $DBCFGFILE)"
             echo "  -g GROUP     -- taler-exchange to be run by GROUP (default: $DBGROUP)"
             echo "  -h           -- print this help text"
             echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
@@ -58,7 +66,8 @@ while getopts ':g:hn:prsu:' OPTION; do
             DBUSER="$OPTARG"
             ;;
         ?)
-        exit_fail "Unrecognized command line option"
+            echo "Unrecognized command line option" 1>&2
+            exit 1
         ;;
     esac
 done
@@ -80,7 +89,9 @@ then
     if ! taler-exchange-dbinit -v 2> /dev/null
     then
         echo "Required 'taler-exchange-dbinit' not found. Please fix your installation."
+        exit 1
     fi
+    DBINIT=$(which taler-exchange-dbinit)
 fi
 
 if ! id "$DBUSER" > /dev/null
@@ -117,24 +128,24 @@ then
     exit 1
 fi
 
-if [ -f "$CFGFILE" ]
+if [ -f "$DBCFGFILE" ]
 then
-    echo "Adding database configuration to '$CFGFILE'." 1>&2
-    echo -e "[exchangedb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
-    chown root:"$DBGROUP" "$CFGFILE"
+    echo "Adding database configuration to '$DBCFGFILE'." 1>&2
+    echo -e "[exchangedb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$DBCFGFILE"
+    chown root:"$DBGROUP" "$DBCFGFILE"
     chmod 640 "$CFGFILE"
 else
-    echo "Configuration '$CFGFILE' does not yet exist, creating it." 1>&2
-    mkdir -p "$(dirname "$CFGFILE")"
+    echo "Configuration '$DBCFGFILE' does not yet exist, creating it." 1>&2
+    mkdir -p "$(dirname "$DBCFGFILE")"
     echo -e "[exchangedb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
-    chown root:"$DBGROUP" "$CFGFILE"
-    chmod 640 "$CFGFILE"
+    chown root:"$DBGROUP" "$DBCFGFILE"
+    chmod 640 "$DBCFGFILE"
 fi
 
 if [ 0 = "$SKIP_DBINIT" ]
 then
     echo "Initializing database '$DBNAME'." 1>&2
-    sudo -u "$DBUSER" taler-exchange-dbinit -c "$CFGFILE"
+    sudo -u "$DBUSER" "$DBINIT" -c "$CFGFILE"
 fi
 
 if [ 0 = "$SKIP_DBINIT" ] || [ 1 = "$FORCE_PERMS" ]
