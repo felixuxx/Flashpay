@@ -19,6 +19,7 @@
  * @author Özgür Kesim
  */
 #include "platform.h"
+#include "taler_extensions_policy.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_extensions.h"
@@ -366,6 +367,7 @@ TALER_extensions_load_manifests (
  */
 
 static char *fulfillment2str[] =  {
+  [TALER_PolicyFulfillmentInitial]      = "<init>",
   [TALER_PolicyFulfillmentReady]        = "Ready",
   [TALER_PolicyFulfillmentSuccess]      = "Success",
   [TALER_PolicyFulfillmentFailure]      = "Failure",
@@ -384,6 +386,7 @@ TALER_policy_fulfillment_state_str (
 
 enum GNUNET_GenericReturnValue
 TALER_extensions_create_policy_details (
+  const char *currency,
   const json_t *policy_options,
   struct TALER_PolicyDetails *details,
   const char **error_hint)
@@ -427,8 +430,18 @@ TALER_extensions_create_policy_details (
     return GNUNET_NO;
   }
 
+  /* Set state fields in the policy details to initial values. */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (currency,
+                                        &details->accumulated_total));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (currency,
+                                        &details->policy_fee));
   details->deadline = GNUNET_TIME_UNIT_FOREVER_TS;
-  ret = extension->create_policy_details (policy_options,
+  details->fulfillment_state = TALER_PolicyFulfillmentInitial;
+  details->no_policy_fulfillment_id = true;
+  ret = extension->create_policy_details (currency,
+                                          policy_options,
                                           details,
                                           error_hint);
   return ret;
