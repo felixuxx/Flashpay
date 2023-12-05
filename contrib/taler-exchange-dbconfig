@@ -24,34 +24,24 @@ SKIP_DBINIT=0
 FORCE_PERMS=0
 DBUSER="taler-exchange-httpd"
 DBGROUP="taler-exchange-db"
-DBNAME="exchange"
 CFGFILE="/etc/taler/taler.conf"
-DBCFGFILE="/etc/taler/secrets/exchange-db.secret.conf"
 
 # Parse command-line options
-while getopts 'c:d:g:hn:prsu:' OPTION; do
+while getopts 'c:g:hprsu:' OPTION; do
     case "$OPTION" in
         c)
             CFGFILE="$OPTARG"
             ;;
-        d)
-            DBCFGFILE="$OPTARG"
-            ;;
         h)
             echo 'Supported options:'
-            echo "  -c FILENAME  -- write configuration to FILENAME (default: $CFGFILE)"
-            echo "  -d FILENAME  -- write database access configuration to FILENAME (default: $DBCFGFILE)"
+            echo "  -c FILENAME  -- use configuration FILENAME (default: $CFGFILE)"
             echo "  -g GROUP     -- taler-exchange to be run by GROUP (default: $DBGROUP)"
             echo "  -h           -- print this help text"
-            echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
             echo "  -r           -- reset database (dangerous)"
             echo "  -p           -- force permission setup even without database initialization"
             echo "  -s           -- skip database initialization"
             echo "  -u USER      -- taler-exchange to be run by USER (default: $DBUSER)"
             exit 0
-            ;;
-        n)
-            DBNAME="$OPTARG"
             ;;
         p)
             FORCE_PERMS="1"
@@ -100,19 +90,6 @@ then
     exit 1
 fi
 
-if sudo -i -u postgres psql "$DBNAME" < /dev/null 2> /dev/null
-then
-    if [ 1 = "$RESET_DB" ]
-    then
-        echo "Deleting existing database '$DBNAME'." 1>&2
-        sudo -i -u postgres dropdb "$DBNAME"
-    else
-        echo "Database '$DBNAME' already exists, refusing to setup again."
-        echo "Use -r to delete the existing database first (dangerous!)."
-        exit 77
-    fi
-fi
-
 echo "Setting up database user '$DBUSER'." 1>&2
 
 if ! sudo -i -u postgres createuser "$DBUSER" 2> /dev/null
@@ -120,32 +97,60 @@ then
     echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
 fi
 
-echo "Creating database '$DBNAME'." 1>&2
+DBPATH=$(taler-config \
+             -c "$CFGFILE" \
+             -s exchangedb-postgres \
+             -o CONFIG)
 
-if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
+if ! echo "$DBPATH" | grep "postgres://" > /dev/null
 then
-    echo "Failed to create database '$DBNAME'"
+    echo "Invalid database configuration value '$DBPATH'." 1>&2
     exit 1
 fi
 
-if [ -f "$DBCFGFILE" ]
+DBNAME=$(echo "$DBPATH" \
+         | sed \
+             -e "s/postgres:\/\/.*\///" \
+             -e "s/?.*//")
+
+if sudo -i -u postgres psql "$DBNAME" < /dev/null 2> /dev/null
 then
-    echo "Adding database configuration to '$DBCFGFILE'." 1>&2
-    echo -e "[exchangedb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$DBCFGFILE"
-    chown root:"$DBGROUP" "$DBCFGFILE"
-    chmod 640 "$CFGFILE"
+    if [ 1 = "$RESET_DB" ]
+    then
+        echo "Deleting existing database '$DBNAME'." 1>&2
+        if ! sudo -i -u postgres dropdb "$DBNAME"
+        then
+            echo "Failed to delete existing database '$DBNAME'"
+            exit 1
+        fi
+        DO_CREATE=1
+    else
+        echo "Database '$DBNAME' already exists, continuing anyway."
+        DO_CREATE=0
+    fi
 else
-    echo "Configuration '$DBCFGFILE' does not yet exist, creating it." 1>&2
-    mkdir -p "$(dirname "$DBCFGFILE")"
-    echo -e "[exchangedb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
-    chown root:"$DBGROUP" "$DBCFGFILE"
-    chmod 640 "$DBCFGFILE"
+    DO_CREATE=1
+fi
+
+if [1 = "$DO_CREATE" ]
+then
+    echo "Creating database '$DBNAME'." 1>&2
+
+    if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
+    then
+        echo "Failed to create database '$DBNAME'"
+        exit 1
+    fi
 fi
 
 if [ 0 = "$SKIP_DBINIT" ]
 then
     echo "Initializing database '$DBNAME'." 1>&2
-    sudo -u "$DBUSER" "$DBINIT" -c "$CFGFILE"
+    if ! sudo -u "$DBUSER" "$DBINIT" -c "$CFGFILE"
+    then
+        echo "Failed to initialize database schema"
+        exit 1
+    fi
 fi
 
 if [ 0 = "$SKIP_DBINIT" ] || [ 1 = "$FORCE_PERMS" ]
@@ -159,12 +164,10 @@ then
             sudo -u "$DBUSER" \
                  echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
                          'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
-                | psql taler-exchange
+                | psql "$DBNAME"
         fi
     done
 fi
-
-
 
 echo "Database configuration finished." 1>&2
 
