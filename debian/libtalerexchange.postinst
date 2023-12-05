@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+case "${1}" in
+configure)
+
+  if ! dpkg-statoverride --list /etc/taler/taler.conf >/dev/null 2>&1; then
+    dpkg-statoverride --add --update \
+      root root 644 \
+      /etc/taler/taler.conf
+  fi
+
+  ;;
+
+abort-upgrade | abort-remove | abort-deconfigure) ;;
+
+*)
+  echo "postinst called with unknown argument \`${1}'" >&2
+  exit 1
+  ;;
+esac
+
+#DEBHELPER#
+
+exit 0
