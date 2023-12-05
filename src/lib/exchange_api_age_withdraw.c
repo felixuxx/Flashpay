@@ -161,7 +161,7 @@ struct TALER_EXCHANGE_AgeWithdrawBlindedHandle
   struct TALER_EXCHANGE_Keys *keys;
 
   /**
-   * The age mask, extacted from the denominations.
+   * The age mask, extracted from the denominations.
    * MUST be the same for all denominations
    *
    */
@@ -263,7 +263,7 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   struct TALER_EXCHANGE_Keys *keys;
 
   /**
-   * The age mask, extacted from the denominations.
+   * The age mask, extracted from the denominations.
    * MUST be the same for all denominations
    *
    */

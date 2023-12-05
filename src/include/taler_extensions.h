@@ -162,6 +162,7 @@ struct TALER_Extension
    * (see https://docs.taler.net/core/api-exchange.html#deposit), this handler
    * will be called before the deposit transaction.
    *
+   * @param[in]  currency Currency used in the exchange
    * @param[in]  policy_json Details about the policy, provided by the client
    *             during a deposit request.
    * @param[out] details On success, will contain the details to the policy,
@@ -170,6 +171,7 @@ struct TALER_Extension
    * @return     GNUNET_OK if the data was accepted by the extension.
    */
   enum GNUNET_GenericReturnValue (*create_policy_details)(
+    const char *currency,
     const json_t *policy_json,
     struct TALER_PolicyDetails *details,
     const char **error_hint);

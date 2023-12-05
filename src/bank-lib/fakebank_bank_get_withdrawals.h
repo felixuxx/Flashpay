@@ -17,7 +17,7 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/fakebank_bank_get_accounts_withdrawals.h
+ * @file bank-lib/fakebank_bank_get_withdrawals.h
  * @brief implements the Taler Bank API "GET /accounts/ACC/withdrawals/WID" handler
  * @author Christian Grothoff <christian@grothoff.org>
  */

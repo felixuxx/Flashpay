@@ -130,6 +130,7 @@ typedef enum GNUNET_GenericReturnValue
  * Handle deposit entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -226,6 +227,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
  * Handle melt entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -294,6 +296,7 @@ help_melt (struct CoinHistoryParseContext *pc,
  * Handle refund entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -373,6 +376,7 @@ help_refund (struct CoinHistoryParseContext *pc,
  * Handle recoup entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -439,6 +443,7 @@ help_recoup (struct CoinHistoryParseContext *pc,
  * the value being credited to the old coin.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -505,6 +510,7 @@ help_recoup_refresh (struct CoinHistoryParseContext *pc,
  * the value being credited to the this coin.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -556,6 +562,7 @@ help_old_coin_recoup (struct CoinHistoryParseContext *pc,
  * Handle purse deposit entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -625,6 +632,7 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
  * Handle purse refund entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,
@@ -686,6 +694,7 @@ help_purse_refund (struct CoinHistoryParseContext *pc,
  * Handle reserve deposit entry in the coin's history.
  *
  * @param[in,out] pc overall context
+ * @param[out] rh history entry to initialize
  * @param amount main amount of this operation
  * @param transaction JSON details for the operation
  * @return #GNUNET_SYSERR on error,

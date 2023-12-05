@@ -31,7 +31,7 @@
  * above a given @a min_tracking_serial_id.
  *
  * @param cls closure
- * @param min_tracking_serial_id only return entries stricly above this row (and in order)
+ * @param min_tracking_serial_id only return entries strictly above this row (and in order)
  * @param cb function to call on all such aggregations
  * @param cb_cls closure for @a cb
  * @return transaction status code

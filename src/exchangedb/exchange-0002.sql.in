@@ -19,6 +19,10 @@ BEGIN;
 SELECT _v.register_patch('exchange-0002', NULL, NULL);
 SET search_path TO exchange;
 
+CREATE DOMAIN gnunet_hashcode
+  AS BYTEA
+  CHECK(LENGTH(VALUE) = 32);
+
 CREATE TYPE taler_amount
   AS
   (val INT8
@@ -59,6 +63,8 @@ COMMENT ON TYPE exchange_do_select_deposits_missing_wire_return_type
 #include "0002-exchange_sign_keys.sql"
 #include "0002-signkey_revocations.sql"
 #include "0002-extensions.sql"
+#include "0002-policy_fulfillments.sql"
+#include "0002-policy_details.sql"
 #include "0002-profit_drains.sql"
 #include "0002-legitimization_processes.sql"
 #include "0002-legitimization_requirements.sql"
@@ -96,8 +102,6 @@ COMMENT ON TYPE exchange_do_select_deposits_missing_wire_return_type
 #include "0002-wad_in_entries.sql"
 #include "0002-wads_out.sql"
 #include "0002-wad_out_entries.sql"
-#include "0002-policy_fulfillments.sql"
-#include "0002-policy_details.sql"
 #include "0002-work_shards.sql"
 #include "0002-revolving_work_shards.sql"
 #include "0002-partners.sql"

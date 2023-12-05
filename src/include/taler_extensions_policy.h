@@ -31,21 +31,24 @@
  */
 enum TALER_PolicyFulfillmentState
 {
+  /* Initial state of an fulfillment, before any other state. */
+  TALER_PolicyFulfillmentInitial = 0,
+
   /* General error state of an fulfillment. */
-  TALER_PolicyFulfillmentFailure = 0,
+  TALER_PolicyFulfillmentFailure = 1,
 
   /* The policy is not yet ready due to insufficient funding. More deposits are
    * necessary for it to become ready . */
-  TALER_PolicyFulfillmentInsufficient = 1,
+  TALER_PolicyFulfillmentInsufficient = 2,
 
   /* The policy is funded and ready, pending */
-  TALER_PolicyFulfillmentReady = 2,
+  TALER_PolicyFulfillmentReady = 3,
 
   /* Policy is provably fulfilled. */
-  TALER_PolicyFulfillmentSuccess = 3,
+  TALER_PolicyFulfillmentSuccess = 4,
 
   /* Policy fulfillment has timed out */
-  TALER_PolicyFulfillmentTimeout = 4,
+  TALER_PolicyFulfillmentTimeout = 5,
 
   TALER_PolicyFulfillmentStateCount = TALER_PolicyFulfillmentTimeout + 1
 };
@@ -68,7 +71,7 @@ struct TALER_PolicyDetails
   /* Content of the policy in its original JSON form */
   json_t *policy_json;
 
-  /* When the deadline is meat and the policy is still in "Ready" state,
+  /* When the deadline is met and the policy is still in "Ready" state,
    * a timeout-handler will transfer the amount
    *    (total_amount - policy_fee - refreshable_amount)
    * to the payto-URI from the corresponding deposit.  The value
@@ -143,6 +146,7 @@ struct TALER_PolicyFulfillmentTransactionData
 /*
  * @brief Extracts policy details from the deposit's policy options and the policy extensions
  *
+ * @param[in]  currency Currency used in the exchange
  * @param[in]  policy_options JSON of the policy options from a deposit request
  * @param[out] details On GNUNET_OK, the parsed details
  * @param[out] error_hint On GNUNET_SYSERR, will contain a hint for the reason why it failed
@@ -151,6 +155,7 @@ struct TALER_PolicyFulfillmentTransactionData
  */
 enum GNUNET_GenericReturnValue
 TALER_extensions_create_policy_details (
+  const char *currency,
   const json_t *policy_options,
   struct TALER_PolicyDetails *details,
   const char **error_hint);

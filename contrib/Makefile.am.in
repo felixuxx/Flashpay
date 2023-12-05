@@ -32,8 +32,8 @@ bin_SCRIPTS = \
   taler-auditor-dbconfig \
   taler-exchange-dbconfig \
   taler-terms-generator \
-  taler-bank-manage-testing \
-  taler-nexus-prepare
+  taler-bank-manage-testing
+
 
 edit_script = $(SED) -e 's,%termsdir%,$(termsdir),'g -e 's,%localedir%,$(localedir),'g $(NULL)
 taler-terms-generator: taler-terms-generator.in
@@ -48,7 +48,6 @@ CLEANFILES = \
 EXTRA_DIST = \
   locale/de/LC_MESSAGES/exchange-tos-v0.po \
   taler-bank-manage-testing \
-  taler-nexus-prepare \
   taler-terms-generator.in \
   taler-auditor-dbconfig \
   taler-exchange-dbconfig \

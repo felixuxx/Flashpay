@@ -44,7 +44,7 @@ static struct TALER_AUDITORDB_ProgressPointAggregation ppa;
 static struct TALER_AUDITORDB_ProgressPointAggregation ppa_start;
 
 /**
- * Array of reports about row inconsitencies.
+ * Array of reports about row inconsistencies.
  */
 static json_t *report_row_inconsistencies;
 

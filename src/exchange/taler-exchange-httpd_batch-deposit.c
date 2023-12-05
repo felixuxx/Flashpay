@@ -28,6 +28,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_extensions_policy.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_batch-deposit.h"
@@ -168,7 +169,7 @@ batch_deposit_transaction (void *cls,
 {
   struct BatchDepositContext *dc = cls;
   const struct TALER_EXCHANGEDB_BatchDeposit *bd = &dc->bd;
-  enum GNUNET_DB_QueryStatus qs = GNUNET_SYSERR;
+  enum GNUNET_DB_QueryStatus qs = GNUNET_DB_STATUS_HARD_ERROR;
   uint32_t bad_balance_coin_index = UINT32_MAX;
   bool balance_ok;
   bool in_conflict;
@@ -185,8 +186,9 @@ batch_deposit_transaction (void *cls,
       &dc->policy_details.fulfillment_state);
     if (qs < 0)
       return qs;
-    /* FIXME-Oec: dc->bd.policy_blocked not initialized,
-       likely should be set based on fulfillment_state!?*/
+
+    dc->bd.policy_blocked =
+      dc->policy_details.fulfillment_state != TALER_PolicyFulfillmentSuccess;
   }
 
   /* FIXME: replace by batch insert! */
@@ -523,9 +525,7 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
       return MHD_YES; /* failure */
     }
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TEH_currency,
-                                        &dc.policy_details.accumulated_total));
+
   /* validate merchant's wire details (as far as we can) */
   {
     char *emsg;
@@ -578,13 +578,18 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
 
     if (GNUNET_OK !=
         TALER_extensions_create_policy_details (
+          TEH_currency,
           dc.policy_json,
           &dc.policy_details,
           &error_hint))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_EXCHANGE_DEPOSITS_POLICY_NOT_ACCEPTED,
                                          error_hint);
+    }
 
     TALER_deposit_policy_hash (dc.policy_json,
                                &dc.h_policy);

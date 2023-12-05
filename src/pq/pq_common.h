@@ -44,6 +44,7 @@ enum TALER_PQ_ArrayType
   TALER_PQ_array_of_blinded_denom_sig,
   TALER_PQ_array_of_blinded_coin_hash,
   TALER_PQ_array_of_denom_hash,
+  TALER_PQ_array_of_hash_code,
   /**
    * Amounts *without* currency.
    */

@@ -17,7 +17,7 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/fakebank_bank_post_accounts_withdrawals_abort.h
+ * @file bank-lib/fakebank_bank_post_withdrawals_abort.h
  * @brief implement bank API withdrawals /abort endpoint
  * @author Christian Grothoff <christian@grothoff.org>
  */

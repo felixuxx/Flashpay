@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_pq_lib.h"
+#include <gnunet/gnunet_pq_lib.h>
 
 
 /**
@@ -39,14 +40,18 @@ postgres_prepare (struct GNUNET_PQ_Context *db)
                             ",json"
                             ",aamount"
                             ",tamountc"
+                            ",hash"
+                            ",hashes"
                             ") VALUES "
-                            "($1, $2, $3, $4);"),
+                            "($1, $2, $3, $4, $5, $6);"),
     GNUNET_PQ_make_prepare ("test_select",
                             "SELECT"
                             " tamount"
                             ",json"
                             ",aamount"
                             ",tamountc"
+                            ",hash"
+                            ",hashes"
                             " FROM test_pq;"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -67,6 +72,20 @@ run_queries (struct GNUNET_PQ_Context *conn)
   struct TALER_Amount tamount;
   struct TALER_Amount aamount[3];
   struct TALER_Amount tamountc;
+  struct GNUNET_HashCode hc =
+  {{0xdeadbeef,0xdeadbeef,0xdeadbeef,0xdeadbeef,
+    0xdeadbeef,0xdeadbeef,0xdeadbeef,0xdeadbeef,
+    0xdeadbeef,0xdeadbeef,0xdeadbeef,0xdeadbeef,
+    0xdeadbeef,0xdeadbeef,0xdeadbeef,0xdeadbeef, }};
+  struct GNUNET_HashCode hcs[2] =
+  {{{0xc0feec0f,0xc0feec0f,0xc0feec0f,0xc0feec0f,
+     0xc0feec0f,0xc0feec0f,0xc0feec0f,0xc0feec0f,
+     0xc0feec0f,0xc0feec0f,0xc0feec0f,0xc0feec0f,
+     0xc0feec0f,0xc0feec0f,0xc0feec0f,0xc0feec0f,}},
+   {{0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,
+     0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,
+     0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,
+     0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,0xdeadbeaf,}}};
   json_t *json;
 
   GNUNET_assert (GNUNET_OK ==
@@ -100,6 +119,11 @@ run_queries (struct GNUNET_PQ_Context *conn)
                                          conn),
       TALER_PQ_query_param_amount_with_currency (conn,
                                                  &tamountc),
+      GNUNET_PQ_query_param_fixed_size (&hc,
+                                        sizeof (hc)),
+      TALER_PQ_query_param_array_hash_code (2,
+                                            hcs,
+                                            conn),
       GNUNET_PQ_query_param_end
     };
     PGresult *result;
@@ -122,7 +146,10 @@ run_queries (struct GNUNET_PQ_Context *conn)
     struct TALER_Amount tamount2;
     struct TALER_Amount tamountc2;
     struct TALER_Amount *pamount;
+    struct GNUNET_HashCode hc2;
+    struct GNUNET_HashCode *hcs2;
     size_t npamount;
+    size_t nhcs;
     json_t *json2;
     struct GNUNET_PQ_QueryParam params_select[] = {
       GNUNET_PQ_query_param_end
@@ -140,6 +167,12 @@ run_queries (struct GNUNET_PQ_Context *conn)
                                          &pamount),
       TALER_PQ_result_spec_amount_with_currency ("tamountc",
                                                  &tamountc2),
+      GNUNET_PQ_result_spec_auto_from_type ("hash",
+                                            &hc2),
+      TALER_PQ_result_spec_array_hash_code (conn,
+                                            "hashes",
+                                            &nhcs,
+                                            &hcs2),
       GNUNET_PQ_result_spec_end
     };
 
@@ -168,6 +201,13 @@ run_queries (struct GNUNET_PQ_Context *conn)
     GNUNET_break (0 ==
                   TALER_amount_cmp (&tamountc,
                                     &tamountc2));
+    GNUNET_break (0 == GNUNET_memcmp (&hc,&hc2));
+    for (size_t i = 0; i < 2; i++)
+    {
+      GNUNET_break (0 ==
+                    GNUNET_memcmp (&hcs[i],
+                                   &hcs2[i]));
+    }
     GNUNET_PQ_cleanup_result (results_select);
   }
   return 0;
@@ -179,6 +219,14 @@ main (int argc,
       const char *const argv[])
 {
   struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("DO $$ "
+                            " BEGIN"
+                            " CREATE DOMAIN gnunet_hashcode AS BYTEA"
+                            "   CHECK(length(VALUE)=64);"
+                            " EXCEPTION"
+                            "   WHEN duplicate_object THEN null;"
+                            " END "
+                            "$$;"),
     GNUNET_PQ_make_execute ("DO $$ "
                             " BEGIN"
                             " CREATE TYPE taler_amount AS"
@@ -200,6 +248,8 @@ main (int argc,
                             ",json VARCHAR NOT NULL"
                             ",aamount taler_amount[]"
                             ",tamountc taler_amount_currency"
+                            ",hash gnunet_hashcode"
+                            ",hashes gnunet_hashcode[]"
                             ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };

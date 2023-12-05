@@ -1208,7 +1208,7 @@ extract_array_generic (
           in += sizeof(val);
 
           /* total size for this array-entry */
-          FAIL_IF (sizeof(ap) > sz);
+          FAIL_IF (sizeof(ap) != sz);
 
           GNUNET_memcpy (&ap,
                          in,
@@ -1244,6 +1244,30 @@ extract_array_generic (
         in += sizeof(uint32_t);
         *(struct TALER_DenominationHashP *) out =
           *(struct TALER_DenominationHashP *) in;
+        in += sz;
+        out += sz;
+      }
+      return GNUNET_OK;
+
+    case TALER_PQ_array_of_hash_code:
+      if (NULL != dst_size)
+        *dst_size = sizeof(struct GNUNET_HashCode) * (header.dim);
+      out = GNUNET_new_array (header.dim,
+                              struct GNUNET_HashCode);
+      *((void **) dst) = out;
+      for (uint32_t i = 0; i < header.dim; i++)
+      {
+        uint32_t val;
+        size_t sz;
+
+        GNUNET_memcpy (&val,
+                       in,
+                       sizeof(val));
+        sz =  ntohl (val);
+        FAIL_IF (sz != sizeof(struct GNUNET_HashCode));
+        in += sizeof(uint32_t);
+        *(struct GNUNET_HashCode *) out =
+          *(struct GNUNET_HashCode *) in;
         in += sz;
         out += sz;
       }
@@ -1495,6 +1519,36 @@ TALER_PQ_result_spec_array_amount (
     .conv = extract_array_generic,
     .cleaner = array_cleanup,
     .dst = (void *) amounts,
+    .fname = name,
+    .cls = info,
+  };
+  return res;
+
+
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_array_hash_code (
+  struct GNUNET_PQ_Context *db,
+  const char *name,
+  size_t *num,
+  struct GNUNET_HashCode **hashes)
+{
+  struct ArrayResultCls *info = GNUNET_new (struct ArrayResultCls);
+
+  info->num = num;
+  info->typ = TALER_PQ_array_of_hash_code;
+  info->db = db;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "gnunet_hashcode",
+                                            &info->oid));
+
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = extract_array_generic,
+    .cleaner = array_cleanup,
+    .dst = (void *) hashes,
     .fname = name,
     .cls = info,
   };

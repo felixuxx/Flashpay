@@ -846,14 +846,14 @@ qconv_array (
   same_sized = (0 != meta->same_size);
 
 #define RETURN_UNLESS(cond) \
-  do { \
-    if (! (cond)) \
-    { \
-      GNUNET_break ((cond)); \
-      noerror = false; \
-      goto DONE; \
-    } \
-  } while (0)
+        do { \
+          if (! (cond)) \
+          { \
+            GNUNET_break ((cond)); \
+            noerror = false; \
+            goto DONE; \
+          } \
+        } while (0)
 
   /* Calculate sizes and check bounds */
   {
@@ -1037,6 +1037,15 @@ qconv_array (
                          sizeof(struct TALER_DenominationHashP));
           break;
         }
+      case TALER_PQ_array_of_hash_code:
+        {
+          const struct GNUNET_HashCode *hashes = data;
+
+          GNUNET_memcpy (out,
+                         &hashes[i],
+                         sizeof(struct GNUNET_HashCode));
+          break;
+        }
       default:
         {
           GNUNET_assert (0);
@@ -1165,6 +1174,26 @@ TALER_PQ_query_param_array_denom_hash (
                                     NULL,
                                     sizeof(struct TALER_DenominationHashP),
                                     TALER_PQ_array_of_denom_hash,
+                                    oid,
+                                    NULL);
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_hash_code (
+  size_t num,
+  const struct GNUNET_HashCode *hashes,
+  struct GNUNET_PQ_Context *db)
+{
+  Oid oid;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db, "gnunet_hashcode", &oid));
+  return query_param_array_generic (num,
+                                    true,
+                                    hashes,
+                                    NULL,
+                                    sizeof(struct GNUNET_HashCode),
+                                    TALER_PQ_array_of_hash_code,
                                     oid,
                                     NULL);
 }

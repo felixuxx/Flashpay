@@ -815,7 +815,7 @@ TALER_EXCHANGE_keys_incref (struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
- * Deccrement reference counter for @a keys.
+ * Decrement reference counter for @a keys.
  * Frees @a keys if reference counter becomes zero.
  *
  * @param[in,out] keys object to decrement reference counter for
@@ -1767,7 +1767,6 @@ struct TALER_EXCHANGE_CoinsHistoryHandle;
  * @param dk denomination key of the coin
  * @param history JSON array with the coin's history
  * @param coin_pub public key of the coin
- * @param currency currency of the coin
  * @param[out] total_in set to total amount credited to the coin in @a history
  * @param[out] total_out set to total amount debited to the coin in @a history
  * @param rlen length of the @a rhistory array
@@ -1871,15 +1870,12 @@ typedef void
  * have to combine multiple partial coin histories
  * into one coherent history before calling this function.
  *
- * @param keys /keys data of the exchange
- * @param dk denomination key of the coin
- * @param history JSON array with the coin's full history
- * @param coin_pub public key of the coin
- * @param currency currency of the coin
- * @param[out] total_in set to total amount credited to the coin in @a history
- * @param[out] total_out set to total amount debited to the coin in @a history
- * @param len length of the @a rhistory
- * @param[out] rhistory where to write the parsed @a history
+ * @param ctx context for managing request
+ * @param url base URL of the exchange
+ * @param coin_priv private key of the coin
+ * @param start_off offset from which on to request history
+ * @param cb function to call with results
+ * @param cb_cls closure for @a cb
  * @return #GNUNET_OK if @a history is valid,
  *         #GNUNET_SYSERR if not
  */
@@ -1896,7 +1892,7 @@ TALER_EXCHANGE_coins_history (
 /**
  * Cancel #TALER_EXCHANGE_coins_history() operation.
  *
- * @param[in] rsh operation to chancel
+ * @param[in] rsh operation to cancel
  */
 void
 TALER_EXCHANGE_coins_history_cancel (
@@ -2996,7 +2992,7 @@ typedef void
  * @param curl_ctx The curl context
  * @param exchange_url The base url of the exchange
  * @param keys The denomination keys from the exchange
- * @param reserve_priv The pivate key to the reserve
+ * @param reserve_priv The private key to the reserve
  * @param num_coins The number of elements in @e coin_inputs
  * @param coin_inputs The input for the coins to withdraw
  * @param max_age The maximum age we commit to.

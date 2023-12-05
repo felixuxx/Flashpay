@@ -54,7 +54,7 @@ static struct TALER_AUDITORDB_ProgressPointReserve ppr;
 static struct TALER_AUDITORDB_ProgressPointReserve ppr_start;
 
 /**
- * Array of reports about row inconsitencies.
+ * Array of reports about row inconsistencies.
  */
 static json_t *report_row_inconsistencies;
 
@@ -65,12 +65,12 @@ static json_t *report_row_inconsistencies;
 static json_t *denomination_key_validity_withdraw_inconsistencies;
 
 /**
- * Array of reports about reserve balance insufficient inconsitencies.
+ * Array of reports about reserve balance insufficient inconsistencies.
  */
 static json_t *report_reserve_balance_insufficient_inconsistencies;
 
 /**
- * Array of reports about purse balance insufficient inconsitencies.
+ * Array of reports about purse balance insufficient inconsistencies.
  */
 static json_t *report_purse_balance_insufficient_inconsistencies;
 
@@ -94,7 +94,7 @@ static struct TALER_Amount total_balance_summary_delta_plus;
 static struct TALER_Amount total_balance_summary_delta_minus;
 
 /**
- * Array of reports about reserve's not being closed inconsitencies.
+ * Array of reports about reserve's not being closed inconsistencies.
  */
 static json_t *report_reserve_not_closed_inconsistencies;
 

@@ -1151,7 +1151,7 @@ TALER_TESTING_cmd_age_withdraw_reveal (
  * @param amount how much we withdraw.
  * @param age if > 0, age restriction applies.
  * @param coin_ref reference to (withdraw/reveal) command of a coin
- *        from which we should re-use the private key
+ *        from which we should reuse the private key
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
  * @return the withdraw command to be executed by the interpreter.
@@ -1919,7 +1919,7 @@ struct TALER_TESTING_Timer
   struct GNUNET_TIME_Relative total_duration;
 
   /**
-   * Total time spend waiting for the *successful* exeuction
+   * Total time spend waiting for the *successful* execution
    * in all commands of this type.
    */
   struct GNUNET_TIME_Relative success_latency;

@@ -24,8 +24,7 @@ bin_SCRIPTS = \
 EXTRA_DIST = \
   $(pkgcfg_DATA) \
   $(bin_SCRIPTS) \
-  sample.conf \
-  persona-sample-reply.json
+  sample.conf
 
 lib_LTLIBRARIES = \
   libtalerkyclogic.la
