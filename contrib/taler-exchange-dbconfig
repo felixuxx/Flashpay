@@ -168,6 +168,8 @@ then
             echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
                     'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
                 | sudo -u "$DBUSER" psql "$DBNAME"
+            echo -e 'GRANT USAGE ON SCHEMA exchange TO "'"$GROUPIE"'"' \
+                | sudo -u "$DBUSER" psql "$DBNAME"
 	    # FIXME: double-check the following GRANTs
             echo -e 'GRANT USAGE ON SCHEMA _v TO "'"$GROUPIE"'"' \
                 | sudo -u "$DBUSER" psql "$DBNAME"
