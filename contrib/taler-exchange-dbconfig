@@ -165,7 +165,7 @@ then
             then
                 echo "Database user '$GROUPIE' already existed. Continuing anyway." 1>&2
             fi
-            echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
+            echo -e 'GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
                     'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
                 | sudo -u "$DBUSER" psql "$DBNAME"
             echo -e 'GRANT USAGE ON SCHEMA exchange TO "'"$GROUPIE"'"' \
