@@ -161,6 +161,10 @@ then
     do
         if [ "$GROUPIE" != "$DBUSER" ]
         then
+            if ! sudo -i -u postgres createuser "$GROUPIE" 2> /dev/null
+            then
+                echo "Database user '$GROUPIE' already existed. Continuing anyway." 1>&2
+            fi
             sudo -u "$DBUSER" \
                  echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
                          'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
