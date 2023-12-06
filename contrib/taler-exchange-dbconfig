@@ -161,10 +161,9 @@ then
     do
         if [ "$GROUPIE" != "$DBUSER" ]
         then
-            sudo -u "$DBUSER" \
-                 echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
-                         'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
-                | psql "$DBNAME"
+            echo -e 'GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
+                    'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
+                | sudo -u "$DBUSER" psql "$DBNAME"
         fi
     done
 fi
