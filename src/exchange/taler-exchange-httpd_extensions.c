@@ -23,6 +23,7 @@
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_extensions.h"
+#include "taler_extensions_policy.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_extensions.h"
@@ -256,11 +257,16 @@ policy_fulfillment_transaction (
 {
   struct TALER_PolicyFulfillmentTransactionData *fulfillment = cls;
 
+  /* FIXME[oec]: use connection and mhd_ret? */
+  (void) connection;
+  (void) mhd_ret;
+
   return TEH_plugin->add_policy_fulfillment_proof (TEH_plugin->cls,
                                                    fulfillment);
 }
 
 
+/* FIXME[oec]-#7999: In this handler: do we transition correctly between states? */
 MHD_RESULT
 TEH_extensions_post_handler (
   struct TEH_RequestContext *rc,
@@ -338,14 +344,48 @@ TEH_extensions_post_handler (
       qs = TEH_plugin->get_policy_details (TEH_plugin->cls,
                                            &hcs[idx],
                                            &policy_details[idx]);
-      if (qs < 0)
+      if (0 > qs)
       {
-        error_msg = "a policy_hash_code couldn't be found";
-        break;
+        GNUNET_free (hcs);
+        GNUNET_free (policy_details);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_EXCHANGE_GENERIC_OPERATION_UNKNOWN,
+                                           "a policy_hash_code couldn't be found");
       }
+
+      /* We proceed according to the state of fulfillment */
+      switch (policy_details[idx].fulfillment_state)
+      {
+      case TALER_PolicyFulfillmentReady:
+        break;
+      case TALER_PolicyFulfillmentInsufficient:
+        error_msg = "a policy is not yet fully funded";
+        ret = GNUNET_SYSERR;
+        break;
+      case TALER_PolicyFulfillmentTimeout:
+        error_msg = "a policy is has already timed out";
+        ret = GNUNET_SYSERR;
+        break;
+      case TALER_PolicyFulfillmentSuccess:
+        /* FIXME[oec]-#8001: Idempotency handling. */
+        GNUNET_break (0);
+        break;
+      case TALER_PolicyFulfillmentFailure:
+        /* FIXME[oec]-#7999: What to do in the failure case? */
+        GNUNET_break (0);
+        break;
+      default:
+        /* Unknown state */
+        GNUNET_assert (0);
+      }
+
+      if (GNUNET_OK != ret)
+        break;
     }
 
     GNUNET_free (hcs);
+
     if (GNUNET_OK != ret)
     {
       GNUNET_free (policy_details);

@@ -55,6 +55,7 @@ TEH_PG_add_policy_fulfillment_proof (
   enum GNUNET_DB_QueryStatus qs;
   struct PostgresClosure *pg = cls;
   size_t count = fulfillment->details_count;
+  /* FIXME: this seems to be prone to VLA attacks */
   struct GNUNET_HashCode hcs[count];
 
   /* Create the sorted policy_hash_codes */
@@ -84,8 +85,7 @@ TEH_PG_add_policy_fulfillment_proof (
       GNUNET_PQ_query_param_timestamp (&fulfillment->timestamp),
       TALER_PQ_query_param_json (fulfillment->proof),
       GNUNET_PQ_query_param_auto_from_type (&fulfillment->h_proof),
-      GNUNET_PQ_query_param_fixed_size (hcs,
-                                        count * sizeof(struct GNUNET_HashCode)),
+      TALER_PQ_query_param_array_hash_code (count, hcs, pg->conn),
       GNUNET_PQ_query_param_end
     };
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -132,7 +132,6 @@ TEH_PG_add_policy_fulfillment_proof (
         GNUNET_PQ_query_param_end
       };
 
-      // FIXME-Oec: review if this is the intended logic here!
       PREPARE (pg,
                "update_policy_details",
                "UPDATE policy_details SET"
@@ -150,6 +149,11 @@ TEH_PG_add_policy_fulfillment_proof (
         return qs;
     }
   }
+
+  /*
+   * FIXME[oec]-#7999: When all policies of a deposit are fulfilled,
+   * unblock it and trigger a wire-transfer.
+   */
 
   return qs;
 }
