@@ -132,7 +132,7 @@ else
     DO_CREATE=1
 fi
 
-if [1 = "$DO_CREATE" ]
+if [ 1 = "$DO_CREATE" ]
 then
     echo "Creating database '$DBNAME'." 1>&2
 
