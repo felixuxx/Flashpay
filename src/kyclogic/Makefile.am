@@ -78,6 +78,7 @@ libtaler_plugin_kyclogic_template_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_template_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  -lgnunetcurl \
   -lgnunetutil \
   $(XLIB)
 

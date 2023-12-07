@@ -115,6 +115,7 @@ libtalerutil_la_LIBADD = \
   -ljansson \
   $(LIBGCRYPT_LIBS) \
   -lmicrohttpd $(XLIB) \
+  -lunistring \
   -lz \
   -lm
 
