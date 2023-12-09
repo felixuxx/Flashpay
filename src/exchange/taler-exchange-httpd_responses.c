@@ -178,6 +178,28 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
 
 
 MHD_RESULT
+TEH_RESPONSE_reply_coin_age_commitment_conflict (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment_hash)
+{
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    TALER_ErrorCode_get_http_status_safe (ec),
+    TALER_JSON_pack_ec (ec),
+    GNUNET_JSON_pack_data_auto ("coin_pub",
+                                coin_pub),
+    GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                h_denom_pub),
+    GNUNET_JSON_pack_data_auto ("h_age_commitment_hash",
+                                h_age_commitment_hash)
+    );
+}
+
+
+MHD_RESULT
 TEH_RESPONSE_reply_reserve_insufficient_balance (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,

@@ -120,7 +120,8 @@ TALER_exchange_online_deposit_confirmation_sign (
     .exchange_timestamp = GNUNET_TIME_timestamp_hton (exchange_timestamp),
     .wire_deadline = GNUNET_TIME_timestamp_hton (wire_deadline),
     .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
-    .merchant_pub = *merchant_pub
+    .merchant_pub = *merchant_pub,
+    .h_policy = {{{0}}}
   };
   struct GNUNET_HashContext *hc;
 

@@ -28,6 +28,8 @@
 
 /*
  * @brief Describes the states of fulfillment of a policy bound to a deposit
+ * NOTE: These values must be in sync with their use in stored procedures, f.e.
+ * exchange_do_insert_or_update_policy_details.
  */
 enum TALER_PolicyFulfillmentState
 {

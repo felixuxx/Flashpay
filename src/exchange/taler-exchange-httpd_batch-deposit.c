@@ -60,16 +60,24 @@ struct BatchDepositContext
    */
   struct TALER_EXCHANGEDB_BatchDeposit bd;
 
+
+  /**
+   * Total amount that is accumulated with this deposit,
+   * without fee.
+   */
+  struct TALER_Amount accumulated_total_without_fee;
+
+  /**
+   * True, if no policy was present in the request. Then
+   * @e policy_json is NULL and @e h_policy will be all zero.
+   */
+  bool has_no_policy;
+
   /**
    * Additional details for policy extension relevant for this
    * deposit operation, possibly NULL!
    */
   json_t *policy_json;
-
-  /**
-   * Hash over the merchant's payto://-URI with the wire salt.
-   */
-  struct TALER_MerchantWireHashP h_wire;
 
   /**
    * If @e policy_json was present, the corresponding policy extension
@@ -82,6 +90,11 @@ struct BatchDepositContext
    * Hash over @e policy_details, might be all zero
    */
   struct TALER_ExtensionPolicyHashP h_policy;
+
+  /**
+   * Hash over the merchant's payto://-URI with the wire salt.
+   */
+  struct TALER_MerchantWireHashP h_wire;
 
   /**
    * When @e policy_details are persisted, this contains the id of the record
@@ -121,11 +134,11 @@ reply_batch_deposit_success (
          &TEH_keys_exchange_sign_,
          &bd->h_contract_terms,
          &dc->h_wire,
-         NULL != dc->policy_json ? &dc->h_policy : NULL,
+         dc->has_no_policy ? NULL : &dc->h_policy,
          dc->exchange_timestamp,
          bd->wire_deadline,
          bd->refund_deadline,
-         &dc->policy_details.accumulated_total,   /* excludes fees */
+         &dc->accumulated_total_without_fee,
          bd->num_cdis,
          csigs,
          &dc->bd.merchant_pub,
@@ -176,13 +189,13 @@ batch_deposit_transaction (void *cls,
 
   /* If the deposit has a policy associated to it, persist it.  This will
    * insert or update the record. */
-  if (NULL != dc->policy_json)
+  if (! dc->has_no_policy)
   {
     qs = TEH_plugin->persist_policy_details (
       TEH_plugin->cls,
       &dc->policy_details,
       &dc->bd.policy_details_serial_id,
-      &dc->policy_details.accumulated_total,
+      &dc->accumulated_total_without_fee,
       &dc->policy_details.fulfillment_state);
     if (qs < 0)
       return qs;
@@ -237,13 +250,13 @@ batch_deposit_transaction (void *cls,
               in_conflict ? "in conflict" : "no conflict");
   if (in_conflict)
   {
-    /* FIXME: #7267 conflicting contract != insufficient funds */
+    /* FIXME: #8002 conflicting contract != insufficient funds */
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
           TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT,
-          &bd->cdis[0 /* SEE FIXME-#7267 Oec above! */].coin.denom_pub_hash,
-          &bd->cdis[0 /* SEE FIXME-#7267 Oec above! */].coin.coin_pub);
+          &bd->cdis[0 /* SEE FIXME-#8002 Oec above! */].coin.denom_pub_hash,
+          &bd->cdis[0 /* SEE FIXME-#8002 Oec above! */].coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (! balance_ok)
@@ -495,7 +508,7 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_json ("policy",
                              &dc.policy_json),
-      NULL),
+      &dc.has_no_policy),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &bd->wallet_timestamp),
     GNUNET_JSON_spec_mark_optional (
@@ -571,8 +584,12 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                                       &bd->wire_salt,
                                       &dc.h_wire);
 
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &dc.accumulated_total_without_fee));
+
   /* handle policy, if present */
-  if (NULL != dc.policy_json)
+  if (! dc.has_no_policy)
   {
     const char *error_hint = NULL;
 
@@ -641,10 +658,11 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                        &amount_without_fee,
                        &cdis[i].amount_with_fee,
                        &deposit_fees[i]));
+
       GNUNET_assert (0 <=
                      TALER_amount_add (
-                       &dc.policy_details.accumulated_total,
-                       &dc.policy_details.accumulated_total,
+                       &dc.accumulated_total_without_fee,
+                       &dc.accumulated_total_without_fee,
                        &amount_without_fee));
     }
     if (GNUNET_OK != res)
