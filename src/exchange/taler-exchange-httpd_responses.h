@@ -160,6 +160,27 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 /**
+ * Send proof that a request is invalid to client because of
+ * a conflicting value for the age commitment hash of a coin.
+ * This function will create a message with the conflicting
+ * hash value for the age commitment of the given coin.
+ *
+ * @param connection connection to the client
+ * @param ec error code to return
+ * @param h_denom_pub hash of the denomination of the coin
+ * @param coin_pub public key of the coin
+ * @param h_age_commitment hash of the age commitment as found in the database
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_coin_age_commitment_conflict (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment);
+
+/**
  * Fundamental details about a purse.
  */
 struct TEH_PurseDetails
