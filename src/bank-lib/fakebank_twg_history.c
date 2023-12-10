@@ -147,6 +147,7 @@ TALER_FAKEBANK_twg_get_debit_history_ (
       if ( (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout)) &&
            (0 < hc->ha.delta))
       {
+        acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
@@ -160,6 +161,7 @@ TALER_FAKEBANK_twg_get_debit_history_ (
       }
       if (h->in_shutdown)
       {
+        acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         goto finish;
@@ -400,6 +402,7 @@ TALER_FAKEBANK_twg_get_credit_history_ (
       if (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout) &&
           (0 < hc->ha.delta))
       {
+        acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
@@ -411,6 +414,7 @@ TALER_FAKEBANK_twg_get_credit_history_ (
       }
       if (h->in_shutdown)
       {
+        acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         goto finish;

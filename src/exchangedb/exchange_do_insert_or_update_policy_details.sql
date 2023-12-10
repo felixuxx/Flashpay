@@ -93,14 +93,14 @@ BEGIN
 
        -- Set the fulfillment_state according to the values.
        -- For now, we only update the state when it was INSUFFICIENT.
-       -- FIXME: What to do in case of Failure or other state?
-       IF (out_fullfillment_state = 1) -- INSUFFICIENT
+       -- FIXME[oec] #7999: What to do in case of Failure or other state?
+       IF (out_fullfillment_state = 2) -- INSUFFICIENT
        THEN
                IF (out_accumulated_total.val >= cur_commitment.val OR
                        (out_accumulated_total.val = cur_commitment.val AND
                                out_accumulated_total.frac >= cur_commitment.frac))
                THEN
-                       out_fulfillment_state = 2; -- READY
+                       out_fulfillment_state = 3; -- READY
                END IF;
        END IF;
 

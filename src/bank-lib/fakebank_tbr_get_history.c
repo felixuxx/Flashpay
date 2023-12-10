@@ -149,6 +149,7 @@ TALER_FAKEBANK_tbr_get_history_incoming (
       if (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout) &&
           (0 < hc->ha.delta))
       {
+        acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
@@ -160,6 +161,7 @@ TALER_FAKEBANK_tbr_get_history_incoming (
       }
       if (h->in_shutdown)
       {
+        acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         goto finish;

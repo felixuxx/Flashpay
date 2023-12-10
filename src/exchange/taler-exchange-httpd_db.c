@@ -37,14 +37,14 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 {
   enum TALER_EXCHANGEDB_CoinKnownStatus cks;
   struct TALER_DenominationHashP h_denom_pub;
-  struct TALER_AgeCommitmentHash age_hash;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /* make sure coin is 'known' in database */
   cks = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
                                        coin,
                                        known_coin_id,
                                        &h_denom_pub,
-                                       &age_hash);
+                                       &h_age_commitment);
   switch (cks)
   {
   case TALER_EXCHANGEDB_CKS_ADDED:
@@ -70,13 +70,12 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
       &coin->coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT:
-    /* FIXME: insufficient_funds != Age conflict! See issue #7267, need new
-     * strategy for evidence gathering */
-    *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
+    *mhd_ret = TEH_RESPONSE_reply_coin_age_commitment_conflict (
       connection,
       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
       &h_denom_pub,
-      &coin->coin_pub);
+      &coin->coin_pub,
+      &h_age_commitment);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   GNUNET_assert (0);

@@ -329,6 +329,12 @@ then
       -c "$CONF" \
       "$AUSER" "$APASS" \
       &> libeufin-bank-passwd.log
+    libeufin-bank \
+      edit-account \
+      -c "$CONF" \
+      --debit_threshold="$CURRENCY:1000000" \
+      "$AUSER" \
+      &> libeufin-bank-debit-threshold.log
     echo " OK"
 fi
 

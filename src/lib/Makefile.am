@@ -87,6 +87,7 @@ libtalerexchange_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  -lm \
   $(LIBGNURLCURL_LIBS) \
   $(XLIB)
 

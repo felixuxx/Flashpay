@@ -142,6 +142,7 @@ THEN
   IF NOT FOUND
   THEN
     -- Deposit exists, but with *strange* differences. Not allowed.
+    -- FIXME #8002:  Surely we need to provide the client more data in this case.
     out_conflict=TRUE;
     RETURN;
   END IF;

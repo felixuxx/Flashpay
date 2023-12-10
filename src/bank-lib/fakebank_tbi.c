@@ -49,6 +49,11 @@ TALER_FAKEBANK_tbi_main_ (struct TALER_FAKEBANK_Handle *h,
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
   {
+    struct TALER_Amount zero;
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (h->currency,
+                                          &zero));
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_OK,
@@ -56,6 +61,40 @@ TALER_FAKEBANK_tbi_main_ (struct TALER_FAKEBANK_Handle *h,
                                "0:0:0"),
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
+      GNUNET_JSON_pack_bool ("allow_conversion",
+                             false),
+      GNUNET_JSON_pack_bool ("allow_registrations",
+                             true),
+      GNUNET_JSON_pack_bool ("allow_deletions",
+                             false),
+      GNUNET_JSON_pack_bool ("allow_edit_name",
+                             false),
+      GNUNET_JSON_pack_bool ("allow_edit_cashout_payto_uri",
+                             false),
+      TALER_JSON_pack_amount ("default_debit_threshold",
+                              &zero),
+      GNUNET_JSON_pack_array_steal ("supported_tan_channels",
+                                    json_array ()),
+      GNUNET_JSON_pack_object_steal (
+        "currency_specification",
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("name",
+                                   h->currency),
+          GNUNET_JSON_pack_string ("currency",
+                                   h->currency),
+          GNUNET_JSON_pack_uint64 ("num_fractional_input_digits",
+                                   2),
+          GNUNET_JSON_pack_uint64 ("num_fractional_normal_digits",
+                                   2),
+          GNUNET_JSON_pack_uint64 ("num_fractional_trailing_zero_digits",
+                                   2),
+          GNUNET_JSON_pack_object_steal (
+            "alt_unit_names",
+            GNUNET_JSON_PACK (
+              GNUNET_JSON_pack_string ("0",
+                                       h->currency))),
+          GNUNET_JSON_pack_string ("name",
+                                   h->currency))),
       GNUNET_JSON_pack_string ("name",
                                "taler-bank-integration"));
   }
