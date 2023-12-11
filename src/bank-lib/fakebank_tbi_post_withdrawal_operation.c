@@ -53,6 +53,7 @@ do_post_withdrawal (
   struct WithdrawalOperation *wo;
   char *credit_name;
   struct Account *credit_account;
+  const char *status_string;
 
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
@@ -138,11 +139,20 @@ do_post_withdrawal (
   wo->selection_done = true;
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
+  if (wo->aborted)
+    status_string = "aborted";
+  else if (wo->confirmation_done)
+    status_string = "confirmed";
+  else
+    status_string = "selected";
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
+    // FIXME: Deprecated field, should be deleted in the future.
     GNUNET_JSON_pack_bool ("transfer_done",
-                           wo->confirmation_done));
+                           wo->confirmation_done),
+    GNUNET_JSON_pack_string ("status",
+                             status_string));
 }
 
 
