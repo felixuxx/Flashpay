@@ -56,6 +56,7 @@ TALER_FAKEBANK_tbi_get_withdrawal_operation_ (
 {
   struct ConnectionContext *cc = *con_cls;
   struct WithdrawContext *wc;
+  const char *status_string;
 
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
@@ -97,15 +98,28 @@ TALER_FAKEBANK_tbi_get_withdrawal_operation_ (
                                           json_string ("x-taler-bank")));
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->big_lock));
+    if (wc->wo->aborted)
+      status_string = "aborted";
+    else if (wc->wo->confirmation_done)
+      status_string = "confirmed";
+    else if (wc->wo->selection_done)
+      status_string = "selected";
+    else
+      status_string = "pending";
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_OK,
+      // FIXME: deprecated field, should be removed in the future.
       GNUNET_JSON_pack_bool ("aborted",
                              wc->wo->aborted),
+      // FIXME: deprecated field, should be removed in the future.
       GNUNET_JSON_pack_bool ("selection_done",
                              wc->wo->selection_done),
+      // FIXME: deprecated field, should be removed in the future.
       GNUNET_JSON_pack_bool ("transfer_done",
                              wc->wo->confirmation_done),
+      GNUNET_JSON_pack_string ("status",
+                               status_string),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string ("suggested_exchange",
                                  h->exchange_url)),
