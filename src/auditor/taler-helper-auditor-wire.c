@@ -1057,7 +1057,7 @@ generate_report (void *cls,
   }
   else if (TALER_AML_NORMAL != rd->status)
   {
-    const char *sstatus;
+    const char *sstatus = "<undefined>";
     json_t *rep;
 
     switch (rd->status)
