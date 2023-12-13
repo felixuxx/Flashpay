@@ -15,7 +15,7 @@
 */
 
 /**
- * @file exchange/src/include/platform.h
+ * @file include/platform.h
  * @brief This file contains the includes and definitions which are used by the
  *        rest of the modules
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
