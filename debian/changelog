@@ -1,3 +1,10 @@
+taler-exchange (0.9.3-6) unstable; urgency=low
+
+  * Generate proper markdown in taler-terms-generator.
+  * Return language code for legal terms.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Tue, 13 Dec 2023 18:50:12 -0700
+
 taler-exchange (0.9.3-5) unstable; urgency=low
 
   * More fixes to the database setup automation scripts.
