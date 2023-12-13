@@ -260,7 +260,8 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
         {
           langs = GNUNET_strdup (p->language);
         }
-        else
+        else if (NULL == strstr (langs,
+                                 p->language))
         {
           char *tmp = langs;
 
@@ -360,6 +361,10 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          t->mime_type));
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_CONTENT_LANGUAGE,
+                                         t->language));
   {
     MHD_RESULT ret;
 
