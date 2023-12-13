@@ -5,7 +5,6 @@
 # 'foo' and you add 'Foo' _here_, codespell will continue to complain
 #  about 'Foo'.
 #
-Nam
 BRE
 ND
 Nd
@@ -24,10 +23,12 @@ doas
 ect
 ehr
 fo
+ges
 hel
 ifset
 ist
 keypair
+nam
 nd
 onl
 openin
