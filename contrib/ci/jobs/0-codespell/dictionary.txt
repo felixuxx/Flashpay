@@ -5,6 +5,7 @@
 # 'foo' and you add 'Foo' _here_, codespell will continue to complain
 #  about 'Foo'.
 #
+Nam
 BRE
 ND
 Nd
@@ -17,6 +18,7 @@ acn
 ba
 bre
 cant
+clen
 complet
 doas
 ect
