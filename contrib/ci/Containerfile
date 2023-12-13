@@ -36,12 +36,13 @@ RUN apt-get install -yqq \
 
 # Documentation dependencies
 RUN apt-get install -yqq \
+                   codespell \
                    doxygen \
                    graphviz
 
 # Test suite dependencies
 RUN apt-get install -yqq \
-		   jq \
+                   jq \
                    postgresql \
                    sudo \
                    wget
