@@ -9,16 +9,20 @@ ABOUT-NLS
 **/auditor/*.sql
 *.bbl
 *.bib
+*build-aux*
 *.bst
+*.cache/*
 */cbdc-es.tex
 */cbdc-it.tex
 *.cls
+configure*
 config.status
-contrib/*
+*/contrib/*
 */contrib/hellos/**
 *.dat
 *.deflate
 *.doc
+*/doc/*
 **/doc/flows/main.de.tex
 */doc/texinfo.tex
 *.docx
@@ -41,10 +45,13 @@ contrib/*
 *.jpg
 *.??.json
 *.json
+*/keys/*
 *key
 *.latexmkrc
-*/m4/ax_lib_postgresql.m4
-*/m4/libgcrypt.m4
+*libtool*
+*.log
+*/m4/*
+*.m4
 **/*.map
 *.min.js
 *.mp4
@@ -83,5 +90,7 @@ contrib/*
 *.zkey
 EOF
 );
+
+echo Current directory: `pwd`
 
 codespell -I "${job_dir}"/dictionary.txt -S ${skip//$'\n'/,}
