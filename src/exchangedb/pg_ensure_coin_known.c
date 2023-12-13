@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
+#include "taler_exchangedb_plugin.h"
 #include "taler_pq_lib.h"
 #include "pg_ensure_coin_known.h"
 #include "pg_helper.h"
@@ -143,13 +144,25 @@ TEH_PG_ensure_coin_known (void *cls,
     return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
   }
 
-  if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (h_age_commitment,
-                            &coin->h_age_commitment)) )
+  if (is_age_hash_null != coin->no_age_commitment)
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment));
+    if (is_age_hash_null)
+    {
+      GNUNET_break_op (0);
+      return TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NULL;
+    }
+    else
+    {
+      GNUNET_break_op (0);
+      return TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NON_NULL;
+    }
+  }
+  else if ( (! is_age_hash_null) &&
+            (0 != GNUNET_memcmp (h_age_commitment,
+                                 &coin->h_age_commitment)) )
+  {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT_VALUE_DIFFERS;
   }
 
   return TALER_EXCHANGEDB_CKS_PRESENT;

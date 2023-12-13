@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_exchangedb_lib.h"
@@ -37,7 +38,7 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 {
   enum TALER_EXCHANGEDB_CoinKnownStatus cks;
   struct TALER_DenominationHashP h_denom_pub;
-  struct TALER_AgeCommitmentHash h_age_commitment;
+  struct TALER_AgeCommitmentHash h_age_commitment = {{{0}}};
 
   /* make sure coin is 'known' in database */
   cks = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
@@ -69,10 +70,13 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
       &h_denom_pub,
       &coin->coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
-  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT:
+  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NULL:
+  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NON_NULL:
+  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_VALUE_DIFFERS:
     *mhd_ret = TEH_RESPONSE_reply_coin_age_commitment_conflict (
       connection,
       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
+      cks,
       &h_denom_pub,
       &coin->coin_pub,
       &h_age_commitment);

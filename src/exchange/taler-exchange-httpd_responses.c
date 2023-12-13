@@ -23,9 +23,11 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <gnunet/gnunet_json_lib.h>
 #include <microhttpd.h>
 #include <zlib.h>
 #include "taler-exchange-httpd_responses.h"
+#include "taler_exchangedb_plugin.h"
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
@@ -181,10 +183,31 @@ MHD_RESULT
 TEH_RESPONSE_reply_coin_age_commitment_conflict (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
+  enum TALER_EXCHANGEDB_CoinKnownStatus status,
   const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_AgeCommitmentHash *h_age_commitment_hash)
+  const struct TALER_AgeCommitmentHash *h_age_commitment)
 {
+  const struct TALER_AgeCommitmentHash *hac = h_age_commitment;
+  const char *conflict_detail;
+
+  switch (status)
+  {
+
+  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NULL:
+    conflict_detail = "expected NULL age commitment hash";
+    hac = NULL;
+    break;
+  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NON_NULL:
+    conflict_detail = "unexpected NULL age commitment hash";
+    break;
+  case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_VALUE_DIFFERS:
+    conflict_detail = "expected age commitment hash differs";
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     TALER_ErrorCode_get_http_status_safe (ec),
@@ -193,8 +216,11 @@ TEH_RESPONSE_reply_coin_age_commitment_conflict (
                                 coin_pub),
     GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                 h_denom_pub),
-    GNUNET_JSON_pack_data_auto ("h_age_commitment_hash",
-                                h_age_commitment_hash)
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_data_auto ("expected_age_commitment_hash",
+                                  hac)),
+    GNUNET_JSON_pack_string ("conflict_detail",
+                             conflict_detail)
     );
 }
 

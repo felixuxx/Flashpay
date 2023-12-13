@@ -31,6 +31,7 @@
 #include "taler_error_codes.h"
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_db.h"
+#include "taler_exchangedb_plugin.h"
 
 
 /**
@@ -167,6 +168,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
  *
  * @param connection connection to the client
  * @param ec error code to return
+ * @param cks specific conflict type
  * @param h_denom_pub hash of the denomination of the coin
  * @param coin_pub public key of the coin
  * @param h_age_commitment hash of the age commitment as found in the database
@@ -176,6 +178,7 @@ MHD_RESULT
 TEH_RESPONSE_reply_coin_age_commitment_conflict (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
+  enum TALER_EXCHANGEDB_CoinKnownStatus cks,
   const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_AgeCommitmentHash *h_age_commitment);
