@@ -41,6 +41,7 @@ needs_sphinx = '1.8.5'
 extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.imgmath',
+    'sphinx_markdown_builder',
 ]
 templates_path = ['_templates']
 source_suffix = {
@@ -85,6 +86,14 @@ epub_basename = "%VERSION%"
 epub_title = "%TITLE%"
 EOF
 }
+
+# Output file given as first argument to stderr, then exit with a failure.
+function failcat ()
+{
+    cat "$1" 1>&2
+    exit 1
+}
+
 
 # defaults
 AUTHOR="GNU Taler team"
@@ -198,7 +207,8 @@ then
         -d "${BUILDDIR}/.doctrees" \
         "${BUILDDIR}" \
         "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/" \
-        &> "${BUILDDIR}/add-language.log"
+        &> "${BUILDDIR}/add-language.log" \
+        || failcat "${BUILDDIR}/add-language.log"
     if [ -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]
     then
         msgmerge --lang="${ADD_LANGUAGE}" \
@@ -239,7 +249,8 @@ do
         -b xml \
         "${BUILDDIR}" \
         "${BUILDDIR}/xml" \
-        &> "${BUILDDIR}/xml-sphinx.log"
+        &> "${BUILDDIR}/xml-sphinx.log" \
+        || failcat "${BUILDDIR}/xml-sphinx.log"
     mv "${BUILDDIR}/xml/${VERSION_BASENAME}.xml" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.xml"
 
     echo "$VERSION_BASENAME TXT ($LANGUAGE)..." 1>&2
@@ -248,9 +259,18 @@ do
         -b text \
         "${BUILDDIR}" \
         "${BUILDDIR}/txt" \
-        &> "${BUILDDIR}/txt-sphinx.log"
+        &> "${BUILDDIR}/txt-sphinx.log" \
+        || failcat "${BUILDDIR}/txt-sphinx.log"
     mv "${BUILDDIR}/txt/${VERSION_BASENAME}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.txt"
-    cp "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
+
+    echo "$VERSION_BASENAME MD ($LANGUAGE)..." 1>&2
+    $LBUILD \
+        -b markdown \
+        "${BUILDDIR}" \
+        "${BUILDDIR}/md" \
+        &> "${BUILDDIR}/md-sphinx.log" \
+        || failcat "${BUILDDIR}/md-sphinx.log"
+    mv "${BUILDDIR}/md/${VERSION_BASENAME}.md" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
 
     echo "$VERSION_BASENAME HTML ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
@@ -258,7 +278,8 @@ do
         -b html \
         "${BUILDDIR}" \
         "${BUILDDIR}/html" \
-        &> "${BUILDDIR}/html-sphinx.log"
+        &> "${BUILDDIR}/html-sphinx.log" \
+        || failcat "${BUILDDIR}/html-sphinx.log"
     htmlark \
         -o "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.html" \
         "${BUILDDIR}/html/${VERSION_BASENAME}.html"
@@ -269,7 +290,8 @@ do
         -b epub \
         "${BUILDDIR}" \
         "${BUILDDIR}/epub" \
-        &> "${BUILDDIR}/epub-sphinx.log"
+        &> "${BUILDDIR}/epub-sphinx.log" \
+        || failcat "${BUILDDIR}/epub-sphinx.log"
     mv "${BUILDDIR}/epub/${VERSION_BASENAME}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.epub"
 
     echo "$VERSION_BASENAME PDF ($LANGUAGE)..." 1>&2
@@ -279,13 +301,15 @@ do
         -D latex_paper_size="${PAPER}" \
         "${BUILDDIR}" \
         "${BUILDDIR}/pdf" \
-        &> "${BUILDDIR}/pdf-sphinx.log"
+        &> "${BUILDDIR}/pdf-sphinx.log" \
+        || failcat "${BUILDDIR}/pdf-sphinx.log"
     # We pipe in /dev/null in case latexmk
     # asks for input and would hang otherwise.
     make \
         -C "${BUILDDIR}/pdf" \
         all-pdf \
-        < /dev/null &> "${BUILDDIR}/pdf-latex.log"
+        < /dev/null &> "${BUILDDIR}/pdf-latex.log" \
+        || failcat "${BUILDDIR}/pdf-latex.log"
     mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
 done
 
