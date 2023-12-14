@@ -1,15 +1,13 @@
-﻿Terms of Service
-================
+﻿# Terms of Service
 
-Last updated: 1.11.2023
+## Last update: 14.12.2023
 
 Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment service
 through our Internet presence (collectively the “Services”). Before using our
 Services, please read the Terms of Service (the “Terms” or the “Agreement”)
 carefully.
 
-Overview
---------
+## Overview
 
 This section provides a brief summary of the highlights of this
 Agreement. Please note that when you accept this Agreement, you are accepting
@@ -19,36 +17,35 @@ Wallet’s self-hosted personal payment application. When using the Taler Wallet
 to interact with our Services, you are agreeing to our Terms, so please read
 carefully.
 
-Highlights:
-~~~~~~~~~~~
+## Highlights:
+
 - You are responsible for keeping the data in your Taler Wallet at all times
-      under your control. Any losses arising from you not being in control of
-      your private information are your problem.
+under your control. Any losses arising from you not being in control of
+your private information are your problem.
 - We will try to transfer funds we hold in escrow for our users to any legal
-      recipient to the best of our ability within the limitations of the law and
-      our implementation. However, the Services offered today are highly
-      experimental and the set of recipients of funds is severely restricted.
+recipient to the best of our ability within the limitations of the law and
+our implementation. However, the Services offered today are highly
+experimental and the set of recipients of funds is severely restricted.
 - For our Services, we may charge transaction fees. The specific fee structure
-      is provided based on the Taler protocol and should be shown to you when you
-      withdraw electronic coins using a Taler Wallet. You agree and understand
-      that the Taler protocol allows for the fee structure to change.
+is provided based on the Taler protocol and should be shown to you when you
+withdraw electronic coins using a Taler Wallet. You agree and understand
+that the Taler protocol allows for the fee structure to change.
 - You agree to not intentionally overwhelm our systems with requests and
-      follow responsible disclosure if you find security issues in our services.
+follow responsible disclosure if you find security issues in our services.
 - We cannot be held accountable for our Services not being available due to
-      circumstances beyond our control. If we modify or terminate our services,
-      we will try to give you the opportunity to recover your funds. However,
-      given the experimental state of the Services today, this may not be
-      possible. You are strongly advised to limit your use of the Service
-      to small-scale experiments expecting total loss of all funds.
+circumstances beyond our control. If we modify or terminate our services,
+we will try to give you the opportunity to recover your funds. However,
+given the experimental state of the Services today, this may not be
+possible. You are strongly advised to limit your use of the Service
+to small-scale experiments expecting total loss of all funds.
 
 These terms outline approved uses of our Services. The Services and these
 Terms are still at an experimental stage. If you have any questions or
 comments related to this Agreement, please send us a message to
-legal@taler-systems.com. If you do not agree to this Agreement, you must not
+<legal@taler-systems.com>. If you do not agree to this Agreement, you must not
 use our Services.
 
-How you accept this policy
---------------------------
+## How you accept this policy
 
 By sending funds to us (to top-up your Taler Wallet), you acknowledge that you
 have read, understood, and agreed to these Terms. We reserve the right to
@@ -62,18 +59,17 @@ signify your acceptance to be bound by the then current Terms. Please check
 the effective date above to determine if there have been any changes since you
 have last reviewed these Terms.
 
-Services
---------
+## Services
 
 We will try to transfer funds that we hold in escrow for our users to any
 legal recipient to the best of our ability and within the limitations of the
 law and our implementation. However, the Services offered today are highly
-experimental and the set of recipients of funds is severely restricted.  The
+experimental and the set of recipients of funds is severely restricted. The
 Taler Wallet can be loaded by exchanging fiat currencies against electronic
 coins. We are providing this exchange service. Once your Taler Wallet is
 loaded with electronic coins they can be spent for purchases if the seller is
 accepting Taler as a means of payment. We are not guaranteeing that any seller
-is accepting Taler at all or a particular seller.  The seller or recipient of
+is accepting Taler at all or a particular seller. The seller or recipient of
 deposits of electronic coins must specify the target account, as per the
 design of the Taler protocol. They are responsible for following the protocol
 and specifying the correct bank account, and are solely liable for any losses
@@ -89,15 +85,13 @@ to do so.
 When using our Services, you agree to not take any action that intentionally
 imposes an unreasonable load on our infrastructure. If you find security
 problems in our Services, you agree to first report them to
-security@taler-systems.com and grant us the right to publish your report. We
+<security@taler-systems.com> and grant us the right to publish your report. We
 warrant that we will ourselves publicly disclose any issues reported within 3
 months, and that we will not prosecute anyone reporting security issues if
 they did not exploit the issue beyond a proof-of-concept, and followed the
 above responsible disclosure practice.
 
-
-Fees
-----
+## Fees
 
 You agree to pay the fees for exchanges and withdrawals completed via the
 Taler Wallet ("Fees") as defined by us, which we may change from time to
@@ -106,15 +100,14 @@ for any electronic coin at the time of withdrawal and fixed throughout the
 validity period of the respective electronic coin. Your wallet should obtain
 and display applicable fees when withdrawing funds. Fees for coins obtained as
 change may differ from the fees applicable to the original coin. Wire transfer
-fees that are independent from electronic coins may change annually.  You
+fees that are independent from electronic coins may change annually. You
 authorize us to charge or deduct applicable fees owed in connection with
 deposits, exchanges and withdrawals following the rules of the Taler protocol.
 We reserve the right to provide different types of rewards to users either in
 the form of discount for our Services or in any other form at our discretion
 and without prior notice to you.
 
-Eligibility and Financial self-responsibility
----------------------------------------------
+## Eligibility and Financial self-responsibility
 
 To be eligible to use our Services, you must be able to form legally binding
 contracts or have the permission of your legal guardian. By using our
@@ -128,23 +121,20 @@ by the software to minimize the chances to losse access to or control over
 your Wallet data. We will not be liable for any loss or damage arising from
 your failure to comply with this paragraph.
 
-Copyrights and trademarks
--------------------------
+## Copyrights and trademarks
 
 The Taler Wallet is released under the terms of the GNU General Public License
 (GNU GPL). You have the right to access, use, and share the Taler Wallet, in
 modified or unmodified form. However, the GPL is a strong copyleft license,
 which means that any derivative works must be distributed under the same
 license terms as the original software. If you have any questions, you should
-review the GNU GPL’s full terms and conditions at
-https://www.gnu.org/licenses/gpl-3.0.en.html.  “Taler” itself is a trademark
+review the GNU GPL’s full terms and conditions on [the GNU GPL Licenses page]
+(https://www.gnu.org/licenses/gpl-3.0.en.html). “Taler” itself is a trademark
 of Taler Systems SA. You are welcome to use the name in relation to processing
-payments using the Taler protocol, assuming your use is compatible with an
+payments based on the Taler protocol, assuming your use is compatible with an
 official release from the GNU Project that is not older than two years.
 
-
-Limitation of liability & disclaimer of warranties
---------------------------------------------------
+## Limitation of liability & disclaimer of warranties
 
 You understand and agree that we have no control over, and no duty to take any
 action regarding: Failures, disruptions, errors, or delays in processing that
@@ -153,22 +143,20 @@ software, and Internet connections; The risk of malicious software being
 introduced or found in the software underlying the Taler Wallet; The risk that
 third parties may obtain unauthorized access to information stored within your
 Taler Wallet, including, but not limited to your Taler Wallet coins or backup
-encryption keys.  You release us from all liability related to any losses,
+encryption keys. You release us from all liability related to any losses,
 damages, or claims arising from:
 
-(a) user error such as forgotten passwords, incorrectly constructed
-    transactions;
-(b) server failure or data loss;
-(c) unauthorized access to the Taler Wallet application;
-(d) bugs or other errors in the Taler Wallet software; and
-(e) any unauthorized third party activities, including, but not limited to,
-    the use of viruses, phishing, brute forcing, or other means of attack
-    against the Taler Wallet. We make no representations concerning any
-    Third Party Content contained in or accessed through our Services.
+1. user error such as forgotten passwords, incorrectly constructed transactions;
+2. server failure or data loss;
+3. unauthorized access to the Taler Wallet application;
+4. bugs or other errors in the Taler Wallet software; and
+5. any unauthorized third party activities, including, but not limited to,
+the use of viruses, phishing, brute forcing, or other means of attack 
+against the Taler Wallet. We make no representations concerning any
+Third Party Content contained in or accessed through our Services.
 
 Any other terms, conditions, warranties, or representations associated with
-such content, are solely between you and such organizations and/or
-individuals.
+such content, are solely between you and such organizations and/or individuals.
 
 To the fullest extent permitted by applicable law, in no event will we or any
 of our officers, directors, representatives, agents, servants, counsel,
@@ -177,19 +165,17 @@ acting, or purporting to act on our behalf (collectively the “Taler Parties”
 be liable to you under contract, tort, strict liability, negligence, or any
 other legal or equitable theory, for:
 
-(a) any lost profits, data loss, cost of procurement of substitute goods or
-    services, or direct, indirect, incidental, special, punitive, compensatory,
-    or consequential damages of any kind whatsoever resulting from:
-
-  (i) your use of, or conduct in connection with, our services;
-  (ii) any unauthorized use of your wallet and/or private key due to your
-       failure to maintain the confidentiality of your wallet;
-  (iii) any interruption or cessation of transmission to or from the services; or
-  (iv) any bugs, viruses, trojan horses, or the like that are found in the Taler
-       Wallet software or that may be transmitted to or through our services by
-       any third party (regardless of the source of origination), or
-
-(b) any direct damages.
+1. any lost profits, data loss, cost of procurement of substitute goods or services,
+or direct, indirect, incidental, special, punitive, compensatory,
+or consequential damages of any kind whatsoever resulting from:
+    - your use of, or conduct in connection with, our services;
+    - any unauthorized use of your wallet and/or private key due to your failure
+to maintain the confidentiality of your wallet;
+    - any interruption or cessation of transmission to or from the services; or
+    - any bugs, viruses, trojan horses, or the like that are found in the Taler
+Wallet software or that may be transmitted to or through our services by any
+third party (regardless of the source of origination), or
+2. any direct damages.
 
 These limitations apply regardless of legal theory, whether based on tort,
 strict liability, breach of contract, breach of warranty, or any other legal
@@ -214,8 +200,7 @@ implied warranties, so the foregoing disclaimers may not apply to you. This
 paragraph gives you specific legal rights and you may also have other legal
 rights that vary from state to state.
 
-Indemnity and Time limitation on claims and Termination
--------------------------------------------------------
+## Indemnity and Time limitation on claims and Termination
 
 To the extent permitted by applicable law, you agree to defend, indemnify, and
 hold harmless the Taler Parties from and against any and all claims, damages,
@@ -233,8 +218,7 @@ In the event of termination concerning your use of our Services, your
 obligations under this Agreement will still continue.
 
 
-Discontinuance of services and Force majeure
---------------------------------------------
+## Discontinuance of services and Force majeure
 
 We may, in our sole discretion and without cost to you, with or without prior
 notice, and at any time, modify or discontinue, temporarily or permanently,
@@ -256,9 +240,7 @@ services, failure of equipment and/or software, other catastrophe, or any
 other occurrence which is beyond our reasonable control and shall not affect
 the validity and enforceability of any remaining provisions.
 
-
-Governing law, Waivers, Severability and Assignment
----------------------------------------------------
+## Governing law, Waivers, Severability and Assignment
 
 No matter where you’re located, the laws of Switzerland will govern these
 Terms. If any provisions of these Terms are inconsistent with any applicable
@@ -287,9 +269,7 @@ prior versions of this Agreement) and every nature between us. Except as
 provided for above, any modification to this Agreement must be in writing and
 must be signed by both parties.
 
-
-Questions or comments
----------------------
+## Questions or comments
 
 We welcome comments, questions, concerns, or suggestions. Please send us a
-message on our contact page at legal@taler-systems.com.
+message on our contact page at <legal@taler-systems.com>.
