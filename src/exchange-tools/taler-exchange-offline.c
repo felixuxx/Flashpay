@@ -3052,7 +3052,7 @@ parse_restriction (char *const *args,
                      GNUNET_JSON_PACK (
                        GNUNET_JSON_pack_string ("type",
                                                 "regex"),
-                       GNUNET_JSON_pack_string ("regex",
+                       GNUNET_JSON_pack_string ("payto_regex",
                                                 args[1]),
                        GNUNET_JSON_pack_string ("human_hint",
                                                 args[2]),
