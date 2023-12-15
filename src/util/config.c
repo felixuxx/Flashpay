@@ -461,7 +461,11 @@ TALER_CONFIG_parse_currencies (const struct GNUNET_CONFIGURATION_Handle *cfg,
   *num_currencies = cpc.num_currencies;
   *cspecs = cpc.cspecs;
   if (0 == *num_currencies)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No currency formatting specification found! Please check your installation!\n");
     return GNUNET_NO;
+  }
   return GNUNET_OK;
 }
 
