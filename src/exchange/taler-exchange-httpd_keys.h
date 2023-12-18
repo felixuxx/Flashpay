@@ -405,7 +405,7 @@ TEH_keys_finished (void);
 
 
 /**
- * Resumse all suspended /keys requests, we may now have key material
+ * Resumes all suspended /keys requests, we may now have key material
  * (or are shutting down).
  *
  * @param do_shutdown are we shutting down?
