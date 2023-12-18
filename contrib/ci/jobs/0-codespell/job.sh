@@ -77,6 +77,9 @@ config.status
 **/templating/mustach**
 */templating/test?/**
 */testcurl/test_tricky.c
+*/debian/tmp/**
+*/debian/taler-exchange/**
+*/debian/.debhelper/**
 *.tgz
 *.ttf
 *.ttf
