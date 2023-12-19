@@ -499,7 +499,7 @@ parse_age_commitment (void *cls,
 
 
 /**
- * Cleanup data left fom parsing age commitment
+ * Cleanup data left from parsing age commitment
  *
  * @param cls closure, NULL
  * @param[out] spec where to free the data

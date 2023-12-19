@@ -25,22 +25,17 @@ RUN apt-get update -yqq && \
 		   python3-sphinx-rtd-theme \
                    recutils \
                    texinfo \
-		   zlib1g-dev
-
-# Debian packaging tools
-RUN apt-get install -yqq \
+		   zlib1g-dev \
+                   # Debian packaging tools \
                    po-debconf \
                    build-essential \
                    debhelper-compat \
-                   devscripts
-
-# Documentation dependencies
-RUN apt-get install -yqq \
+                   devscripts \
+		   git-buildpackage \
+		   # Documentation dependencies \
                    doxygen \
-                   graphviz
-
-# Test suite dependencies
-RUN apt-get install -yqq \
+                   graphviz \
+		   # Test suite dependencies \
 		   jq \
                    postgresql \
                    sudo \

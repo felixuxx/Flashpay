@@ -17,10 +17,14 @@
  * @file exchangedb/pg_batch_ensure_coin_known.c
  * @brief Implementation of the batch_ensure_coin_known function for Postgres
  * @author Christian Grothoff
+ *
+ * FIXME: use the array support for postgres to simplify this code!
+ *
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
+#include "taler_exchangedb_plugin.h"
 #include "taler_pq_lib.h"
 #include "pg_batch_ensure_coin_known.h"
 #include "pg_helper.h"
@@ -93,14 +97,37 @@ insert1 (struct PostgresClosure *pg,
     result[0].denom_conflict = true;
   }
 
-  if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (&result[0].h_age_commitment,
-                            &coin->h_age_commitment)) )
+  if ( (! is_denom_pub_hash_null) &&
+       (0 != GNUNET_memcmp (&result[0].denom_hash,
+                            &coin[0].denom_pub_hash)) )
   {
-    GNUNET_break (GNUNET_is_zero (&result[0].h_age_commitment));
     GNUNET_break_op (0);
-    result[0].age_conflict = true;
+    result[0].denom_conflict = true;
   }
+
+  result[0].age_conflict = TALER_AgeCommitmentHash_NoConflict;
+
+  if (is_age_hash_null != coin[0].no_age_commitment)
+  {
+    if (is_age_hash_null)
+    {
+      GNUNET_break_op (0);
+      result[0].age_conflict = TALER_AgeCommitmentHash_NullExpected;
+    }
+    else
+    {
+      GNUNET_break_op (0);
+      result[0].age_conflict = TALER_AgeCommitmentHash_ValueExpected;
+    }
+  }
+  else if ( (! is_age_hash_null) &&
+            (0 != GNUNET_memcmp (&result[0].h_age_commitment,
+                                 &coin[0].h_age_commitment)) )
+  {
+    GNUNET_break_op (0);
+    result[0].age_conflict = TALER_AgeCommitmentHash_ValueDiffers;
+  }
+
   return qs;
 }
 
@@ -111,10 +138,8 @@ insert2 (struct PostgresClosure *pg,
          struct TALER_EXCHANGEDB_CoinInfo result[2])
 {
   enum GNUNET_DB_QueryStatus qs;
-  bool is_denom_pub_hash_null = false;
-  bool is_age_hash_null = false;
-  bool is_denom_pub_hash_null2 = false;
-  bool is_age_hash_null2 = false;
+  bool is_denom_pub_hash_null[2] = {false, false};
+  bool is_age_hash_null[2] = {false, false};
 
   PREPARE (pg,
            "batch2_known_coin",
@@ -150,11 +175,11 @@ insert2 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &result[0].denom_hash),
-      &is_denom_pub_hash_null),
+      &is_denom_pub_hash_null[0]),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                             &result[0].h_age_commitment),
-      &is_age_hash_null),
+      &is_age_hash_null[0]),
     GNUNET_PQ_result_spec_bool ("existed2",
                                 &result[1].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id2",
@@ -162,11 +187,11 @@ insert2 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash2",
                                             &result[1].denom_hash),
-      &is_denom_pub_hash_null2),
+      &is_denom_pub_hash_null[1]),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash2",
                                             &result[1].h_age_commitment),
-      &is_age_hash_null2),
+      &is_age_hash_null[1]),
     GNUNET_PQ_result_spec_end
   };
 
@@ -188,38 +213,40 @@ insert2 (struct PostgresClosure *pg,
     break; /* continued below */
   }
 
-  if ( (! is_denom_pub_hash_null) &&
-       (0 != GNUNET_memcmp (&result[0].denom_hash,
-                            &coin[0].denom_pub_hash)) )
+  for (int i = 0; i < 2; i++)
   {
-    GNUNET_break_op (0);
-    result[0].denom_conflict = true;
+    if ( (! is_denom_pub_hash_null[i]) &&
+         (0 != GNUNET_memcmp (&result[i].denom_hash,
+                              &coin[i].denom_pub_hash)) )
+    {
+      GNUNET_break_op (0);
+      result[i].denom_conflict = true;
+    }
+
+    result[i].age_conflict = TALER_AgeCommitmentHash_NoConflict;
+
+    if (is_age_hash_null[i] != coin[i].no_age_commitment)
+    {
+      if (is_age_hash_null[i])
+      {
+        GNUNET_break_op (0);
+        result[i].age_conflict = TALER_AgeCommitmentHash_NullExpected;
+      }
+      else
+      {
+        GNUNET_break_op (0);
+        result[i].age_conflict = TALER_AgeCommitmentHash_ValueExpected;
+      }
+    }
+    else if ( (! is_age_hash_null[i]) &&
+              (0 != GNUNET_memcmp (&result[i].h_age_commitment,
+                                   &coin[i].h_age_commitment)) )
+    {
+      GNUNET_break_op (0);
+      result[i].age_conflict = TALER_AgeCommitmentHash_ValueDiffers;
+    }
   }
 
-  if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (&result[0].h_age_commitment,
-                            &coin[0].h_age_commitment)) )
-  {
-    GNUNET_break (GNUNET_is_zero (&result[0].h_age_commitment));
-    GNUNET_break_op (0);
-    result[0].age_conflict = true;
-  }
-  if ( (! is_denom_pub_hash_null2) &&
-       (0 != GNUNET_memcmp (&result[1].denom_hash,
-                            &coin[1].denom_pub_hash)) )
-  {
-    GNUNET_break_op (0);
-    result[1].denom_conflict = true;
-  }
-
-  if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (&result[1].h_age_commitment,
-                            &coin[1].h_age_commitment)) )
-  {
-    GNUNET_break (GNUNET_is_zero (&result[1].h_age_commitment));
-    GNUNET_break_op (0);
-    result[1].age_conflict = true;
-  }
   return qs;
 }
 
@@ -230,14 +257,8 @@ insert4 (struct PostgresClosure *pg,
          struct TALER_EXCHANGEDB_CoinInfo result[4])
 {
   enum GNUNET_DB_QueryStatus qs;
-  bool is_denom_pub_hash_null = false;
-  bool is_age_hash_null = false;
-  bool is_denom_pub_hash_null2 = false;
-  bool is_age_hash_null2 = false;
-  bool is_denom_pub_hash_null3 = false;
-  bool is_age_hash_null3 = false;
-  bool is_denom_pub_hash_null4 = false;
-  bool is_age_hash_null4 = false;
+  bool is_denom_pub_hash_null[4] = {false, false, false, false};
+  bool is_age_hash_null[4] = {false, false, false, false};
   PREPARE (pg,
            "batch4_known_coin",
            "SELECT"
@@ -290,11 +311,11 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &result[0].denom_hash),
-      &is_denom_pub_hash_null),
+      &is_denom_pub_hash_null[0]),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                             &result[0].h_age_commitment),
-      &is_age_hash_null),
+      &is_age_hash_null[0]),
     GNUNET_PQ_result_spec_bool ("existed2",
                                 &result[1].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id2",
@@ -302,11 +323,11 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash2",
                                             &result[1].denom_hash),
-      &is_denom_pub_hash_null2),
+      &is_denom_pub_hash_null[1]),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash2",
                                             &result[1].h_age_commitment),
-      &is_age_hash_null2),
+      &is_age_hash_null[1]),
     GNUNET_PQ_result_spec_bool ("existed3",
                                 &result[2].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id3",
@@ -314,11 +335,11 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash3",
                                             &result[2].denom_hash),
-      &is_denom_pub_hash_null3),
+      &is_denom_pub_hash_null[2]),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash3",
                                             &result[2].h_age_commitment),
-      &is_age_hash_null3),
+      &is_age_hash_null[2]),
     GNUNET_PQ_result_spec_bool ("existed4",
                                 &result[3].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id4",
@@ -326,11 +347,11 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash4",
                                             &result[3].denom_hash),
-      &is_denom_pub_hash_null4),
+      &is_denom_pub_hash_null[3]),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash4",
                                             &result[3].h_age_commitment),
-      &is_age_hash_null4),
+      &is_age_hash_null[3]),
     GNUNET_PQ_result_spec_end
   };
 
@@ -352,69 +373,40 @@ insert4 (struct PostgresClosure *pg,
     break; /* continued below */
   }
 
-  if ( (! is_denom_pub_hash_null) &&
-       (0 != GNUNET_memcmp (&result[0].denom_hash,
-                            &coin[0].denom_pub_hash)) )
+  for (int i = 0; i < 4; i++)
   {
-    GNUNET_break_op (0);
-    result[0].denom_conflict = true;
-  }
-  if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (&result[0].h_age_commitment,
-                            &coin[0].h_age_commitment)) )
-  {
-    GNUNET_break (GNUNET_is_zero (&result[0].h_age_commitment));
-    GNUNET_break_op (0);
-    result[0].age_conflict = true;
+    if ( (! is_denom_pub_hash_null[i]) &&
+         (0 != GNUNET_memcmp (&result[i].denom_hash,
+                              &coin[i].denom_pub_hash)) )
+    {
+      GNUNET_break_op (0);
+      result[i].denom_conflict = true;
+    }
+
+    result[i].age_conflict = TALER_AgeCommitmentHash_NoConflict;
+
+    if (is_age_hash_null[i] != coin[i].no_age_commitment)
+    {
+      if (is_age_hash_null[i])
+      {
+        GNUNET_break_op (0);
+        result[i].age_conflict = TALER_AgeCommitmentHash_NullExpected;
+      }
+      else
+      {
+        GNUNET_break_op (0);
+        result[i].age_conflict = TALER_AgeCommitmentHash_ValueExpected;
+      }
+    }
+    else if ( (! is_age_hash_null[i]) &&
+              (0 != GNUNET_memcmp (&result[i].h_age_commitment,
+                                   &coin[i].h_age_commitment)) )
+    {
+      GNUNET_break_op (0);
+      result[i].age_conflict = TALER_AgeCommitmentHash_ValueDiffers;
+    }
   }
 
-  if ( (! is_denom_pub_hash_null2) &&
-       (0 != GNUNET_memcmp (&result[1].denom_hash,
-                            &coin[1].denom_pub_hash)) )
-  {
-    GNUNET_break_op (0);
-    result[1].denom_conflict = true;
-  }
-  if ( (! is_age_hash_null2) &&
-       (0 != GNUNET_memcmp (&result[1].h_age_commitment,
-                            &coin[1].h_age_commitment)) )
-  {
-    GNUNET_break (GNUNET_is_zero (&result[1].h_age_commitment));
-    GNUNET_break_op (0);
-    result[1].age_conflict = true;
-  }
-
-  if ( (! is_denom_pub_hash_null3) &&
-       (0 != GNUNET_memcmp (&result[2].denom_hash,
-                            &coin[2].denom_pub_hash)) )
-  {
-    GNUNET_break_op (0);
-    result[2].denom_conflict = true;
-  }
-  if ( (! is_age_hash_null3) &&
-       (0 != GNUNET_memcmp (&result[2].h_age_commitment,
-                            &coin[2].h_age_commitment)) )
-  {
-    GNUNET_break (GNUNET_is_zero (&result[2].h_age_commitment));
-    GNUNET_break_op (0);
-    result[2].age_conflict = true;
-  }
-
-  if ( (! is_denom_pub_hash_null4) &&
-       (0 != GNUNET_memcmp (&result[3].denom_hash,
-                            &coin[3].denom_pub_hash)) )
-  {
-    GNUNET_break_op (0);
-    result[3].denom_conflict = true;
-  }
-  if ( (! is_age_hash_null4) &&
-       (0 != GNUNET_memcmp (&result[3].h_age_commitment,
-                            &coin[3].h_age_commitment)) )
-  {
-    GNUNET_break (GNUNET_is_zero (&result[3].h_age_commitment));
-    GNUNET_break_op (0);
-    result[3].age_conflict = true;
-  }
   return qs;
 }
 

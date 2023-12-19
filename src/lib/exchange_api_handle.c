@@ -2045,7 +2045,7 @@ ar_to_json (unsigned int ar_len,
               "type",
               "regex"),
             GNUNET_JSON_pack_string (
-              "regex",
+              "payto_regex",
               ar->details.regex.posix_egrep),
             GNUNET_JSON_pack_string (
               "human_hint",

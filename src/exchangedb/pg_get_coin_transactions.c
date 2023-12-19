@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
+#include "taler_exchangedb_plugin.h"
 #include "taler_pq_lib.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_helper.h"
@@ -698,39 +699,39 @@ handle_history_entry (void *cls,
   struct CoinHistoryContext *chc = cls;
   struct PostgresClosure *pg = chc->pg;
   static const struct Work work[] = {
-    /** #TALER_EXCHANGEDB_TT_DEPOSIT */
+    [TALER_EXCHANGEDB_TT_DEPOSIT] =
     { "coin_deposits",
       "get_deposit_with_coin_pub",
       &add_coin_deposit },
-    /** #TALER_EXCHANGEDB_TT_MELT */
+    [TALER_EXCHANGEDB_TT_MELT] =
     { "refresh_commitments",
       "get_refresh_session_by_coin",
       &add_coin_melt },
-    /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
+    [TALER_EXCHANGEDB_TT_PURSE_DEPOSIT] =
     { "purse_deposits",
       "get_purse_deposit_by_coin_pub",
       &add_coin_purse_deposit },
-    /** #TALER_EXCHANGEDB_TT_PURSE_REFUND */
+    [TALER_EXCHANGEDB_TT_PURSE_REFUND] =
     { "purse_decision",
       "get_purse_decision_by_coin_pub",
       &add_coin_purse_decision },
-    /** #TALER_EXCHANGEDB_TT_REFUND */
+    [TALER_EXCHANGEDB_TT_REFUND] =
     { "refunds",
       "get_refunds_by_coin",
       &add_coin_refund },
-    /** #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP */
+    [TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP] =
     { "recoup_refresh::OLD",
       "recoup_by_old_coin",
       &add_old_coin_recoup },
-    /** #TALER_EXCHANGEDB_TT_RECOUP */
+    [TALER_EXCHANGEDB_TT_RECOUP] =
     { "recoup",
       "recoup_by_coin",
       &add_coin_recoup },
-    /** #TALER_EXCHANGEDB_TT_RECOUP_REFRESH */
+    [TALER_EXCHANGEDB_TT_RECOUP_REFRESH] =
     { "recoup_refresh::NEW",
       "recoup_by_refreshed_coin",
       &add_coin_recoup_refresh },
-    /** #TALER_EXCHANGEDB_TT_RESERVE_OPEN */
+    [TALER_EXCHANGEDB_TT_RESERVE_OPEN] =
     { "reserves_open_deposits",
       "reserve_open_by_coin",
       &add_coin_reserve_open },

@@ -3,22 +3,21 @@ set -exuo pipefail
 # This file is in the public domain.
 # Helper script to build the latest DEB packages in the container.
 
+
 unset LD_LIBRARY_PATH
 
-
-git apply ./ci/jobs/2-deb-package/install-fix.patch
-
-# Get current version from debian/control file.
-DEB_VERSION=$(dpkg-parsechangelog -S Version)
-
 # Install build-time dependencies.
+# Update apt cache first
+apt-get update
+apt-get upgrade -y
 mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
 
-# We do a sparse checkout, so we need to hint
-# the version to the build system.
-echo $DEB_VERSION > .version
+export VERSION="$(./contrib/ci/jobs/4-deb-package/version.sh)"
+echo "Building package version ${VERSION}"
+EMAIL=none gbp dch --ignore-branch --debian-tag="%(version)s" --git-author --new-version="${VERSION}"
 ./bootstrap
 dpkg-buildpackage -rfakeroot -b -uc -us
 
-ls ../*.deb
-mv ../*.deb /artifacts/
+ls -alh ../*.deb
+mkdir -p /artifacts/exchange/${CI_COMMIT_REF} # Variable comes from CI environment
+mv ../*.deb /artifacts/exchange/${CI_COMMIT_REF}/

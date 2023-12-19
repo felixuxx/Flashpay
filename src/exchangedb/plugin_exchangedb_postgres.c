@@ -222,7 +222,7 @@
  * slow down things a _lot_, but also provide extensive logging
  * in the Postgres database logger for performance analysis.
  */
-#define AUTO_EXPLAIN 1
+#define AUTO_EXPLAIN 0
 
 
 /**
