@@ -1,9 +1,8 @@
 #!/bin/bash
 set -exvuo pipefail
 
-# Use podman if available, otherwise use docker.
-# Fails if neither is found in PATH
-OCI_RUNTIME=$(which podman || which docker)
+# Use podman, fails if it isn't found in PATH
+OCI_RUNTIME=$(which podman)
 REPO_NAME=$(basename "${PWD}")
 JOB_NAME="${1}"
 JOB_CONTAINER=$((grep CONTAINER_NAME contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "${REPO_NAME}")

@@ -9,4 +9,6 @@ apt-get upgrade -yqq
 	    --enable-logging=verbose \
 	    --disable-doc
 
+nump=$(grep processor /proc/cpuinfo | wc -l)
+make -j$(( $nump / 2 ))
 make

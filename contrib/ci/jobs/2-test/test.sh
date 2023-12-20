@@ -8,7 +8,9 @@ apt-get upgrade -yqq
 ./configure CFLAGS="-ggdb -O0" \
 	    --enable-logging=verbose \
 	    --disable-doc
-make
+
+nump=$(grep processor /proc/cpuinfo | wc -l)
+make -j$(( $nump / 2 ))
 make install
 
 sudo -u postgres /usr/lib/postgresql/15/bin/postgres -D /etc/postgresql/15/main -h localhost -p 5432 &
