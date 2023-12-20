@@ -1,6 +1,4 @@
-﻿# Terms of Service
-
-## Last update: 14.12.2023
+﻿### Last update: 20.12.2023
 
 Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment service
 through our Internet presence (collectively the “Services”). Before using our
