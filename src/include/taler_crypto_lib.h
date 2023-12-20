@@ -5516,7 +5516,7 @@ void
 TALER_merchant_pay_sign (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
-  struct GNUNET_CRYPTO_EddsaSignature *merch_sig);
+  struct TALER_MerchantSignatureP *merch_sig);
 
 
 /**
