@@ -19,9 +19,11 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <gnunet/gnunet_db_lib.h>
 #include <pthread.h>
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_error_codes.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
@@ -62,14 +64,39 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
                                     NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_DENOM_CONFLICT:
-    /* FIXME: insufficient_funds != denom conflict! See issue #7267, need new
-     * strategy for evidence gathering */
-    *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
-      connection,
-      TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
-      &h_denom_pub,
-      &coin->coin_pub);
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    /* The exchange has a seen this coin before, but with a different denomination.
+     * Get the corresponding signature and sent it to the client as proof */
+    {
+      struct conflict
+      {
+        struct TALER_DenominationPublicKey pub;
+        struct TALER_DenominationSignature sig;
+      } conflict = {0};
+
+      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          TEH_plugin->get_signature_for_known_coin (TEH_plugin->cls,
+                                                    &coin->coin_pub,
+                                                    &conflict.pub,
+                                                    &conflict.sig))
+      {
+        /* There _should_ have been a result, because
+         * we ended here due to a conflict! */
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               NULL);
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+
+      *mhd_ret = TEH_RESPONSE_reply_coin_denomination_conflict (
+        connection,
+        TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
+        &coin->coin_pub,
+        &conflict.pub,
+        &conflict.sig);
+
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NULL:
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NON_NULL:
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_VALUE_DIFFERS:

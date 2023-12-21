@@ -180,6 +180,29 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
 
 
 MHD_RESULT
+TEH_RESPONSE_reply_coin_denomination_conflict (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_DenominationPublicKey *prev_denom_pub,
+  const struct TALER_DenominationSignature *prev_denom_sig)
+{
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    TALER_ErrorCode_get_http_status_safe (ec),
+    TALER_JSON_pack_ec (ec),
+    GNUNET_JSON_pack_data_auto ("coin_pub",
+                                coin_pub),
+    TALER_JSON_pack_denom_pub ("prev_denom_pub",
+                               prev_denom_pub),
+    TALER_JSON_pack_denom_sig ("prev_denom_sig",
+                               prev_denom_sig)
+    );
+
+}
+
+
+MHD_RESULT
 TEH_RESPONSE_reply_coin_age_commitment_conflict (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
@@ -188,7 +211,6 @@ TEH_RESPONSE_reply_coin_age_commitment_conflict (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_AgeCommitmentHash *h_age_commitment)
 {
-  const struct TALER_AgeCommitmentHash *hac = h_age_commitment;
   const char *conflict_detail;
 
   switch (status)
@@ -196,10 +218,10 @@ TEH_RESPONSE_reply_coin_age_commitment_conflict (
 
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NULL:
     conflict_detail = "expected NULL age commitment hash";
-    hac = NULL;
+    h_age_commitment = NULL;
     break;
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_EXPECTED_NON_NULL:
-    conflict_detail = "unexpected NULL age commitment hash";
+    conflict_detail = "expected non-NULL age commitment hash";
     break;
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT_VALUE_DIFFERS:
     conflict_detail = "expected age commitment hash differs";
@@ -218,7 +240,7 @@ TEH_RESPONSE_reply_coin_age_commitment_conflict (
                                 h_denom_pub),
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_data_auto ("expected_age_commitment_hash",
-                                  hac)),
+                                  h_age_commitment)),
     GNUNET_JSON_pack_string ("conflict_detail",
                              conflict_detail)
     );

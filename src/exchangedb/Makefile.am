@@ -126,6 +126,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_count_known_coins.h pg_count_known_coins.c \
   pg_ensure_coin_known.h pg_ensure_coin_known.c \
   pg_get_known_coin.h pg_get_known_coin.c \
+  pg_get_signature_for_known_coin.h pg_get_signature_for_known_coin.c \
   pg_get_coin_denomination.h pg_get_coin_denomination.c \
   pg_have_deposit2.h pg_have_deposit2.c \
   pg_aggregate.h pg_aggregate.c \

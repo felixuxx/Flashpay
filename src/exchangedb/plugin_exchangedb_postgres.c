@@ -130,6 +130,7 @@
 #include "pg_count_known_coins.h"
 #include "pg_ensure_coin_known.h"
 #include "pg_get_known_coin.h"
+#include "pg_get_signature_for_known_coin.h"
 #include "pg_get_coin_denomination.h"
 #include "pg_have_deposit2.h"
 #include "pg_aggregate.h"
@@ -232,14 +233,14 @@
  * @param conn SQL connection that was used
  */
 #define BREAK_DB_ERR(result,conn) do {                                  \
-    GNUNET_break (0);                                                   \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                "Database failure: %s/%s/%s/%s/%s",                     \
-                PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),   \
-                PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),    \
-                PQresultErrorMessage (result),                          \
-                PQresStatus (PQresultStatus (result)),                  \
-                PQerrorMessage (conn));                                 \
+          GNUNET_break (0);                                                   \
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                      "Database failure: %s/%s/%s/%s/%s",                     \
+                      PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),   \
+                      PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),    \
+                      PQresultErrorMessage (result),                          \
+                      PQresStatus (PQresultStatus (result)),                  \
+                      PQerrorMessage (conn));                                 \
 } while (0)
 
 
@@ -601,6 +602,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_ensure_coin_known;
   plugin->get_known_coin
     = &TEH_PG_get_known_coin;
+  plugin->get_signature_for_known_coin
+    = &TEH_PG_get_signature_for_known_coin;
   plugin->get_coin_denomination
     = &TEH_PG_get_coin_denomination;
   plugin->have_deposit2

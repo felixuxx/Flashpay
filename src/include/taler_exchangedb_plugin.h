@@ -4358,7 +4358,8 @@ struct TALER_EXCHANGEDB_Plugin
    * Retrieve information about the given @a coin from the database.
    *
    * @param cls database connection plugin state
-   * @param coin the coin that must be made known
+   * @param coin_pub the coin that must be made known
+   * @param[out] coin_info detailed information about the coin
    * @return database transaction status, non-negative on success
    */
   enum GNUNET_DB_QueryStatus
@@ -4366,6 +4367,21 @@ struct TALER_EXCHANGEDB_Plugin
                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                       struct TALER_CoinPublicInfo *coin_info);
 
+  /**
+   * Retrieve the signature and corresponding denomination for a given @a coin
+   * from the database
+   *
+   * @param cls database connection plugin state
+   * @param coin_pub the public key of the coin we search for
+   * @param[out] denom_pub the public key of the denomination that the coin was signed with
+   * @param[out] denom_sig the signature with the denomination's private key over the coin_pub
+   */
+  enum GNUNET_DB_QueryStatus
+    (*get_signature_for_known_coin) (
+    void *cls,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    struct TALER_DenominationPublicKey *denom_pub,
+    struct TALER_DenominationSignature *denom_sig);
 
   /**
    * Retrieve the denomination of a known coin.

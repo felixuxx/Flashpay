@@ -162,6 +162,28 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
 
 /**
  * Send proof that a request is invalid to client because of
+ * an conflict with the provided denomination (the exchange had seen
+ * this coin before, signed by a different denomination).
+ * This function will create a message with the denomination's public key
+ * that was seen before.
+ *
+ * @param connection connection to the client
+ * @param ec error code to return
+ * @param coin_pub the public key of the coin
+ * @param prev_denom_pub the denomination of the coin, as seen previously
+ * @param prev_denom_sig the signature with the denomination key over the coin
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_coin_denomination_conflict (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_DenominationPublicKey *prev_denom_pub,
+  const struct TALER_DenominationSignature *prev_denom_sig);
+
+/**
+ * Send proof that a request is invalid to client because of
  * a conflicting value for the age commitment hash of a coin.
  * This function will create a message with the conflicting
  * hash value for the age commitment of the given coin.
