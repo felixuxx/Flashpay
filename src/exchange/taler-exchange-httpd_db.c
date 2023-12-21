@@ -67,20 +67,21 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
     /* The exchange has a seen this coin before, but with a different denomination.
      * Get the corresponding signature and sent it to the client as proof */
     {
-      struct conflict
+      struct
       {
         struct TALER_DenominationPublicKey pub;
         struct TALER_DenominationSignature sig;
-      } conflict = {0};
+      } prev_denom = {0};
 
       if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           TEH_plugin->get_signature_for_known_coin (TEH_plugin->cls,
                                                     &coin->coin_pub,
-                                                    &conflict.pub,
-                                                    &conflict.sig))
+                                                    &prev_denom.pub,
+                                                    &prev_denom.sig))
       {
         /* There _should_ have been a result, because
          * we ended here due to a conflict! */
+        GNUNET_break (0);
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_GENERIC_DB_FETCH_FAILED,
@@ -92,8 +93,8 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
         connection,
         TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
         &coin->coin_pub,
-        &conflict.pub,
-        &conflict.sig);
+        &prev_denom.pub,
+        &prev_denom.sig);
 
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
