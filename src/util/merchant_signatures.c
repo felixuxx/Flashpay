@@ -287,7 +287,7 @@ TALER_merchant_pay_sign (
 
   GNUNET_CRYPTO_eddsa_sign (&merch_priv->eddsa_priv,
                             &mr,
-                            merch_sig);
+                            &merch_sig->eddsa_sig);
 }
 
 
