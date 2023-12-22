@@ -184,7 +184,6 @@ parse_cspec (void *cls,
   const char *emsg;
   unsigned int eline;
 
-  (void) cls;
   memset (r_cspec->currency,
           0,
           sizeof (r_cspec->currency));
@@ -261,10 +260,10 @@ TALER_JSON_spec_currency_specification (
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_cspec,
     .cleaner = &clean_cspec,
-    .cls = currency,
+    .cls = (void *) currency,
     .field = name,
     .ptr = r_cspec,
-    .ptr_size = 0,
+    .ptr_size = sizeof (*r_cspec),
     .size_ptr = NULL
   };
 
