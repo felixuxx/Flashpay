@@ -149,6 +149,7 @@ TALER_PQ_query_param_array_blinded_denom_sig (
   struct GNUNET_PQ_Context *db
   );
 
+
 /**
  * Generate query parameter for an array of blinded hashes of coin envelopes
  *
@@ -161,6 +162,7 @@ TALER_PQ_query_param_array_blinded_coin_hash (
   size_t num,
   const struct TALER_BlindedCoinHashP *coin_evs,
   struct GNUNET_PQ_Context *db);
+
 
 /**
  * Generate query parameter for an array of GNUNET_HashCode
@@ -187,6 +189,26 @@ TALER_PQ_query_param_array_amount (
   size_t num,
   const struct TALER_Amount *amounts,
   struct GNUNET_PQ_Context *db);
+
+
+/**
+ * Generate query parameter for a blind sign public key of variable size.
+ *
+ * @param public_key pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_blind_sign_pub (
+  const struct GNUNET_CRYPTO_BlindSignPublicKey *public_key);
+
+
+/**
+ * Generate query parameter for a blind sign private key of variable size.
+ *
+ * @param private_key pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_blind_sign_priv (
+  const struct GNUNET_CRYPTO_BlindSignPrivateKey *private_key);
 
 
 /**
@@ -311,6 +333,7 @@ TALER_PQ_result_spec_array_blinded_denom_sig (
   size_t *num,
   struct TALER_BlindedDenominationSignature **denom_sigs);
 
+
 /**
  * Array of blinded hashes of coin envelopes
  *
@@ -327,6 +350,7 @@ TALER_PQ_result_spec_array_blinded_coin_hash (
   size_t *num,
   struct TALER_BlindedCoinHashP **h_coin_evs);
 
+
 /**
  * Array of hashes of denominations
  *
@@ -342,6 +366,7 @@ TALER_PQ_result_spec_array_denom_hash (
   const char *name,
   size_t *num,
   struct TALER_DenominationHashP **denom_hs);
+
 
 /**
  * Array of GNUNET_HashCode
@@ -377,6 +402,31 @@ TALER_PQ_result_spec_array_amount (
   size_t *num,
   struct TALER_Amount **amounts);
 
+
+/**
+ * Blind sign public key expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] public_key where to store the denomination signature
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_blind_sign_pub (
+  const char *name,
+  struct GNUNET_CRYPTO_BlindSignPublicKey *public_key);
+
+
+/**
+ * Blind sign private key expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] private_key where to store the denomination signature
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_blind_sign_priv (
+  const char *name,
+  struct GNUNET_CRYPTO_BlindSignPrivateKey *private_key);
 
 #endif  /* TALER_PQ_LIB_H_ */
 

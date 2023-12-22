@@ -35,6 +35,7 @@ GPATH
 GRTAGS
 GTAGS
 *.swp
+.DS_Store
 src/include/taler_error_codes.h
 src/testing/test_exchange_api_rsa
 src/testing/test_exchange_api_cs
