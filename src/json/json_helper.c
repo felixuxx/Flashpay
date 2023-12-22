@@ -1174,6 +1174,7 @@ parse_exchange_withdraw_values (void *cls,
   };
   const char *emsg;
   unsigned int eline;
+  enum GNUNET_CRYPTO_BlindSignatureAlgorithm ci;
 
   (void) cls;
   if (GNUNET_OK !=
@@ -1185,17 +1186,18 @@ parse_exchange_withdraw_values (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  bi = GNUNET_new (struct GNUNET_CRYPTO_BlindingInputValues);
-  bi->cipher = string_to_cipher (cipher);
-  bi->rc = 1;
-  switch (bi->cipher)
+  ci = string_to_cipher (cipher);
+  switch (ci)
   {
   case GNUNET_CRYPTO_BSA_INVALID:
     break;
   case GNUNET_CRYPTO_BSA_RSA:
-    ewv->blinding_inputs = bi;
+    ewv->blinding_inputs = TALER_denom_ewv_rsa_singleton ()->blinding_inputs;
     return GNUNET_OK;
   case GNUNET_CRYPTO_BSA_CS:
+    bi = GNUNET_new (struct GNUNET_CRYPTO_BlindingInputValues);
+    bi->cipher = GNUNET_CRYPTO_BSA_CS;
+    bi->rc = 1;
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed (
@@ -1224,7 +1226,6 @@ parse_exchange_withdraw_values (void *cls,
     }
   }
   GNUNET_break_op (0);
-  GNUNET_free (bi);
   return GNUNET_SYSERR;
 }
 

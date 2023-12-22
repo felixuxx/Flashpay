@@ -74,7 +74,7 @@ struct CoinData
   struct TALER_PlanchetDetail pd;
 
   /**
-   * Values of the @cipher selected
+   * Values of the cipher selected
    */
   struct TALER_ExchangeWithdrawValues alg_values;
 
