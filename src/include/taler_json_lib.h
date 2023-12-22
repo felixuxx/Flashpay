@@ -28,6 +28,10 @@
 #include "taler_util.h"
 #include "taler_error_codes.h"
 
+/**
+ * Version of this API, for compatibility tests.
+ */
+#define TALER_JSON_LIB_VERSION 0x00020000
 
 /**
  * Details about an encrypted contract.
