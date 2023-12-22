@@ -304,6 +304,8 @@ withdraw_cs_stage_two_callback (
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
+    GNUNET_assert (NULL ==
+                   cd->alg_values.blinding_inputs);
     TALER_denom_ewv_deep_copy (&cd->alg_values,
                                &csrr->details.ok.alg_values);
     TALER_planchet_setup_coin_priv (&cd->ps,
@@ -323,7 +325,12 @@ withdraw_cs_stage_two_callback (
                                 &cd->pd))
     {
       GNUNET_break (0);
+      wr.hr.http_status = 0;
+      wr.hr.ec = TALER_EC_GENERIC_CLIENT_INTERNAL_ERROR;
+      wh->cb (wh->cb_cls,
+              &wr);
       TALER_EXCHANGE_batch_withdraw_cancel (wh);
+      return;
     }
     wh->cs_pending--;
     if (0 == wh->cs_pending)
