@@ -35,22 +35,9 @@ bin_SCRIPTS = \
   taler-bank-manage-testing
 
 
-edit_script = $(SED) -e 's,%termsdir%,$(termsdir),'g -e 's,%localedir%,$(localedir),'g $(NULL)
-taler-terms-generator: taler-terms-generator.in
-	rm -f $@ $@.tmp && \
-	$(edit_script) $< >$@.tmp && \
-	chmod a-w+x $@.tmp && \
-	mv $@.tmp $@
-
-CLEANFILES = \
-  taler-terms-generator
-
 EXTRA_DIST = \
   locale/de/LC_MESSAGES/exchange-tos-v0.po \
-  taler-bank-manage-testing \
-  taler-terms-generator.in \
-  taler-auditor-dbconfig \
-  taler-exchange-dbconfig \
+  $(bin_SCRIPTS) \
   gana-generate.sh \
   gana/gnu-taler-error-codes/registry.rec \
   gana/gnu-taler-error-codes/Makefile \
