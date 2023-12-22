@@ -928,10 +928,18 @@ decode_keys_json (const json_t *resp_obj,
         GNUNET_JSON_spec_end ()
       };
 
-      EXITIF (GNUNET_OK !=
-              GNUNET_JSON_parse (resp_obj,
-                                 sspec,
-                                 NULL, NULL));
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (resp_obj,
+                             sspec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Parsing /keys failed for `%s' (%u)\n",
+                    emsg,
+                    eline);
+        EXITIF (1);
+      }
     }
 
     key_data->currency = GNUNET_strdup (currency);

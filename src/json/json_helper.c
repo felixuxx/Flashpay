@@ -267,6 +267,9 @@ TALER_JSON_spec_currency_specification (
     .size_ptr = NULL
   };
 
+  memset (r_cspec,
+          0,
+          sizeof (*r_cspec));
   return ret;
 }
 
@@ -345,11 +348,9 @@ TALER_JSON_spec_denomination_group (const char *name,
   struct GNUNET_JSON_Specification ret = {
     .cls = (void *) currency,
     .parser = &parse_denomination_group,
-    .cleaner = NULL,
     .field = name,
     .ptr = group,
-    .ptr_size = sizeof(*group),
-    .size_ptr = NULL,
+    .ptr_size = sizeof(*group)
   };
 
   return ret;
@@ -421,11 +422,8 @@ TALER_JSON_spec_econtract (const char *name,
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_econtract,
     .cleaner = &clean_econtract,
-    .cls = NULL,
     .field = name,
-    .ptr = econtract,
-    .ptr_size = 0,
-    .size_ptr = NULL
+    .ptr = econtract
   };
 
   return ret;
@@ -526,11 +524,8 @@ TALER_JSON_spec_age_commitment (const char *name,
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_age_commitment,
     .cleaner = &clean_age_commitment,
-    .cls = NULL,
     .field = name,
-    .ptr = age_commitment,
-    .ptr_size = 0,
-    .size_ptr = NULL
+    .ptr = age_commitment
   };
 
   return ret;
