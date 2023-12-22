@@ -162,15 +162,13 @@ parse_cspec (void *cls,
              struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_CurrencySpecification *r_cspec = spec->ptr;
+  const char *currency = spec->cls;
   const char *name;
-  const char *currency;
   uint32_t fid;
   uint32_t fnd;
   uint32_t ftzd;
   const json_t *map;
   struct GNUNET_JSON_Specification gspec[] = {
-    GNUNET_JSON_spec_string ("currency",
-                             &currency),
     GNUNET_JSON_spec_string ("name",
                              &name),
     GNUNET_JSON_spec_uint32 ("num_fractional_input_digits",
@@ -257,12 +255,13 @@ clean_cspec (void *cls,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_currency_specification (
   const char *name,
+  const char *currency,
   struct TALER_CurrencySpecification *r_cspec)
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_cspec,
     .cleaner = &clean_cspec,
-    .cls = NULL,
+    .cls = currency,
     .field = name,
     .ptr = r_cspec,
     .ptr_size = 0,

@@ -215,7 +215,7 @@ TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
 struct TALER_CurrencySpecification
 {
   /**
-   * Name of the currency.
+   * Currency code of the currency.
    */
   char currency[TALER_CURRENCY_LEN];
 

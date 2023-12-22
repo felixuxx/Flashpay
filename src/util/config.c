@@ -477,6 +477,8 @@ TALER_CONFIG_currency_specs_to_json (const struct
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("name",
                              cspec->name),
+    /* 'currency' is deprecated as of exchange v18 and merchant v6;
+       remove this line once current-age > 6*/
     GNUNET_JSON_pack_string ("currency",
                              cspec->currency),
     GNUNET_JSON_pack_uint64 ("num_fractional_input_digits",

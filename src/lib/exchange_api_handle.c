@@ -850,9 +850,6 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_JSON_spec_string (
         "currency",
         &currency),
-      TALER_JSON_spec_currency_specification (
-        "currency_specification",
-        &key_data->cspec),
       GNUNET_JSON_spec_string (
         "asset_type",
         &asset_type),
@@ -913,6 +910,10 @@ decode_keys_json (const json_t *resp_obj,
     }
     {
       struct GNUNET_JSON_Specification sspec[] = {
+        TALER_JSON_spec_currency_specification (
+          "currency_specification",
+          currency,
+          &key_data->cspec),
         TALER_JSON_spec_amount (
           "stefan_abs",
           currency,

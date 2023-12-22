@@ -234,12 +234,14 @@ TALER_JSON_spec_amount (const char *name,
  * a currency specification.
  *
  * @param name name of the amount field in the JSON
+ * @param currency_code currency code to parse
  * @param[out] r_cspec where the currency spec has to be written
  * @return spec for parsing an amount
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_currency_specification (
   const char *name,
+  const char *currency_code,
   struct TALER_CurrencySpecification *r_cspec);
 
 
