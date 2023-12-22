@@ -173,6 +173,11 @@ struct BatchWithdrawState
    * Same for all coins in the batch.
    */
   uint8_t age;
+
+  /**
+   * Force a conflict:
+   */
+  enum TALER_TESTING_CoinConflictType force_conflict;
 };
 
 
@@ -264,6 +269,9 @@ batch_withdraw_run (void *cls,
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
   struct TALER_EXCHANGE_WithdrawCoinInput wcis[ws->num_coins];
+  struct TALER_PlanchetMasterSecretP conflict_ps = {0};
+  struct TALER_AgeMask mask = {0};
+  struct GNUNET_HashCode seed = {0};
 
   (void) cmd;
   ws->is = is;
@@ -296,12 +304,42 @@ batch_withdraw_run (void *cls,
     = TALER_reserve_make_payto (ws->exchange_url,
                                 &ws->reserve_pub);
 
+  if (0 < ws->age)
+    mask = TALER_extensions_get_age_restriction_mask ();
+
+  if (Conflict_Denom == ws->force_conflict)
+    TALER_planchet_master_setup_random (&conflict_ps);
+
+  if (Conflict_Age == ws->force_conflict)
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &seed,
+                                sizeof(seed));
+
   for (unsigned int i = 0; i<ws->num_coins; i++)
   {
     struct CoinState *cs = &ws->coins[i];
     struct TALER_EXCHANGE_WithdrawCoinInput *wci = &wcis[i];
 
-    TALER_planchet_master_setup_random (&cs->ps);
+    if (Conflict_Denom == ws->force_conflict)
+      cs->ps = conflict_ps;
+    else
+      TALER_planchet_master_setup_random (&cs->ps);
+
+    if (0 < ws->age)
+    {
+      if (Conflict_Age != ws->force_conflict)
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &seed,
+                                    sizeof(seed));
+      TALER_age_restriction_commit (&mask,
+                                    ws->age,
+                                    &seed,
+                                    &cs->age_commitment_proof);
+      TALER_age_commitment_hash (&cs->age_commitment_proof.commitment,
+                                 &cs->h_age_commitment);
+    }
+
+
     dpk = TALER_TESTING_find_pk (keys,
                                  &cs->amount,
                                  ws->age > 0);
@@ -453,12 +491,14 @@ batch_withdraw_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_batch_withdraw (const char *label,
-                                  const char *reserve_reference,
-                                  uint8_t age,
-                                  unsigned int expected_response_code,
-                                  const char *amount,
-                                  ...)
+TALER_TESTING_cmd_batch_withdraw_with_conflict (
+  const char *label,
+  const char *reserve_reference,
+  enum TALER_TESTING_CoinConflictType conflict,
+  uint8_t age,
+  unsigned int expected_response_code,
+  const char *amount,
+  ...)
 {
   struct BatchWithdrawState *ws;
   unsigned int cnt;
@@ -468,6 +508,7 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
   ws->age = age;
   ws->reserve_reference = reserve_reference;
   ws->expected_response_code = expected_response_code;
+  ws->force_conflict = conflict;
 
   cnt = 1;
   va_start (ap,
@@ -484,23 +525,6 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
   for (unsigned int i = 0; i<ws->num_coins; i++)
   {
     struct CoinState *cs = &ws->coins[i];
-
-    if (0 < age)
-    {
-      struct GNUNET_HashCode seed;
-      struct TALER_AgeMask mask;
-
-      mask = TALER_extensions_get_age_restriction_mask ();
-      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                  &seed,
-                                  sizeof(seed));
-      TALER_age_restriction_commit (&mask,
-                                    age,
-                                    &seed,
-                                    &cs->age_commitment_proof);
-      TALER_age_commitment_hash (&cs->age_commitment_proof.commitment,
-                                 &cs->h_age_commitment);
-    }
 
     if (GNUNET_OK !=
         TALER_string_to_amount (amount,
