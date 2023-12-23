@@ -4400,7 +4400,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Try to retrieve the solated hash of the merchant's bank account to a
+   * Try to retrieve the salted hash of the merchant's bank account to a
    * deposit contract. Used in case of conflicts for a given (merchant_pub,
    * h_contract_terms) to provide the client the necessary input to retrieve
    * more details about the conflict.
