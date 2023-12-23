@@ -4400,6 +4400,25 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Try to retrieve the solated hash of the merchant's bank account to a
+   * deposit contract. Used in case of conflicts for a given (merchant_pub,
+   * h_contract_terms) to provide the client the necessary input to retrieve
+   * more details about the conflict.
+   *
+   * @param cls the plugin closure
+   * @param merchant_pub public key of the merchant
+   * @param h_contract_terms contract to check for
+   * @param[out] h_wire hash of the wire details
+   */
+  enum GNUNET_DB_QueryStatus
+    (*get_wire_hash_for_contract)(
+    void *cls,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
+    const struct TALER_PrivateContractHashP *h_contract_terms,
+    struct TALER_MerchantWireHashP *h_wire);
+
+
+  /**
    * Check if we have the specified deposit already in the database.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state

@@ -183,6 +183,23 @@ TEH_RESPONSE_reply_coin_denomination_conflict (
   const struct TALER_DenominationSignature *prev_denom_sig);
 
 /**
+ * Send the salted hash of the merchant's bank account from conflicting
+ * contract.  With this information, the merchant's private key and
+ * the hash of the contract terms, the client can retrieve more details
+ * about the conflicting deposit
+ *
+ * @param connection connection to the client
+ * @param ec error code to return
+ * @param h_wire the salted hash of the merchant's bank account
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_coin_conflicting_contract (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_MerchantWireHashP *h_wire);
+
+/**
  * Send proof that a request is invalid to client because of
  * a conflicting value for the age commitment hash of a coin.
  * This function will create a message with the conflicting

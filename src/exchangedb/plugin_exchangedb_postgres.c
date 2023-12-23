@@ -121,6 +121,7 @@
 #include "pg_get_policy_details.h"
 #include "pg_persist_policy_details.h"
 #include "pg_do_deposit.h"
+#include "pg_get_wire_hash_for_contract.h"
 #include "pg_add_policy_fulfillment_proof.h"
 #include "pg_do_melt.h"
 #include "pg_do_refund.h"
@@ -584,6 +585,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_persist_policy_details;
   plugin->do_deposit
     = &TEH_PG_do_deposit;
+  plugin->get_wire_hash_for_contract
+    = &TEH_PG_get_wire_hash_for_contract;
   plugin->add_policy_fulfillment_proof
     = &TEH_PG_add_policy_fulfillment_proof;
   plugin->do_melt

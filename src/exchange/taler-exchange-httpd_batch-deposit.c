@@ -250,13 +250,29 @@ batch_deposit_transaction (void *cls,
               in_conflict ? "in conflict" : "no conflict");
   if (in_conflict)
   {
-    /* FIXME: #8002 conflicting contract != insufficient funds */
+    struct TALER_MerchantWireHashP h_wire;
+
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+        TEH_plugin->get_wire_hash_for_contract (
+          TEH_plugin->cls,
+          &bd->merchant_pub,
+          &bd->h_contract_terms,
+          &h_wire))
+    {
+      TALER_LOG_WARNING (
+        "Failed to retrieve conflicting contract details from database\n");
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "batch-deposit");
+      return qs;
+    }
+
     *mhd_ret
-      = TEH_RESPONSE_reply_coin_insufficient_funds (
+      = TEH_RESPONSE_reply_coin_conflicting_contract (
           connection,
           TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT,
-          &bd->cdis[0 /* SEE FIXME-#8002 Oec above! */].coin.denom_pub_hash,
-          &bd->cdis[0 /* SEE FIXME-#8002 Oec above! */].coin.coin_pub);
+          &h_wire);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (! balance_ok)

@@ -83,7 +83,6 @@ TEH_PG_do_deposit (
       GNUNET_PQ_result_spec_uint32 ("insufficient_balance_coin_index",
                                     bad_balance_index),
       balance_ok),
-    /* FIXME #8002:  We need more data to communicate the conflict to the client */
     GNUNET_PQ_result_spec_bool ("conflicted",
                                 ctr_conflict),
     GNUNET_PQ_result_spec_end
