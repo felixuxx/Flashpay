@@ -216,7 +216,8 @@ reserve_batch_withdraw_cb (void *cls,
                                           &cs->coin_pub.eddsa_pub);
 
       cs->bks = pcd->bks;
-      cs->exchange_vals = pcd->exchange_vals;
+      TALER_denom_ewv_deep_copy (&cs->exchange_vals,
+                                 &pcd->exchange_vals);
     }
     break;
   case MHD_HTTP_FORBIDDEN:
@@ -370,6 +371,7 @@ batch_withdraw_cleanup (void *cls,
   {
     struct CoinState *cs = &ws->coins[i];
 
+    TALER_denom_ewv_free (&cs->exchange_vals);
     TALER_denom_sig_free (&cs->sig);
     if (NULL != cs->pk)
     {
