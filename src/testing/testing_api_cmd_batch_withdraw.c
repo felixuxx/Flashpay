@@ -177,7 +177,7 @@ struct BatchWithdrawState
   /**
    * Force a conflict:
    */
-  enum TALER_TESTING_CoinConflictType force_conflict;
+  bool force_conflict;
 };
 
 
@@ -200,9 +200,10 @@ reserve_batch_withdraw_cb (void *cls,
   ws->wsh = NULL;
   if (ws->expected_response_code != wr->hr.http_status)
   {
-    TALER_TESTING_unexpected_status (is,
-                                     wr->hr.http_status,
-                                     ws->expected_response_code);
+    TALER_TESTING_unexpected_status_with_body (is,
+                                               wr->hr.http_status,
+                                               ws->expected_response_code,
+                                               wr->hr.reply);
     return;
   }
   switch (wr->hr.http_status)
@@ -271,7 +272,6 @@ batch_withdraw_run (void *cls,
   struct TALER_EXCHANGE_WithdrawCoinInput wcis[ws->num_coins];
   struct TALER_PlanchetMasterSecretP conflict_ps = {0};
   struct TALER_AgeMask mask = {0};
-  struct GNUNET_HashCode seed = {0};
 
   (void) cmd;
   ws->is = is;
@@ -307,30 +307,25 @@ batch_withdraw_run (void *cls,
   if (0 < ws->age)
     mask = TALER_extensions_get_age_restriction_mask ();
 
-  if (Conflict_Denom == ws->force_conflict)
+  if (ws->force_conflict)
     TALER_planchet_master_setup_random (&conflict_ps);
-
-  if (Conflict_Age == ws->force_conflict)
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                &seed,
-                                sizeof(seed));
 
   for (unsigned int i = 0; i<ws->num_coins; i++)
   {
     struct CoinState *cs = &ws->coins[i];
     struct TALER_EXCHANGE_WithdrawCoinInput *wci = &wcis[i];
 
-    if (Conflict_Denom == ws->force_conflict)
+    if (ws->force_conflict)
       cs->ps = conflict_ps;
     else
       TALER_planchet_master_setup_random (&cs->ps);
 
     if (0 < ws->age)
     {
-      if (Conflict_Age != ws->force_conflict)
-        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &seed,
-                                    sizeof(seed));
+      struct GNUNET_HashCode seed = {0};
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  &seed,
+                                  sizeof(seed));
       TALER_age_restriction_commit (&mask,
                                     ws->age,
                                     &seed,
@@ -494,7 +489,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch_withdraw_with_conflict (
   const char *label,
   const char *reserve_reference,
-  enum TALER_TESTING_CoinConflictType conflict,
+  bool conflict,
   uint8_t age,
   unsigned int expected_response_code,
   const char *amount,

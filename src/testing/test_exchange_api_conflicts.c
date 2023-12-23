@@ -125,7 +125,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_batch_withdraw_with_conflict ("withdraw-coin-denom-1",
                                                     "create-reserve-denom",
-                                                    Conflict_Denom,
+                                                    true,
                                                     0, /* age */
                                                     MHD_HTTP_OK,
                                                     "EUR:1",
@@ -140,7 +140,7 @@ run (void *cls,
     /**
      * Spend the coin.
      */
-    TALER_TESTING_cmd_deposit ("deposit",
+    TALER_TESTING_cmd_deposit ("deposit-denom",
                                "withdraw-coin-denom-1",
                                0,
                                cred.user42_payto,
@@ -155,7 +155,77 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:4.99",
-                               /* FIXME: this fails for cs denominations! */
+                               MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_deposit ("deposit-denom-conflict-2",
+                               "withdraw-coin-denom-1",
+                               2,
+                               cred.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:9.99",
+                               MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command withdraw_conflict_age[] = {
+    /**
+     * Move money to the exchange's bank account.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-age",
+                              "EUR:3.03"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-age",
+                                                 "EUR:3.03",
+                                                 cred.user42_payto,
+                                                 cred.exchange_payto,
+                                                 "create-reserve-age"),
+    /**
+     * Make a reserve exist, according to the previous
+     * transfer.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-conflict-age"),
+    /**
+     * Withdraw EUR:1, EUR:5, EUR:15, but using the same private key each time.
+     */
+    TALER_TESTING_cmd_batch_withdraw_with_conflict ("withdraw-coin-age-1",
+                                                    "create-reserve-age",
+                                                    true,
+                                                    10, /* age */
+                                                    MHD_HTTP_OK,
+                                                    "EUR:1",
+                                                    "EUR:1",
+                                                    "EUR:1",
+                                                    NULL),
+
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command spend_conflict_age[] = {
+    /**
+     * Spend the coin.
+     */
+    TALER_TESTING_cmd_deposit ("deposit-age",
+                               "withdraw-coin-age-1",
+                               0,
+                               cred.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.99",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("deposit-age-conflict",
+                               "withdraw-coin-age-1",
+                               1,
+                               cred.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.99",
+                               MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_deposit ("deposit-age-conflict-2",
+                               "withdraw-coin-age-1",
+                               2,
+                               cred.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.99",
                                MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end ()
   };
@@ -179,6 +249,10 @@ run (void *cls,
                                withdraw_conflict_denom),
       TALER_TESTING_cmd_batch ("spend-conflict-denom",
                                spend_conflict_denom),
+      TALER_TESTING_cmd_batch ("withdraw-conflict-age",
+                               withdraw_conflict_age),
+      TALER_TESTING_cmd_batch ("spend-conflict-age",
+                               spend_conflict_age),
       /* End the suite. */
       TALER_TESTING_cmd_end ()
     };

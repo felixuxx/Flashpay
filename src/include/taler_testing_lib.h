@@ -1079,18 +1079,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    uint8_t age,
                                    unsigned int expected_response_code);
 
-/**
- * Force a conflict
-   * 0: no conflict
-   * 1: multiple coins with same private key, different denominations
-   * 2: multiple coins with same private key and different age restriction
-   */
-enum TALER_TESTING_CoinConflictType
-{
-  Conflict_None = 0,
-  Conflict_Denom = 1,
-  Conflict_Age = 2
-};
 
 /**
  * Create a batch withdraw command, letting the caller specify the type of
@@ -1102,7 +1090,7 @@ enum TALER_TESTING_CoinConflictType
  *
  * @param label command label.
  * @param reserve_reference command providing us with a reserve to withdraw from
- * @param conflict type of conflict for the coins
+ * @param conflict if true, enforce a conflict (same priv key, different denom and age commiment)
  * @param age if > 0, age restriction applies (same for all coins)
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
@@ -1114,7 +1102,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch_withdraw_with_conflict (
   const char *label,
   const char *reserve_reference,
-  enum TALER_TESTING_CoinConflictType conflict,
+  bool conflict,
   uint8_t age,
   unsigned int expected_response_code,
   const char *amount,
@@ -1145,7 +1133,7 @@ TALER_TESTING_cmd_batch_withdraw_with_conflict (
         TALER_TESTING_cmd_batch_withdraw_with_conflict ( \
           (label), \
           (reserve_reference), \
-          Conflict_None, \
+          false, \
           (age), \
           (expected_response_code), \
           (amount), \
