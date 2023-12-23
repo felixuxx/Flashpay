@@ -155,6 +155,7 @@ check_PROGRAMS = \
   test_exchange_api_rsa \
   test_exchange_api_age_restriction_cs \
   test_exchange_api_age_restriction_rsa \
+  test_exchange_api_conflicts_cs \
   test_exchange_api_conflicts_rsa \
   test_exchange_api_keys_cherry_picking_cs \
   test_exchange_api_keys_cherry_picking_rsa \

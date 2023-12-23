@@ -109,9 +109,9 @@ run (void *cls,
      * Move money to the exchange's bank account.
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-denom",
-                              "EUR:21.03"),
+                              "EUR:21.14"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-denom",
-                                                 "EUR:21.03",
+                                                 "EUR:21.14",
                                                  cred.user42_payto,
                                                  cred.exchange_payto,
                                                  "create-reserve-denom"),
@@ -121,7 +121,7 @@ run (void *cls,
      */
     CMD_EXEC_WIREWATCH ("wirewatch-conflict-denom"),
     /**
-     * Withdraw EUR:1, EUR:5, EUR:15, but using the same private key each time.
+     * Withdraw EUR:0.10, EUR:1, EUR:5, EUR:15, but using the same private key each time.
      */
     TALER_TESTING_cmd_batch_withdraw_with_conflict ("withdraw-coin-denom-1",
                                                     "create-reserve-denom",
@@ -131,6 +131,7 @@ run (void *cls,
                                                     "EUR:1",
                                                     "EUR:5",
                                                     "EUR:10",
+                                                    "EUR:0.10",
                                                     NULL),
 
     TALER_TESTING_cmd_end ()
@@ -155,7 +156,10 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:4.99",
-                               MHD_HTTP_CONFLICT),
+                               /* Note: For CS, even though the master secret is the
+                                * same for each coin, their private keys differ due
+                                * to the random choice of the nonce by the exchange. */
+                               uses_cs ? MHD_HTTP_OK : MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_deposit ("deposit-denom-conflict-2",
                                "withdraw-coin-denom-1",
                                2,
@@ -163,7 +167,21 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:9.99",
-                               MHD_HTTP_CONFLICT),
+                               /* Note: For CS, even though the master secret is the
+                                * same for each coin, their private keys differ due
+                                * to the random choice of the nonce by the exchange. */
+                               uses_cs ? MHD_HTTP_OK : MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_deposit ("deposit-denom-conflict-3",
+                               "withdraw-coin-denom-1",
+                               3,
+                               cred.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.09",
+                               /* Note: For CS, even though the master secret is the
+                                * same for each coin, their private keys differ due
+                                * to the random choice of the nonce by the exchange. */
+                               uses_cs ? MHD_HTTP_OK : MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end ()
   };
 
