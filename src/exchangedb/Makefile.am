@@ -117,6 +117,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_get_policy_details.h pg_get_policy_details.c \
   pg_persist_policy_details.h pg_persist_policy_details.c \
   pg_do_deposit.h pg_do_deposit.c \
+  pg_get_wire_hash_for_contract.h pg_get_wire_hash_for_contract.c \
   pg_add_policy_fulfillment_proof.h pg_add_policy_fulfillment_proof.c \
   pg_do_melt.h pg_do_melt.c \
   pg_do_refund.h pg_do_refund.c \

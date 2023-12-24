@@ -5,7 +5,7 @@ set -exvuo pipefail
 OCI_RUNTIME=$(which podman)
 REPO_NAME=$(basename "${PWD}")
 JOB_NAME="${1}"
-JOB_CONTAINER=$((grep CONTAINER_NAME contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "${REPO_NAME}")
+JOB_CONTAINER=$((grep CONTAINER_NAME contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "localhost/${REPO_NAME}")
 JOB_ARCH=$((grep CONTAINER_ARCH contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "${2:-amd64}")
 CONTAINER_BUILD=$((grep CONTAINER_BUILD contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "True")
 

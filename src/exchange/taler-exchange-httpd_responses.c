@@ -180,6 +180,21 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
 
 
 MHD_RESULT
+TEH_RESPONSE_reply_coin_conflicting_contract (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_MerchantWireHashP *h_wire)
+{
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    TALER_ErrorCode_get_http_status_safe (ec),
+    GNUNET_JSON_pack_data_auto ("h_wire",
+                                h_wire),
+    TALER_JSON_pack_ec (ec));
+}
+
+
+MHD_RESULT
 TEH_RESPONSE_reply_coin_denomination_conflict (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,

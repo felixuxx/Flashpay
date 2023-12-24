@@ -43,12 +43,12 @@
  * quite any time after the command "run" method has been called.
  */
 #define TALER_TESTING_FAIL(is) \
-  do \
-  { \
-    GNUNET_break (0); \
-    TALER_TESTING_interpreter_fail (is); \
-    return; \
-  } while (0)
+        do \
+        { \
+          GNUNET_break (0); \
+          TALER_TESTING_interpreter_fail (is); \
+          return; \
+        } while (0)
 
 
 /**
@@ -60,16 +60,16 @@
  * @param expected expected HTTP status code
  */
 #define TALER_TESTING_unexpected_status(is,status,expected)             \
-  do {                                                                  \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                "Unexpected response code %u (expected: %u) to command %s in %s:%u\n", \
-                status,                                                 \
-                expected,                                               \
-                TALER_TESTING_interpreter_get_current_label (is),       \
-                __FILE__,                                               \
-                __LINE__);                                              \
-    TALER_TESTING_interpreter_fail (is);                                \
-  } while (0)
+        do {                                                                  \
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                      "Unexpected response code %u (expected: %u) to command %s in %s:%u\n", \
+                      status,                                                 \
+                      expected,                                               \
+                      TALER_TESTING_interpreter_get_current_label (is),       \
+                      __FILE__,                                               \
+                      __LINE__);                                              \
+          TALER_TESTING_interpreter_fail (is);                                \
+        } while (0)
 
 /**
  * Log an error message about us receiving an unexpected HTTP
@@ -82,18 +82,18 @@
  * @param body received JSON-reply
  */
 #define TALER_TESTING_unexpected_status_with_body(is,status,expected,body) \
-  do {                                                                  \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                "Unexpected response code %u (expected: %u) to "        \
-                "command %s in %s:%u\nwith body:\n>>%s<<\n",            \
-                status,                                                 \
-                expected,                                               \
-                TALER_TESTING_interpreter_get_current_label (is),       \
-                __FILE__,                                               \
-                __LINE__,                                               \
-                json_dumps (body, JSON_INDENT (2)));                    \
-    TALER_TESTING_interpreter_fail (is);                                \
-  } while (0)
+        do {                                                                  \
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                      "Unexpected response code %u (expected: %u) to "        \
+                      "command %s in %s:%u\nwith body:\n>>%s<<\n",            \
+                      status,                                                 \
+                      expected,                                               \
+                      TALER_TESTING_interpreter_get_current_label (is),       \
+                      __FILE__,                                               \
+                      __LINE__,                                               \
+                      json_dumps (body, JSON_INDENT (2)));                    \
+          TALER_TESTING_interpreter_fail (is);                                \
+        } while (0)
 
 
 /**
@@ -104,14 +104,14 @@
  * @param label command label of the incomplete command
  */
 #define TALER_TESTING_command_incomplete(is,label)                      \
-  do {                                                                  \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                "Command %s (%s:%u) did not complete (at %s)\n",        \
-                label,                                                  \
-                __FILE__,                                               \
-                __LINE__,                                               \
-                TALER_TESTING_interpreter_get_current_label (is));      \
-  } while (0)
+        do {                                                                  \
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                      "Command %s (%s:%u) did not complete (at %s)\n",        \
+                      label,                                                  \
+                      __FILE__,                                               \
+                      __LINE__,                                               \
+                      TALER_TESTING_interpreter_get_current_label (is));      \
+        } while (0)
 
 
 /**
@@ -311,10 +311,10 @@ struct TALER_TESTING_Command
    * @return #GNUNET_OK on success
    */
   enum GNUNET_GenericReturnValue
-  (*traits)(void *cls,
-            const void **ret,
-            const char *trait,
-            unsigned int index);
+    (*traits)(void *cls,
+              const void **ret,
+              const char *trait,
+              unsigned int index);
 
   /**
    * When did the execution of this command start?
@@ -1081,10 +1081,39 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
 
 /**
+ * Create a batch withdraw command, letting the caller specify the type of
+ * conflict between the coins and the desired amounts as string.
+ *
+ * Takes a variable, non-empty list of the denomination amounts via VARARGS,
+ * similar to #TALER_TESTING_cmd_withdraw_amount(), just using a batch
+ * withdraw.
+ *
+ * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
+ * @param conflict if true, enforce a conflict (same priv key, different denom and age commiment)
+ * @param age if > 0, age restriction applies (same for all coins)
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ * @param amount how much we withdraw for the first coin
+ * @param ... NULL-terminated list of additional amounts to withdraw (one per coin)
+ * @return the withdraw command to be executed by the interpreter.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_batch_withdraw_with_conflict (
+  const char *label,
+  const char *reserve_reference,
+  bool conflict,
+  uint8_t age,
+  unsigned int expected_response_code,
+  const char *amount,
+  ...);
+
+/**
  * Create a batch withdraw command, letting the caller specify
  * the desired amounts as string.  Takes a variable, non-empty
  * list of the denomination amounts via VARARGS, similar to
  * #TALER_TESTING_cmd_withdraw_amount(), just using a batch withdraw.
+ * The coins are generated without a conflict (different private keys).
  *
  * @param label command label.
  * @param reserve_reference command providing us with a reserve to withdraw from
@@ -1095,13 +1124,20 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  * @param ... NULL-terminated list of additional amounts to withdraw (one per coin)
  * @return the withdraw command to be executed by the interpreter.
  */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_batch_withdraw (const char *label,
-                                  const char *reserve_reference,
-                                  uint8_t age,
-                                  unsigned int expected_response_code,
-                                  const char *amount,
-                                  ...);
+#define TALER_TESTING_cmd_batch_withdraw(label, \
+                                         reserve_reference, \
+                                         age, \
+                                         expected_response_code, \
+                                         amount, \
+                                         ...) \
+        TALER_TESTING_cmd_batch_withdraw_with_conflict ( \
+          (label), \
+          (reserve_reference), \
+          false, \
+          (age), \
+          (expected_response_code), \
+          (amount), \
+          __VA_ARGS__)
 
 /**
  * Create an age-withdraw command, letting the caller specify
@@ -2231,7 +2267,7 @@ TALER_TESTING_cmd_oauth_with_birthdate (const char *label,
  * @param port the TCP port to listen on
  */
 #define TALER_TESTING_cmd_oauth(label, port) \
-  TALER_TESTING_cmd_oauth_with_birthdate ((label), NULL, (port))
+        TALER_TESTING_cmd_oauth_with_birthdate ((label), NULL, (port))
 
 
 /* ****************** P2P payment commands ****************** */
@@ -2560,13 +2596,13 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  * statically allocated data of type @a type.
  */
 #define TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT(name,type)   \
-  enum GNUNET_GenericReturnValue                          \
-    TALER_TESTING_get_trait_ ## name (                    \
-    const struct TALER_TESTING_Command *cmd,              \
-    type **ret);                                          \
-  struct TALER_TESTING_Trait                              \
-    TALER_TESTING_make_trait_ ## name (                   \
-    type * value);
+        enum GNUNET_GenericReturnValue                          \
+        TALER_TESTING_get_trait_ ## name (                    \
+          const struct TALER_TESTING_Command *cmd,              \
+          type **ret);                                          \
+        struct TALER_TESTING_Trait                              \
+        TALER_TESTING_make_trait_ ## name (                   \
+          type * value);
 
 
 /**
@@ -2574,27 +2610,27 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  * allocated data of type @a type.
  */
 #define TALER_TESTING_MAKE_IMPL_SIMPLE_TRAIT(name,type)  \
-  enum GNUNET_GenericReturnValue                         \
-    TALER_TESTING_get_trait_ ## name (                   \
-    const struct TALER_TESTING_Command *cmd,             \
-    type **ret)                                          \
-  {                                                      \
-    if (NULL == cmd->traits) return GNUNET_SYSERR;       \
-    return cmd->traits (cmd->cls,                        \
-                        (const void **) ret,             \
-                        TALER_S (name),                  \
-                        0);                              \
-  }                                                      \
-  struct TALER_TESTING_Trait                             \
-    TALER_TESTING_make_trait_ ## name (                  \
-    type * value)                                        \
-  {                                                      \
-    struct TALER_TESTING_Trait ret = {                   \
-      .trait_name = TALER_S (name),                      \
-      .ptr = (const void *) value                        \
-    };                                                   \
-    return ret;                                          \
-  }
+        enum GNUNET_GenericReturnValue                         \
+        TALER_TESTING_get_trait_ ## name (                   \
+          const struct TALER_TESTING_Command *cmd,             \
+          type * *ret)                                          \
+        {                                                      \
+          if (NULL == cmd->traits) return GNUNET_SYSERR;       \
+          return cmd->traits (cmd->cls,                        \
+                              (const void **) ret,             \
+                              TALER_S (name),                  \
+                              0);                              \
+        }                                                      \
+        struct TALER_TESTING_Trait                             \
+        TALER_TESTING_make_trait_ ## name (                  \
+          type * value)                                        \
+        {                                                      \
+          struct TALER_TESTING_Trait ret = {                   \
+            .trait_name = TALER_S (name),                      \
+            .ptr = (const void *) value                        \
+          };                                                   \
+          return ret;                                          \
+        }
 
 
 /**
@@ -2602,15 +2638,15 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  * statically allocated data of type @a type.
  */
 #define TALER_TESTING_MAKE_DECL_INDEXED_TRAIT(name,type)  \
-  enum GNUNET_GenericReturnValue                          \
-    TALER_TESTING_get_trait_ ## name (                    \
-    const struct TALER_TESTING_Command *cmd,              \
-    unsigned int index,                                   \
-    type **ret);                                          \
-  struct TALER_TESTING_Trait                              \
-    TALER_TESTING_make_trait_ ## name (                   \
-    unsigned int index,                                   \
-    type * value);
+        enum GNUNET_GenericReturnValue                          \
+        TALER_TESTING_get_trait_ ## name (                    \
+          const struct TALER_TESTING_Command *cmd,              \
+          unsigned int index,                                   \
+          type **ret);                                          \
+        struct TALER_TESTING_Trait                              \
+        TALER_TESTING_make_trait_ ## name (                   \
+          unsigned int index,                                   \
+          type *value);
 
 
 /**
@@ -2618,116 +2654,116 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  * allocated data of type @a type.
  */
 #define TALER_TESTING_MAKE_IMPL_INDEXED_TRAIT(name,type) \
-  enum GNUNET_GenericReturnValue                         \
-    TALER_TESTING_get_trait_ ## name (                   \
-    const struct TALER_TESTING_Command *cmd,             \
-    unsigned int index,                                  \
-    type **ret)                                          \
-  {                                                      \
-    if (NULL == cmd->traits) return GNUNET_SYSERR;       \
-    return cmd->traits (cmd->cls,                        \
-                        (const void **) ret,             \
-                        TALER_S (name),                  \
-                        index);                          \
-  }                                                      \
-  struct TALER_TESTING_Trait                             \
-    TALER_TESTING_make_trait_ ## name (                  \
-    unsigned int index,                                  \
-    type * value)                                        \
-  {                                                      \
-    struct TALER_TESTING_Trait ret = {                   \
-      .index = index,                                    \
-      .trait_name = TALER_S (name),                      \
-      .ptr = (const void *) value                        \
-    };                                                   \
-    return ret;                                          \
-  }
+        enum GNUNET_GenericReturnValue                         \
+        TALER_TESTING_get_trait_ ## name (                   \
+          const struct TALER_TESTING_Command *cmd,             \
+          unsigned int index,                                  \
+          type * *ret)                                          \
+        {                                                      \
+          if (NULL == cmd->traits) return GNUNET_SYSERR;       \
+          return cmd->traits (cmd->cls,                        \
+                              (const void **) ret,             \
+                              TALER_S (name),                  \
+                              index);                          \
+        }                                                      \
+        struct TALER_TESTING_Trait                             \
+        TALER_TESTING_make_trait_ ## name (                  \
+          unsigned int index,                                  \
+          type * value)                                        \
+        {                                                      \
+          struct TALER_TESTING_Trait ret = {                   \
+            .index = index,                                    \
+            .trait_name = TALER_S (name),                      \
+            .ptr = (const void *) value                        \
+          };                                                   \
+          return ret;                                          \
+        }
 
 
 /**
  * Call #op on all simple traits.
  */
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
-  op (bank_row, const uint64_t)                                    \
-  op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
-  op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
-  op (officer_name, const char)                                    \
-  op (aml_decision, enum TALER_AmlDecisionState)                   \
-  op (aml_justification, const char)                               \
-  op (auditor_priv, const struct TALER_AuditorPrivateKeyP)         \
-  op (auditor_pub, const struct TALER_AuditorPublicKeyP)           \
-  op (master_priv, const struct TALER_MasterPrivateKeyP)           \
-  op (master_pub, const struct TALER_MasterPublicKeyP)             \
-  op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
-  op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
-  op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
-  op (merge_pub, const struct TALER_PurseMergePublicKeyP)          \
-  op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
-  op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
-  op (reserve_sig, const struct TALER_ReserveSignatureP)           \
-  op (h_payto, const struct TALER_PaytoHashP)                      \
-  op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
-  op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \
-  op (reserve_pub, const struct TALER_ReservePublicKeyP)           \
-  op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
-  op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
-  op (merchant_sig, const struct TALER_MerchantSignatureP)         \
-  op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
-  op (bank_auth_data, const struct TALER_BANK_AuthenticationData)  \
-  op (contract_terms, const json_t)                                \
-  op (wire_details, const json_t)                                  \
-  op (exchange_url, const char)                                    \
-  op (auditor_url, const char)                                     \
-  op (exchange_bank_account_url, const char)                       \
-  op (taler_uri, const char)                                       \
-  op (payto_uri, const char)                                       \
-  op (kyc_url, const char)                                         \
-  op (web_url, const char)                                         \
-  op (row, const uint64_t)                                         \
-  op (legi_requirement_row, const uint64_t)                        \
-  op (array_length, const unsigned int)                            \
-  op (credit_payto_uri, const char)                                \
-  op (debit_payto_uri, const char)                                 \
-  op (order_id, const char)                                        \
-  op (amount, const struct TALER_Amount)                           \
-  op (amount_with_fee, const struct TALER_Amount)                  \
-  op (batch_cmds, struct TALER_TESTING_Command)                    \
-  op (uuid, const struct GNUNET_Uuid)                              \
-  op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
-  op (claim_token, const struct TALER_ClaimTokenP)                 \
-  op (relative_time, const struct GNUNET_TIME_Relative)            \
-  op (fakebank, struct TALER_FAKEBANK_Handle)                      \
-  op (keys, struct TALER_EXCHANGE_Keys)                            \
-  op (process, struct GNUNET_OS_Process *)
+        op (bank_row, const uint64_t)                                    \
+        op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
+        op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
+        op (officer_name, const char)                                    \
+        op (aml_decision, enum TALER_AmlDecisionState)                   \
+        op (aml_justification, const char)                               \
+        op (auditor_priv, const struct TALER_AuditorPrivateKeyP)         \
+        op (auditor_pub, const struct TALER_AuditorPublicKeyP)           \
+        op (master_priv, const struct TALER_MasterPrivateKeyP)           \
+        op (master_pub, const struct TALER_MasterPublicKeyP)             \
+        op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
+        op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
+        op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
+        op (merge_pub, const struct TALER_PurseMergePublicKeyP)          \
+        op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
+        op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
+        op (reserve_sig, const struct TALER_ReserveSignatureP)           \
+        op (h_payto, const struct TALER_PaytoHashP)                      \
+        op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
+        op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \
+        op (reserve_pub, const struct TALER_ReservePublicKeyP)           \
+        op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
+        op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
+        op (merchant_sig, const struct TALER_MerchantSignatureP)         \
+        op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
+        op (bank_auth_data, const struct TALER_BANK_AuthenticationData)  \
+        op (contract_terms, const json_t)                                \
+        op (wire_details, const json_t)                                  \
+        op (exchange_url, const char)                                    \
+        op (auditor_url, const char)                                     \
+        op (exchange_bank_account_url, const char)                       \
+        op (taler_uri, const char)                                       \
+        op (payto_uri, const char)                                       \
+        op (kyc_url, const char)                                         \
+        op (web_url, const char)                                         \
+        op (row, const uint64_t)                                         \
+        op (legi_requirement_row, const uint64_t)                        \
+        op (array_length, const unsigned int)                            \
+        op (credit_payto_uri, const char)                                \
+        op (debit_payto_uri, const char)                                 \
+        op (order_id, const char)                                        \
+        op (amount, const struct TALER_Amount)                           \
+        op (amount_with_fee, const struct TALER_Amount)                  \
+        op (batch_cmds, struct TALER_TESTING_Command)                    \
+        op (uuid, const struct GNUNET_Uuid)                              \
+        op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
+        op (claim_token, const struct TALER_ClaimTokenP)                 \
+        op (relative_time, const struct GNUNET_TIME_Relative)            \
+        op (fakebank, struct TALER_FAKEBANK_Handle)                      \
+        op (keys, struct TALER_EXCHANGE_Keys)                            \
+        op (process, struct GNUNET_OS_Process *)
 
 
 /**
  * Call #op on all indexed traits.
  */
 #define TALER_TESTING_INDEXED_TRAITS(op)                                \
-  op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)            \
-  op (denom_sig, const struct TALER_DenominationSignature)              \
-  op (amounts, const struct TALER_Amount)                               \
-  op (deposit_amount, const struct TALER_Amount)                        \
-  op (deposit_fee_amount, const struct TALER_Amount)                    \
-  op (age_commitment, const struct TALER_AgeCommitment)                 \
-  op (age_commitment_proof, const struct TALER_AgeCommitmentProof)      \
-  op (h_age_commitment, const struct TALER_AgeCommitmentHash)           \
-  op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
-  op (coin_history, const struct TALER_EXCHANGE_CoinHistoryEntry) \
-  op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)       \
-  op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)     \
-  op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)               \
-  op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                 \
-  op (coin_sig, const struct TALER_CoinSpendSignatureP)                 \
-  op (absolute_time, const struct GNUNET_TIME_Absolute)                 \
-  op (timestamp, const struct GNUNET_TIME_Timestamp)                    \
-  op (wire_deadline, const struct GNUNET_TIME_Timestamp)                \
-  op (refund_deadline, const struct GNUNET_TIME_Timestamp)              \
-  op (exchange_pub, const struct TALER_ExchangePublicKeyP)              \
-  op (exchange_sig, const struct TALER_ExchangeSignatureP)              \
-  op (blinding_key, const union GNUNET_CRYPTO_BlindingSecretP)         \
-  op (h_blinded_coin, const struct TALER_BlindedCoinHashP)
+        op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)            \
+        op (denom_sig, const struct TALER_DenominationSignature)              \
+        op (amounts, const struct TALER_Amount)                               \
+        op (deposit_amount, const struct TALER_Amount)                        \
+        op (deposit_fee_amount, const struct TALER_Amount)                    \
+        op (age_commitment, const struct TALER_AgeCommitment)                 \
+        op (age_commitment_proof, const struct TALER_AgeCommitmentProof)      \
+        op (h_age_commitment, const struct TALER_AgeCommitmentHash)           \
+        op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
+        op (coin_history, const struct TALER_EXCHANGE_CoinHistoryEntry) \
+        op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)       \
+        op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)     \
+        op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)               \
+        op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                 \
+        op (coin_sig, const struct TALER_CoinSpendSignatureP)                 \
+        op (absolute_time, const struct GNUNET_TIME_Absolute)                 \
+        op (timestamp, const struct GNUNET_TIME_Timestamp)                    \
+        op (wire_deadline, const struct GNUNET_TIME_Timestamp)                \
+        op (refund_deadline, const struct GNUNET_TIME_Timestamp)              \
+        op (exchange_pub, const struct TALER_ExchangePublicKeyP)              \
+        op (exchange_sig, const struct TALER_ExchangeSignatureP)              \
+        op (blinding_key, const union GNUNET_CRYPTO_BlindingSecretP)         \
+        op (h_blinded_coin, const struct TALER_BlindedCoinHashP)
 
 TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)
 

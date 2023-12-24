@@ -155,6 +155,8 @@ check_PROGRAMS = \
   test_exchange_api_rsa \
   test_exchange_api_age_restriction_cs \
   test_exchange_api_age_restriction_rsa \
+  test_exchange_api_conflicts_cs \
+  test_exchange_api_conflicts_rsa \
   test_exchange_api_keys_cherry_picking_cs \
   test_exchange_api_keys_cherry_picking_rsa \
   test_exchange_api_revocation_cs \
@@ -294,6 +296,38 @@ test_exchange_api_age_restriction_cs_LDADD = \
 test_exchange_api_age_restriction_rsa_SOURCES = \
   test_exchange_api_age_restriction.c
 test_exchange_api_age_restriction_rsa_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_exchange_api_conflicts_cs_SOURCES = \
+  test_exchange_api_conflicts.c
+test_exchange_api_conflicts_cs_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_exchange_api_conflicts_rsa_SOURCES = \
+  test_exchange_api_conflicts.c
+test_exchange_api_conflicts_rsa_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
