@@ -103,7 +103,8 @@ test_contract (void)
                   "k2", "n1", "n2",
                   /***/ "$forgettable", "n1", true);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_contract_seed_forgettable (c1));
+                 TALER_JSON_contract_seed_forgettable (c1,
+                                                       c1));
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,
                                            &h1));

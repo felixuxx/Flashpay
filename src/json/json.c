@@ -533,7 +533,7 @@ TALER_JSON_contract_part_forget (json_t *json,
 
 
 /**
- * Look over all of the values of a '$forgettable' object.  Replace 'True'
+ * Loop over all of the values of a '$forgettable' object.  Replace 'True'
  * values with proper random salts.  Fails if any forgettable values are
  * neither 'True' nor valid salts (strings).
  *
@@ -578,51 +578,64 @@ seed_forgettable (json_t *f)
 }
 
 
-/**
- * Take a given contract with "forgettable" fields marked
- * but with 'True' instead of a real salt. Replaces all
- * 'True' values with proper random salts.  Fails if any
- * forgettable markers are neither 'True' nor valid salts.
- *
- * @param[in,out] json JSON to transform
- * @return #GNUNET_OK on success
- */
 enum GNUNET_GenericReturnValue
-TALER_JSON_contract_seed_forgettable (json_t *json)
+TALER_JSON_contract_seed_forgettable (const json_t *spec,
+                                      json_t *contract)
 {
-  if (json_is_object (json))
+  if (json_is_object (spec))
   {
     const char *key;
     json_t *val;
 
-    json_object_foreach (json,
+    json_object_foreach ((json_t *) spec,
                          key,
                          val)
     {
+      json_t *cval = json_object_get (contract,
+                                      key);
+
       if (0 == strcmp ("$forgettable",
                        key))
       {
+        json_t *xval = json_deep_copy (val);
+
         if (GNUNET_OK !=
-            seed_forgettable (val))
+            seed_forgettable (xval))
+        {
+          json_decref (xval);
           return GNUNET_SYSERR;
+        }
+        GNUNET_assert (0 ==
+                       json_object_set_new (contract,
+                                            "$forgettable",
+                                            xval));
         continue;
       }
+      if (NULL == cval)
+        continue;
       if (GNUNET_OK !=
-          TALER_JSON_contract_seed_forgettable (val))
+          TALER_JSON_contract_seed_forgettable (val,
+                                                cval))
         return GNUNET_SYSERR;
     }
   }
-  if (json_is_array (json))
+  if (json_is_array (spec))
   {
     size_t index;
     json_t *val;
 
-    json_array_foreach (json,
+    json_array_foreach ((json_t *) spec,
                         index,
                         val)
     {
+      json_t *ival = json_array_get (contract,
+                                     index);
+
+      if (NULL == ival)
+        continue;
       if (GNUNET_OK !=
-          TALER_JSON_contract_seed_forgettable (val))
+          TALER_JSON_contract_seed_forgettable (val,
+                                                ival))
         return GNUNET_SYSERR;
     }
   }
