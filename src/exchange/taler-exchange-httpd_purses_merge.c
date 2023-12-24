@@ -370,13 +370,15 @@ merge_transaction (void *cls,
     struct GNUNET_TIME_Timestamp merge_timestamp;
     char *partner_url = NULL;
     struct TALER_ReservePublicKeyP reserve_pub;
+    bool refunded;
 
     qs = TEH_plugin->select_purse_merge (TEH_plugin->cls,
                                          pcc->purse_pub,
                                          &merge_sig,
                                          &merge_timestamp,
                                          &partner_url,
-                                         &reserve_pub);
+                                         &reserve_pub,
+                                         &refunded);
     if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -390,18 +392,39 @@ merge_transaction (void *cls,
                                     "select purse merge");
       return qs;
     }
-    *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
-      connection,
-      MHD_HTTP_CONFLICT,
-      GNUNET_JSON_pack_timestamp ("merge_timestamp",
-                                  merge_timestamp),
-      GNUNET_JSON_pack_data_auto ("merge_sig",
-                                  &merge_sig),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string ("partner_url",
-                                 partner_url)),
-      GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                  &reserve_pub));
+    if (refunded)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Purse was already refunded\n");
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_GONE,
+                                             TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+                                             NULL);
+      GNUNET_free (partner_url);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (0 !=
+        GNUNET_memcmp (&merge_sig,
+                       &pcc->merge_sig))
+    {
+      *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
+        connection,
+        MHD_HTTP_CONFLICT,
+        GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                    merge_timestamp),
+        GNUNET_JSON_pack_data_auto ("merge_sig",
+                                    &merge_sig),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string ("partner_url",
+                                   partner_url)),
+        GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                    &reserve_pub));
+      GNUNET_free (partner_url);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    /* idempotent! */
+    *mhd_ret = reply_merge_success (connection,
+                                    pcc);
     GNUNET_free (partner_url);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -623,53 +646,6 @@ TEH_handler_purses_merge (
         TALER_EC_EXCHANGE_PURSE_MERGE_INVALID_RESERVE_SIGNATURE,
         NULL);
     }
-  }
-
-  if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time))
-  {
-    struct TALER_PurseMergeSignatureP merge_sig;
-    struct GNUNET_TIME_Timestamp merge_timestamp;
-    char *partner_url = NULL;
-    struct TALER_ReservePublicKeyP reserve_pub;
-
-    qs = TEH_plugin->select_purse_merge (TEH_plugin->cls,
-                                         pcc.purse_pub,
-                                         &merge_sig,
-                                         &merge_timestamp,
-                                         &partner_url,
-                                         &reserve_pub);
-    if (qs <= 0)
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_GONE,
-                                         TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
-                                         NULL);
-    }
-    if (0 !=
-        GNUNET_memcmp (&merge_sig,
-                       &pcc.merge_sig))
-    {
-      MHD_RESULT mhd_res;
-
-      mhd_res = TALER_MHD_REPLY_JSON_PACK (
-        connection,
-        MHD_HTTP_CONFLICT,
-        GNUNET_JSON_pack_timestamp ("merge_timestamp",
-                                    merge_timestamp),
-        GNUNET_JSON_pack_data_auto ("merge_sig",
-                                    &merge_sig),
-        GNUNET_JSON_pack_allow_null (
-          GNUNET_JSON_pack_string ("partner_url",
-                                   partner_url)),
-        GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &reserve_pub));
-      GNUNET_free (partner_url);
-      return mhd_res;
-    }
-    GNUNET_free (partner_url);
-    /* request was idempotent, return success! */
-    return reply_merge_success (connection,
-                                &pcc);
   }
 
   /* execute transaction */

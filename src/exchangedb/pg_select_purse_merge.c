@@ -33,7 +33,8 @@ TEH_PG_select_purse_merge (
   struct TALER_PurseMergeSignatureP *merge_sig,
   struct GNUNET_TIME_Timestamp *merge_timestamp,
   char **partner_url,
-  struct TALER_ReservePublicKeyP *reserve_pub)
+  struct TALER_ReservePublicKeyP *reserve_pub,
+  bool *refunded)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -52,11 +53,15 @@ TEH_PG_select_purse_merge (
       GNUNET_PQ_result_spec_string ("partner_base_url",
                                     partner_url),
       &is_null),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_bool ("refunded",
+                                  refunded),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
 
   *partner_url = NULL;
-  /* Used in #postgres_select_purse_merge */
+  *refunded = true;
   PREPARE (pg,
            "select_purse_merge",
            "SELECT "
@@ -64,7 +69,9 @@ TEH_PG_select_purse_merge (
            ",merge_sig"
            ",merge_timestamp"
            ",partner_base_url"
+           ",refunded"
            " FROM purse_merges"
+           " LEFT JOIN purse_decision USING (purse_pub)"
            " LEFT JOIN partners USING (partner_serial_id)"
            " WHERE purse_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

@@ -35,6 +35,7 @@
  * @param[out] merge_timestamp set to the time of the merge
  * @param[out] partner_url set to the URL of the target exchange, or NULL if the target exchange is us. To be freed by the caller.
  * @param[out] reserve_pub set to the public key of the reserve/account being credited
+ * @param[out] refunded set to true if purse was refunded
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
@@ -44,6 +45,7 @@ TEH_PG_select_purse_merge (
   struct TALER_PurseMergeSignatureP *merge_sig,
   struct GNUNET_TIME_Timestamp *merge_timestamp,
   char **partner_url,
-  struct TALER_ReservePublicKeyP *reserve_pub);
+  struct TALER_ReservePublicKeyP *reserve_pub,
+  bool *refunded);
 
 #endif

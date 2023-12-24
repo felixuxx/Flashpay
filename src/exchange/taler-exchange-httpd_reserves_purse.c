@@ -363,6 +363,7 @@ purse_transaction (void *cls,
       struct GNUNET_TIME_Timestamp merge_timestamp;
       char *partner_url;
       struct TALER_ReservePublicKeyP reserve_pub;
+      bool refunded;
 
       TEH_plugin->rollback (TEH_plugin->cls);
       qs = TEH_plugin->select_purse_merge (
@@ -371,7 +372,8 @@ purse_transaction (void *cls,
         &merge_sig,
         &merge_timestamp,
         &partner_url,
-        &reserve_pub);
+        &reserve_pub,
+        &refunded);
       if (qs <= 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
@@ -382,6 +384,18 @@ purse_transaction (void *cls,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_GENERIC_DB_FETCH_FAILED,
                                                "select purse merge");
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+      if (refunded)
+      {
+        /* This is a bit of a strange case ... */
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Purse was already refunded\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_GONE,
+                                               TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+                                               NULL);
+        GNUNET_free (partner_url);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
       *mhd_ret
