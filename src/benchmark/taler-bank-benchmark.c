@@ -220,7 +220,7 @@ run (void *cls,
           TALER_TESTING_cmd_admin_add_incoming (add_label (
                                                   create_reserve_label),
                                                 total_reserve_amount,
-                                                &cred.ba,
+                                                &cred.ba_admin,
                                                 cred.user42_payto));
   }
   GNUNET_free (total_reserve_amount);

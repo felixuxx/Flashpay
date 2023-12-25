@@ -252,10 +252,9 @@ register_bank_account() {
         --method=POST \
         --header='Content-type: application/json' \
         --body-data="${BODY}" \
-        --content-on-error \
-        -a wget-register-account.log \
         -o /dev/null \
         -O /dev/null \
+        -a wget-register-account.log \
         "http://localhost:${BANK_PORT}/accounts"
 }
 
@@ -281,7 +280,13 @@ register_fakebank_account() {
 }
 
 
-if [[ "1" = "$START_BANK" || "1" = "$START_FAKEBANK" ]]
+if [[ "1" = "$START_BANK" ]]
+then
+    BANK_PORT=$(taler-config -c "$CONF" -s "libeufin-bank" -o "PORT")
+    BANK_URL="http://localhost:${BANK_PORT}/"
+fi
+
+if [[ "1" = "$START_FAKEBANK" ]]
 then
     BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
     BANK_URL="http://localhost:${BANK_PORT}/"
@@ -310,6 +315,7 @@ then
         wget --timeout=1 \
              --tries=3 \
              --waitretry=0 \
+             -a wget-bank-check.log \
              -o /dev/null \
              -O /dev/null \
              "$BANK_URL/config" || continue
@@ -369,9 +375,10 @@ then
              --timeout=1 \
              --user admin \
              --password secret \
-             "http://localhost:${BANK_PORT}/" \
+             -a wget-bank-check.log \
              -o /dev/null \
-             -O /dev/null >/dev/null || continue
+             -O /dev/null \
+             "http://localhost:${BANK_PORT}/" || continue
         OK="1"
         break
     done

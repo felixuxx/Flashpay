@@ -163,7 +163,7 @@ cmd_transfer_to_exchange (const char *label,
   return TALER_TESTING_cmd_admin_add_incoming_retry (
     TALER_TESTING_cmd_admin_add_incoming (label,
                                           amount,
-                                          &cred.ba,
+                                          &cred.ba_admin,
                                           cred.user42_payto));
 }
 
@@ -171,6 +171,7 @@ cmd_transfer_to_exchange (const char *label,
 /**
  * Throw a weighted coin with @a probability.
  *
+ * @param probability weight of the coin flip
  * @return #GNUNET_OK with @a probability,
  *         #GNUNET_NO with 1 - @a probability
  */
