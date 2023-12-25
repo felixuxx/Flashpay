@@ -630,7 +630,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
         break;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Imported transaction %llu.",
+                    "Imported transaction %llu.\n",
                     (unsigned long long) cd->serial_id);
         /* normal case */
         progress = true;
