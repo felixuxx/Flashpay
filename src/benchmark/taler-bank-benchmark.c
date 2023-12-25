@@ -493,14 +493,6 @@ main (int argc,
   GNUNET_log_setup ("taler-bank-benchmark",
                     loglev,
                     logfile);
-  if (NULL == cfg_filename)
-    cfg_filename = GNUNET_CONFIGURATION_default_filename ();
-  if (NULL == cfg_filename)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Can't find default configuration file.\n");
-    return EXIT_NOTCONFIGURED;
-  }
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
