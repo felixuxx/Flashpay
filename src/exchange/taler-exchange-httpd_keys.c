@@ -3500,64 +3500,6 @@ TEH_keys_denomination_by_hash_from_state (
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_sign (
-  const struct TEH_CoinSignData *csd,
-  bool for_melt,
-  struct TALER_BlindedDenominationSignature *bs)
-{
-  struct TEH_KeyStateHandle *ksh;
-  struct HelperDenomination *hd;
-  const struct TALER_DenominationHashP *h_denom_pub = csd->h_denom_pub;
-  const struct TALER_BlindedPlanchet *bp = csd->bp;
-
-  ksh = TEH_keys_get_state ();
-  if (NULL == ksh)
-    return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
-  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
-                                          &h_denom_pub->hash);
-  if (NULL == hd)
-    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-  if (bp->blinded_message->cipher !=
-      hd->denom_pub.bsign_pub_key->cipher)
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  switch (hd->denom_pub.bsign_pub_key->cipher)
-  {
-  case GNUNET_CRYPTO_BSA_INVALID:
-    break;
-  case GNUNET_CRYPTO_BSA_RSA:
-    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
-    {
-      struct TALER_CRYPTO_RsaSignRequest rsr = {
-        .h_rsa = &hd->h_details.h_rsa,
-        .msg = bp->blinded_message->details.rsa_blinded_message.blinded_msg,
-        .msg_size =
-          bp->blinded_message->details.rsa_blinded_message.blinded_msg_size
-      };
-
-      return TALER_CRYPTO_helper_rsa_sign (
-        ksh->helpers->rsadh,
-        &rsr,
-        bs);
-    }
-  case GNUNET_CRYPTO_BSA_CS:
-    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
-    {
-      struct TALER_CRYPTO_CsSignRequest csr;
-
-      csr.h_cs = &hd->h_details.h_cs;
-      csr.blinded_planchet = &bp->blinded_message->details.cs_blinded_message;
-      return TALER_CRYPTO_helper_cs_sign (
-        ksh->helpers->csdh,
-        &csr,
-        for_melt,
-        bs);
-    }
-  }
-  return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-}
-
-
-enum TALER_ErrorCode
 TEH_keys_denomination_batch_sign (
   unsigned int csds_length,
   const struct TEH_CoinSignData csds[static csds_length],
