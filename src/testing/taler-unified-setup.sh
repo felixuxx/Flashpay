@@ -729,7 +729,7 @@ then
       download \
       sign \
       wire-fee now "$WIRE_DOMAIN" "$CURRENCY:0.01" "$CURRENCY:0.01" \
-      global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.01" 1h 1year 5 \
+      global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.0" 1h 1year 5 \
       upload &> taler-exchange-offline.log
     echo "OK"
     ENABLED=$(taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "ENABLE_CREDIT")
