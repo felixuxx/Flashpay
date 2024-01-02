@@ -1205,7 +1205,7 @@ kycaid_webhook (void *cls,
   CURL *eh;
   const char *request_id;
   const char *type;
-  const char *verification_id;
+  const char *verification_id; /* = provider_legitimization_id */
   const char *applicant_id;
   const char *form_id;
   const char *status = NULL;
@@ -1304,7 +1304,7 @@ kycaid_webhook (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Received webhook for unknown verification ID `%s' and section %s\n",
+                "Received webhook for unknown verification ID `%s' and section `%s'\n",
                 verification_id,
                 pd->section);
     wh->resp = TALER_MHD_make_error (

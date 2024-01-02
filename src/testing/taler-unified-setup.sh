@@ -446,10 +446,21 @@ then
         taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
     taler-exchange-dbinit -c "$CONF" --reset
-    $USE_VALGRIND taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-eddsa.log &
-    $USE_VALGRIND taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-rsa.log &
-    $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
-    $USE_VALGRIND taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
+    $USE_VALGRIND taler-exchange-secmod-eddsa \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-secmod-eddsa.log &
+    $USE_VALGRIND taler-exchange-secmod-rsa \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-secmod-rsa.log &
+    $USE_VALGRIND taler-exchange-secmod-cs \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-secmod-cs.log &
+    $USE_VALGRIND taler-exchange-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
     echo " DONE"
 fi
 
@@ -459,6 +470,7 @@ then
     $USE_VALGRIND taler-exchange-wirewatch \
                   --account="$USE_ACCOUNT" \
                   -c "$CONF" \
+                  -L "$LOGLEVEL" \
                   --longpoll-timeout="1 s" \
                   2> taler-exchange-wirewatch.log &
     echo " DONE"
@@ -467,14 +479,20 @@ fi
 if [ "1" = "$START_AGGREGATOR" ]
 then
     echo -n "Starting aggregator ..."
-    $USE_VALGRIND taler-exchange-aggregator -c "$CONF" 2> taler-exchange-aggregator.log &
+    $USE_VALGRIND taler-exchange-aggregator \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-aggregator.log &
     echo " DONE"
 fi
 
 if [ "1" = "$START_TRANSFER" ]
 then
     echo -n "Starting transfer ..."
-    $USE_VALGRIND taler-exchange-transfer -c "$CONF" 2> taler-exchange-transfer.log &
+    $USE_VALGRIND taler-exchange-transfer \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-transfer.log &
     echo " DONE"
 fi
 
@@ -499,9 +517,15 @@ then
         MERCHANT_PORT="$(taler-config -c "$CONF" -s MERCHANT -o PORT)"
         MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
     fi
-    taler-merchant-dbinit -c "$CONF" -L "$LOGLEVEL" --reset &> taler-merchant-dbinit.log
-    $USE_VALGRIND taler-merchant-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
-    $USE_VALGRIND taler-merchant-webhook -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    taler-merchant-dbinit \
+        -c "$CONF" \
+        --reset &> taler-merchant-dbinit.log
+    $USE_VALGRIND taler-merchant-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
+    $USE_VALGRIND taler-merchant-webhook \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
     echo " DONE"
 fi
 
@@ -517,7 +541,10 @@ then
         SYNC_URL="http://localhost:${SYNC_PORT}/"
     fi
     sync-dbinit -c "$CONF" --reset
-    $USE_VALGRIND sync-httpd -c "$CONF" -L "$LOGLEVEL" 2> sync-httpd.log &
+    $USE_VALGRIND sync-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> sync-httpd.log &
     echo " DONE"
 fi
 
@@ -532,8 +559,13 @@ then
     else
         CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
     fi
-    challenger-dbinit -c "$CONF" --reset
-    $USE_VALGRIND challenger-httpd -c "$CONF" -L "$LOGLEVEL" 2> challenger-httpd.log &
+    challenger-dbinit \
+        -c "$CONF" \
+        --reset
+    $USE_VALGRIND challenger-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> challenger-httpd.log &
     echo " DONE"
     for SECTION in $(taler-config -c "$CONF" -S | grep kyc-provider)
     do
@@ -574,9 +606,16 @@ then
     fi
     AUDITOR_PUB=$(gnunet-ecc -p "${AUDITOR_PRIV_FILE}")
     MAPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
-    taler-auditor-dbinit -c "$CONF" --reset
-    taler-auditor-exchange -c "$CONF" -m "$MAPUB" -u "$EXCHANGE_URL"
-    $USE_VALGRIND taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
+    taler-auditor-dbinit \
+        -c "$CONF" \
+        --reset
+    taler-auditor-exchange \
+        -c "$CONF" \
+        -m "$MAPUB" \
+        -u "$EXCHANGE_URL"
+    $USE_VALGRIND taler-auditor-httpd \
+                  -L "$LOGLEVEL" \
+                  -c "$CONF" 2> taler-auditor-httpd.log &
     echo " DONE"
 fi
 
