@@ -337,12 +337,12 @@ run (void *cls,
     TALER_TESTING_cmd_status (
       "push-check-post-merge-reserve-balance-get",
       "p2p_create-reserve-1",
-      "EUR:1.03",
+      "EUR:1.02",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_reserve_history (
       "push-check-post-merge-reserve-balance-post",
       "p2p_create-reserve-1",
-      "EUR:1.03",
+      "EUR:1.02",
       MHD_HTTP_OK),
 
     TALER_TESTING_cmd_end ()
