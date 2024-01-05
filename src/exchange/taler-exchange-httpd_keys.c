@@ -1638,6 +1638,7 @@ setup_key_helpers (struct HelperState *hs)
     return GNUNET_SYSERR;
   }
   hs->csdh = TALER_CRYPTO_helper_cs_connect (TEH_cfg,
+                                             "taler",
                                              &helper_cs_cb,
                                              hs);
   if (NULL == hs->csdh)

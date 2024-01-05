@@ -341,6 +341,13 @@ static struct GNUNET_TIME_Timestamp now_tmp;
 static char *keydir;
 
 /**
+ * Name of the configuration section prefix to use.  Usually either "taler" or
+ * "donau". The actual configuration section will then be
+ * "$SECTION-exchange-secmod-cs".
+ */
+static const char *section = "taler";
+
+/**
  * How much should coin creation (@e duration_withdraw) duration overlap
  * with the next denomination?  Basically, the starting time of two
  * denominations is always @e duration_withdraw - #overlap_duration apart.
@@ -2157,6 +2164,7 @@ run (void *cls,
     .updater = &cs_update_client_keys,
     .init = &cs_client_init
   };
+  char *secname;
 
   (void) cls;
   (void) args;
@@ -2171,18 +2179,23 @@ run (void *cls,
     /* get current time again, we may be timetraveling! */
     now = GNUNET_TIME_timestamp_get ();
   }
+  GNUNET_asprintf (&secname,
+                   "%s-exchange-secmod-cs",
+                   section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "taler-exchange-secmod-cs",
+                                               secname,
                                                "KEY_DIR",
                                                &keydir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-cs",
+                               secname,
                                "KEY_DIR");
+    GNUNET_free (secname);
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
+  GNUNET_free (secname);
   if (GNUNET_OK !=
       load_durations (cfg))
   {
@@ -2264,6 +2277,11 @@ main (int argc,
       char **argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_string ('s',
+                                 "section",
+                                 "SECTION",
+                                 "name of the configuration section prefix to use, default is 'taler'",
+                                 &section),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_option_timestamp ('t',

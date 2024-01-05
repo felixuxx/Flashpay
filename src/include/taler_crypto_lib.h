@@ -2514,6 +2514,7 @@ typedef void
  * Initiate connection to an denomination key helper.
  *
  * @param cfg configuration to use
+ * @param section configuration section prefix to use, usually 'taler' or 'donau'
  * @param dkc function to call with key information
  * @param dkc_cls closure for @a dkc
  * @return NULL on error (such as bad @a cfg).
@@ -2521,6 +2522,7 @@ typedef void
 struct TALER_CRYPTO_CsDenominationHelper *
 TALER_CRYPTO_helper_cs_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_CsDenominationKeyStatusCallback dkc,
   void *dkc_cls);
 

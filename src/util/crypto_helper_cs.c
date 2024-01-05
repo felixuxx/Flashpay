@@ -113,21 +113,27 @@ try_connect (struct TALER_CRYPTO_CsDenominationHelper *dh)
 struct TALER_CRYPTO_CsDenominationHelper *
 TALER_CRYPTO_helper_cs_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_CsDenominationKeyStatusCallback dkc,
   void *dkc_cls)
 {
   struct TALER_CRYPTO_CsDenominationHelper *dh;
   char *unixpath;
+  char *secname;
 
+  GNUNET_asprintf (&secname,
+                   "%s-exchange-secmod-cs",
+                   section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "taler-exchange-secmod-cs",
+                                               secname,
                                                "UNIXPATH",
                                                &unixpath))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-cs",
+                               secname,
                                "UNIXPATH");
+    GNUNET_free (secname);
     return NULL;
   }
   /* we use >= here because we want the sun_path to always
@@ -135,12 +141,14 @@ TALER_CRYPTO_helper_cs_connect (
   if (strlen (unixpath) >= sizeof (dh->sa.sun_path))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-cs",
+                               secname,
                                "UNIXPATH",
                                "path too long");
     GNUNET_free (unixpath);
+    GNUNET_free (secname);
     return NULL;
   }
+  GNUNET_free (secname);
   dh = GNUNET_new (struct TALER_CRYPTO_CsDenominationHelper);
   dh->dkc = dkc;
   dh->dkc_cls = dkc_cls;
