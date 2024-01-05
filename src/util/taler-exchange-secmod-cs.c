@@ -345,7 +345,7 @@ static char *keydir;
  * "donau". The actual configuration section will then be
  * "$SECTION-exchange-secmod-cs".
  */
-static char *section = "taler";
+static char *section;
 
 /**
  * How much should coin creation (@e duration_withdraw) duration overlap
@@ -2300,7 +2300,7 @@ main (int argc,
 
   /* Restrict permissions for the key files that we create. */
   (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
-
+  section = GNUNET_strdup ("taler");
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
