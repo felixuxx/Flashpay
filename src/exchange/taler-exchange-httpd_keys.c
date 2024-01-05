@@ -1630,6 +1630,7 @@ setup_key_helpers (struct HelperState *hs)
     = GNUNET_CONTAINER_multipeermap_create (32,
                                             GNUNET_NO /* MUST BE NO! */);
   hs->rsadh = TALER_CRYPTO_helper_rsa_connect (TEH_cfg,
+                                               "taler",
                                                &helper_rsa_cb,
                                                hs);
   if (NULL == hs->rsadh)
@@ -1647,6 +1648,7 @@ setup_key_helpers (struct HelperState *hs)
     return GNUNET_SYSERR;
   }
   hs->esh = TALER_CRYPTO_helper_esign_connect (TEH_cfg,
+                                               "taler",
                                                &helper_esign_cb,
                                                hs);
   if (NULL == hs->esh)

@@ -2345,6 +2345,7 @@ typedef void
  * Initiate connection to an denomination key helper.
  *
  * @param cfg configuration to use
+ * @param section configuration section prefix to use, usually 'taler' or 'donau'
  * @param dkc function to call with key information
  * @param dkc_cls closure for @a dkc
  * @return NULL on error (such as bad @a cfg).
@@ -2352,6 +2353,7 @@ typedef void
 struct TALER_CRYPTO_RsaDenominationHelper *
 TALER_CRYPTO_helper_rsa_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_RsaDenominationKeyStatusCallback dkc,
   void *dkc_cls);
 
@@ -2736,6 +2738,7 @@ typedef void
  * Initiate connection to an online signing key helper.
  *
  * @param cfg configuration to use
+ * @param section configuration section prefix to use, usually 'taler' or 'donau'
  * @param ekc function to call with key information
  * @param ekc_cls closure for @a ekc
  * @return NULL on error (such as bad @a cfg).
@@ -2743,6 +2746,7 @@ typedef void
 struct TALER_CRYPTO_ExchangeSignHelper *
 TALER_CRYPTO_helper_esign_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_ExchangeKeyStatusCallback ekc,
   void *ekc_cls);
 

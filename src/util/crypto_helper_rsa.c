@@ -113,21 +113,28 @@ try_connect (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 struct TALER_CRYPTO_RsaDenominationHelper *
 TALER_CRYPTO_helper_rsa_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_RsaDenominationKeyStatusCallback dkc,
   void *dkc_cls)
 {
   struct TALER_CRYPTO_RsaDenominationHelper *dh;
   char *unixpath;
+  char *secname;
+ 
+  GNUNET_asprintf (&secname,
+                   "%s-exchange-secmod-rsa",
+                   section);
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "taler-exchange-secmod-rsa",
+                                               secname,
                                                "UNIXPATH",
                                                &unixpath))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-rsa",
+                               secname,
                                "UNIXPATH");
+    GNUNET_free (secname);
     return NULL;
   }
   /* we use >= here because we want the sun_path to always
@@ -139,8 +146,10 @@ TALER_CRYPTO_helper_rsa_connect (
                                "UNIXPATH",
                                "path too long");
     GNUNET_free (unixpath);
+    GNUNET_free (secname);
     return NULL;
   }
+  GNUNET_free (secname);
   dh = GNUNET_new (struct TALER_CRYPTO_RsaDenominationHelper);
   dh->dkc = dkc;
   dh->dkc_cls = dkc_cls;
