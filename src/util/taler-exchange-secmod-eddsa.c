@@ -141,7 +141,7 @@ static char *keydir;
  * "donau". The actual configuration section will then be
  * "$SECTION-exchange-secmod-cs".
  */
-static const char *section = "taler";
+static char *section = "taler";
 
 /**
  * How much should coin creation duration overlap
