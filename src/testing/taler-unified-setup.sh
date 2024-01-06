@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This file is part of TALER
-# Copyright (C) 2023 Taler Systems SA
+# Copyright (C) 2023, 2024 Taler Systems SA
 #
 # TALER is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as
@@ -74,6 +74,7 @@ START_NEXUS=0
 START_BANK=0
 START_TRANSFER=0
 START_WIREWATCH=0
+START_DEPOSITCHECK=0
 USE_ACCOUNT="exchange-account-1"
 USE_VALGRIND=""
 WIRE_DOMAIN="x-taler-bank"
@@ -82,7 +83,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
+while getopts ':abc:d:efghkL:mMnr:stu:vwW' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -117,6 +118,7 @@ while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
             # shellcheck disable=SC2016
             echo '  -L $LOGLEVEL -- set log level'
             echo '  -m           -- start merchant'
+            echo '  -M           -- start merchant-depositcheck'
             echo '  -n           -- start nexus'
             # shellcheck disable=SC2016
             echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
@@ -126,6 +128,7 @@ while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
             echo '  -u $SECTION  -- exchange account to use'
             echo '  -v           -- use valgrind'
             echo '  -w           -- start wirewatch'
+            echo '  -W           -- wait for signal'
             exit 0
             ;;
         g)
@@ -139,6 +142,9 @@ while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
             ;;
         m)
             START_MERCHANT="1"
+            ;;
+        M)
+            START_DEPOSITCHECK="1"
             ;;
         n)
             START_NEXUS="1"
@@ -526,8 +532,15 @@ then
     $USE_VALGRIND taler-merchant-webhook \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    if [ "1" = "$START_DEPOSITCHECK" ]
+    then
+        $USE_VALGRIND taler-merchant-depositcheck \
+                      -c "$CONF" \
+                      -L "$LOGLEVEL" 2> taler-merchant-depositcheck.log &
+    fi
     echo " DONE"
 fi
+
 
 if [ "1" = "$START_BACKUP" ]
 then
