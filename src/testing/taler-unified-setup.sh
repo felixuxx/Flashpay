@@ -67,6 +67,7 @@ START_AUDITOR=0
 START_BACKUP=0
 START_EXCHANGE=0
 START_FAKEBANK=0
+START_DONAU=0
 START_CHALLENGER=0
 START_AGGREGATOR=0
 START_MERCHANT=0
@@ -83,7 +84,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghkL:mMnr:stu:vwW' OPTION; do
+while getopts ':abc:d:efghkL:mMnr:stu:vwWD' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -96,6 +97,9 @@ while getopts ':abc:d:efghkL:mMnr:stu:vwW' OPTION; do
             ;;
         d)
             WIRE_DOMAIN="$OPTARG"
+            ;;
+        D)  
+            START_DONAU="1"
             ;;
         e)
             START_EXCHANGE="1"
@@ -111,6 +115,7 @@ while getopts ':abc:d:efghkL:mMnr:stu:vwW' OPTION; do
             echo '  -c $CONF     -- set configuration'
             # shellcheck disable=SC2016
             echo '  -d $METHOD   -- use wire method (default: x-taler-bank)'
+            echo '  -D           -- start donau'
             echo '  -e           -- start exchange'
             echo '  -f           -- start fakebank'
             echo '  -g           -- start aggregator'
@@ -189,6 +194,13 @@ if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Testing for Taler exchange"
     taler-exchange-httpd -h > /dev/null || exit_skip " taler-exchange-httpd required"
+    echo " FOUND"
+fi
+
+if [ "1" = "$START_DONAU" ]
+then
+    echo -n "Testing for Donau"
+    donau-httpd -h > /dev/null || exit_skip " donau-httpd required"
     echo " FOUND"
 fi
 
@@ -467,6 +479,25 @@ then
     $USE_VALGRIND taler-exchange-httpd \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
+    echo " DONE"
+fi
+
+if [ "1" = "$START_DONAU" ]
+then
+    echo -n "Starting Donau ..."
+    DONAU_PORT=$(donau-config -c "$CONF" -s DONAU -o PORT)
+    SERVE=$(donau-config -c "$CONF" -s DONAU -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        DONAU_URL=$(donau-config -c "$CONF" -s DONAU -o BASE_URL)
+    else
+        DONAU_URL="http://localhost:${DONAU_PORT}/"
+    fi
+    donau-dbinit -c "$CONF" --reset
+    $USE_VALGRIND taler-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-eddsa.log &
+    $USE_VALGRIND taler-secmod-rsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-rsa.log &
+    $USE_VALGRIND taler-secmod-cs -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-cs.log &
+    $USE_VALGRIND donau-httpd -c "$CONF" -L "$LOGLEVEL" 2> donau-httpd.log &
     echo " DONE"
 fi
 
