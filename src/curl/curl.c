@@ -38,7 +38,7 @@ TALER_curl_set_secure_redirect_policy (CURL *eh,
                  curl_easy_setopt (eh,
                                    CURLOPT_FOLLOWLOCATION,
                                    1L));
-  GNUNET_assert ( (0 == strncasecmp (url, ||
+  GNUNET_assert ( (0 == strncasecmp (url,
                                      "https://",
                                      strlen ("https://"))) ||
                   (0 == strncasecmp (url,
