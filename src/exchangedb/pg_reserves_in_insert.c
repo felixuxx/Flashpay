@@ -51,7 +51,7 @@ compute_notify_on_reserve (const struct TALER_ReservePublicKeyP *reserve_pub)
     .reserve_pub = *reserve_pub
   };
 
-  return GNUNET_PG_get_event_notify_channel (&rep.header);
+  return GNUNET_PQ_get_event_notify_channel (&rep.header);
 }
 
 

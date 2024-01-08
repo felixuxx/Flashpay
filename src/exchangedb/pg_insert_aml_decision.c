@@ -49,7 +49,7 @@ TEH_PG_insert_aml_decision (
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
     .h_payto = *h_payto
   };
-  char *notify_s = GNUNET_PG_get_event_notify_channel (&rep.header);
+  char *notify_s = GNUNET_PQ_get_event_notify_channel (&rep.header);
   char *kyc_s = (NULL != kyc_requirements)
     ? json_dumps (kyc_requirements, JSON_COMPACT)
     : NULL;

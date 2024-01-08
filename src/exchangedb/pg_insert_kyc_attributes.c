@@ -53,7 +53,7 @@ TEH_PG_insert_kyc_attributes (
     .h_payto = *h_payto
   };
   char *kyc_completed_notify_s
-    = GNUNET_PG_get_event_notify_channel (&rep.header);
+    = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
