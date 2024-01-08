@@ -42,6 +42,17 @@ TALER_EXCHANGE_curl_easy_get_ (const char *url)
                  curl_easy_setopt (eh,
                                    CURLOPT_FOLLOWLOCATION,
                                    1L));
+  if (0 == strcasecmp (url,
+                       "https://"))
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_REDIR_PROTOCOLS_STR,
+                                     "https"));
+  else
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_REDIR_PROTOCOLS_STR,
+                                     "http,https"));
   /* Enable compression (using whatever curl likes), see
      https://curl.se/libcurl/c/CURLOPT_ACCEPT_ENCODING.html  */
   GNUNET_break (CURLE_OK ==
