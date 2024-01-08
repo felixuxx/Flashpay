@@ -79,4 +79,17 @@ void
 TALER_curl_easy_post_finished (struct TALER_CURL_PostContext *ctx);
 
 
+/**
+ * Set a secure redirection policy, allowing a limited
+ * number of redirects and only going from HTTP to HTTPS
+ * but not from HTTPS to HTTP.
+ *
+ * @param[in,out] eh easy handle to modify
+ * @param url URL to base the redirect policy on;
+ *        must start with "http://" or "https://"
+ */
+void
+TALER_curl_set_secure_redirect_policy (CURL *eh,
+                                       const char *url);
+
 #endif

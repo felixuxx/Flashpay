@@ -30,6 +30,58 @@
 #endif
 
 
+void
+TALER_curl_set_secure_redirect_policy (CURL *eh,
+                                       const char *url)
+{
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_FOLLOWLOCATION,
+                                   1L));
+  GNUNET_assert ( (0 == strncasecmp (url, ||
+                                     "https://",
+                                     strlen ("https://"))) ||
+                  (0 == strncasecmp (url,
+                                     "https://",
+                                     strlen ("http://"))) );
+#ifdef CURLOPT_REDIR_PROTOCOLS_STR
+  if (0 == strncasecmp (url,
+                        "https://",
+                        strlen ("https://")))
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_REDIR_PROTOCOLS_STR,
+                                     "https"));
+  else
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_REDIR_PROTOCOLS_STR,
+                                     "http,https"));
+#else
+#ifdef CURLOPT_REDIR_PROTOCOLS
+  if (0 == strncasecmp (url,
+                        "https://",
+                        strlen ("https://")))
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_REDIR_PROTOCOLS,
+                                     CURLPROTO_HTTPS));
+  else
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_REDIR_PROTOCOLS,
+                                     CURLPROTO_HTTP | CURLPROTO_HTTPS));
+#endif
+#endif
+  /* limit MAXREDIRS to 5 as a simple security measure against
+     a potential infinite loop caused by a malicious target */
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_MAXREDIRS,
+                                   5L));
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
                       CURL *eh,
