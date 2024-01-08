@@ -207,7 +207,12 @@ release_shard (struct Shard *s)
   if ( (0 == wc) &&
        (test_mode) &&
        (! jump_mode) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "In test-mode without work. Terminating.\n");
     GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
 }
 
 
@@ -379,6 +384,13 @@ run_shard (void *cls)
   if (GNUNET_TIME_absolute_is_future (s->shard_end))
   {
     abort_shard (s);
+    if (test_mode)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "In test-mode without work. Terminating.\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_at (s->shard_end,
                                     &run_shard,
