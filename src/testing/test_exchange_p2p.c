@@ -254,12 +254,12 @@ run (void *cls,
     TALER_TESTING_cmd_status (
       "pull-check-post-merge-reserve-balance-get",
       "create-reserve-1",
-      "EUR:2.01",
+      "EUR:2.02",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_reserve_history (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
-      "EUR:2.01",
+      "EUR:2.02",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_purse_deposit_coins (
       "purse-deposit-coins-idempotent",
