@@ -8,6 +8,7 @@ User=taler-exchange-wire
 Type=simple
 Restart=always
 RestartSec=1s
+RestartPreventExitStatus=9
 ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

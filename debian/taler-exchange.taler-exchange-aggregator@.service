@@ -7,6 +7,7 @@ User=taler-exchange-aggregator
 Type=simple
 Restart=always
 RestartSec=1s
+RestartPreventExitStatus=9
 ExecStart=/usr/bin/taler-exchange-aggregator -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

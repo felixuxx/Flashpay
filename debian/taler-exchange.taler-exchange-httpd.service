@@ -13,6 +13,7 @@ Type=simple
 # needs to be restarted. Thus no significant delay on restarts.
 Restart=always
 RestartSec=1ms
+RestartPreventExitStatus=9
 
 # Disable the service if more than 5 restarts are encountered within 5s.
 # These are usually the systemd defaults, but can be overwritten, thus we set
