@@ -42,7 +42,7 @@ TALER_curl_set_secure_redirect_policy (CURL *eh,
                                      "https://",
                                      strlen ("https://"))) ||
                   (0 == strncasecmp (url,
-                                     "https://",
+                                     "http://",
                                      strlen ("http://"))) );
 #ifdef CURLOPT_REDIR_PROTOCOLS_STR
   if (0 == strncasecmp (url,
