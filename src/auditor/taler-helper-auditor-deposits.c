@@ -29,6 +29,8 @@
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
 #include "report-lib.h"
+#include <taler/taler_dbevents.h>
+#include <jansson.h>
 
 /*
 --
@@ -51,6 +53,10 @@
 --    AND NOT ancient;
 */
 
+/**
+ * Next task to run, if any.
+ */
+static struct GNUNET_SCHEDULER_Task *task;
 
 /**
  * Return value from main().
@@ -76,6 +82,13 @@ static struct TALER_Amount total_missed_deposit_confirmations;
  * Should we run checks that only work for exchange-internal audits?
  */
 static int internal_checks;
+
+static struct GNUNET_DB_EventHandler *eh;
+
+/**
+ * Our database plugin.
+ */
+static struct TALER_AUDITORDB_Plugin *db_plugin;
 
 /**
  * Closure for #test_dc.
@@ -289,6 +302,29 @@ analyze_deposit_confirmations (void *cls)
 
 
 /**
+ * Function called on events received from Postgres.
+ *
+ * @param cls closure, NULL
+ * @param extra additional event data provided
+ * @param extra_size number of bytes in @a extra
+ */
+static void
+db_notify (void *cls,
+           const void *extra,
+           size_t extra_size)
+{
+  (void) cls;
+  (void) extra;
+  (void) extra_size;
+
+  GNUNET_assert (NULL != task);
+  GNUNET_SCHEDULER_cancel (task);
+  task = GNUNET_SCHEDULER_add_now (&analyze_deposit_confirmations,
+                                   NULL);
+}
+
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -313,6 +349,39 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
+
+  /*if (NULL ==
+      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
+  {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to initialize DB subsystem\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+  }
+  if (GNUNET_OK !=
+      db_plugin->connect (db_plugin->cls))
+  {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to connect to database\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+  }
+  {
+      struct GNUNET_DB_EventHeaderP es = {
+              .size = htons (sizeof (es)),
+              .type = htons (TALER_DBEVENT_AUDITOR_NEW_DEPOSIT_CONFIRMATIONS)
+      };
+
+      eh = db_plugin->event_listen (db_plugin->cls,
+                                    &es,
+                                    GNUNET_TIME_UNIT_FOREVER_REL,
+                                    &db_notify,
+                                    NULL);
+  }
+  GNUNET_assert (NULL == task);
+  task = GNUNET_SCHEDULER_add_now (&select_work,
+                                   NULL);*/
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting deposit audit\n");
   GNUNET_assert (NULL !=

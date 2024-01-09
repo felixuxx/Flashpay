@@ -31,7 +31,6 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
 
-
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
@@ -118,11 +117,11 @@ verify_and_execute_deposit_confirmation (
   const struct TALER_CoinSpendSignatureP *coin_sigps[
     GNUNET_NZL (dc->num_coins)];
 
-  for (unsigned int i = 0; i<dc->num_coins; i++)
+  for (unsigned int i = 0; i < dc->num_coins; i++)
     coin_sigps[i] = &dc->coin_sigs[i];
 
   if (GNUNET_TIME_absolute_is_future (es->ep_start.abs_time) ||
-      GNUNET_TIME_absolute_is_past (es->ep_expire.abs_time) )
+      GNUNET_TIME_absolute_is_past (es->ep_expire.abs_time))
   {
     /* Signing key expired */
     TALER_LOG_WARNING ("Expired exchange signing key\n");
@@ -134,7 +133,7 @@ verify_and_execute_deposit_confirmation (
 
   /* check our cache */
   GNUNET_CRYPTO_hash (&skv,
-                      sizeof (skv),
+                      sizeof(skv),
                       &h);
   GNUNET_assert (0 == pthread_mutex_lock (&lock));
   cached = GNUNET_CONTAINER_multihashmap_get (cache,
@@ -341,8 +340,8 @@ TAH_DEPOSIT_CONFIRMATION_handler (
                                      &json);
     if (GNUNET_SYSERR == res)
       return MHD_NO;
-    if ( (GNUNET_NO == res) ||
-         (NULL == json) )
+    if ((GNUNET_NO == res) ||
+        (NULL == json))
       return MHD_YES;
     res = TALER_MHD_parse_json_data (connection,
                                      json,
@@ -350,12 +349,12 @@ TAH_DEPOSIT_CONFIRMATION_handler (
     if (GNUNET_SYSERR == res)
     {
       json_decref (json);
-      return MHD_NO; /* hard failure */
+      return MHD_NO;       /* hard failure */
     }
     if (GNUNET_NO == res)
     {
       json_decref (json);
-      return MHD_YES; /* failure */
+      return MHD_YES;       /* failure */
     }
   }
   num_coins = json_array_size (jcoin_sigs);
@@ -382,7 +381,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (
     struct TALER_CoinSpendSignatureP coin_sigs[num_coins];
     MHD_RESULT res;
 
-    for (unsigned int i = 0; i<num_coins; i++)
+    for (unsigned int i = 0; i < num_coins; i++)
     {
       json_t *jpub = json_array_get (jcoin_pubs,
                                      i);
@@ -391,12 +390,12 @@ TAH_DEPOSIT_CONFIRMATION_handler (
       const char *ps = json_string_value (jpub);
       const char *ss = json_string_value (jsig);
 
-      if ( (NULL == ps) ||
-           (GNUNET_OK !=
-            GNUNET_STRINGS_string_to_data (ps,
-                                           strlen (ps),
-                                           &coin_pubs[i],
-                                           sizeof (coin_pubs[i]))) )
+      if ((NULL == ps) ||
+          (GNUNET_OK !=
+           GNUNET_STRINGS_string_to_data (ps,
+                                          strlen (ps),
+                                          &coin_pubs[i],
+                                          sizeof(coin_pubs[i]))))
       {
         GNUNET_break_op (0);
         json_decref (json);
@@ -405,12 +404,12 @@ TAH_DEPOSIT_CONFIRMATION_handler (
           TALER_EC_GENERIC_PARAMETER_MALFORMED,
           "coin_pub[] malformed");
       }
-      if ( (NULL == ss) ||
-           (GNUNET_OK !=
-            GNUNET_STRINGS_string_to_data (ss,
-                                           strlen (ss),
-                                           &coin_sigs[i],
-                                           sizeof (coin_sigs[i]))) )
+      if ((NULL == ss) ||
+          (GNUNET_OK !=
+           GNUNET_STRINGS_string_to_data (ss,
+                                          strlen (ss),
+                                          &coin_sigs[i],
+                                          sizeof(coin_sigs[i]))))
       {
         GNUNET_break_op (0);
         json_decref (json);
@@ -423,7 +422,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (
     dc.num_coins = num_coins;
     dc.coin_pubs = coin_pubs;
     dc.coin_sigs = coin_sigs;
-    es.exchange_pub = dc.exchange_pub; /* used twice! */
+    es.exchange_pub = dc.exchange_pub;     /* used twice! */
     dc.master_public_key = es.master_public_key;
     res = verify_and_execute_deposit_confirmation (connection,
                                                    &dc,
@@ -454,6 +453,98 @@ TEAH_DEPOSIT_CONFIRMATION_done (void)
     GNUNET_assert (0 == pthread_mutex_destroy (&lock));
   }
 }
+
+
+/**
+ * Add deposit confirmation to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param dc struct of deposit confirmation
+ */
+static void
+add_deposit_confirmation (void *cls,
+                          const struct TALER_AUDITORDB_DepositConfirmation *dc)
+{
+  json_t *list = cls;
+  json_t *obj;
+
+  obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("dc",
+                                dc));
+  GNUNET_break (0 ==
+                json_array_append_new (list,
+                                       obj));
+
+}
+
+
+/**
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+MHD_RESULT
+TAH_DEPOSIT_CONFIRMATION_get (struct TAH_RequestHandler *rh,
+                              struct MHD_Connection *connection,
+                              void **connection_cls,
+                              const char *upload_data,
+                              size_t *upload_data_size)
+{
+  json_t *ja;
+  enum GNUNET_DB_QueryStatus qs;
+
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
+  if (GNUNET_SYSERR ==
+      TAH_plugin->preflight (TAH_plugin->cls))
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_DB_SETUP_FAILED,
+                                       NULL);
+  }
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
+  // TODO correct below
+  struct TALER_AUDITORDB_ProgressPointDepositConfirmation ppdc;
+
+  qs = TAH_plugin->get_deposit_confirmations (
+    TAH_plugin->cls,
+    &TAH_plugin,
+    ppdc.last_deposit_confirmation_serial_id,
+    &add_deposit_confirmation,
+    ja);
+
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    json_decref (ja);
+    TALER_LOG_WARNING (
+      "Failed to handle GET /deposit-confirmation in database\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                       "deposit-confirmation");
+  }
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_array_steal ("deposit-confirmation",
+                                  ja));
+}
+
+
+/*MHD_RESULT
+TAH_DEPOSIT_CONFIRMATION_delete(struct TEH_RequestContext *rc,
+                                const char *const args[1]) {
+}*/
 
 
 /* end of taler-auditor-httpd_deposit-confirmation.c */

@@ -77,6 +77,7 @@
 #include "pg_insert_exchange_signkey.h"
 #include "pg_insert_deposit_confirmation.h"
 #include "pg_get_deposit_confirmations.h"
+#include "pg_delete_deposit_confirmations.h"
 #include "pg_insert_auditor_progress_coin.h"
 #include "pg_update_auditor_progress_coin.h"
 #include "pg_get_auditor_progress_coin.h"
