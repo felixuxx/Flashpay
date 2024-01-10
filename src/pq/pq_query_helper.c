@@ -899,7 +899,7 @@ qconv_array (
                                                     &oid_f));
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
-                                                    "VARCHAR",
+                                                    "text",
                                                     &oid_c));
           for (size_t i = 0; i<num; i++)
           {
@@ -1041,7 +1041,7 @@ qconv_array (
                                                     &oid_f));
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
-                                                    "VARCHAR(12)",
+                                                    "text",
                                                     &oid_c));
           {
             struct TALER_PQ_AmountCurrencyP am;
