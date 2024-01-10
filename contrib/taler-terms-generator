@@ -26,14 +26,7 @@ set -eu
 # Call with target language as first argument.
 function make_config()
 {
-    XLOC=$(echo "$LOCALE_DIR" | sed -e "s/\//\\\\\\//g")
-    sed -e "s/%VERSION%/$VERSION/g" \
-        -e "s/%TITLE%/$TITLE/g" \
-        -e "s/%AUTHOR%/$AUTHOR/g" \
-        -e "s/%LOCALE_DIR%/$XLOC/g" \
-        -e "s/%COPYRIGHT%/$COPYRIGHT/g" \
-        -e "s/%LANGUAGE%/$1/g" \
-        > "${BUILDDIR}/conf.py" <<EOF
+    cat > "${BUILDDIR}/conf.py" <<EOF
 import sys
 import os
 sys.path.append(os.path.abspath('_exts'))
@@ -47,14 +40,14 @@ templates_path = ['_templates']
 source_suffix = {
     '.rst': 'restructuredtext',
 }
-master_doc = '%VERSION%'
-project = u'%VERSION%'
-copyright = u'%COPYRIGHT%'
-version = '%VERSION%'
-release = '%VERSION%'
-language = "%LANGUAGE%"
+master_doc = '$VERSION_BASENAME'
+project = u'$VERSION_BASENAME'
+copyright = u'$COPYRIGHT'
+version = '$VERSION_BASENAME'
+release = '$VERSION_BASENAME'
+language = "$LANGUAGE"
 exclude_patterns = ['_build', '_exts', 'cf', 'prebuilt']
-locale_dirs = ['%LOCALE_DIR%/']
+locale_dirs = ['$LOCALE_DIR/']
 gettext_compact = False
 pygments_style = 'sphinx'
 html_theme = 'epub'
@@ -64,8 +57,8 @@ html_theme_options = {
     "relbar1": "false",
     "footer": "false",
 }
-html_title = "%TITLE%"
-html_short_title = "%TITLE%"
+html_title = "$TITLE"
+html_short_title = "$TITLE"
 html_use_index = True
 html_show_sphinx = False
 latex_elements = {
@@ -79,11 +72,11 @@ latex_elements = {
     #'preamble': '',
 }
 latex_documents = [
-    ('%VERSION%', '%VERSION%.tex',
-     '%TITLE%', '%AUTHOR%', 'manual'),
+    ('$VERSION_BASENAME', '$VERSION_BASENAME.tex',
+     '$VERSION_BASENAME', '$VERSION_BASENAME', 'manual'),
 ]
-epub_basename = "%VERSION%"
-epub_title = "%TITLE%"
+epub_basename = "$VERSION_BASENAME"
+epub_title = "$TITLE"
 EOF
 }
 
