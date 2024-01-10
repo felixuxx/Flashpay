@@ -459,10 +459,13 @@ TEAH_DEPOSIT_CONFIRMATION_done (void)
  * Add deposit confirmation to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
+ * @param serial_id location of the @a dc in the database
  * @param dc struct of deposit confirmation
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
-static void
+static enum GNUNET_GenericReturnValue
 add_deposit_confirmation (void *cls,
+                          uint64_t serial_id,
                           const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
   json_t *list = cls;
@@ -474,7 +477,7 @@ add_deposit_confirmation (void *cls,
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
+  return GNUNET_OK;
 }
 
 
@@ -513,11 +516,11 @@ TAH_DEPOSIT_CONFIRMATION_get (struct TAH_RequestHandler *rh,
   ja = json_array ();
   GNUNET_break (NULL != ja);
   // TODO correct below
-  struct TALER_AUDITORDB_ProgressPointDepositConfirmation ppdc;
+  struct TALER_AUDITORDB_ProgressPointDepositConfirmation ppdc = { 0 }; // FIXME: initialize...
 
   qs = TAH_plugin->get_deposit_confirmations (
     TAH_plugin->cls,
-    &TAH_plugin,
+    NULL, /* FIXME: master-public key to be removed! */
     ppdc.last_deposit_confirmation_serial_id,
     &add_deposit_confirmation,
     ja);
