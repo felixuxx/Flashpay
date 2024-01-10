@@ -75,7 +75,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_reserves_history.c \
   exchange_api_reserves_open.c \
   exchange_api_stefan.c \
-  exchange_api_transfers_get.c 
+  exchange_api_transfers_get.c
 libtalerexchange_la_LIBADD = \
   libtalerauditor.la \
   $(top_builddir)/src/json/libtalerjson.la \
@@ -97,8 +97,7 @@ libtalerauditor_la_LDFLAGS = \
 libtalerauditor_la_SOURCES = \
   auditor_api_curl_defaults.c auditor_api_curl_defaults.h \
   auditor_api_get_config.c \
-  auditor_api_deposit_confirmation.c \
-  auditor_api_exchanges.c
+  auditor_api_deposit_confirmation.c
 libtalerauditor_la_LIBADD = \
   $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/json/libtalerjson.la \

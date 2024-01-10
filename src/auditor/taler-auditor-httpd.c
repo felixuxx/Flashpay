@@ -31,7 +31,6 @@
 #include "taler_auditordb_lib.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
-#include "taler-auditor-httpd_exchanges.h"
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
 
@@ -212,9 +211,6 @@ handle_mhd_request (void *cls,
 //    { "/deposit-confirmation", MHD_HTTP_METHOD_DELETE, "application/json",
 //      NULL, 0,
 //      &TAH_DEPOSIT_CONFIRMATION_delete, MHD_HTTP_OK },
-    { "/exchanges", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TAH_EXCHANGES_handler, MHD_HTTP_OK },
     { "/config", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
       &handle_config, MHD_HTTP_OK },

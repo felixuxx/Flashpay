@@ -163,7 +163,6 @@ taler_helper_auditor_wire_LDADD = \
 taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd.c taler-auditor-httpd.h \
   taler-auditor-httpd_deposit-confirmation.c taler-auditor-httpd_deposit-confirmation.h \
-  taler-auditor-httpd_exchanges.c taler-auditor-httpd_exchanges.h \
   taler-auditor-httpd_mhd.c taler-auditor-httpd_mhd.h
 taler_auditor_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
