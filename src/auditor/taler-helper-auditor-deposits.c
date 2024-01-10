@@ -29,7 +29,7 @@
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
 #include "report-lib.h"
-#include <taler/taler_dbevents.h>
+#include "taler_dbevents.h"
 #include <jansson.h>
 
 /*

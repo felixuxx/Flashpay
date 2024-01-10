@@ -899,7 +899,7 @@ qconv_array (
                                                     &oid_f));
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
-                                                    "VARCHAR(12)",
+                                                    "VARCHAR",
                                                     &oid_c));
           for (size_t i = 0; i<num; i++)
           {
