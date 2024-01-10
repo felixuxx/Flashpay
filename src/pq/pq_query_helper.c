@@ -888,6 +888,7 @@ qconv_array (
           Oid oid_f;
           Oid oid_c;
 
+          buffer_lengths  = GNUNET_new_array (num, size_t);
           /* hoist out of loop? */
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
@@ -899,7 +900,7 @@ qconv_array (
                                                     &oid_f));
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
-                                                    "text",
+                                                    "varchar",
                                                     &oid_c));
           for (size_t i = 0; i<num; i++)
           {
@@ -917,6 +918,7 @@ qconv_array (
             total_size += len;
             RETURN_UNLESS (total_size >= y);
           }
+          sizes = buffer_lengths;
           break;
         }
       case TALER_PQ_array_of_blinded_denom_sig:
@@ -1041,7 +1043,7 @@ qconv_array (
                                                     &oid_f));
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
-                                                    "text",
+                                                    "varchar",
                                                     &oid_c));
           {
             struct TALER_PQ_AmountCurrencyP am;
