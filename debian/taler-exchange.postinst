@@ -13,6 +13,7 @@ _CSECUSERNAME=taler-exchange-secmod-cs
 _RSECUSERNAME=taler-exchange-secmod-rsa
 _ESECUSERNAME=taler-exchange-secmod-eddsa
 _AGGRUSERNAME=taler-exchange-aggregator
+_EXPIUSERNAME=taler-exchange-expire
 _WIREUSERNAME=taler-exchange-wire
 
 case "${1}" in
@@ -52,6 +53,10 @@ configure)
   if ! getent passwd ${_AGGRUSERNAME} >/dev/null; then
     adduser --quiet --system --no-create-home --home ${TALER_HOME} ${_AGGRUSERNAME}
     adduser --quiet ${_AGGRUSERNAME} ${_DBGROUPNAME}
+  fi
+  if ! getent passwd ${_EXPIUSERNAME} >/dev/null; then
+    adduser --quiet --system --no-create-home --home ${TALER_HOME} ${_EXPIUSERNAME}
+    adduser --quiet ${_EXPIUSERNAME} ${_DBGROUPNAME}
   fi
 
   if ! dpkg-statoverride --list /etc/taler/secrets/exchange-accountcredentials-1.secret.conf >/dev/null 2>&1; then

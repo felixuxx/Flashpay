@@ -38,6 +38,7 @@ override_dh_installsystemd:
 	# and dh_installsystemd by default only looks for "<package>.service".
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-httpd --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-aggregator --no-start --no-enable
+	dh_installsystemd -ptaler-exchange --name=taler-exchange-expire --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-transfer --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-wirewatch --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-secmod-cs --no-start --no-enable
