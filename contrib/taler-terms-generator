@@ -95,9 +95,10 @@ LOCALE_DIR=$(taler-config -s "PATHS" -o "LOCALEDIR" -f)
 OUTPUT=$(taler-config -s "EXCHANGE" -o "TERMS_DIR" -f)
 PAPER="a4"
 COPYRIGHT="2014-2023 Taler Systems SA (GPLv3+ or GFDL 1.3+)"
+INCREMENTAL=0
 
 # Parse command-line options
-while getopts ':a:C:hi:l:L:o:p:t:' OPTION; do
+while getopts ':a:C:hKi:l:L:o:p:t:' OPTION; do
     case "$OPTION" in
         a)
             AUTHOR="$OPTARG"
@@ -110,6 +111,7 @@ while getopts ':a:C:hi:l:L:o:p:t:' OPTION; do
             echo '  -a AUTHOR     -- set author header' "(default: $AUTHOR)"
             echo '  -C COPYRIGHT  -- set copyright header' "(default: $COPYRIGHT)"
             echo '  -h            -- print this help'
+            echo '  -K            -- rebuild only if input is older than output'
             echo '  -i INPUT      -- input file to convert' "(default: $VERSION)"
             echo '  -l LANGUAGE   -- target language to add'
             echo '  -L LOCALE_DIR -- directory with resources for translation' "(default: $LOCALE_DIR)"
@@ -144,6 +146,9 @@ while getopts ':a:C:hi:l:L:o:p:t:' OPTION; do
         t)
             TITLE="$OPTARG"
             ;;
+        K)
+            INCREMENTAL=1
+            ;;
         ?)
         echo "Unrecognized command line option" 1>&2
         exit 1
@@ -160,6 +165,12 @@ fi
 if ! which latexmk > /dev/null
 then
     echo "Command 'latexmk' not found, but required. Please install latexmk." 1>&2
+    exit 1
+fi
+
+if ! which make > /dev/null
+then
+    echo "Command 'make' not found, but required. Please install make." 1>&2
     exit 1
 fi
 
@@ -219,6 +230,17 @@ then
     echo "Done" 1>&2
     exit 0
 fi
+
+# As a heuristic for incremental builds, we only check the text output file.
+if [[ "$INCREMENTAL" -eq 1 ]]
+then
+  if [[ "$VERSION" -ot "${OUTPUT}/buildstamp" ]];
+  then
+    echo "Not rebuilding, input file $VERSION is older than $OUTPUT/buildstamp."
+    exit 0
+  fi
+fi
+
 
 # shellcheck disable=SC2086
 for d in en $(ls -d ${LOCALE_DIR}/?? | grep -v "en" 2> /dev/null || true)
@@ -305,6 +327,11 @@ do
         || failcat "${BUILDDIR}/pdf-latex.log"
     mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
 done
+
+if [[ "$INCREMENTAL" -eq 1 ]]
+then
+  touch "${OUTPUT}/buildstamp";
+fi
 
 echo "Done" 1>&2
 exit 0
