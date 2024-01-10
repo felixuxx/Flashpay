@@ -19,6 +19,7 @@
  * @brief curl easy handle defaults
  * @author Florian Dold
  */
+#include "platform.h"
 #include "taler_curl_lib.h"
 #include "auditor_api_curl_defaults.h"
 
