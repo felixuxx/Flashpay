@@ -76,6 +76,7 @@ START_BANK=0
 START_TRANSFER=0
 START_WIREWATCH=0
 START_DEPOSITCHECK=0
+START_MERCHANT_EXCHANGE=0
 USE_ACCOUNT="exchange-account-1"
 USE_VALGRIND=""
 WIRE_DOMAIN="x-taler-bank"
@@ -84,7 +85,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghkL:mMnr:stu:vwWD' OPTION; do
+while getopts ':abc:d:DeEfghkL:mMnr:stu:vwW' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -98,11 +99,14 @@ while getopts ':abc:d:efghkL:mMnr:stu:vwWD' OPTION; do
         d)
             WIRE_DOMAIN="$OPTARG"
             ;;
-        D)  
+        D)
             START_DONAU="1"
             ;;
         e)
             START_EXCHANGE="1"
+            ;;
+        E)
+            START_MERCHANT_EXCHANGE="1"
             ;;
         f)
             START_FAKEBANK="1"
@@ -117,22 +121,23 @@ while getopts ':abc:d:efghkL:mMnr:stu:vwWD' OPTION; do
             echo '  -d $METHOD   -- use wire method (default: x-taler-bank)'
             echo '  -D           -- start donau'
             echo '  -e           -- start exchange'
+            echo '  -E           -- start taler-merchant-exchange'
             echo '  -f           -- start fakebank'
-            echo '  -g           -- start aggregator'
+            echo '  -g           -- start taler-exchange-aggregator'
             echo '  -h           -- print this help'
             # shellcheck disable=SC2016
             echo '  -L $LOGLEVEL -- set log level'
-            echo '  -m           -- start merchant'
-            echo '  -M           -- start merchant-depositcheck'
+            echo '  -m           -- start taler-merchant'
+            echo '  -M           -- start taler-merchant-depositcheck'
             echo '  -n           -- start nexus'
             # shellcheck disable=SC2016
             echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
             echo '  -s           -- start backup/sync'
-            echo '  -t           -- start transfer'
+            echo '  -t           -- start taler-exchange-transfer'
             # shellcheck disable=SC2016
             echo '  -u $SECTION  -- exchange account to use'
             echo '  -v           -- use valgrind'
-            echo '  -w           -- start wirewatch'
+            echo '  -w           -- start taler-exchange-wirewatch'
             echo '  -W           -- wait for signal'
             exit 0
             ;;
@@ -563,6 +568,12 @@ then
     $USE_VALGRIND taler-merchant-webhook \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    if [ "1" = "$START_MERCHANT_EXCHANGE" ]
+    then
+        $USE_VALGRIND taler-merchant-exchange \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-exchange.log &
+    fi
     if [ "1" = "$START_DEPOSITCHECK" ]
     then
         $USE_VALGRIND taler-merchant-depositcheck \

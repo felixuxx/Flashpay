@@ -1060,6 +1060,15 @@ handle_curl_proof_finished (void *cls,
   ph->job = NULL;
   switch (response_code)
   {
+  case 0:
+    ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
+    ph->response
+      = TALER_MHD_make_error (
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+          "No response from KYC gateway");
+    ph->http_status
+      = MHD_HTTP_BAD_GATEWAY;
+    break;
   case MHD_HTTP_OK:
     parse_proof_success_reply (ph,
                                j);
@@ -1304,11 +1313,17 @@ oauth2_proof (void *cls,
                                          ph);
     return ph;
   }
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requesting OAuth 2.0 data via HTTP POST `%s'\n",
+              pd->token_url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (ph->eh,
                                    CURLOPT_URL,
                                    pd->token_url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (ph->eh,
+                                   CURLOPT_VERBOSE,
+                                   1));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (ph->eh,
                                    CURLOPT_POST,
