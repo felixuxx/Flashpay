@@ -1,4 +1,4 @@
---
+    --
 -- This file is part of TALER
 -- Copyright (C) 2014--2022 Taler Systems SA
 --
