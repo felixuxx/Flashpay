@@ -1719,9 +1719,8 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * @param blinded_planchet blinded planchet
  * @param denom_hash hash of the denomination public key
  * @param[out] bch where to write the hash
- * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occurred
  */
-enum GNUNET_GenericReturnValue
+void
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     const struct TALER_DenominationHashP *denom_hash,
                     struct TALER_BlindedCoinHashP *bch);
@@ -2805,15 +2804,15 @@ TALER_CRYPTO_helper_esign_sign_ (
  * @return the error code (or #TALER_EC_NONE on success)
  */
 #define TALER_CRYPTO_helper_esign_sign(esh,ps,epub,esig) (         \
-    /* check size is set correctly */                              \
-    GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
-    /* check 'ps' begins with the purpose */                       \
-    GNUNET_static_assert (((void*) (ps)) ==                        \
-                          ((void*) &(ps)->purpose)),               \
-    TALER_CRYPTO_helper_esign_sign_ (esh,                          \
-                                     &(ps)->purpose,               \
-                                     epub,                         \
-                                     esig) )
+          /* check size is set correctly */                              \
+          GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
+          /* check 'ps' begins with the purpose */                       \
+          GNUNET_static_assert (((void*) (ps)) ==                        \
+                                ((void*) &(ps)->purpose)),               \
+          TALER_CRYPTO_helper_esign_sign_ (esh,                          \
+                                           &(ps)->purpose,               \
+                                           epub,                         \
+                                           esig) )
 
 
 /**

@@ -225,7 +225,6 @@ parse_age_withdraw_json (
      * the commitment along the way. */
     {
       unsigned int kappa = 0;
-      enum GNUNET_GenericReturnValue ret;
 
       json_array_foreach (j_kappa_coin_evs, kappa, value) {
         struct GNUNET_JSON_Specification spec[] = {
@@ -253,10 +252,9 @@ parse_age_withdraw_json (
         {
           struct TALER_BlindedCoinHashP bch;
 
-          ret = TALER_coin_ev_hash (&awc->coin_evs[idx][kappa],
-                                    &awc->denom_hs[idx],
-                                    &bch);
-          GNUNET_assert (GNUNET_OK == ret);
+          TALER_coin_ev_hash (&awc->coin_evs[idx][kappa],
+                              &awc->denom_hs[idx],
+                              &bch);
           GNUNET_CRYPTO_hash_context_read (hash_context,
                                            &bch,
                                            sizeof(bch));

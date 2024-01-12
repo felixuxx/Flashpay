@@ -284,17 +284,9 @@ verify_and_execute_recoup (
         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
         NULL);
     }
-    if (GNUNET_OK !=
-        TALER_coin_ev_hash (&blinded_planchet,
-                            &coin->denom_pub_hash,
-                            &pc.h_coin_ev))
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                         NULL);
-    }
+    TALER_coin_ev_hash (&blinded_planchet,
+                        &coin->denom_pub_hash,
+                        &pc.h_coin_ev);
     TALER_blinded_planchet_free (&blinded_planchet);
   }
 

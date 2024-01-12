@@ -585,6 +585,7 @@ age_withdraw_reveal_cb (
       awrs->denom_sigs = GNUNET_new_array (awrs->num_coins,
                                            struct TALER_DenominationSignature);
       for (size_t n = 0; n < awrs->num_coins; n++)
+      {
         GNUNET_assert (GNUNET_OK ==
                        TALER_denom_sig_unblind (
                          &awrs->denom_sigs[n],
@@ -593,8 +594,12 @@ age_withdraw_reveal_cb (
                          &aws->coin_outputs[n].details.h_coin_pub,
                          &aws->coin_outputs[n].details.alg_values,
                          &aws->coin_inputs[n].denom_pub->key));
+        TALER_denom_sig_free (&awrs->denom_sigs[n]);
+      }
+
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "age-withdraw reveal success!\n");
+      GNUNET_free (awrs->denom_sigs);
     }
     break;
   case MHD_HTTP_NOT_FOUND:

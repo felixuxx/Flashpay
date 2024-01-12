@@ -57,7 +57,7 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coins_input;
 
   /* The url for the reveal request */
-  const char *request_url;
+  char *request_url;
 
   /**
    * CURL handle for the request job.
@@ -146,6 +146,9 @@ age_withdraw_reveal_ok (
                     &response);
     /* Make sure the callback isn't called again */
     awrh->callback = NULL;
+    /* Free resources */
+    for (size_t i = 0; i < awrh->num_coins; i++)
+      TALER_blinded_denom_sig_free (&denom_sigs[i]);
   }
 
   return GNUNET_OK;
@@ -340,13 +343,13 @@ perform_protocol (
   json_t *j_sec = NULL;
 
 #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto ERROR; \
-    } \
-  } while(0)
+        do { \
+          if ((cond)) \
+          { \
+            GNUNET_break (! (cond)); \
+            goto ERROR; \
+          } \
+        } while (0)
 
   j_array_of_secrets = json_array ();
   FAIL_IF (NULL == j_array_of_secrets);
@@ -463,7 +466,10 @@ TALER_EXCHANGE_age_withdraw_reveal_cancel (
     awrh->job = NULL;
   }
   TALER_curl_easy_post_finished (&awrh->post_ctx);
-  /* FIXME[oec]: anything else left to cleanup!? */
+
+  if (NULL != awrh->request_url)
+    GNUNET_free (awrh->request_url);
+
   GNUNET_free (awrh);
 }
 
