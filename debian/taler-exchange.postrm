@@ -10,6 +10,7 @@ _CSECUSERNAME=taler-exchange-secmod-cs
 _RSECUSERNAME=taler-exchange-secmod-rsa
 _ESECUSERNAME=taler-exchange-secmod-eddsa
 _AGGRUSERNAME=taler-exchange-aggregator
+_EXPIUSERNAME=taler-exchange-expire
 _WIREUSERNAME=taler-exchange-wire
 
 
@@ -28,6 +29,7 @@ purge)
     deluser --quiet --system ${_RSECUSERNAME} || true
     deluser --quiet --system ${_ESECUSERNAME} || true
     deluser --quiet --system ${_AGGRUSERNAME} || true
+    deluser --quiet --system ${_EXPIUSERNAME} || true
     deluser --quiet --system ${_WIREUSERNAME} || true
     deluser --quiet --system ${_CLOSERUSERNAME} || true
     deluser --quiet --system ${_EUSERNAME} || true

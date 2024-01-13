@@ -42,7 +42,6 @@ AS $$
 DECLARE
   wtsi INT8; -- wire target serial id
   bdsi INT8; -- batch_deposits serial id
-  curs REFCURSOR;
   i INT4;
   ini_amount_with_fee taler_amount;
   ini_coin_pub BYTEA;

@@ -74,11 +74,6 @@ static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 static struct GNUNET_SCHEDULER_Task *task;
 
 /**
- * How long should we sleep when idle before trying to find more work?
- */
-static struct GNUNET_TIME_Relative expire_idle_sleep_interval;
-
-/**
  * How big are the shards we are processing? Is an inclusive offset, so every
  * shard ranges from [X,X+shard_size) exclusive.  So a shard covers
  * shard_size slots.
@@ -141,17 +136,6 @@ shutdown_task (void *cls)
 static enum GNUNET_GenericReturnValue
 parse_expire_config (void)
 {
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "exchange",
-                                           "EXPIRE_IDLE_SLEEP_INTERVAL",
-                                           &expire_idle_sleep_interval))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "EXPIRE_IDLE_SLEEP_INTERVAL");
-    return GNUNET_SYSERR;
-  }
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
@@ -223,7 +207,12 @@ release_shard (struct Shard *s)
   if ( (0 == wc) &&
        (test_mode) &&
        (! jump_mode) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "In test-mode without work. Terminating.\n");
     GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
 }
 
 
@@ -395,6 +384,13 @@ run_shard (void *cls)
   if (GNUNET_TIME_absolute_is_future (s->shard_end))
   {
     abort_shard (s);
+    if (test_mode)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "In test-mode without work. Terminating.\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_at (s->shard_end,
                                     &run_shard,

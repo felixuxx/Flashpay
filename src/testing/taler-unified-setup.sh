@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This file is part of TALER
-# Copyright (C) 2023 Taler Systems SA
+# Copyright (C) 2023, 2024 Taler Systems SA
 #
 # TALER is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as
@@ -67,6 +67,7 @@ START_AUDITOR=0
 START_BACKUP=0
 START_EXCHANGE=0
 START_FAKEBANK=0
+START_DONAU=0
 START_CHALLENGER=0
 START_AGGREGATOR=0
 START_MERCHANT=0
@@ -74,6 +75,8 @@ START_NEXUS=0
 START_BANK=0
 START_TRANSFER=0
 START_WIREWATCH=0
+START_DEPOSITCHECK=0
+START_MERCHANT_EXCHANGE=0
 USE_ACCOUNT="exchange-account-1"
 USE_VALGRIND=""
 WIRE_DOMAIN="x-taler-bank"
@@ -82,7 +85,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
+while getopts ':abc:d:DeEfghkL:mMnr:stu:vwW' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -96,8 +99,14 @@ while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
         d)
             WIRE_DOMAIN="$OPTARG"
             ;;
+        D)
+            START_DONAU="1"
+            ;;
         e)
             START_EXCHANGE="1"
+            ;;
+        E)
+            START_MERCHANT_EXCHANGE="1"
             ;;
         f)
             START_FAKEBANK="1"
@@ -110,22 +119,26 @@ while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
             echo '  -c $CONF     -- set configuration'
             # shellcheck disable=SC2016
             echo '  -d $METHOD   -- use wire method (default: x-taler-bank)'
+            echo '  -D           -- start donau'
             echo '  -e           -- start exchange'
+            echo '  -E           -- start taler-merchant-exchange'
             echo '  -f           -- start fakebank'
-            echo '  -g           -- start aggregator'
+            echo '  -g           -- start taler-exchange-aggregator'
             echo '  -h           -- print this help'
             # shellcheck disable=SC2016
             echo '  -L $LOGLEVEL -- set log level'
-            echo '  -m           -- start merchant'
+            echo '  -m           -- start taler-merchant'
+            echo '  -M           -- start taler-merchant-depositcheck'
             echo '  -n           -- start nexus'
             # shellcheck disable=SC2016
             echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
             echo '  -s           -- start backup/sync'
-            echo '  -t           -- start transfer'
+            echo '  -t           -- start taler-exchange-transfer'
             # shellcheck disable=SC2016
             echo '  -u $SECTION  -- exchange account to use'
             echo '  -v           -- use valgrind'
-            echo '  -w           -- start wirewatch'
+            echo '  -w           -- start taler-exchange-wirewatch'
+            echo '  -W           -- wait for signal'
             exit 0
             ;;
         g)
@@ -139,6 +152,9 @@ while getopts ':abc:d:efghkL:mnr:stu:vwW' OPTION; do
             ;;
         m)
             START_MERCHANT="1"
+            ;;
+        M)
+            START_DEPOSITCHECK="1"
             ;;
         n)
             START_NEXUS="1"
@@ -183,6 +199,13 @@ if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Testing for Taler exchange"
     taler-exchange-httpd -h > /dev/null || exit_skip " taler-exchange-httpd required"
+    echo " FOUND"
+fi
+
+if [ "1" = "$START_DONAU" ]
+then
+    echo -n "Testing for Donau"
+    donau-httpd -h > /dev/null || exit_skip " donau-httpd required"
     echo " FOUND"
 fi
 
@@ -446,10 +469,40 @@ then
         taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
     taler-exchange-dbinit -c "$CONF" --reset
-    $USE_VALGRIND taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-eddsa.log &
-    $USE_VALGRIND taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-rsa.log &
-    $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
-    $USE_VALGRIND taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
+    $USE_VALGRIND taler-exchange-secmod-eddsa \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-secmod-eddsa.log &
+    $USE_VALGRIND taler-exchange-secmod-rsa \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-secmod-rsa.log &
+    $USE_VALGRIND taler-exchange-secmod-cs \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-secmod-cs.log &
+    $USE_VALGRIND taler-exchange-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
+    echo " DONE"
+fi
+
+if [ "1" = "$START_DONAU" ]
+then
+    echo -n "Starting Donau ..."
+    DONAU_PORT=$(donau-config -c "$CONF" -s DONAU -o PORT)
+    SERVE=$(donau-config -c "$CONF" -s DONAU -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        DONAU_URL=$(donau-config -c "$CONF" -s DONAU -o BASE_URL)
+    else
+        DONAU_URL="http://localhost:${DONAU_PORT}/"
+    fi
+    donau-dbinit -c "$CONF" --reset
+    $USE_VALGRIND taler-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-eddsa.log &
+    $USE_VALGRIND taler-secmod-rsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-rsa.log &
+    $USE_VALGRIND taler-secmod-cs -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-cs.log &
+    $USE_VALGRIND donau-httpd -c "$CONF" -L "$LOGLEVEL" 2> donau-httpd.log &
     echo " DONE"
 fi
 
@@ -459,6 +512,7 @@ then
     $USE_VALGRIND taler-exchange-wirewatch \
                   --account="$USE_ACCOUNT" \
                   -c "$CONF" \
+                  -L "$LOGLEVEL" \
                   --longpoll-timeout="1 s" \
                   2> taler-exchange-wirewatch.log &
     echo " DONE"
@@ -467,14 +521,20 @@ fi
 if [ "1" = "$START_AGGREGATOR" ]
 then
     echo -n "Starting aggregator ..."
-    $USE_VALGRIND taler-exchange-aggregator -c "$CONF" 2> taler-exchange-aggregator.log &
+    $USE_VALGRIND taler-exchange-aggregator \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-aggregator.log &
     echo " DONE"
 fi
 
 if [ "1" = "$START_TRANSFER" ]
 then
     echo -n "Starting transfer ..."
-    $USE_VALGRIND taler-exchange-transfer -c "$CONF" 2> taler-exchange-transfer.log &
+    $USE_VALGRIND taler-exchange-transfer \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> taler-exchange-transfer.log &
     echo " DONE"
 fi
 
@@ -499,11 +559,30 @@ then
         MERCHANT_PORT="$(taler-config -c "$CONF" -s MERCHANT -o PORT)"
         MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
     fi
-    taler-merchant-dbinit -c "$CONF" -L "$LOGLEVEL" --reset &> taler-merchant-dbinit.log
-    $USE_VALGRIND taler-merchant-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
-    $USE_VALGRIND taler-merchant-webhook -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    taler-merchant-dbinit \
+        -c "$CONF" \
+        --reset &> taler-merchant-dbinit.log
+    $USE_VALGRIND taler-merchant-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
+    $USE_VALGRIND taler-merchant-webhook \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    if [ "1" = "$START_MERCHANT_EXCHANGE" ]
+    then
+        $USE_VALGRIND taler-merchant-exchange \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-exchange.log &
+    fi
+    if [ "1" = "$START_DEPOSITCHECK" ]
+    then
+        $USE_VALGRIND taler-merchant-depositcheck \
+                      -c "$CONF" \
+                      -L "$LOGLEVEL" 2> taler-merchant-depositcheck.log &
+    fi
     echo " DONE"
 fi
+
 
 if [ "1" = "$START_BACKUP" ]
 then
@@ -517,7 +596,10 @@ then
         SYNC_URL="http://localhost:${SYNC_PORT}/"
     fi
     sync-dbinit -c "$CONF" --reset
-    $USE_VALGRIND sync-httpd -c "$CONF" -L "$LOGLEVEL" 2> sync-httpd.log &
+    $USE_VALGRIND sync-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> sync-httpd.log &
     echo " DONE"
 fi
 
@@ -532,8 +614,13 @@ then
     else
         CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
     fi
-    challenger-dbinit -c "$CONF" --reset
-    $USE_VALGRIND challenger-httpd -c "$CONF" -L "$LOGLEVEL" 2> challenger-httpd.log &
+    challenger-dbinit \
+        -c "$CONF" \
+        --reset
+    $USE_VALGRIND challenger-httpd \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" \
+                  2> challenger-httpd.log &
     echo " DONE"
     for SECTION in $(taler-config -c "$CONF" -S | grep kyc-provider)
     do
@@ -574,9 +661,16 @@ then
     fi
     AUDITOR_PUB=$(gnunet-ecc -p "${AUDITOR_PRIV_FILE}")
     MAPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
-    taler-auditor-dbinit -c "$CONF" --reset
-    taler-auditor-exchange -c "$CONF" -m "$MAPUB" -u "$EXCHANGE_URL"
-    $USE_VALGRIND taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
+    taler-auditor-dbinit \
+        -c "$CONF" \
+        --reset
+    taler-auditor-exchange \
+        -c "$CONF" \
+        -m "$MAPUB" \
+        -u "$EXCHANGE_URL"
+    $USE_VALGRIND taler-auditor-httpd \
+                  -L "$LOGLEVEL" \
+                  -c "$CONF" 2> taler-auditor-httpd.log &
     echo " DONE"
 fi
 
@@ -690,7 +784,7 @@ then
       download \
       sign \
       wire-fee now "$WIRE_DOMAIN" "$CURRENCY:0.01" "$CURRENCY:0.01" \
-      global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.01" 1h 1year 5 \
+      global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.0" 1h 1year 5 \
       upload &> taler-exchange-offline.log
     echo "OK"
     ENABLED=$(taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "ENABLE_CREDIT")

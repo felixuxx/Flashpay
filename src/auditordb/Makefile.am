@@ -108,16 +108,15 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_insert_purse_summary.h pg_insert_purse_summary.c \
   pg_update_purse_summary.h pg_update_purse_summary.c \
   pg_get_deposit_confirmations.h pg_get_deposit_confirmations.c
-libtaler_plugin_auditordb_postgres_la_LIBADD = \
-  $(LTLIBINTL)
 libtaler_plugin_auditordb_postgres_la_LDFLAGS = \
-  $(TALER_PLUGIN_LDFLAGS) \
+  $(TALER_PLUGIN_LDFLAGS)
+libtaler_plugin_auditordb_postgres_la_LIBADD = \
+  $(LTLIBINTL) \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lpq \
   -lgnunetpq \
   -lgnunetutil \
-  -lpthread \
+  -lpq \
   $(XLIB)
 
 lib_LTLIBRARIES = \

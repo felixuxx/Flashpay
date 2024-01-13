@@ -235,7 +235,6 @@ TALER_AUDITOR_get_config (struct GNUNET_CURL_Context *ctx,
   if (NULL == auditor->vr_url)
   {
     GNUNET_break (0);
-    GNUNET_free (auditor->vr_url);
     GNUNET_free (auditor);
     return NULL;
   }

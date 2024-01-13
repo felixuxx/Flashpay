@@ -42,3 +42,19 @@ CREATE INDEX IF NOT EXISTS auditor_deposit_confirmations_not_ancient
     ON auditor_deposit_confirmations
     (exchange_timestamp ASC)
     WHERE NOT ancient;
+
+CREATE OR REPLACE FUNCTION auditor_new_transactions_trigger()
+    RETURNS trigger
+    LANGUAGE plpgsql
+AS $$
+BEGIN
+    NOTIFY XX81AFHF88YGN6ESNH39KR5VQE9MHD7GSSNMTCXB82SZ6T99ARHE0;
+    RETURN NEW;
+END $$;
+COMMENT ON FUNCTION auditor_new_transactions_trigger()
+    IS 'Call auditor_call_db_notify on new entry';
+
+CREATE TRIGGER auditor_notify_helper_deposits
+    AFTER INSERT
+    ON auditor.deposit_confirmations
+EXECUTE PROCEDURE auditor_new_transactions_trigger();

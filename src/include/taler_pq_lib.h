@@ -177,8 +177,9 @@ TALER_PQ_query_param_array_hash_code (
   const struct GNUNET_HashCode *hashes,
   struct GNUNET_PQ_Context *db);
 
+
 /**
- * Generate query parameter for an array of mounts
+ * Generate query parameter for an array of amounts
  *
  * @param num of elements in @e amounts
  * @param amounts continuous array of amounts
@@ -186,6 +187,20 @@ TALER_PQ_query_param_array_hash_code (
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_amount (
+  size_t num,
+  const struct TALER_Amount *amounts,
+  struct GNUNET_PQ_Context *db);
+
+
+/**
+ * Generate query parameter for an array of amounts
+ *
+ * @param num of elements in @e amounts
+ * @param amounts continuous array of amounts
+ * @param db context for db-connection, needed for OID-lookup
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_amount_with_currency (
   size_t num,
   const struct TALER_Amount *amounts,
   struct GNUNET_PQ_Context *db);

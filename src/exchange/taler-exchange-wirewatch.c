@@ -490,7 +490,7 @@ transaction_completed (void)
                                           latency);
     if (! (test_mode ||
            GNUNET_TIME_relative_is_zero (left)) )
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, // WARNING,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Server did not respect long-polling, enforcing client-side by sleeping for %s\n",
                   GNUNET_TIME_relative2s (left,
                                           true));

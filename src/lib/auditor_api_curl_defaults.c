@@ -19,6 +19,8 @@
  * @brief curl easy handle defaults
  * @author Florian Dold
  */
+#include "platform.h"
+#include "taler_curl_lib.h"
 #include "auditor_api_curl_defaults.h"
 
 
@@ -37,22 +39,14 @@ TALER_AUDITOR_curl_easy_get_ (const char *url)
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_FOLLOWLOCATION,
-                                   1L));
+  TALER_curl_set_secure_redirect_policy (eh,
+                                         url);
   /* Enable compression (using whatever curl likes), see
      https://curl.se/libcurl/c/CURLOPT_ACCEPT_ENCODING.html  */
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_ACCEPT_ENCODING,
                                   ""));
-  /* limit MAXREDIRS to 5 as a simple security measure against
-     a potential infinite loop caused by a malicious target */
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_MAXREDIRS,
-                                   5L));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_TCP_FASTOPEN,

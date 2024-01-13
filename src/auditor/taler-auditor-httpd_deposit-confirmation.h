@@ -56,4 +56,34 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   const char *upload_data,
                                   size_t *upload_data_size);
 
+/**
+ * Handle a "/deposit-confirmation" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+MHD_RESULT
+TAH_DEPOSIT_CONFIRMATION_get (struct TAH_RequestHandler *rh,
+                              struct MHD_Connection *connection,
+                              void **connection_cls,
+                              const char *upload_data,
+                              size_t *upload_data_size);
+
+/**
+ * Handle a DELETE "/deposit-confirmation/$dc" request.
+ *
+ * @param rc request details about the request to handle
+ * @param args argument with the dc primary key
+ * @return MHD result code
+ */
+/*MHD_RESULT
+TAH_DEPOSIT_CONFIRMATION_delete (
+        struct TEH_RequestContext *rc,
+        const char *const args[1]);*/
+
+
 #endif

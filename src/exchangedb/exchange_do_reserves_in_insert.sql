@@ -30,7 +30,6 @@ RETURNS SETOF exchange_do_array_reserve_insert_return_type
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  curs REFCURSOR;
   conflict BOOL;
   dup BOOL;
   uuid INT8;

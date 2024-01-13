@@ -846,14 +846,14 @@ qconv_array (
   same_sized = (0 != meta->same_size);
 
 #define RETURN_UNLESS(cond) \
-        do { \
-          if (! (cond)) \
-          { \
-            GNUNET_break ((cond)); \
-            noerror = false; \
-            goto DONE; \
-          } \
-        } while (0)
+  do { \
+    if (! (cond)) \
+    { \
+      GNUNET_break ((cond)); \
+      noerror = false; \
+      goto DONE; \
+    } \
+  } while (0)
 
   /* Calculate sizes and check bounds */
   {
@@ -881,6 +881,46 @@ qconv_array (
     {
       switch (meta->typ)
       {
+      case TALER_PQ_array_of_amount_currency:
+        {
+          const struct TALER_Amount *amounts = data;
+          Oid oid_v;
+          Oid oid_f;
+          Oid oid_c;
+
+          buffer_lengths  = GNUNET_new_array (num, size_t);
+          /* hoist out of loop? */
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "int8",
+                                                    &oid_v));
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "int4",
+                                                    &oid_f));
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "varchar",
+                                                    &oid_c));
+          for (size_t i = 0; i<num; i++)
+          {
+            struct TALER_PQ_AmountCurrencyP am;
+            size_t len;
+
+            len = TALER_PQ_make_taler_pq_amount_currency_ (
+              &amounts[i],
+              oid_v,
+              oid_f,
+              oid_c,
+              &am);
+            buffer_lengths[i] = len;
+            y = total_size;
+            total_size += len;
+            RETURN_UNLESS (total_size >= y);
+          }
+          sizes = buffer_lengths;
+          break;
+        }
       case TALER_PQ_array_of_blinded_denom_sig:
         {
           const struct TALER_BlindedDenominationSignature *denom_sigs = data;
@@ -963,6 +1003,7 @@ qconv_array (
           Oid oid_v;
           Oid oid_f;
 
+          /* hoist out of loop? */
           GNUNET_assert (GNUNET_OK ==
                          GNUNET_PQ_get_oid_by_name (meta->db,
                                                     "int8",
@@ -981,6 +1022,42 @@ qconv_array (
             GNUNET_memcpy (out,
                            &am,
                            sizeof(am));
+          }
+          break;
+        }
+      case TALER_PQ_array_of_amount_currency:
+        {
+          const struct TALER_Amount *amounts = data;
+          Oid oid_v;
+          Oid oid_f;
+          Oid oid_c;
+
+          /* hoist out of loop? */
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "int8",
+                                                    &oid_v));
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "int4",
+                                                    &oid_f));
+          GNUNET_assert (GNUNET_OK ==
+                         GNUNET_PQ_get_oid_by_name (meta->db,
+                                                    "varchar",
+                                                    &oid_c));
+          {
+            struct TALER_PQ_AmountCurrencyP am;
+            size_t len;
+
+            len = TALER_PQ_make_taler_pq_amount_currency_ (
+              &amounts[i],
+              oid_v,
+              oid_f,
+              oid_c,
+              &am);
+            GNUNET_memcpy (out,
+                           &am,
+                           len);
           }
           break;
         }
@@ -1099,6 +1176,7 @@ query_param_array_generic (
   struct GNUNET_PQ_Context *db)
 {
   struct qconv_array_cls *meta = GNUNET_new (struct qconv_array_cls);
+
   meta->typ = typ;
   meta->oid = oid;
   meta->sizes = sizes;
@@ -1106,16 +1184,18 @@ query_param_array_generic (
   meta->continuous = continuous;
   meta->db = db;
 
-  struct GNUNET_PQ_QueryParam res = {
-    .conv = qconv_array,
-    .conv_cls = meta,
-    .conv_cls_cleanup = qconv_array_cls_cleanup,
-    .data = elements,
-    .size = num,
-    .num_params = 1,
-  };
+  {
+    struct GNUNET_PQ_QueryParam res = {
+      .conv = qconv_array,
+      .conv_cls = meta,
+      .conv_cls_cleanup = qconv_array_cls_cleanup,
+      .data = elements,
+      .size = num,
+      .num_params = 1,
+    };
 
-  return res;
+    return res;
+  }
 }
 
 
@@ -1126,8 +1206,11 @@ TALER_PQ_query_param_array_blinded_denom_sig (
   struct GNUNET_PQ_Context *db)
 {
   Oid oid;
+
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_PQ_get_oid_by_name (db, "bytea", &oid));
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "bytea",
+                                            &oid));
   return query_param_array_generic (num,
                                     true,
                                     denom_sigs,
@@ -1146,8 +1229,11 @@ TALER_PQ_query_param_array_blinded_coin_hash (
   struct GNUNET_PQ_Context *db)
 {
   Oid oid;
+
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_PQ_get_oid_by_name (db, "bytea", &oid));
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "bytea",
+                                            &oid));
   return query_param_array_generic (num,
                                     true,
                                     coin_hs,
@@ -1166,8 +1252,11 @@ TALER_PQ_query_param_array_denom_hash (
   struct GNUNET_PQ_Context *db)
 {
   Oid oid;
+
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_PQ_get_oid_by_name (db, "bytea", &oid));
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "bytea",
+                                            &oid));
   return query_param_array_generic (num,
                                     true,
                                     denom_hs,
@@ -1206,8 +1295,11 @@ TALER_PQ_query_param_array_amount (
   struct GNUNET_PQ_Context *db)
 {
   Oid oid;
+
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_PQ_get_oid_by_name (db, "taler_amount", &oid));
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "taler_amount",
+                                            &oid));
   return query_param_array_generic (
     num,
     true,
@@ -1215,6 +1307,30 @@ TALER_PQ_query_param_array_amount (
     NULL,
     sizeof(struct TALER_PQ_AmountP),
     TALER_PQ_array_of_amount,
+    oid,
+    db);
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_amount_with_currency (
+  size_t num,
+  const struct TALER_Amount *amounts,
+  struct GNUNET_PQ_Context *db)
+{
+  Oid oid;
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_PQ_get_oid_by_name (db,
+                                            "taler_amount_currency",
+                                            &oid));
+  return query_param_array_generic (
+    num,
+    true,
+    amounts,
+    NULL,
+    0, /* currency is technically variable length */
+    TALER_PQ_array_of_amount_currency,
     oid,
     db);
 }
@@ -1299,6 +1415,7 @@ qconv_blind_sign_pub (void *cls,
   param_formats[0] = 1;
   return 1;
 }
+
 
 /**
  * Generate query parameter for a blind sign public key of variable size.

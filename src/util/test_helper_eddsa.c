@@ -365,6 +365,7 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
       int ret;
 
       esh = TALER_CRYPTO_helper_esign_connect (cfg,
+                                               "taler",
                                                &key_cb,
                                                NULL);
       if (NULL == esh)
@@ -427,6 +428,7 @@ run_test (void)
     nanosleep (&req,
                NULL);
     esh = TALER_CRYPTO_helper_esign_connect (cfg,
+                                             "taler",
                                              &key_cb,
                                              NULL);
     if (NULL != esh)

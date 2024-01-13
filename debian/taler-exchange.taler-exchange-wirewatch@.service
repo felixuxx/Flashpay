@@ -1,3 +1,9 @@
+# This is a systemd service template to instantiate
+# the service multiple times for parallelism.
+# We currently don't ship it with the package,
+# but might use it for future high-performance
+# deployments.
+
 [Unit]
 Description=GNU Taler payment system exchange wirewatch service
 After=network.target
@@ -8,6 +14,7 @@ User=taler-exchange-wire
 Type=simple
 Restart=always
 RestartSec=1s
+RestartPreventExitStatus=9
 ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

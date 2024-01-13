@@ -57,6 +57,12 @@ struct GetContext
   struct GNUNET_DB_EventHandler *eh;
 
   /**
+   * Subscription for refund event we are
+   * waiting for.
+   */
+  struct GNUNET_DB_EventHandler *ehr;
+
+  /**
    * Public key of our purse.
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
@@ -153,6 +159,12 @@ gc_cleanup (struct TEH_RequestContext *rc)
                                      gc->eh);
     gc->eh = NULL;
   }
+  if (NULL != gc->ehr)
+  {
+    TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                     gc->ehr);
+    gc->ehr = NULL;
+  }
   GNUNET_free (gc);
 }
 
@@ -208,6 +220,7 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
 {
   struct GetContext *gc = rc->rh_ctx;
   bool purse_deleted;
+  bool purse_refunded;
   MHD_RESULT res;
 
   if (NULL == gc)
@@ -271,6 +284,20 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
         GNUNET_break (0);
         gc->timeout = GNUNET_TIME_UNIT_ZERO_ABS;
       }
+      else
+      {
+        struct GNUNET_DB_EventHeaderP repr = {
+          .size = htons (sizeof (repr)),
+          .type = htons (TALER_DBEVENT_EXCHANGE_PURSE_REFUNDED),
+        };
+
+        gc->ehr = TEH_plugin->event_listen (
+          TEH_plugin->cls,
+          GNUNET_TIME_absolute_get_remaining (gc->timeout),
+          &repr,
+          &db_event_cb,
+          rc);
+      }
     }
   } /* end first-time initialization */
 
@@ -286,7 +313,8 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                    &gc->deposited,
                                    &gc->h_contract,
                                    &gc->merge_timestamp,
-                                   &purse_deleted);
+                                   &purse_deleted,
+                                   &purse_refunded);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -309,41 +337,12 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break; /* handled below */
     }
-    if (GNUNET_TIME_absolute_cmp (gc->timeout,
-                                  >,
-                                  gc->purse_expiration.abs_time))
-    {
-      /* Timeout too high, need to replace event handler */
-      struct TALER_PurseEventP rep = {
-        .header.size = htons (sizeof (rep)),
-        .header.type = htons (
-          gc->wait_for_merge
-          ? TALER_DBEVENT_EXCHANGE_PURSE_MERGED
-          : TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
-        .purse_pub = gc->purse_pub
-      };
-      struct GNUNET_DB_EventHandler *eh2;
-
-      gc->timeout = gc->purse_expiration.abs_time;
-      eh2 = TEH_plugin->event_listen (
-        TEH_plugin->cls,
-        GNUNET_TIME_absolute_get_remaining (gc->timeout),
-        &rep.header,
-        &db_event_cb,
-        rc);
-      if (NULL == eh2)
-      {
-        GNUNET_break (0);
-        gc->timeout = GNUNET_TIME_UNIT_ZERO_ABS;
-      }
-      TEH_plugin->event_listen_cancel (TEH_plugin->cls,
-                                       gc->eh);
-      gc->eh = eh2;
-    }
   }
-  if (GNUNET_TIME_absolute_is_past (gc->purse_expiration.abs_time) ||
+  if (purse_refunded ||
       purse_deleted)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Purse refunded or deleted\n");
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_GONE,
                                        purse_deleted
@@ -397,9 +396,11 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
            &gc->deposited,
            &exchange_pub,
            &exchange_sig)))
+    {
       res = TALER_MHD_reply_with_ec (rc->connection,
                                      ec,
                                      NULL);
+    }
     else
     {
       /* Make sure merge_timestamp is omitted if not yet merged */

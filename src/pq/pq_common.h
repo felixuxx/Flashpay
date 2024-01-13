@@ -45,12 +45,19 @@ enum TALER_PQ_ArrayType
   TALER_PQ_array_of_blinded_coin_hash,
   TALER_PQ_array_of_denom_hash,
   TALER_PQ_array_of_hash_code,
+
   /**
    * Amounts *without* currency.
    */
   TALER_PQ_array_of_amount,
+
+  /**
+   * Amounts *with* currency.
+   */
+  TALER_PQ_array_of_amount_currency,
   TALER_PQ_array_of_MAX,       /* must be last */
 };
+
 
 /**
  * Memory representation of an taler amount record for Postgres.

@@ -33,24 +33,25 @@ static int result;
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                            \
-  do {                                          \
-    if (! (cond)) {break;}                    \
-    GNUNET_break (0);                           \
-    goto drop;                                  \
-  } while (0)
+        do {                                          \
+          if (! (cond)) {break;}                    \
+          GNUNET_break (0);                           \
+          goto drop;                                  \
+        } while (0)
 
 
 /**
  * Initializes @a ptr with random data.
  */
 #define RND_BLK(ptr)                                                    \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, \
+                                    sizeof (*ptr))
 
 /**
  * Initializes @a ptr with zeros.
  */
 #define ZR_BLK(ptr) \
-  memset (ptr, 0, sizeof (*ptr))
+        memset (ptr, 0, sizeof (*ptr))
 
 /**
  * Currency we use.  Must match test-exchange-db-*.conf.
@@ -300,10 +301,9 @@ run (void *cls)
                                                &new_dkp[cnt]->priv,
                                                true,
                                                bp));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_coin_ev_hash (bp,
-                                         &cbc.denom_pub_hash,
-                                         &cbc.h_coin_envelope));
+      TALER_coin_ev_hash (bp,
+                          &cbc.denom_pub_hash,
+                          &cbc.h_coin_envelope);
       GNUNET_assert (
         GNUNET_OK ==
         TALER_denom_sign_blinded (

@@ -1719,9 +1719,8 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * @param blinded_planchet blinded planchet
  * @param denom_hash hash of the denomination public key
  * @param[out] bch where to write the hash
- * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occurred
  */
-enum GNUNET_GenericReturnValue
+void
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     const struct TALER_DenominationHashP *denom_hash,
                     struct TALER_BlindedCoinHashP *bch);
@@ -2345,6 +2344,7 @@ typedef void
  * Initiate connection to an denomination key helper.
  *
  * @param cfg configuration to use
+ * @param section configuration section prefix to use, usually 'taler' or 'donau'
  * @param dkc function to call with key information
  * @param dkc_cls closure for @a dkc
  * @return NULL on error (such as bad @a cfg).
@@ -2352,6 +2352,7 @@ typedef void
 struct TALER_CRYPTO_RsaDenominationHelper *
 TALER_CRYPTO_helper_rsa_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_RsaDenominationKeyStatusCallback dkc,
   void *dkc_cls);
 
@@ -2514,6 +2515,7 @@ typedef void
  * Initiate connection to an denomination key helper.
  *
  * @param cfg configuration to use
+ * @param section configuration section prefix to use, usually 'taler' or 'donau'
  * @param dkc function to call with key information
  * @param dkc_cls closure for @a dkc
  * @return NULL on error (such as bad @a cfg).
@@ -2521,6 +2523,7 @@ typedef void
 struct TALER_CRYPTO_CsDenominationHelper *
 TALER_CRYPTO_helper_cs_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_CsDenominationKeyStatusCallback dkc,
   void *dkc_cls);
 
@@ -2734,6 +2737,7 @@ typedef void
  * Initiate connection to an online signing key helper.
  *
  * @param cfg configuration to use
+ * @param section configuration section prefix to use, usually 'taler' or 'donau'
  * @param ekc function to call with key information
  * @param ekc_cls closure for @a ekc
  * @return NULL on error (such as bad @a cfg).
@@ -2741,6 +2745,7 @@ typedef void
 struct TALER_CRYPTO_ExchangeSignHelper *
 TALER_CRYPTO_helper_esign_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_ExchangeKeyStatusCallback ekc,
   void *ekc_cls);
 
@@ -2799,15 +2804,15 @@ TALER_CRYPTO_helper_esign_sign_ (
  * @return the error code (or #TALER_EC_NONE on success)
  */
 #define TALER_CRYPTO_helper_esign_sign(esh,ps,epub,esig) (         \
-    /* check size is set correctly */                              \
-    GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
-    /* check 'ps' begins with the purpose */                       \
-    GNUNET_static_assert (((void*) (ps)) ==                        \
-                          ((void*) &(ps)->purpose)),               \
-    TALER_CRYPTO_helper_esign_sign_ (esh,                          \
-                                     &(ps)->purpose,               \
-                                     epub,                         \
-                                     esig) )
+          /* check size is set correctly */                              \
+          GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
+          /* check 'ps' begins with the purpose */                       \
+          GNUNET_static_assert (((void*) (ps)) ==                        \
+                                ((void*) &(ps)->purpose)),               \
+          TALER_CRYPTO_helper_esign_sign_ (esh,                          \
+                                           &(ps)->purpose,               \
+                                           epub,                         \
+                                           esig) )
 
 
 /**

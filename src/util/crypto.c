@@ -473,7 +473,7 @@ TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
 }
 
 
-enum GNUNET_GenericReturnValue
+void
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     const struct TALER_DenominationHashP *denom_hash,
                     struct TALER_BlindedCoinHashP *bch)
@@ -488,7 +488,6 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                                 hash_context);
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &bch->hash);
-  return GNUNET_OK;
 }
 
 

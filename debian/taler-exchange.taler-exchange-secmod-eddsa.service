@@ -8,6 +8,7 @@ User=taler-exchange-secmod-eddsa
 Type=simple
 Restart=always
 RestartSec=100ms
+RestartPreventExitStatus=9
 ExecStart=/usr/bin/taler-exchange-secmod-eddsa -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal
@@ -16,4 +17,3 @@ PrivateDevices=yes
 ProtectSystem=full
 IPAddressDeny=any
 Slice=taler-exchange.slice
-

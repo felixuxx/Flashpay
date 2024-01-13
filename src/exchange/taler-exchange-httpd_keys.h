@@ -300,22 +300,7 @@ struct TEH_CoinSignData
 
 
 /**
- * Request to sign @a csd for melting.
- *
- * @param csd identifies data to blindly sign and key to sign with
- * @param for_melt true if this is for a melt operation
- * @param[out] bs set to the blind signature on success
- * @return #TALER_EC_NONE on success
- */
-enum TALER_ErrorCode
-TEH_keys_denomination_sign (
-  const struct TEH_CoinSignData *csd,
-  bool for_melt,
-  struct TALER_BlindedDenominationSignature *bs);
-
-
-/**
- * Request to sign @a csds for melting.
+ * Request to sign @a csds.
  *
  * @param csds array with data to blindly sign (and keys to sign with)
  * @param csds_length length of @a csds array

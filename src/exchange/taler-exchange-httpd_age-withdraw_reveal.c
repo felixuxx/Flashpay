@@ -357,11 +357,10 @@ calculate_blinded_hash (
       return ret;
     }
 
-    ret = TALER_coin_ev_hash (&detail.blinded_planchet,
-                              &denom_key->h_denom_pub,
-                              bch);
+    TALER_coin_ev_hash (&detail.blinded_planchet,
+                        &denom_key->h_denom_pub,
+                        bch);
     TALER_blinded_planchet_free (&detail.blinded_planchet);
-    GNUNET_assert (GNUNET_OK == ret);
   }
 
   return ret;
@@ -594,7 +593,7 @@ TEH_handler_age_withdraw_reveal (
     result = reply_age_withdraw_reveal_success (rc->connection,
                                                 &actx.commitment);
 
-  } while(0);
+  } while (0);
 
   GNUNET_JSON_parse_free (spec);
   if (NULL != actx.commitment.denom_sigs)

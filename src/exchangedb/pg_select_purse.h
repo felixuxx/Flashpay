@@ -38,6 +38,7 @@
  * @param[out] h_contract_terms set to hash of the contract for the purse
  * @param[out] merge_timestamp set to time when the purse was merged, or NEVER if not
  * @param[out] purse_deleted set to true if purse was deleted
+ * @param[out] purse_refunded set to true if purse was refunded
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
@@ -50,7 +51,7 @@ TEH_PG_select_purse (
   struct TALER_Amount *deposited,
   struct TALER_PrivateContractHashP *h_contract_terms,
   struct GNUNET_TIME_Timestamp *merge_timestamp,
-  bool *purse_deleted);
-
+  bool *purse_deleted,
+  bool *purse_refunded);
 
 #endif

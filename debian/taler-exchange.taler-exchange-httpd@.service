@@ -1,4 +1,9 @@
-% This is a systemd service template.
+# This is a systemd service template to instantiate
+# the service multiple times for parallelism.
+# We currently don't ship it with the package,
+# but might use it for future high-performance
+# deployments.
+
 [Unit]
 Description=GNU Taler payment system exchange REST API at %I
 AssertPathExists=/run/taler/exchange-httpd
@@ -14,6 +19,7 @@ Type=simple
 Restart=always
 # Do not dally on restarts.
 RestartSec=1ms
+RestartPreventExitStatus=9
 EnvironmentFile=/etc/environment
 ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler/taler.conf
 StandardOutput=journal

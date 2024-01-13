@@ -373,16 +373,9 @@ TALER_EXCHANGE_batch_withdraw2 (
       json_decref (jc);
       return NULL;
     }
-    if (GNUNET_OK !=
-        TALER_coin_ev_hash (&pd->blinded_planchet,
-                            &pd->denom_pub_hash,
-                            &bch))
-    {
-      GNUNET_break (0);
-      TALER_EXCHANGE_batch_withdraw2_cancel (wh);
-      json_decref (jc);
-      return NULL;
-    }
+    TALER_coin_ev_hash (&pd->blinded_planchet,
+                        &pd->denom_pub_hash,
+                        &bch);
     TALER_wallet_withdraw_sign (&pd->denom_pub_hash,
                                 &coin_total,
                                 &bch,

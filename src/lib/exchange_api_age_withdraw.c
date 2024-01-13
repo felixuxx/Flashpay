@@ -500,15 +500,15 @@ perform_protocol (
   struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh)
 {
 #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto ERROR; \
-    } \
-  } while(0)
+        do { \
+          if ((cond)) \
+          { \
+            GNUNET_break (! (cond)); \
+            goto ERROR; \
+          } \
+        } while (0)
 
-  struct GNUNET_HashContext *coins_hctx;
+  struct GNUNET_HashContext *coins_hctx = NULL;
   json_t *j_denoms = NULL;
   json_t *j_array_candidates = NULL;
   json_t *j_request_body = NULL;
@@ -567,7 +567,7 @@ perform_protocol (
         GNUNET_JSON_pack_data_auto (NULL,
                                     denom_h));
       FAIL_IF (NULL == jdenom);
-      FAIL_IF (0 < json_array_append_new (j_denoms,
+      FAIL_IF (0 > json_array_append_new (j_denoms,
                                           jdenom));
 
       /* Build the candidate array */
@@ -586,7 +586,7 @@ perform_protocol (
               &planchet->blinded_planchet));
 
           FAIL_IF (NULL == jc);
-          FAIL_IF (0 < json_array_append_new (j_can,
+          FAIL_IF (0 > json_array_append_new (j_can,
                                               jc));
 
           TALER_coin_ev_hash (&planchet->blinded_planchet,
@@ -598,7 +598,7 @@ perform_protocol (
                                            sizeof(bch));
         }
 
-        FAIL_IF (0 < json_array_append_new (j_array_candidates,
+        FAIL_IF (0 > json_array_append_new (j_array_candidates,
                                             j_can));
       }
     }
@@ -607,6 +607,7 @@ perform_protocol (
   /* Build the hash of the commitment */
   GNUNET_CRYPTO_hash_context_finish (coins_hctx,
                                      &awbh->h_commitment.hash);
+  coins_hctx = NULL;
 
   /* Sign the request */
   TALER_wallet_age_withdraw_sign (&awbh->h_commitment,
@@ -653,6 +654,8 @@ ERROR:
     json_decref (j_request_body);
   if (NULL != curlh)
     curl_easy_cleanup (curlh);
+  if (NULL != coins_hctx)
+    GNUNET_CRYPTO_hash_context_abort (coins_hctx);
   TALER_EXCHANGE_age_withdraw_blinded_cancel (awbh);
   return;
 #undef FAIL_IF
@@ -685,12 +688,8 @@ copy_results (
         .num_coins = awh->num_coins,
         .coin_details = details,
         .blinded_coin_hs = blinded_coin_hs
-      }
-
-
-    }
-
-
+      },
+    },
   };
 
   for (size_t n = 0; n< awh->num_coins; n++)
@@ -838,21 +837,14 @@ csr_withdraw_done (
                                     planchet))
         {
           GNUNET_break (0);
-          TALER_EXCHANGE_age_withdraw_cancel (awh);
           break;
         }
 
-        if (GNUNET_OK !=
-            TALER_coin_ev_hash (&planchet->blinded_planchet,
-                                &planchet->denom_pub_hash,
-                                &can->blinded_coin_h))
-        {
-          GNUNET_break (0);
-          TALER_EXCHANGE_age_withdraw_cancel (awh);
-          break;
-        }
+        TALER_coin_ev_hash (&planchet->blinded_planchet,
+                            &planchet->denom_pub_hash,
+                            &can->blinded_coin_h);
         success = true;
-      } while(0);
+      } while (0);
 
       awh->csr.pending--;
 
@@ -890,13 +882,13 @@ prepare_coins (
     static num_coins])
 {
 #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto ERROR; \
-    } \
-  } while(0)
+        do { \
+          if ((cond)) \
+          { \
+            GNUNET_break (! (cond)); \
+            goto ERROR; \
+          } \
+        } while (0)
 
   GNUNET_assert (0 < num_coins);
   awh->age_mask = coin_inputs[0].denom_pub->key.age_mask;
@@ -952,10 +944,9 @@ prepare_coins (
                                          &can->details.h_age_commitment,
                                          &can->details.h_coin_pub,
                                          planchet));
-        FAIL_IF (GNUNET_OK !=
-                 TALER_coin_ev_hash (&planchet->blinded_planchet,
-                                     &planchet->denom_pub_hash,
-                                     &can->blinded_coin_h));
+        TALER_coin_ev_hash (&planchet->blinded_planchet,
+                            &planchet->denom_pub_hash,
+                            &can->blinded_coin_h);
         break;
       case GNUNET_CRYPTO_BSA_CS:
         {
@@ -1025,7 +1016,10 @@ TALER_EXCHANGE_age_withdraw (
   if (GNUNET_OK != prepare_coins (awh,
                                   num_coins,
                                   coin_inputs))
+  {
+    GNUNET_free (awh);
     return NULL;
+  }
 
   /* If there were no CS denominations, we can now perform the actual
    * age-withdraw protocol.  Otherwise, there are calls to /csr-withdraw

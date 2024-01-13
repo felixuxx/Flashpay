@@ -8,6 +8,7 @@ User=taler-exchange-secmod-rsa
 Type=simple
 Restart=always
 RestartSec=100ms
+RestartPreventExitStatus=9
 ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

@@ -838,17 +838,10 @@ parse_planchets (const struct TEH_RequestContext *rc,
                                          NULL);
     }
 
-    if (GNUNET_OK !=
-        TALER_coin_ev_hash (&pc->blinded_planchet,
-                            &pc->collectable.denom_pub_hash,
-                            &pc->collectable.h_coin_envelope))
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                         NULL);
-    }
+    TALER_coin_ev_hash (&pc->blinded_planchet,
+                        &pc->collectable.denom_pub_hash,
+                        &pc->collectable.h_coin_envelope);
+
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
     if (GNUNET_OK !=
         TALER_wallet_withdraw_verify (&pc->collectable.denom_pub_hash,

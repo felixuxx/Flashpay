@@ -41,7 +41,6 @@ TEH_PG_select_purse_merge (
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_end
   };
-  bool is_null;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
                                           merge_sig),
@@ -52,7 +51,7 @@ TEH_PG_select_purse_merge (
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_string ("partner_base_url",
                                     partner_url),
-      &is_null),
+      NULL),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_bool ("refunded",
                                   refunded),
@@ -61,19 +60,19 @@ TEH_PG_select_purse_merge (
   };
 
   *partner_url = NULL;
-  *refunded = true;
+  *refunded = false;
   PREPARE (pg,
            "select_purse_merge",
            "SELECT "
-           " reserve_pub"
-           ",merge_sig"
-           ",merge_timestamp"
-           ",partner_base_url"
-           ",refunded"
-           " FROM purse_merges"
-           " LEFT JOIN purse_decision USING (purse_pub)"
-           " LEFT JOIN partners USING (partner_serial_id)"
-           " WHERE purse_pub=$1;");
+           " pm.reserve_pub"
+           ",pm.merge_sig"
+           ",pm.merge_timestamp"
+           ",pr.partner_base_url"
+           ",pd.refunded"
+           " FROM purse_merges pm"
+           " LEFT JOIN purse_decision pd USING (purse_pub)"
+           " LEFT JOIN partners pr USING (partner_serial_id)"
+           " WHERE pm.purse_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_purse_merge",
                                                    params,

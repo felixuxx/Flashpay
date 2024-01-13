@@ -403,14 +403,14 @@ run (void *cls,
         5),
       "pull-poll-purse-before-deposit"),
     TALER_TESTING_cmd_status (
-      "pull-check-post-merge-reserve-balance-get",
+      "pull-check-post-merge-reserve-balance-get-2",
       "p2p_create-reserve-3",
-      "EUR:1.02",
+      "EUR:1.03",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_reserve_history (
-      "push-check-post-merge-reserve-balance-post",
+      "push-check-post-merge-reserve-balance-post-2",
       "p2p_create-reserve-3",
-      "EUR:1.02",
+      "EUR:1.03",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };

@@ -34,24 +34,25 @@ static int result;
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                            \
-  do {                                          \
-    if (! (cond)) { break;}                     \
-    GNUNET_break (0);                           \
-    goto drop;                                  \
-  } while (0)
+        do {                                          \
+          if (! (cond)) { break;}                     \
+          GNUNET_break (0);                           \
+          goto drop;                                  \
+        } while (0)
 
 
 /**
  * Initializes @a ptr with random data.
  */
 #define RND_BLK(ptr)                                                    \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, \
+                                    sizeof (*ptr))
 
 /**
  * Initializes @a ptr with zeros.
  */
 #define ZR_BLK(ptr) \
-  memset (ptr, 0, sizeof (*ptr))
+        memset (ptr, 0, sizeof (*ptr))
 
 
 /**
@@ -1383,10 +1384,9 @@ run (void *cls)
                                         alg_values,
                                         &c_hash,
                                         &pd.blinded_planchet));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_coin_ev_hash (&pd.blinded_planchet,
-                                         &cbc.denom_pub_hash,
-                                         &cbc.h_coin_envelope));
+      TALER_coin_ev_hash (&pd.blinded_planchet,
+                          &cbc.denom_pub_hash,
+                          &cbc.h_coin_envelope);
       if (i != 0)
         TALER_blinded_denom_sig_free (&cbc.sig);
       GNUNET_assert (

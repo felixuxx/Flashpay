@@ -254,18 +254,16 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
-libtaler_plugin_exchangedb_postgres_la_LIBADD = \
-  $(LTLIBINTL)
 libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \
-  $(TALER_PLUGIN_LDFLAGS) \
+  $(TALER_PLUGIN_LDFLAGS)
+libtaler_plugin_exchangedb_postgres_la_LIBADD = \
+  $(LTLIBINTL) \
   $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lpq \
-  -lpthread \
   -lgnunetpq \
   -lgnunetutil \
   -ljansson \
+  -lpq \
   $(XLIB)
 
 lib_LTLIBRARIES = \

@@ -970,6 +970,7 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
       int ret;
 
       dh = TALER_CRYPTO_helper_cs_connect (cfg,
+                                           "taler",
                                            &key_cb,
                                            NULL);
       GNUNET_assert (NULL != dh);
@@ -1027,6 +1028,7 @@ run_test (void)
     nanosleep (&req,
                NULL);
     dh = TALER_CRYPTO_helper_cs_connect (cfg,
+                                         "taler",
                                          &key_cb,
                                          NULL);
     if (NULL != dh)

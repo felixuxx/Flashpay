@@ -111,21 +111,28 @@ try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 struct TALER_CRYPTO_ExchangeSignHelper *
 TALER_CRYPTO_helper_esign_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
   TALER_CRYPTO_ExchangeKeyStatusCallback ekc,
   void *ekc_cls)
 {
   struct TALER_CRYPTO_ExchangeSignHelper *esh;
   char *unixpath;
+  char *secname;
+ 
+  GNUNET_asprintf (&secname,
+                   "%s-exchange-secmod-eddsa",
+                   section);
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "taler-exchange-secmod-eddsa",
+                                               secname,
                                                "UNIXPATH",
                                                &unixpath))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-eddsa",
+                               secname,
                                "UNIXPATH");
+    GNUNET_free (secname);
     return NULL;
   }
   /* we use >= here because we want the sun_path to always
@@ -133,12 +140,14 @@ TALER_CRYPTO_helper_esign_connect (
   if (strlen (unixpath) >= sizeof (esh->sa.sun_path))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-eddsa",
+                               secname,
                                "UNIXPATH",
                                "path too long");
     GNUNET_free (unixpath);
+    GNUNET_free (secname);
     return NULL;
   }
+  GNUNET_free (secname);
   esh = GNUNET_new (struct TALER_CRYPTO_ExchangeSignHelper);
   esh->ekc = ekc;
   esh->ekc_cls = ekc_cls;

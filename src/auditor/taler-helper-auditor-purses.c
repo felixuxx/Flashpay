@@ -316,6 +316,11 @@ struct PurseSummary
    */
   bool purse_deleted;
 
+  /**
+   * Was the purse refunded? FIXME: Not yet handled (do we need to?)
+   */
+  bool purse_refunded;
+
 };
 
 
@@ -416,7 +421,8 @@ setup_purse (struct PurseContext *pc,
                                     &ps->exchange_balance,
                                     &ps->h_contract_terms,
                                     &ps->merge_timestamp,
-                                    &ps->purse_deleted);
+                                    &ps->purse_deleted,
+                                    &ps->purse_refunded);
   if (0 >= qs)
   {
     GNUNET_free (ps);
