@@ -59,7 +59,7 @@ LIBEUFIN_SETTLE_TIME=1
 # Cleanup exchange and libeufin between runs.
 function cleanup()
 {
-    if test ! -z "${EPID:-}"
+    if [ ! -z "${EPID:-}" ]
     then
         echo -n "Stopping exchange $EPID..."
         kill -TERM "$EPID"
@@ -74,7 +74,7 @@ function cleanup()
 function exit_cleanup()
 {
     echo "Running exit-cleanup"
-    if test ! -z "${POSTGRES_PATH:-}"
+    if [ ! -z "${POSTGRES_PATH:-}" ]
     then
         echo "Stopping Postgres at ${POSTGRES_PATH}"
         "${POSTGRES_PATH}/pg_ctl" \
@@ -136,7 +136,7 @@ function pre_audit () {
         exit_skip "Failed to launch Nexus"
     fi
     echo " DONE"
-    if test "${1:-no}" = "aggregator"
+    if [ "${1:-no}" = "aggregator" ]
     then
         echo -n "Running exchange aggregator ..."
         taler-exchange-aggregator \
@@ -313,7 +313,7 @@ function post_audit () {
 # Pass "drain" as $2 to run a drain operation as well.
 function run_audit () {
     pre_audit "${1:-no}"
-    if test "${2:-no}" = "drain"
+    if [ "${2:-no}" = "drain" ]
     then
         echo -n "Starting exchange..."
         taler-exchange-httpd \
