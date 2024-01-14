@@ -201,6 +201,16 @@ TALER_wallet_deposit_verify (
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
                      deposit_fee);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Validating deposit with hash %s, wallet timestamp %llu and refund deadline %llu by %s\n",
+              GNUNET_h2s (&h_contract_terms->hash),
+              (unsigned long long) wallet_timestamp.abs_time.abs_value_us,
+              (unsigned long long) refund_deadline.abs_time.abs_value_us,
+              TALER_B2S (merchant_pub));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Denomination is %s, wire target is %s\n",
+              GNUNET_h2s (&h_denom_pub->hash),
+              TALER_B2S (h_wire));
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr,

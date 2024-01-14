@@ -259,7 +259,7 @@ register_bank_account() {
         IS_EXCHANGE="false"
     fi
     MAYBE_IBAN="${4:-}"
-    if test -n "$MAYBE_IBAN";
+    if [ -n "$MAYBE_IBAN" ]
     then
         # shellcheck disable=SC2001
         ENAME=$(echo "$3" | sed -e "s/ /+/g")
