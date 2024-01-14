@@ -499,9 +499,9 @@ then
         DONAU_URL="http://localhost:${DONAU_PORT}/"
     fi
     donau-dbinit -c "$CONF" --reset
-    $USE_VALGRIND taler-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-eddsa.log &
-    $USE_VALGRIND taler-secmod-rsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-rsa.log &
-    $USE_VALGRIND taler-secmod-cs -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-cs.log &
+    $USE_VALGRIND taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-eddsa.log &
+    $USE_VALGRIND taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-rsa.log &
+    $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" -s donau 2> donau-secmod-cs.log &
     $USE_VALGRIND donau-httpd -c "$CONF" -L "$LOGLEVEL" 2> donau-httpd.log &
     echo " DONE"
 fi
