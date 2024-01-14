@@ -201,35 +201,6 @@ TALER_wallet_deposit_verify (
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
                      deposit_fee);
-  // FIXME: this logging leaks memory!
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Validating deposit with hash %s, wallet timestamp %llu and refund deadline %llu by %s wdh %s over %s\n",
-              GNUNET_STRINGS_data_to_string_alloc (&h_contract_terms->hash,
-                                                   sizeof (h_contract_terms->
-                                                           hash)),
-              (unsigned long long) wallet_timestamp.abs_time.abs_value_us,
-              (unsigned long long) refund_deadline.abs_time.abs_value_us,
-              GNUNET_STRINGS_data_to_string_alloc (merchant_pub,
-                                                   sizeof (*merchant_pub)),
-              wallet_data_hash == NULL
-              ? "NULL"
-              : GNUNET_STRINGS_data_to_string_alloc (wallet_data_hash,
-                                                     sizeof (*wallet_data_hash)),
-              TALER_amount2s (amount));
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Acom %s h_pol %s Denomination is %s, deposit fee %s, wire target is %s\n",
-              h_age_commitment == NULL
-              ? "NULL"
-              : GNUNET_STRINGS_data_to_string_alloc (h_age_commitment,
-                                                     sizeof (*h_age_commitment)),
-              h_policy == NULL
-              ? "NULL"
-              : GNUNET_STRINGS_data_to_string_alloc (h_policy,
-                                                     sizeof (*h_policy)),
-              GNUNET_STRINGS_data_to_string_alloc (&h_denom_pub->hash,
-                                                   sizeof (h_denom_pub->hash)),
-              TALER_amount2s (deposit_fee),
-              GNUNET_STRINGS_data_to_string_alloc (h_wire, sizeof (*h_wire)));
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr,
