@@ -550,6 +550,7 @@ TALER_EXCHANGE_batch_deposit (
     {
       *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
       GNUNET_break_op (0);
+      json_decref (deposits);
       return NULL;
     }
     if (0 >
@@ -561,6 +562,7 @@ TALER_EXCHANGE_batch_deposit (
       GNUNET_break_op (0);
       GNUNET_free (dh->cdds);
       GNUNET_free (dh);
+      json_decref (deposits);
       return NULL;
     }
     GNUNET_assert (0 <=
@@ -578,6 +580,7 @@ TALER_EXCHANGE_batch_deposit (
       GNUNET_break_op (0);
       GNUNET_free (dh->cdds);
       GNUNET_free (dh);
+      json_decref (deposits);
       return NULL;
     }
     if (GNUNET_is_zero (&cdd->h_age_commitment))
@@ -614,6 +617,7 @@ TALER_EXCHANGE_batch_deposit (
     GNUNET_free (dh->url);
     GNUNET_free (dh->cdds);
     GNUNET_free (dh);
+    json_decref (deposits);
     return NULL;
   }
 
