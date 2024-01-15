@@ -256,7 +256,6 @@ auditor_cb (void *cls,
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
-  unsigned int coin;
   const struct TALER_CoinSpendSignatureP *csigs[GNUNET_NZL (
                                                   dh->num_cdds)];
   const struct TALER_CoinSpendPublicKeyP *cpubs[GNUNET_NZL (
@@ -278,8 +277,6 @@ auditor_cb (void *cls,
                 "Not providing deposit confirmation to auditor\n");
     return;
   }
-  coin = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                   dh->num_cdds);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
