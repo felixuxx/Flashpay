@@ -256,7 +256,6 @@ auditor_cb (void *cls,
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
-  const struct TALER_EXCHANGE_DenomPublicKey *dki;
   unsigned int coin;
   const struct TALER_CoinSpendSignatureP *csigs[GNUNET_NZL (
                                                   dh->num_cdds)];
@@ -284,9 +283,6 @@ auditor_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
-  dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
-                                                     &dh->cdds[coin].h_denom_pub);
-  GNUNET_assert (NULL != dki);
   spk = TALER_EXCHANGE_get_signing_key_info (dh->keys,
                                              &dh->exchange_pub);
   if (NULL == spk)
