@@ -306,8 +306,8 @@ withdraw_cs_stage_two_callback (
   case MHD_HTTP_OK:
     GNUNET_assert (NULL ==
                    cd->alg_values.blinding_inputs);
-    TALER_denom_ewv_deep_copy (&cd->alg_values,
-                               &csrr->details.ok.alg_values);
+    TALER_denom_ewv_copy (&cd->alg_values,
+                          &csrr->details.ok.alg_values);
     TALER_planchet_setup_coin_priv (&cd->ps,
                                     &cd->alg_values,
                                     &cd->priv);
@@ -377,13 +377,13 @@ TALER_EXCHANGE_batch_withdraw (
     cd->ps = *wci->ps;
     cd->ach = wci->ach;
     cd->pk = *wci->pk;
-    TALER_denom_pub_deep_copy (&cd->pk.key,
-                               &wci->pk->key);
+    TALER_denom_pub_copy (&cd->pk.key,
+                          &wci->pk->key);
     switch (wci->pk->key.bsign_pub_key->cipher)
     {
     case GNUNET_CRYPTO_BSA_RSA:
-      TALER_denom_ewv_deep_copy (&cd->alg_values,
-                                 TALER_denom_ewv_rsa_singleton ());
+      TALER_denom_ewv_copy (&cd->alg_values,
+                            TALER_denom_ewv_rsa_singleton ());
       TALER_planchet_setup_coin_priv (&cd->ps,
                                       &cd->alg_values,
                                       &cd->priv);

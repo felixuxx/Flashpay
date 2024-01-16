@@ -1386,8 +1386,8 @@ keys_completed_cb (void *cls,
                      kd_old->num_denom_keys
                      * sizeof (struct TALER_EXCHANGE_DenomPublicKey));
       for (unsigned int i = 0; i<kd_old->num_denom_keys; i++)
-        TALER_denom_pub_deep_copy (&kd->denom_keys[i].key,
-                                   &kd_old->denom_keys[i].key);
+        TALER_denom_pub_copy (&kd->denom_keys[i].key,
+                              &kd_old->denom_keys[i].key);
       kd->num_auditors = kd_old->num_auditors;
       kd->auditors = GNUNET_new_array (kd->num_auditors,
                                        struct TALER_EXCHANGE_AuditorInformation);
@@ -1796,8 +1796,8 @@ TALER_EXCHANGE_copy_denomination_key (
 
   copy = GNUNET_new (struct TALER_EXCHANGE_DenomPublicKey);
   *copy = *key;
-  TALER_denom_pub_deep_copy (&copy->key,
-                             &key->key);
+  TALER_denom_pub_copy (&copy->key,
+                        &key->key);
   return copy;
 }
 

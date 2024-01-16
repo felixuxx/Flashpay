@@ -89,8 +89,8 @@ struct TALER_EXCHANGE_BatchWithdraw2Handle
 /**
  * We got a 200 OK response for the /reserves/$RESERVE_PUB/batch-withdraw operation.
  * Extract the coin's signature and return it to the caller.  The signature we
- * get from the exchange is for the blinded value.  Thus, we first must
- * unblind it and then should verify its validity against our coin's hash.
+ * get from the exchange is for the blinded value. As we do not have the
+ * blinding factor, the signature CANNOT be verified.
  *
  * If everything checks out, we return the unblinded signature
  * to the application via the callback.
@@ -103,11 +103,12 @@ static enum GNUNET_GenericReturnValue
 reserve_batch_withdraw_ok (struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
                            const json_t *json)
 {
-  struct TALER_BlindedDenominationSignature blind_sigs[wh->num_coins];
+  struct TALER_BlindedDenominationSignature blind_sigs[GNUNET_NZL (
+                                                         wh->num_coins)];
   const json_t *ja = json_object_get (json,
                                       "ev_sigs");
   const json_t *j;
-  unsigned int index;
+  size_t index;
   struct TALER_EXCHANGE_BatchWithdraw2Response bwr = {
     .hr.reply = json,
     .hr.http_status = MHD_HTTP_OK
@@ -134,7 +135,7 @@ reserve_batch_withdraw_ok (struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
-      for (unsigned int i = 0; i<index; i++)
+      for (size_t i = 0; i<index; i++)
         TALER_blinded_denom_sig_free (&blind_sigs[i]);
       return GNUNET_SYSERR;
     }

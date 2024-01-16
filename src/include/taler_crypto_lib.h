@@ -1363,7 +1363,7 @@ TALER_denom_ewv_rsa_singleton (void);
  * @param bi_src blinding input values to copy
  */
 void
-TALER_denom_ewv_deep_copy (
+TALER_denom_ewv_copy (
   struct TALER_ExchangeWithdrawValues *bi_dst,
   const struct TALER_ExchangeWithdrawValues *bi_src);
 
@@ -1559,8 +1559,8 @@ TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
  * @param denom_src public key to copy
  */
 void
-TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
-                           const struct TALER_DenominationPublicKey *denom_src);
+TALER_denom_pub_copy (struct TALER_DenominationPublicKey *denom_dst,
+                      const struct TALER_DenominationPublicKey *denom_src);
 
 
 /**
@@ -1571,8 +1571,8 @@ TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
  * @param denom_src public key to copy
  */
 void
-TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
-                           const struct TALER_DenominationSignature *denom_src);
+TALER_denom_sig_copy (struct TALER_DenominationSignature *denom_dst,
+                      const struct TALER_DenominationSignature *denom_src);
 
 
 /**
@@ -1583,7 +1583,7 @@ TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
  * @param denom_src public key to copy
  */
 void
-TALER_blinded_denom_sig_deep_copy (
+TALER_blinded_denom_sig_copy (
   struct TALER_BlindedDenominationSignature *denom_dst,
   const struct TALER_BlindedDenominationSignature *denom_src);
 
@@ -2804,15 +2804,15 @@ TALER_CRYPTO_helper_esign_sign_ (
  * @return the error code (or #TALER_EC_NONE on success)
  */
 #define TALER_CRYPTO_helper_esign_sign(esh,ps,epub,esig) (         \
-          /* check size is set correctly */                              \
-          GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
-          /* check 'ps' begins with the purpose */                       \
-          GNUNET_static_assert (((void*) (ps)) ==                        \
-                                ((void*) &(ps)->purpose)),               \
-          TALER_CRYPTO_helper_esign_sign_ (esh,                          \
-                                           &(ps)->purpose,               \
-                                           epub,                         \
-                                           esig) )
+    /* check size is set correctly */                              \
+    GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
+    /* check 'ps' begins with the purpose */                       \
+    GNUNET_static_assert (((void*) (ps)) ==                        \
+                          ((void*) &(ps)->purpose)),               \
+    TALER_CRYPTO_helper_esign_sign_ (esh,                          \
+                                     &(ps)->purpose,               \
+                                     epub,                         \
+                                     esig) )
 
 
 /**

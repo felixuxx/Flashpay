@@ -120,9 +120,9 @@ TALER_CRYPTO_helper_rsa_connect (
   struct TALER_CRYPTO_RsaDenominationHelper *dh;
   char *unixpath;
   char *secname;
- 
+
   GNUNET_asprintf (&secname,
-                   "%s-exchange-secmod-rsa",
+                   "%s-secmod-rsa",
                    section);
 
   if (GNUNET_OK !=
@@ -142,7 +142,7 @@ TALER_CRYPTO_helper_rsa_connect (
   if (strlen (unixpath) >= sizeof (dh->sa.sun_path))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-rsa",
+                               secname,
                                "UNIXPATH",
                                "path too long");
     GNUNET_free (unixpath);

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2023 Taler Systems SA
+   Copyright (C) 2014-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -2591,7 +2591,8 @@ typedef void
 /**
  * Withdraw multiple coins from the exchange using a /reserves/$RESERVE_PUB/batch-withdraw
  * request.  This API is typically used by a wallet to withdraw many coins from a
- * reserve.
+ * reserve.  The blind signatures are unblinded and verified before being returned
+ * to the caller at @a res_cb.
  *
  * Note that to ensure that no money is lost in case of hardware
  * failures, the caller must have committed (most of) the arguments to
@@ -2688,7 +2689,11 @@ struct TALER_EXCHANGE_Withdraw2Handle;
 /**
  * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/withdraw
  * request.  This API is typically used by a merchant to withdraw a tip
- * where the blinding factor is unknown to the merchant.
+ * where the blinding factor is unknown to the merchant.  Note that unlike
+ * the #TALER_EXCHANGE_withdraw() API, this API neither unblinds the signatures
+ * nor can it verify that the exchange signatures are valid, so these tasks
+ * are left to the caller. Wallets probably should use #TALER_EXCHANGE_withdraw()
+ * which integrates these steps.
  *
  * Note that to ensure that no money is lost in case of hardware
  * failures, the caller must have committed (most of) the arguments to

@@ -234,14 +234,14 @@
  * @param conn SQL connection that was used
  */
 #define BREAK_DB_ERR(result,conn) do {                                  \
-          GNUNET_break (0);                                                   \
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                      "Database failure: %s/%s/%s/%s/%s",                     \
-                      PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),   \
-                      PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),    \
-                      PQresultErrorMessage (result),                          \
-                      PQresStatus (PQresultStatus (result)),                  \
-                      PQerrorMessage (conn));                                 \
+    GNUNET_break (0);                                                   \
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                "Database failure: %s/%s/%s/%s/%s",                     \
+                PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),   \
+                PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),    \
+                PQresultErrorMessage (result),                          \
+                PQresStatus (PQresultStatus (result)),                  \
+                PQerrorMessage (conn));                                 \
 } while (0)
 
 
@@ -345,21 +345,29 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
-  if ( (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_time (cfg,
-                                             "exchangedb",
-                                             "IDLE_RESERVE_EXPIRATION_TIME",
-                                             &pg->idle_reserve_expiration_time))
-       ||
-       (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_time (cfg,
-                                             "exchangedb",
-                                             "LEGAL_RESERVE_EXPIRATION_TIME",
-                                             &pg->legal_reserve_expiration_time)) )
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchangedb",
+                                           "IDLE_RESERVE_EXPIRATION_TIME",
+                                           &pg->idle_reserve_expiration_time))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
-                               "LEGAL/IDLE_RESERVE_EXPIRATION_TIME");
+                               "IDLE_RESERVE_EXPIRATION_TIME");
+    GNUNET_free (pg->exchange_url);
+    GNUNET_free (pg->sql_dir);
+    GNUNET_free (pg);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchangedb",
+                                           "LEGAL_RESERVE_EXPIRATION_TIME",
+                                           &pg->legal_reserve_expiration_time))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "LEGAL_RESERVE_EXPIRATION_TIME");
     GNUNET_free (pg->exchange_url);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);

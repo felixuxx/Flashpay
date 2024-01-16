@@ -500,13 +500,13 @@ perform_protocol (
   struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh)
 {
 #define FAIL_IF(cond) \
-        do { \
-          if ((cond)) \
-          { \
-            GNUNET_break (! (cond)); \
-            goto ERROR; \
-          } \
-        } while (0)
+  do { \
+    if ((cond)) \
+    { \
+      GNUNET_break (! (cond)); \
+      goto ERROR; \
+    } \
+  } while (0)
 
   struct GNUNET_HashContext *coins_hctx = NULL;
   json_t *j_denoms = NULL;
@@ -813,8 +813,8 @@ csr_withdraw_done (
       bool success = false;
       /* Complete the initialization of the coin with CS denomination */
 
-      TALER_denom_ewv_deep_copy (&can->details.alg_values,
-                                 &csrr->details.ok.alg_values);
+      TALER_denom_ewv_copy (&can->details.alg_values,
+                            &csrr->details.ok.alg_values);
       GNUNET_assert (can->details.alg_values.blinding_inputs->cipher
                      == GNUNET_CRYPTO_BSA_CS);
       TALER_planchet_setup_coin_priv (&can->secret,
@@ -882,13 +882,13 @@ prepare_coins (
     static num_coins])
 {
 #define FAIL_IF(cond) \
-        do { \
-          if ((cond)) \
-          { \
-            GNUNET_break (! (cond)); \
-            goto ERROR; \
-          } \
-        } while (0)
+  do { \
+    if ((cond)) \
+    { \
+      GNUNET_break (! (cond)); \
+      goto ERROR; \
+    } \
+  } while (0)
 
   GNUNET_assert (0 < num_coins);
   awh->age_mask = coin_inputs[0].denom_pub->key.age_mask;
@@ -904,8 +904,8 @@ prepare_coins (
     cd->denom_pub = *input->denom_pub;
     /* The mask must be the same for all coins */
     FAIL_IF (awh->age_mask.bits != input->denom_pub->key.age_mask.bits);
-    TALER_denom_pub_deep_copy (&cd->denom_pub.key,
-                               &input->denom_pub->key);
+    TALER_denom_pub_copy (&cd->denom_pub.key,
+                          &input->denom_pub->key);
 
     for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
     {
@@ -927,8 +927,8 @@ prepare_coins (
       switch (input->denom_pub->key.bsign_pub_key->cipher)
       {
       case GNUNET_CRYPTO_BSA_RSA:
-        TALER_denom_ewv_deep_copy (&can->details.alg_values,
-                                   TALER_denom_ewv_rsa_singleton ());
+        TALER_denom_ewv_copy (&can->details.alg_values,
+                              TALER_denom_ewv_rsa_singleton ());
         TALER_planchet_setup_coin_priv (&can->secret,
                                         &can->details.alg_values,
                                         &can->details.coin_priv);

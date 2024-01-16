@@ -118,9 +118,9 @@ TALER_CRYPTO_helper_esign_connect (
   struct TALER_CRYPTO_ExchangeSignHelper *esh;
   char *unixpath;
   char *secname;
- 
+
   GNUNET_asprintf (&secname,
-                   "%s-exchange-secmod-eddsa",
+                   "%s-secmod-eddsa",
                    section);
 
   if (GNUNET_OK !=

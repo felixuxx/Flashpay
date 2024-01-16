@@ -256,8 +256,6 @@ auditor_cb (void *cls,
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
-  const struct TALER_EXCHANGE_DenomPublicKey *dki;
-  unsigned int coin;
   const struct TALER_CoinSpendSignatureP *csigs[GNUNET_NZL (
                                                   dh->num_cdds)];
   const struct TALER_CoinSpendPublicKeyP *cpubs[GNUNET_NZL (
@@ -279,14 +277,9 @@ auditor_cb (void *cls,
                 "Not providing deposit confirmation to auditor\n");
     return;
   }
-  coin = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                   dh->num_cdds);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
-  dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
-                                                     &dh->cdds[coin].h_denom_pub);
-  GNUNET_assert (NULL != dki);
   spk = TALER_EXCHANGE_get_signing_key_info (dh->keys,
                                              &dh->exchange_pub);
   if (NULL == spk)
@@ -557,6 +550,7 @@ TALER_EXCHANGE_batch_deposit (
     {
       *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
       GNUNET_break_op (0);
+      json_decref (deposits);
       return NULL;
     }
     if (0 >
@@ -568,6 +562,7 @@ TALER_EXCHANGE_batch_deposit (
       GNUNET_break_op (0);
       GNUNET_free (dh->cdds);
       GNUNET_free (dh);
+      json_decref (deposits);
       return NULL;
     }
     GNUNET_assert (0 <=
@@ -585,6 +580,7 @@ TALER_EXCHANGE_batch_deposit (
       GNUNET_break_op (0);
       GNUNET_free (dh->cdds);
       GNUNET_free (dh);
+      json_decref (deposits);
       return NULL;
     }
     if (GNUNET_is_zero (&cdd->h_age_commitment))
@@ -621,6 +617,7 @@ TALER_EXCHANGE_batch_deposit (
     GNUNET_free (dh->url);
     GNUNET_free (dh->cdds);
     GNUNET_free (dh);
+    json_decref (deposits);
     return NULL;
   }
 

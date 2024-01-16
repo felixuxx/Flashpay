@@ -252,8 +252,8 @@ TALER_denom_ewv_free (struct TALER_ExchangeWithdrawValues *ewv)
 
 
 void
-TALER_denom_ewv_deep_copy (struct TALER_ExchangeWithdrawValues *bi_dst,
-                           const struct TALER_ExchangeWithdrawValues *bi_src)
+TALER_denom_ewv_copy (struct TALER_ExchangeWithdrawValues *bi_dst,
+                      const struct TALER_ExchangeWithdrawValues *bi_src)
 {
   if (bi_src == TALER_denom_ewv_rsa_singleton ())
   {
@@ -266,8 +266,8 @@ TALER_denom_ewv_deep_copy (struct TALER_ExchangeWithdrawValues *bi_dst,
 
 
 void
-TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
-                           const struct TALER_DenominationPublicKey *denom_src)
+TALER_denom_pub_copy (struct TALER_DenominationPublicKey *denom_dst,
+                      const struct TALER_DenominationPublicKey *denom_src)
 {
   denom_dst->age_mask = denom_src->age_mask;
   denom_dst->bsign_pub_key
@@ -276,8 +276,8 @@ TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
 
 
 void
-TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
-                           const struct TALER_DenominationSignature *denom_src)
+TALER_denom_sig_copy (struct TALER_DenominationSignature *denom_dst,
+                      const struct TALER_DenominationSignature *denom_src)
 {
   denom_dst->unblinded_sig
     = GNUNET_CRYPTO_ub_sig_incref (denom_src->unblinded_sig);
@@ -285,7 +285,7 @@ TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
 
 
 void
-TALER_blinded_denom_sig_deep_copy (
+TALER_blinded_denom_sig_copy (
   struct TALER_BlindedDenominationSignature *denom_dst,
   const struct TALER_BlindedDenominationSignature *denom_src)
 {

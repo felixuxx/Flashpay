@@ -122,7 +122,7 @@ TALER_CRYPTO_helper_cs_connect (
   char *secname;
 
   GNUNET_asprintf (&secname,
-                   "%s-exchange-secmod-cs",
+                   "%s-secmod-cs",
                    section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,

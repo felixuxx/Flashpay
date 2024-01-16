@@ -459,8 +459,8 @@ reveal_cb (void *cls,
         fc->h_age_commitment = coin->h_age_commitment;
       }
 
-      TALER_denom_sig_deep_copy (&fc->sig,
-                                 &coin->sig);
+      TALER_denom_sig_copy (&fc->sig,
+                            &coin->sig);
     }
     if (0 != rrs->total_backoff.rel_value_us)
     {
@@ -979,8 +979,8 @@ melt_cb (void *cls,
       mr->details.ok.num_mbds,
       struct TALER_EXCHANGE_MeltBlindingDetail);
     for (unsigned int i = 0; i<mr->details.ok.num_mbds; i++)
-      TALER_denom_ewv_deep_copy (&rms->mbds[i].alg_value,
-                                 &mr->details.ok.mbds[i].alg_value);
+      TALER_denom_ewv_copy (&rms->mbds[i].alg_value,
+                            &mr->details.ok.mbds[i].alg_value);
   }
   if (0 != rms->total_backoff.rel_value_us)
   {
@@ -1153,8 +1153,8 @@ melt_run (void *cls,
                                        &fresh_pk->fees.withdraw));
       rms->fresh_pks[i] = *fresh_pk;
       /* Make a deep copy of the RSA key */
-      TALER_denom_pub_deep_copy (&rms->fresh_pks[i].key,
-                                 &fresh_pk->key);
+      TALER_denom_pub_copy (&rms->fresh_pks[i].key,
+                            &fresh_pk->key);
     } /* end for */
 
     rms->refresh_data.melt_priv = *rms->melt_priv;

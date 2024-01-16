@@ -137,9 +137,9 @@ static struct GNUNET_TIME_Timestamp now_tmp;
 static char *keydir;
 
 /**
- * Name of the configuration section prefix to use.  Usually either "taler" or
+ * Name of the configuration section prefix to use.  Usually either "taler-exchange" or
  * "donau". The actual configuration section will then be
- * "$SECTION-exchange-secmod-cs".
+ * "$SECTION-secmod-eddsa".
  */
 static char *section;
 
@@ -998,39 +998,48 @@ import_key (void *cls,
 static enum GNUNET_GenericReturnValue
 load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  char *secname;
+
+  GNUNET_asprintf (&secname,
+                   "%s-secmod-eddsa",
+                   section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "taler-exchange-secmod-eddsa",
+                                           secname,
                                            "OVERLAP_DURATION",
                                            &overlap_duration))
   {
+    GNUNET_free (secname);
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-eddsa",
+                               secname,
                                "OVERLAP_DURATION");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "taler-exchange-secmod-eddsa",
+                                           secname,
                                            "DURATION",
                                            &duration))
   {
+    GNUNET_free (secname);
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-eddsa",
+                               secname,
                                "DURATION");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "taler-exchange-secmod-eddsa",
+                                           secname,
                                            "LOOKAHEAD_SIGN",
                                            &lookahead_sign))
   {
+    GNUNET_free (secname);
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-eddsa",
+                               secname,
                                "LOOKAHEAD_SIGN");
     return GNUNET_SYSERR;
   }
+  GNUNET_free (secname);
   return GNUNET_OK;
 }
 
@@ -1088,7 +1097,7 @@ run (void *cls,
     now = GNUNET_TIME_timestamp_get ();
   }
   GNUNET_asprintf (&secname,
-                   "%s-exchange-secmod-eddsa",
+                   "%s-secmod-eddsa",
                    section);
   if (GNUNET_OK !=
       load_durations (cfg))
@@ -1112,9 +1121,17 @@ run (void *cls,
   GNUNET_free (secname);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
-  global_ret = TES_listen_start (cfg,
-                                 "taler-exchange-secmod-eddsa",
-                                 &cb);
+  {
+    char *secname;
+
+    GNUNET_asprintf (&secname,
+                     "%s-secmod-eddsa",
+                     section);
+    global_ret = TES_listen_start (cfg,
+                                   secname,
+                                   &cb);
+    GNUNET_free (secname);
+  }
   if (0 != global_ret)
     return;
   /* Load keys */
@@ -1175,7 +1192,7 @@ main (int argc,
 
   /* Restrict permissions for the key files that we create. */
   (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
-  section = GNUNET_strdup ("taler");
+  section = GNUNET_strdup ("taler-exchange");
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */

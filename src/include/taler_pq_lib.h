@@ -30,6 +30,10 @@
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_util.h"
 
+/**
+ * API version. Bump on every change.
+ */
+#define TALER_PQ_VERSION 0x09040000
 
 /**
  * Generate query parameter (as record tuple) for an amount, consisting

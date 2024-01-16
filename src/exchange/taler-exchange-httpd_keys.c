@@ -1630,7 +1630,7 @@ setup_key_helpers (struct HelperState *hs)
     = GNUNET_CONTAINER_multipeermap_create (32,
                                             GNUNET_NO /* MUST BE NO! */);
   hs->rsadh = TALER_CRYPTO_helper_rsa_connect (TEH_cfg,
-                                               "taler",
+                                               "taler-exchange",
                                                &helper_rsa_cb,
                                                hs);
   if (NULL == hs->rsadh)
@@ -1639,7 +1639,7 @@ setup_key_helpers (struct HelperState *hs)
     return GNUNET_SYSERR;
   }
   hs->csdh = TALER_CRYPTO_helper_cs_connect (TEH_cfg,
-                                             "taler",
+                                             "taler-exchange",
                                              &helper_cs_cb,
                                              hs);
   if (NULL == hs->csdh)
@@ -1648,7 +1648,7 @@ setup_key_helpers (struct HelperState *hs)
     return GNUNET_SYSERR;
   }
   hs->esh = TALER_CRYPTO_helper_esign_connect (TEH_cfg,
-                                               "taler",
+                                               "taler-exchange",
                                                &helper_esign_cb,
                                                hs);
   if (NULL == hs->esh)
@@ -1919,8 +1919,8 @@ denomination_info_cb (
     return;
   }
   dk = GNUNET_new (struct TEH_DenominationKey);
-  TALER_denom_pub_deep_copy (&dk->denom_pub,
-                             denom_pub);
+  TALER_denom_pub_copy (&dk->denom_pub,
+                        denom_pub);
   dk->h_denom_pub = *h_denom_pub;
   dk->meta = *meta;
   dk->master_sig = *master_sig;
@@ -4078,8 +4078,8 @@ TEH_keys_load_fees (struct TEH_KeyStateHandle *ksh,
   {
     GNUNET_assert (GNUNET_CRYPTO_BSA_INVALID !=
                    hd->denom_pub.bsign_pub_key->cipher);
-    TALER_denom_pub_deep_copy (denom_pub,
-                               &hd->denom_pub);
+    TALER_denom_pub_copy (denom_pub,
+                          &hd->denom_pub);
   }
   else
   {

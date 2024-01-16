@@ -308,9 +308,9 @@ static struct GNUNET_TIME_Timestamp now_tmp;
 static char *keydir;
 
 /**
- * Name of the configuration section prefix to use.  Usually either "taler" or
+ * Name of the configuration section prefix to use.  Usually either "taler-exchange" or
  * "donau". The actual configuration section will then be
- * "$SECTION-exchange-secmod-cs".
+ * "$SECTION-secmod-rsa".
  */
 static char *section;
 
@@ -1261,6 +1261,7 @@ create_key (struct Denomination *denom,
   struct GNUNET_TIME_Timestamp anchor;
 
   anchor = now;
+  // FIXME: round down to multiple of 'anchor_round' value from configuration
   if (NULL != denom->keys_tail)
   {
     struct GNUNET_TIME_Absolute abs;
@@ -1729,7 +1730,11 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         struct Denomination *denom)
 {
   unsigned long long rsa_keysize;
+  char *secname;
 
+  GNUNET_asprintf (&secname,
+                   "%s-secmod-rsa",
+                   section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
                                            ct,
@@ -1739,6 +1744,7 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
                                "DURATION_WITHDRAW");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
   if (GNUNET_TIME_relative_cmp (overlap_duration,
@@ -1746,9 +1752,10 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                 denom->duration_withdraw))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-rsa",
+                               section,
                                "OVERLAP_DURATION",
                                "Value given must be smaller than value for DURATION_WITHDRAW!");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -1760,6 +1767,7 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
                                "RSA_KEYSIZE");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
   if ( (rsa_keysize > 4 * 2048) ||
@@ -1769,8 +1777,10 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                ct,
                                "RSA_KEYSIZE",
                                "Given RSA keysize outside of permitted range [1024,8192]\n");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
+  GNUNET_free (secname);
   denom->rsa_keysize = (unsigned int) rsa_keysize;
   denom->section = GNUNET_strdup (ct);
   return GNUNET_OK;
@@ -1885,28 +1895,36 @@ load_denominations (void *cls,
 static enum GNUNET_GenericReturnValue
 load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  char *secname;
+
+  GNUNET_asprintf (&secname,
+                   "%s-secmod-rsa",
+                   section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "taler-exchange-secmod-rsa",
+                                           secname,
                                            "OVERLAP_DURATION",
                                            &overlap_duration))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-rsa",
+                               secname,
                                "OVERLAP_DURATION");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "taler-exchange-secmod-rsa",
+                                           secname,
                                            "LOOKAHEAD_SIGN",
                                            &lookahead_sign))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-exchange-secmod-rsa",
+                               secname,
                                "LOOKAHEAD_SIGN");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
+  GNUNET_free (secname);
   return GNUNET_OK;
 }
 
@@ -1966,7 +1984,7 @@ run (void *cls,
     now = GNUNET_TIME_timestamp_get ();
   }
   GNUNET_asprintf (&secname,
-                   "%s-exchange-secmod-rsa",
+                   "%s-secmod-rsa",
                    section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
@@ -1988,9 +2006,17 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
-  global_ret = TES_listen_start (cfg,
-                                 "taler-exchange-secmod-rsa",
-                                 &cb);
+  {
+    char *secname;
+
+    GNUNET_asprintf (&secname,
+                     "%s-secmod-rsa",
+                     section);
+    global_ret = TES_listen_start (cfg,
+                                   secname,
+                                   &cb);
+    GNUNET_free (secname);
+  }
   if (0 != global_ret)
     return;
   sem_init (&worker_sem,
@@ -2087,7 +2113,7 @@ main (int argc,
 
   /* Restrict permissions for the key files that we create. */
   (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
-  section = GNUNET_strdup ("taler");
+  section = GNUNET_strdup ("taler-exchange");
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
