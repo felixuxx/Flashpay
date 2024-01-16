@@ -34,7 +34,6 @@ TAH_PG_get_auditor_progress_deposit_confirmation (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -47,8 +46,7 @@ TAH_PG_get_auditor_progress_deposit_confirmation (
            "auditor_progress_select_deposit_confirmation",
            "SELECT"
            " last_deposit_confirmation_serial_id"
-           " FROM auditor_progress_deposit_confirmation"
-           " WHERE master_pub=$1;");
+           " FROM auditor_progress_deposit_confirmation;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_progress_select_deposit_confirmation",
                                                    params,

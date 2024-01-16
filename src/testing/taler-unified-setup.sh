@@ -671,6 +671,9 @@ then
     $USE_VALGRIND taler-auditor-httpd \
                   -L "$LOGLEVEL" \
                   -c "$CONF" 2> taler-auditor-httpd.log &
+    $USE_VALGRIND taler-helper-auditor-deposits \
+                  -L "$LOGLEVEL" \
+                  -c "$CONF" 2> taler-helper-auditor.log &
     echo " DONE"
 fi
 

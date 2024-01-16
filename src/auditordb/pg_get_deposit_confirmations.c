@@ -156,29 +156,27 @@ deposit_confirmation_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_deposit_confirmations (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_public_key,
   uint64_t start_id,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_public_key),
     GNUNET_PQ_query_param_uint64 (&start_id),
     GNUNET_PQ_query_param_end
   };
   struct DepositConfirmationContext dcc = {
-    .master_pub = master_public_key,
     .cb = cb,
     .cb_cls = cb_cls,
     .pg = pg
   };
   enum GNUNET_DB_QueryStatus qs;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "id above %ld\n", start_id);
 
   PREPARE (pg,
            "auditor_deposit_confirmation_select",
            "SELECT"
-           " serial_id"
+           " deposit_confirmation_serial_id"
            ",h_contract_terms"
            ",h_policy"
            ",h_wire"
@@ -192,9 +190,8 @@ TAH_PG_get_deposit_confirmations (
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"                  /* master_sig could be normalized... */
-           " FROM deposit_confirmations"
-           " WHERE master_pub=$1"
-           " AND serial_id>$2");
+           " FROM auditor_deposit_confirmations"
+           " WHERE deposit_confirmation_serial_id>$1");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_deposit_confirmation_select",
                                              params,

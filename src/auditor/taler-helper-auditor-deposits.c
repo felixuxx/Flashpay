@@ -17,6 +17,7 @@
  * @file auditor/taler-helper-auditor-deposits.c
  * @brief audits an exchange database for deposit confirmation consistency
  * @author Christian Grothoff
+ * @author Nic Eigel
  *
  * We simply check that all of the deposit confirmations reported to us
  * by merchants were also reported to us by the exchange.
@@ -35,14 +36,14 @@
 /*
 --
 -- SELECT serial_id,h_contract_terms,h_wire,merchant_pub ...
---   FROM auditor.depoist_confirmations
+--   FROM auditor.auditor_deposit_confirmations
 --   WHERE NOT ancient
 --    ORDER BY exchange_timestamp ASC;
 --  SELECT 1
 -      FROM exchange.deposits dep
        WHERE ($RESULT.contract_terms = dep.h_contract_terms) AND ($RESULT.h_wire = dep.h_wire) AND ...);
 -- IF FOUND
--- DELETE FROM auditor.depoist_confirmations
+-- DELETE FROM auditor.auditor_deposit_confirmations
 --   WHERE serial_id = $RESULT.serial_id;
 -- SELECT exchange_timestamp AS latest
 --   FROM exchange.deposits ORDER BY exchange_timestamp DESC;
@@ -52,11 +53,6 @@
 --  WHERE exchange_timestamp < latest
 --    AND NOT ancient;
 */
-
-/**
- * Next task to run, if any.
- */
-static struct GNUNET_SCHEDULER_Task *task;
 
 /**
  * Return value from main().
@@ -89,6 +85,11 @@ static struct GNUNET_DB_EventHandler *eh;
  * Our database plugin.
  */
 static struct TALER_AUDITORDB_Plugin *db_plugin;
+
+/**
+ * The auditors's configuration.
+ */
+static const struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Closure for #test_dc.
@@ -126,7 +127,6 @@ struct DepositConfirmationContext
 
 };
 
-
 /**
  * Given a deposit confirmation from #TALER_ARL_adb, check that it is also
  * in #TALER_ARL_edb.  Update the deposit confirmation context accordingly.
@@ -145,7 +145,7 @@ test_dc (void *cls,
   bool missing = false;
 
   dcc->last_seen_coin_serial = serial_id;
-  for (unsigned int i = 0; i<dc->num_coins; i++)
+  for (unsigned int i = 0; i < dc->num_coins; i++)
   {
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp exchange_timestamp;
@@ -215,15 +215,14 @@ analyze_deposit_confirmations (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qsp;
-
   (void) cls;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Analyzing deposit confirmations\n");
+
   ppdc.last_deposit_confirmation_serial_id = 0;
   qsp = TALER_ARL_adb->get_auditor_progress_deposit_confirmation (
     TALER_ARL_adb->cls,
     &TALER_ARL_master_pub,
     &ppdc);
+
   if (0 > qsp)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
@@ -248,9 +247,10 @@ analyze_deposit_confirmations (void *cls)
   dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   dcc.missed_count = 0LLU;
   dcc.first_missed_coin_serial = UINT64_MAX;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lastdepconfserialid %lu\n",
+              ppdc.last_deposit_confirmation_serial_id);
   qsx = TALER_ARL_adb->get_deposit_confirmations (
     TALER_ARL_adb->cls,
-    &TALER_ARL_master_pub,
     ppdc.last_deposit_confirmation_serial_id,
     &test_dc,
     &dcc);
@@ -268,11 +268,16 @@ analyze_deposit_confirmations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == dcc.qs);
     return dcc.qs;
   }
-  if (UINT64_MAX == dcc.first_missed_coin_serial)
-    ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
-  else
-    ppdc.last_deposit_confirmation_serial_id = dcc.first_missed_coin_serial - 1;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "getting in here when i shouldnt\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lastseencoinserialid %lu\n",
+              dcc.last_seen_coin_serial);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "dcc.qs %u\n", dcc.qs);
+  /* if (UINT64_MAX == dcc.first_missed_coin_serial)
+     ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
+   else
+     ppdc.last_deposit_confirmation_serial_id = dcc.first_missed_coin_serial - 1;
+ */
   /* sync 'cc' back to disk */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
     qs = TALER_ARL_adb->update_auditor_progress_deposit_confirmation (
@@ -291,6 +296,7 @@ analyze_deposit_confirmations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   number_missed_deposit_confirmations = (json_int_t) dcc.missed_count;
   total_missed_deposit_confirmations = dcc.missed_amount;
 
@@ -313,14 +319,52 @@ db_notify (void *cls,
            const void *extra,
            size_t extra_size)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received notification for new deposit_confirmation\n");
+
   (void) cls;
   (void) extra;
   (void) extra_size;
 
-  GNUNET_assert (NULL != task);
-  GNUNET_SCHEDULER_cancel (task);
-  task = GNUNET_SCHEDULER_add_now (&analyze_deposit_confirmations,
-                                   NULL);
+  if (GNUNET_OK !=
+      TALER_ARL_init (cfg))
+  {
+    global_ret = EXIT_FAILURE;
+    return;
+  }
+
+  if (NULL ==
+      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  GNUNET_assert (NULL !=
+                 (report_deposit_confirmation_inconsistencies = json_array ()));
+
+  if (GNUNET_OK !=
+      TALER_ARL_setup_sessions_and_run (&analyze_deposit_confirmations,
+                                        NULL))
+  {
+    global_ret = EXIT_FAILURE;
+    return;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Deposit audit complete\n");
+  TALER_ARL_done (
+    GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("deposit_confirmation_inconsistencies",
+                                    report_deposit_confirmation_inconsistencies),
+      GNUNET_JSON_pack_uint64 ("missing_deposit_confirmation_count",
+                               number_missed_deposit_confirmations),
+      TALER_JSON_pack_amount ("missing_deposit_confirmation_total",
+                              &total_missed_deposit_confirmations),
+      TALER_JSON_pack_time_abs_human ("auditor_start_time",
+                                      start_time),
+      TALER_JSON_pack_time_abs_human ("auditor_end_time",
+                                      GNUNET_TIME_absolute_get ())));
 }
 
 
@@ -341,6 +385,7 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
+  cfg = c;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching deposit auditor\n");
   if (GNUNET_OK !=
@@ -350,37 +395,32 @@ run (void *cls,
     return;
   }
 
-  /*if (NULL ==
+  if (NULL ==
       (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to initialize DB subsystem\n");
-      GNUNET_SCHEDULER_shutdown ();
-      return;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
   if (GNUNET_OK !=
-      db_plugin->connect (db_plugin->cls))
+      db_plugin->preflight (db_plugin->cls))
   {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to connect to database\n");
-      GNUNET_SCHEDULER_shutdown ();
-      return;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to connect to database\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
-  {
-      struct GNUNET_DB_EventHeaderP es = {
-              .size = htons (sizeof (es)),
-              .type = htons (TALER_DBEVENT_AUDITOR_NEW_DEPOSIT_CONFIRMATIONS)
-      };
 
-      eh = db_plugin->event_listen (db_plugin->cls,
-                                    &es,
-                                    GNUNET_TIME_UNIT_FOREVER_REL,
-                                    &db_notify,
-                                    NULL);
-  }
-  GNUNET_assert (NULL == task);
-  task = GNUNET_SCHEDULER_add_now (&select_work,
-                                   NULL);*/
+  struct GNUNET_DB_EventHeaderP es = {
+    .size = htons (sizeof (es)),
+    .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_NEW_DEPOSIT_CONFIRMATION)
+  };
+  eh = db_plugin->event_listen (db_plugin->cls,
+                                &es,
+                                GNUNET_TIME_UNIT_FOREVER_REL,
+                                &db_notify,
+                                NULL);
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting deposit audit\n");

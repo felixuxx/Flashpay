@@ -107,7 +107,6 @@ TAH_PG_list_exchanges (void *cls,
     .cb_cls = cb_cls
   };
   enum GNUNET_DB_QueryStatus qs;
-
   PREPARE (pg,
            "auditor_list_exchanges",
            "SELECT"

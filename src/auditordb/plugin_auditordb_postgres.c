@@ -166,6 +166,69 @@ postgres_create_tables (void *cls)
 
 
 /**
+ * Register callback to be invoked on events of type @a es.
+ *
+ * @param cls database context to use
+ * @param es specification of the event to listen for
+ * @param timeout how long to wait for the event
+ * @param cb function to call when the event happens, possibly
+ *         mulrewardle times (until cancel is invoked)
+ * @param cb_cls closure for @a cb
+ * @return handle useful to cancel the listener
+ */
+static struct GNUNET_DB_EventHandler *
+postgres_event_listen (void *cls,
+                       const struct GNUNET_DB_EventHeaderP *es,
+                       struct GNUNET_TIME_Relative timeout,
+                       GNUNET_DB_EventCallback cb,
+                       void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+
+  return GNUNET_PQ_event_listen (pg->conn,
+                                 es,
+                                 timeout,
+                                 cb,
+                                 cb_cls);
+}
+
+
+/**
+ * Stop notifications.
+ *
+ * @param eh handle to unregister.
+ */
+static void
+postgres_event_listen_cancel (struct GNUNET_DB_EventHandler *eh)
+{
+  GNUNET_PQ_event_listen_cancel (eh);
+}
+
+
+/**
+ * Notify all that listen on @a es of an event.
+ *
+ * @param cls database context to use
+ * @param es specification of the event to generate
+ * @param extra additional event data provided
+ * @param extra_size number of bytes in @a extra
+ */
+static void
+postgres_event_notify (void *cls,
+                       const struct GNUNET_DB_EventHeaderP *es,
+                       const void *extra,
+                       size_t extra_size)
+{
+  struct PostgresClosure *pg = cls;
+
+  return GNUNET_PQ_event_notify (pg->conn,
+                                 es,
+                                 extra,
+                                 extra_size);
+}
+
+
+/**
  * Connect to the db if the connection does not exist yet.
  *
  * @param[in,out] pg the plugin-specific state
@@ -399,6 +462,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->preflight = &postgres_preflight;
   plugin->drop_tables = &postgres_drop_tables;
   plugin->create_tables = &postgres_create_tables;
+  plugin->event_listen = &postgres_event_listen;
+  plugin->event_listen_cancel = &postgres_event_listen_cancel;
+  plugin->event_notify = &postgres_event_notify;
   plugin->start = &postgres_start;
   plugin->commit = &postgres_commit;
   plugin->rollback = &postgres_rollback;

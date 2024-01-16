@@ -38,7 +38,9 @@ TAH_PG_insert_auditor_progress_deposit_confirmation (
     GNUNET_PQ_query_param_uint64 (&ppdc->last_deposit_confirmation_serial_id),
     GNUNET_PQ_query_param_end
   };
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "isnert ppdc last deposit conf serial id above %ld\n",
+              ppdc->last_deposit_confirmation_serial_id);
   PREPARE (pg,
            "auditor_progress_insert_deposit_confirmation",
            "INSERT INTO auditor_progress_deposit_confirmation "

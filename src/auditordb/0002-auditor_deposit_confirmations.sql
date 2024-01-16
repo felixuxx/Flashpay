@@ -56,5 +56,5 @@ COMMENT ON FUNCTION auditor_new_transactions_trigger()
 
 CREATE TRIGGER auditor_notify_helper_deposits
     AFTER INSERT
-    ON auditor.deposit_confirmations
+    ON auditor.auditor_deposit_confirmations
 EXECUTE PROCEDURE auditor_new_transactions_trigger();

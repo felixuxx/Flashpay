@@ -1,0 +1,15 @@
+[Unit]
+Description=GNU Taler auditor helper reporting confirmation deposits
+After=postgres.service
+
+[Service]
+User=taler-auditor-httpd
+Type=simple
+Restart=always
+RestartSec=1s
+RestartPreventExitStatus=9
+ExecStart=/usr/bin/taler-helper-auditor-deposits -c /etc/taler/taler.conf
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+RuntimeMaxSec=3600s

@@ -36,7 +36,7 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
-
+#include "0002-auditor_amount_arithmetic_inconsistency.sql"
 #include "0002-auditor_balances.sql"
 #include "0002-auditor_denomination_pending.sql"
 #include "0002-auditor_exchange_signkeys.sql"

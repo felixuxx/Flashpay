@@ -40,7 +40,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_deposit_confirmations (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_public_key,
   uint64_t start_id,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls);

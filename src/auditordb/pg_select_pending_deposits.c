@@ -118,7 +118,6 @@ TAH_PG_select_pending_deposits (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_absolute_time (&deadline),
     GNUNET_PQ_query_param_end
   };
@@ -137,8 +136,7 @@ TAH_PG_select_pending_deposits (
            ",wire_target_h_payto"
            ",deadline"
            " FROM auditor_pending_deposits"
-           " WHERE master_pub=$1"
-           " AND deadline<$2;");
+           " WHERE deadline<$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
     "auditor_select_pending_deposits",

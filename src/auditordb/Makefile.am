@@ -13,17 +13,18 @@ pkgcfg_DATA = \
 
 sqldir = $(prefix)/share/taler/sql/auditor/
 
-sql_DATA = \
-  versioning.sql \
-  auditor-0001.sql \
-  drop.sql \
-  restart.sql
-
 sqlinputs = \
   0002-*.sql \
   auditor-0002.sql.in
 #  auditor_do_*.sql
 #  procedures.sql.in
+
+sql_DATA = \
+  versioning.sql \
+  auditor-0001.sql \
+  auditor-0002.sql \
+  drop.sql \
+  restart.sql
 
 auditor-0002.sql: auditor-0002.sql.in 0002-*.sql
 	chmod +w $@ || true

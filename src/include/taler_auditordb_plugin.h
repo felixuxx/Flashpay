@@ -689,6 +689,47 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_GenericReturnValue
   (*preflight)(void *cls);
 
+  /**
+   * Register callback to be invoked on events of type @a es.
+   *
+   * @param cls database context to use
+   * @param es specification of the event to listen for
+   * @param timeout how long to wait for the event
+   * @param cb function to call when the event happens, possibly
+   *         mulrewardle times (until cancel is invoked)
+   * @param cb_cls closure for @a cb
+   * @return handle useful to cancel the listener
+   */
+  struct GNUNET_DB_EventHandler *
+  (*event_listen)(void *cls,
+                  const struct GNUNET_DB_EventHeaderP *es,
+                  struct GNUNET_TIME_Relative timeout,
+                  GNUNET_DB_EventCallback cb,
+                  void *cb_cls);
+
+  /**
+   * Stop notifications.
+   *
+   * @param eh handle to unregister.
+   */
+  void
+  (*event_listen_cancel)(struct GNUNET_DB_EventHandler *eh);
+
+
+  /**
+   * Notify all that listen on @a es of an event.
+   *
+   * @param cls database context to use
+   * @param es specification of the event to generate
+   * @param extra additional event data provided
+   * @param extra_size number of bytes in @a extra
+   */
+  void
+  (*event_notify)(void *cls,
+                  const struct GNUNET_DB_EventHeaderP *es,
+                  const void *extra,
+                  size_t extra_size);
+
 
   /**
    * Drop all auditor tables OR deletes recoverable auditor state.
@@ -828,7 +869,6 @@ struct TALER_AUDITORDB_Plugin
    * Get information about deposit confirmations from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param master_public_key for which exchange do we want to get deposit confirmations
    * @param start_id row/serial ID where to start the iteration (0 from
    *                  the start, exclusive, i.e. serial_ids must start from 1)
    * @param cb function to call with results
@@ -838,7 +878,6 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_deposit_confirmations)(
     void *cls,
-    const struct TALER_MasterPublicKeyP *master_public_key,
     uint64_t start_id,
     TALER_AUDITORDB_DepositConfirmationCallback cb,
     void *cb_cls);
