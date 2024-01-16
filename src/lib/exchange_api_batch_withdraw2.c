@@ -89,8 +89,8 @@ struct TALER_EXCHANGE_BatchWithdraw2Handle
 /**
  * We got a 200 OK response for the /reserves/$RESERVE_PUB/batch-withdraw operation.
  * Extract the coin's signature and return it to the caller.  The signature we
- * get from the exchange is for the blinded value.  Thus, we first must
- * unblind it and then should verify its validity against our coin's hash.
+ * get from the exchange is for the blinded value. As we do not have the
+ * blinding factor, the signature CANNOT be verified.
  *
  * If everything checks out, we return the unblinded signature
  * to the application via the callback.
