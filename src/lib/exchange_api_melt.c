@@ -476,8 +476,8 @@ csr_cb (void *cls,
     case GNUNET_CRYPTO_BSA_RSA:
       break;
     case GNUNET_CRYPTO_BSA_CS:
-      TALER_denom_ewv_deep_copy (wv,
-                                 &csrr->details.ok.alg_values[nks_off]);
+      TALER_denom_ewv_copy (wv,
+                            &csrr->details.ok.alg_values[nks_off]);
       nks_off++;
       break;
     }
@@ -535,8 +535,8 @@ TALER_EXCHANGE_melt (
       GNUNET_free (mh);
       return NULL;
     case GNUNET_CRYPTO_BSA_RSA:
-      TALER_denom_ewv_deep_copy (&mh->mbds[i].alg_value,
-                                 TALER_denom_ewv_rsa_singleton ());
+      TALER_denom_ewv_copy (&mh->mbds[i].alg_value,
+                            TALER_denom_ewv_rsa_singleton ());
       break;
     case GNUNET_CRYPTO_BSA_CS:
       nks[nks_off].pk = fresh_pk;

@@ -1919,8 +1919,8 @@ denomination_info_cb (
     return;
   }
   dk = GNUNET_new (struct TEH_DenominationKey);
-  TALER_denom_pub_deep_copy (&dk->denom_pub,
-                             denom_pub);
+  TALER_denom_pub_copy (&dk->denom_pub,
+                        denom_pub);
   dk->h_denom_pub = *h_denom_pub;
   dk->meta = *meta;
   dk->master_sig = *master_sig;
@@ -4078,8 +4078,8 @@ TEH_keys_load_fees (struct TEH_KeyStateHandle *ksh,
   {
     GNUNET_assert (GNUNET_CRYPTO_BSA_INVALID !=
                    hd->denom_pub.bsign_pub_key->cipher);
-    TALER_denom_pub_deep_copy (denom_pub,
-                               &hd->denom_pub);
+    TALER_denom_pub_copy (denom_pub,
+                          &hd->denom_pub);
   }
   else
   {

@@ -470,8 +470,8 @@ TALER_EXCHANGE_refreshes_reveal (
     = GNUNET_new_array (md.num_fresh_coins,
                         struct TALER_ExchangeWithdrawValues);
   for (unsigned int i = 0; i<md.num_fresh_coins; i++)
-    TALER_denom_ewv_deep_copy (&rrh->alg_values[i],
-                               &alg_values[i]);
+    TALER_denom_ewv_copy (&rrh->alg_values[i],
+                          &alg_values[i]);
   rrh->url = TALER_url_join (url,
                              arg_str,
                              NULL);

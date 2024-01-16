@@ -89,18 +89,18 @@ TALER_EXCHANGE_get_melt_data_ (
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (rd->melt_amount.currency,
                                         &total));
-  TALER_denom_pub_deep_copy (&md->melted_coin.pub_key,
-                             &rd->melt_pk.key);
-  TALER_denom_sig_deep_copy (&md->melted_coin.sig,
-                             &rd->melt_sig);
+  TALER_denom_pub_copy (&md->melted_coin.pub_key,
+                        &rd->melt_pk.key);
+  TALER_denom_sig_copy (&md->melted_coin.sig,
+                        &rd->melt_sig);
   md->fcds = GNUNET_new_array (md->num_fresh_coins,
                                struct FreshCoinData);
   for (unsigned int j = 0; j<rd->fresh_pks_len; j++)
   {
     struct FreshCoinData *fcd = &md->fcds[j];
 
-    TALER_denom_pub_deep_copy (&fcd->fresh_pk,
-                               &rd->fresh_pks[j].key);
+    TALER_denom_pub_copy (&fcd->fresh_pk,
+                          &rd->fresh_pks[j].key);
     GNUNET_assert (NULL != fcd->fresh_pk.bsign_pub_key);
     if (alg_values[j].blinding_inputs->cipher !=
         fcd->fresh_pk.bsign_pub_key->cipher)

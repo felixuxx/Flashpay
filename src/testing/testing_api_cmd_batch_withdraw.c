@@ -215,15 +215,15 @@ reserve_batch_withdraw_cb (void *cls,
       const struct TALER_EXCHANGE_PrivateCoinDetails *pcd
         = &wr->details.ok.coins[i];
 
-      TALER_denom_sig_deep_copy (&cs->sig,
-                                 &pcd->sig);
+      TALER_denom_sig_copy (&cs->sig,
+                            &pcd->sig);
       cs->coin_priv = pcd->coin_priv;
       GNUNET_CRYPTO_eddsa_key_get_public (&cs->coin_priv.eddsa_priv,
                                           &cs->coin_pub.eddsa_pub);
 
       cs->bks = pcd->bks;
-      TALER_denom_ewv_deep_copy (&cs->exchange_vals,
-                                 &pcd->exchange_vals);
+      TALER_denom_ewv_copy (&cs->exchange_vals,
+                            &pcd->exchange_vals);
     }
     break;
   case MHD_HTTP_FORBIDDEN:

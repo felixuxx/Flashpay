@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
  * @file include/taler_util.h
  * @brief Interface for common utility functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff
  */
 #ifndef TALER_UTIL_H
 #define TALER_UTIL_H
@@ -33,7 +34,7 @@
  * Version of the Taler API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_API_VERSION 0x00090200
+#define TALER_API_VERSION 0x00090400
 
 /**
  * Stringify operator.

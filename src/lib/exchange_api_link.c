@@ -214,8 +214,8 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   }
 
   /* clean up */
-  TALER_denom_pub_deep_copy (&lci->pub,
-                             &rpub);
+  TALER_denom_pub_copy (&lci->pub,
+                        &rpub);
   GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
