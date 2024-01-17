@@ -414,18 +414,22 @@ parse_restrictions (const json_t *jresta,
                     unsigned int *resta_len,
                     struct TALER_EXCHANGE_AccountRestriction **resta)
 {
+  size_t alen;
+
   if (! json_is_array (jresta))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  *resta_len = json_array_size (jresta);
-  if (0 == *resta_len)
+  alen = json_array_size (jresta);
+  if (0 == alen)
   {
     /* no restrictions, perfectly OK */
     *resta = NULL;
     return GNUNET_OK;
   }
+  *resta_len = (unsigned int) alen;
+  GNUNET_assert (alen == *resta_len);
   *resta = GNUNET_new_array (*resta_len,
                              struct TALER_EXCHANGE_AccountRestriction);
   for (unsigned int i = 0; i<*resta_len; i++)
