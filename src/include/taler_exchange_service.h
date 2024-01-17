@@ -2690,9 +2690,9 @@ struct TALER_EXCHANGE_Withdraw2Handle;
  * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/withdraw
  * request.  This API is typically used by a merchant to withdraw a tip
  * where the blinding factor is unknown to the merchant.  Note that unlike
- * the #TALER_EXCHANGE_withdraw() API, this API neither unblinds the signatures
+ * the #TALER_EXCHANGE_batch_withdraw() API, this API neither unblinds the signatures
  * nor can it verify that the exchange signatures are valid, so these tasks
- * are left to the caller. Wallets probably should use #TALER_EXCHANGE_withdraw()
+ * are left to the caller. Wallets probably should use #TALER_EXCHANGE_batch_withdraw()
  * which integrates these steps.
  *
  * Note that to ensure that no money is lost in case of hardware
