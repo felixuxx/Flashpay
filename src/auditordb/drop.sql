@@ -20,7 +20,7 @@ BEGIN;
 
 -- Drop versioning (auditor-0001.sql)
 SELECT _v.unregister_patch('auditor-0001');
-SELECT _v.unregister_patch('auditor-0002');
+-- SELECT _v.unregister_patch('auditor-0002');
 DROP SCHEMA auditor CASCADE;
 
 -- And we're out of here...
