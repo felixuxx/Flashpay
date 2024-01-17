@@ -269,15 +269,11 @@ analyze_deposit_confirmations (void *cls)
     return dcc.qs;
   }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "getting in here when i shouldnt\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lastseencoinserialid %lu\n",
-              dcc.last_seen_coin_serial);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "dcc.qs %u\n", dcc.qs);
-  /* if (UINT64_MAX == dcc.first_missed_coin_serial)
-     ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
-   else
-     ppdc.last_deposit_confirmation_serial_id = dcc.first_missed_coin_serial - 1;
- */
+  if (UINT64_MAX == dcc.first_missed_coin_serial)
+    ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
+  else
+    ppdc.last_deposit_confirmation_serial_id = dcc.first_missed_coin_serial - 1;
+
   /* sync 'cc' back to disk */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
     qs = TALER_ARL_adb->update_auditor_progress_deposit_confirmation (
