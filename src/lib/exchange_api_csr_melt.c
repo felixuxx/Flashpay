@@ -86,7 +86,7 @@ csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
         const json_t *arr,
         struct TALER_EXCHANGE_HttpResponse *hr)
 {
-  unsigned int alen = json_array_size (arr);
+  size_t alen = json_array_size (arr);
   struct TALER_ExchangeWithdrawValues alg_values[GNUNET_NZL (alen)];
   struct TALER_EXCHANGE_CsRMeltResponse csrr = {
     .hr = *hr,
@@ -94,7 +94,7 @@ csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
     .details.ok.alg_values = alg_values
   };
 
-  for (unsigned int i = 0; i<alen; i++)
+  for (size_t i = 0; i<alen; i++)
   {
     json_t *av = json_array_get (arr,
                                  i);
@@ -116,7 +116,7 @@ csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
   }
   csrh->cb (csrh->cb_cls,
             &csrr);
-  for (unsigned int i = 0; i<alen; i++)
+  for (size_t i = 0; i<alen; i++)
     TALER_denom_ewv_free (&alg_values[i]);
   return GNUNET_OK;
 }
