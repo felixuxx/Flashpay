@@ -190,7 +190,7 @@ TAH_PG_get_deposit_confirmations (
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"                  /* master_sig could be normalized... */
-           " FROM auditor_deposit_confirmations"
+           " FROM deposit_confirmations"
            " WHERE deposit_confirmation_serial_id>$1");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_deposit_confirmation_select",
