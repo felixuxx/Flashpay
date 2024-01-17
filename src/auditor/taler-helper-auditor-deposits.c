@@ -60,6 +60,14 @@
 static int global_ret;
 
 /**
+ * Run in test mode. Exit when idle instead of
+ * going to sleep and waiting for more work.
+ *
+ * FIXME: not yet implemented!
+ */
+static int test_mode;
+
+/**
  * Array of reports about missing deposit confirmations.
  */
 static json_t *report_deposit_confirmation_inconsistencies;
@@ -322,13 +330,6 @@ db_notify (void *cls,
   (void) extra;
   (void) extra_size;
 
-  if (GNUNET_OK !=
-      TALER_ARL_init (cfg))
-  {
-    global_ret = EXIT_FAILURE;
-    return;
-  }
-
   if (NULL ==
       (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {
@@ -348,7 +349,8 @@ db_notify (void *cls,
     return;
   }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Deposit audit complete\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Deposit audit complete\n");
   TALER_ARL_done (
     GNUNET_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("deposit_confirmation_inconsistencies",
@@ -361,6 +363,22 @@ db_notify (void *cls,
                                       start_time),
       TALER_JSON_pack_time_abs_human ("auditor_end_time",
                                       GNUNET_TIME_absolute_get ())));
+}
+
+
+/**
+ * Function called on shutdown.
+ */
+static void
+do_shutdown (void *cls)
+{
+  (void) cls;
+
+  db_plugin->event_listen_cancel (eh);
+  eh = NULL;
+  TALER_AUDITORDB_plugin_unload (db_plugin);
+  db_plugin = NULL;
+  TALER_ARL_done (NULL);
 }
 
 
@@ -382,6 +400,9 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
   cfg = c;
+
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching deposit auditor\n");
   if (GNUNET_OK !=
@@ -467,6 +488,10 @@ main (int argc,
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
                                       &TALER_ARL_master_pub),
+    GNUNET_GETOPT_option_flag ('t',
+                               "test",
+                               "run in test mode and exit when idle",
+                               &test_mode),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
