@@ -544,8 +544,8 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 {
   const json_t *keys;
   json_t *key;
-  unsigned int off;
-  unsigned int pos;
+  size_t off;
+  size_t pos;
   const char *auditor_url;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
@@ -637,7 +637,12 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     auditor->denom_keys[pos].auditor_sig = auditor_sig;
     pos++;
   }
-  auditor->num_denom_keys = pos;
+  if (pos > UINT_MAX)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  auditor->num_denom_keys = (unsigned int) pos;
   return GNUNET_OK;
 }
 
