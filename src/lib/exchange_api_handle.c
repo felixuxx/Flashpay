@@ -723,7 +723,7 @@ parse_global_fee (struct TALER_EXCHANGE_GlobalFee *gf,
  * @param denom1 first denomination key
  * @param denom2 second denomination key
  * @return 0 if the two keys are equal (not necessarily
- *  the same object), 1 otherwise.
+ *  the same object), non-zero otherwise.
  */
 static unsigned int
 denoms_cmp (const struct TALER_EXCHANGE_DenomPublicKey *denom1,
