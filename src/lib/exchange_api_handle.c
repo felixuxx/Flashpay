@@ -517,11 +517,11 @@ parse_json_denomkey_partially (
             &denom_key->master_sig));
   return GNUNET_OK;
 EXITIF_exit:
+  GNUNET_JSON_parse_free (spec);
   /* invalidate denom_key, just to be sure */
   memset (denom_key,
           0,
           sizeof (*denom_key));
-  GNUNET_JSON_parse_free (spec);
   return GNUNET_SYSERR;
 }
 
