@@ -280,17 +280,22 @@ parse_fees (const struct TALER_MasterPublicKeyP *master_pub,
             unsigned int *fees_len)
 {
   struct TALER_EXCHANGE_WireFeesByMethod *fbm;
-  unsigned int fbml = json_object_size (fees);
+  size_t fbml = json_object_size (fees);
   unsigned int i = 0;
   const char *key;
   const json_t *fee_array;
 
+  if (UINT_MAX < fbml)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   fbm = GNUNET_new_array (fbml,
                           struct TALER_EXCHANGE_WireFeesByMethod);
-  *fees_len = fbml;
+  *fees_len = (unsigned int) fbml;
   json_object_foreach ((json_t *) fees, key, fee_array) {
     struct TALER_EXCHANGE_WireFeesByMethod *fe = &fbm[i++];
-    unsigned int idx;
+    size_t idx;
     json_t *fee;
 
     fe->method = GNUNET_strdup (key);
