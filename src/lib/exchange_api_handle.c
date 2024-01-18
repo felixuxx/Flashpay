@@ -960,12 +960,13 @@ decode_keys_json (const json_t *resp_obj,
   }
 
   /* parse the global fees */
+  EXITIF (json_array_size (global_fees) > UINT_MAX);
   key_data->num_global_fees
-    = json_array_size (global_fees);
+    = (unsigned int) json_array_size (global_fees);
   if (0 != key_data->num_global_fees)
   {
     json_t *global_fee;
-    unsigned int index;
+    size_t index;
 
     key_data->global_fees
       = GNUNET_new_array (key_data->num_global_fees,
@@ -981,12 +982,13 @@ decode_keys_json (const json_t *resp_obj,
   }
 
   /* parse the signing keys */
+  EXITIF (json_array_size (sign_keys_array) > UINT_MAX);
   key_data->num_sign_keys
-    = json_array_size (sign_keys_array);
+    = (unsigned int) json_array_size (sign_keys_array);
   if (0 != key_data->num_sign_keys)
   {
     json_t *sign_key_obj;
-    unsigned int index;
+    size_t index;
 
     key_data->sign_keys
       = GNUNET_new_array (key_data->num_sign_keys,
@@ -1003,7 +1005,9 @@ decode_keys_json (const json_t *resp_obj,
   /* Parse balance limits */
   if (NULL != wblwk)
   {
-    key_data->wblwk_length = json_array_size (wblwk);
+    EXITIF (json_array_size (wblwk) > UINT_MAX);
+    key_data->wblwk_length
+      = (unsigned int) json_array_size (wblwk);
     key_data->wallet_balance_limit_without_kyc
       = GNUNET_new_array (key_data->wblwk_length,
                           struct TALER_Amount);
@@ -1033,6 +1037,7 @@ decode_keys_json (const json_t *resp_obj,
                                &key_data->fees_len);
   EXITIF (NULL == key_data->fees);
   /* parse accounts */
+  EXITIF (json_array_size (accounts) > UINT_MAX);
   GNUNET_array_grow (key_data->accounts,
                      key_data->accounts_len,
                      json_array_size (accounts));
@@ -1044,7 +1049,7 @@ decode_keys_json (const json_t *resp_obj,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Parsed %u wire accounts from JSON\n",
-              (unsigned int) json_array_size (accounts));
+              key_data->accounts_len);
 
 
   /* Parse the supported extension(s): age-restriction. */
@@ -1160,6 +1165,9 @@ decode_keys_json (const json_t *resp_obj,
           GNUNET_array_grow (key_data->denom_keys,
                              key_data->denom_keys_size,
                              key_data->denom_keys_size * 2 + 2);
+        GNUNET_assert (key_data->denom_keys_size >
+                       key_data->num_denom_keys);
+        GNUNET_assert (key_data->num_denom_keys < UINT_MAX);
         key_data->denom_keys[key_data->num_denom_keys++] = dk;
 
         /* Update "last_denom_issue_date" */
@@ -1238,7 +1246,10 @@ decode_keys_json (const json_t *resp_obj,
         GNUNET_array_grow (key_data->auditors,
                            key_data->auditors_size,
                            key_data->auditors_size * 2 + 2);
+      GNUNET_assert (key_data->auditors_size >
+                     key_data->num_auditors);
       GNUNET_assert (NULL != ai.auditor_url);
+      GNUNET_assert (key_data->num_auditors < UINT_MAX);
       key_data->auditors[key_data->num_auditors++] = ai;
     };
   }
