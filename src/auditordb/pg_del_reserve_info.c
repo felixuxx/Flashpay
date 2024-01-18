@@ -28,23 +28,20 @@
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_del_reserve_info (void *cls,
-                         const struct TALER_ReservePublicKeyP *reserve_pub,
-                         const struct TALER_MasterPublicKeyP *master_pub)
+                         const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "auditor_reserves_delete",
+           "auditor_del_reserve_info",
            "DELETE"
            " FROM auditor_reserves"
-           " WHERE reserve_pub=$1"
-           " AND master_pub=$2;");
+           " WHERE reserve_pub=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "auditor_reserves_delete",
+                                             "auditor_del_reserve_info",
                                              params);
 }

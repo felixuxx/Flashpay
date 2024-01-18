@@ -31,13 +31,11 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param reserve_pub public key of the reserve
- * @param master_pub master public key of the exchange
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TAH_PG_del_reserve_info (void *cls,
-                         const struct TALER_ReservePublicKeyP *reserve_pub,
-                         const struct TALER_MasterPublicKeyP *master_pub);
+                         const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
 #endif

@@ -32,7 +32,6 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param reserve_pub public key of the reserve
- * @param master_pub master public key of the exchange
  * @param rfb amounts for the reserve
  * @param expiration_date expiration date of the reserve
  * @return transaction status code
@@ -41,7 +40,6 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_update_reserve_info (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
   struct GNUNET_TIME_Timestamp expiration_date);
 

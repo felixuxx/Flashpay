@@ -29,7 +29,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_reserve_info (void *cls,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
-                         const struct TALER_MasterPublicKeyP *master_pub,
                          uint64_t *rowid,
                          struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
                          struct GNUNET_TIME_Timestamp *expiration_date,
@@ -38,7 +37,6 @@ TAH_PG_get_reserve_info (void *cls,
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -69,7 +67,7 @@ TAH_PG_get_reserve_info (void *cls,
 
   *sender_account = NULL;
   PREPARE (pg,
-           "auditor_reserves_select",
+           "auditor_get_reserve_info",
            "SELECT"
            " reserve_balance"
            ",reserve_loss"
@@ -82,9 +80,9 @@ TAH_PG_get_reserve_info (void *cls,
            ",auditor_reserves_rowid"
            ",origin_account"
            " FROM auditor_reserves"
-           " WHERE reserve_pub=$1 AND master_pub=$2;");
+           " WHERE reserve_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "auditor_reserves_select",
+                                                   "auditor_get_reserve_info",
                                                    params,
                                                    rs);
 }

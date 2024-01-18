@@ -229,6 +229,30 @@ extract_amount_tuple (void *cls,
     size = PQgetlength (result,
                         row,
                         col);
+    in = PQgetvalue (result,
+                     row,
+                     col);
+    if (sizeof(struct TALER_PQ_AmountNullP) == size)
+    {
+      struct TALER_PQ_AmountNullP apn;
+
+      memcpy (&apn,
+              in,
+              size);
+      if ( (2 == ntohl (apn.cnt)) &&
+           (-1 == (int32_t) ntohl (apn.sz_v)) &&
+           (-1 == (int32_t) ntohl (apn.sz_f)) )
+      {
+        /* is NULL! */
+        return GNUNET_NO;
+      }
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Incorrect size of binary field `%s' and not NULL (got %zu, expected %zu)\n",
+                  fname,
+                  size,
+                  sizeof(ap));
+      return GNUNET_SYSERR;
+    }
     if (sizeof(ap) != size)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -239,9 +263,6 @@ extract_amount_tuple (void *cls,
       return GNUNET_SYSERR;
     }
 
-    in = PQgetvalue (result,
-                     row,
-                     col);
     memcpy (&ap,
             in,
             size);
@@ -1141,13 +1162,13 @@ extract_array_generic (
   *((void **) dst) = NULL;
 
   #define FAIL_IF(cond) \
-          do { \
-            if ((cond)) \
-            { \
-              GNUNET_break (! (cond)); \
-              goto FAIL; \
-            } \
-          } while (0)
+  do { \
+    if ((cond)) \
+    { \
+      GNUNET_break (! (cond)); \
+      goto FAIL; \
+    } \
+  } while (0)
 
   col_num = PQfnumber (result, fname);
   FAIL_IF (0 > col_num);

@@ -109,7 +109,6 @@ purse_expired_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_purse_expired (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_ExpiredPurseCallback cb,
   void *cb_cls)
 {
@@ -117,7 +116,6 @@ TAH_PG_select_purse_expired (
   struct GNUNET_TIME_Timestamp now
     = GNUNET_TIME_timestamp_get ();
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_end
   };
@@ -135,8 +133,7 @@ TAH_PG_select_purse_expired (
            ",expiration_date"
            ",balance"
            " FROM auditor_purses"
-           " WHERE master_pub=$1"
-           " AND expiration_date<$2;");
+           " AND expiration_date<$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_select_expired_purses",
                                              params,

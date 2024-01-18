@@ -33,7 +33,7 @@
  * Which revision of the Taler auditor protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define TALER_PROTOCOL_CURRENT 0
+#define TALER_PROTOCOL_CURRENT 1
 
 /**
  * How many revisions back are we compatible to?
@@ -111,6 +111,8 @@ decode_config_json (const json_t *resp_obj,
                              &pv),
     GNUNET_JSON_spec_string ("version",
                              &ver),
+    GNUNET_JSON_spec_fixed_auto ("exchange_master_public_key",
+                                 &vi->exchange_master_public_key),
     GNUNET_JSON_spec_fixed_auto ("auditor_public_key",
                                  &vi->auditor_pub),
     GNUNET_JSON_spec_end ()

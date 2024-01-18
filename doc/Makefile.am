@@ -12,7 +12,6 @@ man_MANS = \
   prebuilt/man/taler-aggregator-benchmark.1   \
   prebuilt/man/taler-auditor.1             \
   prebuilt/man/taler-auditor-dbinit.1      \
-  prebuilt/man/taler-auditor-exchange.1     \
   prebuilt/man/taler-auditor-httpd.1       \
   prebuilt/man/taler-auditor-offline.1    \
   prebuilt/man/taler-auditor-sign.1       \

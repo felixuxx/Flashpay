@@ -31,7 +31,6 @@
  * revenue about a denomination key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
  * @param denom_pub_hash hash of the denomination key
  * @param revenue_timestamp when did this profit get realized
  * @param revenue_balance what was the total profit made from
@@ -43,7 +42,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_historic_denom_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_DenominationHashP *denom_pub_hash,
   struct GNUNET_TIME_Timestamp revenue_timestamp,
   const struct TALER_Amount *revenue_balance,

@@ -33,11 +33,6 @@ struct DepositConfirmationContext
 {
 
   /**
-   * Master public key that is being used.
-   */
-  const struct TALER_MasterPublicKeyP *master_pub;
-
-  /**
    * Function to call for each deposit confirmation.
    */
   TALER_AUDITORDB_DepositConfirmationCallback cb;
@@ -79,9 +74,7 @@ deposit_confirmation_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-    struct TALER_AUDITORDB_DepositConfirmation dc = {
-      .master_public_key = *dcc->master_pub
-    };
+    struct TALER_AUDITORDB_DepositConfirmation dc = { 0};
     struct TALER_CoinSpendPublicKeyP *coin_pubs = NULL;
     struct TALER_CoinSpendSignatureP *coin_sigs = NULL;
     size_t num_pubs = 0;
@@ -157,12 +150,14 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_get_deposit_confirmations (
   void *cls,
   uint64_t start_id,
+  bool return_suppressed,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&start_id),
+    GNUNET_PQ_query_param_bool (return_suppressed),
     GNUNET_PQ_query_param_end
   };
   struct DepositConfirmationContext dcc = {
@@ -171,7 +166,6 @@ TAH_PG_get_deposit_confirmations (
     .pg = pg
   };
   enum GNUNET_DB_QueryStatus qs;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "id above %ld\n", start_id);
 
   PREPARE (pg,
            "auditor_deposit_confirmation_select",
@@ -189,9 +183,10 @@ TAH_PG_get_deposit_confirmations (
            ",merchant_pub"
            ",exchange_sig"
            ",exchange_pub"
-           ",master_sig"                  /* master_sig could be normalized... */
+           ",master_sig"
            " FROM auditor_deposit_confirmations"
-           " WHERE deposit_confirmation_serial_id>$1");
+           " WHERE deposit_confirmation_serial_id>$1"
+           " AND ($2 OR NOT suppressed);");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_deposit_confirmation_select",
                                              params,

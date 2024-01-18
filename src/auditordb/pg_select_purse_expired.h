@@ -30,7 +30,6 @@
  * Get information about expired purses.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master public key of the exchange
  * @param cb function to call on expired purses
  * @param cb_cls closure for @a cb
  * @return transaction status code
@@ -38,7 +37,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_purse_expired (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_ExpiredPurseCallback cb,
   void *cb_cls);
 

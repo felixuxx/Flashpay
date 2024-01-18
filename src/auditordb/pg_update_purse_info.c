@@ -30,14 +30,12 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_update_purse_info (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *balance)
 {
 
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (pg->conn,
                                  balance),
     GNUNET_PQ_query_param_end
@@ -45,10 +43,9 @@ TAH_PG_update_purse_info (
 
   PREPARE (pg,
            "auditor_purses_update",
-           "UPDATE auditor_purses SET "
-           " balance=$3"
-           " WHERE purse_pub=$1"
-           "   AND master_pub=$2;");
+           "UPDATE auditor_purses"
+           "   SET balance=$2"
+           " WHERE purse_pub=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_purses_update",
                                              params);

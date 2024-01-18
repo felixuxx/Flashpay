@@ -157,7 +157,7 @@ verify_and_execute_deposit_confirmation (
           es->ep_start,
           es->ep_expire,
           es->ep_end,
-          &es->master_public_key,
+          &TAH_master_public_key,
           &es->master_sig))
     {
       TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
@@ -311,8 +311,6 @@ TAH_DEPOSIT_CONFIRMATION_handler (
                                  &dc.exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                  &dc.exchange_pub),
-    GNUNET_JSON_spec_fixed_auto ("master_pub",
-                                 &es.master_public_key),
     GNUNET_JSON_spec_timestamp ("ep_start",
                                 &es.ep_start),
     GNUNET_JSON_spec_timestamp ("ep_expire",
@@ -423,7 +421,6 @@ TAH_DEPOSIT_CONFIRMATION_handler (
     dc.coin_pubs = coin_pubs;
     dc.coin_sigs = coin_sigs;
     es.exchange_pub = dc.exchange_pub;     /* used twice! */
-    dc.master_public_key = es.master_public_key;
     res = verify_and_execute_deposit_confirmation (connection,
                                                    &dc,
                                                    &es);

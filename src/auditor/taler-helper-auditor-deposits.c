@@ -210,18 +210,17 @@ test_dc (void *cls,
 static enum GNUNET_DB_QueryStatus
 analyze_deposit_confirmations (void *cls)
 {
-  struct TALER_AUDITORDB_ProgressPointDepositConfirmation ppdc;
+  TALER_ARL_DEF_PP (deposit_confirmation_serial_id);
   struct DepositConfirmationContext dcc;
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qsp;
   (void) cls;
 
-  ppdc.last_deposit_confirmation_serial_id = 0;
-  qsp = TALER_ARL_adb->get_auditor_progress_deposit_confirmation (
+  qsp = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
-    &TALER_ARL_master_pub,
-    &ppdc);
+    TALER_ARL_GET_PP (deposit_confirmation_serial_id),
+    NULL);
 
   if (0 > qsp)
   {
@@ -237,7 +236,8 @@ analyze_deposit_confirmations (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming deposit confirmation audit at %llu\n",
-                (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
+                (unsigned long long) TALER_ARL_USE_PP (
+                  deposit_confirmation_serial_id));
   }
 
   /* setup 'cc' */
@@ -247,11 +247,13 @@ analyze_deposit_confirmations (void *cls)
   dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   dcc.missed_count = 0LLU;
   dcc.first_missed_coin_serial = UINT64_MAX;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lastdepconfserialid %lu\n",
-              ppdc.last_deposit_confirmation_serial_id);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "lastdepconfserialid %lu\n",
+              TALER_ARL_USE_PP (deposit_confirmation_serial_id));
   qsx = TALER_ARL_adb->get_deposit_confirmations (
     TALER_ARL_adb->cls,
-    ppdc.last_deposit_confirmation_serial_id,
+    TALER_ARL_USE_PP (deposit_confirmation_serial_id),
+    true, /* return suppressed */
     &test_dc,
     &dcc);
   if (0 > qsx)
@@ -262,17 +264,22 @@ analyze_deposit_confirmations (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzed %d deposit confirmations (above serial ID %llu)\n",
               (int) qsx,
-              (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
+              (unsigned long long) TALER_ARL_USE_PP (
+                deposit_confirmation_serial_id));
   if (0 > dcc.qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == dcc.qs);
     return dcc.qs;
   }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "getting in here when i shouldnt\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lastseencoinserialid %lu\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "getting in here when i shouldnt\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "lastseencoinserialid %lu\n",
               dcc.last_seen_coin_serial);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "dcc.qs %u\n", dcc.qs);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "dcc.qs %u\n",
+              dcc.qs);
   /* if (UINT64_MAX == dcc.first_missed_coin_serial)
      ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
    else
@@ -280,15 +287,15 @@ analyze_deposit_confirmations (void *cls)
  */
   /* sync 'cc' back to disk */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = TALER_ARL_adb->update_auditor_progress_deposit_confirmation (
+    qs = TALER_ARL_adb->update_auditor_progress (
       TALER_ARL_adb->cls,
-      &TALER_ARL_master_pub,
-      &ppdc);
+      TALER_ARL_SET_PP (deposit_confirmation_serial_id),
+      NULL);
   else
-    qs = TALER_ARL_adb->insert_auditor_progress_deposit_confirmation (
+    qs = TALER_ARL_adb->insert_auditor_progress (
       TALER_ARL_adb->cls,
-      &TALER_ARL_master_pub,
-      &ppdc);
+      TALER_ARL_SET_PP (deposit_confirmation_serial_id),
+      NULL);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -302,7 +309,8 @@ analyze_deposit_confirmations (void *cls)
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Concluded deposit confirmation audit step at %llu\n",
-              (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
+              (unsigned long long) TALER_ARL_USE_PP (
+                deposit_confirmation_serial_id));
   return qs;
 }
 

@@ -33,7 +33,6 @@ TAH_PG_insert_exchange_signkey (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&sk->master_public_key),
     GNUNET_PQ_query_param_timestamp (&sk->ep_start),
     GNUNET_PQ_query_param_timestamp (&sk->ep_expire),
     GNUNET_PQ_query_param_timestamp (&sk->ep_end),
@@ -45,13 +44,12 @@ TAH_PG_insert_exchange_signkey (
   PREPARE (pg,
            "auditor_insert_exchange_signkey",
            "INSERT INTO auditor_exchange_signkeys "
-           "(master_pub"
-           ",ep_start"
+           "(ep_start"
            ",ep_expire"
            ",ep_end"
            ",exchange_pub"
            ",master_sig"
-           ") VALUES ($1,$2,$3,$4,$5,$6);");
+           ") VALUES ($1,$2,$3,$4,$5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_insert_exchange_signkey",
                                              params);

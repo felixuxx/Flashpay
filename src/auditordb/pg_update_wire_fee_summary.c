@@ -29,22 +29,19 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_update_wire_fee_summary (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *wire_fee_balance)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (pg->conn,
                                  wire_fee_balance),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "auditor_wire_fee_balance_update",
            "UPDATE auditor_wire_fee_balance SET"
-           " wire_fee_balance=$1"
-           " WHERE master_pub=$2;");
+           " wire_fee_balance=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_wire_fee_balance_update",
                                              params);

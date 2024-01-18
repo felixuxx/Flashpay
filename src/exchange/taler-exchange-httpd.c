@@ -2238,11 +2238,10 @@ exchange_serve_process_config (void)
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_public_key_from_string (master_public_key_str,
-                                                    strlen (
-                                                      master_public_key_str),
-                                                    &TEH_master_public_key.
-                                                    eddsa_pub))
+        GNUNET_CRYPTO_eddsa_public_key_from_string (
+          master_public_key_str,
+          strlen (master_public_key_str),
+          &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",

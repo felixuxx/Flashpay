@@ -113,13 +113,11 @@ historic_denom_revenue_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_denom_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct HistoricDenomRevenueContext hrc = {
@@ -136,8 +134,7 @@ TAH_PG_select_historic_denom_revenue (
            ",revenue_timestamp"
            ",revenue_balance"
            ",loss_balance"
-           " FROM auditor_historic_denomination_revenue"
-           " WHERE master_pub=$1;");
+           " FROM auditor_historic_denomination_revenue;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_historic_denomination_revenue_select",
                                              params,

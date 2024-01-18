@@ -32,14 +32,12 @@
  * was finally detected.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
  * @param batch_deposit_serial_id which entry to delete
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TAH_PG_delete_pending_deposit (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   uint64_t batch_deposit_serial_id);
 
 

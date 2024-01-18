@@ -1,1 +1,5 @@
 test-auditordb-postgres
+auditor-0002.sql
+procedures.sql
+test_auditordb_checkpoints_postgres
+test_auditordb-postgres

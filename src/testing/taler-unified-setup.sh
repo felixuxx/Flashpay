@@ -664,10 +664,6 @@ then
     taler-auditor-dbinit \
         -c "$CONF" \
         --reset
-    taler-auditor-exchange \
-        -c "$CONF" \
-        -m "$MAPUB" \
-        -u "$EXCHANGE_URL"
     $USE_VALGRIND taler-auditor-httpd \
                   -L "$LOGLEVEL" \
                   -c "$CONF" 2> taler-auditor-httpd.log &

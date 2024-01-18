@@ -30,7 +30,6 @@
  * Insert information about an exchange's historic revenue from reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
  * @param start_time beginning of aggregated time interval
  * @param end_time end of aggregated time interval
  * @param reserve_profits total profits made
@@ -39,7 +38,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_historic_reserve_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *reserve_profits);

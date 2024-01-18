@@ -31,14 +31,12 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param purse_pub public key of the reserve
- * @param master_pub master public key of the exchange
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TAH_PG_delete_purse_info (
   void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_MasterPublicKeyP *master_pub);
+  const struct TALER_PurseContractPublicKeyP *purse_pub);
 
 
 #endif

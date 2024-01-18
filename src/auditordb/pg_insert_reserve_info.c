@@ -30,7 +30,6 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_insert_reserve_info (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
   struct GNUNET_TIME_Timestamp expiration_date,
   const char *origin_account)
@@ -38,7 +37,6 @@ TAH_PG_insert_reserve_info (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (pg->conn,
                                  &rfb->reserve_balance),
     TALER_PQ_query_param_amount (pg->conn,
@@ -61,10 +59,9 @@ TAH_PG_insert_reserve_info (
   };
 
   PREPARE (pg,
-           "auditor_reserves_insert",
+           "auditor_insert_reserve_info",
            "INSERT INTO auditor_reserves "
            "(reserve_pub"
-           ",master_pub"
            ",reserve_balance"
            ",reserve_loss"
            ",withdraw_fee_balance"
@@ -74,10 +71,9 @@ TAH_PG_insert_reserve_info (
            ",history_fee_balance"
            ",expiration_date"
            ",origin_account"
-
            ") VALUES "
-           "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
+           "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "auditor_reserves_insert",
+                                             "auditor_insert_reserve_info",
                                              params);
 }

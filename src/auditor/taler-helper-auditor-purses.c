@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2022 Taler Systems SA
+  Copyright (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -41,17 +41,13 @@ static int global_ret;
 /**
  * Checkpointing our progress for purses.
  */
-static struct TALER_AUDITORDB_ProgressPointPurse ppp;
-
-/**
- * Checkpointing our progress for purses.
- */
-static struct TALER_AUDITORDB_ProgressPointPurse ppp_start;
-
-/**
- * Global statistics about purses.
- */
-static struct TALER_AUDITORDB_PurseBalance balance;
+static TALER_ARL_DEF_PP (purse_account_merge_serial_id);
+static TALER_ARL_DEF_PP (purse_decision_serial_id);
+static TALER_ARL_DEF_PP (purse_deposits_serial_id);
+static TALER_ARL_DEF_PP (purse_merges_serial_id);
+static TALER_ARL_DEF_PP (purse_request_serial_id);
+static TALER_ARL_DEF_PP (purse_open_counter);
+static TALER_ARL_DEF_AB (purse_global_balance);
 
 /**
  * Array of reports about row inconsistencies.
@@ -338,7 +334,6 @@ load_auditor_purse_summary (struct PurseSummary *ps)
 
   qs = TALER_ARL_adb->get_purse_info (TALER_ARL_adb->cls,
                                       &ps->purse_pub,
-                                      &TALER_ARL_master_pub,
                                       &rowid,
                                       &ps->balance,
                                       &ps->expiration_date);
@@ -476,6 +471,7 @@ handle_purse_requested (
   struct PurseSummary *ps;
   struct GNUNET_HashCode key;
 
+  TALER_ARL_USE_PP (purse_request_serial_id) = rowid;
   if (GNUNET_OK !=
       TALER_wallet_purse_create_verify (purse_expiration,
                                         h_contract_terms,
@@ -556,8 +552,8 @@ handle_purse_deposits (
   struct TALER_DenominationHashP h_denom_pub;
 
   /* should be monotonically increasing */
-  GNUNET_assert (rowid >= ppp.last_purse_deposits_serial_id);
-  ppp.last_purse_deposits_serial_id = rowid + 1;
+  GNUNET_assert (rowid >= TALER_ARL_USE_PP (purse_deposits_serial_id));
+  TALER_ARL_USE_PP (purse_deposits_serial_id) = rowid + 1;
 
   {
     const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
@@ -635,8 +631,8 @@ handle_purse_deposits (
   TALER_ARL_amount_add (&ps->balance,
                         &ps->balance,
                         &amount_minus_fee);
-  TALER_ARL_amount_add (&balance.balance,
-                        &balance.balance,
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_global_balance),
+                        &TALER_ARL_USE_AB (purse_global_balance),
                         &amount_minus_fee);
   return GNUNET_OK;
 }
@@ -677,8 +673,8 @@ handle_purse_merged (
   struct PurseSummary *ps;
 
   /* should be monotonically increasing */
-  GNUNET_assert (rowid >= ppp.last_purse_merge_serial_id);
-  ppp.last_purse_merge_serial_id = rowid + 1;
+  GNUNET_assert (rowid >= TALER_ARL_USE_PP (purse_merges_serial_id));
+  TALER_ARL_USE_PP (purse_merges_serial_id) = rowid + 1;
 
   {
     char *reserve_url;
@@ -779,8 +775,8 @@ handle_account_merged (
   struct PurseSummary *ps;
 
   /* should be monotonically increasing */
-  GNUNET_assert (rowid >= ppp.last_account_merge_serial_id);
-  ppp.last_account_merge_serial_id = rowid + 1;
+  GNUNET_assert (rowid >= TALER_ARL_USE_PP (purse_account_merge_serial_id));
+  TALER_ARL_USE_PP (purse_account_merge_serial_id) = rowid + 1;
   if (GNUNET_OK !=
       TALER_wallet_account_merge_verify (merge_timestamp,
                                          purse_pub,
@@ -825,8 +821,8 @@ handle_account_merged (
     }
     return GNUNET_SYSERR;
   }
-  TALER_ARL_amount_add (&balance.balance,
-                        &balance.balance,
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_global_balance),
+                        &TALER_ARL_USE_AB (purse_global_balance),
                         purse_fee);
   TALER_ARL_amount_add (&ps->balance,
                         &ps->balance,
@@ -858,6 +854,7 @@ handle_purse_decision (
   struct TALER_Amount purse_fee;
   struct TALER_Amount balance_without_purse_fee;
 
+  TALER_ARL_USE_PP (purse_decision_serial_id) = rowid;
   ps = setup_purse (pc,
                     purse_pub);
   if (NULL == ps)
@@ -925,8 +922,7 @@ handle_purse_decision (
   }
 
   qs = TALER_ARL_adb->delete_purse_info (TALER_ARL_adb->cls,
-                                         purse_pub,
-                                         &TALER_ARL_master_pub);
+                                         purse_pub);
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
   if (qs < 0)
   {
@@ -1047,12 +1043,10 @@ verify_purse_balance (void *cls,
   if (ps->had_pi)
     qs = TALER_ARL_adb->update_purse_info (TALER_ARL_adb->cls,
                                            &ps->purse_pub,
-                                           &TALER_ARL_master_pub,
                                            &ps->balance);
   else
     qs = TALER_ARL_adb->insert_purse_info (TALER_ARL_adb->cls,
                                            &ps->purse_pub,
-                                           &TALER_ARL_master_pub,
                                            &ps->balance,
                                            ps->expiration_date);
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
@@ -1090,9 +1084,15 @@ analyze_purses (void *cls)
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing purses\n");
-  qsp = TALER_ARL_adb->get_auditor_progress_purse (TALER_ARL_adb->cls,
-                                                   &TALER_ARL_master_pub,
-                                                   &ppp);
+  qsp = TALER_ARL_adb->get_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_GET_PP (purse_account_merge_serial_id),
+    TALER_ARL_GET_PP (purse_decision_serial_id),
+    TALER_ARL_GET_PP (purse_deposits_serial_id),
+    TALER_ARL_GET_PP (purse_merges_serial_id),
+    TALER_ARL_GET_PP (purse_request_serial_id),
+    TALER_ARL_GET_PP (purse_open_counter),
+    NULL);
   if (0 > qsp)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
@@ -1105,19 +1105,24 @@ analyze_purses (void *cls)
   }
   else
   {
-    ppp_start = ppp;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming purse audit at %llu/%llu/%llu/%llu/%llu\n",
-                (unsigned long long) ppp.last_purse_request_serial_id,
-                (unsigned long long) ppp.last_purse_decision_serial_id,
-                (unsigned long long) ppp.last_purse_merge_serial_id,
-                (unsigned long long) ppp.last_purse_deposits_serial_id,
-                (unsigned long long) ppp.last_account_merge_serial_id);
+                (unsigned long long) TALER_ARL_USE_PP (
+                  purse_request_serial_id),
+                (unsigned long long) TALER_ARL_USE_PP (
+                  purse_decision_serial_id),
+                (unsigned long long) TALER_ARL_USE_PP (
+                  purse_merges_serial_id),
+                (unsigned long long) TALER_ARL_USE_PP (
+                  purse_deposits_serial_id),
+                (unsigned long long) TALER_ARL_USE_PP (
+                  purse_account_merge_serial_id));
   }
   pc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  qsx = TALER_ARL_adb->get_purse_summary (TALER_ARL_adb->cls,
-                                          &TALER_ARL_master_pub,
-                                          &balance);
+  qsx = TALER_ARL_adb->get_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_GET_AB (purse_global_balance),
+    NULL);
   if (qsx < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -1128,7 +1133,7 @@ analyze_purses (void *cls)
 
   qs = TALER_ARL_edb->select_purse_requests_above_serial_id (
     TALER_ARL_edb->cls,
-    ppp.last_purse_request_serial_id,
+    TALER_ARL_USE_PP (purse_request_serial_id),
     &handle_purse_requested,
     &pc);
   if (qs < 0)
@@ -1139,7 +1144,7 @@ analyze_purses (void *cls)
 
   qs = TALER_ARL_edb->select_purse_merges_above_serial_id (
     TALER_ARL_edb->cls,
-    ppp.last_purse_merge_serial_id,
+    TALER_ARL_USE_PP (purse_merges_serial_id),
     &handle_purse_merged,
     &pc);
   if (qs < 0)
@@ -1149,7 +1154,7 @@ analyze_purses (void *cls)
   }
   qs = TALER_ARL_edb->select_purse_deposits_above_serial_id (
     TALER_ARL_edb->cls,
-    ppp.last_purse_deposits_serial_id,
+    TALER_ARL_USE_PP (purse_deposits_serial_id),
     &handle_purse_deposits,
     &pc);
   if (qs < 0)
@@ -1160,7 +1165,7 @@ analyze_purses (void *cls)
   /* Charge purse fee! */
   qs = TALER_ARL_edb->select_account_merges_above_serial_id (
     TALER_ARL_edb->cls,
-    ppp.last_account_merge_serial_id,
+    TALER_ARL_USE_PP (purse_account_merge_serial_id),
     &handle_account_merged,
     &pc);
   if (qs < 0)
@@ -1171,7 +1176,7 @@ analyze_purses (void *cls)
 
   qs = TALER_ARL_edb->select_all_purse_decisions_above_serial_id (
     TALER_ARL_edb->cls,
-    ppp.last_purse_decision_serial_id,
+    TALER_ARL_USE_PP (purse_decision_serial_id),
     &handle_purse_decision,
     &pc);
   if (qs < 0)
@@ -1182,7 +1187,6 @@ analyze_purses (void *cls)
 
   qs = TALER_ARL_adb->select_purse_expired (
     TALER_ARL_adb->cls,
-    &TALER_ARL_master_pub,
     &handle_purse_expired,
     &pc);
   if (qs < 0)
@@ -1201,15 +1205,17 @@ analyze_purses (void *cls)
     return qs;
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
   {
-    qs = TALER_ARL_adb->insert_purse_summary (TALER_ARL_adb->cls,
-                                              &TALER_ARL_master_pub,
-                                              &balance);
+    qs = TALER_ARL_adb->insert_balance (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_AB (purse_global_balance),
+      NULL);
   }
   else
   {
-    qs = TALER_ARL_adb->update_purse_summary (TALER_ARL_adb->cls,
-                                              &TALER_ARL_master_pub,
-                                              &balance);
+    qs = TALER_ARL_adb->update_balance (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_AB (purse_global_balance),
+      NULL);
   }
   if (0 >= qs)
   {
@@ -1217,13 +1223,25 @@ analyze_purses (void *cls)
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = TALER_ARL_adb->update_auditor_progress_purse (TALER_ARL_adb->cls,
-                                                       &TALER_ARL_master_pub,
-                                                       &ppp);
+    qs = TALER_ARL_adb->update_auditor_progress (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_PP (purse_account_merge_serial_id),
+      TALER_ARL_SET_PP (purse_decision_serial_id),
+      TALER_ARL_SET_PP (purse_deposits_serial_id),
+      TALER_ARL_SET_PP (purse_merges_serial_id),
+      TALER_ARL_SET_PP (purse_request_serial_id),
+      TALER_ARL_SET_PP (purse_open_counter),
+      NULL);
   else
-    qs = TALER_ARL_adb->insert_auditor_progress_purse (TALER_ARL_adb->cls,
-                                                       &TALER_ARL_master_pub,
-                                                       &ppp);
+    qs = TALER_ARL_adb->insert_auditor_progress (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_PP (purse_account_merge_serial_id),
+      TALER_ARL_SET_PP (purse_decision_serial_id),
+      TALER_ARL_SET_PP (purse_deposits_serial_id),
+      TALER_ARL_SET_PP (purse_merges_serial_id),
+      TALER_ARL_SET_PP (purse_request_serial_id),
+      TALER_ARL_SET_PP (purse_open_counter),
+      NULL);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1233,11 +1251,16 @@ analyze_purses (void *cls)
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Concluded purse audit step at %llu/%llu/%llu/%llu/%llu\n",
-              (unsigned long long) ppp.last_purse_request_serial_id,
-              (unsigned long long) ppp.last_purse_decision_serial_id,
-              (unsigned long long) ppp.last_purse_merge_serial_id,
-              (unsigned long long) ppp.last_purse_deposits_serial_id,
-              (unsigned long long) ppp.last_account_merge_serial_id);
+              (unsigned long long) TALER_ARL_USE_PP (
+                purse_request_serial_id),
+              (unsigned long long) TALER_ARL_USE_PP (
+                purse_decision_serial_id),
+              (unsigned long long) TALER_ARL_USE_PP (
+                purse_merges_serial_id),
+              (unsigned long long) TALER_ARL_USE_PP (
+                purse_deposits_serial_id),
+              (unsigned long long) TALER_ARL_USE_PP (
+                purse_account_merge_serial_id));
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -1269,7 +1292,8 @@ run (void *cls,
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &balance.balance));
+                                        &TALER_ARL_USE_AB (
+                                          purse_global_balance)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_balance_insufficient_loss));
@@ -1330,9 +1354,9 @@ run (void *cls,
 
       /* Global 'balances' */
       TALER_JSON_pack_amount ("total_purse_balance",
-                              &balance.balance),
+                              &TALER_ARL_USE_AB (purse_global_balance)),
       GNUNET_JSON_pack_uint64 ("total_purse_count",
-                               balance.open_purses),
+                               TALER_ARL_USE_PP (purse_open_counter)),
 
       GNUNET_JSON_pack_array_steal ("purse_not_closed_inconsistencies",
                                     report_purse_not_closed_inconsistencies),
@@ -1348,17 +1372,20 @@ run (void *cls,
       TALER_JSON_pack_time_abs_human ("auditor_end_time",
                                       GNUNET_TIME_absolute_get ()),
       GNUNET_JSON_pack_uint64 ("start_ppp_purse_merges_serial_id",
-                               ppp_start.last_purse_merge_serial_id),
+                               0 /* not supported anymore */),
       GNUNET_JSON_pack_uint64 ("start_ppp_purse_deposits_serial_id",
-                               ppp_start.last_purse_deposits_serial_id),
+                               0 /* not supported anymore */),
       GNUNET_JSON_pack_uint64 ("start_ppp_account_merge_serial_id",
-                               ppp_start.last_account_merge_serial_id),
+                               0 /* not supported anymore */),
       GNUNET_JSON_pack_uint64 ("end_ppp_purse_merges_serial_id",
-                               ppp.last_purse_merge_serial_id),
+                               TALER_ARL_USE_PP (
+                                 purse_merges_serial_id)),
       GNUNET_JSON_pack_uint64 ("end_ppp_purse_deposits_serial_id",
-                               ppp.last_purse_deposits_serial_id),
+                               TALER_ARL_USE_PP (
+                                 purse_deposits_serial_id)),
       GNUNET_JSON_pack_uint64 ("end_ppp_account_merge_serial_id",
-                               ppp.last_account_merge_serial_id)));
+                               TALER_ARL_USE_PP (
+                                 purse_account_merge_serial_id))));
 }
 
 

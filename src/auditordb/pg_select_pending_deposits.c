@@ -111,7 +111,6 @@ wire_missing_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_pending_deposits (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Absolute deadline,
   TALER_AUDITORDB_WireMissingCallback cb,
   void *cb_cls)

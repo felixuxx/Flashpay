@@ -15,7 +15,7 @@
  */
 /**
  * @file auditordb/pg_delete_deposit_confirmations.h
- * @brief implementation of the delete_deposit_confirmations function for Postgres
+ * @brief implementation of the delete_deposit_confirmation function for Postgres
  * @author Nicola Eigel
  */
 #ifndef PG_DELETE_DEPOSIT_CONFIRMATIONS_H
@@ -29,23 +29,13 @@
  * Delete a row from the deposit confirmations table.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_contract_terms private contract hash
- * @param h_wire merchant wire hash
- * @param merchant_pub master key of the merchant
- * @param exchange_sig signature of the exchange
- * @param exchange_pub master key of the exchange
- * @param master_sig master signature of the exchange
- * @return
+ * @param row_id row to delete
+ * @return query transaction status
  */
 enum GNUNET_DB_QueryStatus
-TAH_PG_delete_deposit_confirmations (
+TAH_PG_delete_deposit_confirmation (
   void *cls,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_ExchangeSignatureP *exchange_sig,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const struct TALER_MasterSignatureP *master_sig);
+  uint64_t row_id);
 
 
 #endif

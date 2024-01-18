@@ -30,18 +30,15 @@
  * Get summary information about an exchanges wire fee balance.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master public key of the exchange
  * @param[out] wire_fee_balance set amount the exchange gained in wire fees
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_wire_fee_summary (void *cls,
-                             const struct TALER_MasterPublicKeyP *master_pub,
                              struct TALER_Amount *wire_fee_balance)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -54,8 +51,7 @@ TAH_PG_get_wire_fee_summary (void *cls,
            "auditor_wire_fee_balance_select",
            "SELECT"
            " wire_fee_balance"
-           " FROM auditor_wire_fee_balance"
-           " WHERE master_pub=$1;");
+           " FROM auditor_wire_fee_balance");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_wire_fee_balance_select",
                                                    params,

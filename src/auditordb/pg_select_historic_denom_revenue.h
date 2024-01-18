@@ -28,10 +28,8 @@
 
 /**
  * Obtain all of the historic denomination key revenue
- * of the given @a master_pub.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
  * @param cb function to call with the results
  * @param cb_cls closure for @a cb
  * @return transaction status code
@@ -39,7 +37,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_denom_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
   void *cb_cls);
 
