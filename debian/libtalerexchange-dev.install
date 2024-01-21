@@ -11,6 +11,7 @@ usr/share/man/man1/taler-aggregator-benchmark*
 usr/share/man/man1/taler-bank-benchmark*
 usr/share/man/man1/taler-exchange-kyc-tester*
 usr/share/man/man1/taler-exchange-benchmark*
+usr/share/man/man1/taler-fakebank-run*
 usr/share/man/man1/taler-unified-setup*
 
 
