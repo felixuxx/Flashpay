@@ -265,7 +265,7 @@ register_bank_account() {
         ENAME=$(echo "$3" | sed -e "s/ /+/g")
         # Note: this assumes that $3 has no spaces. Should probably escape in the future..
         PAYTO="payto://iban/SANDBOXX/${MAYBE_IBAN}?receiver-name=$ENAME"
-        BODY='{"username":"'"$1"'","password":"'"$2"'","is_taler_exchange":'"$IS_EXCHANGE"',"name":"'"$3"'","internal_payto_uri":"'"$PAYTO"'"}'
+        BODY='{"username":"'"$1"'","password":"'"$2"'","is_taler_exchange":'"$IS_EXCHANGE"',"name":"'"$3"'","payto_uri":"'"$PAYTO"'"}'
     else
         BODY='{"username":"'"$1"'","password":"'"$2"'","is_taler_exchange":'"$IS_EXCHANGE"',"name":"'"$3"'"}'
     fi
