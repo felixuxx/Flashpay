@@ -31,8 +31,7 @@ rdata_DATA = \
 bin_SCRIPTS = \
   taler-auditor-dbconfig \
   taler-exchange-dbconfig \
-  taler-terms-generator \
-  taler-bank-manage-testing
+  taler-terms-generator
 
 
 EXTRA_DIST = \

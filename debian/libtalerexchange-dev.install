@@ -6,14 +6,10 @@ usr/bin/taler-exchange-kyc-tester
 usr/bin/taler-fakebank-run
 usr/bin/taler-unified-setup.sh
 
-# Only used in test cases.  Maybe these
-# shouldn't even be installed?
-usr/bin/taler-bank-manage-testing
-
 # Man pages
-usr/share/man/man1/taler-exchange-kyc-tester*
 usr/share/man/man1/taler-aggregator-benchmark*
 usr/share/man/man1/taler-bank-benchmark*
+usr/share/man/man1/taler-exchange-kyc-tester*
 usr/share/man/man1/taler-exchange-benchmark*
 usr/share/man/man1/taler-unified-setup*
 
