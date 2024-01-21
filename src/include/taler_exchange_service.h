@@ -30,6 +30,12 @@
 #include <gnunet/gnunet_curl_lib.h>
 
 
+/**
+ * Version of the Taler Exchange API, in hex.
+ * Thus 0.8.4-1 = 0x00080401.
+ */
+#define TALER_EXCHANGE_API_VERSION 0x00090400
+
 /* *********************  /keys *********************** */
 
 
