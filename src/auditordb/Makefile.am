@@ -99,6 +99,7 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_delete_exchange.h pg_delete_exchange.c \
   pg_insert_exchange_signkey.h pg_insert_exchange_signkey.c \
   pg_insert_deposit_confirmation.h pg_insert_deposit_confirmation.c \
+  pg_delete_deposit_confirmations.h pg_delete_deposit_confirmations.c \
   pg_get_purse_info.h pg_get_purse_info.c \
   pg_delete_purse_info.h pg_delete_purse_info.c \
   pg_update_purse_info.h pg_update_purse_info.c \
