@@ -18,7 +18,6 @@ man_MANS = \
   prebuilt/man/taler-auditor-sign.1       \
   prebuilt/man/taler-auditor-sync.1       \
   prebuilt/man/taler-bank-benchmark.1   \
-  prebuilt/man/taler-bank-transfer.1   \
   prebuilt/man/taler-exchange-aggregator.1 \
   prebuilt/man/taler-exchange-benchmark.1  \
   prebuilt/man/taler-exchange-closer.1     \
@@ -37,6 +36,7 @@ man_MANS = \
   prebuilt/man/taler-exchange-transfer.1\
   prebuilt/man/taler-exchange-wire-gateway-client.1\
   prebuilt/man/taler-exchange-wirewatch.1   \
+  prebuilt/man/taler-fakebank-run.1   \
   prebuilt/man/taler-helper-auditor-aggregation.1 \
   prebuilt/man/taler-helper-auditor-coins.1\
   prebuilt/man/taler-helper-auditor-deposits.1\
