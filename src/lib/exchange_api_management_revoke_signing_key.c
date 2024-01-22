@@ -176,6 +176,7 @@ TALER_EXCHANGE_management_revoke_signing_key (
       curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (rh->url);
+    GNUNET_free (rh);
     return NULL;
   }
   json_decref (body);
