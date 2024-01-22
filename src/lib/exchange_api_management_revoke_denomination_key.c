@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -186,6 +186,7 @@ TALER_EXCHANGE_management_revoke_denomination_key (
       curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (rh->url);
+    GNUNET_free (rh);
     return NULL;
   }
   json_decref (body);
