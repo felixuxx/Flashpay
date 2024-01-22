@@ -200,6 +200,7 @@ TALER_EXCHANGE_management_set_global_fees (
       curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (sgfh->url);
+    GNUNET_free (sgfh);
     return NULL;
   }
   json_decref (body);
