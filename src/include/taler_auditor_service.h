@@ -16,6 +16,8 @@
 /**
  * @file include/taler_auditor_service.h
  * @brief C interface of libtalerauditor, a C library to use auditor's HTTP API
+ *        This library is not thread-safe, all APIs must only be used from a single thread.
+ *        This library calls abort() if it runs out of memory. Be aware of these limitations.
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */

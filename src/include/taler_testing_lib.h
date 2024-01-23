@@ -20,6 +20,8 @@
 /**
  * @file include/taler_testing_lib.h
  * @brief API for writing an interpreter to test Taler components
+ *        This library is not thread-safe, all APIs must only be used from a single thread.
+ *        This library calls abort() if it runs out of memory. Be aware of these limitations.
  * @author Christian Grothoff <christian@grothoff.org>
  * @author Marcello Stanisci
  */

@@ -16,6 +16,8 @@
 /**
  * @file include/taler_util.h
  * @brief Interface for common utility functions
+ *        This library is not thread-safe, all APIs must only be used from a single thread.
+ *        This library calls abort() if it runs out of memory. Be aware of these limitations.
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
