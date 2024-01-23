@@ -425,6 +425,7 @@ TALER_EXCHANGE_purse_deposit (
         json_decref (deposit_arr);
         GNUNET_free (pch->base_url);
         GNUNET_free (pch->coins);
+        GNUNET_free (pch->url);
         GNUNET_free (pch);
         return NULL;
       }
