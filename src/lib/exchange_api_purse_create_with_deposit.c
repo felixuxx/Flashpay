@@ -512,6 +512,10 @@ TALER_EXCHANGE_purse_create_with_deposit (
                                        &attest))
       {
         GNUNET_break (0);
+        GNUNET_array_grow (pch->deposits,
+                           pch->num_deposits,
+                           0);
+        GNUNET_free (pch->url);
         json_decref (deposit_arr);
         GNUNET_free (pch);
         return NULL;
@@ -606,7 +610,9 @@ TALER_EXCHANGE_purse_create_with_deposit (
       curl_easy_cleanup (eh);
     json_decref (create_obj);
     GNUNET_free (pch->econtract.econtract);
-    GNUNET_free (pch->deposits);
+    GNUNET_array_grow (pch->deposits,
+                       pch->num_deposits,
+                       0);
     GNUNET_free (pch->url);
     GNUNET_free (pch);
     return NULL;
@@ -638,7 +644,9 @@ TALER_EXCHANGE_purse_create_with_deposit_cancel (
   GNUNET_free (pch->econtract.econtract);
   GNUNET_free (pch->exchange_url);
   GNUNET_free (pch->url);
-  GNUNET_free (pch->deposits);
+  GNUNET_array_grow (pch->deposits,
+                     pch->num_deposits,
+                     0);
   TALER_EXCHANGE_keys_decref (pch->keys);
   TALER_curl_easy_post_finished (&pch->ctx);
   GNUNET_free (pch);
