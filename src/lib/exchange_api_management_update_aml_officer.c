@@ -194,6 +194,7 @@ TALER_EXCHANGE_management_update_aml_officer (
       curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (wh->url);
+    GNUNET_free (wh);
     return NULL;
   }
   json_decref (body);
