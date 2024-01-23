@@ -192,6 +192,7 @@ TALER_EXCHANGE_management_set_wire_fees (
       curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (swfh->url);
+    GNUNET_free (swfh);
     return NULL;
   }
   json_decref (body);
