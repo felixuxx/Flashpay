@@ -403,6 +403,7 @@ TALER_EXCHANGE_account_merge (
     GNUNET_JSON_pack_timestamp ("merge_timestamp",
                                 merge_timestamp));
   GNUNET_assert (NULL != merge_obj);
+  GNUNET_free (reserve_url);
   eh = TALER_EXCHANGE_curl_easy_get_ (pch->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=
