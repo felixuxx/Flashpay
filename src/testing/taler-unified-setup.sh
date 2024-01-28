@@ -77,6 +77,7 @@ START_TRANSFER=0
 START_WIREWATCH=0
 START_DEPOSITCHECK=0
 START_MERCHANT_EXCHANGE=0
+START_MERCHANT_WIREWATCH=0
 USE_ACCOUNT="exchange-account-1"
 USE_VALGRIND=""
 WIRE_DOMAIN="x-taler-bank"
@@ -85,7 +86,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:DeEfghkL:mMnr:stu:vwW' OPTION; do
+while getopts ':abc:d:DeEfghkL:mMnr:stu:vwWz' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -139,6 +140,7 @@ while getopts ':abc:d:DeEfghkL:mMnr:stu:vwW' OPTION; do
             echo '  -v           -- use valgrind'
             echo '  -w           -- start taler-exchange-wirewatch'
             echo '  -W           -- wait for signal'
+            echo '  -z           -- start taler-merchant-wirewatch'
             exit 0
             ;;
         g)
@@ -180,6 +182,9 @@ while getopts ':abc:d:DeEfghkL:mMnr:stu:vwW' OPTION; do
             ;;
         W)
             WAIT_FOR_SIGNAL="1"
+            ;;
+        z)
+            START_MERCHANT_WIREWATCH="1"
             ;;
         ?)
         exit_fail "Unrecognized command line option"
@@ -568,19 +573,32 @@ then
     $USE_VALGRIND taler-merchant-webhook \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    echo " DONE"
+    if [ "1" = "$START_MERCHANT_WIREWATCH" ]
+    then
+       echo -n "Starting taler-merchant-wirewatch ..."
+       $USE_VALGRIND taler-merchant-wirewatch \
+                     -c "$CONF" \
+                     -L "$LOGLEVEL" \
+                     2> taler-merchant-wirewatch.log &
+       echo " DONE"
+    fi
     if [ "1" = "$START_MERCHANT_EXCHANGE" ]
     then
+        echo -n "Starting taler-merchant-exchange ..."
         $USE_VALGRIND taler-merchant-exchange \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-merchant-exchange.log &
+        echo " DONE"
     fi
     if [ "1" = "$START_DEPOSITCHECK" ]
     then
+        echo -n "Starting taler-merchant-depositcheck ..."
         $USE_VALGRIND taler-merchant-depositcheck \
                       -c "$CONF" \
                       -L "$LOGLEVEL" 2> taler-merchant-depositcheck.log &
+        echo " DONE"
     fi
-    echo " DONE"
 fi
 
 
