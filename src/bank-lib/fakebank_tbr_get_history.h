@@ -32,8 +32,8 @@
 
 
 /**
- * Handle incoming HTTP request for /history/incoming
- * of the Anastasis API.  This one can return transactions
+ * Handle incoming HTTP request for /history
+ * of the taler-revenue API.  This one can return transactions
  * created by debits from the exchange!
  *
  * @param h the fakebank handle
@@ -43,7 +43,7 @@
  * @return MHD result code
  */
 MHD_RESULT
-TALER_FAKEBANK_tbr_get_history_incoming (
+TALER_FAKEBANK_tbr_get_history (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
   const char *account,

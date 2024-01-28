@@ -50,7 +50,7 @@ history_cleanup (void *cls)
 
 
 MHD_RESULT
-TALER_FAKEBANK_tbr_get_history_incoming (
+TALER_FAKEBANK_tbr_get_history (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
   const char *account,
@@ -72,7 +72,7 @@ TALER_FAKEBANK_tbr_get_history_incoming (
     cc->ctx = hc;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Handling /accounts/%s/taler-revenue/history/incoming request\n",
+                "Handling /accounts/%s/taler-revenue/history request\n",
                 account);
     if (GNUNET_OK !=
         (ret = TALER_FAKEBANK_common_parse_history_args (h,

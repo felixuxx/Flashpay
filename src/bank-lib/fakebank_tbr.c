@@ -50,12 +50,12 @@ TALER_FAKEBANK_tbr_main_ (
                        MHD_HTTP_METHOD_GET))
   {
     if ( (0 == strcmp (url,
-                       "/history/incoming")) &&
+                       "/history")) &&
          (NULL != account) )
-      return TALER_FAKEBANK_tbr_get_history_incoming (h,
-                                                      connection,
-                                                      account,
-                                                      con_cls);
+      return TALER_FAKEBANK_tbr_get_history (h,
+                                             connection,
+                                             account,
+                                             con_cls);
     if (0 == strcmp (url,
                      "/"))
       return TALER_FAKEBANK_tbr_get_root (h,
