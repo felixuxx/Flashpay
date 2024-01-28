@@ -72,8 +72,8 @@ TALER_FAKEBANK_tbr_get_history_incoming (
     cc->ctx = hc;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Handling /accounts/$USERNAME/taler-revenue/history/incoming request %p\n",
-                connection);
+                "Handling /accounts/%s/taler-revenue/history/incoming request\n",
+                account);
     if (GNUNET_OK !=
         (ret = TALER_FAKEBANK_common_parse_history_args (h,
                                                          connection,
@@ -93,6 +93,9 @@ TALER_FAKEBANK_tbr_get_history_incoming (
     {
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Account %s is unknown\n",
+                  account);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_BANK_UNKNOWN_ACCOUNT,
@@ -153,10 +156,14 @@ TALER_FAKEBANK_tbr_get_history_incoming (
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Transactions lost due to RAM limits\n");
           return TALER_MHD_reply_with_ec (
             connection,
             TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
             NULL);
+        }
         goto finish;
       }
       if (h->in_shutdown)
@@ -282,6 +289,8 @@ finish:
   {
     GNUNET_break (in_shutdown ||
                   (! GNUNET_TIME_absolute_is_future (hc->timeout)));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Zero transactions found\n");
     return TALER_MHD_reply_static (connection,
                                    MHD_HTTP_NO_CONTENT,
                                    NULL,
