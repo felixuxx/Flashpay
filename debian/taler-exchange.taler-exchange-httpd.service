@@ -12,8 +12,9 @@ Type=simple
 # Depending on the configuration, the service process kills itself and then
 # needs to be restarted. Thus no significant delay on restarts.
 Restart=always
+RestartMode=direct
 RestartSec=1ms
-RestartPreventExitStatus=9
+RestartPreventExitStatus=2 3 4 5 6 9
 
 # Disable the service if more than 5 restarts are encountered within 5s.
 # These are usually the systemd defaults, but can be overwritten, thus we set

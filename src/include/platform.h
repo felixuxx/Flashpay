@@ -231,22 +231,42 @@ atoll (const char *nptr);
 
 /* LSB-style exit status codes */
 #ifndef EXIT_INVALIDARGUMENT
+/**
+ * Command-line arguments are invalid.
+ * Restarting useless.
+ */
 #define EXIT_INVALIDARGUMENT 2
 #endif
 
 #ifndef EXIT_NOTIMPLEMENTED
+/**
+ * The requested operation is not implemented.
+ * Restarting useless.
+ */
 #define EXIT_NOTIMPLEMENTED 3
 #endif
 
 #ifndef EXIT_NOPERMISSION
+/**
+ * Permissions needed to run are not available.
+ * Restarting useless.
+ */
 #define EXIT_NOPERMISSION 4
 #endif
 
 #ifndef EXIT_NOTINSTALLED
+/**
+ * Key resources are not installed.
+ * Restarting useless.
+ */
 #define EXIT_NOTINSTALLED 5
 #endif
 
 #ifndef EXIT_NOTCONFIGURED
+/**
+ * Key configuration settings are missing or invalid.
+ * Restarting useless.
+ */
 #define EXIT_NOTCONFIGURED 6
 #endif
 
@@ -254,7 +274,12 @@ atoll (const char *nptr);
 #define EXIT_NOTRUNNING 7
 #endif
 
+
 #ifndef EXIT_NO_RESTART
+/**
+ * Exit code from 'main' if we do not want to be restarted,
+ * except by manual intervention (hard failure).
+ */
 #define EXIT_NO_RESTART 9
 #endif
 

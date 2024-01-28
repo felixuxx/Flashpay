@@ -574,7 +574,7 @@ wire_prepare_cb (void *cls,
     GNUNET_break (0);
     cleanup_wpd ();
     db_plugin->rollback (db_plugin->cls);
-    global_ret = EXIT_NOTCONFIGURED;
+    global_ret = EXIT_NO_RESTART;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }

@@ -272,9 +272,9 @@ run_expire (void *cls)
                         "expire-purse"))
   {
     GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
     db_plugin->rollback (db_plugin->cls);
     abort_shard (s);
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -285,9 +285,9 @@ run_expire (void *cls)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
     db_plugin->rollback (db_plugin->cls);
     abort_shard (s);
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:

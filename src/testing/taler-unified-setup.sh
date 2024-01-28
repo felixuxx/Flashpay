@@ -581,6 +581,7 @@ then
        $USE_VALGRIND taler-merchant-wirewatch \
                      -c "$CONF" \
                      -L "$LOGLEVEL" \
+                     --persist \
                      2> taler-merchant-wirewatch.log &
        echo " DONE"
     fi

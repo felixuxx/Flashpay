@@ -362,7 +362,6 @@ exchange_serve_process_config (void)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No accounts enabled for credit!\n");
     GNUNET_SCHEDULER_shutdown ();
-    global_ret = EXIT_INVALIDARGUMENT;
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -951,6 +950,7 @@ run (void *cls,
   {
     GNUNET_break (0);
     GNUNET_SCHEDULER_shutdown ();
+    global_ret = EXIT_NO_RESTART;
     return;
   }
   rc = GNUNET_CURL_gnunet_rc_create (ctx);

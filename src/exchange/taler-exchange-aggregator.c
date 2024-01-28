@@ -382,6 +382,7 @@ release_shard (struct Shard *s)
   case GNUNET_DB_STATUS_SOFT_ERROR:
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
     GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
@@ -934,6 +935,7 @@ run_aggregation (void *cls)
   switch (ret)
   {
   case GNUNET_SYSERR:
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     db_plugin->rollback (db_plugin->cls);
     release_shard (s);
@@ -1197,6 +1199,7 @@ drain_kyc_alerts (void *cls)
     {
     case GNUNET_SYSERR:
       GNUNET_break (0);
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       db_plugin->rollback (db_plugin->cls); /* just in case */
       return;

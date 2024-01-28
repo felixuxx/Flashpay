@@ -469,13 +469,11 @@ run_reserve_closures (void *cls)
     if (GNUNET_YES == test_mode)
     {
       GNUNET_SCHEDULER_shutdown ();
+      return;
     }
-    else
-    {
-      task = GNUNET_SCHEDULER_add_delayed (closer_idle_sleep_interval,
-                                           &run_reserve_closures,
-                                           NULL);
-    }
+    task = GNUNET_SCHEDULER_add_delayed (closer_idle_sleep_interval,
+                                         &run_reserve_closures,
+                                         NULL);
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     (void) commit_or_warn ();

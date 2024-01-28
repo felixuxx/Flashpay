@@ -2435,7 +2435,9 @@ run_single_request (void)
   xfork = fork ();
   if (-1 == xfork)
   {
-    global_ret = EXIT_FAILURE;
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "fork");
+    global_ret = EXIT_NO_RESTART;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -2604,35 +2606,38 @@ run (void *cls,
   if (GNUNET_OK !=
       TALER_TEMPLATING_init ("exchange"))
   {
-    global_ret = EXIT_FAILURE;
+    global_ret = EXIT_NOTINSTALLED;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_SYSERR ==
       TEH_plugin->preflight (TEH_plugin->cls))
   {
-    global_ret = EXIT_FAILURE;
+    GNUNET_break (0);
+    global_ret = EXIT_NO_RESTART;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_OK !=
       TEH_extensions_init ())
   {
-    global_ret = EXIT_FAILURE;
+    global_ret = EXIT_NOTINSTALLED;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_OK !=
       TEH_keys_init ())
   {
-    global_ret = EXIT_FAILURE;
+    GNUNET_break (0);
+    global_ret = EXIT_NO_RESTART;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_OK !=
       TEH_wire_init ())
   {
-    global_ret = EXIT_FAILURE;
+    GNUNET_break (0);
+    global_ret = EXIT_NO_RESTART;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -2644,7 +2649,7 @@ run (void *cls,
   if (NULL == TEH_curl_ctx)
   {
     GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
+    global_ret = EXIT_NO_RESTART;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
