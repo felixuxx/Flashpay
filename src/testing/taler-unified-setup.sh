@@ -126,6 +126,7 @@ while getopts ':abc:d:DeEfghkL:mMnr:stu:vwWz' OPTION; do
             echo '  -f           -- start fakebank'
             echo '  -g           -- start taler-exchange-aggregator'
             echo '  -h           -- print this help'
+            echo '  -k           -- start challenger (KYC service)'
             # shellcheck disable=SC2016
             echo '  -L $LOGLEVEL -- set log level'
             echo '  -m           -- start taler-merchant'
