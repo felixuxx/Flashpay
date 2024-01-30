@@ -353,6 +353,12 @@ oauth_run (void *cls,
                                &handler_cb, oas,
                                MHD_OPTION_NOTIFY_COMPLETED, &cleanup, NULL,
                                NULL);
+  if (NULL == oas->mhd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   TALER_TESTING_interpreter_next (is);
 }
 
