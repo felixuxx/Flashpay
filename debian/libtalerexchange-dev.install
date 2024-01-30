@@ -5,6 +5,7 @@ usr/bin/taler-exchange-benchmark
 usr/bin/taler-exchange-kyc-tester
 usr/bin/taler-fakebank-run
 usr/bin/taler-unified-setup.sh
+usr/bin/taler-exchange-kyc-oauth2-test-converter.sh
 
 # Man pages
 usr/share/man/man1/taler-aggregator-benchmark*
