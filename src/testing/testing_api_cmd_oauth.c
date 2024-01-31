@@ -347,7 +347,7 @@ oauth_run (void *cls,
   struct OAuthState *oas = cls;
 
   (void) cmd;
-  oas->mhd = MHD_start_daemon (MHD_USE_AUTO_INTERNAL_THREAD,
+  oas->mhd = MHD_start_daemon (MHD_USE_AUTO_INTERNAL_THREAD | MHD_USE_DEBUG,
                                oas->port,
                                NULL, NULL,
                                &handler_cb, oas,
