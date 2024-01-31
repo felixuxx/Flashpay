@@ -201,8 +201,6 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command wallet_kyc[] = {
-    TALER_TESTING_cmd_oauth ("start-oauth-service",
-                             6666),
     TALER_TESTING_cmd_wallet_kyc_get ("wallet-kyc-fail",
                                       NULL,
                                       "EUR:1000000",
