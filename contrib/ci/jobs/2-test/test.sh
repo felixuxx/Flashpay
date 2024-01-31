@@ -31,7 +31,7 @@ print_logs()
 		for FAILURE in $(grep '^FAIL:' ${i} | cut -d' ' -f2)
 		do
 			echo "Printing ${FAILURE}.log"
-			tail "$(dirname $i)/${FAILURE}.log"
+			cat "$(dirname $i)/${FAILURE}.log"
 		done
 	done
 }
