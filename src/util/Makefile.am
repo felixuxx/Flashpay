@@ -120,7 +120,7 @@ libtalerutil_la_LIBADD = \
   -lm
 
 libtalerutil_la_LDFLAGS = \
-  -version-info 1:0:0 \
+  -version-info 2:0:1 \
   -no-undefined
 
 

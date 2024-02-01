@@ -16,7 +16,7 @@ libtalerjson_la_SOURCES = \
   json_pack.c \
   json_wire.c
 libtalerjson_la_LDFLAGS = \
-  -version-info 2:0:0 \
+  -version-info 3:0:1 \
   -no-undefined
 libtalerjson_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \

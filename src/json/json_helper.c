@@ -1666,4 +1666,154 @@ TALER_JSON_spec_version (const char *field,
 }
 
 
+/**
+ * Parse given JSON object to an OTP key.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_otp_key (void *cls,
+               json_t *root,
+               struct GNUNET_JSON_Specification *spec)
+{
+  const char *pos_key;
+
+  (void) cls;
+  pos_key = json_string_value (root);
+  if (NULL == pos_key)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  {
+    size_t pos_key_length = strlen (pos_key);
+    void *key; /* pos_key in binary */
+    size_t key_len; /* length of the key */
+    int dret;
+
+    key_len = pos_key_length * 5 / 8;
+    key = GNUNET_malloc (key_len);
+    dret = TALER_rfc3548_base32decode (pos_key,
+                                       pos_key_length,
+                                       key,
+                                       key_len);
+    if (-1 == dret)
+    {
+      GNUNET_free (key);
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (key);
+  }
+  *(const char **) spec->ptr = pos_key;
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_otp_key (const char *name,
+                         const char **otp_key)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_otp_key,
+    .field = name,
+    .ptr = otp_key
+  };
+
+  *otp_key = NULL;
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to `enum TALER_MerchantConfirmationAlgorithm`
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_otp_type (void *cls,
+                json_t *root,
+                struct GNUNET_JSON_Specification *spec)
+{
+  static const struct Entry
+  {
+    const char *name;
+    enum TALER_MerchantConfirmationAlgorithm val;
+  } lt [] = {
+    { .name = "NONE",
+      .val = TALER_MCA_NONE },
+    { .name = "TOTP_WITHOUT_PRICE",
+      .val = TALER_MCA_WITHOUT_PRICE },
+    { .name = "TOTP_WITH_PRICE",
+      .val = TALER_MCA_WITH_PRICE },
+    { .name = NULL,
+      .val = TALER_MCA_NONE },
+  };
+  enum TALER_MerchantConfirmationAlgorithm *res
+    = (enum TALER_MerchantConfirmationAlgorithm *) spec->ptr;
+
+  (void) cls;
+  if (json_is_string (root))
+  {
+    const char *str;
+
+    str = json_string_value (root);
+    if (NULL == str)
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    for (unsigned int i = 0; NULL != lt[i].name; i++)
+    {
+      if (0 == strcasecmp (str,
+                           lt[i].name))
+      {
+        *res = lt[i].val;
+        return GNUNET_OK;
+      }
+    }
+    GNUNET_break_op (0);
+  }
+  if (json_is_integer (root))
+  {
+    json_int_t val;
+
+    val = json_integer_value (root);
+    for (unsigned int i = 0; NULL != lt[i].name; i++)
+    {
+      if (val == lt[i].val)
+      {
+        *res = lt[i].val;
+        return GNUNET_OK;
+      }
+    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_break_op (0);
+  return GNUNET_SYSERR;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_otp_type (const char *name,
+                          enum TALER_MerchantConfirmationAlgorithm *mca)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_otp_type,
+    .field = name,
+    .ptr = mca
+  };
+
+  *mca = TALER_MCA_NONE;
+  return ret;
+}
+
+
 /* end of json/json_helper.c */

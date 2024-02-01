@@ -112,20 +112,11 @@ compute_totp (struct GNUNET_TIME_Timestamp ts,
 }
 
 
-/**
- * Compute RFC 3548 base32 decoding of @a val and write
- * result to @a udata.
- *
- * @param val value to decode
- * @param val_size number of bytes in @a val
- * @param key is the val in bits
- * @param key_len is the size of @a key
- */
-static int
-base32decode (const char *val,
-              size_t val_size,
-              void *key,
-              size_t key_len)
+int
+TALER_rfc3548_base32decode (const char *val,
+                            size_t val_size,
+                            void *key,
+                            size_t key_len)
 {
   /**
    * 32 characters for decoding, using RFC 3548.
@@ -142,13 +133,21 @@ base32decode (const char *val,
     if ((rpos < val_size) && (vbit < 8))
     {
       char c = val[rpos++];
-      if (c == '=')   // padding character
+
+      if (c == '=')
       {
-        break;
+        /* padding character */
+        if (rpos == val_size)
+          break; /* Ok, 1x '=' padding is allowed */
+        if ( ('=' == val[rpos]) &&
+             (rpos + 1 == val_size) )
+          break; /* Ok, 2x '=' padding is allowed */
+        return -1; /* invalid padding */
       }
       const char *p = strchr (decTable__, toupper (c));
       if (! p)
-      { // invalid character
+      {
+        /* invalid character */
         return -1;
       }
       bits = (bits << 5) | (p - decTable__);
@@ -226,10 +225,10 @@ TALER_build_pos_confirmation (const char *pos_key,
     return NULL;
   key_len = pos_key_length * 5 / 8;
   key = GNUNET_malloc (key_len);
-  dret = base32decode (pos_key,
-                       pos_key_length,
-                       key,
-                       key_len);
+  dret = TALER_rfc3548_base32decode (pos_key,
+                                     pos_key_length,
+                                     key,
+                                     key_len);
   if (-1 == dret)
   {
     GNUNET_free (key);

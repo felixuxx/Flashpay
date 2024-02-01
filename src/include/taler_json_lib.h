@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2021, 2022 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -58,7 +58,6 @@ struct TALER_EncryptedContract
    * Number of bytes in @e econtract.
    */
   size_t econtract_size;
-
 
 };
 
@@ -284,6 +283,34 @@ TALER_JSON_spec_econtract (const char *name,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_age_commitment (const char *name,
                                 struct TALER_AgeCommitment *age_commitment);
+
+
+/**
+ * Provide specification to parse an OTP key.
+ * An OTP key must be an RFC 3548 base32-encoded
+ * value (so NOT our usual Crockford-base32 encoding!).
+ *
+ * @param name name of the OTP key field in the JSON
+ * @param[out] otp_key where to store the OTP key
+ * @return spec for parsing an age commitment
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_otp_key (const char *name,
+                         const char **otp_key);
+
+
+/**
+ * Provide specification to parse an OTP method type.
+ * The value could be provided as an integer or
+ * as a descriptive string.
+ *
+ * @param name name of the OTP method type in the JSON
+ * @param[out] mca where to store the method type
+ * @return spec for parsing an age commitment
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_otp_type (const char *name,
+                          enum TALER_MerchantConfirmationAlgorithm *mca);
 
 
 /**

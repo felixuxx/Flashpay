@@ -938,6 +938,22 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
+ * Compute RFC 3548 base32 decoding of @a val and write
+ * result to @a udata.
+ *
+ * @param val value to decode
+ * @param val_size number of bytes in @a val
+ * @param key is the val in bits
+ * @param key_len is the size of @a key
+ */
+int
+TALER_rfc3548_base32decode (const char *val,
+                            size_t val_size,
+                            void *key,
+                            size_t key_len);
+
+
+/**
  * @brief Builds POS confirmation token to verify payment.
  *
  * @param pos_key encoded key for verification payment
