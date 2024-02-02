@@ -33,7 +33,10 @@ TEH_PG_get_age_withdraw (
   const struct TALER_AgeWithdrawCommitmentHashP *ach,
   struct TALER_EXCHANGEDB_AgeWithdraw *aw)
 {
+  enum GNUNET_DB_QueryStatus ret;
   struct PostgresClosure *pg = cls;
+  size_t num_sigs;
+  size_t num_hashes;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (ach),
@@ -61,12 +64,12 @@ TEH_PG_get_age_withdraw (
     TALER_PQ_result_spec_array_blinded_denom_sig (
       pg->conn,
       "denom_sigs",
-      NULL, /* FIXME-Oec: this assumes that this is the same size as h_coin_evs, but we should check! */
+      &num_sigs,
       &aw->denom_sigs),
     TALER_PQ_result_spec_array_denom_hash (
       pg->conn,
       "denom_pub_hashes",
-      NULL, /* FIXME-Oec: this assumes that this is the same size as h_coin_evs, but we should check! */
+      &num_hashes,
       &aw->denom_pub_hashes),
     GNUNET_PQ_result_spec_end
   };
@@ -92,8 +95,25 @@ TEH_PG_get_age_withdraw (
            " FROM age_withdraw"
            " WHERE reserve_pub=$1 and h_commitment=$2;");
 
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_age_withdraw",
-                                                   params,
-                                                   rs);
+  ret = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                  "get_age_withdraw",
+                                                  params,
+                                                  rs);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ret)
+    return ret;
+
+  if ((aw->num_coins != num_sigs) ||
+      (aw->num_coins != num_hashes))
+  {
+    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "got inconsistent number of entries from DB: "
+                "num_coins=%ld, num_sigs=%ld, num_hashes=%ld\n",
+                aw->num_coins,
+                num_sigs,
+                num_hashes);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
+  return ret;
 }
