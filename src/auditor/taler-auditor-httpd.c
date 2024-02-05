@@ -48,7 +48,7 @@
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
  */
-#define AUDITOR_PROTOCOL_VERSION "0:0:0"
+#define AUDITOR_PROTOCOL_VERSION "0:1:0"
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -161,6 +161,8 @@ handle_config (struct TAH_RequestHandler *rh,
                                "taler-auditor"),
       GNUNET_JSON_pack_string ("version",
                                AUDITOR_PROTOCOL_VERSION),
+      GNUNET_JSON_pack_string ("implementation",
+                               "urn:net:taler:specs:auditor:c-reference"),
       GNUNET_JSON_pack_string ("currency",
                                TAH_currency),
       GNUNET_JSON_pack_data_auto ("auditor_public_key",

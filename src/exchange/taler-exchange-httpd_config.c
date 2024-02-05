@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -46,6 +46,8 @@ TEH_handler_config (struct TEH_RequestContext *rc,
                                TEH_currency),
       GNUNET_JSON_pack_string ("name",
                                "taler-exchange"),
+      GNUNET_JSON_pack_string ("implementation",
+                               "urn:net:taler:specs:exchange:c-reference"),
       GNUNET_JSON_pack_string ("version",
                                EXCHANGE_PROTOCOL_VERSION));
   }
