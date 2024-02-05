@@ -46,6 +46,26 @@ TALER_FAKEBANK_tbr_main_ (
               "Fakebank - Anastasis API: serving URL `%s' for account `%s'\n",
               url,
               account);
+
+  if ( (0 == strcmp (url,
+                     "/config")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+  {
+    /* GET /config */
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_string ("version",
+                               "0:0:0"),
+      GNUNET_JSON_pack_string ("currency",
+                               h->currency),
+      GNUNET_JSON_pack_string ("implementation",
+                               "urn:net:taler:specs:bank:fakebank"),
+      GNUNET_JSON_pack_string ("name",
+                               "taler-revenue"));
+  }
+
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_GET))
   {
