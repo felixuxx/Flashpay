@@ -39,6 +39,7 @@
  *
  * @param h our fakebank handle
  * @param connection the connection
+ * @param account name of the account
  * @param withdrawal_id the withdrawal operation identifier
  * @return MHD result code
  */
@@ -140,6 +141,7 @@ bank_withdrawals_confirm (
  *
  * @param h our fakebank handle
  * @param connection the connection
+ * @param account name of the account
  * @param withdrawal_id the withdrawal operation identifier
  * @return MHD result code
  */

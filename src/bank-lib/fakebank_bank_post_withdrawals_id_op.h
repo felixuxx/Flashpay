@@ -36,7 +36,12 @@
  *
  * @param h our fakebank handle
  * @param connection the connection
+ * @param account name of the account
  * @param withdrawal_id the withdrawal operation identifier
+ * @param op operation to be performed, includes leading "/"
+ * @param upload_data data uploaded
+ * @param[in,out] upload_data_size number of bytes in @a upload_data
+ * @param[in,out] con_cls application context that can be used
  * @return MHD result code
  */
 MHD_RESULT
