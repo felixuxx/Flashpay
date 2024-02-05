@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016-2023 Taler Systems SA
+  (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -36,6 +36,7 @@
 #include "fakebank_bank_post_accounts_withdrawals.h"
 #include "fakebank_bank_post_withdrawals_abort.h"
 #include "fakebank_bank_post_withdrawals_confirm.h"
+#include "fakebank_bank_post_withdrawals_id_op.h"
 #include "fakebank_bank_testing_register.h"
 
 
@@ -73,7 +74,7 @@ TALER_FAKEBANK_bank_main_ (
       connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string ("version",
-                               "0:0:0"),
+                               "4:0:4"), /* not sure, API versions are not properly marked up! */
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
       GNUNET_JSON_pack_string ("implementation",
@@ -478,6 +479,36 @@ TALER_FAKEBANK_bank_main_ (
           con_cls);
         GNUNET_free (acc);
         return ret;
+      }
+
+      if (0 == strncmp (end_acc,
+                        "/withdrawals/",
+                        strlen ("/withdrawals/")))
+      {
+        /* POST /accounts/$ACCOUNT/withdrawals/$WID/$OP */
+        MHD_RESULT ret;
+        const char *pos = &end_acc[strlen ("/withdrawals/")];
+        const char *op = strchr (pos, '/');
+
+        if (NULL != op)
+        {
+          char *wid = GNUNET_strndup (pos,
+                                      op - pos);
+
+          ret = TALER_FAKEBANK_bank_withdrawals_id_op_ (
+            h,
+            connection,
+            acc,
+            wid,
+            op,
+            upload_data,
+            upload_data_size,
+            con_cls);
+          GNUNET_free (wid);
+          GNUNET_free (acc);
+          return ret;
+        }
+        GNUNET_free (acc);
       }
     }
   }
