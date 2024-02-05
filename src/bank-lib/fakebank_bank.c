@@ -76,6 +76,8 @@ TALER_FAKEBANK_bank_main_ (
                                "0:0:0"),
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
+      GNUNET_JSON_pack_string ("implementation",
+                               "urn:net:taler:specs:bank:fakebank"),
       GNUNET_JSON_pack_string ("name",
                                "taler-corebank"));
   }
