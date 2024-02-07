@@ -23,7 +23,8 @@ libtaler_extension_age_restriction_la_LDFLAGS = \
 
 libtaler_extension_age_restriction_la_SOURCES = \
   age_restriction.c
-
+libtaler_extension_age_restriction_la_LDFLAGS = \
+  $(TALER_PLUGIN_LDFLAGS)
 libtaler_extension_age_restriction_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
