@@ -30,7 +30,7 @@
  * Get summary information about balance tracked by the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param balance_key key of the blance to store
+ * @param balance_key key of the balance to store
  * @param[out] balance_value set to amount stored under @a balance_key
  * @param ... NULL terminated list of additional key-value pairs to fetch
  * @return transaction status code

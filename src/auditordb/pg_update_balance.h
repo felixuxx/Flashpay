@@ -31,7 +31,7 @@
  * existing record, which must already exist.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param balance_key key of the blance to store
+ * @param balance_key key of the balance to store
  * @param balance_value value to store
  * @param ... NULL terminated list of additional key-value pairs to update
  * @return transaction status code
