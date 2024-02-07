@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2020 Taler Systems SA
+  Copyright (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -27,6 +27,52 @@
 #include "taler_json_lib.h"
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
+
+/**
+ * Macro to use to access progress point value @a name.
+ */
+#define TALER_ARL_USE_PP(name) TAC_ ## name
+
+/**
+ * Macro to use to declare progress point value @a name.
+ */
+#define TALER_ARL_DEF_PP(name)                  \
+  uint64_t TALER_ARL_USE_PP (name) = 0
+
+/**
+ * Macro to use to GET progress point value @a name from DB.
+ */
+#define TALER_ARL_GET_PP(name)                  \
+  TALER_S (name), &TALER_ARL_USE_PP (name)
+
+/**
+ * Macro to use to SET progress point value @a name in DB.
+ */
+#define TALER_ARL_SET_PP(name)                  \
+  TALER_S (name), TALER_ARL_USE_PP (name)
+
+/**
+ * Macro to use to access amount balance @a name.
+ */
+#define TALER_ARL_USE_AB(name) TAC_ ## name
+
+/**
+ * Macro to use to declare amount balance @a name.
+ */
+#define TALER_ARL_DEF_AB(name)                  \
+  struct TALER_Amount TALER_ARL_USE_AB (name)
+
+/**
+ * Macro to use to GET amount balance @a name from DB.
+ */
+#define TALER_ARL_GET_AB(name)                  \
+  TALER_S (name), &TALER_ARL_USE_AB (name)
+
+/**
+ * Macro to use to SET amount balance @a name in DB.
+ */
+#define TALER_ARL_SET_AB(name)                  \
+  TALER_S (name), &TALER_ARL_USE_AB (name)
 
 
 /**

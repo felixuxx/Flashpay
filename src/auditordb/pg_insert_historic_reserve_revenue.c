@@ -28,14 +28,12 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_historic_reserve_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *reserve_profits)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_timestamp (&start_time),
     GNUNET_PQ_query_param_timestamp (&end_time),
     TALER_PQ_query_param_amount (pg->conn,
@@ -46,11 +44,10 @@ TAH_PG_insert_historic_reserve_revenue (
   PREPARE (pg,
            "auditor_historic_reserve_summary_insert",
            "INSERT INTO auditor_historic_reserve_summary"
-           "(master_pub"
-           ",start_date"
+           "(start_date"
            ",end_date"
            ",reserve_profits"
-           ") VALUES ($1,$2,$3,$4);");
+           ") VALUES ($1,$2,$3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_historic_reserve_summary_insert",
                                              params);

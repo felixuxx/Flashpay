@@ -169,3 +169,5 @@ src/auditor/exchange-httpd-drain.err
 src/templating/libmustach.a
 contrib/tos/conf.py
 contrib/pp/conf.py
+src/auditordb/test_auditordb_checkpoints-postgres
+src/auditordb/test_auditordb_checkpoints_postgres

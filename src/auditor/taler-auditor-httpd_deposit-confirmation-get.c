@@ -75,18 +75,6 @@ struct ExchangeSigningKeyDataP
 
 GNUNET_NETWORK_STRUCT_END
 
-/**
- * Cache of already verified exchange signing keys.  Maps the hash of the
- * `struct TALER_ExchangeSigningKeyValidityPS` to the (static) string
- * "verified" or "revoked".  Access to this map is guarded by the #lock.
- */
-static struct GNUNET_CONTAINER_MultiHashMap *cache;
-
-/**
- * Lock for operations on #cache.
- */
-static pthread_mutex_t lock;
-
 
 /**
  * Add deposit confirmation to the list.
@@ -149,11 +137,10 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
   ja = json_array ();
   GNUNET_break (NULL != ja);
   // TODO correct below
-  struct TALER_AUDITORDB_ProgressPointDepositConfirmation ppdc = { 0 };   // FIXME: initialize...
-
   qs = TAH_plugin->get_deposit_confirmations (
     TAH_plugin->cls,
-    ppdc.last_deposit_confirmation_serial_id,
+    0, /* FIXME: get from query parameters! */
+    false, /* FIXME: get from query parameters! */
     &add_deposit_confirmation,
     ja);
 
@@ -176,31 +163,4 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
 }
 
 
-void
-TEAH_DEPOSIT_CONFIRMATION_GET_init (void)
-{
-  cache = GNUNET_CONTAINER_multihashmap_create (32,
-                                                GNUNET_NO);
-  GNUNET_assert (0 == pthread_mutex_init (&lock, NULL));
-}
-
-
-void
-TEAH_DEPOSIT_CONFIRMATION_GET_done (void)
-{
-  if (NULL != cache)
-  {
-    GNUNET_CONTAINER_multihashmap_destroy (cache);
-    cache = NULL;
-    GNUNET_assert (0 == pthread_mutex_destroy (&lock));
-  }
-}
-
-
-/*MHD_RESULT
-TAH_DEPOSIT_CONFIRMATION_delete(struct TEH_RequestContext *rc,
-                                const char *const args[1]) {
-}*/
-
-
-/* end of taler-auditor-httpd_deposit-confirmation.c */
+/* end of taler-auditor-httpd_deposit-confirmation-get.c */

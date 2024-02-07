@@ -361,31 +361,6 @@ TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
 }
 
 
-/**
- * Test if the given @a mpub matches the #TALER_ARL_master_pub.
- * If so, set "found" to GNUNET_YES.
- *
- * @param cls a `int *` pointing to "found"
- * @param mpub exchange master public key to compare
- * @param exchange_url URL of the exchange (ignored)
- */
-static void
-test_master_present (void *cls,
-                     const struct TALER_MasterPublicKeyP *mpub,
-                     const char *exchange_url)
-{
-  int *found = cls;
-
-  if (0 == GNUNET_memcmp (mpub,
-                          &TALER_ARL_master_pub))
-  {
-    *found = GNUNET_YES;
-    GNUNET_free (TALER_ARL_exchange_url);
-    TALER_ARL_exchange_url = GNUNET_strdup (exchange_url);
-  }
-}
-
-
 void
 TALER_ARL_amount_add_ (struct TALER_Amount *sum,
                        const struct TALER_Amount *a1,
@@ -557,6 +532,18 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
                                "BASE_URL");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &TALER_ARL_exchange_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    return GNUNET_SYSERR;
+  }
+
   if (GNUNET_is_zero (&TALER_ARL_master_pub))
   {
     /* -m option not given, try configuration */
@@ -716,29 +703,13 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     TALER_ARL_done (NULL);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_SYSERR ==
+      TALER_ARL_adb->preflight (TALER_ARL_adb->cls))
   {
-    int found;
-
-    if (GNUNET_SYSERR ==
-        TALER_ARL_adb->preflight (TALER_ARL_adb->cls))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to start session with auditor database.\n");
-      TALER_ARL_done (NULL);
-      return GNUNET_SYSERR;
-    }
-    found = GNUNET_NO;
-    (void) TALER_ARL_adb->list_exchanges (TALER_ARL_adb->cls,
-                                          &test_master_present,
-                                          &found);
-    if (GNUNET_NO == found)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Exchange's master public key `%s' not known to auditor DB. Did you forget to run `taler-auditor-exchange`?\n",
-                  GNUNET_p2s (&TALER_ARL_master_pub.eddsa_pub));
-      TALER_ARL_done (NULL);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to start session with auditor database.\n");
+    TALER_ARL_done (NULL);
+    return GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }

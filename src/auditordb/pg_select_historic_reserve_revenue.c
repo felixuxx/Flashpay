@@ -108,13 +108,11 @@ historic_reserve_revenue_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_reserve_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -130,8 +128,7 @@ TAH_PG_select_historic_reserve_revenue (
            " start_date"
            ",end_date"
            ",reserve_profits"
-           " FROM auditor_historic_reserve_summary"
-           " WHERE master_pub=$1;");
+           " FROM auditor_historic_reserve_summary");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_historic_reserve_summary_select",
                                              params,

@@ -29,12 +29,10 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_delete_pending_deposit (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   uint64_t batch_deposit_serial_id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&batch_deposit_serial_id),
     GNUNET_PQ_query_param_end
   };
@@ -43,8 +41,7 @@ TAH_PG_delete_pending_deposit (
            "auditor_delete_pending_deposit",
            "DELETE"
            " FROM auditor_pending_deposits"
-           " WHERE master_pub=$1"
-           "   AND batch_deposit_serial_id=$2;");
+           " WHERE batch_deposit_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_delete_pending_deposit",
                                              params);

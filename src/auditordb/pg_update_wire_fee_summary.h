@@ -31,14 +31,12 @@
  * existing record, which must already exist.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master public key of the exchange
  * @param wire_fee_balance amount the exchange gained in wire fees
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TAH_PG_update_wire_fee_summary (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *wire_fee_balance);
 
 #endif

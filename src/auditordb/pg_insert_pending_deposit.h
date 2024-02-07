@@ -30,7 +30,6 @@
  * Insert new row into the pending deposits table.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
  * @param batch_deposit_serial_id where in the table are we
  * @param total_amount value of all missing deposits, including fees
  * @param wire_target_h_payto hash of the recipient account's payto URI
@@ -40,7 +39,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_pending_deposit (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   uint64_t batch_deposit_serial_id,
   const struct TALER_PaytoHashP *wire_target_h_payto,
   const struct TALER_Amount *total_amount,

@@ -26,37 +26,22 @@
 #include "pg_helper.h"
 
 enum GNUNET_DB_QueryStatus
-TAH_PG_delete_deposit_confirmations (
+TAH_PG_delete_deposit_confirmation (
   void *cls,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_ExchangeSignatureP *exchange_sig,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const struct TALER_MasterSignatureP *master_sig)
+  uint64_t row_id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (h_wire),
-    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (exchange_sig),
-    GNUNET_PQ_query_param_auto_from_type (exchange_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_uint64 (&row_id),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "auditor_delete_deposit_confirmations",
+           "auditor_delete_deposit_confirmation",
            "DELETE"
            " FROM deposit_confirmations"
-           " WHERE h_contract_terms=$1"
-           "   AND h_wire=$2"
-           "   AND merchant_pub=$3"
-           "   AND exchange_sig=$4"
-           "   AND exchange_pub=$5"
-           "   AND master_sig=$6;");
+           " WHERE deposit_confirmation_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "auditor_delete_deposit_confirmations",
+                                             "auditor_delete_deposit_confirmation",
                                              params);
 }

@@ -30,13 +30,11 @@
  * Get summary information about an exchanges wire fee balance.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master public key of the exchange
  * @param[out] wire_fee_balance set amount the exchange gained in wire fees
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_wire_fee_summary (void *cls,
-                             const struct TALER_MasterPublicKeyP *master_pub,
                              struct TALER_Amount *wire_fee_balance);
 
 

@@ -2476,6 +2476,7 @@ main (int argc,
   GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
+  TALER_OS_init ();
   plugin_name++;
   (void) GNUNET_asprintf (&testname,
                           "test-exchange-db-%s",

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,82 +23,40 @@
 #include "taler_pq_lib.h"
 #include <pthread.h>
 #include <libpq-fe.h>
-#include "pg_helper.h"
-#include "pg_insert_auditor_progress_reserve.h"
-#include "pg_update_auditor_progress_reserve.h"
-#include "pg_get_auditor_progress_reserve.h"
-#include "pg_insert_auditor_progress_purse.h"
-#include "pg_update_auditor_progress_purse.h"
-#include "pg_get_auditor_progress_purse.h"
-#include "pg_insert_auditor_progress_aggregation.h"
-#include "pg_update_auditor_progress_aggregation.h"
-#include "pg_get_auditor_progress_aggregation.h"
-#include "pg_insert_auditor_progress_deposit_confirmation.h"
-#include "pg_update_auditor_progress_deposit_confirmation.h"
-#include "pg_get_auditor_progress_deposit_confirmation.h"
-#include "pg_select_pending_deposits.h"
-#include "pg_delete_pending_deposit.h"
-#include "pg_insert_pending_deposit.h"
-#include "pg_insert_auditor_progress_coin.h"
-#include "pg_update_auditor_progress_coin.h"
-#include "pg_get_auditor_progress_coin.h"
-#include "pg_insert_wire_auditor_account_progress.h"
-#include "pg_update_wire_auditor_account_progress.h"
-#include "pg_get_wire_auditor_account_progress.h"
-#include "pg_insert_wire_auditor_progress.h"
-#include "pg_update_wire_auditor_progress.h"
-#include "pg_get_wire_auditor_progress.h"
-#include "pg_insert_reserve_info.h"
-#include "pg_update_reserve_info.h"
-#include "pg_del_reserve_info.h"
-#include "pg_get_reserve_info.h"
-#include "pg_insert_reserve_summary.h"
-#include "pg_update_reserve_summary.h"
-#include "pg_get_reserve_summary.h"
-#include "pg_insert_wire_fee_summary.h"
-#include "pg_update_wire_fee_summary.h"
-#include "pg_get_wire_fee_summary.h"
-#include "pg_insert_denomination_balance.h"
-#include "pg_update_denomination_balance.h"
-#include "pg_get_denomination_balance.h"
-#include "pg_insert_balance_summary.h"
-#include "pg_update_balance_summary.h"
-#include "pg_get_balance_summary.h"
-#include "pg_insert_historic_denom_revenue.h"
-#include "pg_select_historic_denom_revenue.h"
-#include "pg_insert_historic_reserve_revenue.h"
-#include "pg_select_historic_reserve_revenue.h"
-#include "pg_insert_predicted_result.h"
-#include "pg_update_predicted_result.h"
-#include "pg_get_predicted_balance.h"
-#include "pg_insert_exchange.h"
-#include "pg_list_exchanges.h"
-#include "pg_delete_exchange.h"
-#include "pg_insert_exchange_signkey.h"
-#include "pg_insert_deposit_confirmation.h"
-#include "pg_get_deposit_confirmations.h"
 #include "pg_delete_deposit_confirmations.h"
-#include "pg_insert_auditor_progress_coin.h"
-#include "pg_update_auditor_progress_coin.h"
-#include "pg_get_auditor_progress_coin.h"
-#include "pg_insert_auditor_progress_purse.h"
-#include "pg_update_auditor_progress_purse.h"
-#include "pg_get_auditor_progress_purse.h"
-#include "pg_get_reserve_info.h"
-#include "pg_insert_historic_reserve_revenue.h"
-#include "pg_insert_wire_auditor_progress.h"
-#include "pg_update_wire_auditor_progress.h"
-#include "pg_get_wire_auditor_progress.h"
-#include "pg_insert_historic_reserve_revenue.h"
-#include "pg_helper.h"
-#include "pg_get_purse_info.h"
+#include "pg_delete_pending_deposit.h"
 #include "pg_delete_purse_info.h"
-#include "pg_update_purse_info.h"
+#include "pg_del_denomination_balance.h"
+#include "pg_del_reserve_info.h"
+#include "pg_get_auditor_progress.h"
+#include "pg_get_balance.h"
+#include "pg_get_denomination_balance.h"
+#include "pg_get_deposit_confirmations.h"
+#include "pg_get_purse_info.h"
+#include "pg_get_reserve_info.h"
+#include "pg_get_wire_fee_summary.h"
+#include "pg_helper.h"
+#include "pg_insert_auditor_progress.h"
+#include "pg_insert_balance.h"
+#include "pg_insert_denomination_balance.h"
+#include "pg_insert_deposit_confirmation.h"
+#include "pg_insert_exchange_signkey.h"
+#include "pg_insert_historic_denom_revenue.h"
+#include "pg_insert_historic_reserve_revenue.h"
+#include "pg_insert_pending_deposit.h"
 #include "pg_insert_purse_info.h"
-#include "pg_get_purse_summary.h"
+#include "pg_insert_reserve_info.h"
+#include "pg_select_historic_denom_revenue.h"
+#include "pg_select_historic_reserve_revenue.h"
+#include "pg_select_pending_deposits.h"
 #include "pg_select_purse_expired.h"
-#include "pg_insert_purse_summary.h"
-#include "pg_update_purse_summary.h"
+#include "pg_update_auditor_progress.h"
+#include "pg_update_balance.h"
+#include "pg_update_denomination_balance.h"
+#include "pg_update_purse_info.h"
+#include "pg_update_reserve_info.h"
+#include "pg_update_wire_fee_summary.h"
+
 
 #define LOG(kind,...) GNUNET_log_from (kind, "taler-auditordb-postgres", \
                                        __VA_ARGS__)
@@ -141,13 +99,31 @@ postgres_drop_tables (void *cls,
  * Create the necessary tables if they are not present
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param support_partitions true to support partitioning
+ * @param num_partitions number of partitions to use
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static enum GNUNET_GenericReturnValue
-postgres_create_tables (void *cls)
+postgres_create_tables (void *cls,
+                        bool support_partitions,
+                        uint32_t num_partitions)
 {
   struct PostgresClosure *pc = cls;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
   struct GNUNET_PQ_Context *conn;
+  struct GNUNET_PQ_QueryParam params[] = {
+    support_partitions
+    ? GNUNET_PQ_query_param_uint32 (&num_partitions)
+    : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_PreparedStatement ps[] = {
+    GNUNET_PQ_make_prepare ("create_tables",
+                            "SELECT"
+                            " auditor.do_create_tables"
+                            " ($1);"),
+    GNUNET_PQ_PREPARED_STATEMENT_END
+  };
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_try_execute ("SET search_path TO auditor;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
@@ -157,11 +133,32 @@ postgres_create_tables (void *cls)
                                      "auditordb-postgres",
                                      "auditor-",
                                      es,
-                                     NULL);
+                                     ps);
   if (NULL == conn)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to connect to database\n");
     return GNUNET_SYSERR;
+  }
+  if (0 >
+      GNUNET_PQ_eval_prepared_non_select (conn,
+                                          "create_tables",
+                                          params))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to run 'create_tables' prepared statement\n");
+    ret = GNUNET_SYSERR;
+  }
+  if (GNUNET_OK == ret)
+  {
+    ret = GNUNET_PQ_exec_sql (conn,
+                              "procedures");
+    if (GNUNET_OK != ret)
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to load stored procedures\n");
+  }
   GNUNET_PQ_disconnect (conn);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -400,11 +397,6 @@ postgres_gc (void *cls)
   struct GNUNET_PQ_Context *conn;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_PreparedStatement ps[] = {
-#if 0
-    GNUNET_PQ_make_prepare ("gc_auditor",
-                            "TODO: #4960",
-                            0),
-#endif
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement es[] = {
@@ -470,12 +462,18 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->rollback = &postgres_rollback;
   plugin->gc = &postgres_gc;
 
-  plugin->insert_exchange
-    = &TAH_PG_insert_exchange;
-  plugin->delete_exchange
-    = &TAH_PG_delete_exchange;
-  plugin->list_exchanges
-    = &TAH_PG_list_exchanges;
+  plugin->get_auditor_progress
+    = &TAH_PG_get_auditor_progress;
+  plugin->get_balance
+    = &TAH_PG_get_balance;
+  plugin->insert_auditor_progress
+    = &TAH_PG_insert_auditor_progress;
+  plugin->insert_balance
+    = &TAH_PG_insert_balance;
+  plugin->update_auditor_progress
+    = &TAH_PG_update_auditor_progress;
+  plugin->update_balance
+    = &TAH_PG_update_balance;
 
   plugin->insert_exchange_signkey
     = &TAH_PG_insert_exchange_signkey;
@@ -483,134 +481,54 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_insert_deposit_confirmation;
   plugin->get_deposit_confirmations
     = &TAH_PG_get_deposit_confirmations;
+  plugin->delete_deposit_confirmation
+    = &TAH_PG_delete_deposit_confirmation;
 
-  plugin->get_auditor_progress_reserve
-    = &TAH_PG_get_auditor_progress_reserve;
-  plugin->update_auditor_progress_reserve
-    = &TAH_PG_update_auditor_progress_reserve;
-  plugin->insert_auditor_progress_reserve
-    = &TAH_PG_insert_auditor_progress_reserve;
-
-  plugin->get_auditor_progress_purse
-    = &TAH_PG_get_auditor_progress_purse;
-  plugin->update_auditor_progress_purse
-    = &TAH_PG_update_auditor_progress_purse;
-  plugin->insert_auditor_progress_purse
-    = &TAH_PG_insert_auditor_progress_purse;
-
-  plugin->get_auditor_progress_aggregation
-    = &TAH_PG_get_auditor_progress_aggregation;
-  plugin->update_auditor_progress_aggregation
-    = &TAH_PG_update_auditor_progress_aggregation;
-  plugin->insert_auditor_progress_aggregation
-    = &TAH_PG_insert_auditor_progress_aggregation;
-
-  plugin->get_auditor_progress_deposit_confirmation
-    = &TAH_PG_get_auditor_progress_deposit_confirmation;
-  plugin->update_auditor_progress_deposit_confirmation
-    = &TAH_PG_update_auditor_progress_deposit_confirmation;
-  plugin->insert_auditor_progress_deposit_confirmation
-    = &TAH_PG_insert_auditor_progress_deposit_confirmation;
-
-  plugin->get_auditor_progress_coin
-    = &TAH_PG_get_auditor_progress_coin;
-  plugin->update_auditor_progress_coin
-    = &TAH_PG_update_auditor_progress_coin;
-  plugin->insert_auditor_progress_coin
-    = &TAH_PG_insert_auditor_progress_coin;
-
-  plugin->get_wire_auditor_account_progress
-    = &TAH_PG_get_wire_auditor_account_progress;
-  plugin->update_wire_auditor_account_progress
-    = &TAH_PG_update_wire_auditor_account_progress;
-  plugin->insert_wire_auditor_account_progress
-    = &TAH_PG_insert_wire_auditor_account_progress;
-
-  plugin->get_wire_auditor_progress
-    = &TAH_PG_get_wire_auditor_progress;
-  plugin->update_wire_auditor_progress
-    = &TAH_PG_update_wire_auditor_progress;
-  plugin->insert_wire_auditor_progress
-    = &TAH_PG_insert_wire_auditor_progress;
-
-  plugin->del_reserve_info
-    = &TAH_PG_del_reserve_info;
-  plugin->get_reserve_info
-    = &TAH_PG_get_reserve_info;
-  plugin->update_reserve_info
-    = &TAH_PG_update_reserve_info;
   plugin->insert_reserve_info
     = &TAH_PG_insert_reserve_info;
+  plugin->update_reserve_info
+    = &TAH_PG_update_reserve_info;
+  plugin->get_reserve_info
+    = &TAH_PG_get_reserve_info;
+  plugin->del_reserve_info
+    = &TAH_PG_del_reserve_info;
 
-  plugin->get_reserve_summary
-    = &TAH_PG_get_reserve_summary;
-  plugin->update_reserve_summary
-    = &TAH_PG_update_reserve_summary;
-  plugin->insert_reserve_summary
-    = &TAH_PG_insert_reserve_summary;
-
-  plugin->get_wire_fee_summary
-    = &TAH_PG_get_wire_fee_summary;
-  plugin->update_wire_fee_summary
-    = &TAH_PG_update_wire_fee_summary;
-  plugin->insert_wire_fee_summary
-    = &TAH_PG_insert_wire_fee_summary;
-
-  plugin->get_denomination_balance
-    = &TAH_PG_get_denomination_balance;
-  plugin->update_denomination_balance
-    = &TAH_PG_update_denomination_balance;
-  plugin->insert_denomination_balance
-    = &TAH_PG_insert_denomination_balance;
-
-  plugin->get_balance_summary
-    = &TAH_PG_get_balance_summary;
-  plugin->update_balance_summary
-    = &TAH_PG_update_balance_summary;
-  plugin->insert_balance_summary
-    = &TAH_PG_insert_balance_summary;
-
-  plugin->select_historic_denom_revenue
-    = &TAH_PG_select_historic_denom_revenue;
-  plugin->insert_historic_denom_revenue
-    = &TAH_PG_insert_historic_denom_revenue;
-
-  plugin->select_historic_reserve_revenue
-    = &TAH_PG_select_historic_reserve_revenue;
-  plugin->insert_historic_reserve_revenue
-    = &TAH_PG_insert_historic_reserve_revenue;
-
+  plugin->insert_pending_deposit
+    = &TAH_PG_insert_pending_deposit;
   plugin->select_pending_deposits
     = &TAH_PG_select_pending_deposits;
   plugin->delete_pending_deposit
     = &TAH_PG_delete_pending_deposit;
-  plugin->insert_pending_deposit
-    = &TAH_PG_insert_pending_deposit;
 
-  plugin->get_predicted_balance
-    = &TAH_PG_get_predicted_balance;
-  plugin->update_predicted_result
-    = &TAH_PG_update_predicted_result;
-  plugin->insert_predicted_result
-    = &TAH_PG_insert_predicted_result;
-  plugin->get_purse_info
-    = &TAH_PG_get_purse_info;
-
-  plugin->delete_purse_info
-    = &TAH_PG_delete_purse_info;
-  plugin->update_purse_info
-    = &TAH_PG_update_purse_info;
   plugin->insert_purse_info
     = &TAH_PG_insert_purse_info;
-  plugin->get_purse_summary
-    = &TAH_PG_get_purse_summary;
-
+  plugin->update_purse_info
+    = &TAH_PG_update_purse_info;
+  plugin->get_purse_info
+    = &TAH_PG_get_purse_info;
+  plugin->delete_purse_info
+    = &TAH_PG_delete_purse_info;
   plugin->select_purse_expired
     = &TAH_PG_select_purse_expired;
-  plugin->insert_purse_summary
-    = &TAH_PG_insert_purse_summary;
-  plugin->update_purse_summary
-    = &TAH_PG_update_purse_summary;
+
+  plugin->insert_denomination_balance
+    = &TAH_PG_insert_denomination_balance;
+  plugin->update_denomination_balance
+    = &TAH_PG_update_denomination_balance;
+  plugin->del_denomination_balance
+    = &TAH_PG_del_denomination_balance;
+  plugin->get_denomination_balance
+    = &TAH_PG_get_denomination_balance;
+
+  plugin->insert_historic_denom_revenue
+    = &TAH_PG_insert_historic_denom_revenue;
+  plugin->select_historic_denom_revenue
+    = &TAH_PG_select_historic_denom_revenue;
+
+  plugin->insert_historic_reserve_revenue
+    = &TAH_PG_insert_historic_reserve_revenue;
+  plugin->select_historic_reserve_revenue
+    = &TAH_PG_select_historic_reserve_revenue;
 
   return plugin;
 }

@@ -32,6 +32,7 @@
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param start_id row/serial ID where to start the iteration (0 from
  *                  the start, exclusive, i.e. serial_ids must start from 1)
+ * @param return_suppressed should suppressed rows be returned anyway?
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
  * @return query result status
@@ -40,6 +41,7 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_get_deposit_confirmations (
   void *cls,
   uint64_t start_id,
+  bool return_suppressed,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls);
 

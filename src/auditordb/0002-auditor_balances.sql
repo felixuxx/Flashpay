@@ -17,9 +17,8 @@
 SET search_path TO auditor;
 CREATE TABLE IF NOT EXISTS auditor_balances
 (
-    balance_key TEXT
-    ,balance_value taler_amount
-    ,PRIMARY KEY (balance_key)
+   balance_key TEXT PRIMARY KEY NOT NULL
+  ,balance_value taler_amount
 );
 COMMENT
 ON TABLE auditor_balances

@@ -32,7 +32,6 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param purse_pub public key of the purse
- * @param master_pub master public key of the exchange
  * @param balance new balance for the purse
  * @return transaction status code
  */
@@ -40,7 +39,6 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_update_purse_info (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *balance);
 
 

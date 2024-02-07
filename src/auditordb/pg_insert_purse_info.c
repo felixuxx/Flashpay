@@ -30,14 +30,12 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_insert_purse_info (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *balance,
   struct GNUNET_TIME_Timestamp expiration_date)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (pg->conn,
                                  balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
@@ -48,10 +46,9 @@ TAH_PG_insert_purse_info (
            "auditor_purses_insert",
            "INSERT INTO auditor_purses "
            "(purse_pub"
-           ",master_pub"
            ",target"
            ",expiration_date"
-           ") VALUES ($1,$2,$3,$4);");
+           ") VALUES ($1,$2,$3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_purses_insert",
                                              params);

@@ -31,7 +31,6 @@
  * seen the required wire transfer.
  *
  * @param cls closure
- * @param master_pub master public key of the exchange
  * @param deadline only return up to this deadline
  * @param cb function to call on each entry
  * @param cb_cls closure for @a cb
@@ -40,7 +39,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_pending_deposits (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Absolute deadline,
   TALER_AUDITORDB_WireMissingCallback cb,
   void *cb_cls);

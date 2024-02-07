@@ -46,6 +46,11 @@ struct TALER_AUDITOR_ConfigInformation
   struct TALER_AuditorPublicKeyP auditor_pub;
 
   /**
+   * Master public key of the audited exchange.
+   */
+  struct TALER_MasterPublicKeyP exchange_master_public_key;
+
+  /**
    * Supported Taler protocol version by the auditor.
    * String in the format current:revision:age using the
    * semantics of GNU libtool.  See

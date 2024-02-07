@@ -48,7 +48,8 @@
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
  */
-#define AUDITOR_PROTOCOL_VERSION "0:1:0"
+#define AUDITOR_PROTOCOL_VERSION "1:0:1"
+
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -79,6 +80,12 @@ struct TALER_EXCHANGEDB_Plugin *TAH_eplugin;
  * Public key of this auditor.
  */
 static struct TALER_AuditorPublicKeyP auditor_pub;
+
+/**
+ * Exchange master public key (according to the
+ * configuration).  (global)
+ */
+struct TALER_MasterPublicKeyP TAH_master_public_key;
 
 /**
  * Default timeout in seconds for HTTP requests.
@@ -166,7 +173,9 @@ handle_config (struct TAH_RequestHandler *rh,
       GNUNET_JSON_pack_string ("currency",
                                TAH_currency),
       GNUNET_JSON_pack_data_auto ("auditor_public_key",
-                                  &auditor_pub));
+                                  &auditor_pub),
+      GNUNET_JSON_pack_data_auto ("exchange_master_public_key",
+                                  &TAH_master_public_key));
   }
   if (NULL == ver)
   {
@@ -305,6 +314,40 @@ auditor_serve_process_config (void)
   {
     return GNUNET_SYSERR;
   }
+
+  {
+    char *master_public_key_str;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "MASTER_PUBLIC_KEY",
+                                               &master_public_key_str))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_public_key_from_string (
+          master_public_key_str,
+          strlen (master_public_key_str),
+          &TAH_master_public_key.eddsa_pub))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY",
+                                 "invalid base32 encoding for a master public key");
+      GNUNET_free (master_public_key_str);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Launching auditor for exchange `%s'...\n",
+                master_public_key_str);
+    GNUNET_free (master_public_key_str);
+  }
+
   {
     char *pub;
 

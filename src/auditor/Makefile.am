@@ -16,7 +16,6 @@ clean-local:
 
 bin_PROGRAMS = \
   taler-auditor-dbinit \
-  taler-auditor-exchange \
   taler-auditor-httpd \
   taler-auditor-sync \
   taler-helper-auditor-aggregation \
@@ -177,15 +176,6 @@ taler_auditor_httpd_LDADD = \
   -lgnunetjson \
   -lgnunetutil \
   -lz \
-  $(XLIB)
-
-taler_auditor_exchange_SOURCES = \
-  taler-auditor-exchange.c
-taler_auditor_exchange_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  -lgnunetutil \
   $(XLIB)
 
 taler_auditor_sync_SOURCES = \

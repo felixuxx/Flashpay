@@ -39,6 +39,12 @@ extern struct TALER_AUDITORDB_Plugin *TAH_plugin;
 extern struct TALER_EXCHANGEDB_Plugin *TAH_eplugin;
 
 /**
+ * Exchange master public key (according to the
+ * configuration).  (global)
+ */
+extern struct TALER_MasterPublicKeyP TAH_master_public_key;
+
+/**
  * Our currency.
  */
 extern char *TAH_currency;

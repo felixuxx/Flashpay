@@ -30,7 +30,6 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_update_reserve_info (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
   struct GNUNET_TIME_Timestamp expiration_date)
 {
@@ -50,12 +49,11 @@ TAH_PG_update_reserve_info (
                                  &rfb->history_fee_balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "auditor_reserves_update",
+           "auditor_update_reserve_info",
            "UPDATE auditor_reserves SET"
            " reserve_balance=$1"
            ",reserve_loss=$2"
@@ -64,9 +62,8 @@ TAH_PG_update_reserve_info (
            ",open_fee_balance=$5"
            ",history_fee_balance=$6"
            ",expiration_date=$7"
-           " WHERE reserve_pub=$8"
-           " AND master_pub=$9;");
+           " WHERE reserve_pub=$8");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "auditor_reserves_update",
+                                             "auditor_update_reserve_info",
                                              params);
 }

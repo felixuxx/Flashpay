@@ -29,7 +29,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_historic_denom_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_DenominationHashP *denom_pub_hash,
   struct GNUNET_TIME_Timestamp revenue_timestamp,
   const struct TALER_Amount *revenue_balance,
@@ -37,7 +36,6 @@ TAH_PG_insert_historic_denom_revenue (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_timestamp (&revenue_timestamp),
     TALER_PQ_query_param_amount (pg->conn,
@@ -50,12 +48,11 @@ TAH_PG_insert_historic_denom_revenue (
   PREPARE (pg,
            "auditor_historic_denomination_revenue_insert",
            "INSERT INTO auditor_historic_denomination_revenue"
-           "(master_pub"
-           ",denom_pub_hash"
+           "(denom_pub_hash"
            ",revenue_timestamp"
            ",revenue_balance"
            ",loss_balance"
-           ") VALUES ($1,$2,$3,$4,$5);");
+           ") VALUES ($1,$2,$3,$4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_historic_denomination_revenue_insert",
                                              params);

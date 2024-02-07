@@ -29,7 +29,6 @@
  * Return information about an exchange's historic revenue from reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
  * @return transaction status code
@@ -37,7 +36,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_reserve_revenue (
   void *cls,
-  const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
   void *cb_cls);
 

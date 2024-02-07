@@ -90,7 +90,9 @@ run (void *cls,
                   "Failed to restart audits\n");
   }
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
+      plugin->create_tables (plugin->cls,
+                             false,
+                             0))
   {
     fprintf (stderr,
              "Failed to initialize database.\n");

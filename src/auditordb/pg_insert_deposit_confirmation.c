@@ -33,7 +33,6 @@ TAH_PG_insert_deposit_confirmation (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&dc->master_public_key),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_policy),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_wire),
@@ -58,8 +57,7 @@ TAH_PG_insert_deposit_confirmation (
   PREPARE (pg,
            "auditor_deposit_confirmation_insert",
            "INSERT INTO deposit_confirmations "
-           "(master_pub"
-           ",h_contract_terms"
+           "(h_contract_terms"
            ",h_policy"
            ",h_wire"
            ",exchange_timestamp"
@@ -72,7 +70,7 @@ TAH_PG_insert_deposit_confirmation (
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"                  /* master_sig could be normalized... */
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);");
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_deposit_confirmation_insert",
                                              params);

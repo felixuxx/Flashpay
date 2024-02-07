@@ -1,7 +1,6 @@
 usr/bin/taler-auditor
 usr/bin/taler-auditor-dbconfig
 usr/bin/taler-auditor-dbinit
-usr/bin/taler-auditor-exchange
 usr/bin/taler-auditor-httpd
 usr/bin/taler-auditor-offline
 usr/bin/taler-auditor-sync

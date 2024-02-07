@@ -29,7 +29,6 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_get_purse_info (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_MasterPublicKeyP *master_pub,
   uint64_t *rowid,
   struct TALER_Amount *balance,
   struct GNUNET_TIME_Timestamp *expiration_date)
@@ -37,7 +36,6 @@ TAH_PG_get_purse_info (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -56,8 +54,7 @@ TAH_PG_get_purse_info (
            " expiration_date"
            ",balance"
            " FROM auditor_purses"
-           " WHERE purse_pub=$1"
-           "   AND master_pub=$2;");
+           " WHERE purse_pub=$1");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_get_purse_info",
                                                    params,

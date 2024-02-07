@@ -77,6 +77,21 @@ struct TALER_PQ_AmountP
 
 
 /**
+ * Memory representation of an taler amount record for Postgres.
+ *
+ * All values need to be in network-byte-order.
+ */
+struct TALER_PQ_AmountNullP
+{
+  uint32_t cnt;   /* # elements in the tuple (== 2) */
+  uint32_t oid_v; /* oid of .v  */
+  uint32_t sz_v;  /* size of .v */
+  uint32_t oid_f; /* oid of .f  */
+  uint32_t sz_f;  /* size of .f */
+} __attribute__((packed));
+
+
+/**
  * Memory representation of an taler amount record with currency for Postgres.
  *
  * All values need to be in network-byte-order.

@@ -15,7 +15,7 @@
 --
 
 CREATE TABLE IF NOT EXISTS auditor_progress
-  (progress_key TEXT NOT NULL
+  (progress_key TEXT PRIMARY KEY NOT NULL
   ,progress_offset INT8 NOT NULL
   );
 COMMENT ON TABLE auditor_progress

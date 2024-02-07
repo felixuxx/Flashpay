@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2022 Taler Systems SA
+  Copyright (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -36,12 +36,13 @@ static int global_ret;
 /**
  * Checkpointing our progress for aggregations.
  */
-static struct TALER_AUDITORDB_ProgressPointAggregation ppa;
+static TALER_ARL_DEF_PP (aggregation_last_wire_out_serial_id);
 
 /**
- * Checkpointing our progress for aggregations.
+ * Total aggregation fees (wire fees) earned.
  */
-static struct TALER_AUDITORDB_ProgressPointAggregation ppa_start;
+static TALER_ARL_DEF_AB (aggregation_total_wire_fee_revenue);
+
 
 /**
  * Array of reports about row inconsistencies.
@@ -100,11 +101,6 @@ static struct TALER_Amount total_arithmetic_delta_plus;
  * Losses the exchange made by bad amount calculations.
  */
 static struct TALER_Amount total_arithmetic_delta_minus;
-
-/**
- * Total aggregation fees (wire fees) earned.
- */
-static struct TALER_Amount total_aggregation_fee_income;
 
 /**
  * Array of reports about coin operations with bad signatures.
@@ -1095,8 +1091,9 @@ check_wire_out_cb (void *cls,
   char *method;
 
   /* should be monotonically increasing */
-  GNUNET_assert (rowid >= ppa.last_wire_out_serial_id);
-  ppa.last_wire_out_serial_id = rowid + 1;
+  GNUNET_assert (rowid >=
+                 TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id));
+  TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id) = rowid + 1;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking wire transfer %s over %s performed on %s\n",
@@ -1183,8 +1180,8 @@ check_wire_out_cb (void *cls,
                              &wcc.total_deposits,
                              &final_amount);
   /* Sum up aggregation fees (we simply include the rounding gains) */
-  TALER_ARL_amount_add (&total_aggregation_fee_income,
-                        &total_aggregation_fee_income,
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (aggregation_total_wire_fee_revenue),
+                        &TALER_ARL_USE_AB (aggregation_total_wire_fee_revenue),
                         &exchange_gain);
 
   /* Check that calculated amount matches actual amount */
@@ -1256,9 +1253,10 @@ analyze_aggregations (void *cls)
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
-  qsp = TALER_ARL_adb->get_auditor_progress_aggregation (TALER_ARL_adb->cls,
-                                                         &TALER_ARL_master_pub,
-                                                         &ppa);
+  qsp = TALER_ARL_adb->get_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_GET_PP (aggregation_last_wire_out_serial_id),
+    NULL);
   if (0 > qsp)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
@@ -1271,18 +1269,19 @@ analyze_aggregations (void *cls)
   }
   else
   {
-    ppa_start = ppa;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming aggregation audit at %llu\n",
-                (unsigned long long) ppa.last_wire_out_serial_id);
+                (unsigned long long) TALER_ARL_USE_PP (
+                  aggregation_last_wire_out_serial_id));
   }
 
   memset (&ac,
           0,
           sizeof (ac));
-  qsx = TALER_ARL_adb->get_wire_fee_summary (TALER_ARL_adb->cls,
-                                             &TALER_ARL_master_pub,
-                                             &total_aggregation_fee_income);
+  qsx = TALER_ARL_adb->get_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_GET_AB (aggregation_total_wire_fee_revenue),
+    NULL);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -1291,7 +1290,7 @@ analyze_aggregations (void *cls)
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = TALER_ARL_edb->select_wire_out_above_serial_id (
     TALER_ARL_edb->cls,
-    ppa.last_wire_out_serial_id,
+    TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id),
     &check_wire_out_cb,
     &ac);
   if (0 > qs)
@@ -1317,30 +1316,30 @@ analyze_aggregations (void *cls)
     return ac.qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-    ac.qs = TALER_ARL_adb->insert_wire_fee_summary (
+    ac.qs = TALER_ARL_adb->insert_balance (
       TALER_ARL_adb->cls,
-      &TALER_ARL_master_pub,
-      &total_aggregation_fee_income);
+      TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
+      NULL);
   else
-    ac.qs = TALER_ARL_adb->update_wire_fee_summary (
+    ac.qs = TALER_ARL_adb->update_balance (
       TALER_ARL_adb->cls,
-      &TALER_ARL_master_pub,
-      &total_aggregation_fee_income);
+      TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
+      NULL);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
     return ac.qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = TALER_ARL_adb->update_auditor_progress_aggregation (
+    qs = TALER_ARL_adb->update_auditor_progress (
       TALER_ARL_adb->cls,
-      &TALER_ARL_master_pub,
-      &ppa);
+      TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
+      NULL);
   else
-    qs = TALER_ARL_adb->insert_auditor_progress_aggregation (
+    qs = TALER_ARL_adb->insert_auditor_progress (
       TALER_ARL_adb->cls,
-      &TALER_ARL_master_pub,
-      &ppa);
+      TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
+      NULL);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1350,7 +1349,8 @@ analyze_aggregations (void *cls)
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Concluded aggregation audit step at %llu\n",
-              (unsigned long long) ppa.last_wire_out_serial_id);
+              (unsigned long long) TALER_ARL_USE_PP (
+                aggregation_last_wire_out_serial_id));
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
@@ -1385,7 +1385,8 @@ run (void *cls,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_aggregation_fee_income));
+                                        &TALER_ARL_USE_AB (
+                                          aggregation_total_wire_fee_revenue)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_out_delta_plus));
@@ -1479,14 +1480,14 @@ run (void *cls,
                       "total_arithmetic_delta_minus",
                       &total_arithmetic_delta_minus),
                     TALER_JSON_pack_amount (
-                      "total_aggregation_fee_income",
-                      &total_aggregation_fee_income),
+                      "aggregation_total_wire_fee_revenue",
+                      &TALER_ARL_USE_AB (aggregation_total_wire_fee_revenue)),
                     GNUNET_JSON_pack_uint64 (
                       "start_ppa_wire_out_serial_id",
-                      ppa_start.last_wire_out_serial_id),
+                      0 /* defunct */),
                     GNUNET_JSON_pack_uint64 (
                       "end_ppa_wire_out_serial_id",
-                      ppa.last_wire_out_serial_id),
+                      TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id)),
                     /* block #4 */
                     TALER_JSON_pack_time_abs_human (
                       "auditor_start_time",
