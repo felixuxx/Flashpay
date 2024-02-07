@@ -14,7 +14,6 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-SET search_path TO auditor;
 CREATE TABLE IF NOT EXISTS auditor_balances
 (
    balance_key TEXT PRIMARY KEY NOT NULL

@@ -31,6 +31,7 @@ SET search_path TO auditor;
 -- Unlike the other SQL files, it SHOULD be updated to reflect the
 -- latest requirements for dropping tables.
 
+DELETE FROM auditor_amount_arithmetic_inconsistency;
 DELETE FROM auditor_balances;
 DELETE FROM auditor_denomination_pending;
 DELETE FROM auditor_historic_denomination_revenue;

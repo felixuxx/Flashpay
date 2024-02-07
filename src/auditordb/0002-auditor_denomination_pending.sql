@@ -14,8 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-SET search_path TO auditor;
-CREATE TABLE IF NOT EXISTS auditor_denomination_pending
+CREATE TABLE auditor_denomination_pending
   (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_balance taler_amount NOT NULL
   ,denom_loss taler_amount NOT NULL

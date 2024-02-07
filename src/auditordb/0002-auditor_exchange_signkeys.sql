@@ -14,8 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-DROP TABLE IF EXISTS auditor_exchange_signkeys;
-CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys
+CREATE TABLE auditor_exchange_signkeys
   (exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,ep_valid_from INT8 NOT NULL
