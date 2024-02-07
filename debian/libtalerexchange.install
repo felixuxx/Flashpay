@@ -9,3 +9,4 @@ usr/bin/taler-config
 usr/bin/taler-terms-generator
 usr/share/man/man5/taler.conf.5
 usr/share/man/man1/taler-config*
+usr/share/man/man1/taler-terms-generator.1
