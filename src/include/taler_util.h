@@ -500,6 +500,20 @@ TALER_payto_get_method (const char *payto_uri);
 
 
 /**
+ * Normalize payto://-URI to make "strcmp()" sufficient
+ * to check if two payto-URIs refer to the same bank
+ * account. Removes optional arguments (everything after
+ * "?") and applies method-specific normalizations to
+ * the main part of the URI.
+ *
+ * @param input a payto://-URI
+ * @return normalized URI, or NULL if @a input was not well-formed
+ */
+char *
+TALER_payto_normalize (const char *input);
+
+
+/**
  * Obtain the account name from a payto URL.
  *
  * @param payto an x-taler-bank payto URL

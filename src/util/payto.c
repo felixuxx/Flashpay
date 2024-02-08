@@ -256,6 +256,242 @@ TALER_payto_get_receiver_name (const char *payto)
 }
 
 
+/**
+ * Normalize "payto://x-taler-bank/$HOSTNAME/$USERNAME"
+ * URI in @a input.
+ *
+ * Converts to lower-case, except for $USERNAME which
+ * is case-sensitive.
+ *
+ * @param len number of bytes in @a input
+ * @param input input URL
+ * @return NULL on error, otherwise 0-terminated canonicalized URI.
+ */
+static char *
+normalize_payto_x_taler_bank (size_t len,
+                              const char input[static len])
+{
+  char *res = GNUNET_malloc (len + 1);
+  unsigned int sc = 0;
+
+  for (unsigned int i = 0; i<len; i++)
+  {
+    char c = input[i];
+
+    if ('/' == c)
+      sc++;
+    if (sc < 4)
+      res[i] = (char) tolower ((int) c);
+    else
+      res[i] = c;
+  }
+  return res;
+}
+
+
+/**
+ * Normalize "payto://iban[/$BIC]/$IBAN"
+ * URI in @a input.
+ *
+ * Removes $BIC (if present) and converts $IBAN to upper-case and prefix to
+ * lower-case.
+ *
+ * @param len number of bytes in @a input
+ * @param input input URL
+ * @return NULL on error, otherwise 0-terminated canonicalized URI.
+ */
+static char *
+normalize_payto_iban (size_t len,
+                      const char input[static len])
+{
+  char *res;
+  size_t pos = 0;
+  unsigned int sc = 0;
+  bool have_bic;
+
+  for (unsigned int i = 0; i<len; i++)
+    if ('/' == input[i])
+      sc++;
+  if ( (sc > 4) ||
+       (sc < 3) )
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  have_bic = (4 == sc);
+  res = GNUNET_malloc (len + 1);
+  sc = 0;
+  for (unsigned int i = 0; i<len; i++)
+  {
+    char c = input[i];
+
+    if ('/' == c)
+      sc++;
+    switch (sc)
+    {
+    case 0: /* payto: */
+    case 1: /* / */
+    case 2: /* /iban */
+      res[pos++] = (char) tolower ((int) c);
+      break;
+    case 3: /* /$BIC or /$IBAN */
+      if (have_bic)
+        continue;
+      res[pos++] = (char) toupper ((int) c);
+      break;
+    case 4: /* /$IBAN */
+      res[pos++] = (char) toupper ((int) c);
+      break;
+    }
+  }
+  GNUNET_assert (pos <= len);
+  return res;
+}
+
+
+/**
+ * Normalize "payto://upi/$EMAIL"
+ * URI in @a input.
+ *
+ * Converts to lower-case.
+ *
+ * @param len number of bytes in @a input
+ * @param input input URL
+ * @return NULL on error, otherwise 0-terminated canonicalized URI.
+ */
+static char *
+normalize_payto_upi (size_t len,
+                     const char input[static len])
+{
+  char *res = GNUNET_malloc (len + 1);
+
+  for (unsigned int i = 0; i<len; i++)
+  {
+    char c = input[i];
+
+    res[i] = (char) tolower ((int) c);
+  }
+  return res;
+}
+
+
+/**
+ * Normalize "payto://bitcoin/$ADDRESS"
+ * URI in @a input.
+ *
+ * Converts to lower-case, except for $ADDRESS which
+ * is case-sensitive.
+ *
+ * @param len number of bytes in @a input
+ * @param input input URL
+ * @return NULL on error, otherwise 0-terminated canonicalized URI.
+ */
+static char *
+normalize_payto_bitcoin (size_t len,
+                         const char input[static len])
+{
+  char *res = GNUNET_malloc (len + 1);
+  unsigned int sc = 0;
+
+  for (unsigned int i = 0; i<len; i++)
+  {
+    char c = input[i];
+
+    if ('/' == c)
+      sc++;
+    if (sc < 3)
+      res[i] = (char) tolower ((int) c);
+    else
+      res[i] = c;
+  }
+  return res;
+}
+
+
+/**
+ * Normalize "payto://ilp/$NAME"
+ * URI in @a input.
+ *
+ * Converts to lower-case.
+ *
+ * @param len number of bytes in @a input
+ * @param input input URL
+ * @return NULL on error, otherwise 0-terminated canonicalized URI.
+ */
+static char *
+normalize_payto_ilp (size_t len,
+                     const char input[static len])
+{
+  char *res = GNUNET_malloc (len + 1);
+
+  for (unsigned int i = 0; i<len; i++)
+  {
+    char c = input[i];
+
+    res[i] = (char) tolower ((int) c);
+  }
+  return res;
+}
+
+
+char *
+TALER_payto_normalize (const char *input)
+{
+  char *method;
+  const char *end;
+  char *ret;
+
+  {
+    char *err;
+
+    err = TALER_payto_validate (input);
+    if (NULL != err)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Malformed payto://-URI `%s': %s\n",
+                  input,
+                  err);
+      GNUNET_free (err);
+      return NULL;
+    }
+  }
+  method = TALER_payto_get_method (input);
+  if (NULL == method)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  end = strchr (input, '?');
+  if (NULL == end)
+    end = &input[strlen (input)];
+  if (0 == strcasecmp (method,
+                       "x-taler-bank"))
+    ret = normalize_payto_x_taler_bank (end - input,
+                                        input);
+  else if (0 == strcasecmp (method,
+                            "iban"))
+    ret = normalize_payto_iban (end - input,
+                                input);
+  else if (0 == strcasecmp (method,
+                            "upi"))
+    ret = normalize_payto_upi (end - input,
+                               input);
+  else if (0 == strcasecmp (method,
+                            "bitcoin"))
+    ret = normalize_payto_bitcoin (end - input,
+                                   input);
+  else if (0 == strcasecmp (method,
+                            "ilp"))
+    ret = normalize_payto_ilp (end - input,
+                               input);
+  else
+    ret = GNUNET_strndup (input,
+                          end - input);
+  GNUNET_free (method);
+  return ret;
+}
+
+
 void
 TALER_payto_hash (const char *payto,
                   struct TALER_PaytoHashP *h_payto)
