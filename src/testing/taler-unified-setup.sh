@@ -519,7 +519,7 @@ then
                   --account="$USE_ACCOUNT" \
                   -c "$CONF" \
                   -L "$LOGLEVEL" \
-                  --longpoll-timeout="1 s" \
+                  --longpoll-timeout="60 s" \
                   2> taler-exchange-wirewatch.log &
     echo " DONE"
 fi
