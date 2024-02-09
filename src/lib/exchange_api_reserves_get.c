@@ -191,6 +191,9 @@ TALER_EXCHANGE_reserves_get (
   struct TALER_EXCHANGE_ReservesGetHandle *rgh;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 16 + 32];
+  unsigned int tms
+    = (unsigned int) timeout.rel_value_us
+      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
 
   {
     char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
@@ -205,11 +208,9 @@ TALER_EXCHANGE_reserves_get (
     *end = '\0';
     GNUNET_snprintf (timeout_str,
                      sizeof (timeout_str),
-                     "%llu",
-                     (unsigned long long)
-                     (timeout.rel_value_us
-                      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
-    if (GNUNET_TIME_relative_is_zero (timeout))
+                     "%u",
+                     tms);
+    if (0 == tms)
       GNUNET_snprintf (arg_str,
                        sizeof (arg_str),
                        "reserves/%s",
@@ -240,6 +241,13 @@ TALER_EXCHANGE_reserves_get (
     GNUNET_free (rgh->url);
     GNUNET_free (rgh);
     return NULL;
+  }
+  if (0 != tms)
+  {
+    GNUNET_break (CURLE_OK ==
+                  curl_easy_setopt (eh,
+                                    CURLOPT_TIMEOUT_MS,
+                                    (long) (tms + 100L)));
   }
   rgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

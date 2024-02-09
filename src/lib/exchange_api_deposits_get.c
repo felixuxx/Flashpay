@@ -272,6 +272,9 @@ TALER_EXCHANGE_deposits_get (
                 + sizeof (struct TALER_MerchantPublicKeyP)
                 + sizeof (struct TALER_PrivateContractHashP)
                 + sizeof (struct TALER_MerchantSignatureP)) * 2 + 48];
+  unsigned int tms
+    = (unsigned int) timeout.rel_value_us
+      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &merchant.eddsa_pub);
@@ -323,10 +326,8 @@ TALER_EXCHANGE_deposits_get (
       GNUNET_snprintf (
         timeout_str,
         sizeof (timeout_str),
-        "%llu",
-        (unsigned long long) (
-          timeout.rel_value_us
-          / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
+        "%u",
+        tms);
     }
 
     GNUNET_snprintf (arg_str,
@@ -337,7 +338,7 @@ TALER_EXCHANGE_deposits_get (
                      chash_str,
                      cpub_str,
                      msig_str,
-                     GNUNET_TIME_relative_is_zero (timeout)
+                     0 == tms
                      ? ""
                      : "&timeout_ms=",
                      timeout_str);
@@ -364,6 +365,13 @@ TALER_EXCHANGE_deposits_get (
     GNUNET_free (dwh->url);
     GNUNET_free (dwh);
     return NULL;
+  }
+  if (0 != tms)
+  {
+    GNUNET_break (CURLE_OK ==
+                  curl_easy_setopt (eh,
+                                    CURLOPT_TIMEOUT_MS,
+                                    (long) (tms + 100L)));
   }
   dwh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

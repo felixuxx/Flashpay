@@ -217,6 +217,9 @@ TALER_EXCHANGE_purse_get (
   struct TALER_EXCHANGE_PurseGetHandle *pgh;
   CURL *eh;
   char arg_str[sizeof (*purse_pub) * 2 + 64];
+  unsigned int tms
+    = (unsigned int) timeout.rel_value_us
+      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
 
   pgh = GNUNET_new (struct TALER_EXCHANGE_PurseGetHandle);
   pgh->cb = cb;
@@ -233,11 +236,9 @@ TALER_EXCHANGE_purse_get (
     *end = '\0';
     GNUNET_snprintf (timeout_str,
                      sizeof (timeout_str),
-                     "%llu",
-                     (unsigned long long)
-                     (timeout.rel_value_us
-                      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
-    if (GNUNET_TIME_relative_is_zero (timeout))
+                     "%u",
+                     tms);
+    if (0 == tms)
       GNUNET_snprintf (arg_str,
                        sizeof (arg_str),
                        "purses/%s/%s",
@@ -266,6 +267,13 @@ TALER_EXCHANGE_purse_get (
     GNUNET_free (pgh->url);
     GNUNET_free (pgh);
     return NULL;
+  }
+  if (0 != tms)
+  {
+    GNUNET_break (CURLE_OK ==
+                  curl_easy_setopt (eh,
+                                    CURLOPT_TIMEOUT_MS,
+                                    (long) (tms + 100L)));
   }
   pgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
