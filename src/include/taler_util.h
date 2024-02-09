@@ -36,7 +36,7 @@
  * Version of the Taler API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_API_VERSION 0x00090400
+#define TALER_API_VERSION 0x00090401
 
 /**
  * Stringify operator.
