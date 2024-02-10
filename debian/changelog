@@ -1,3 +1,9 @@
+taler-exchange (0.9.4-1) unstable; urgency=low
+
+  * Actual v0.9.4 release.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Sat, 10 Feb 2024 03:50:12 +0200
+
 taler-exchange (0.9.4) unstable; urgency=low
 
   * Preparations for v0.9.4 release.
