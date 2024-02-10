@@ -347,7 +347,7 @@ then
              -a wget-bank-check.log \
              -o /dev/null \
              -O /dev/null \
-             "$BANK_URL/config" || continue
+             "${BANK_URL}config" || continue
         OK="1"
         break
     done
