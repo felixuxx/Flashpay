@@ -1,0 +1,15 @@
+<html>
+<head>
+<title>404: KYC request target unknown</title>
+</head>
+<body>
+We could not identify the KYC operation requested.
+<pre>
+<!-- Taler error code --> {{ code }}:
+<!-- GANA EC hint --> {{ hint }}
+</pre>
+<p>
+<!-- optional human-readable message --> {{ message }}
+</p>
+</body>
+</html>

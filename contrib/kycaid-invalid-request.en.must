@@ -1,0 +1,12 @@
+<html>
+<head>
+<title>400: Invalid endpoint for KYCaid</title>
+</head>
+<body>
+This endpoint is not defined for the KYCaid plugin.
+<pre>
+<!-- Taler error code --> {{ code }}:
+<!-- GANA string for EC --> {{ hint }}
+</pre>
+</body>
+</html>

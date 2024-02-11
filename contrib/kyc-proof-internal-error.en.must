@@ -1,0 +1,16 @@
+<html>
+<head>
+<title>500: Internal server error</title>
+</head>
+<body>
+  The server experienced an internal error handling
+  the request.
+<pre>
+<!-- Taler error code --> {{ code }}:
+<!-- GANA EC hint --> {{ hint }}
+</pre>
+<p>
+<!-- optional human-readable message --> {{ message }}
+</p>
+</body>
+</html>

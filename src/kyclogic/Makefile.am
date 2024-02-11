@@ -19,7 +19,7 @@ bin_SCRIPTS = \
   taler-exchange-kyc-persona-converter.sh \
   taler-exchange-kyc-oauth2-test-converter.sh \
   taler-exchange-kyc-oauth2-challenger.sh \
-  taler-exchange-kyc-oauth2-nda.sh 
+  taler-exchange-kyc-oauth2-nda.sh
 
 EXTRA_DIST = \
   $(pkgcfg_DATA) \
@@ -106,6 +106,7 @@ libtaler_plugin_kyclogic_kycaid_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_kycaid_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/templating/libtalertemplating.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \

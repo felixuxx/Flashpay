@@ -1,0 +1,15 @@
+<html>
+<head>
+<title>404: Endpoint unknown</title>
+</head>
+<body>
+The given URL does not match any supported endpoint.
+<pre>
+<!-- Taler error code --> {{ code }}:
+<!-- GANA EC hint --> {{ hint }}
+</pre>
+<p>
+<!-- optional human-readable message --> {{ message }}
+</p>
+</body>
+</html>

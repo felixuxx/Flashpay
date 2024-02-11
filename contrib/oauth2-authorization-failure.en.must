@@ -1,0 +1,12 @@
+<html>
+<head>
+<title>403: KYC server refused access</title>
+</head>
+<body>
+The KYC backend refused the authorization code used by the exchange operator. Please inform the exchange operator about this failure.
+<pre>
+<!-- as provided by OAuth2.0 server --> {{ error }}:
+<!-- as provided by OAuth2.0 server --> {{ error_description }}
+</pre>
+</body>
+</html>

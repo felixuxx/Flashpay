@@ -1,0 +1,15 @@
+<html>
+<head>
+<title>400: Malformed client request</title>
+</head>
+<body>
+The client's request was malformed.
+<pre>
+<!-- Taler error code --> {{ code }}:
+<!-- GANA EC hint --> {{ hint }}
+</pre>
+<p>
+<!-- optional human-readable message --> {{ message }}
+</p>
+</body>
+</html>

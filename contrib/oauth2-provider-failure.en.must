@@ -1,0 +1,22 @@
+<html>
+<head>
+<title>502: KYC provider had an internal error</title>
+</head>
+<body>
+The KYC OAuth2 backend had an internal error.
+<pre>
+<!-- taler error code --> {{ code }}:
+<!-- GANA hint for EC --> {{ hint }}
+</pre>
+<p>
+  <!-- human readable message with more specifics -->
+  {{ message }}
+</p>
+<pre>
+  <!-- true if we are in debug mode --> {{ debug }}
+  <!-- optional: full response from OAuth provider;
+       may contain private information! -->
+  {{ server_response }}
+</p>
+</body>
+</html>

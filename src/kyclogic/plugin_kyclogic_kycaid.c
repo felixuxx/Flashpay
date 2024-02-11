@@ -1,6 +1,6 @@
 /*
   This file is part of GNU Taler
-  Copyright (C) 2022, 2023 Taler Systems SA
+  Copyright (C) 2022--2024 Taler Systems SA
 
   Taler is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_curl_lib.h"
 #include "taler_json_lib.h"
+#include "taler_templating_lib.h"
 #include <regex.h>
 #include "taler_util.h"
 
@@ -669,16 +670,30 @@ proof_reply (void *cls)
 {
   struct TALER_KYCLOGIC_ProofHandle *ph = cls;
   struct MHD_Response *resp;
+  enum GNUNET_GenericReturnValue ret;
+  json_t *body;
+  unsigned int http_status;
 
-  resp = TALER_MHD_make_error (TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                               "there is no '/kyc-proof' for kycaid");
+  http_status = MHD_HTTP_BAD_REQUEST;
+  body = GNUNET_JSON_PACK (
+    TALER_JSON_pack_ec (TALER_EC_GENERIC_ENDPOINT_UNKNOWN));
+  GNUNET_assert (NULL != body);
+  ret = TALER_TEMPLATING_build (ph->connection,
+                                &http_status,
+                                "kycaid-invalid-request",
+                                NULL,
+                                NULL,
+                                body,
+                                &resp);
+  json_decref (body);
+  GNUNET_break (GNUNET_SYSERR != ret);
   ph->cb (ph->cb_cls,
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
           NULL, /* user id */
           NULL, /* provider legi ID */
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
           NULL, /* attributes */
-          MHD_HTTP_BAD_REQUEST,
+          http_status,
           resp);
 }
 

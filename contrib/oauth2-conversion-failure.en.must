@@ -1,0 +1,28 @@
+<html>
+<head>
+<title>502: Failed to convert KYC data into internal format</title>
+</head>
+<body>
+  The KYC backend returned a response which we then failed
+  to convert into our internal format.
+<pre>
+<!-- Taler Error code --> {{ code }}:
+<!-- Taler EC hint --> {{ hint }}
+</pre>
+<p>
+  <!-- human-readable message --> {{ message}}
+</p>
+<p>
+  Converter command used was: &quot;{{ converter }}&quot;
+</p>
+<p>
+  Converter JSON output:
+<pre>
+  <!-- true if we are in debug mode --> {{ debug }}
+  <!-- optional: attributes returned by script
+       (note: may contain user's private information) --> {{ attributes }}
+</pre>
+</p>
+</pre>
+</body>
+</html>

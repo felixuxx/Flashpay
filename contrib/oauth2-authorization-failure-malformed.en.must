@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>502: OAuth 2.0 service returned malformed response</title>
+</head>
+<body>
+  The KYC backend returned an authorization failure,
+  but additionally provided a malformed error response.
+  <pre>
+<!-- Should we output potentially sensitive data? --> {{ debug }}
+<!-- Optional: server response --> {{ server_response }}
+</pre>
+</body>
+</html>

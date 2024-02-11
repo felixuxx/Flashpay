@@ -1,6 +1,6 @@
 /*
   This file is part of GNU Taler
-  Copyright (C) 2022-2023 Taler Systems SA
+  Copyright (C) 2022-2024 Taler Systems SA
 
   Taler is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -123,6 +123,12 @@ struct TALER_KYCLOGIC_ProviderDetails
    */
   struct GNUNET_TIME_Relative validity;
 
+  /**
+   * Set to true if we are operating in DEBUG
+   * mode and may return private details in HTML
+   * responses to make diagnostics easier.
+   */
+  bool debug_mode;
 };
 
 
@@ -516,6 +522,11 @@ oauth2_load_configuration (void *cls,
     oauth2_unload_configuration (pd);
     return NULL;
   }
+  if (GNUNET_OK ==
+      GNUNET_CONFIGURATION_get_value_yesno (ps->cfg,
+                                            provider_section_name,
+                                            "KYC_OAUTH2_DEBUG_MODE"))
+    pd->debug_mode = true;
 
   return pd;
 }
@@ -859,18 +870,18 @@ static void
 handle_proof_error (struct TALER_KYCLOGIC_ProofHandle *ph,
                     const json_t *j)
 {
-  const char *msg;
-  const char *desc;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("error",
-                             &msg),
-    GNUNET_JSON_spec_string ("error_description",
-                             &desc),
-    GNUNET_JSON_spec_end ()
-  };
+  enum GNUNET_GenericReturnValue res;
 
   {
-    enum GNUNET_GenericReturnValue res;
+    const char *msg;
+    const char *desc;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_string ("error",
+                               &msg),
+      GNUNET_JSON_spec_string ("error_description",
+                               &desc),
+      GNUNET_JSON_spec_end ()
+    };
     const char *emsg;
     unsigned int line;
 
@@ -878,40 +889,48 @@ handle_proof_error (struct TALER_KYCLOGIC_ProofHandle *ph,
                              spec,
                              &emsg,
                              &line);
-    if (GNUNET_OK != res)
-    {
-      GNUNET_break_op (0);
-      ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-      ph->response
-        = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway: proof error");
-      ph->http_status
-        = MHD_HTTP_BAD_GATEWAY;
-      return;
-    }
   }
-  /* case TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_AUTHORZATION_FAILED,
-     we MAY want to in the future look at the requested content type
-     and possibly respond in JSON if indicated. */
-  {
-    char *reply;
 
-    GNUNET_asprintf (&reply,
-                     "<html><head><title>%s</title></head><body><h1>%s</h1><p>%s</p></body></html>",
-                     msg,
-                     msg,
-                     desc);
-    ph->status = TALER_KYCLOGIC_STATUS_USER_ABORTED;
-    ph->response
-      = MHD_create_response_from_buffer (strlen (reply),
-                                         reply,
-                                         MHD_RESPMEM_MUST_COPY);
-    GNUNET_assert (NULL != ph->response);
-    GNUNET_free (reply);
+  if (GNUNET_OK != res)
+  {
+    json_t *body;
+
+    GNUNET_break_op (0);
+    ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
+    ph->http_status
+      = MHD_HTTP_BAD_GATEWAY;
+    body = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("server_response",
+                                        (json_t *) j)),
+      GNUNET_JSON_pack_bool ("debug",
+                             ph->pd->debug_mode),
+      TALER_JSON_pack_ec (
+        TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+    GNUNET_assert (NULL != body);
+    GNUNET_break (
+      GNUNET_SYSERR !=
+      TALER_TEMPLATING_build (ph->connection,
+                              &ph->http_status,
+                              "oauth2-authorization-failure-malformed",
+                              NULL,
+                              NULL,
+                              body,
+                              &ph->response));
+    json_decref (body);
+    return;
   }
   ph->status = TALER_KYCLOGIC_STATUS_USER_ABORTED;
   ph->http_status = MHD_HTTP_FORBIDDEN;
+  GNUNET_break (
+    GNUNET_SYSERR !=
+    TALER_TEMPLATING_build (ph->connection,
+                            &ph->http_status,
+                            "oauth2-authorization-failure",
+                            NULL,
+                            NULL,
+                            j,
+                            &ph->response));
 }
 
 
@@ -930,19 +949,48 @@ converted_proof_cb (void *cls,
                     const json_t *attr)
 {
   struct TALER_KYCLOGIC_ProofHandle *ph = cls;
+  const struct TALER_KYCLOGIC_ProviderDetails *pd = ph->pd;
 
   ph->ec = NULL;
   if ( (NULL == attr) ||
        (0 != code) )
   {
+    json_t *body;
+    char *msg;
+
     GNUNET_break_op (0);
     ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-    ph->response
-      = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "Unexpected response from KYC gateway: proof success must contain data and status");
-    ph->http_status
-      = MHD_HTTP_BAD_GATEWAY;
+    ph->http_status = MHD_HTTP_BAD_GATEWAY;
+    if (0 != code)
+      GNUNET_asprintf (&msg,
+                       "Attribute converter exited with status %ld",
+                       code);
+    else
+      msg = GNUNET_strdup (
+        "Attribute converter response was not in JSON format");
+    body = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("converter",
+                               pd->conversion_binary),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("attributes",
+                                        (json_t *) attr)),
+      GNUNET_JSON_pack_bool ("debug",
+                             ph->pd->debug_mode),
+      GNUNET_JSON_pack_string ("message",
+                               msg),
+      TALER_JSON_pack_ec (
+        TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+    GNUNET_free (msg);
+    GNUNET_break (
+      GNUNET_SYSERR !=
+      TALER_TEMPLATING_build (ph->connection,
+                              &ph->http_status,
+                              "oauth2-conversion-failure",
+                              NULL,
+                              NULL,
+                              body,
+                              &ph->response));
+    json_decref (body);
     ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
                                          ph);
     return;
@@ -965,17 +1013,34 @@ converted_proof_cb (void *cls,
                              &line);
     if (GNUNET_OK != res)
     {
+      json_t *body;
+
       GNUNET_break_op (0);
-      json_dumpf (attr,
-                  stderr,
-                  JSON_INDENT (2));
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-      ph->response
-        = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway: data must contain id");
-      ph->http_status
-        = MHD_HTTP_BAD_GATEWAY;
+      ph->http_status = MHD_HTTP_BAD_GATEWAY;
+      body = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("converter",
+                                 pd->conversion_binary),
+        GNUNET_JSON_pack_string ("message",
+                                 "Unexpected response from KYC attribute converter: returned JSON data must contain 'id' field"),
+        GNUNET_JSON_pack_bool ("debug",
+                               ph->pd->debug_mode),
+        GNUNET_JSON_pack_object_incref ("attributes",
+                                        (json_t *) attr),
+        TALER_JSON_pack_ec (
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+      GNUNET_break (
+        GNUNET_SYSERR !=
+        TALER_TEMPLATING_build (ph->connection,
+                                &ph->http_status,
+                                "oauth2-conversion-failure",
+                                NULL,
+                                NULL,
+                                body,
+                                &ph->response));
+      json_decref (body);
+      ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
+                                           ph);
       return;
     }
     ph->provider_user_id = GNUNET_strdup (id);
@@ -1023,20 +1088,38 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     pd->conversion_binary,
     pd->conversion_binary,
     NULL);
-  if (NULL == ph->ec)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to start KYCAID conversion helper `%s'\n",
-                pd->conversion_binary);
-    ph->status = TALER_KYCLOGIC_STATUS_INTERNAL_ERROR;
-    ph->response
-      = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_GENERIC_KYC_CONVERTER_FAILED,
-          "Failed to launch KYC conversion helper");
-    ph->http_status
-      = MHD_HTTP_INTERNAL_SERVER_ERROR;
+  if (NULL != ph->ec)
     return;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Failed to start KYCAID conversion helper `%s'\n",
+              pd->conversion_binary);
+  ph->status = TALER_KYCLOGIC_STATUS_INTERNAL_ERROR;
+  ph->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+  {
+    json_t *body;
+
+    body = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("converter",
+                               pd->conversion_binary),
+      GNUNET_JSON_pack_bool ("debug",
+                             ph->pd->debug_mode),
+      GNUNET_JSON_pack_string ("message",
+                               "Failed to launch KYC conversion helper process."),
+      TALER_JSON_pack_ec (
+        TALER_EC_EXCHANGE_GENERIC_KYC_CONVERTER_FAILED));
+    GNUNET_break (
+      GNUNET_SYSERR !=
+      TALER_TEMPLATING_build (ph->connection,
+                              &ph->http_status,
+                              "oauth2-conversion-failure",
+                              NULL,
+                              NULL,
+                              body,
+                              &ph->response));
+    json_decref (body);
   }
+  ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
+                                       ph);
 }
 
 
@@ -1061,13 +1144,30 @@ handle_curl_proof_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-    ph->response
-      = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "No response from KYC gateway");
-    ph->http_status
-      = MHD_HTTP_BAD_GATEWAY;
+    {
+      json_t *body;
+
+      ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
+      ph->http_status = MHD_HTTP_BAD_GATEWAY;
+
+      body = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("message",
+                                 "No response from KYC gateway"),
+        GNUNET_JSON_pack_bool ("debug",
+                               ph->pd->debug_mode),
+        TALER_JSON_pack_ec (
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+      GNUNET_break (
+        GNUNET_SYSERR !=
+        TALER_TEMPLATING_build (ph->connection,
+                                &ph->http_status,
+                                "oauth2-provider-failure",
+                                NULL,
+                                NULL,
+                                body,
+                                &ph->response));
+      json_decref (body);
+    }
     break;
   case MHD_HTTP_OK:
     parse_proof_success_reply (ph,
@@ -1121,13 +1221,11 @@ handle_curl_login_finished (void *cls,
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_uint64 ("expires_in",
                                    &expires_in_s),
-          &no_expires
-          ),
+          &no_expires),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("refresh_token",
                                    &refresh_token),
-          &no_refresh
-          ),
+          &no_refresh),
         GNUNET_JSON_spec_end ()
       };
       CURL *eh;
@@ -1143,26 +1241,59 @@ handle_curl_login_finished (void *cls,
                                  &line);
         if (GNUNET_OK != res)
         {
+          json_t *body;
+
           GNUNET_break_op (0);
-          ph->response
-            = TALER_MHD_make_error (
-                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-                "Unexpected response from KYC gateway: login finished");
           ph->http_status
             = MHD_HTTP_BAD_GATEWAY;
+          body = GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_object_incref ("server_response",
+                                            (json_t *) j),
+            GNUNET_JSON_pack_bool ("debug",
+                                   ph->pd->debug_mode),
+            GNUNET_JSON_pack_string ("message",
+                                     "Unexpected response from KYC gateway: required fields missing or malformed"),
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+          GNUNET_break (
+            GNUNET_SYSERR !=
+            TALER_TEMPLATING_build (ph->connection,
+                                    &ph->http_status,
+                                    "oauth2-provider-failure",
+                                    NULL,
+                                    NULL,
+                                    body,
+                                    &ph->response));
+          json_decref (body);
           break;
         }
       }
       if (0 != strcasecmp (token_type,
                            "bearer"))
       {
+        json_t *body;
+
         GNUNET_break_op (0);
-        ph->response
-          = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-              "Unexpected token type in response from KYC gateway");
-        ph->http_status
-          = MHD_HTTP_BAD_GATEWAY;
+        ph->http_status = MHD_HTTP_BAD_GATEWAY;
+        body = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_object_incref ("server_response",
+                                          (json_t *) j),
+          GNUNET_JSON_pack_bool ("debug",
+                                 ph->pd->debug_mode),
+          GNUNET_JSON_pack_string ("message",
+                                   "Unexpected 'token_type' in response from KYC gateway: 'bearer' token required"),
+          TALER_JSON_pack_ec (
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+        GNUNET_break (
+          GNUNET_SYSERR !=
+          TALER_TEMPLATING_build (ph->connection,
+                                  &ph->http_status,
+                                  "oauth2-provider-failure",
+                                  NULL,
+                                  NULL,
+                                  body,
+                                  &ph->response));
+        json_decref (body);
         break;
       }
 
@@ -1177,28 +1308,34 @@ handle_curl_login_finished (void *cls,
            (NULL != strchr (access_token,
                             ';')) )
       {
+        json_t *body;
+
         GNUNET_break_op (0);
-        ph->response
-          = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-              "Illegal character in access token");
-        ph->http_status
-          = MHD_HTTP_BAD_GATEWAY;
+        ph->http_status = MHD_HTTP_BAD_GATEWAY;
+        body = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_object_incref ("server_response",
+                                          (json_t *) j),
+          GNUNET_JSON_pack_bool ("debug",
+                                 ph->pd->debug_mode),
+          GNUNET_JSON_pack_string ("message",
+                                   "Illegal character in access token"),
+          TALER_JSON_pack_ec (
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
+        GNUNET_break (
+          GNUNET_SYSERR !=
+          TALER_TEMPLATING_build (ph->connection,
+                                  &ph->http_status,
+                                  "oauth2-provider-failure",
+                                  NULL,
+                                  NULL,
+                                  body,
+                                  &ph->response));
+        json_decref (body);
         break;
       }
 
       eh = curl_easy_init ();
-      if (NULL == eh)
-      {
-        GNUNET_break (0);
-        ph->response
-          = TALER_MHD_make_error (
-              TALER_EC_GENERIC_ALLOCATION_FAILURE,
-              "curl_easy_init");
-        ph->http_status
-          = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        break;
-      }
+      GNUNET_assert (NULL != eh);
       GNUNET_assert (CURLE_OK ==
                      curl_easy_setopt (eh,
                                        CURLOPT_URL,
@@ -1289,30 +1426,35 @@ oauth2_proof (void *cls,
                                       "code");
   if (NULL == code)
   {
+    json_t *body;
+
     GNUNET_break_op (0);
     ph->status = TALER_KYCLOGIC_STATUS_USER_PENDING;
     ph->http_status = MHD_HTTP_BAD_REQUEST;
-    ph->response = TALER_MHD_make_error (
-      TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "code");
+    body = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_bool ("debug",
+                             ph->pd->debug_mode),
+      GNUNET_JSON_pack_string ("message",
+                               "'code' parameter malformed"),
+      TALER_JSON_pack_ec (
+        TALER_EC_GENERIC_PARAMETER_MALFORMED));
+    GNUNET_break (
+      GNUNET_SYSERR !=
+      TALER_TEMPLATING_build (ph->connection,
+                              &ph->http_status,
+                              "oauth2-bad-request",
+                              NULL,
+                              NULL,
+                              body,
+                              &ph->response));
+    json_decref (body);
     ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
                                          ph);
     return ph;
   }
 
   ph->eh = curl_easy_init ();
-  if (NULL == ph->eh)
-  {
-    GNUNET_break (0);
-    ph->status = TALER_KYCLOGIC_STATUS_USER_PENDING;
-    ph->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    ph->response = TALER_MHD_make_error (
-      TALER_EC_GENERIC_ALLOCATION_FAILURE,
-      "curl_easy_init");
-    ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
-                                         ph);
-    return ph;
-  }
+  GNUNET_assert (NULL != ph->eh);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting OAuth 2.0 data via HTTP POST `%s'\n",
               pd->token_url);
