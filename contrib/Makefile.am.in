@@ -11,11 +11,11 @@ dist_tmplpkgdata_DATA = \
   kyc-proof-internal-error.en.must \
   kyc-proof-logic-failure.en.must \
   kyc-proof-target-unknown.en.must \
-  oauth-authorization-failure.en.must \
-  oauth-authorization-failure-malformed.en.must \
-  oauth-bad-request.en.must \
-  oauth-conversion-failure.en.must \
-  oauth-provider-failure.en.must \
+  oauth2-authorization-failure.en.must \
+  oauth2-authorization-failure-malformed.en.must \
+  oauth2-bad-request.en.must \
+  oauth2-conversion-failure.en.must \
+  oauth2-provider-failure.en.must \
   persona-exchange-unauthorized.en.must \
   persona-load-failure.en.must \
   persona-exchange-unpaid.en.must \
