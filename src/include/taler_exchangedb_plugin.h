@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -7185,6 +7185,26 @@ struct TALER_EXCHANGEDB_Plugin
     bool *invalid_officer,
     struct GNUNET_TIME_Timestamp *last_date);
 
+
+  /**
+   * Update KYC process status to finished (and failed).
+   *
+   * @param cls closure
+   * @param process_row KYC process row to update
+   * @param h_payto account for which the attribute data is stored
+   * @param provider_section provider that must be checked
+   * @param provider_account_id provider account ID
+   * @param provider_legitimization_id provider legitimization ID
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_kyc_failure)(
+    void *cls,
+    uint64_t process_row,
+    const struct TALER_PaytoHashP *h_payto,
+    const char *provider_section,
+    const char *provider_account_id,
+    const char *provider_legitimization_id);
 
 };
 

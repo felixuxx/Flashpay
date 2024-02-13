@@ -221,22 +221,47 @@ webhook_finished_cb (
       kwh);
     if (NULL == kwh->kat)
     {
-      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
       if (NULL != response)
         MHD_destroy_response (response);
+      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
       response = TALER_MHD_make_error (
         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
         "[exchange] AML_KYC_TRIGGER");
       break;
     }
     return;
+  case TALER_KYCLOGIC_STATUS_FAILED:
+  case TALER_KYCLOGIC_STATUS_PROVIDER_FAILED:
+  case TALER_KYCLOGIC_STATUS_USER_ABORTED:
+  case TALER_KYCLOGIC_STATUS_ABORTED:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC process %s/%s (Row #%llu) failed: %d\n",
+                provider_user_id,
+                provider_legitimization_id,
+                (unsigned long long) process_row,
+                status);
+    if (! TEH_kyc_failed (process_row,
+                          account_id,
+                          provider_section,
+                          provider_user_id,
+                          provider_legitimization_id))
+    {
+      GNUNET_break (0);
+      if (NULL != response)
+        MHD_destroy_response (response);
+      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      response = TALER_MHD_make_error (
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "insert_kyc_failure");
+    }
+    break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC status of %s/%s (Row #%llu) is %d\n",
                 provider_user_id,
                 provider_legitimization_id,
                 (unsigned long long) process_row,
-                status);
+                (int) status);
     break;
   }
   GNUNET_break (NULL == kwh->kat);

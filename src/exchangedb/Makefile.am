@@ -96,6 +96,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_purse_merge.h pg_select_purse_merge.c \
   pg_select_contract_by_purse.h pg_select_contract_by_purse.c \
   pg_insert_drain_profit.h pg_insert_drain_profit.c \
+  pg_insert_kyc_failure.h pg_insert_kyc_failure.c \
   pg_create_tables.h pg_create_tables.c \
   pg_event_listen.h pg_event_listen.c \
   pg_event_listen_cancel.h pg_event_listen_cancel.c \

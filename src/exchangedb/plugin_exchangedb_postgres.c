@@ -81,6 +81,7 @@
 #include "pg_get_drain_profit.h"
 #include "pg_get_purse_deposit.h"
 #include "pg_insert_contract.h"
+#include "pg_insert_kyc_failure.h"
 #include "pg_select_contract.h"
 #include "pg_select_purse_merge.h"
 #include "pg_select_contract_by_purse.h"
@@ -743,6 +744,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_begin_shard;
   plugin->abort_shard
     = &TEH_PG_abort_shard;
+  plugin->insert_kyc_failure
+    = &TEH_PG_insert_kyc_failure;
   plugin->complete_shard
     = &TEH_PG_complete_shard;
   plugin->release_revolving_shard

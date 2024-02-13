@@ -104,7 +104,8 @@ struct TEH_KycAmlTrigger
  *
  * @param cls closure of type `struct TEH_KycAmlTrigger *`
  * @param status_type how did the process die
- * @param code termination status code from the process
+ * @param code termination status code from the process,
+ *        non-zero if AML checks are required next
  * @param result some JSON result, NULL if we failed to get an JSON output
  */
 static void
@@ -277,4 +278,25 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
     kat->response = NULL;
   }
   GNUNET_free (kat);
+}
+
+
+bool
+TEH_kyc_failed (uint64_t process_row,
+                const struct TALER_PaytoHashP *account_id,
+                const char *provider_section,
+                const char *provider_user_id,
+                const char *provider_legitimization_id)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TEH_plugin->insert_kyc_failure (
+    TEH_plugin->cls,
+    process_row,
+    account_id,
+    provider_section,
+    provider_user_id,
+    provider_legitimization_id);
+  GNUNET_break (qs >= 0);
+  return qs >= 0;
 }

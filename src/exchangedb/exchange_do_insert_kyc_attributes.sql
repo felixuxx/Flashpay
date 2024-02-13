@@ -56,10 +56,11 @@ INSERT INTO exchange.kyc_attributes
   ,in_enc_attributes
   ,in_process_row);
 
-UPDATE exchange.legitimization_processes
+UPDATE legitimization_processes
   SET provider_user_id=in_provider_account_id
      ,provider_legitimization_id=in_provider_legitimization_id
      ,expiration_time=GREATEST(expiration_time,in_expiration_time)
+     ,finished=TRUE
  WHERE h_payto=in_h_payto
    AND legitimization_process_serial_id=in_process_row
    AND provider_section=in_provider_section;

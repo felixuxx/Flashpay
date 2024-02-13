@@ -220,8 +220,9 @@ proof_cb (
   kpc->ph = NULL;
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
-  if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
+  switch (status)
   {
+  case TALER_KYCLOGIC_STATUS_SUCCESS:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC process #%llu succeeded with KYC provider\n",
                 (unsigned long long) kpc->process_row);
@@ -246,6 +247,40 @@ proof_cb (
         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
         "[exchange] AML_KYC_TRIGGER");
     }
+    break;
+  case TALER_KYCLOGIC_STATUS_FAILED:
+  case TALER_KYCLOGIC_STATUS_PROVIDER_FAILED:
+  case TALER_KYCLOGIC_STATUS_USER_ABORTED:
+  case TALER_KYCLOGIC_STATUS_ABORTED:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC process %s/%s (Row #%llu) failed: %d\n",
+                provider_user_id,
+                provider_legitimization_id,
+                (unsigned long long) kpc->process_row,
+                status);
+    if (! TEH_kyc_failed (kpc->process_row,
+                          &kpc->h_payto,
+                          kpc->provider_section,
+                          provider_user_id,
+                          provider_legitimization_id))
+    {
+      GNUNET_break (0);
+      if (NULL != response)
+        MHD_destroy_response (response);
+      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      response = TALER_MHD_make_error (
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "insert_kyc_failure");
+    }
+    break;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC status of %s/%s (Row #%llu) is %d\n",
+                provider_user_id,
+                provider_legitimization_id,
+                (unsigned long long) kpc->process_row,
+                (int) status);
+    break;
   }
   if (NULL == kpc->kat)
   {
