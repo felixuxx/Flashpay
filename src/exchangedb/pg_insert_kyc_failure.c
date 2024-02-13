@@ -53,7 +53,7 @@ TEH_PG_insert_kyc_failure (
            "UPDATE legitimization_processes"
            " SET"
            "  finished=TRUE"
-           " ,provider_account_id=$4"
+           " ,provider_user_id=$4"
            " ,provider_legitimization_id=$5"
            " WHERE h_payto=$2"
            "   AND legitimization_process_serial_id=$1"
