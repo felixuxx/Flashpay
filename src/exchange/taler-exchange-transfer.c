@@ -427,6 +427,7 @@ wire_confirm_cb (void *cls,
     /* continued below */
     break;
   case MHD_HTTP_NOT_FOUND:
+  case MHD_HTTP_CONFLICT:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Wire transaction %llu failed: %u/%d\n",
                 (unsigned long long) wpd->row_id,
