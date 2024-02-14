@@ -1,0 +1,16 @@
+<html>
+<head>
+<title>403: Authentication by KYC server failed</title>
+</head>
+<body>
+  You failed the authentication check.
+  The transaction remains blocked.
+  Please obtain proper credentials and try again to proceed.
+<pre>
+<!-- as provided by OAuth2.0 server --> {{ error }}:
+<!-- optional, as provided by OAuth2.0 server --> {{ error_description }}
+
+<!-- optional link (render as link if present!), as provided by OAuth2.0 server --> {{ error_uri }}
+</pre>
+</body>
+</html>

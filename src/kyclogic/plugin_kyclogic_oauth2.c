@@ -1426,23 +1426,76 @@ oauth2_proof (void *cls,
                                       "code");
   if (NULL == code)
   {
+    const char *err;
+    const char *desc;
+    const char *euri;
     json_t *body;
 
-    GNUNET_break_op (0);
-    ph->status = TALER_KYCLOGIC_STATUS_USER_PENDING;
-    ph->http_status = MHD_HTTP_BAD_REQUEST;
+    err = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "error");
+    if (NULL == err)
+    {
+      GNUNET_break_op (0);
+      ph->status = TALER_KYCLOGIC_STATUS_USER_PENDING;
+      ph->http_status = MHD_HTTP_BAD_REQUEST;
+      body = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_bool ("debug",
+                               ph->pd->debug_mode),
+        GNUNET_JSON_pack_string ("message",
+                                 "'code' parameter malformed"),
+        TALER_JSON_pack_ec (
+          TALER_EC_GENERIC_PARAMETER_MALFORMED));
+      GNUNET_break (
+        GNUNET_SYSERR !=
+        TALER_TEMPLATING_build (ph->connection,
+                                &ph->http_status,
+                                "oauth2-bad-request",
+                                NULL,
+                                NULL,
+                                body,
+                                &ph->response));
+      json_decref (body);
+      ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
+                                           ph);
+      return ph;
+    }
+    desc = MHD_lookup_connection_value (connection,
+                                        MHD_GET_ARGUMENT_KIND,
+                                        "error_description");
+    euri = MHD_lookup_connection_value (connection,
+                                        MHD_GET_ARGUMENT_KIND,
+                                        "error_uri");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "OAuth2 process %llu failed with error `%s'\n",
+                (unsigned long long) process_row,
+                err);
+    if (0 == strcmp (err,
+                     "server_error"))
+      ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
+    else if (0 == strcmp (err,
+                          "unauthorized_client"))
+      ph->status = TALER_KYCLOGIC_STATUS_FAILED;
+    else if (0 == strcmp (err,
+                          "temporarily_unavailable"))
+      ph->status = TALER_KYCLOGIC_STATUS_PENDING;
+    else
+      ph->status = TALER_KYCLOGIC_STATUS_INTERNAL_ERROR;
+    ph->http_status = MHD_HTTP_FORBIDDEN;
     body = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_bool ("debug",
-                             ph->pd->debug_mode),
-      GNUNET_JSON_pack_string ("message",
-                               "'code' parameter malformed"),
-      TALER_JSON_pack_ec (
-        TALER_EC_GENERIC_PARAMETER_MALFORMED));
+      GNUNET_JSON_pack_string ("error",
+                               err),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("error_details",
+                                 desc)),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("error_uri",
+                                 euri)));
     GNUNET_break (
       GNUNET_SYSERR !=
       TALER_TEMPLATING_build (ph->connection,
                               &ph->http_status,
-                              "oauth2-bad-request",
+                              "oauth2-authentication-failure",
                               NULL,
                               NULL,
                               body,
@@ -1451,6 +1504,7 @@ oauth2_proof (void *cls,
     ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
                                          ph);
     return ph;
+
   }
 
   ph->eh = curl_easy_init ();
