@@ -35,7 +35,8 @@ BUILT_SOURCES = \
   procedures.sql
 
 CLEANFILES = \
-  exchange-0002.sql
+  exchange-0002.sql \
+  procedures.sql
 
 procedures.sql: procedures.sql.in exchange_do_*.sql
 	chmod +w $@ || true
