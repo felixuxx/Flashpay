@@ -216,14 +216,12 @@ AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION([0.19.8])
 
 
-# Save before checking libgnurl/libcurl
+# Save before checking libcurl
 CFLAGS_SAVE=$CFLAGS
 LDFLAGS_SAVE=$LDFLAGS
 LIBS_SAVE=$LIBS
 
-# check for libgnurl
-# libgnurl
-LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
+# check for libcurl
 LIBCURL_CHECK_CONFIG(,7.34.0,[curl=1],[curl=0])
 
 # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
@@ -234,22 +232,14 @@ AS_IF([test "x$curl" = x1],[
 ])
 
 
-# libcurl and libgnurl should be mutually exclusive
-AS_IF([test "$gnurl" = 1],
-      [AM_CONDITIONAL(HAVE_LIBGNURL, true)
-       AC_DEFINE([HAVE_LIBGNURL],[1],[Have libgnurl])
-       AM_CONDITIONAL(HAVE_LIBCURL, false)
-       AC_DEFINE([HAVE_LIBCURL],[0],[Lacking libcurl])
-       [LIBGNURLCURL_LIBS="-lgnurl"]],
-      [AS_IF([test "$curl" = 1],
-             [AM_CONDITIONAL(HAVE_LIBGNURL, false)
-              AC_DEFINE([HAVE_LIBGNURL],[0],[Lacking libgnurl])
-              AM_CONDITIONAL(HAVE_LIBCURL, true)
-              AC_DEFINE([HAVE_LIBCURL],[1],[Have libcurl])
-              [LIBGNURLCURL_LIBS="-lcurl"]],
-             [AC_MSG_ERROR([FATAL: No libgnurl/libcurl])])])
+# libcurl should be mutually exclusive
+AS_IF([test "$curl" = 1],
+      AM_CONDITIONAL(HAVE_LIBCURL, true)
+      AC_DEFINE([HAVE_LIBCURL],[1],[Have libcurl])
+      [LIBCURL_LIBS="-lcurl"],
+      [AC_MSG_ERROR([FATAL: No libcurl])])
 
-AC_SUBST([LIBGNURLCURL_LIBS])
+AC_SUBST([LIBCURL_LIBS])
 
 # Check for GNUnet's libgnunetcurl.
 libgnunetcurl=0
@@ -270,12 +260,12 @@ AS_IF([test $libgnunetcurl != 1],
   [AC_MSG_ERROR([[
 ***
 *** You need libgnunetcurl to build this program.
-*** Make sure you have libcurl or libgnurl installed while
+*** Make sure you have libcurl installed while
 *** building GNUnet.
 *** ]])])
 
 
-# Restore after gnurl/curl checks messed up these values
+# Restore after curl checks messed up these values
 CFLAGS=$CFLAGS_SAVE
 LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
@@ -502,7 +492,6 @@ AM_CONDITIONAL([MHD_HAVE_EPOLL], [false])
 AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
 AM_CONDITIONAL([HAVE_SQLITE], [false])
 AM_CONDITIONAL([HAVE_LIBCURL], [false])
-AM_CONDITIONAL([HAVE_LIBGNURL], [false])
 AM_CONDITIONAL([HAVE_DEVELOPER], [false])
 AM_CONDITIONAL([USE_COVERAGE], [false])
 AM_CONDITIONAL([ENABLE_DOC], [true])
