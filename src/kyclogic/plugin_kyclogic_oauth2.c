@@ -1153,8 +1153,6 @@ handle_curl_proof_finished (void *cls,
       body = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_string ("message",
                                  "No response from KYC gateway"),
-        GNUNET_JSON_pack_bool ("debug",
-                               ph->pd->debug_mode),
         TALER_JSON_pack_ec (
           TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE));
       GNUNET_break (
@@ -1440,8 +1438,6 @@ oauth2_proof (void *cls,
       ph->status = TALER_KYCLOGIC_STATUS_USER_PENDING;
       ph->http_status = MHD_HTTP_BAD_REQUEST;
       body = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_bool ("debug",
-                               ph->pd->debug_mode),
         GNUNET_JSON_pack_string ("message",
                                  "'code' parameter malformed"),
         TALER_JSON_pack_ec (

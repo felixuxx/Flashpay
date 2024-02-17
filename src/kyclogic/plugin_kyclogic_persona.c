@@ -1309,7 +1309,7 @@ handle_proof_finished (void *cls,
     proof_reply_error (
       ph,
       ph->inquiry_id,
-      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      MHD_HTTP_BAD_GATEWAY,
       "persona-exchange-unauthorized",
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_uint64 ("persona_http_status",
@@ -1329,7 +1329,7 @@ handle_proof_finished (void *cls,
     proof_reply_error (
       ph,
       ph->inquiry_id,
-      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      MHD_HTTP_SERVICE_UNAVAILABLE,
       "persona-exchange-unpaid",
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_uint64 ("persona_http_status",
@@ -1428,8 +1428,6 @@ handle_proof_finished (void *cls,
                                  response_code),
         TALER_JSON_pack_ec (
           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
-        GNUNET_JSON_pack_string ("detail",
-                                 "data-relationships-account-data-id"),
         GNUNET_JSON_pack_allow_null (
           GNUNET_JSON_pack_object_incref ("data",
                                           (json_t *)
