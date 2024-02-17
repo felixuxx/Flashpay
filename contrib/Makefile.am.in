@@ -9,7 +9,6 @@ dist_tmplpkgdata_DATA = \
   kyc-proof-bad-request.en.must \
   kyc-proof-endpoint-unknown.en.must \
   kyc-proof-internal-error.en.must \
-  kyc-proof-logic-failure.en.must \
   kyc-proof-target-unknown.en.must \
   oauth2-authentication-failure.en.must \
   oauth2-authorization-failure.en.must \
