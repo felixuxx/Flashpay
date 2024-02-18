@@ -443,7 +443,7 @@ TEH_handler_kyc_proof (
         return respond_html_ec (rc,
                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
                                 "kyc-proof-internal-error",
-                                TALER_EC_GENERIC_DB_STORE_FAILED,
+                                TALER_EC_GENERIC_DB_FETCH_FAILED,
                                 "lookup_kyc_process_by_account");
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
         return respond_html_ec (rc,
