@@ -207,6 +207,10 @@ echo -n "Testing for jq"
 jq -h > /dev/null || exit_skip " jq required"
 echo " FOUND"
 
+echo -n "Testing for wget"
+wget --help > /dev/null || exit_skip " wget required"
+echo " FOUND"
+
 if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Testing for Taler exchange"
