@@ -24,6 +24,8 @@
 #include "taler_pq_lib.h"
 #include "pg_insert_kyc_failure.h"
 #include "pg_helper.h"
+#include "pg_event_notify.h"
+
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_failure (
@@ -47,6 +49,7 @@ TEH_PG_insert_kyc_failure (
     : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
            "insert_kyc_failure",
@@ -58,7 +61,22 @@ TEH_PG_insert_kyc_failure (
            " WHERE h_payto=$2"
            "   AND legitimization_process_serial_id=$1"
            "   AND provider_section=$3;");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_kyc_failure",
-                                             params);
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                           "insert_kyc_failure",
+                                           params);
+  if (qs > 0)
+  {
+    /* FIXME: might want to do this eventually in the same transaction... */
+    struct TALER_KycCompletedEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+      .h_payto = *h_payto
+    };
+
+    TEH_PG_event_notify (pg,
+                         &rep.header,
+                         NULL,
+                         0);
+  }
+  return qs;
 }
