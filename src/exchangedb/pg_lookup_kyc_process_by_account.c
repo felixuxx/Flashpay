@@ -60,7 +60,6 @@ TEH_PG_lookup_kyc_process_by_account (
 
   *provider_account_id = NULL;
   *provider_legitimization_id = NULL;
-  /* Used in #postgres_lookup_kyc_process_by_account() */
   PREPARE (pg,
            "lookup_process_by_account",
            "SELECT "
@@ -70,7 +69,10 @@ TEH_PG_lookup_kyc_process_by_account (
            ",provider_legitimization_id"
            " FROM legitimization_processes"
            " WHERE h_payto=$1"
-           "   AND provider_section=$2;");
+           "   AND provider_section=$2"
+           "   AND NOT finished"
+           " ORDER BY expiration_time DESC"
+           " LIMIT 1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_process_by_account",
