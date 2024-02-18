@@ -71,6 +71,8 @@ TEH_PG_lookup_kyc_process_by_account (
            " WHERE h_payto=$1"
            "   AND provider_section=$2"
            "   AND NOT finished"
+           /* Note: there *should* only be one unfinished
+              match, so this is just to be safe(r): */
            " ORDER BY expiration_time DESC"
            " LIMIT 1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
