@@ -222,25 +222,6 @@ TALER_url_join (const char *base_url,
                 "Empty base URL specified\n");
     return NULL;
   }
-  if (NULL != strchr (base_url,
-                      '?'))
-  {
-    /* query parameters not supported */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Query parameters not allowed in base URL `%s'\n",
-                base_url);
-    return NULL;
-  }
-  if (NULL != strchr (path,
-                      '?'))
-  {
-    /* query parameters not supported */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Query parameters not allowed in path `%s'\n",
-                path);
-    return NULL;
-  }
-
   if ('\0' != path[0])
   {
     if ('/' != base_url[strlen (base_url) - 1])
