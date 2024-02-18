@@ -188,6 +188,79 @@ proof_finish (
 
 
 /**
+ * Generate HTML error for @a connection using @a template.
+ *
+ * @param connection HTTP client connection
+ * @param template template to expand
+ * @param[in,out] http_status HTTP status of the response
+ * @param ec Taler error code to return
+ * @param message extended message to return
+ * @return MHD response object
+ */
+struct MHD_Response *
+make_html_error (struct MHD_Connection *connection,
+                 const char *template,
+                 unsigned int *http_status,
+                 enum TALER_ErrorCode ec,
+                 const char *message)
+{
+  struct MHD_Response *response = NULL;
+  json_t *body;
+
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("message",
+                               message)),
+    TALER_JSON_pack_ec (
+      ec));
+  GNUNET_break (
+    GNUNET_SYSERR !=
+    TALER_TEMPLATING_build (connection,
+                            http_status,
+                            template,
+                            NULL,
+                            NULL,
+                            body,
+                            &response));
+  json_decref (body);
+  return response;
+}
+
+
+/**
+ * Respond with an HTML message on the given @a rc.
+ *
+ * @param[in,out] rc request to respond to
+ * @param http_status HTTP status code to use
+ * @param template template to fill in
+ * @param ec error code to use for the template
+ * @param message additional message to return
+ * @return MHD result code
+ */
+static MHD_RESULT
+respond_html_ec (struct TEH_RequestContext *rc,
+                 unsigned int http_status,
+                 const char *template,
+                 enum TALER_ErrorCode ec,
+                 const char *message)
+{
+  struct MHD_Response *response;
+  MHD_RESULT res;
+
+  response = make_html_error (rc->connection,
+                              template,
+                              &http_status,
+                              ec,
+                              message);
+  res = MHD_queue_response (rc->connection,
+                            http_status,
+                            response);
+  MHD_destroy_response (response);
+  return res;
+}
+
+
+/**
  * Function called with the result of a proof check operation.
  *
  * Note that the "decref" for the @a response
@@ -243,9 +316,11 @@ proof_cb (
       http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
       if (NULL != response)
         MHD_destroy_response (response);
-      response = TALER_MHD_make_error (
-        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-        "[exchange] AML_KYC_TRIGGER");
+      response = make_html_error (kpc->rc->connection,
+                                  "kyc-proof-internal-error",
+                                  &http_status,
+                                  TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+                                  "[exchange] AML_KYC_TRIGGER");
     }
     break;
   case TALER_KYCLOGIC_STATUS_FAILED:
@@ -258,19 +333,42 @@ proof_cb (
                 provider_legitimization_id,
                 (unsigned long long) kpc->process_row,
                 status);
-    if (! TEH_kyc_failed (kpc->process_row,
-                          &kpc->h_payto,
-                          kpc->provider_section,
-                          provider_user_id,
-                          provider_legitimization_id))
+    if (5 == http_status / 100)
     {
-      GNUNET_break (0);
+      char *msg;
+
+      /* OAuth2 server had a problem, do NOT log this as a KYC failure */
       if (NULL != response)
         MHD_destroy_response (response);
-      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      response = TALER_MHD_make_error (
-        TALER_EC_GENERIC_DB_STORE_FAILED,
-        "insert_kyc_failure");
+      GNUNET_asprintf (&msg,
+                       "Failure by KYC provider (HTTP status %u)\n",
+                       http_status);
+      http_status = MHD_HTTP_BAD_GATEWAY;
+      response = make_html_error (kpc->rc->connection,
+                                  "kyc-proof-internal-error",
+                                  &http_status,
+                                  TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+                                  msg);
+      GNUNET_free (msg);
+    }
+    else
+    {
+      if (! TEH_kyc_failed (kpc->process_row,
+                            &kpc->h_payto,
+                            kpc->provider_section,
+                            provider_user_id,
+                            provider_legitimization_id))
+      {
+        GNUNET_break (0);
+        if (NULL != response)
+          MHD_destroy_response (response);
+        http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+        response = make_html_error (kpc->rc->connection,
+                                    "kyc-proof-internal-error",
+                                    &http_status,
+                                    TALER_EC_GENERIC_DB_STORE_FAILED,
+                                    "insert_kyc_failure");
+      }
     }
     break;
   default:
@@ -324,51 +422,6 @@ clean_kpc (struct TEH_RequestContext *rc)
   GNUNET_free (kpc->provider_user_id);
   GNUNET_free (kpc->provider_legitimization_id);
   GNUNET_free (kpc);
-}
-
-
-/**
- * Respond with an HTML message on the given @a rc.
- *
- * @param[in,out] rc request to respond to
- * @param http_status HTTP status code to use
- * @param template template to fill in
- * @param ec error code to use for the template
- * @param message additional message to return
- * @return MHD result code
- */
-static MHD_RESULT
-respond_html_ec (struct TEH_RequestContext *rc,
-                 unsigned int http_status,
-                 const char *template,
-                 enum TALER_ErrorCode ec,
-                 const char *message)
-{
-  json_t *body;
-  struct MHD_Response *response;
-  MHD_RESULT res;
-
-  body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string ("message",
-                               message)),
-    TALER_JSON_pack_ec (
-      ec));
-  GNUNET_break (
-    GNUNET_SYSERR !=
-    TALER_TEMPLATING_build (rc->connection,
-                            &http_status,
-                            template,
-                            NULL,
-                            NULL,
-                            body,
-                            &response));
-  json_decref (body);
-  res = MHD_queue_response (rc->connection,
-                            http_status,
-                            response);
-  MHD_destroy_response (response);
-  return res;
 }
 
 
