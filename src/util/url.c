@@ -212,8 +212,6 @@ TALER_url_join (const char *base_url,
                 ...)
 {
   struct GNUNET_Buffer buf = { 0 };
-  va_list args;
-  size_t len;
 
   GNUNET_assert (NULL != base_url);
   GNUNET_assert (NULL != path);
@@ -224,40 +222,45 @@ TALER_url_join (const char *base_url,
                 "Empty base URL specified\n");
     return NULL;
   }
-  if ('/' != base_url[strlen (base_url) - 1])
+  if ('\0' != path[0])
   {
-    /* Must be an actual base URL! */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Base URL `%s' does not end with '/', cannot join with `%s'\n",
-                base_url,
-                path);
-    return NULL;
+    if ('/' != base_url[strlen (base_url) - 1])
+    {
+      /* Must be an actual base URL! */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Base URL `%s' does not end with '/', cannot join with `%s'\n",
+                  base_url,
+                  path);
+      return NULL;
+    }
+    if ('/' == path[0])
+    {
+      /* The path must be relative. */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Path `%s' is not relative\n",
+                  path);
+      return NULL;
+    }
   }
-  if ('/' == path[0])
+
   {
-    /* The path must be relative. */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Path `%s' is not relative\n",
-                path);
-    return NULL;
+    va_list args;
+    size_t len;
+
+    va_start (args,
+              path);
+    len = strlen (base_url) + strlen (path) + 1;
+    len += calculate_argument_length (args);
+    GNUNET_buffer_prealloc (&buf,
+                            len);
+    GNUNET_buffer_write_str (&buf,
+                             base_url);
+    GNUNET_buffer_write_str (&buf,
+                             path);
+    serialize_arguments (&buf,
+                         args);
+    va_end (args);
   }
-
-  va_start (args,
-            path);
-
-  len = strlen (base_url) + strlen (path) + 1;
-  len += calculate_argument_length (args);
-
-  GNUNET_buffer_prealloc (&buf,
-                          len);
-  GNUNET_buffer_write_str (&buf,
-                           base_url);
-  GNUNET_buffer_write_str (&buf,
-                           path);
-  serialize_arguments (&buf,
-                       args);
-  va_end (args);
-
   return GNUNET_buffer_reap_str (&buf);
 }
 

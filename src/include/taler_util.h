@@ -416,8 +416,9 @@ TALER_mhd_is_https (struct MHD_Connection *connection);
  * that a NULL value does not terminate the list, only a NULL key signals the
  * end of the list of arguments.
  *
- * @param base_url absolute base URL to use
- * @param path path of the url
+ * @param base_url absolute base URL to use, must either
+ *          end with '/' *or* @a path must be the empty string
+ * @param path path of the url to append to the @a base_url
  * @param ... NULL-terminated key-value pairs (char *) for query parameters,
  *        only the value will be url-encoded
  * @returns the URL, must be freed with #GNUNET_free
