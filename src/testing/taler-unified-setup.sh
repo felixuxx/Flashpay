@@ -253,6 +253,13 @@ then
     echo " FOUND"
 fi
 
+if [ "1" = "$START_BANK" ]
+then
+    echo -n "Testing for libeufin-bank"
+    libeufin-bank --help >/dev/null </dev/null || exit_skip " MISSING"
+    echo " FOUND"
+fi
+
 STAGE="config"
 
 
