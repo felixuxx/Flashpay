@@ -663,7 +663,7 @@ char *strchrnul (const char *s, int c);
  * @param in Input string representation of the date
  * @param mask Age mask
  * @param[out] out Where to write the result
- * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_parse_coarse_date (
@@ -709,6 +709,7 @@ TALER_parse_age_group_string (
   const char *groups,
   struct TALER_AgeMask *mask);
 
+
 /**
  * @brief Encodes the age mask into a string, like "8:10:12:14:16:18:21"
  *
@@ -723,7 +724,8 @@ const char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *mask);
 
-/*
+
+/**
  * @brief returns the age group of a given age for a given age mask
  *
  * @param mask Age mask
@@ -734,6 +736,7 @@ uint8_t
 TALER_get_age_group (
   const struct TALER_AgeMask *mask,
   uint8_t age);
+
 
 /**
  * @brief Parses a JSON object { "age_groups": "a:b:...y:z" }.
@@ -747,7 +750,8 @@ TALER_JSON_parse_age_groups (const json_t *root,
                              struct TALER_AgeMask *mask);
 
 
-/* @brief Return the lowest age in the corresponding group for a given age
+/**
+ * @brief Return the lowest age in the corresponding group for a given age
  * according the given age mask.
  *
  * @param[IN] mask age mask
@@ -759,7 +763,9 @@ TALER_get_lowest_age (
   const struct TALER_AgeMask *mask,
   uint8_t age);
 
-/* @brief Get the lowest age for the largest age group
+
+/**
+ * @brief Get the lowest age for the largest age group
  *
  * @param mask the age mask
  * @return lowest age for the largest age group
