@@ -754,8 +754,8 @@ TALER_JSON_parse_age_groups (const json_t *root,
  * @brief Return the lowest age in the corresponding group for a given age
  * according the given age mask.
  *
- * @param[IN] mask age mask
- * @param[IN] age age to check
+ * @param mask age mask
+ * @param age age to check
  * @return lowest age in corresponding age group
  */
 uint8_t
