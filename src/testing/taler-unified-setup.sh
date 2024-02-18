@@ -48,7 +48,7 @@ function exit_fail() {
 # Cleanup to run whenever we exit
 function cleanup()
 {
-    echo "Taler unified setup terminating!" >&2
+    echo "Taler unified setup terminating at $STAGE!" >&2
 
     for n in $(jobs -p)
     do
@@ -58,6 +58,8 @@ function cleanup()
     rm -f libeufin-nexus.pid libeufin-sandbox.pid
     exit "$EXIT_STATUS"
 }
+
+STAGE="boot"
 
 # Install cleanup handler (except for kill -9)
 trap cleanup EXIT
@@ -193,9 +195,13 @@ while getopts ':abc:d:DeEfghkL:mMnr:stu:vwWz' OPTION; do
     esac
 done
 
+STAGE="init"
+
 echo "Starting with configuration file at: $CONF_ORIG"
 CONF="$CONF_ORIG.edited"
 cp "${CONF_ORIG}" "${CONF}"
+
+STAGE="checks"
 
 echo -n "Testing for jq"
 jq -h > /dev/null || exit_skip " jq required"
@@ -242,6 +248,9 @@ then
     libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
     echo " FOUND"
 fi
+
+STAGE="config"
+
 
 EXCHANGE_URL=$(taler-config -c "$CONF" -s "EXCHANGE" -o "BASE_URL")
 CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
@@ -320,6 +329,8 @@ then
     BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
     BANK_URL="http://localhost:${BANK_PORT}/"
 fi
+
+STAGE="bank"
 
 if [ "1" = "$START_BANK" ]
 then
@@ -418,6 +429,8 @@ then
     echo " OK"
 fi
 
+STAGE="accounts"
+
 if [ "1" = "$START_FAKEBANK" ]
 then
     echo -n "Register Fakebank users ..."
@@ -447,6 +460,8 @@ then
     register_bank_account survey x "Survey"
     echo " DONE"
 fi
+
+STAGE="exchange"
 
 if [ "1" = "$START_EXCHANGE" ]
 then
@@ -493,6 +508,8 @@ then
     echo " DONE"
 fi
 
+STAGE="donau"
+
 if [ "1" = "$START_DONAU" ]
 then
     echo -n "Starting Donau ..."
@@ -512,6 +529,8 @@ then
     echo " DONE"
 fi
 
+STAGE="wirewatch"
+
 if [ "1" = "$START_WIREWATCH" ]
 then
     echo -n "Starting wirewatch ..."
@@ -524,6 +543,8 @@ then
     echo " DONE"
 fi
 
+STAGE="aggregator"
+
 if [ "1" = "$START_AGGREGATOR" ]
 then
     echo -n "Starting aggregator ..."
@@ -534,6 +555,8 @@ then
     echo " DONE"
 fi
 
+STAGE="transfer"
+
 if [ "1" = "$START_TRANSFER" ]
 then
     echo -n "Starting transfer ..."
@@ -543,6 +566,8 @@ then
                   2> taler-exchange-transfer.log &
     echo " DONE"
 fi
+
+STAGE="merchant"
 
 if [ "1" = "$START_MERCHANT" ]
 then
@@ -603,6 +628,7 @@ then
     fi
 fi
 
+STAGE="sync"
 
 if [ "1" = "$START_BACKUP" ]
 then
@@ -622,6 +648,8 @@ then
                   2> sync-httpd.log &
     echo " DONE"
 fi
+
+STAGE="challenger"
 
 if [ "1" = "$START_CHALLENGER" ]
 then
@@ -666,6 +694,7 @@ then
     done
 fi
 
+STAGE="auditor"
 
 if [ "1" = "$START_AUDITOR" ]
 then
@@ -693,6 +722,7 @@ then
     echo " DONE"
 fi
 
+STAGE="wait"
 
 echo -n "Waiting for Taler services ..."
 # Wait for all other taler services to be available
@@ -864,6 +894,8 @@ then
     echo " OK"
 fi
 
+STAGE="ready"
+
 # Signal caller that we are ready.
 echo "<<READY>>"
 
@@ -878,6 +910,8 @@ else
     # shellcheck disable=SC2162
     read
 fi
+
+STAGE="exiting"
 
 echo "Taler unified setup terminating!" >&2
 EXIT_STATUS=0
