@@ -202,6 +202,7 @@ validate_payto_xtalerbank (const char *account_url)
   const char *user;
   const char *host;
   bool dot_ok;
+  bool post_colon;
 
 #define XTALERBANK_PREFIX "payto://x-taler-bank/"
   if (0 != strncasecmp (account_url,
@@ -224,31 +225,53 @@ validate_payto_xtalerbank (const char *account_url)
   if (NULL != strchr (user + 1, '/'))
     return GNUNET_strdup ("invalid character '/' after account name");
   dot_ok = false;
+  post_colon = false;
   while (host != user)
   {
     char c = host[0];
 
-    if ('.' == c)
+    if (':' == c)
     {
-      if (! dot_ok)
-        return GNUNET_strdup ("invalid domain name (misplaced '.')");
-      dot_ok = false;
+      post_colon = true;
+      host++;
+      continue;
     }
-    else
+    if (post_colon)
     {
-      if (! ( ('-' == c) ||
-              ( ('0' <= c) && ('9' >= c) ) ||
-              ( ('a' <= c) && ('z' >= c) ) ||
-              ( ('A' <= c) && ('Z' >= c) ) ) )
+      if (! ( ('0' <= c) && ('9' >= c) ) )
       {
         char *err;
 
         GNUNET_asprintf (&err,
-                         "invalid character '%c' in domain name",
+                         "invalid character '%c' in port",
                          c);
         return err;
       }
-      dot_ok = true;
+    }
+    else
+    {
+      if ('.' == c)
+      {
+        if (! dot_ok)
+          return GNUNET_strdup ("invalid domain name (misplaced '.')");
+        dot_ok = false;
+      }
+      else
+      {
+        if (! ( ('-' == c) ||
+                ( ('0' <= c) && ('9' >= c) ) ||
+                ( ('a' <= c) && ('z' >= c) ) ||
+                ( ('A' <= c) && ('Z' >= c) ) ) )
+        {
+          char *err;
+
+          GNUNET_asprintf (&err,
+                           "invalid character '%c' in domain name",
+                           c);
+          return err;
+        }
+        dot_ok = true;
+      }
     }
     host++;
   }
