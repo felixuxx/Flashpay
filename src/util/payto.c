@@ -155,7 +155,6 @@ validate_payto_iban (const char *account_url)
                         IBAN_PREFIX,
                         strlen (IBAN_PREFIX)))
     return NULL; /* not an IBAN */
-
   iban = strrchr (account_url, '/') + 1;
 #undef IBAN_PREFIX
   q = strchr (iban,
@@ -176,6 +175,83 @@ validate_payto_iban (const char *account_url)
     return err;
   }
   GNUNET_free (result);
+  {
+    char *target;
+
+    target = payto_get_key (account_url,
+                            "receiver-name=");
+    if (NULL == target)
+      return GNUNET_strdup ("'receiver-name' parameter missing");
+    GNUNET_free (target);
+  }
+  return NULL;
+}
+
+
+/**
+ * Validate payto://x-taler-bank/ account URL (only account information,
+ * wire subject and amount are ignored).
+ *
+ * @param account_url payto URL to parse
+ * @return NULL on success, otherwise an error message
+ *      to be freed by the caller
+ */
+static char *
+validate_payto_xtalerbank (const char *account_url)
+{
+  const char *user;
+  const char *host;
+  bool dot_ok;
+
+#define XTALERBANK_PREFIX "payto://x-taler-bank/"
+  if (0 != strncasecmp (account_url,
+                        XTALERBANK_PREFIX,
+                        strlen (XTALERBANK_PREFIX)))
+    return NULL; /* not an IBAN */
+  host = &account_url[strlen (XTALERBANK_PREFIX)];
+#undef XTALERBANK_PREFIX
+  user = strchr (host, '/');
+  if (NULL == user)
+  {
+    return GNUNET_strdup ("account name missing");
+  }
+  if (user == host)
+  {
+    return GNUNET_strdup ("domain name missing");
+  }
+  if ('-' == host[0])
+    return GNUNET_strdup ("invalid character '-' at start of domain name");
+  if (NULL != strchr (user + 1, '/'))
+    return GNUNET_strdup ("invalid character '/' after account name");
+  dot_ok = false;
+  while (host != user)
+  {
+    char c = host[0];
+
+    if ('.' == c)
+    {
+      if (! dot_ok)
+        return GNUNET_strdup ("invalid domain name (misplaced '.')");
+      dot_ok = false;
+    }
+    else
+    {
+      if (! ( ('-' == c) ||
+              ( ('0' <= c) && ('9' >= c) ) ||
+              ( ('a' <= c) && ('z' >= c) ) ||
+              ( ('A' <= c) && ('Z' >= c) ) ) )
+      {
+        char *err;
+
+        GNUNET_asprintf (&err,
+                         "invalid character '%c' in domain name",
+                         c);
+        return err;
+      }
+      dot_ok = true;
+    }
+    host++;
+  }
   {
     char *target;
 
@@ -228,6 +304,8 @@ TALER_payto_validate (const char *payto_uri)
     return GNUNET_strdup ("missing '/' in payload");
 
   if (NULL != (ret = validate_payto_iban (payto_uri)))
+    return ret; /* got a definitive answer */
+  if (NULL != (ret = validate_payto_xtalerbank (payto_uri)))
     return ret; /* got a definitive answer */
 
   /* Insert other bank account validation methods here later! */

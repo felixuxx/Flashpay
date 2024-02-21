@@ -50,6 +50,33 @@ main (int argc,
                  TALER_iban_validate ("FR1420041010050500013M02606"));
   GNUNET_assert (NULL ==
                  TALER_iban_validate ("DE89370400440532013000"));
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/hostname/username?receiver-name=foo");
+  GNUNET_assert (NULL == r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/https://hostname/username?receiver-name=foo");
+  GNUNET_assert (NULL != r);
+  GNUNET_free (r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/hostname/username/extra?receiver-name=foo");
+  GNUNET_assert (NULL != r);
+  GNUNET_free (r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/-hostname/username?receiver-name=foo");
+  GNUNET_assert (NULL != r);
+  GNUNET_free (r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/domain..name/username?receiver-name=foo");
+  GNUNET_assert (NULL != r);
+  GNUNET_free (r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/domain..name/?receiver-name=foo");
+  GNUNET_assert (NULL != r);
+  GNUNET_free (r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/domain.name/username");
+  GNUNET_assert (NULL != r);
+  GNUNET_free (r);
   r = TALER_xtalerbank_account_from_payto (
     "payto://x-taler-bank/localhost:1080/alice");
   CHECK ("alice",
