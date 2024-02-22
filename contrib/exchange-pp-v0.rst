@@ -48,11 +48,11 @@ to our services without at least clear implied consent, and we only process
 and retain information with a strict business need. That being said, when
 using our Services, we inherently have to collect the following information:
 
-   * Bank account details necessary when receiving funds from you to top-up your wallet or to transfer funds to you when you are being paid via Taler. At the current experimental stage, only the pseudonym and password you entered in the bank demonstrator is stored.
+* Bank account details necessary when receiving funds from you to top-up your wallet or to transfer funds to you when you are being paid via Taler. At the current experimental stage, only the pseudonym and password you entered in the bank demonstrator is stored.
 
-   * The amounts being withdrawn or deposited, with associated unique transaction identifiers and cryptographic signatures authorizing the transaction. Note that for purchases, we cannot identify the buyer from the collected data, so when you spend money, we only receive non-personal information.
+* The amounts being withdrawn or deposited, with associated unique transaction identifiers and cryptographic signatures authorizing the transaction. Note that for purchases, we cannot identify the buyer from the collected data, so when you spend money, we only receive non-personal information.
 
-   * When you contact us. We may collect certain information if you choose to contact us, for example to report a bug or other error with the Taler Wallet. This may include contact information such as your name, email address or phone number depending on the method you choose to contact us.
+* When you contact us. We may collect certain information if you choose to contact us, for example to report a bug or other error with the Taler Wallet. This may include contact information such as your name, email address or phone number depending on the method you choose to contact us.
 
 
 How we collect and process information
@@ -60,9 +60,9 @@ How we collect and process information
 
 We may process your information for the following reasons:
 
-   * to transfer money as specified by our users (Taler transactions);
-   * to assist government entities in linking income to the underlying contract as required by law and local regulations
-   * to support you using the Taler Wallet or to improve our Services
+* to transfer money as specified by our users (Taler transactions);
+* to assist government entities in linking income to the underlying contract as required by law and local regulations
+* to support you using the Taler Wallet or to improve our Services
 
 
 How we share and use the information we gather
