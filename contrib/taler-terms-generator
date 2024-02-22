@@ -234,7 +234,7 @@ fi
 # As a heuristic for incremental builds, we only check the text output file.
 if [[ "$INCREMENTAL" -eq 1 ]]
 then
-  if [[ "$VERSION" -ot "${OUTPUT}/buildstamp" ]];
+  if [[ "${VERSION}.rst" -ot "${OUTPUT}/buildstamp" ]];
   then
     echo "Not rebuilding, input file $VERSION is older than $OUTPUT/buildstamp."
     exit 0
