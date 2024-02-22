@@ -7,7 +7,7 @@ User=taler-auditor-httpd
 Type=simple
 Restart=on-failure
 RestartPreventExitStatus=9
-ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler/taler.conf
+ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler/taler.conf -L INFO
 
 [Install]
 WantedBy=multi-user.target
