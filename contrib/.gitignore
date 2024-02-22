@@ -1,4 +1,3 @@
-taler-terms-generator
 locale/**/*.pot
 Makefile.am
 Makefile.am.ext
