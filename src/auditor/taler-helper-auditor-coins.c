@@ -82,7 +82,7 @@ static json_t *report_emergencies;
 static json_t *report_emergencies_by_count;
 
 /**
- * Array of reports about row inconsitencies.
+ * Array of reports about row inconsistencies.
  */
 static json_t *report_row_inconsistencies;
 
