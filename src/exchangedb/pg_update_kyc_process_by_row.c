@@ -48,7 +48,9 @@ TEH_PG_update_kyc_process_by_row (
     (NULL != provider_legitimization_id)
     ? GNUNET_PQ_query_param_string (provider_legitimization_id)
     : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_string (redirect_url),
+    (NULL != redirect_url)
+    ? GNUNET_PQ_query_param_string (redirect_url)
+    : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_absolute_time (&expiration),
     GNUNET_PQ_query_param_end
   };

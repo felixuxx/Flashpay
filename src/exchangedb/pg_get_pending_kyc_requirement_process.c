@@ -40,11 +40,14 @@ TEH_PG_get_pending_kyc_requirement_process (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_string ("redirect_url",
-                                  redirect_url),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("redirect_url",
+                                    redirect_url),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
 
+  *redirect_url = NULL;
   PREPARE (pg,
            "get_pending_kyc_requirement_process",
            "SELECT"

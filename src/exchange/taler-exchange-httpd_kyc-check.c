@@ -253,26 +253,22 @@ initiate_cb (
   {
     kyp->hint = GNUNET_strdup (error_msg_hint);
   }
-  if ( (TALER_EC_NONE != ec) &&
-       (NULL != redirect_url) )
-  {
-    qs = TEH_plugin->update_kyc_process_by_row (
-      TEH_plugin->cls,
-      kyp->process_row,
-      kyp->section_name,
-      &kyp->h_payto,
-      provider_user_id,
-      provider_legitimization_id,
-      redirect_url,
-      GNUNET_TIME_UNIT_ZERO_ABS);
-    if (qs <= 0)
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "KYC requirement update failed for %s with status %d at %s:%u\n",
-                  TALER_B2S (&kyp->h_payto),
-                  qs,
-                  __FILE__,
-                  __LINE__);
-  }
+  qs = TEH_plugin->update_kyc_process_by_row (
+    TEH_plugin->cls,
+    kyp->process_row,
+    kyp->section_name,
+    &kyp->h_payto,
+    provider_user_id,
+    provider_legitimization_id,
+    redirect_url,
+    GNUNET_TIME_UNIT_ZERO_ABS);
+  if (qs <= 0)
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "KYC requirement update failed for %s with status %d at %s:%u\n",
+                TALER_B2S (&kyp->h_payto),
+                qs,
+                __FILE__,
+                __LINE__);
   GNUNET_assert (kyp->suspended);
   kyp->suspended = false;
   GNUNET_CONTAINER_DLL_remove (kyp_head,
@@ -410,29 +406,33 @@ kyc_check (void *cls,
                                            "insert_kyc_requirement_process");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (qs > 0)
+  if ( (qs > 0) &&
+       (NULL != redirect_url) )
   {
     kyp->kyc_url = redirect_url;
     return qs;
   }
-  qs = TEH_plugin->insert_kyc_requirement_process (
-    TEH_plugin->cls,
-    &h_payto,
-    kyp->section_name,
-    NULL,
-    NULL,
-    &kyp->process_row);
-
-  if (qs < 0)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           "insert_kyc_requirement_process");
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    /* set up new requirement process */
+    qs = TEH_plugin->insert_kyc_requirement_process (
+      TEH_plugin->cls,
+      &h_payto,
+      kyp->section_name,
+      NULL,
+      NULL,
+      &kyp->process_row);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "insert_kyc_requirement_process");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Initiating KYC check with logic %s\n",
