@@ -611,6 +611,17 @@ handle_curl_setup_finished (void *cls,
   ih->job = NULL;
   switch (response_code)
   {
+  case 0:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "/setup URL failed to return HTTP response\n");
+    ih->cb (ih->cb_cls,
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            NULL,
+            NULL,
+            NULL,
+            "/setup request to OAuth 2.0 backend returned no response");
+    GNUNET_free (ih);
+    return;
   case MHD_HTTP_OK:
     {
       const char *nonce;

@@ -253,22 +253,26 @@ initiate_cb (
   {
     kyp->hint = GNUNET_strdup (error_msg_hint);
   }
-  qs = TEH_plugin->update_kyc_process_by_row (
-    TEH_plugin->cls,
-    kyp->process_row,
-    kyp->section_name,
-    &kyp->h_payto,
-    provider_user_id,
-    provider_legitimization_id,
-    redirect_url,
-    GNUNET_TIME_UNIT_ZERO_ABS);
-  if (qs <= 0)
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYC requirement update failed for %s with status %d at %s:%u\n",
-                TALER_B2S (&kyp->h_payto),
-                qs,
-                __FILE__,
-                __LINE__);
+  if ( (TALER_EC_NONE != ec) &&
+       (NULL != redirect_url) )
+  {
+    qs = TEH_plugin->update_kyc_process_by_row (
+      TEH_plugin->cls,
+      kyp->process_row,
+      kyp->section_name,
+      &kyp->h_payto,
+      provider_user_id,
+      provider_legitimization_id,
+      redirect_url,
+      GNUNET_TIME_UNIT_ZERO_ABS);
+    if (qs <= 0)
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "KYC requirement update failed for %s with status %d at %s:%u\n",
+                  TALER_B2S (&kyp->h_payto),
+                  qs,
+                  __FILE__,
+                  __LINE__);
+  }
   GNUNET_assert (kyp->suspended);
   kyp->suspended = false;
   GNUNET_CONTAINER_DLL_remove (kyp_head,
