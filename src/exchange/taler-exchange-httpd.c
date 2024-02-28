@@ -165,12 +165,6 @@ struct TALER_Amount TEH_stefan_log;
 float TEH_stefan_lin;
 
 /**
- * Default number of fractional digits to render
- * amounts with.
- */
-unsigned int TEH_currency_fraction_digits;
-
-/**
  * Our currency.
  */
 char *TEH_currency;
@@ -2060,6 +2054,11 @@ handle_mhd_request (void *cls,
 static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
+  static struct TALER_CurrencySpecification defspec = {
+    .num_fractional_input_digits = 2,
+    .num_fractional_normal_digits = 2,
+    .num_fractional_trailing_zero_digits = 2
+  };
   if (GNUNET_OK !=
       TALER_KYCLOGIC_kyc_init (TEH_cfg))
   {
@@ -2140,11 +2139,21 @@ exchange_serve_process_config (void)
   }
   if (NULL == TEH_cspec)
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_WARNING,
                                "taler",
                                "CURRENCY",
-                               "Lacking enabled currency specification for the given currency");
-    return GNUNET_SYSERR;
+                               "Lacking enabled currency specification for the given currency, using default");
+    defspec.map_alt_unit_names
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("0",
+                                   TEH_currency)
+          );
+    defspec.name = TEH_currency;
+    GNUNET_assert (strlen (TEH_currency) <
+                   sizeof (defspec.currency));
+    strcpy (defspec.currency,
+            TEH_currency);
+    TEH_cspec = &defspec;
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
