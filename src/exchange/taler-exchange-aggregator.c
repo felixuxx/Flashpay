@@ -906,18 +906,28 @@ run_aggregation (void *cls)
            (0 == counter) )
       {
         /* in test mode, shutdown after a shard is done with 0 work */
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "No work done and in test mode, shutting down\n");
         GNUNET_SCHEDULER_shutdown ();
         return;
       }
       GNUNET_assert (NULL == task);
       /* If we ended up doing zero work, sleep a bit */
       if (0 == counter)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Going to sleep for %s before trying again\n",
+                    GNUNET_TIME_relative2s (aggregator_idle_sleep_interval,
+                                            true));
         task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
                                              &drain_kyc_alerts,
                                              NULL);
+      }
       else
+      {
         task = GNUNET_SCHEDULER_add_now (&drain_kyc_alerts,
                                          NULL);
+      }
       return;
     }
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -1032,6 +1042,7 @@ run_shard (void *cls)
       GNUNET_free (s);
       delay = GNUNET_TIME_randomized_backoff (delay,
                                               GNUNET_TIME_UNIT_SECONDS);
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_delayed (delay,
                                            &run_shard,
                                            NULL);
@@ -1049,6 +1060,7 @@ run_shard (void *cls)
               "Starting shard [%u:%u]!\n",
               (unsigned int) s->shard_start,
               (unsigned int) s->shard_end);
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                    s);
 }

@@ -157,6 +157,7 @@ void
 TEH_deposits_get_cleanup ()
 {
   struct DepositWtidContext *n;
+
   for (struct DepositWtidContext *ctx = dwc_head;
        NULL != ctx;
        ctx = n)
@@ -313,13 +314,15 @@ db_event_cb (void *cls,
 
   (void) extra;
   (void) extra_size;
-  if (GNUNET_NO != ctx->suspended)
+  if (GNUNET_YES != ctx->suspended)
     return; /* might get multiple wake-up events */
   GNUNET_CONTAINER_DLL_remove (dwc_head,
                                dwc_tail,
                                ctx);
   GNUNET_async_scope_enter (&ctx->rc->async_scope_id,
                             &old_scope);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Resuming request handling\n");
   TEH_check_invariants ();
   ctx->suspended = GNUNET_NO;
   MHD_resume_connection (ctx->rc->connection);
@@ -356,6 +359,7 @@ handle_track_transaction_request (
       &rep.header,
       &db_event_cb,
       ctx);
+    GNUNET_break (NULL != ctx->eh);
   }
   {
     MHD_RESULT mhd_ret;
@@ -379,6 +383,8 @@ handle_track_transaction_request (
     if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&
          (GNUNET_NO == ctx->suspended) )
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Suspending request handling\n");
       GNUNET_CONTAINER_DLL_insert (dwc_head,
                                    dwc_tail,
                                    ctx);
