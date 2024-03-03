@@ -27,6 +27,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_error_codes.h"
+#include "taler_util.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
 
@@ -508,6 +509,50 @@ TALER_MHD_parse_request_arg_number (struct MHD_Connection *connection,
     switch (TALER_MHD_parse_request_arg_number (connection,   \
                                                 name, \
                                                 off))  \
+    {                      \
+    case GNUNET_SYSERR:    \
+      GNUNET_break (0);    \
+      return MHD_NO;       \
+    case GNUNET_NO:        \
+      GNUNET_break_op (0); \
+    case GNUNET_OK:        \
+      break;               \
+    }                      \
+  } while (0)
+
+
+/**
+ * Extract optional amount argument from request.
+ *
+ * @param connection the MHD connection
+ * @param name name of the query parameter
+ * @param[out] val set to the amount, unchanged if the
+ *             option was not given
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if an error was returned on @a connection (caller should return #MHD_YES) and
+ *     #GNUNET_SYSERR if we failed to return an error (caller should return #MHD_NO)
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_amount (struct MHD_Connection *connection,
+                                    const char *name,
+                                    struct TALER_Amount *val);
+
+
+/**
+ * Extract optional amount argument from request.
+ * Macro that *returns* #MHD_YES/#MHD_NO if the
+ * requested argument existed but failed to parse.
+ *
+ * @param connection the MHD connection
+ * @param name name of the argument to parse
+ * @param[out] val set to the given amount,
+ *    unchanged if value was not specified
+ */
+#define TALER_MHD_parse_request_amount(connection,name,val)  \
+  do {                                                         \
+    switch (TALER_MHD_parse_request_arg_amount (connection,   \
+                                                name, \
+                                                val))  \
     {                      \
     case GNUNET_SYSERR:    \
       GNUNET_break (0);    \

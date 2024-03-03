@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2020 Taler Systems SA
+  Copyright (C) 2014--2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -241,6 +241,37 @@ TALER_MHD_parse_request_arg_number (struct MHD_Connection *connection,
       : GNUNET_SYSERR;
   }
   *off = (uint64_t) num;
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_amount (struct MHD_Connection *connection,
+                                    const char *name,
+                                    struct TALER_Amount *val)
+{
+  const char *ts;
+
+  ts = MHD_lookup_connection_value (connection,
+                                    MHD_GET_ARGUMENT_KIND,
+                                    name);
+  if (NULL == ts)
+    return GNUNET_OK;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (ts,
+                              val))
+  {
+    MHD_RESULT mret;
+
+    GNUNET_break_op (0);
+    mret = TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       name);
+    return (MHD_YES == mret)
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 

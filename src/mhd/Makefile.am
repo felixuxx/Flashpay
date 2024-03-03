@@ -16,12 +16,12 @@ libtalermhd_la_SOURCES = \
   mhd_responses.c \
   mhd_run.c
 libtalermhd_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:1 \
   -no-undefined
 libtalermhd_la_LIBADD = \
-  -lgnunetjson \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetutil \
   -lmicrohttpd \
   -ljansson \
