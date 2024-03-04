@@ -35,6 +35,7 @@ RUN apt-get update -yqq && \
 		   # Documentation dependencies \
                    doxygen \
                    graphviz \
+                   pandoc \
 		   # Test suite dependencies \
 		   jq \
                    postgresql \
@@ -57,9 +58,6 @@ RUN cat /etc/apt/preferences.d/taler && \
                    libgnunet \
                    gnunet \
 && rm -rf /var/lib/apt/lists/*
-
-
-RUN pip3 install --break-system-packages htmlark
 
 WORKDIR /workdir
 
