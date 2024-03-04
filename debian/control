@@ -47,6 +47,15 @@ Description: Libraries to talk to a GNU Taler exchange.
 
 Package: taler-terms-generator
 Architecture: any
+Pre-Depends:
+ ${misc:Pre-Depends}
+Depends:
+ lsb-base,
+ pandoc,
+ groff,
+ ghostscript,
+ ${misc:Depends},
+ ${shlibs:Depends}
 Description: Tool to generate the terms of service
   and privacy policy for various languages and data
   formats. Useful for various GNU Taler components.
