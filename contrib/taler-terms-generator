@@ -295,6 +295,7 @@ do
         || failcat "${BUILDDIR}/md-sphinx.log"
     mv "${BUILDDIR}/md/${VERSION_BASENAME}.md" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
 
+    echo "$VERSION_BASENAME PDF ($LANGUAGE)..." 1>&2
     mkdir -p "${BUILDDIR}/pdf/"
     # Convert the generated Markdown (!) to PDF.
     pandoc \
