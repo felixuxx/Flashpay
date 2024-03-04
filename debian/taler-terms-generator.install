@@ -1,0 +1,8 @@
+usr/share/man/man1/taler-terms-generator.1
+usr/bin/taler-terms-generator
+
+# Terms of service / privacy policy templates
+usr/share/taler/terms/*.rst
+
+# Translations of ToS/PP
+usr/share/locale/*/LC_MESSAGES/*.po

@@ -21,9 +21,7 @@ Build-Depends:
  libpq-dev (>=14),
  libsodium-dev (>=1.0.11),
  libunistring-dev (>=0.9.2),
- python3-jinja2,
  po-debconf,
- python3-dev,
  texinfo (>=5.2),
  zlib1g-dev
 Standards-Version: 4.5.0
@@ -40,15 +38,18 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
-Recommends:
- python3-sphinx,
- python3-sphinx-rtd-theme
 Description: Libraries to talk to a GNU Taler exchange.
   The package also contains various files fundamental
   to all GNU Taler installations, such as the
   taler-config configuration command-line tool,
   various base configuration files and associated
   documentation.
+
+Package: taler-terms-generator
+Architecture: any
+Description: Tool to generate the terms of service
+  and privacy policy for various languages and data
+  formats. Useful for various GNU Taler components.
 
 Package: taler-exchange-database
 Architecture: any
@@ -79,6 +80,7 @@ Depends:
  ${shlibs:Depends}
 Recommends:
   taler-exchange-offline (= ${binary:Version}),
+  taler-terms-generator,
   apache2 | nginx | httpd,
   postgresql (>=14.0)
 Description: GNU's payment system operator.
@@ -128,7 +130,6 @@ Depends:
  adduser,
  lsb-base,
  netbase,
- python3-jinja2,
  ${misc:Depends},
  ${shlibs:Depends}
 Description: GNU's payment system auditor.

@@ -39,8 +39,3 @@ usr/share/taler/exchange/spa/*
 
 # configuration files in /etc/taler
 debian/etc-taler-exchange/* etc/
-
-# Terms of service / privacy policy templates
-usr/share/taler/terms/*.rst
-# Translations of ToS/PP
-usr/share/locale/*/LC_MESSAGES/*.po

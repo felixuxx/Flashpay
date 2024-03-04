@@ -1,3 +1,10 @@
+taler-exchange (0.9.4-2) unstable; urgency=low
+
+  * Created new taler-terms-generator package
+  * v0.9.4a bugfix release.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Mon, 3 Mar 2024 21:50:12 +0200
+
 taler-exchange (0.9.4-1) unstable; urgency=low
 
   * Actual v0.9.4 release.
