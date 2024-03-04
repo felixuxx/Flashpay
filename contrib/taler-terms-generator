@@ -168,6 +168,24 @@ then
     exit 1
 fi
 
+if ! which pandoc > /dev/null
+then
+    echo "Command 'pandoc' not found, but required. Please install pandoc." 1>&2
+    exit 1
+fi
+
+if ! which gs > /dev/null
+then
+    echo "Command 'gs' not found, but required. Please install ghostscript." 1>&2
+    exit 1
+fi
+
+if ! which pdfroff > /dev/null
+then
+    echo "Command 'pdfroff' not found, but required. Please install pdfroff/groff." 1>&2
+    exit 1
+fi
+
 if ! which make > /dev/null
 then
     echo "Command 'make' not found, but required. Please install make." 1>&2
@@ -258,16 +276,6 @@ do
 
     LBUILD="sphinx-build -D language=${LANGUAGE} -d ${BUILDDIR}/.doctrees"
 
-    echo "$VERSION_BASENAME XML ($LANGUAGE)..." 1>&2
-# shellcheck disable=SC2090
-    $LBUILD \
-        -b xml \
-        "${BUILDDIR}" \
-        "${BUILDDIR}/xml" \
-        &> "${BUILDDIR}/xml-sphinx.log" \
-        || failcat "${BUILDDIR}/xml-sphinx.log"
-    mv "${BUILDDIR}/xml/${VERSION_BASENAME}.xml" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.xml"
-
     echo "$VERSION_BASENAME TXT ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
@@ -287,6 +295,14 @@ do
         || failcat "${BUILDDIR}/md-sphinx.log"
     mv "${BUILDDIR}/md/${VERSION_BASENAME}.md" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
 
+    mkdir -p "${BUILDDIR}/pdf/"
+    # Convert the generated Markdown (!) to PDF.
+    pandoc \
+        -i "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md" \
+        -o "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" \
+        --pdf-engine=pdfroff
+    mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
+
     echo "$VERSION_BASENAME HTML ($LANGUAGE)..." 1>&2
 # shellcheck disable=SC2090
     $LBUILD \
@@ -298,34 +314,6 @@ do
     htmlark \
         -o "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.html" \
         "${BUILDDIR}/html/${VERSION_BASENAME}.html"
-
-    echo "$VERSION_BASENAME EPUB ($LANGUAGE)..." 1>&2
-# shellcheck disable=SC2090
-    $LBUILD \
-        -b epub \
-        "${BUILDDIR}" \
-        "${BUILDDIR}/epub" \
-        &> "${BUILDDIR}/epub-sphinx.log" \
-        || failcat "${BUILDDIR}/epub-sphinx.log"
-    mv "${BUILDDIR}/epub/${VERSION_BASENAME}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.epub"
-
-    echo "$VERSION_BASENAME PDF ($LANGUAGE)..." 1>&2
-# shellcheck disable=SC2090
-    $LBUILD \
-        -b latex \
-        -D latex_paper_size="${PAPER}" \
-        "${BUILDDIR}" \
-        "${BUILDDIR}/pdf" \
-        &> "${BUILDDIR}/pdf-sphinx.log" \
-        || failcat "${BUILDDIR}/pdf-sphinx.log"
-    # We pipe in /dev/null in case latexmk
-    # asks for input and would hang otherwise.
-    make \
-        -C "${BUILDDIR}/pdf" \
-        all-pdf \
-        < /dev/null &> "${BUILDDIR}/pdf-latex.log" \
-        || failcat "${BUILDDIR}/pdf-latex.log"
-    mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
 done
 
 if [[ "$INCREMENTAL" -eq 1 ]]
