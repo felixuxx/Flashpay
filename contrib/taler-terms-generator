@@ -24,9 +24,8 @@
 set -eu
 
 # Call with target language as first argument.
-function make_config()
-{
-    cat > "${BUILDDIR}/conf.py" <<EOF
+function make_config() {
+  cat >"${BUILDDIR}/conf.py" <<EOF
 import sys
 import os
 sys.path.append(os.path.abspath('_exts'))
@@ -81,12 +80,10 @@ EOF
 }
 
 # Output file given as first argument to stderr, then exit with a failure.
-function failcat ()
-{
-    cat "$1" 1>&2
-    exit 1
+function failcat() {
+  cat "$1" 1>&2
+  exit 1
 }
-
 
 # defaults
 AUTHOR="GNU Taler team"
@@ -99,97 +96,90 @@ INCREMENTAL=0
 
 # Parse command-line options
 while getopts ':a:C:hKi:l:L:o:p:t:' OPTION; do
-    case "$OPTION" in
-        a)
-            AUTHOR="$OPTARG"
-            ;;
-        C)
-            COPYRIGHT="$OPTARG"
-            ;;
-        h)
-            echo 'Supported options:'
-            echo '  -a AUTHOR     -- set author header' "(default: $AUTHOR)"
-            echo '  -C COPYRIGHT  -- set copyright header' "(default: $COPYRIGHT)"
-            echo '  -h            -- print this help'
-            echo '  -K            -- rebuild only if input is older than output'
-            echo '  -i INPUT      -- input file to convert' "(default: $VERSION)"
-            echo '  -l LANGUAGE   -- target language to add'
-            echo '  -L LOCALE_DIR -- directory with resources for translation' "(default: $LOCALE_DIR)"
-            echo '  -o OUTPUT     -- output directory' "(default: $OUTPUT)"
-            echo '  -p PAPER      -- paper format' "(default: $PAPER)"
-            echo '  -t TITLE      -- title of the document to generate'
-            exit 0
-            ;;
-        l)
-            ADD_LANGUAGE="$OPTARG"
-            ;;
-        L)
-            LOCALE_DIR="$OPTARG"
-            ;;
-        i)
-            VERSION="$OPTARG"
-            ;;
-        o)
-            OUTPUT="$OPTARG"
-            ;;
-        p)
-            PAPER="$OPTARG"
-            case "$PAPER" in
-                a4|letter)
-                ;;
-                *)
-                    echo "Error: Paper format '$PAPER' invalid (use 'a4' or 'letter')" 1>&2
-                    exit 1
-                    ;;
-            esac
-            ;;
-        t)
-            TITLE="$OPTARG"
-            ;;
-        K)
-            INCREMENTAL=1
-            ;;
-        ?)
-        echo "Unrecognized command line option" 1>&2
-        exit 1
-        ;;
+  case "$OPTION" in
+  a)
+    AUTHOR="$OPTARG"
+    ;;
+  C)
+    COPYRIGHT="$OPTARG"
+    ;;
+  h)
+    echo 'Supported options:'
+    echo '  -a AUTHOR     -- set author header' "(default: $AUTHOR)"
+    echo '  -C COPYRIGHT  -- set copyright header' "(default: $COPYRIGHT)"
+    echo '  -h            -- print this help'
+    echo '  -K            -- rebuild only if input is older than output'
+    echo '  -i INPUT      -- input file to convert' "(default: $VERSION)"
+    echo '  -l LANGUAGE   -- target language to add'
+    echo '  -L LOCALE_DIR -- directory with resources for translation' "(default: $LOCALE_DIR)"
+    echo '  -o OUTPUT     -- output directory' "(default: $OUTPUT)"
+    echo '  -p PAPER      -- paper format' "(default: $PAPER)"
+    echo '  -t TITLE      -- title of the document to generate'
+    exit 0
+    ;;
+  l)
+    ADD_LANGUAGE="$OPTARG"
+    ;;
+  L)
+    LOCALE_DIR="$OPTARG"
+    ;;
+  i)
+    VERSION="$OPTARG"
+    ;;
+  o)
+    OUTPUT="$OPTARG"
+    ;;
+  p)
+    PAPER="$OPTARG"
+    case "$PAPER" in
+    a4 | letter) ;;
+    *)
+      echo "Error: Paper format '$PAPER' invalid (use 'a4' or 'letter')" 1>&2
+      exit 1
+      ;;
     esac
+    ;;
+  t)
+    TITLE="$OPTARG"
+    ;;
+  K)
+    INCREMENTAL=1
+    ;;
+  ?)
+    echo "Unrecognized command line option" 1>&2
+    exit 1
+    ;;
+  esac
 done
 
-if ! which sphinx-build > /dev/null
-then
-    echo "Command 'sphinx-build' not found, but required. Please install sphinx." 1>&2
-    exit 1
+if ! which sphinx-build >/dev/null; then
+  echo "Command 'sphinx-build' not found, but required. Please install sphinx." 1>&2
+  exit 1
 fi
 
-if ! which latexmk > /dev/null
-then
-    echo "Command 'latexmk' not found, but required. Please install latexmk." 1>&2
-    exit 1
+if ! which latexmk >/dev/null; then
+  echo "Command 'latexmk' not found, but required. Please install latexmk." 1>&2
+  exit 1
 fi
 
-if ! which pandoc > /dev/null
-then
-    echo "Command 'pandoc' not found, but required. Please install pandoc." 1>&2
-    exit 1
+if ! which pandoc >/dev/null; then
+  echo "Command 'pandoc' not found, but required. Please install pandoc." 1>&2
+  exit 1
 fi
 
-if ! which gs > /dev/null
-then
-    echo "Command 'gs' not found, but required. Please install ghostscript." 1>&2
-    exit 1
+if ! which gs >/dev/null; then
+  echo "Command 'gs' not found, but required. Please install ghostscript." 1>&2
+  exit 1
 fi
 
-if ! which pdfroff > /dev/null
-then
-    echo "Command 'pdfroff' not found, but required. Please install pdfroff/groff." 1>&2
-    exit 1
+if ! which pdfroff >/dev/null; then
+  echo "Command 'pdfroff' not found, but required. Please install pdfroff/groff." 1>&2
+  exit 1
 fi
 
-if ! which make > /dev/null
-then
-    echo "Command 'make' not found, but required. Please install make." 1>&2
-    exit 1
+if ! which make >/dev/null; then
+  echo "Command 'make' not found, but required. Please install make." 1>&2
+  exit 1
 fi
 
 # We append ".rst" if needed, remove if given on command-line
@@ -200,126 +190,115 @@ VERSION=$(echo "${VERSION}" | sed -e "s/\.rst$//")
 VERSION_BASENAME=$(basename "${VERSION}")
 
 BUILDDIR=$(mktemp -d /tmp/taler-terms-XXXXXX)
-if [ ! -f "${VERSION}.rst" ]
-then
-    echo "Error: File '${VERSION}.rst' not found. Please check '-i' option." 1>&2
-    exit 1
+if [ ! -f "${VERSION}.rst" ]; then
+  echo "Error: File '${VERSION}.rst' not found. Please check '-i' option." 1>&2
+  exit 1
 fi
 
 cp "${VERSION}.rst" "${BUILDDIR}/"
 
-if [ -z ${TITLE+x} ]
-then
-    TITLE=$(head -n1 "${VERSION}.rst")
-    echo "Title automatically set to '$TITLE'" 1>&2
+if [ -z ${TITLE+x} ]; then
+  TITLE=$(head -n1 "${VERSION}.rst")
+  echo "Title automatically set to '$TITLE'" 1>&2
 fi
 
-if [ -n "${ADD_LANGUAGE+x}" ]
-then
-    if ! echo "${ADD_LANGUAGE}" | grep -e '^..$' > /dev/null
-    then
-        echo "Error: Invalid language '${ADD_LANGUAGE}'. Two characters (en, de, fr, ...) expected." 1>&2
-        exit 1
-    fi
-    echo "Adding language files for translations to '${ADD_LANGUAGE}'" 1>&2
-    make_config "${ADD_LANGUAGE}"
-    sphinx-build \
-        -b gettext \
-        -D language="${ADD_LANGUAGE}" \
-        -d "${BUILDDIR}/.doctrees" \
-        "${BUILDDIR}" \
-        "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/" \
-        &> "${BUILDDIR}/add-language.log" \
-        || failcat "${BUILDDIR}/add-language.log"
-    if [ -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]
-    then
-        msgmerge --lang="${ADD_LANGUAGE}" \
-                 --no-location \
-                 -o "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.mrg" \
-                 "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" \
-                 "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot"
-        mv "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.mrg" \
-                 "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po"
-    else
-        mv "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot" \
-           "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po"
-    fi
-    rm -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot"
-    echo "Done" 1>&2
-    exit 0
+if [ -n "${ADD_LANGUAGE+x}" ]; then
+  if ! echo "${ADD_LANGUAGE}" | grep -e '^..$' >/dev/null; then
+    echo "Error: Invalid language '${ADD_LANGUAGE}'. Two characters (en, de, fr, ...) expected." 1>&2
+    exit 1
+  fi
+  echo "Adding language files for translations to '${ADD_LANGUAGE}'" 1>&2
+  make_config "${ADD_LANGUAGE}"
+  sphinx-build \
+    -b gettext \
+    -D language="${ADD_LANGUAGE}" \
+    -d "${BUILDDIR}/.doctrees" \
+    "${BUILDDIR}" \
+    "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/" \
+    &>"${BUILDDIR}/add-language.log" ||
+    failcat "${BUILDDIR}/add-language.log"
+  if [ -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]; then
+    msgmerge --lang="${ADD_LANGUAGE}" \
+      --no-location \
+      -o "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.mrg" \
+      "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" \
+      "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot"
+    mv "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.mrg" \
+      "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po"
+  else
+    mv "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot" \
+      "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po"
+  fi
+  rm -f "${LOCALE_DIR}/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.pot"
+  echo "Done" 1>&2
+  exit 0
 fi
 
 # As a heuristic for incremental builds, we only check the text output file.
-if [[ "$INCREMENTAL" -eq 1 ]]
-then
-  if [[ "${VERSION}.rst" -ot "${OUTPUT}/buildstamp" ]];
-  then
+if [[ $INCREMENTAL -eq 1 ]]; then
+  if [[ "${VERSION}.rst" -ot "${OUTPUT}/buildstamp" ]]; then
     echo "Not rebuilding, input file $VERSION is older than $OUTPUT/buildstamp."
     exit 0
   fi
 fi
 
-
 # shellcheck disable=SC2086
-for d in en $(ls -d ${LOCALE_DIR}/?? | grep -v "en" 2> /dev/null || true)
-do
-    LANGUAGE=$(basename "$d")
-    if [ "en" != "${LANGUAGE}" ] && [ ! -f "${LOCALE_DIR}/${LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]
-    then
-        echo "Skipping language ${LANGUAGE}: no translation for ${VERSION_BASENAME} found."
-        continue
-    fi
-    echo "Generating files at '$OUTPUT' for ETag '$VERSION_BASENAME' and language '${LANGUAGE}' in '${BUILDDIR}':" 1>&2
+for d in en $(ls -d ${LOCALE_DIR}/?? | grep -v "en" 2>/dev/null || true); do
+  LANGUAGE=$(basename "$d")
+  if [ "en" != "${LANGUAGE}" ] && [ ! -f "${LOCALE_DIR}/${LANGUAGE}/LC_MESSAGES/${VERSION_BASENAME}.po" ]; then
+    echo "Skipping language ${LANGUAGE}: no translation for ${VERSION_BASENAME} found."
+    continue
+  fi
+  echo "Generating files at '$OUTPUT' for ETag '$VERSION_BASENAME' and language '${LANGUAGE}' in '${BUILDDIR}':" 1>&2
 
-    make_config "$LANGUAGE"
-    mkdir -p "${OUTPUT}/${LANGUAGE}/"
+  make_config "$LANGUAGE"
+  mkdir -p "${OUTPUT}/${LANGUAGE}/"
 
-    LBUILD="sphinx-build -D language=${LANGUAGE} -d ${BUILDDIR}/.doctrees"
+  LBUILD="sphinx-build -D language=${LANGUAGE} -d ${BUILDDIR}/.doctrees"
 
-    echo "$VERSION_BASENAME TXT ($LANGUAGE)..." 1>&2
-# shellcheck disable=SC2090
-    $LBUILD \
-        -b text \
-        "${BUILDDIR}" \
-        "${BUILDDIR}/txt" \
-        &> "${BUILDDIR}/txt-sphinx.log" \
-        || failcat "${BUILDDIR}/txt-sphinx.log"
-    mv "${BUILDDIR}/txt/${VERSION_BASENAME}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.txt"
+  echo "$VERSION_BASENAME TXT ($LANGUAGE)..." 1>&2
+  # shellcheck disable=SC2090
+  $LBUILD \
+    -b text \
+    "${BUILDDIR}" \
+    "${BUILDDIR}/txt" \
+    &>"${BUILDDIR}/txt-sphinx.log" ||
+    failcat "${BUILDDIR}/txt-sphinx.log"
+  mv "${BUILDDIR}/txt/${VERSION_BASENAME}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.txt"
 
-    echo "$VERSION_BASENAME MD ($LANGUAGE)..." 1>&2
-    $LBUILD \
-        -b markdown \
-        "${BUILDDIR}" \
-        "${BUILDDIR}/md" \
-        &> "${BUILDDIR}/md-sphinx.log" \
-        || failcat "${BUILDDIR}/md-sphinx.log"
-    mv "${BUILDDIR}/md/${VERSION_BASENAME}.md" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
+  echo "$VERSION_BASENAME MD ($LANGUAGE)..." 1>&2
+  $LBUILD \
+    -b markdown \
+    "${BUILDDIR}" \
+    "${BUILDDIR}/md" \
+    &>"${BUILDDIR}/md-sphinx.log" ||
+    failcat "${BUILDDIR}/md-sphinx.log"
+  mv "${BUILDDIR}/md/${VERSION_BASENAME}.md" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md"
 
-    echo "$VERSION_BASENAME PDF ($LANGUAGE)..." 1>&2
-    mkdir -p "${BUILDDIR}/pdf/"
-    # Convert the generated Markdown (!) to PDF.
-    pandoc \
-        -i "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md" \
-        -o "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" \
-        --pdf-engine=pdfroff
-    mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
+  echo "$VERSION_BASENAME PDF ($LANGUAGE)..." 1>&2
+  mkdir -p "${BUILDDIR}/pdf/"
+  # Convert the generated Markdown (!) to PDF.
+  pandoc \
+    -i "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.md" \
+    -o "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" \
+    --pdf-engine=pdfroff
+  mv "${BUILDDIR}/pdf/${VERSION_BASENAME}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.pdf"
 
-    echo "$VERSION_BASENAME HTML ($LANGUAGE)..." 1>&2
-# shellcheck disable=SC2090
-    $LBUILD \
-        -b html \
-        "${BUILDDIR}" \
-        "${BUILDDIR}/html" \
-        &> "${BUILDDIR}/html-sphinx.log" \
-        || failcat "${BUILDDIR}/html-sphinx.log"
-    htmlark \
-        -o "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.html" \
-        "${BUILDDIR}/html/${VERSION_BASENAME}.html"
+  echo "$VERSION_BASENAME HTML ($LANGUAGE)..." 1>&2
+  # shellcheck disable=SC2090
+  $LBUILD \
+    -b html \
+    "${BUILDDIR}" \
+    "${BUILDDIR}/html" \
+    &>"${BUILDDIR}/html-sphinx.log" ||
+    failcat "${BUILDDIR}/html-sphinx.log"
+  htmlark \
+    -o "${OUTPUT}/${LANGUAGE}/${VERSION_BASENAME}.html" \
+    "${BUILDDIR}/html/${VERSION_BASENAME}.html"
 done
 
-if [[ "$INCREMENTAL" -eq 1 ]]
-then
-  touch "${OUTPUT}/buildstamp";
+if [[ $INCREMENTAL -eq 1 ]]; then
+  touch "${OUTPUT}/buildstamp"
 fi
 
 echo "Done" 1>&2
