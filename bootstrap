@@ -8,9 +8,8 @@ if ! git --version >/dev/null; then
   exit 1
 fi
 
-if ! htmlark --version >/dev/null; then
-  echo "htmlark not installed"
-  echo "Run 'pip install htmlark'"
+if ! pandoc --version >/dev/null; then
+  echo "pandoc not installed"
   exit 1
 fi
 
