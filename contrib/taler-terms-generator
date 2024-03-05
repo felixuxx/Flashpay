@@ -278,10 +278,12 @@ for d in en $(ls -d ${LOCALE_DIR}/?? | grep -v "en" 2>/dev/null || true); do
     --shift-heading-level-by=-1
 
   echo "$VERSION_BASENAME HTML ($LANGUAGE)..." 1>&2
+  # FIXME: Newer versions of pandic should use
+  # --embed-resources --standalone instead of --self-contained
   pandoc \
     -i "$BUILDFILE_MARKDOWN" \
     -o "${OUTBASE}.html" \
-    --embed-resources --standalone \
+    --self-contained \
     --shift-heading-level-by=-1
 
   echo "$VERSION_BASENAME TXT ($LANGUAGE)..." 1>&2
