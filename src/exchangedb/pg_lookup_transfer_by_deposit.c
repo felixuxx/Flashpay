@@ -141,13 +141,20 @@ TEH_PG_lookup_transfer_by_deposit (
                                             &wire_salt),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
+#define BUG 1
+#if BUG
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_uint64 ("legitimization_requirement_serial_id",
                                       &kyc->requirement_row),
         NULL),
+#endif
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_uint64 ("kyc_requirement",
                                       &aml_kyc_row),
+        NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint32 ("status",
+                                      &status32),
         NULL),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    amount_with_fee),
@@ -155,22 +162,22 @@ TEH_PG_lookup_transfer_by_deposit (
                                    deposit_fee),
       GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                        exec_time),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_uint32 ("status",
-                                      &status32),
-        NULL),
       GNUNET_PQ_result_spec_end
     };
 
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Got the special place...\n");
     PREPARE (pg,
              "get_deposit_without_wtid",
              "SELECT"
-             " agt.legitimization_requirement_serial_id"
-             ",bdep.wire_salt"
+             " bdep.wire_salt"
              ",wt.payto_uri"
              ",cdep.amount_with_fee"
              ",denom.fee_deposit"
              ",bdep.wire_deadline"
+#if BUG
+             ",agt.legitimization_requirement_serial_id"
+#endif
              ",aml.status"
              ",aml.kyc_requirement"
              " FROM coin_deposits cdep"
@@ -182,9 +189,11 @@ TEH_PG_lookup_transfer_by_deposit (
              "   ON (kc.coin_pub = cdep.coin_pub)"
              " JOIN denominations denom"
              "   USING (denominations_serial)"
+#if BUG
              " LEFT JOIN aggregation_transient agt "
              "   ON ( (bdep.wire_target_h_payto = agt.wire_target_h_payto) AND"
              "        (bdep.merchant_pub = agt.merchant_pub) )"
+#endif
              " LEFT JOIN aml_status aml"
              "   ON (wt.wire_target_h_payto = aml.h_payto)"
              " WHERE cdep.coin_pub=$1"
@@ -215,12 +224,15 @@ TEH_PG_lookup_transfer_by_deposit (
       TALER_merchant_wire_signature_hash (payto_uri,
                                           &wire_salt,
                                           &wh);
-      GNUNET_PQ_cleanup_result (rs);
       if (0 !=
           GNUNET_memcmp (&wh,
                          h_wire))
+      {
+        GNUNET_PQ_cleanup_result (rs);
         return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+      }
     }
+    GNUNET_PQ_cleanup_result (rs);
     *aml_decision = TALER_AML_NORMAL;
     return qs;
   }

@@ -2710,7 +2710,6 @@ run (void *cls,
   global_ret = EXIT_SUCCESS;
   TALER_MHD_daemon_start (mhd);
   atexit (&write_stats);
-
 #if HAVE_DEVELOPER
   if (NULL != input_filename)
     run_single_request ();
