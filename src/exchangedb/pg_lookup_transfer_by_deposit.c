@@ -120,12 +120,10 @@ TEH_PG_lookup_transfer_by_deposit (
       return qs;
     }
     qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+    GNUNET_PQ_cleanup_result (rs);
   }
   if (0 > qs)
-  {
-    GNUNET_PQ_cleanup_result (rs);
     return qs;
-  }
   *pending = true;
   memset (wtid,
           0,
@@ -230,11 +228,11 @@ TEH_PG_lookup_transfer_by_deposit (
           GNUNET_memcmp (&wh,
                          h_wire))
       {
-        GNUNET_PQ_cleanup_result (rs);
+        GNUNET_PQ_cleanup_result (rs2);
         return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
       }
+      GNUNET_PQ_cleanup_result (rs2);
     }
-    GNUNET_PQ_cleanup_result (rs);
     *aml_decision = TALER_AML_NORMAL;
     return qs;
   }
