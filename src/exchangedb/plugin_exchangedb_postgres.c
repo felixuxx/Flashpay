@@ -272,6 +272,8 @@ TEH_PG_internal_setup (struct PostgresClosure *pg)
       GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
       GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
       GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+      /* Mergejoin causes issues, see Postgres #18380 */
+      GNUNET_PQ_make_try_execute ("SET enable_mergejoin=OFF;"),
       GNUNET_PQ_EXECUTE_STATEMENT_END
     };
 #else
@@ -280,7 +282,8 @@ TEH_PG_internal_setup (struct PostgresClosure *pg)
         "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
       GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
       GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
-      GNUNET_PQ_make_try_execute ("SET autocommit=OFF;"),
+      /* Mergejoin causes issues, see Postgres #18380 */
+      GNUNET_PQ_make_try_execute ("SET enable_mergejoin=OFF;"),
       GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
       GNUNET_PQ_EXECUTE_STATEMENT_END
     };

@@ -141,6 +141,7 @@ TEH_PG_lookup_transfer_by_deposit (
                                             &wire_salt),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
+      /* See Postgresql bug #18380 */
 #define BUG 1
 #if BUG
       GNUNET_PQ_result_spec_allow_null (
