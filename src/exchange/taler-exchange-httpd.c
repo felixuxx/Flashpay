@@ -165,6 +165,11 @@ struct TALER_Amount TEH_stefan_log;
 float TEH_stefan_lin;
 
 /**
+ * Where to redirect users from "/"?
+ */
+static char *toplevel_redirect_url;
+
+/**
  * Our currency.
  */
 char *TEH_currency;
@@ -1503,15 +1508,15 @@ handle_post_auditors (struct TEH_RequestContext *rc,
 
 /**
  * Generates the response for "/", redirecting the
- * client to the "/webui/" from where we serve the SPA.
+ * client to the ``toplevel_redirect_url``.
  *
  * @param rc request context
  * @param args remaining arguments (should be empty)
  * @return MHD result code
  */
 static MHD_RESULT
-spa_redirect (struct TEH_RequestContext *rc,
-              const char *const args[])
+toplevel_redirect (struct TEH_RequestContext *rc,
+                   const char *const args[])
 {
   const char *text = "Redirecting to /webui/";
   struct MHD_Response *response;
@@ -1532,7 +1537,7 @@ spa_redirect (struct TEH_RequestContext *rc,
   if (MHD_NO ==
       MHD_add_response_header (response,
                                MHD_HTTP_HEADER_LOCATION,
-                               "/webui/"))
+                               toplevel_redirect_url))
   {
     GNUNET_break (0);
     MHD_destroy_response (response);
@@ -1584,11 +1589,11 @@ handle_mhd_request (void *cls,
       .data = "User-agent: *\nDisallow: /\n",
       .response_code = MHD_HTTP_OK
     },
-    /* Landing page, redirect to SPA */
+    /* Landing page, redirect to toplevel_redirect_url */
     {
       .url = "",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &spa_redirect
+      .handler.get = &toplevel_redirect
     },
     /* AGPL licensing page, redirect to source. As per the AGPL-license, every
        deployment is required to offer the user a download of the source of
@@ -2109,6 +2114,14 @@ exchange_serve_process_config (void)
                                "exchange",
                                "KYC_AML_TRIGGER");
     return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "TOPLEVEL_REDIRECT_URL",
+                                             &toplevel_redirect_url))
+  {
+    toplevel_redirect_url = GNUNET_strdup ("/terms");
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (TEH_cfg,
