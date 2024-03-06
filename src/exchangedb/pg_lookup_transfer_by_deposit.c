@@ -109,7 +109,6 @@ TEH_PG_lookup_transfer_by_deposit (
     TALER_merchant_wire_signature_hash (payto_uri,
                                         &wire_salt,
                                         &wh);
-    GNUNET_PQ_cleanup_result (rs);
     if (0 ==
         GNUNET_memcmp (&wh,
                        h_wire))
@@ -117,12 +116,16 @@ TEH_PG_lookup_transfer_by_deposit (
       *pending = false;
       kyc->ok = true;
       *aml_decision = TALER_AML_NORMAL;
+      GNUNET_PQ_cleanup_result (rs);
       return qs;
     }
     qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   if (0 > qs)
+  {
+    GNUNET_PQ_cleanup_result (rs);
     return qs;
+  }
   *pending = true;
   memset (wtid,
           0,
