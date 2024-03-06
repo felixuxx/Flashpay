@@ -166,8 +166,6 @@ TEH_PG_lookup_transfer_by_deposit (
       GNUNET_PQ_result_spec_end
     };
 
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Got the special place...\n");
     PREPARE (pg,
              "get_deposit_without_wtid",
              "SELECT"
