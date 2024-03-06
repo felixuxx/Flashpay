@@ -28,6 +28,7 @@
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_bank_service.h"
+#include "taler_dbevents.h"
 
 
 /**
@@ -824,15 +825,30 @@ do_aggregate (struct AggregationUnit *au)
   {
   case GNUNET_DB_STATUS_SOFT_ERROR:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Serialization issue during aggregation; trying again later!\n");
+                "Serialization issue during aggregation; trying again later!\n")
+    ;
     return GNUNET_NO;
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     return GNUNET_SYSERR;
   default:
-    return GNUNET_OK;
+    break;
   }
+  {
+    struct TALER_CoinDepositEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
+      .merchant_pub = au->merchant_pub
+    };
+
+    db_plugin->event_notify (db_plugin->cls,
+                             &rep.header,
+                             NULL,
+                             0);
+  }
+  return GNUNET_OK;
+
 }
 
 

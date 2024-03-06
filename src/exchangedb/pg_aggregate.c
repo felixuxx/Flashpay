@@ -122,7 +122,8 @@ TEH_PG_aggregate (
            "    SELECT batch_deposit_serial_id,$4"
            "      FROM bdep)"
            "SELECT" /* calculate totals (deposits, refunds and fees) */
-           "  CAST(COALESCE(SUM((cdep.amount).val),0) AS INT8) AS sum_deposit_value" /* cast needed, otherwise we get NUMBER */
+           "  CAST(COALESCE(SUM((cdep.amount).val),0) AS INT8) AS sum_deposit_value"
+           /* cast needed, otherwise we get NUMBER */
            " ,COALESCE(SUM((cdep.amount).frac),0) AS sum_deposit_fraction" /* SUM over INT returns INT8 */
            " ,CAST(COALESCE(SUM((ref.refund).val),0) AS INT8) AS sum_refund_value"
            " ,COALESCE(SUM((ref.refund).frac),0) AS sum_refund_fraction"
@@ -173,18 +174,6 @@ TEH_PG_aggregate (
                    TALER_amount_set_zero (pg->currency,
                                           total));
     return qs;
-  }
-  {
-    struct TALER_CoinDepositEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
-      .merchant_pub = *merchant_pub
-    };
-
-    TEH_PG_event_notify (pg,
-                         &rep.header,
-                         NULL,
-                         0);
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (pg->currency,
