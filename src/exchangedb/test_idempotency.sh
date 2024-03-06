@@ -1,6 +1,7 @@
 #!/bin/sh
 # This file is in the public domain.
 set -eu
+psql talercheck < /dev/null || exit 77
 echo "Initializing DB"
 taler-exchange-dbinit -r -c test-exchange-db-postgres.conf
 echo "Re-initializing DB"
