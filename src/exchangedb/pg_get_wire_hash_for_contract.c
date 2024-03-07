@@ -55,7 +55,7 @@ TEH_PG_get_wire_hash_for_contract (
   PREPARE (pg,
            "get_wire_hash_for_contract",
            "SELECT"
-           "bdep.wire_salt"
+           " bdep.wire_salt"
            ",wt.payto_uri"
            " FROM coin_deposits"
            "    JOIN batch_deposits bdep"
