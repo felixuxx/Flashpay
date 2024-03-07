@@ -47,7 +47,6 @@ man_MANS = \
 
 info_TEXINFOS = \
   prebuilt/texinfo/taler-auditor.texi \
-  prebuilt/texinfo/taler-bank.texi \
   prebuilt/texinfo/taler-developer-manual.texi \
   prebuilt/texinfo/taler-exchange.texi
 
@@ -58,16 +57,5 @@ EXTRA_DIST = \
   $(info_TEXINFOS) \
   prebuilt/texinfo/taler-auditor-figures/auditor-db.png \
   prebuilt/texinfo/taler-auditor-figures/replication.png  \
-  prebuilt/texinfo/taler-bank-figures/arch-api.png  \
-  prebuilt/texinfo/taler-bank-figures/auditor-db.png       \
-  prebuilt/texinfo/taler-bank-figures/exchange-db.png \
-  prebuilt/texinfo/taler-bank-figures/merchant-db.png \
-  prebuilt/texinfo/taler-bank-figures/replication.png \
-  prebuilt/texinfo/taler-developer-manual-figures/arch-api.png \
-  prebuilt/texinfo/taler-developer-manual-figures/auditor-db.png \
-  prebuilt/texinfo/taler-developer-manual-figures/exchange-db.png \
-  prebuilt/texinfo/taler-developer-manual-figures/merchant-db.png \
-  prebuilt/texinfo/taler-developer-manual-figures/replication.png \
-  prebuilt/texinfo/taler-exchange-figures/auditor-db.png \
-  prebuilt/texinfo/taler-exchange-figures/exchange-db.png\
-  prebuilt/texinfo/taler-exchange-figures/replication.png
+  prebuilt/texinfo/taler-exchange-figures/kyc-process.png \
+  prebuilt/texinfo/taler-exchange-figures/exchange-db.png
