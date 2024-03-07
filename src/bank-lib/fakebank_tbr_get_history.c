@@ -70,7 +70,12 @@ TALER_FAKEBANK_tbr_get_history (
     *con_cls = cc;
     hc = GNUNET_new (struct HistoryContext);
     cc->ctx = hc;
-
+    hc->history = json_array ();
+    if (NULL == hc->history)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling /accounts/%s/taler-revenue/history request\n",
                 account);
@@ -82,6 +87,7 @@ TALER_FAKEBANK_tbr_get_history (
       GNUNET_break_op (0);
       return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
     }
+    hc->timeout = GNUNET_TIME_relative_to_absolute (hc->ha.lp_timeout);
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&h->big_lock));
     if (UINT64_MAX == hc->ha.start_idx)
@@ -101,15 +107,6 @@ TALER_FAKEBANK_tbr_get_history (
                                          TALER_EC_BANK_UNKNOWN_ACCOUNT,
                                          account);
     }
-    hc->history = json_array ();
-    if (NULL == hc->history)
-    {
-      GNUNET_break (0);
-      GNUNET_assert (0 ==
-                     pthread_mutex_unlock (&h->big_lock));
-      return MHD_NO;
-    }
-    hc->timeout = GNUNET_TIME_relative_to_absolute (hc->ha.lp_timeout);
   }
   else
   {
