@@ -327,6 +327,7 @@ proof_cb (
   case TALER_KYCLOGIC_STATUS_PROVIDER_FAILED:
   case TALER_KYCLOGIC_STATUS_USER_ABORTED:
   case TALER_KYCLOGIC_STATUS_ABORTED:
+    GNUNET_assert (NULL == kpc->kat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC process %s/%s (Row #%llu) failed: %d\n",
                 provider_user_id,

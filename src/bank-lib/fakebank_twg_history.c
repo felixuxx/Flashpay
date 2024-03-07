@@ -148,6 +148,7 @@ TALER_FAKEBANK_twg_get_debit_history_ (
            (0 < hc->ha.delta))
       {
         acc_payto_uri = hc->acc->payto_uri;
+        in_shutdown = h->in_shutdown;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
@@ -162,6 +163,7 @@ TALER_FAKEBANK_twg_get_debit_history_ (
       if (h->in_shutdown)
       {
         acc_payto_uri = hc->acc->payto_uri;
+        in_shutdown = h->in_shutdown;
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         goto finish;
