@@ -143,7 +143,6 @@ libtalertesting_la_LIBADD = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 
-.NOTPARALLEL:
 check_PROGRAMS = \
   test_auditor_api_version \
   test_bank_api_with_fakebank \

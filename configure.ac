@@ -182,7 +182,7 @@ AC_CHECK_HEADERS([gnunet/gnunet_util_lib.h],
 AS_IF([test $libgnunetutil != 1],
   [AC_MSG_ERROR([[
 ***
-*** You need libgnunetutil >= 0.20.0 to build this program.
+*** You need libgnunetutil >= 0.21.0 to build this program.
 *** This library is part of GNUnet, available at
 ***   https://gnunet.org
 *** ]])])
