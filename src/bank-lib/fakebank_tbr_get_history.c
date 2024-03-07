@@ -148,6 +148,7 @@ TALER_FAKEBANK_tbr_get_history (
     if ( (NULL == t) ||
          overflow)
     {
+      in_shutdown = h->in_shutdown;
       /* FIXME: these conditions are unclear to me. */
       if (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout) &&
           (0 < hc->ha.delta))
@@ -166,7 +167,7 @@ TALER_FAKEBANK_tbr_get_history (
         }
         goto finish;
       }
-      if (h->in_shutdown)
+      if (in_shutdown)
       {
         acc_payto_uri = hc->acc->payto_uri;
         GNUNET_assert (0 ==
