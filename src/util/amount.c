@@ -261,7 +261,10 @@ enum GNUNET_GenericReturnValue
 TALER_amount_is_valid (const struct TALER_Amount *amount)
 {
   if (amount->value > TALER_AMOUNT_MAX_VALUE)
+  {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
+  }
   return ('\0' != amount->currency[0]) ? GNUNET_OK : GNUNET_NO;
 }
 
