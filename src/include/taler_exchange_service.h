@@ -408,6 +408,16 @@ struct TALER_EXCHANGE_WireAccount
    */
   struct TALER_MasterSignatureP master_sig;
 
+  /**
+   * Display label for the account, can be NULL.
+   */
+  char *bank_label;
+
+  /**
+   * Priority for ordering the account in the display.
+   */
+  int64_t priority;
+
 };
 
 

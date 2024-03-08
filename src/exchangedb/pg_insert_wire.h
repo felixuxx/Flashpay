@@ -36,6 +36,8 @@
  *                      (only to be used for replay detection)
  * @param master_sig public signature affirming the existence of the account,
  *         must be of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS
+ * @param bank_label label to show this entry under in the UI, can be NULL
+ * @param priority determines order in which entries are shown in the UI
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
@@ -45,6 +47,9 @@ TEH_PG_insert_wire (void *cls,
                     const json_t *debit_restrictions,
                     const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp start_date,
-                    const struct TALER_MasterSignatureP *master_sig);
+                    const struct TALER_MasterSignatureP *master_sig,
+                    const char *bank_label,
+                    int64_t priority);
+
 
 #endif

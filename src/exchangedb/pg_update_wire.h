@@ -37,6 +37,8 @@
  * @param change_date date when the account status was last changed
  *                      (only to be used for replay detection)
  * @param master_sig master signature to store, can be NULL (if @a enabled is false)
+ * @param bank_label label to show this entry under in the UI, can be NULL
+ * @param priority determines order in which entries are shown in the UI
  * @param enabled true to enable, false to disable (the actual change)
  * @return transaction status code
  */
@@ -48,6 +50,8 @@ TEH_PG_update_wire (void *cls,
                     const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp change_date,
                     const struct TALER_MasterSignatureP *master_sig,
+                    const char *bank_label,
+                    int64_t priority,
                     bool enabled);
 
 #endif

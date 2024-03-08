@@ -119,6 +119,8 @@ del_wire (void *cls,
                                 NULL,
                                 awc->validity_end,
                                 NULL,
+                                NULL,
+                                0,
                                 false);
   if (qs < 0)
   {

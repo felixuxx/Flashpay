@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022, 2023 Taler Systems SA
+   Copyright (C) 2022, 2023, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -34,6 +34,8 @@ TEH_PG_update_wire (void *cls,
                     const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp change_date,
                     const struct TALER_MasterSignatureP *master_sig,
+                    const char *bank_label,
+                    int64_t priority,
                     bool enabled)
 {
   struct PostgresClosure *pg = cls;
@@ -53,6 +55,10 @@ TEH_PG_update_wire (void *cls,
     NULL == master_sig
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (master_sig),
+    NULL == bank_label
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (bank_label),
+    GNUNET_PQ_query_param_int64 (&priority),
     GNUNET_PQ_query_param_end
   };
 
@@ -66,6 +72,8 @@ TEH_PG_update_wire (void *cls,
            " ,credit_restrictions=$5"
            " ,last_change=$6"
            " ,master_sig=$7"
+           " ,bank_label=$8"
+           " ,priority=$9"
            " WHERE payto_uri=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_wire",

@@ -2320,6 +2320,11 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
           GNUNET_JSON_pack_allow_null (
             GNUNET_JSON_pack_string ("conversion_url",
                                      acc->conversion_url)),
+          GNUNET_JSON_pack_int64 ("priority",
+                                  acc->priority),
+          GNUNET_JSON_pack_allow_null (
+            GNUNET_JSON_pack_string ("bank_label",
+                                     acc->bank_label)),
           GNUNET_JSON_pack_array_steal ("debit_restrictions",
                                         debit_restrictions),
           GNUNET_JSON_pack_array_steal ("credit_restrictions",

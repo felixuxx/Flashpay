@@ -515,7 +515,9 @@ TALER_EXCHANGE_parse_accounts (
   {
     struct TALER_EXCHANGE_WireAccount *wa = &was[i];
     const char *payto_uri;
-    const char *conversion_url;
+    const char *conversion_url = NULL;
+    const char *bank_label = NULL;
+    int64_t priority = 0;
     const json_t *credit_restrictions;
     const json_t *debit_restrictions;
     struct GNUNET_JSON_Specification spec_account[] = {
@@ -524,6 +526,14 @@ TALER_EXCHANGE_parse_accounts (
       GNUNET_JSON_spec_mark_optional (
         TALER_JSON_spec_web_url ("conversion_url",
                                  &conversion_url),
+        NULL),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_int64 ("priority",
+                                &priority),
+        NULL),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_string ("bank_label",
+                                 &bank_label),
         NULL),
       GNUNET_JSON_spec_array_const ("credit_restrictions",
                                     &credit_restrictions),
@@ -574,8 +584,11 @@ TALER_EXCHANGE_parse_accounts (
       return GNUNET_SYSERR;
     }
     wa->payto_uri = GNUNET_strdup (payto_uri);
+    wa->priority = priority;
     if (NULL != conversion_url)
       wa->conversion_url = GNUNET_strdup (conversion_url);
+    if (NULL != bank_label)
+      wa->bank_label = GNUNET_strdup (bank_label);
   }       /* end 'for all accounts */
   return GNUNET_OK;
 }
@@ -622,6 +635,7 @@ TALER_EXCHANGE_free_accounts (
 
     GNUNET_free (wa->payto_uri);
     GNUNET_free (wa->conversion_url);
+    GNUNET_free (wa->bank_label);
     free_restrictions (wa->credit_restrictions_length,
                        wa->credit_restrictions);
     GNUNET_array_grow (wa->credit_restrictions,

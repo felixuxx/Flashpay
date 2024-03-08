@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2023 Taler Systems SA
+  Copyright (C) 2020-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -74,6 +74,16 @@ struct AddWireContext
    */
   struct GNUNET_TIME_Timestamp validity_start;
 
+  /**
+   * Label to use for this bank. Default is empty.
+   */
+  const char *bank_label;
+
+  /**
+   * Priority of the bank in the list. Default 0.
+   */
+  int64_t priority;
+
 };
 
 
@@ -133,7 +143,9 @@ add_wire (void *cls,
                                   awc->debit_restrictions,
                                   awc->credit_restrictions,
                                   awc->validity_start,
-                                  &awc->master_sig_wire);
+                                  &awc->master_sig_wire,
+                                  awc->bank_label,
+                                  awc->priority);
   else
     qs = TEH_plugin->update_wire (TEH_plugin->cls,
                                   awc->payto_uri,
@@ -142,6 +154,8 @@ add_wire (void *cls,
                                   awc->credit_restrictions,
                                   awc->validity_start,
                                   &awc->master_sig_wire,
+                                  awc->bank_label,
+                                  awc->priority,
                                   true);
   if (qs < 0)
   {
@@ -183,6 +197,14 @@ TEH_handler_management_post_wire (
                                   &awc.debit_restrictions),
     GNUNET_JSON_spec_timestamp ("validity_start",
                                 &awc.validity_start),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("bank_label",
+                               &awc.bank_label),
+      NULL),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_int64 ("priority",
+                              &awc.priority),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
 
@@ -217,13 +239,14 @@ TEH_handler_management_post_wire (
     }
   }
   if (GNUNET_OK !=
-      TALER_exchange_offline_wire_add_verify (awc.payto_uri,
-                                              awc.conversion_url,
-                                              awc.debit_restrictions,
-                                              awc.credit_restrictions,
-                                              awc.validity_start,
-                                              &TEH_master_public_key,
-                                              &awc.master_sig_add))
+      TALER_exchange_offline_wire_add_verify (
+        awc.payto_uri,
+        awc.conversion_url,
+        awc.debit_restrictions,
+        awc.credit_restrictions,
+        awc.validity_start,
+        &TEH_master_public_key,
+        &awc.master_sig_add))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
@@ -235,12 +258,13 @@ TEH_handler_management_post_wire (
   }
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      TALER_exchange_wire_signature_check (awc.payto_uri,
-                                           awc.conversion_url,
-                                           awc.debit_restrictions,
-                                           awc.credit_restrictions,
-                                           &TEH_master_public_key,
-                                           &awc.master_sig_wire))
+      TALER_exchange_wire_signature_check (
+        awc.payto_uri,
+        awc.conversion_url,
+        awc.debit_restrictions,
+        awc.credit_restrictions,
+        &TEH_master_public_key,
+        &awc.master_sig_wire))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);

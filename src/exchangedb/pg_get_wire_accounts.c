@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -70,6 +70,8 @@ get_wire_accounts_cb (void *cls,
     json_t *debit_restrictions = NULL;
     json_t *credit_restrictions = NULL;
     struct TALER_MasterSignatureP master_sig;
+    char *bank_label = NULL;
+    int64_t priority;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
@@ -77,6 +79,12 @@ get_wire_accounts_cb (void *cls,
         GNUNET_PQ_result_spec_string ("conversion_url",
                                       &conversion_url),
         NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("bank_label",
+                                      &bank_label),
+        NULL),
+      GNUNET_PQ_result_spec_int64 ("priority",
+                                   &priority),
       GNUNET_PQ_result_spec_allow_null (
         TALER_PQ_result_spec_json ("debit_restrictions",
                                    &debit_restrictions),
@@ -114,7 +122,9 @@ get_wire_accounts_cb (void *cls,
              conversion_url,
              debit_restrictions,
              credit_restrictions,
-             &master_sig);
+             &master_sig,
+             bank_label,
+             priority);
     GNUNET_PQ_cleanup_result (rs);
   }
 }
@@ -144,6 +154,8 @@ TEH_PG_get_wire_accounts (void *cls,
            ",debit_restrictions"
            ",credit_restrictions"
            ",master_sig"
+           ",bank_label"
+           ",priority"
            " FROM wire_accounts"
            " WHERE is_active");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

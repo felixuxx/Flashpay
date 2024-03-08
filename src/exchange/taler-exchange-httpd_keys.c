@@ -670,6 +670,8 @@ TEH_wire_done ()
  * @param credit_restrictions JSON array with credit restrictions on the account
  * @param master_sig master key signature affirming that this is a bank
  *                   account of the exchange (of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS)
+ * @param bank_label label the wallet should use to display the account, can be NULL
+ * @param priority priority for ordering bank account labels
  */
 static void
 add_wire_account (void *cls,
@@ -677,7 +679,9 @@ add_wire_account (void *cls,
                   const char *conversion_url,
                   const json_t *debit_restrictions,
                   const json_t *credit_restrictions,
-                  const struct TALER_MasterSignatureP *master_sig)
+                  const struct TALER_MasterSignatureP *master_sig,
+                  const char *bank_label,
+                  int64_t priority)
 {
   json_t *a = cls;
 
@@ -703,6 +707,11 @@ add_wire_account (void *cls,
           GNUNET_JSON_pack_allow_null (
             GNUNET_JSON_pack_string ("conversion_url",
                                      conversion_url)),
+          GNUNET_JSON_pack_allow_null (
+            GNUNET_JSON_pack_string ("bank_label",
+                                     bank_label)),
+          GNUNET_JSON_pack_int64 ("priority",
+                                  priority),
           GNUNET_JSON_pack_array_incref ("debit_restrictions",
                                          (json_t *) debit_restrictions),
           GNUNET_JSON_pack_array_incref ("credit_restrictions",

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022, 2023 Taler Systems SA
+   Copyright (C) 2022, 2023, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -33,7 +33,9 @@ TEH_PG_insert_wire (void *cls,
                     const json_t *debit_restrictions,
                     const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp start_date,
-                    const struct TALER_MasterSignatureP *master_sig)
+                    const struct TALER_MasterSignatureP *master_sig,
+                    const char *bank_label,
+                    int64_t priority)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -45,6 +47,10 @@ TEH_PG_insert_wire (void *cls,
     TALER_PQ_query_param_json (credit_restrictions),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_timestamp (&start_date),
+    NULL == bank_label
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (bank_label),
+    GNUNET_PQ_query_param_int64 (&priority),
     GNUNET_PQ_query_param_end
   };
 
@@ -58,8 +64,10 @@ TEH_PG_insert_wire (void *cls,
            ",master_sig"
            ",is_active"
            ",last_change"
+           ",bank_label"
+           ",priority"
            ") VALUES "
-           "($1, $2, $3, $4, $5, true, $6);");
+           "($1, $2, $3, $4, $5, true, $6, $7, $8);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire",
                                              params);

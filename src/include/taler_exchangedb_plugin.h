@@ -3059,6 +3059,8 @@ typedef enum GNUNET_GenericReturnValue
  * @param credit_restrictions JSON array with credit restrictions on the account
  * @param master_sig master key signature affirming that this is a bank
  *                   account of the exchange (of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS)
+ * @param bank_label label the wallet should use to display the account, can be NULL
+ * @param priority priority for ordering bank account labels
  */
 typedef void
 (*TALER_EXCHANGEDB_WireAccountCallback)(
@@ -3067,7 +3069,9 @@ typedef void
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
-  const struct TALER_MasterSignatureP *master_sig);
+  const struct TALER_MasterSignatureP *master_sig,
+  const char *bank_label,
+  int64_t priority);
 
 
 /**
@@ -5763,6 +5767,8 @@ struct TALER_EXCHANGEDB_Plugin
    *                      (only to be used for replay detection)
    * @param master_sig public signature affirming the existence of the account,
    *         must be of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS
+   * @param bank_label label to show this entry under in the UI, can be NULL
+   * @param priority determines order in which entries are shown in the UI
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -5772,7 +5778,9 @@ struct TALER_EXCHANGEDB_Plugin
                  const json_t *debit_restrictions,
                  const json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp start_date,
-                 const struct TALER_MasterSignatureP *master_sig);
+                 const struct TALER_MasterSignatureP *master_sig,
+                 const char *bank_label,
+                 int64_t priority);
 
 
   /**
@@ -5786,6 +5794,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param change_date date when the account status was last changed
    *                      (only to be used for replay detection)
    * @param master_sig master signature to store, can be NULL (if @a enabled is false)
+   * @param bank_label label to show this entry under in the UI, can be NULL
+   * @param priority determines order in which entries are shown in the UI
    * @param enabled true to enable, false to disable (the actual change)
    * @return transaction status code
    */
@@ -5797,6 +5807,8 @@ struct TALER_EXCHANGEDB_Plugin
                  const json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp change_date,
                  const struct TALER_MasterSignatureP *master_sig,
+                 const char *bank_label,
+                 int64_t priority,
                  bool enabled);
 
 
