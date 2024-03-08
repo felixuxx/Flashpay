@@ -103,7 +103,7 @@ del_wire (void *cls,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (0 == qs)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
@@ -118,6 +118,7 @@ del_wire (void *cls,
                                 NULL,
                                 NULL,
                                 awc->validity_end,
+                                NULL,
                                 false);
   if (qs < 0)
   {

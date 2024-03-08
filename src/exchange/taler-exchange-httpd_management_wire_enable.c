@@ -126,7 +126,7 @@ add_wire (void *cls,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (0 == qs)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     qs = TEH_plugin->insert_wire (TEH_plugin->cls,
                                   awc->payto_uri,
                                   awc->conversion_url,
@@ -141,6 +141,7 @@ add_wire (void *cls,
                                   awc->debit_restrictions,
                                   awc->credit_restrictions,
                                   awc->validity_start,
+                                  &awc->master_sig_wire,
                                   true);
   if (qs < 0)
   {

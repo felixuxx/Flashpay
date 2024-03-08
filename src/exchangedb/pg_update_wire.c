@@ -33,6 +33,7 @@ TEH_PG_update_wire (void *cls,
                     const json_t *debit_restrictions,
                     const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp change_date,
+                    const struct TALER_MasterSignatureP *master_sig,
                     bool enabled)
 {
   struct PostgresClosure *pg = cls;
@@ -49,6 +50,9 @@ TEH_PG_update_wire (void *cls,
     ? TALER_PQ_query_param_json (credit_restrictions)
     : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_timestamp (&change_date),
+    NULL == master_sig
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
 
@@ -61,6 +65,7 @@ TEH_PG_update_wire (void *cls,
            " ,debit_restrictions=$4"
            " ,credit_restrictions=$5"
            " ,last_change=$6"
+           " ,master_sig=$7"
            " WHERE payto_uri=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_wire",

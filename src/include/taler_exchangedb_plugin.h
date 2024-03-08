@@ -5785,6 +5785,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param credit_restrictions JSON array with credit restrictions on the account; NULL allowed if not @a enabled
    * @param change_date date when the account status was last changed
    *                      (only to be used for replay detection)
+   * @param master_sig master signature to store, can be NULL (if @a enabled is false)
    * @param enabled true to enable, false to disable (the actual change)
    * @return transaction status code
    */
@@ -5795,6 +5796,7 @@ struct TALER_EXCHANGEDB_Plugin
                  const json_t *debit_restrictions,
                  const json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp change_date,
+                 const struct TALER_MasterSignatureP *master_sig,
                  bool enabled);
 
 
