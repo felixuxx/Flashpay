@@ -36,7 +36,7 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00090400
+#define TALER_EXCHANGE_API_VERSION 0x00100000
 
 /* *********************  /keys *********************** */
 
@@ -5818,6 +5818,8 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle;
  *        of purpose #TALER_SIGNATURE_MASTER_ADD_WIRE
  * @param master_sig2 signature affirming the validity of the account for clients;
  *        of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS.
+ * @param bank_label label to use when showing the account, can be NULL
+ * @param priority priority for ordering the bank accounts
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -5833,6 +5835,8 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig1,
   const struct TALER_MasterSignatureP *master_sig2,
+  const char *bank_label,
+  int64_t priority,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
   void *cb_cls);
 

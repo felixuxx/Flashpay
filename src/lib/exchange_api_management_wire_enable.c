@@ -149,6 +149,8 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig1,
   const struct TALER_MasterSignatureP *master_sig2,
+  const char *bank_label,
+  int64_t priority,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
   void *cb_cls)
 {
@@ -192,6 +194,11 @@ TALER_EXCHANGE_management_enable_wire (
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_string ("conversion_url",
                                conversion_url)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("bank_label",
+                               bank_label)),
+    GNUNET_JSON_pack_int64 ("priority",
+                            priority),
     GNUNET_JSON_pack_data_auto ("master_sig_add",
                                 master_sig1),
     GNUNET_JSON_pack_data_auto ("master_sig_wire",

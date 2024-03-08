@@ -177,6 +177,8 @@ wire_add_run (void *cls,
     now,
     &master_sig1,
     &master_sig2,
+    NULL,
+    0LL,
     &wire_add_cb,
     ds);
   json_decref (debit_rest);

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2020-2023 Taler Systems SA
+   Copyright (C) 2020-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -1543,6 +1543,8 @@ upload_wire_add (const char *exchange_url,
   struct WireAddRequest *war;
   const char *err_name;
   const char *conversion_url = NULL;
+  const char *bank_label = NULL;
+  int64_t priority = 0;
   const json_t *debit_restrictions;
   const json_t *credit_restrictions;
   unsigned int err_line;
@@ -1553,6 +1555,12 @@ upload_wire_add (const char *exchange_url,
       TALER_JSON_spec_web_url ("conversion_url",
                                &conversion_url),
       NULL),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("bank_label",
+                               &bank_label),
+      NULL),
+    GNUNET_JSON_spec_int64 ("priority",
+                            &priority),
     GNUNET_JSON_spec_array_const ("debit_restrictions",
                                   &debit_restrictions),
     GNUNET_JSON_spec_array_const ("credit_restrictions",
@@ -1625,6 +1633,8 @@ upload_wire_add (const char *exchange_url,
                                            start_time,
                                            &master_sig_add,
                                            &master_sig_wire,
+                                           bank_label,
+                                           priority,
                                            &wire_add_cb,
                                            war);
   GNUNET_CONTAINER_DLL_insert (war_head,
@@ -3081,6 +3091,8 @@ do_add_wire (char *const *args)
   struct TALER_MasterSignatureP master_sig_wire;
   struct GNUNET_TIME_Timestamp now;
   const char *conversion_url = NULL;
+  const char *bank_label = NULL;
+  int64_t priority = 0;
   json_t *debit_restrictions;
   json_t *credit_restrictions;
   unsigned int num_args = 1;
@@ -3196,6 +3208,43 @@ do_add_wire (char *const *args)
       num_args += iret;
       continue;
     }
+    if (0 == strcmp (args[num_args],
+                     "display-hint"))
+    {
+      long long p;
+      char dummy;
+
+      num_args++;
+      if ( (NULL == args[num_args]) ||
+           (NULL == args[num_args + 1]) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "'display-hint' requires at least two arguments (priority and label)\n");
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      if (1 != sscanf (args[num_args],
+                       "%lld%c",
+                       &p,
+                       &dummy))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Priority argument `%s' is not a number\n",
+                    args[num_args]);
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      priority = (int64_t) p;
+      num_args++;
+      bank_label = args[num_args];
+      num_args++;
+    }
     break;
   }
   TALER_exchange_offline_wire_add_sign (args[0],
@@ -3222,6 +3271,11 @@ do_add_wire (char *const *args)
                       GNUNET_JSON_pack_allow_null (
                         GNUNET_JSON_pack_string ("conversion_url",
                                                  conversion_url)),
+                      GNUNET_JSON_pack_allow_null (
+                        GNUNET_JSON_pack_string ("bank_label",
+                                                 bank_label)),
+                      GNUNET_JSON_pack_int64 ("priority",
+                                              priority),
                       GNUNET_JSON_pack_timestamp ("validity_start",
                                                   now),
                       GNUNET_JSON_pack_data_auto ("master_sig_add",
@@ -5263,7 +5317,7 @@ work (void *cls)
     {
       .name = "enable-account",
       .help =
-        "enable wire account of the exchange (payto-URI must be given as argument; for optional argument see man page)",
+        "enable wire account of the exchange (payto-URI must be given as argument; for optional arguments see man page)",
       .cb = &do_add_wire
     },
     {
