@@ -14,39 +14,32 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_create_tables.c
- * @brief Implementation of the create_tables function for Postgres
+ * @file exchangedb/pg_inject_auditor_triggers.c
+ * @brief Implementation of the inject_auditor_triggers function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_create_tables.h"
+#include "pg_gc.h"
 #include "pg_helper.h"
 
 
+/**
+ * Function called to inject auditor triggers into the
+ * database, triggering the real-time auditor upon
+ * relevant INSERTs.
+ *
+ * @param cls closure
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
 enum GNUNET_GenericReturnValue
-TEH_PG_create_tables (void *cls,
-                      bool support_partitions,
-                      uint32_t num_partitions)
+TEH_PG_inject_auditor_triggers (void *cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
-  struct GNUNET_PQ_QueryParam params[] = {
-    support_partitions
-    ? GNUNET_PQ_query_param_uint32 (&num_partitions)
-    : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_PreparedStatement ps[] = {
-    GNUNET_PQ_make_prepare ("create_tables",
-                            "SELECT"
-                            " exchange.do_create_tables"
-                            " ($1);"),
-    GNUNET_PQ_PREPARED_STATEMENT_END
-  };
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
@@ -54,19 +47,11 @@ TEH_PG_create_tables (void *cls,
 
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
-                                     "exchange-",
+                                     "auditor-triggers-",
                                      es,
-                                     ps);
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  if (0 >
-      GNUNET_PQ_eval_prepared_non_select (conn,
-                                          "create_tables",
-                                          params))
-    ret = GNUNET_SYSERR;
-  if (GNUNET_OK == ret)
-    ret = GNUNET_PQ_exec_sql (conn,
-                              "procedures");
   GNUNET_PQ_disconnect (conn);
-  return ret;
+  return GNUNET_OK;
 }

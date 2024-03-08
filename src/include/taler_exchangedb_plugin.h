@@ -34,16 +34,24 @@
  */
 enum TALER_EXCHANGEDB_AgeCommitmentHash_Conflict
 {
-  /* Value OK, no conflict */
+  /**
+   * Value OK, no conflict
+   */
   TALER_AgeCommitmentHash_NoConflict    = 0,
 
-  /* Given hash had a value, but NULL (or zero) was expected */
+  /**
+   * Given hash had a value, but NULL (or zero) was expected
+   */
   TALER_AgeCommitmentHash_NullExpected  = 1,
 
-  /* Given hash was NULL, but value was expected */
+  /**
+   * Given hash was NULL, but value was expected
+   */
   TALER_AgeCommitmentHash_ValueExpected = 2,
 
-  /* Given hash differs from value in the known coin */
+  /**
+   * Given hash differs from value in the known coin
+   */
   TALER_AgeCommitmentHash_ValueDiffers  = 3,
 };
 
@@ -7205,6 +7213,18 @@ struct TALER_EXCHANGEDB_Plugin
     const char *provider_section,
     const char *provider_account_id,
     const char *provider_legitimization_id);
+
+  /**
+   * Function called to inject auditor triggers into the
+   * database, triggering the real-time auditor upon
+   * relevant INSERTs.
+   *
+   * @param cls closure
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  enum GNUNET_GenericReturnValue
+  (*inject_auditor_triggers)(void *cls);
 
 };
 

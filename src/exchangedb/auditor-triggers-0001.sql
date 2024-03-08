@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2024 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -17,18 +17,25 @@
 -- Everything in one big transaction
 BEGIN;
 
--- TODO: consider use exchange-* in the future!
-SELECT _v.unregister_patch('exchange-0001');
-SELECT _v.unregister_patch('exchange-0002');
+SELECT _v.register_patch('auditor-triggers-0001');
 
-WITH xpatches AS (
-  SELECT patch_name
-  FROM _v.patches
-  WHERE patch_name='auditor-triggers-0001' -- TODO: use auditor-triggers-* in the future!
-)
-  SELECT _v.unregister_patch(xpatches.patch_name)
-  FROM xpatches;
+SET search_path TO exchange;
 
-DROP SCHEMA exchange CASCADE;
+CREATE OR REPLACE FUNCTION auditor_new_deposits_trigger()
+    RETURNS trigger
+    LANGUAGE plpgsql
+AS $$
+BEGIN
+    NOTIFY XFIXME;
+    RETURN NEW;
+END $$;
+COMMENT ON FUNCTION auditor_new_deposits_trigger()
+    IS 'Call XXX on new entry';
+
+CREATE TRIGGER auditor_notify_helper_insert_deposits
+    AFTER INSERT
+    ON exchange.batch_deposits
+EXECUTE PROCEDURE auditor_new_deposits_trigger();
+
 
 COMMIT;

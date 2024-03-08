@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -28,6 +28,11 @@
  * Return value from main().
  */
 static int global_ret;
+
+/**
+ * -a option: inject auditor triggers
+ */
+static int inject_auditor;
 
 /**
  * -r option: do full DB reset
@@ -133,6 +138,15 @@ run (void *cls,
       }
     }
   }
+  if (inject_auditor)
+  {
+    if (GNUNET_SYSERR == plugin->inject_auditor_triggers (plugin->cls))
+    {
+      fprintf (stderr,
+               "Injecting auditor triggers failed!\n");
+      global_ret = EXIT_FAILURE;
+    }
+  }
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }
@@ -151,6 +165,10 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_flag ('a',
+                               "inject-auditor",
+                               "inject auditor triggers",
+                               &inject_auditor),
     GNUNET_GETOPT_option_flag ('g',
                                "gc",
                                "garbage collect database",

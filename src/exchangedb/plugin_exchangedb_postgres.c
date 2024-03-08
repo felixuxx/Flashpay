@@ -161,6 +161,7 @@
 #include "pg_start_deferred_wire_out.h"
 #include "pg_store_wire_transfer_out.h"
 #include "pg_gc.h"
+#include "pg_inject_auditor_triggers.h"
 #include "pg_select_coin_deposits_above_serial_id.h"
 #include "pg_select_purse_decisions_above_serial_id.h"
 #include "pg_select_purse_deposits_by_purse.h"
@@ -790,6 +791,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   plugin->batch_ensure_coin_known
     = &TEH_PG_batch_ensure_coin_known;
+  plugin->inject_auditor_triggers
+    = &TEH_PG_inject_auditor_triggers;
 
   return plugin;
 }
