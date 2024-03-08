@@ -157,11 +157,6 @@ if ! which sphinx-build >/dev/null; then
   exit 1
 fi
 
-if ! which latexmk >/dev/null; then
-  echo "Command 'latexmk' not found, but required. Please install latexmk." 1>&2
-  exit 1
-fi
-
 if ! which pandoc >/dev/null; then
   echo "Command 'pandoc' not found, but required. Please install pandoc." 1>&2
   exit 1
