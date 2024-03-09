@@ -1,3 +1,15 @@
+taler-exchange (0.10.0) unstable; urgency=low
+
+  * Fixed major issue where uploading wire data to an
+    exchange twice would result in broken signatures and
+    a permanently non-working account.
+  * Implemented #8000, allowing an exchange to express
+    preferences over the different bank accounts so that
+    users are shown the best choices to withdraw from first.
+  * This version requires a more recent GNUnet (>= 0.21.1).
+
+ -- Christian Grothoff <grothoff@gnu.org>  Sat, 9 Mar 2024 21:50:12 +0200
+
 taler-exchange (0.9.4-2) unstable; urgency=low
 
   * Created new taler-terms-generator package
