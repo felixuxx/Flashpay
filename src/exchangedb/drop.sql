@@ -17,14 +17,19 @@
 -- Everything in one big transaction
 BEGIN;
 
--- TODO: consider use exchange-* in the future!
-SELECT _v.unregister_patch('exchange-0001');
-SELECT _v.unregister_patch('exchange-0002');
+WITH xpatches AS (
+  SELECT patch_name
+  FROM _v.patches
+  WHERE starts_with(patch_name,'exchange-')
+)
+  SELECT _v.unregister_patch(xpatches.patch_name)
+  FROM xpatches;
+
 
 WITH xpatches AS (
   SELECT patch_name
   FROM _v.patches
-  WHERE patch_name='auditor-triggers-0001' -- TODO: use auditor-triggers-* in the future!
+  WHERE starts_with(patch_name,'auditor-triggers-')
 )
   SELECT _v.unregister_patch(xpatches.patch_name)
   FROM xpatches;

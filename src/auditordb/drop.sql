@@ -17,8 +17,14 @@
 -- Everything in one big transaction
 BEGIN;
 
-SELECT _v.unregister_patch('auditor-0001');
-SELECT _v.unregister_patch('auditor-0002');
+WITH xpatches AS (
+  SELECT patch_name
+  FROM _v.patches
+  WHERE starts_with(patch_name,'auditor-')
+)
+  SELECT _v.unregister_patch(xpatches.patch_name)
+  FROM xpatches;
+
 DROP SCHEMA auditor CASCADE;
 
 -- And we're out of here...
