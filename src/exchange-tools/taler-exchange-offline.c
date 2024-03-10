@@ -3167,6 +3167,17 @@ do_add_wire (char *const *args)
         json_decref (credit_restrictions);
         return;
       }
+      if (! TALER_is_web_url (conversion_url))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "'conversion-url' must refer to HTTP(S) endpoint, `%s' is invalid\n",
+                    conversion_url);
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
       num_args++;
       continue;
     }
