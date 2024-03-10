@@ -1,0 +1,36 @@
+# This file is in the public domain.
+#
+# This service is expected to be run via the respective
+# timer to ensure that the keys and fees of the exchange
+# are always current.
+#
+# You are expected to edit it to match your desired
+# setup!
+#
+[Unit]
+Description=Daily taler-exchange-offline run
+Documentation=man:taler-exchange-offline(1)
+
+[Service]
+Type=oneshot
+User=taler-exchange-offline
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+PrivateDevices=yes
+Envirionment="FIAT_CURRENCY=CHF"
+Envirionment="REGIO_CURRENCY=NETZBON"
+
+ExecStart=taler-exchange-offline \
+  download \
+  sign \
+  wire-fee now \
+    iban "${FIAT_CURRENCY}":0 "${FIAT_CURRENCY}":0 \
+  wire-fee now \
+    x-taler-bank "${REGIO_CURRENCY}":0 "${REGIO_CURRENCY}":0 \
+  global-fee now \
+    "${REGIO_CURRENCY}:0" \
+    "${REGIO_CURRENCY}:0" \
+    "${REGIO_CURRENCY}:0"
+    4w 6y 4 \
+  upload

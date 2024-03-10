@@ -1,0 +1,20 @@
+# This file is in the public domain.
+#
+# Note that this timer is deliberately NOT active
+# by default as it is ONLY applicable if the
+# taler-exchange-offline tool is run on the *online*
+# service and not actually offline.  It is provided
+# for convenience in setups that do not use offline
+# signing. You may need to adjust the
+# taler-exchange-offline.service file before using it!
+[Unit]
+Description=taler-exchange-offline maintenance
+Documentation=man:taler-exchange-offline(1)
+
+[Timer]
+OnCalendar=daily
+AccuracySec=12h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
