@@ -918,9 +918,10 @@ do_shutdown (void *cls)
 
   if (NULL != out)
   {
-    json_dumpf (out,
-                stdout,
-                JSON_INDENT (2));
+    if (EXIT_SUCCESS == global_ret)
+      json_dumpf (out,
+                  stdout,
+                  JSON_INDENT (2));
     json_decref (out);
     out = NULL;
   }
@@ -1189,7 +1190,7 @@ upload_denom_revocation (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   drr = GNUNET_new (struct DenomRevocationRequest);
@@ -1279,7 +1280,7 @@ upload_signkey_revocation (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   srr = GNUNET_new (struct SignkeyRevocationRequest);
@@ -1378,7 +1379,7 @@ upload_auditor_add (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   aar = GNUNET_new (struct AuditorAddRequest);
@@ -1474,7 +1475,7 @@ upload_auditor_del (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   adr = GNUNET_new (struct AuditorDelRequest);
@@ -1589,7 +1590,7 @@ upload_wire_add (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   {
@@ -1602,7 +1603,7 @@ upload_wire_add (const char *exchange_url,
                   "payto:// URI `%s' is malformed\n",
                   payto_uri);
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
     GNUNET_free (wire_method);
@@ -1616,7 +1617,7 @@ upload_wire_add (const char *exchange_url,
                   "payto URI is malformed: %s\n",
                   msg);
       GNUNET_free (msg);
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       global_ret = EXIT_INVALIDARGUMENT;
       return;
     }
@@ -1717,7 +1718,7 @@ upload_wire_del (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   wdr = GNUNET_new (struct WireDelRequest);
@@ -1821,7 +1822,7 @@ upload_wire_fee (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   wfr = GNUNET_new (struct WireFeeRequest);
@@ -1936,7 +1937,7 @@ upload_global_fee (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   gfr = GNUNET_new (struct GlobalFeeRequest);
@@ -2044,7 +2045,7 @@ upload_drain (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   dpr = GNUNET_new (struct DrainProfitsRequest);
@@ -2139,7 +2140,7 @@ upload_keys (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   pkd.num_sign_sigs = json_array_size (signkey_sigs);
@@ -2232,7 +2233,7 @@ upload_keys (const char *exchange_url,
   else
   {
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
   }
   GNUNET_free (pkd.sign_sigs);
   GNUNET_free (pkd.denom_sigs);
@@ -2311,7 +2312,7 @@ upload_extensions (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
 
@@ -2326,7 +2327,7 @@ upload_extensions (const char *exchange_url,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "couldn't hash extensions' manifests\n");
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
 
@@ -2342,7 +2343,7 @@ upload_extensions (const char *exchange_url,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "invalid signature for extensions\n");
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
   }
@@ -2458,7 +2459,7 @@ add_partner (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   par = GNUNET_new (struct PartnerAddRequest);
@@ -2565,7 +2566,7 @@ update_aml_staff (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   asr = GNUNET_new (struct AmlStaffRequest);
@@ -2668,7 +2669,7 @@ trigger_upload (const char *exchange_url)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Malformed JSON input\n");
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
     /* block of code that uses key and value */
@@ -2691,7 +2692,7 @@ trigger_upload (const char *exchange_url)
                   "Upload does not know how to handle `%s'\n",
                   key);
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
   }
@@ -2711,7 +2712,7 @@ do_upload (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, refusing upload\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -2730,7 +2731,7 @@ do_upload (char *const *args)
                   err.line,
                   err.source,
                   err.position);
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       global_ret = EXIT_FAILURE;
       return;
     }
@@ -2739,7 +2740,7 @@ do_upload (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Error: expected JSON array for `upload` command\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -2754,7 +2755,7 @@ do_upload (char *const *args)
                                "exchange",
                                "BASE_URL");
     global_ret = EXIT_NOTCONFIGURED;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   trigger_upload (CFG_exchange_url);
@@ -2779,7 +2780,7 @@ do_revoke_denomination_key (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, refusing revocation\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -2792,7 +2793,7 @@ do_revoke_denomination_key (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify a denomination key with this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -2828,7 +2829,7 @@ do_revoke_signkey (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, refusing revocation\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -2841,7 +2842,7 @@ do_revoke_signkey (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify an exchange signing key with this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -2879,7 +2880,7 @@ do_add_auditor (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not adding auditor\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -2892,7 +2893,7 @@ do_add_auditor (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify an auditor public key as first argument for this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -2905,7 +2906,7 @@ do_add_auditor (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify an auditor URI and auditor name as 2nd and 3rd arguments to this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -2951,7 +2952,7 @@ do_del_auditor (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not deleting auditor account\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -2964,7 +2965,7 @@ do_del_auditor (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify an auditor public key as first argument for this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3101,7 +3102,7 @@ do_add_wire (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not adding wire account\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3109,7 +3110,7 @@ do_add_wire (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify a payto://-URI with this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3125,7 +3126,7 @@ do_add_wire (char *const *args)
                   "payto URI is malformed: %s\n",
                   msg);
       GNUNET_free (msg);
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       global_ret = EXIT_INVALIDARGUMENT;
       return;
     }
@@ -3141,7 +3142,7 @@ do_add_wire (char *const *args)
                   "payto:// URI `%s' is malformed\n",
                   args[0]);
       global_ret = EXIT_INVALIDARGUMENT;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
     GNUNET_free (wire_method);
@@ -3162,7 +3163,7 @@ do_add_wire (char *const *args)
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "'conversion-url' requires an argument\n");
         global_ret = EXIT_INVALIDARGUMENT;
-        test_shutdown ();
+        GNUNET_SCHEDULER_shutdown ();
         json_decref (debit_restrictions);
         json_decref (credit_restrictions);
         return;
@@ -3173,7 +3174,7 @@ do_add_wire (char *const *args)
                     "'conversion-url' must refer to HTTP(S) endpoint, `%s' is invalid\n",
                     conversion_url);
         global_ret = EXIT_INVALIDARGUMENT;
-        test_shutdown ();
+        GNUNET_SCHEDULER_shutdown ();
         json_decref (debit_restrictions);
         json_decref (credit_restrictions);
         return;
@@ -3192,7 +3193,7 @@ do_add_wire (char *const *args)
       if (iret <= 0)
       {
         global_ret = EXIT_INVALIDARGUMENT;
-        test_shutdown ();
+        GNUNET_SCHEDULER_shutdown ();
         json_decref (debit_restrictions);
         json_decref (credit_restrictions);
         return;
@@ -3211,7 +3212,7 @@ do_add_wire (char *const *args)
       if (iret <= 0)
       {
         global_ret = EXIT_INVALIDARGUMENT;
-        test_shutdown ();
+        GNUNET_SCHEDULER_shutdown ();
         json_decref (debit_restrictions);
         json_decref (credit_restrictions);
         return;
@@ -3232,7 +3233,7 @@ do_add_wire (char *const *args)
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "'display-hint' requires at least two arguments (priority and label)\n");
         global_ret = EXIT_INVALIDARGUMENT;
-        test_shutdown ();
+        GNUNET_SCHEDULER_shutdown ();
         json_decref (debit_restrictions);
         json_decref (credit_restrictions);
         return;
@@ -3246,7 +3247,7 @@ do_add_wire (char *const *args)
                     "Priority argument `%s' is not a number\n",
                     args[num_args]);
         global_ret = EXIT_INVALIDARGUMENT;
-        test_shutdown ();
+        GNUNET_SCHEDULER_shutdown ();
         json_decref (debit_restrictions);
         json_decref (credit_restrictions);
         return;
@@ -3255,6 +3256,7 @@ do_add_wire (char *const *args)
       num_args++;
       bank_label = args[num_args];
       num_args++;
+      continue;
     }
     break;
   }
@@ -3313,7 +3315,7 @@ do_del_wire (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not deleting wire account\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3321,7 +3323,7 @@ do_del_wire (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify a payto://-URI with this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3366,7 +3368,7 @@ do_set_wire_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not setting wire fee\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3389,7 +3391,7 @@ do_set_wire_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must use YEAR, METHOD, WIRE-FEE, and CLOSING-FEE as arguments for this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3453,7 +3455,7 @@ do_set_global_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not setting global fee\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3467,7 +3469,7 @@ do_set_global_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must use YEAR, HISTORY-FEE, ACCOUNT-FEE, PURSE-FEE, PURSE-TIMEOUT, HISTORY-EXPIRATION and PURSE-ACCOUNT-LIMIT as arguments for this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3480,7 +3482,7 @@ do_set_global_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid YEAR given for 'global-fee' subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3496,7 +3498,7 @@ do_set_global_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid amount given for 'global-fee' subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3509,7 +3511,7 @@ do_set_global_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid delay given for 'global-fee' subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3520,7 +3522,7 @@ do_set_global_fee (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid purse account limit given for 'global-fee' subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3591,7 +3593,7 @@ do_drain (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, refusing drain\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3604,7 +3606,7 @@ do_drain (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Drain requires an amount, section name and target payto://-URI as arguments\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3614,7 +3616,7 @@ do_drain (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Drain requires an amount, section name and target payto://-URI as arguments\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3625,7 +3627,7 @@ do_drain (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid amount `%s' specified for drain\n",
                 args[0]);
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3639,7 +3641,7 @@ do_drain (char *const *args)
                 payto_uri,
                 err);
     GNUNET_free (err);
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3700,7 +3702,7 @@ do_add_partner (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not adding partner\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3713,7 +3715,7 @@ do_add_partner (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify the partner master public key as first argument for this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3724,7 +3726,7 @@ do_add_partner (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify the partner's base URL as the 2nd argument to this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3737,7 +3739,7 @@ do_add_partner (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid amount `%s' specified for wad fee of partner\n",
                 args[2]);
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3749,7 +3751,7 @@ do_add_partner (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid wad frequency `%s' specified for add partner\n",
                 args[3]);
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3764,7 +3766,7 @@ do_add_partner (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid year `%s' specified for add partner\n",
                 args[4]);
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3826,7 +3828,7 @@ do_set_aml_staff (bool is_active,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Downloaded data was not consumed, not updating AML staff status\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -3839,7 +3841,7 @@ do_set_aml_staff (bool is_active,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify the AML officer's public key as first argument for this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3847,7 +3849,7 @@ do_set_aml_staff (bool is_active,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must specify the officer's legal name as the 2nd argument to this subcommand\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
@@ -3863,7 +3865,7 @@ do_set_aml_staff (bool is_active,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "You must specify 'ro' or 'rw' (and not `%s') for the access level\n",
                   args[2]);
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       global_ret = EXIT_INVALIDARGUMENT;
       return;
     }
@@ -3962,7 +3964,7 @@ download_cb (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to download keys from `%s' (no HTTP response)\n",
                   CFG_exchange_url);
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -4001,7 +4003,7 @@ do_download (char *const *args)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
@@ -4254,7 +4256,7 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                   stderr,
                   JSON_INDENT (2));
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
     duration = GNUNET_TIME_absolute_get_difference (start_time.abs_time,
@@ -4270,7 +4272,7 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                   "Invalid security module signature for signing key %s (aborting)\n",
                   TALER_B2S (&exchange_pub));
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
     {
@@ -4362,7 +4364,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                   JSON_INDENT (2));
       GNUNET_JSON_parse_free (spec);
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
     duration = GNUNET_TIME_absolute_get_difference (
@@ -4411,7 +4413,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                   "Invalid security module signature for denomination key %s (aborting)\n",
                   GNUNET_h2s (&h_denom_pub.hash));
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
 
@@ -4498,7 +4500,7 @@ parse_keys_input (const char *command_name)
                   err.source,
                   err.position);
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return NULL;
     }
   }
@@ -4517,7 +4519,7 @@ parse_keys_input (const char *command_name)
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     return NULL;
   }
   if (0 != strcmp (op_str,
@@ -4589,7 +4591,7 @@ do_show (char *const *args)
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -4600,7 +4602,7 @@ do_show (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Fatal: exchange uses different master key!\n");
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -4608,7 +4610,7 @@ do_show (char *const *args)
       tofu_check (&secmset))
   {
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -4621,7 +4623,7 @@ do_show (char *const *args)
                         denomkeys)) )
   {
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -4684,7 +4686,7 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                   stderr,
                   JSON_INDENT (2));
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
 
@@ -4701,7 +4703,7 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                   "Invalid security module signature for signing key %s (aborting)\n",
                   TALER_B2S (&exchange_pub));
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
@@ -4838,7 +4840,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                   JSON_INDENT (2));
       GNUNET_JSON_parse_free (spec);
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
     duration = GNUNET_TIME_absolute_get_difference (
@@ -4871,7 +4873,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                       "Invalid security module signature for denomination key %s (aborting)\n",
                       GNUNET_h2s (&h_denom_pub.hash));
           global_ret = EXIT_FAILURE;
-          test_shutdown ();
+          GNUNET_SCHEDULER_shutdown ();
           GNUNET_JSON_parse_free (spec);
           return GNUNET_SYSERR;
         }
@@ -4895,7 +4897,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                       "Invalid security module signature for denomination key %s (aborting)\n",
                       GNUNET_h2s (&h_denom_pub.hash));
           global_ret = EXIT_FAILURE;
-          test_shutdown ();
+          GNUNET_SCHEDULER_shutdown ();
           GNUNET_JSON_parse_free (spec);
           return GNUNET_SYSERR;
         }
@@ -4903,7 +4905,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       break;
     default:
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
@@ -4989,7 +4991,7 @@ do_sign (char *const *args)
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -5000,7 +5002,7 @@ do_sign (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Fatal: exchange uses different master key!\n");
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -5010,7 +5012,7 @@ do_sign (char *const *args)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Fatal: security module keys changed!\n");
     global_ret = EXIT_FAILURE;
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     json_decref (keys);
     return;
   }
@@ -5031,7 +5033,7 @@ do_sign (char *const *args)
                           denomkey_sig_array)) )
     {
       global_ret = EXIT_FAILURE;
-      test_shutdown ();
+      GNUNET_SCHEDULER_shutdown ();
       json_decref (signkey_sig_array);
       json_decref (denomkey_sig_array);
       json_decref (keys);
@@ -5264,7 +5266,7 @@ do_work_extensions (char *const *args)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "You must provide a subcommand: `show` or `sign`.\n");
-    test_shutdown ();
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
   }
