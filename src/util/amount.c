@@ -87,6 +87,7 @@ TALER_string_to_amount (const char *str,
   /* parse currency */
   colon = strchr (str, (int) ':');
   if ( (NULL == colon) ||
+       (colon == str) ||
        ((colon - str) >= TALER_CURRENCY_LEN) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
