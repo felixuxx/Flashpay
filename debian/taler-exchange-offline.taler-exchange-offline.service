@@ -18,8 +18,8 @@ StandardOutput=journal
 StandardError=journal
 PrivateTmp=yes
 PrivateDevices=yes
-Envirionment="FIAT_CURRENCY=CHF"
-Envirionment="REGIO_CURRENCY=NETZBON"
+Environment="FIAT_CURRENCY=CHF"
+Environment="REGIO_CURRENCY=NETZBON"
 
 ExecStart=taler-exchange-offline \
   download \
