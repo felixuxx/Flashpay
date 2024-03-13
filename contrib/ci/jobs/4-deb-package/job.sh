@@ -14,7 +14,7 @@ mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-in
 
 export VERSION="$(./contrib/ci/jobs/4-deb-package/version.sh)"
 echo "Building package version ${VERSION}"
-EMAIL=none gbp dch --ignore-branch --debian-tag="%(version)s" --git-author --new-version="${VERSION}"
+EMAIL=none gbp dch --dch-opt=-b --ignore-branch --debian-tag="%(version)s" --git-author --new-version="${VERSION}"
 ./bootstrap
 dpkg-buildpackage -rfakeroot -b -uc -us
 
