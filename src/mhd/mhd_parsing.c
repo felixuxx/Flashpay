@@ -246,6 +246,42 @@ TALER_MHD_parse_request_arg_number (struct MHD_Connection *connection,
 
 
 enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_snumber (struct MHD_Connection *connection,
+                                     const char *name,
+                                     int64_t *val)
+{
+  const char *ts;
+  char dummy;
+  long long num;
+
+  ts = MHD_lookup_connection_value (connection,
+                                    MHD_GET_ARGUMENT_KIND,
+                                    name);
+  if (NULL == ts)
+    return GNUNET_OK;
+  if (1 !=
+      sscanf (ts,
+              "%lld%c",
+              &num,
+              &dummy))
+  {
+    MHD_RESULT mret;
+
+    GNUNET_break_op (0);
+    mret = TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       name);
+    return (MHD_YES == mret)
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
+  }
+  *val = (int64_t) num;
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_request_arg_amount (struct MHD_Connection *connection,
                                     const char *name,
                                     struct TALER_Amount *val)
