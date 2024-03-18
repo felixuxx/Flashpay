@@ -5,7 +5,7 @@ template specification.
 
 The main site for `mustach` is on [gitlab](https://gitlab.com/jobol/mustach).
 
-The simplest way to use mustach is to copy the files **mustach.h** and **mustach.c**
+The simpliest way to use mustach is to copy the files **mustach.h** and **mustach.c**
 directly into your project and use it.
 
 If you are using one of the JSON libraries listed below, you can get extended feature
@@ -85,7 +85,7 @@ It then outputs the result of applying the templates files to the JSON file.
 ### Portability
 
 Some system does not provide *open_memstream*. In that case, tell your
-preferred compiler to declare the preprocessor symbol **NO_OPEN_MEMSTREAM**.
+prefered compiler to declare the preprocessor symbol **NO_OPEN_MEMSTREAM**.
 Example:
 
 	CFLAGS=-DNO_OPEN_MEMSTREAM make
@@ -154,6 +154,13 @@ The libraries that can be produced are:
 There is no dependencies of a library to an other. This is intended and doesn't
 hurt today because the code is small.
 
+### Testing
+
+The makefile offers the way to execute basic tests. Just type `make test`.
+
+By default, if valgrind is available, tests are using it. It can be disabled
+by typing `make test valgrind=no` or `NOVALGRIND=1 make test`.
+
 ## Extensions
 
 The current implementation provides extensions to specifications of **mustache**.
@@ -163,7 +170,7 @@ Here is the summary.
 
      Flag name                     | Description
     -------------------------------+------------------------------------------------
-     Mustach_With_Colon            | Explicit tag substitution with colon
+     Mustach_With_Colon            | Explicit tag substition with colon
      Mustach_With_EmptyTag         | Empty Tag Allowed
     -------------------------------+------------------------------------------------
      Mustach_With_Equal            | Value Testing Equality
@@ -180,7 +187,7 @@ For the details, see below.
 
 ### Explicit Tag Substitution With Colon (Mustach_With_Colon)
 
-In somecases the name of the key used for substitution begins with a
+In somecases the name of the key used for substition begins with a
 character reserved for mustach: one of `#`, `^`, `/`, `&`, `{`, `>` and `=`.
 
 This extension introduces the special character `:` to explicitly
@@ -311,3 +318,4 @@ The table below summarize the changes.
      fdmustach_json_c | mustach_json_c_fd
      mustach_json_c   | mustach_json_c_mem
      mustach_json_c   | mustach_json_c_write
+

@@ -6,7 +6,9 @@
  SPDX-License-Identifier: ISC
 */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -87,10 +89,19 @@ static int sel(void *closure, const char *name)
 static int subsel(void *closure, const char *name)
 {
 	struct expl *e = closure;
-	struct json_object *o;
-	int r;
+	struct json_object *o = NULL;
+	int r = 0;
 
-	r = json_object_object_get_ex(e->selection, name, &o);
+	if (json_object_is_type(e->selection, json_type_object))
+		r = json_object_object_get_ex(e->selection, name, &o);
+	else if (json_object_is_type(e->selection, json_type_array)) {
+		char *end;
+		size_t idx = (size_t)strtol(name, &end, 10);
+		if (!*end && idx < json_object_array_length(e->selection)) {
+			o = json_object_array_get_idx(e->selection, idx);
+			r = 1;
+		}
+	}
 	if (r)
 		e->selection = o;
 	return r;
@@ -124,7 +135,8 @@ static int enter(void *closure, int objiter)
 		e->stack[e->depth].cont = o;
 		e->stack[e->depth].obj = json_object_array_get_idx(o, 0);
 		e->stack[e->depth].index = 0;
-	} else if (json_object_is_type(o, json_type_object) || json_object_get_boolean(o)) {
+	} else if ((json_object_is_type(o, json_type_object) && json_object_object_length(o) > 0)
+		|| json_object_get_boolean(o)) {
 		e->stack[e->depth].count = 1;
 		e->stack[e->depth].cont = NULL;
 		e->stack[e->depth].obj = o;
@@ -176,11 +188,16 @@ static int get(void *closure, struct mustach_sbuf *sbuf, int key)
 {
 	struct expl *e = closure;
 	const char *s;
+	int d;
 
-	if (key)
-		s = e->stack[e->depth].is_objiter
-			? json_object_iter_peek_name(&e->stack[e->depth].iter)
-			: "";
+	if (key) {
+		s = "";
+		for (d = e->depth ; d >= 0 ; d--)
+			if (e->stack[d].is_objiter) {
+				s = json_object_iter_peek_name(&e->stack[d].iter);
+				break;
+			}
+	}
 	else
 		switch (json_object_get_type(e->selection)) {
 		case json_type_string:

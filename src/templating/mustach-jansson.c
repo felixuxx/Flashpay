@@ -6,7 +6,9 @@
  SPDX-License-Identifier: ISC
 */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -94,11 +96,21 @@ static int sel(void *closure, const char *name)
 static int subsel(void *closure, const char *name)
 {
 	struct expl *e = closure;
-	json_t *o;
-	int r;
+	json_t *o = NULL;
+	int r = 0;
 
-	o = json_object_get(e->selection, name);
-	r = o != NULL;
+	if (json_is_object(e->selection)) {
+		o = json_object_get(e->selection, name);
+		r = o != NULL;
+	}
+	else if (json_is_array(e->selection)) {
+		char *end;
+		size_t idx = (size_t)strtol(name, &end, 10);
+		if (!*end && idx < json_array_size(e->selection)) {
+			o = json_array_get(e->selection, idx);
+			r = 1;
+		}		
+	}
 	if (r)
 		e->selection = o;
 	return r;
@@ -130,7 +142,11 @@ static int enter(void *closure, int objiter)
 		e->stack[e->depth].cont = o;
 		e->stack[e->depth].obj = json_array_get(o, 0);
 		e->stack[e->depth].index = 0;
-	} else if ((json_is_object(o) && json_object_size(0)) || (!json_is_false(o) && !json_is_null(o))) {
+	} else if ((json_is_object(o) && json_object_size(o))
+                || json_is_true(o)
+	        || (json_is_string(o) && json_string_length(o) > 0)
+	        || (json_is_integer(o) && json_integer_value(o) != 0)
+	        || (json_is_real(o) && json_real_value(o) != 0)) {
 		e->stack[e->depth].count = 1;
 		e->stack[e->depth].cont = NULL;
 		e->stack[e->depth].obj = o;
@@ -182,11 +198,15 @@ static int get(void *closure, struct mustach_sbuf *sbuf, int key)
 {
 	struct expl *e = closure;
 	const char *s;
+	int d;
 
 	if (key) {
-		s = e->stack[e->depth].is_objiter
-			? json_object_iter_key(e->stack[e->depth].iter)
-			: "";
+		s = "";
+		for (d = e->depth ; d >= 0 ; d--)
+			if (e->stack[d].is_objiter) {
+				s = json_object_iter_key(e->stack[d].iter);
+				break;
+			}
 	}
 	else if (json_is_string(e->selection))
 		s = json_string_value(e->selection);

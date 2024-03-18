@@ -6,7 +6,9 @@
  SPDX-License-Identifier: ISC
 */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -90,11 +92,21 @@ static int sel(void *closure, const char *name)
 static int subsel(void *closure, const char *name)
 {
 	struct expl *e = closure;
-	cJSON *o;
-	int r;
+	cJSON *o = NULL;
+	int r = 0;
 
-	o = cJSON_GetObjectItemCaseSensitive(e->selection, name);
-	r = o != NULL;
+	if (cJSON_IsObject(e->selection)) {
+		o = cJSON_GetObjectItemCaseSensitive(e->selection, name);
+		r = o != NULL;
+	}
+	else if (cJSON_IsArray(e->selection) && *name) {
+		char *end;
+		int idx = (int)strtol(name, &end, 10);
+		if (!*end && idx >= 0 && idx < cJSON_GetArraySize(e->selection)) {
+			o = cJSON_GetArrayItem(e->selection, idx);
+			r = 1;
+		}
+	}
 	if (r)
 		e->selection = o;
 	return r;
@@ -125,7 +137,10 @@ static int enter(void *closure, int objiter)
 		e->stack[e->depth].obj = o->child;
 		e->stack[e->depth].next = o->child->next;
 		e->stack[e->depth].cont = o;
-	} else if ((cJSON_IsObject(o) && o->child == NULL) || (! cJSON_IsFalse(o) && ! cJSON_IsNull(o))) {
+	} else if ((cJSON_IsObject(o) && o->child != NULL)
+	        || cJSON_IsTrue(o)
+	        || (cJSON_IsString(o) && cJSON_GetStringValue(o)[0] != '\0')
+	        || (cJSON_IsNumber(o) && cJSON_GetNumberValue(o) != 0)) {
 		e->stack[e->depth].obj = o;
 		e->stack[e->depth].cont = NULL;
 		e->stack[e->depth].next = NULL;
@@ -170,11 +185,15 @@ static int get(void *closure, struct mustach_sbuf *sbuf, int key)
 {
 	struct expl *e = closure;
 	const char *s;
+	int d;
 
 	if (key) {
-		s = e->stack[e->depth].is_objiter
-			? e->stack[e->depth].obj->string
-			: "";
+		s = "";
+		for (d = e->depth ; d >= 0 ; d--)
+			if (e->stack[d].is_objiter) {
+				s = e->stack[d].obj->string;
+				break;
+			}
 	}
 	else if (cJSON_IsString(e->selection))
 		s = e->selection->valuestring;
