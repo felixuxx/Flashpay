@@ -7,7 +7,10 @@ set -eu
 
 export CFLAGS="-g"
 
+make clean
 make -f mustach-original-Makefile mustach || exit 77
 make -f mustach-original-Makefile clean || true
 make -f mustach-original-Makefile basic-tests
 make -f mustach-original-Makefile clean || true
+make clean
+make
