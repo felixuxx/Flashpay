@@ -26,6 +26,8 @@ RUN apt-get update -yqq && \
                    recutils \
                    texinfo \
 		   zlib1g-dev \
+           # For mustach testing (optional) \
+           libjson-c-dev \
                    # Debian packaging tools \
                    po-debconf \
                    build-essential \
