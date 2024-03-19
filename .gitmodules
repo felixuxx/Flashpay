@@ -1,6 +1,6 @@
 [submodule "doc/api"]
 	path = doc/api
-	url = git@git.taler.net:api
+	url = https://git.taler.net/api.git
 [submodule "doc/prebuilt"]
 	path = doc/prebuilt
 	url = https://git.taler.net/docs.git
