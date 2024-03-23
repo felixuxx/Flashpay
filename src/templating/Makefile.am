@@ -16,7 +16,9 @@ taler_mustach_tool_LDADD = \
   libmustach.la \
   -ljansson
 taler_mustach_tool_CFLAGS = \
-  -DTOOL=MUSTACH_TOOL_JANSSON
+  -DTOOL=MUSTACH_TOOL_JANSSON \
+  -DMUSTACH_SAFE=1 \
+  -DMUSTACH_LOAD_TEMPLATE=0
 
 lib_LTLIBRARIES = \
   libtalertemplating.la
@@ -40,7 +42,9 @@ libtalertemplating_la_LIBADD = \
 libtalertemplating_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
-
+libtalertemplating_la_CFLAGS = \
+  -DMUSTACH_SAFE=1 \
+  -DMUSTACH_LOAD_TEMPLATE=0
 
 libmustach_la_SOURCES = \
   mustach.c mustach.h \
