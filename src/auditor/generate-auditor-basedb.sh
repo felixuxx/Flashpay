@@ -47,7 +47,6 @@ echo -n "Testing for curl ..."
 curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
-
 # reset database
 echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
 dropdb "auditor-basedb" >/dev/null 2>/dev/null || true
@@ -64,10 +63,21 @@ EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
 MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
 MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
 BANK_PORT=$(taler-config -c "$CONF" -s BANK -o HTTP_PORT)
-BANK_URL="http://localhost:1${BANK_PORT}"
+BANK_URL="http://localhost:${BANK_PORT}"
 
+echo -n "Checking setup worked ..."
+wget \
+    --tries=1 \
+    --timeout=1 \
+    "${EXCHANGE_URL}config" \
+    -o /dev/null \
+    -O /dev/null >/dev/null
+echo "DONE"
+
+export MERCHANT_URL
 echo -n "Setting up merchant ..."
-curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external"},"accounts":[{"payto_uri":"payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"}],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000}}' "${MERCHANT_URL}management/instances"
+
+curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external"},"accounts":[{"payto_uri":"payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"}],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000},"use_stefan":false}' "${MERCHANT_URL}management/instances"
 echo " DONE"
 
 # delete existing wallet database
@@ -91,7 +101,7 @@ taler-wallet-cli \
     }' \
     --arg MERCHANT_URL "$MERCHANT_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL" \
-    --arg BANK_URL "$BANK_URL/demobanks/default/access-api/"
+    --arg BANK_URL "$BANK_URL"
   )" &> taler-wallet-cli.log
 echo " DONE"
 

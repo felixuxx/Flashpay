@@ -32,12 +32,12 @@ EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
 MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
 MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
 BANK_PORT=$(taler-config -c "$CONF" -s BANK -o HTTP_PORT)
-BANK_URL="http://localhost:1${BANK_PORT}"
+BANK_URL="http://localhost:${BANK_PORT}"
 
 
 # Setup merchant
 echo -n "Setting up merchant ..."
-curl -H "Content-Type: application/json" -X POST -d '{"auth": {"method": "external"}, "accounts":[{"payto_uri":"payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"}],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000}}' "${MERCHANT_URL}management/instances"
+curl -H "Content-Type: application/json" -X POST -d '{"auth": {"method": "external"}, "accounts":[{"payto_uri":"payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"}],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000},"use_stefan":true}' "${MERCHANT_URL}management/instances"
 echo " DONE"
 
 
@@ -58,7 +58,7 @@ taler-wallet-cli \
       corebankApiBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
     }' \
-    --arg BANK_URL "$BANK_URL/demobanks/default/access-api/" \
+    --arg BANK_URL "$BANK_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL"
   )" &> taler-wallet-cli-withdraw.log
 

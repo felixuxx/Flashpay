@@ -35,7 +35,9 @@ function setup()
     exec 3<> "$FIFO_OUT" 4< "$FIFO_OUT"
     rm -rf "$FIFO_DIR"
     # We require '-W' for our termination logic to work.
-    taler-unified-setup.sh -W "$@" >&3 &
+    taler-unified-setup.sh -W "$@" \
+        | tee taler-unified-setup.log \
+        >&3 &
     SETUP_PID=$!
     # Close FD3
     exec 3>&-

@@ -2228,7 +2228,9 @@ INITDB_BIN=$(command -v initdb) || true
 if [[ -n "$INITDB_BIN" ]]; then
   echo " FOUND (in path) at $INITDB_BIN"
 else
-    HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) \
+    HAVE_INITDB=$(find /usr -name "initdb" 2> /dev/null \
+                      | head -1 2> /dev/null \
+                      | grep postgres) \
         || exit_skip " MISSING"
   echo " FOUND at $(dirname "$HAVE_INITDB")"
   INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
@@ -2244,37 +2246,37 @@ $INITDB_BIN \
     --no-sync \
     --auth=trust \
     -D "${TMPDIR}" \
+    --set listen_addresses='' \
+    --set fsync=off \
+    --set max_wal_senders=0 \
+    --set synchronous_commit=off \
+    --set wal_level=minimal \
+    --set unix_socket_directories="${TMPDIR}/sockets" \
     > "${MY_TMP_DIR}/postgres-dbinit.log" \
     2> "${MY_TMP_DIR}/postgres-dbinit.err"
 echo "DONE"
 SOCKETDIR="${TMPDIR}/sockets"
 mkdir "${SOCKETDIR}"
+
 echo -n "Launching Postgres service"
-cat - >> "$TMPDIR/postgresql.conf" <<EOF
-unix_socket_directories='${TMPDIR}/sockets'
-fsync=off
-max_wal_senders=0
-synchronous_commit=off
-wal_level=minimal
-listen_addresses=''
-EOF
+# Unix domain socket is NOT yet supported by libeufin!
 grep -v host \
      < "$TMPDIR/pg_hba.conf" \
      > "$TMPDIR/pg_hba.conf.new"
 mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
 "${POSTGRES_PATH}/pg_ctl" \
                 -D "$TMPDIR" \
-                -l /dev/null \
+                -l "${MY_TMP_DIR}/postgres.log" \
                 start \
                 > "${MY_TMP_DIR}/postgres-start.log" \
                 2> "${MY_TMP_DIR}/postgres-start.err"
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
-
 MYDIR="${MY_TMP_DIR}/basedb"
 mkdir -p "${MYDIR}"
 echo "Generating fresh database at $MYDIR"
+
 if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/$DB"
 then
     echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
