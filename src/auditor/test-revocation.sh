@@ -89,18 +89,6 @@ function exit_cleanup()
 trap exit_cleanup EXIT
 
 
-function get_payto_uri() {
-    export LIBEUFIN_SANDBOX_USERNAME=$1
-    export LIBEUFIN_SANDBOX_PASSWORD=$2
-    export LIBEUFIN_SANDBOX_URL=http://localhost:18082
-    echo "broken"
-    exit 1
-#    libeufin-cli sandbox demobank info \
-#                 --bank-account "$1" \
-#        | jq --raw-output '.paytoUri'
-}
-
-
 # Operations to run before the actual audit
 function pre_audit () {
     # Launch bank

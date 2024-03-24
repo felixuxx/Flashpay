@@ -163,13 +163,6 @@ function pre_audit () {
             2> "${MY_TMP_DIR}/transfer.log" \
             || exit_fail "FAIL"
         echo " DONE"
-	    echo -n "Running Nexus payment submitter ..."
-	    nexus_submit_to_sandbox
-	    echo " DONE"
-	    # Make outgoing transactions appear in the TWG:
-	    echo -n "Download bank transactions ..."
-	    nexus_fetch_transactions
-	    echo " DONE"
     fi
 }
 
@@ -368,33 +361,6 @@ function run_audit () {
             -c "$CONF" \
             2> "${MY_TMP_DIR}/drain-transfer.log" \
             || exit_fail "FAIL"
-        echo " DONE"
-
-        export LIBEUFIN_NEXUS_USERNAME="exchange"
-        export LIBEUFIN_NEXUS_PASSWORD="x"
-        export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-
-        #PAIN_UUID=$(libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId)
-#        if test -z "${PAIN_UUID}"
-#        then
-#            echo -n "Payment likely already submitted, running submit-payments without UUID anyway ..."
-#            libeufin-cli accounts \
-#                         submit-payments \
-#                         exchange-nexus
-#        else
-#            echo -n "Running payment submission for transaction ${PAIN_UUID} ..."
-#            libeufin-cli accounts \
-#                         submit-payments \
-#                         --payment-uuid "${PAIN_UUID}" \
-#                         exchange-nexus
-#        fi
-#        echo " DONE"
-#        echo -n "Import outgoing transactions..."
-#        libeufin-cli accounts \
-#                     fetch-transactions \
-#                     --range-type since-last \
-#                     --level report \
-#                     exchange-nexus
         echo " DONE"
     fi
     audit_only

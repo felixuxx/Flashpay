@@ -373,42 +373,8 @@ function run_audit () {
             || exit_fail "FAIL"
         echo " DONE"
 
-        export LIBEUFIN_NEXUS_USERNAME="exchange"
-        export LIBEUFIN_NEXUS_PASSWORD="x"
-        export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-    echo "broken"
-    exit 1
-#        PAIN_UUID=$(libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId)
-        if test -z "${PAIN_UUID}"
-        then
-            echo -n "Payment likely already submitted, running submit-payments without UUID anyway ..."
-    echo "broken"
-    exit 1
-#            libeufin-cli accounts \
-#                         submit-payments \
-#                         exchange-nexus
-        else
-            echo -n "Running payment submission for transaction ${PAIN_UUID} ..."
-    echo "broken"
-    exit 1
-#            libeufin-cli accounts \
-#                         submit-payments \
-#                         --payment-uuid "${PAIN_UUID}" \
-#                         exchange-nexus
-        fi
-        echo " DONE"
-        echo -n "Import outgoing transactions..."
-    echo "broken"
-    exit 1
-#        libeufin-cli accounts \
-#                     fetch-transactions \
-#                     --range-type since-last \
-#                     --level report \
-#                     exchange-nexus
-        echo " DONE"
-    fi
-    audit_only
-    post_audit
+        audit_only
+        post_audit
 }
 
 
