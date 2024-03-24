@@ -373,27 +373,28 @@ function run_audit () {
         export LIBEUFIN_NEXUS_USERNAME="exchange"
         export LIBEUFIN_NEXUS_PASSWORD="x"
         export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-        PAIN_UUID=$(libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId)
-        if test -z "${PAIN_UUID}"
-        then
-            echo -n "Payment likely already submitted, running submit-payments without UUID anyway ..."
-            libeufin-cli accounts \
-                         submit-payments \
-                         exchange-nexus
-        else
-            echo -n "Running payment submission for transaction ${PAIN_UUID} ..."
-            libeufin-cli accounts \
-                         submit-payments \
-                         --payment-uuid "${PAIN_UUID}" \
-                         exchange-nexus
-        fi
-        echo " DONE"
-        echo -n "Import outgoing transactions..."
-        libeufin-cli accounts \
-                     fetch-transactions \
-                     --range-type since-last \
-                     --level report \
-                     exchange-nexus
+
+        #PAIN_UUID=$(libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId)
+#        if test -z "${PAIN_UUID}"
+#        then
+#            echo -n "Payment likely already submitted, running submit-payments without UUID anyway ..."
+#            libeufin-cli accounts \
+#                         submit-payments \
+#                         exchange-nexus
+#        else
+#            echo -n "Running payment submission for transaction ${PAIN_UUID} ..."
+#            libeufin-cli accounts \
+#                         submit-payments \
+#                         --payment-uuid "${PAIN_UUID}" \
+#                         exchange-nexus
+#        fi
+#        echo " DONE"
+#        echo -n "Import outgoing transactions..."
+#        libeufin-cli accounts \
+#                     fetch-transactions \
+#                     --range-type since-last \
+#                     --level report \
+#                     exchange-nexus
         echo " DONE"
     fi
     audit_only
@@ -2215,7 +2216,7 @@ echo "Testing for faketime"
 faketime -h > /dev/null || exit_skip "faketime required"
 # NOTE: really check for all three libeufin commands?
 echo "Testing for libeufin"
-libeufin-cli --help >/dev/null 2> /dev/null </dev/null || exit_skip "libeufin required"
+libeufin-bank --help >/dev/null 2> /dev/null </dev/null || exit_skip "libeufin required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 echo "Testing for taler-wallet-cli"

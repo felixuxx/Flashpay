@@ -93,9 +93,11 @@ function get_payto_uri() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
     export LIBEUFIN_SANDBOX_URL=http://localhost:18082
-    libeufin-cli sandbox demobank info \
-                 --bank-account "$1" \
-        | jq --raw-output '.paytoUri'
+    echo "broken"
+    exit 1
+#    libeufin-cli sandbox demobank info \
+#                 --bank-account "$1" \
+#        | jq --raw-output '.paytoUri'
 }
 
 
@@ -689,12 +691,12 @@ jq -h > /dev/null || exit_skip "jq required"
 echo "Testing for faketime"
 faketime -h > /dev/null \
     || exit_skip "faketime required"
-echo "Testing for libeufin(-cli)"
-libeufin-cli --help \
+echo "Testing for libeufin-bank"
+libeufin-bank --help \
              >/dev/null \
              2> /dev/null \
              </dev/null \
-    || exit_skip "libeufin required"
+    || exit_skip "libeufin-bank required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 echo "Testing for taler-wallet-cli"

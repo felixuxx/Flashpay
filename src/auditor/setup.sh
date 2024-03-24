@@ -63,14 +63,18 @@ function get_payto_uri() {
     export LIBEUFIN_SANDBOX_USERNAME="$1"
     export LIBEUFIN_SANDBOX_PASSWORD="$2"
     export LIBEUFIN_SANDBOX_URL="http://localhost:18082"
-    libeufin-cli sandbox demobank info --bank-account "$1" | jq --raw-output '.paytoUri'
+    echo "broken"
+    exit 1
+#    libeufin-cli sandbox demobank info --bank-account "$1" | jq --raw-output '.paytoUri'
 }
 
 function get_bankaccount_transactions() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
     export LIBEUFIN_SANDBOX_URL="http://localhost:18082"
-    libeufin-cli sandbox demobank list-transactions --bank-account $1
+    echo "broken"
+    exit 1
+#    libeufin-cli sandbox demobank list-transactions --bank-account $1
 }
 
 
@@ -123,11 +127,13 @@ function nexus_fetch_transactions () {
     export LIBEUFIN_NEXUS_USERNAME="exchange"
     export LIBEUFIN_NEXUS_PASSWORD="x"
     export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-    libeufin-cli accounts \
-                 fetch-transactions \
-                 --range-type since-last \
-                 --level report \
-                 exchange-nexus > /dev/null
+    echo "broken"
+    exit 1
+#    libeufin-cli accounts \
+#                 fetch-transactions \
+#                 --range-type since-last \
+#                 --level report \
+#                 exchange-nexus > /dev/null
     unset LIBEUFIN_NEXUS_USERNAME
     unset LIBEUFIN_NEXUS_PASSWORD
     unset LIBEUFIN_NEXUS_URL
@@ -140,9 +146,11 @@ function nexus_submit_to_sandbox () {
     export LIBEUFIN_NEXUS_USERNAME="exchange"
     export LIBEUFIN_NEXUS_PASSWORD="x"
     export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-    libeufin-cli accounts \
-                 submit-payments\
-                 exchange-nexus
+    echo "broken"
+    exit 1
+#    libeufin-cli accounts \
+#                 submit-payments\
+#                 exchange-nexus
     unset LIBEUFIN_NEXUS_USERNAME
     unset LIBEUFIN_NEXUS_PASSWORD
     unset LIBEUFIN_NEXUS_URL
