@@ -153,13 +153,6 @@ function pre_audit () {
             2> "${MY_TMP_DIR}/transfer.log" \
             || exit_fail "FAIL"
         echo " DONE"
-	    echo -n "Running Nexus payment submitter ..."
-	    nexus_submit_to_sandbox
-	    echo " DONE"
-	    # Make outgoing transactions appear in the TWG:
-	    echo -n "Download bank transactions ..."
-	    nexus_fetch_transactions
-	    echo " DONE"
     fi
 }
 
