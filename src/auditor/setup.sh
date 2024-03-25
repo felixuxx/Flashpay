@@ -84,10 +84,10 @@ function stop_libeufin()
 
 
 function launch_libeufin () {
-    libeufin-bank serve \
-                     --no-auth \
-                     --port 8082 \
-                     > "${MY_TMP_DIR}/libeufin-bank-stdout.log" \
-                     2> "${MY_TMP_DIR}/libeufin-bank-stderr.log" &
-    echo $! > "${MY_TMP_DIR}/libeufin-bank.pid"
+  libeufin-bank serve \
+    -c "$CONF" \
+    -L "INFO" \
+    > "${MY_TMP_DIR}/libeufin-bank-stdout.log" \
+    2> "${MY_TMP_DIR}/libeufin-bank-stderr.log" &
+  echo $! > "${MY_TMP_DIR}/libeufin-bank.pid"
 }

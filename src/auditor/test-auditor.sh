@@ -101,24 +101,9 @@ trap exit_cleanup EXIT
 function pre_audit () {
     # Launch bank
     echo -n "Launching libeufin-bank"
+    export CONF
+    export MY_TMP_DIR
     launch_libeufin
-    for n in $(seq 1 80)
-    do
-        echo -n "."
-        sleep 0.1
-        OK=1
-        wget http://localhost:18082/ \
-             -o /dev/null \
-             -O /dev/null \
-             >/dev/null \
-            && break
-        OK=0
-    done
-    if [ 1 != "$OK" ]
-    then
-        exit_skip "Failed to launch Sandbox"
-    fi
-    sleep "$LIBEUFIN_SETTLE_TIME"
     for n in $(seq 1 80)
     do
         echo -n "."
@@ -178,90 +163,85 @@ function audit_only () {
     $VALGRIND taler-helper-auditor-aggregation \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-aggregation.json \
-              2> "${MY_TMP_DIR}/test-audit-aggregation.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-aggregation.out" \
+              2> "${MY_TMP_DIR}/test-audit-aggregation.err" \
         || exit_fail "aggregation audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-aggregation \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-aggregation-inc.json \
-              2> "${MY_TMP_DIR}/test-audit-aggregation-inc.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-aggregation-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-aggregation-inc.err" \
         || exit_fail "incremental aggregation audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-coins \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-coins.json \
-              2> "${MY_TMP_DIR}/test-audit-coins.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-coins.out" \
+              2> "${MY_TMP_DIR}/test-audit-coins.err" \
         || exit_fail "coin audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-coins \
               -L DEBUG  \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-coins-inc.json \
-              2> "${MY_TMP_DIR}/test-audit-coins-inc.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-coins-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-coins-inc.err" \
         || exit_fail "incremental coin audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-deposits \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-deposits.json \
-              2> "${MY_TMP_DIR}/test-audit-deposits.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-deposits.out" \
+              2> "${MY_TMP_DIR}/test-audit-deposits.err" \
         || exit_fail "deposits audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-deposits \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-deposits-inc.json \
-              2> "${MY_TMP_DIR}/test-audit-deposits-inc.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-deposits-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-deposits-inc.err" \
         || exit_fail "incremental deposits audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-reserves \
               -i \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-reserves.json \
-              2> "${MY_TMP_DIR}/test-audit-reserves.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-reserves.out" \
+              2> "${MY_TMP_DIR}/test-audit-reserves.err" \
         || exit_fail "reserves audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-reserves \
               -i \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-reserves-inc.json \
-              2> "${MY_TMP_DIR}/test-audit-reserves-inc.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-reserves-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-reserves-inc.err" \
         || exit_fail "incremental reserves audit failed"
-    echo -n "."
-    rm -f "${MY_TMP_DIR}/test-wire-audit.log"
-    thaw() {
-        $VALGRIND taler-helper-auditor-wire \
-                  -i \
-                  -L DEBUG \
-                  -c "$CONF" \
-                  -m "$MASTER_PUB" \
-                  > test-audit-wire.json \
-                  2>> "${MY_TMP_DIR}/test-wire-audit.log"
-    }
-    thaw || ( echo -e " FIRST CALL TO taler-helper-auditor-wire FAILED,\nRETRY AFTER TWO SECONDS..." | tee -a "${MY_TMP_DIR}/test-wire-audit.log"
-	      sleep 2
-	      thaw || exit_fail "wire audit failed" )
     echo -n "."
     $VALGRIND taler-helper-auditor-wire \
               -i \
               -L DEBUG \
               -c "$CONF" \
-              -m "$MASTER_PUB" \
-              > test-audit-wire-inc.json \
-              2> "${MY_TMP_DIR}/test-wire-audit-inc.log" \
+              -t \
+              > "${MY_TMP_DIR}/test-wire-audit.out" \
+              2> "${MY_TMP_DIR}/test-wire-audit.err" \
+        || exit_fail "wire audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-wire \
+              -i \
+              -L DEBUG \
+              -c "$CONF" \
+              -t \
+              > "${MY_TMP_DIR}/test-wire-audit-inc.out" \
+              2> "${MY_TMP_DIR}/test-wire-audit-inc.err" \
         || exit_fail "wire audit inc failed"
     echo -n "."
 
@@ -275,26 +255,7 @@ function post_audit () {
         -c "$CONF" \
         -g \
         || exit_fail "exchange DB GC failed"
-
     cleanup
-    echo -n "TeXing ."
-    taler-helper-auditor-render.py \
-        test-audit-aggregation.json \
-        test-audit-coins.json \
-        test-audit-deposits.json \
-        test-audit-reserves.json \
-        test-audit-wire.json \
-        < ../../contrib/auditor-report.tex.j2 \
-        > test-report.tex \
-        || exit_fail "Renderer failed"
-
-    echo -n "."
-    timeout 10 pdflatex test-report.tex \
-            >/dev/null \
-        || exit_fail "pdflatex failed"
-    echo -n "."
-    timeout 10 pdflatex test-report.tex \
-            >/dev/null
     echo " DONE"
 }
 
@@ -2153,9 +2114,6 @@ function check_with_database()
         -s exchange-offline \
         -o MASTER_PRIV_FILE \
         -V "${MASTER_PRIV_FILE}"
-    MASTER_PUB=$(gnunet-ecc -p "$MASTER_PRIV_FILE")
-
-    echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 
     # Load database
     full_reload
