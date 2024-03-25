@@ -39,6 +39,14 @@
 static int global_ret;
 
 /**
+ * Run in test mode. Exit when idle instead of
+ * going to sleep and waiting for more work.
+ *
+ * FIXME: not yet implemented!
+ */
+static int test_mode;
+
+/**
  * After how long should idle reserves be closed?
  */
 static struct GNUNET_TIME_Relative idle_reserve_expiration_time;
@@ -2071,11 +2079,10 @@ main (int argc,
                                "internal",
                                "perform checks only applicable for exchange-internal audits",
                                &internal_checks),
-    GNUNET_GETOPT_option_base32_auto ('m',
-                                      "exchange-key",
-                                      "KEY",
-                                      "public key of the exchange (Crockford base32 encoded)",
-                                      &TALER_ARL_master_pub),
+    GNUNET_GETOPT_option_flag ('t',
+                               "test",
+                               "run in test mode and exit when idle",
+                               &test_mode),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
