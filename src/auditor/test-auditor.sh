@@ -2221,20 +2221,33 @@ $INITDB_BIN \
     --no-sync \
     --auth=trust \
     -D "${TMPDIR}" \
-    --set listen_addresses='' \
-    --set fsync=off \
-    --set max_wal_senders=0 \
-    --set synchronous_commit=off \
-    --set wal_level=minimal \
-    --set unix_socket_directories="${TMPDIR}/sockets" \
     > "${MY_TMP_DIR}/postgres-dbinit.log" \
     2> "${MY_TMP_DIR}/postgres-dbinit.err"
 echo "DONE"
+
+# Once we move to PG16, we can use:
+#    --set listen_addresses='' \
+#    --set fsync=off \
+#    --set max_wal_senders=0 \
+#    --set synchronous_commit=off \
+#    --set wal_level=minimal \
+#    --set unix_socket_directories="${TMPDIR}/sockets" \
+
+
 SOCKETDIR="${TMPDIR}/sockets"
 mkdir "${SOCKETDIR}"
 
 echo -n "Launching Postgres service"
-# Unix domain socket is NOT yet supported by libeufin!
+
+cat - >> "$TMPDIR/postgresql.conf" <<EOF
+unix_socket_directories='${TMPDIR}/sockets'
+fsync=off
+max_wal_senders=0
+synchronous_commit=off
+wal_level=minimal
+listen_addresses=''
+EOF
+
 grep -v host \
      < "$TMPDIR/pg_hba.conf" \
      > "$TMPDIR/pg_hba.conf.new"
