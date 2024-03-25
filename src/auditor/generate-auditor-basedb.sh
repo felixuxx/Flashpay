@@ -77,7 +77,20 @@ echo "DONE"
 export MERCHANT_URL
 echo -n "Setting up merchant ..."
 
-curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external"},"accounts":[{"payto_uri":"payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"}],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000},"use_stefan":false}' "${MERCHANT_URL}management/instances"
+curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external"},"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000},"use_stefan":false}' "${MERCHANT_URL}management/instances"
+echo " DONE"
+
+echo -n "Setting up merchant account ..."
+FORTYTHREE="payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"
+STATUS=$(curl -H "Content-Type: application/json" -X POST \
+    "${MERCHANT_URL}private/accounts" \
+    -d '{"payto_uri":"'"$FORTYTHREE"'"}' \
+    -w "%{http_code}" -s -o /dev/null)
+
+if [ "$STATUS" != "200" ]
+then
+    exit_fail "Expected 200 OK. Got: $STATUS"
+fi
 echo " DONE"
 
 # delete existing wallet database
