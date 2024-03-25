@@ -7,6 +7,7 @@ skip=$(cat <<EOF
 ABOUT-NLS
 */afl-tests/*
 **/auditor/*.sql
+**/templating/test-specs/*
 *.bbl
 *.bib
 *build-aux*
