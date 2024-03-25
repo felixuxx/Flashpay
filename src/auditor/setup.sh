@@ -36,8 +36,7 @@ function setup()
     rm -rf "$FIFO_DIR"
     # We require '-W' for our termination logic to work.
     taler-unified-setup.sh -W "$@" \
-        | tee taler-unified-setup.log \
-        >&3 &
+        > >(tee taler-unified-setup.log >&3) &
     SETUP_PID=$!
     # Close FD3
     exec 3>&-
