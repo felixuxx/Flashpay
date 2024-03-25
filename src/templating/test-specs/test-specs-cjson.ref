@@ -52,7 +52,7 @@ processing file test-specs/spec/specs/delimiters.json
 [3] Inverted Sections
 	Delimiters set outside inverted sections should persist.
 	=> SUCCESS
-[4] Partial Inheritance
+[4] Partial Inheritence
 	Delimiters set in a parent template should not affect a partial.
 	=> SUCCESS
 [5] Post-Partial Behavior
