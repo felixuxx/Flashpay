@@ -158,6 +158,7 @@ refund_transaction (void *cls,
   }
   if (conflict)
   {
+    GNUNET_break_op (0);
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT,

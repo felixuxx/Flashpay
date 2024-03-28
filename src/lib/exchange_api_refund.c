@@ -323,6 +323,10 @@ handle_refund_finished (void *cls,
     rr.hr.ec = TALER_JSON_get_error_code (j);
     rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_FAILED_DEPENDENCY:
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_PRECONDITION_FAILED:
     if (GNUNET_OK !=
         verify_failed_dependency_ok (rh,
