@@ -1,17 +1,20 @@
 #!/bin/bash
 # This file is in the public domain.
-set -eu
+set -eux
 
 export CFLAGS="-g"
 
 function build()
 {
+    echo "Ensuring clean state on exit ..."
     make clean
     make
 }
 
 # Install rebuild-on-exit handler (except for kill -9)
 trap build EXIT
+
+echo "Ensuring clean state on entry to legacy tests ..."
 
 make clean
 
@@ -23,3 +26,7 @@ make -f mustach-original-Makefile mustach mustach-json-c.o || exit 77
 make -f mustach-original-Makefile clean || true
 make -f mustach-original-Makefile basic-tests
 make -f mustach-original-Makefile clean || true
+
+echo "Test done"
+
+exit 0
