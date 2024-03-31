@@ -128,4 +128,8 @@ EXTRA_DIST = \
   test8/Makefile \
   test8/must \
   test8/resu.ref \
-  test8/vg.ref
+  test8/vg.ref \
+  test-specs.c \
+  test-specs-cjson.ref \
+  test-specs-jansson.ref \
+  test-specs-json-c.ref
