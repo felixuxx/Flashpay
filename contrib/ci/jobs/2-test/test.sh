@@ -10,6 +10,7 @@ apt-get upgrade -yqq
 	    --disable-doc
 
 nump=$(grep processor /proc/cpuinfo | wc -l)
+make clean
 make -j$(( $nump / 2 ))
 make install
 

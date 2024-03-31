@@ -12,7 +12,7 @@ BEGIN
 
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
-    ' DROP CONSTRAINT refunds_pkey'
+    ' DROP CONSTRAINT ' || table_name || '_pkey'
   );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
