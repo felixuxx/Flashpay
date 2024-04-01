@@ -6,14 +6,12 @@ exit_fail() {
     exit 1
 }
 
-mustach="../mustach"
+mustach="${mustach:-../mustach}"
 echo "starting test"
-if test "$NOVALGRIND" = 1
+if ! valgrind --version 2> /dev/null
 then
-	strace -f $mustach "$@"
 	$mustach "$@" > resu.last || exit_fail "ERROR! mustach command failed ($?)!"
 else
-	valgrind $mustach "$@"
 	valgrind $mustach "$@" > resu.last 2> vg.last || exit_fail "ERROR! valgrind + mustach command failed ($?)!"
 	sed -i 's:^==[0-9]*== ::' vg.last
 	awk '/^ *total heap usage: .* allocs, .* frees,.*/{if($$4-$$6)exit(1)}' vg.last || exit_fail "ERROR! Alloc/Free issue"
