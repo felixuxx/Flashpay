@@ -153,21 +153,27 @@ check_transfers_get_response_ok (
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                      &detail->h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
-        TALER_JSON_spec_amount_any ("deposit_value", &detail->coin_value),
-        TALER_JSON_spec_amount_any ("deposit_fee", &detail->coin_fee),
+        TALER_JSON_spec_amount ("deposit_value",
+                                total_expected.currency,
+                                &detail->coin_value),
+        TALER_JSON_spec_amount ("deposit_fee",
+                                total_expected.currency,
+                                &detail->coin_fee),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_amount ("refund_total",
+                                  total_expected.currency,
+                                  &detail->refund_total),
+          NULL),
         GNUNET_JSON_spec_end ()
       };
 
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_set_zero (td->total_amount.currency,
+                                            &detail->refund_total));
       if ( (GNUNET_OK !=
             GNUNET_JSON_parse (detail_j,
                                spec_detail,
                                NULL, NULL)) ||
-           (GNUNET_OK !=
-            TALER_amount_cmp_currency (&total_expected,
-                                       &detail->coin_value)) ||
-           (GNUNET_OK !=
-            TALER_amount_cmp_currency (&total_expected,
-                                       &detail->coin_fee)) ||
            (0 >
             TALER_amount_add (&total_expected,
                               &total_expected,

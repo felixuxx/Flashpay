@@ -1336,14 +1336,20 @@ struct TALER_TrackTransferDetails
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Value of the deposit (including fee).
+   * Value of the deposit (including fee), after refunds.
    */
   struct TALER_Amount coin_value;
 
   /**
-   * Fee charged by the exchange for the deposit.
+   * Fee charged by the exchange for the deposit,
+   * possibly reduced (or waived) due to refunds.
    */
   struct TALER_Amount coin_fee;
+
+  /**
+   * Total amount of refunds applied to this coin.
+   */
+  struct TALER_Amount refund_total;
 
 };
 

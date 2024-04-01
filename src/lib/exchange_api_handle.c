@@ -40,12 +40,12 @@
  * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define EXCHANGE_PROTOCOL_CURRENT 17
+#define EXCHANGE_PROTOCOL_CURRENT 19
 
 /**
  * How many versions are we backwards compatible with?
  */
-#define EXCHANGE_PROTOCOL_AGE 0
+#define EXCHANGE_PROTOCOL_AGE 2
 
 /**
  * Set to 1 for extra debug logging.

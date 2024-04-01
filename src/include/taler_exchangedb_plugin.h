@@ -4483,14 +4483,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
-  (*select_refunds_by_coin)(void *cls,
-                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                            const struct
-                            TALER_MerchantPublicKeyP *merchant_pub,
-                            const struct
-                            TALER_PrivateContractHashP *h_contract,
-                            TALER_EXCHANGEDB_RefundCoinCallback cb,
-                            void *cb_cls);
+  (*select_refunds_by_coin)(
+    void *cls,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
+    const struct TALER_PrivateContractHashP *h_contract,
+    TALER_EXCHANGEDB_RefundCoinCallback cb,
+    void *cb_cls);
 
 
   /**

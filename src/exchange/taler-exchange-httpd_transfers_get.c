@@ -59,14 +59,20 @@ struct AggregatedDepositDetail
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Total value of the coin in the deposit.
+   * Total value of the coin in the deposit (after
+   * refunds).
    */
   struct TALER_Amount deposit_value;
 
   /**
-   * Fees charged by the exchange for the deposit of this coin.
+   * Fees charged by the exchange for the deposit of this coin (possibly after reduction due to refunds).
    */
   struct TALER_Amount deposit_fee;
+
+  /**
+   * Total amount refunded for this coin.
+   */
+  struct TALER_Amount refund_total;
 };
 
 
@@ -120,6 +126,13 @@ reply_transfer_details (struct MHD_Connection *connection,
                                         &wdd_pos->h_contract_terms),
             GNUNET_JSON_pack_data_auto ("coin_pub",
                                         &wdd_pos->coin_pub),
+
+            GNUNET_JSON_pack_allow_null (
+              TALER_JSON_pack_amount ("refund_total",
+                                      TALER_amount_is_zero (
+                                        &wdd_pos->refund_total)
+                                      ? NULL
+                                      : &wdd_pos->refund_total)),
             TALER_JSON_pack_amount ("deposit_value",
                                     &wdd_pos->deposit_value),
             TALER_JSON_pack_amount ("deposit_fee",
@@ -248,6 +261,31 @@ struct WtidTransactionContext
 
 
 /**
+ * Callback that totals up the applicable refunds.
+ *
+ * @param cls a `struct TALER_Amount` where we keep the total
+ * @param amount_with_fee amount being refunded
+ */
+static enum GNUNET_GenericReturnValue
+add_refunds (void *cls,
+             const struct TALER_Amount *amount_with_fee)
+
+{
+  struct TALER_Amount *total = cls;
+
+  if (0 >
+      TALER_amount_add (total,
+                        total,
+                        amount_with_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called with the results of the lookup of the individual deposits
  * that were aggregated for the given wire transfer.
  *
@@ -260,29 +298,96 @@ struct WtidTransactionContext
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination public key of the @a coin_pub (ignored)
  * @param coin_pub which public key was this payment about
- * @param deposit_value amount contributed by this coin in total
+ * @param deposit_value amount contributed by this coin in total (including fee)
  * @param deposit_fee deposit fee charged by exchange for this coin
  */
 static void
-handle_deposit_data (void *cls,
-                     uint64_t rowid,
-                     const struct TALER_MerchantPublicKeyP *merchant_pub,
-                     const char *account_payto_uri,
-                     const struct TALER_PaytoHashP *h_payto,
-                     struct GNUNET_TIME_Timestamp exec_time,
-                     const struct TALER_PrivateContractHashP *h_contract_terms,
-                     const struct TALER_DenominationPublicKey *denom_pub,
-                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                     const struct TALER_Amount *deposit_value,
-                     const struct TALER_Amount *deposit_fee)
+handle_deposit_data (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const char *account_payto_uri,
+  const struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Timestamp exec_time,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *deposit_value,
+  const struct TALER_Amount *deposit_fee)
 {
   struct WtidTransactionContext *ctx = cls;
+  struct TALER_Amount total_refunds;
+  struct TALER_Amount dval;
+  struct TALER_Amount dfee;
+  enum GNUNET_DB_QueryStatus qs;
 
   (void) rowid;
   (void) denom_pub;
   (void) h_payto;
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (deposit_value->currency,
+                                        &total_refunds));
+  qs = TEH_plugin->select_refunds_by_coin (TEH_plugin->cls,
+                                           coin_pub,
+                                           merchant_pub,
+                                           h_contract_terms,
+                                           &add_refunds,
+                                           &total_refunds);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    ctx->is_valid = GNUNET_SYSERR;
+    return;
+  }
+  if (1 ==
+      TALER_amount_cmp (&total_refunds,
+                        deposit_value))
+  {
+    /* Refunds exceeded total deposit? not OK! */
+    GNUNET_break (0);
+    ctx->is_valid = GNUNET_SYSERR;
+    return;
+  }
+  if (0 ==
+      TALER_amount_cmp (&total_refunds,
+                        deposit_value))
+  {
+    /* total_refunds == deposit_value;
+       in this case, the total contributed to the
+       wire transfer is zero (as are fees) */
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (deposit_value->currency,
+                                          &dval));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (deposit_value->currency,
+                                          &dfee));
+
+  }
+  else
+  {
+    /* Compute deposit value by subtracting refunds */
+    GNUNET_assert (0 <
+                   TALER_amount_subtract (&dval,
+                                          deposit_value,
+                                          &total_refunds));
+    if (-1 ==
+        TALER_amount_cmp (&dval,
+                          deposit_fee))
+    {
+      /* dval < deposit_fee, so after refunds less than
+         the deposit fee remains; reduce deposit fee to
+         the remaining value of the coin */
+      dfee = dval;
+    }
+    else
+    {
+      /* Partial refund, deposit fee remains */
+      dfee = *deposit_fee;
+    }
+  }
+
   if (GNUNET_NO == ctx->is_valid)
   {
     /* First one we encounter, setup general information in 'ctx' */
@@ -292,8 +397,8 @@ handle_deposit_data (void *cls,
     ctx->is_valid = GNUNET_YES;
     if (0 >
         TALER_amount_subtract (&ctx->total,
-                               deposit_value,
-                               deposit_fee))
+                               &dval,
+                               &dfee))
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
@@ -317,8 +422,8 @@ handle_deposit_data (void *cls,
     }
     if (0 >
         TALER_amount_subtract (&delta,
-                               deposit_value,
-                               deposit_fee))
+                               &dval,
+                               &dfee))
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
@@ -339,8 +444,9 @@ handle_deposit_data (void *cls,
     struct AggregatedDepositDetail *wdd;
 
     wdd = GNUNET_new (struct AggregatedDepositDetail);
-    wdd->deposit_value = *deposit_value;
-    wdd->deposit_fee = *deposit_fee;
+    wdd->deposit_value = dval;
+    wdd->deposit_fee = dfee;
+    wdd->refund_total = total_refunds;
     wdd->h_contract_terms = *h_contract_terms;
     wdd->coin_pub = *coin_pub;
     GNUNET_CONTAINER_DLL_insert (ctx->wdd_head,
