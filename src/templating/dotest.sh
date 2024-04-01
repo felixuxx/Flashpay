@@ -6,9 +6,8 @@ exit_fail() {
     exit 1
 }
 
-mustach=${mustach:-../mustach}
-ldd "${mustach}"
-echo starting test
+mustach="../mustach"
+echo "starting test"
 if test "$NOVALGRIND" = 1
 then
 	$mustach "$@" > resu.last || exit_fail "ERROR! mustach command failed ($?)!"
