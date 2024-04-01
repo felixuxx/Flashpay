@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This file is in the public domain.
 set -eux
 
