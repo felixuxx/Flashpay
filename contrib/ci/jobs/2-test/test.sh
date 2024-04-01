@@ -29,9 +29,11 @@ print_logs()
 {
 	for i in src/*/test-suite.log
 	do
+		echo "Printing ${i}"
+        cat "$i"
 		for FAILURE in $(grep '^FAIL:' ${i} | cut -d' ' -f2)
 		do
-			echo "Printing ${FAILURE}.log"
+			echo "Printing $(dirname $i)/${FAILURE}.log"
 			cat "$(dirname $i)/${FAILURE}.log"
 		done
 	done
