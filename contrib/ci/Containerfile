@@ -10,6 +10,7 @@ RUN apt-get update -yqq && \
            bash \
            coreutils \
            git \
+           strace \
 		   libcurl4-gnutls-dev \
 		   libgcrypt-dev \
 		   libidn11-dev \
