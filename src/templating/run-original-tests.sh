@@ -4,15 +4,6 @@ set -eux
 
 export CFLAGS="-g"
 
-function build()
-{
-    make clean
-    make
-}
-
-# Install rebuild-on-exit handler (except for kill -9)
-trap build EXIT
-
 echo "Ensuring clean state on entry to upstream tests ..."
 make clean
 

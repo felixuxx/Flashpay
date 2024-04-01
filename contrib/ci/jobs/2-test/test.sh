@@ -14,6 +14,7 @@ make clean
 make -j$(( $nump / 2 ))
 cd src/templating/
 ./run-original-tests.sh
+make clean
 cd -
 make -j$(( $nump / 2 ))
 make install
