@@ -47,22 +47,22 @@ CLEANFILES = \
   procedures.sql
 
 procedures.sql: procedures.sql.in exchange_do_*.sql
-	chmod +w $@ || true
+	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < procedures.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 exchange-0002.sql: exchange-0002.sql.in 0002-*.sql
-	chmod +w $@ || true
+	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < exchange-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 exchange-0003.sql: exchange-0003.sql.in 0003-*.sql
-	chmod +w $@ || true
+	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < exchange-0003.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 exchange-0004.sql: exchange-0004.sql.in 0004-*.sql
-	chmod +w $@ || true
+	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < exchange-0004.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 

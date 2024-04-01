@@ -241,7 +241,7 @@ uninstall:
 ifeq ($(valgrind),no)
  NOVALGRIND := 1
 else
- NOVALGRIND := $(shell which -s valgrind && echo 0 || echo 1)
+ NOVALGRIND := $(valgrind --version > /dev/null && echo 0 || echo 1)
 endif
 export NOVALGRIND
 
@@ -311,4 +311,3 @@ manuals: mustach.1.gz
 
 mustach.1.gz: mustach.1.scd
 	if which scdoc >/dev/null 2>&1; then scdoc < mustach.1.scd | gzip > mustach.1.gz; fi
-

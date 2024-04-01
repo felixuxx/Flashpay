@@ -7,6 +7,7 @@ exit_fail() {
 }
 
 mustach=${mustach:-../mustach}
+ldd "${mustach}"
 echo starting test
 if test "$NOVALGRIND" = 1
 then

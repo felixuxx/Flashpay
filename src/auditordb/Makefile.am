@@ -31,12 +31,12 @@ CLEANFILES = \
   auditor-0002.sql
 
 procedures.sql: procedures.sql.in auditor_do_*.sql
-	chmod +w $@ || true
+	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < procedures.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 auditor-0002.sql: auditor-0002.sql.in 0002-*.sql
-	chmod +w $@ || true
+	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < auditor-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
