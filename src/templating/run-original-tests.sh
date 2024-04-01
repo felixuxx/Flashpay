@@ -7,7 +7,7 @@ export CFLAGS="-g"
 function build()
 {
     echo "Ensuring clean state on exit ..."
-    make clean
+    make clean-libLTLIBRARIES clean-libtool clean-noinstLTLIBRARIES clean-noinstPROGRAMS mostlyclean-compile mostlyclean-libtool
     make
 }
 
@@ -16,7 +16,7 @@ trap build EXIT
 
 echo "Ensuring clean state on entry to legacy tests ..."
 
-make clean
+make clean-libLTLIBRARIES clean-libtool clean-noinstLTLIBRARIES clean-noinstPROGRAMS mostlyclean-compile mostlyclean-libtool
 
 # The build fails if libjson-c-dev is not installed.
 # That's OK, we don't otherwise need it and don't

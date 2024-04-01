@@ -1,5 +1,5 @@
 #!/bin/bash
-set -evu
+set -evux
 
 apt-get update
 apt-get upgrade -yqq
