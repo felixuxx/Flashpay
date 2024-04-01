@@ -6,17 +6,15 @@ export CFLAGS="-g"
 
 function build()
 {
-    echo "Ensuring clean state on exit ..."
-    make clean-libLTLIBRARIES clean-libtool clean-noinstLTLIBRARIES clean-noinstPROGRAMS mostlyclean-compile mostlyclean-libtool
+    make clean
     make
 }
 
 # Install rebuild-on-exit handler (except for kill -9)
 trap build EXIT
 
-echo "Ensuring clean state on entry to legacy tests ..."
-
-make clean-libLTLIBRARIES clean-libtool clean-noinstLTLIBRARIES clean-noinstPROGRAMS mostlyclean-compile mostlyclean-libtool
+echo "Ensuring clean state on entry to upstream tests ..."
+make clean
 
 # The build fails if libjson-c-dev is not installed.
 # That's OK, we don't otherwise need it and don't
@@ -26,7 +24,5 @@ make -f mustach-original-Makefile mustach mustach-json-c.o || exit 77
 make -f mustach-original-Makefile clean || true
 make -f mustach-original-Makefile basic-tests
 make -f mustach-original-Makefile clean || true
-
-echo "Test done"
 
 exit 0

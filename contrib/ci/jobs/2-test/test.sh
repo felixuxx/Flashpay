@@ -11,6 +11,9 @@ apt-get upgrade -yqq
 
 nump=$(grep processor /proc/cpuinfo | wc -l)
 make clean
+cd src/templating/
+./run-original-tests.sh
+cd -
 make -j$(( $nump / 2 ))
 make install
 

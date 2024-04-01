@@ -62,10 +62,7 @@ test_mustach_jansson_LDADD = \
 check_PROGRAMS = \
   test_mustach_jansson
 
-check_SCRIPTS = \
-  run-original-tests.sh
-
-TESTS = $(check_SCRIPTS) $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS)
 
 EXTRA_DIST = \
   $(check_SCRIPTS) \
