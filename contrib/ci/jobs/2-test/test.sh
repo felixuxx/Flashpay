@@ -27,6 +27,7 @@ check_command()
 
 print_logs()
 {
+    set +e
 	for i in src/*/test-suite.log
 	do
 		echo "Printing ${i}"
