@@ -36,6 +36,21 @@ TEH_handler_config (struct TEH_RequestContext *rc,
 
   if (NULL == resp)
   {
+    struct GNUNET_TIME_Absolute a;
+    struct GNUNET_TIME_Timestamp km;
+    char dat[128];
+
+    a = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_DAYS);
+    /* Round up to next full day to ensure the expiration
+       time does not become a fingerprint! */
+    a = GNUNET_TIME_absolute_round_down (a,
+                                         GNUNET_TIME_UNIT_DAYS);
+    a = GNUNET_TIME_absolute_add (a,
+                                  GNUNET_TIME_UNIT_DAYS);
+    /* => /config response stays at most 48h in caches! */
+    km = GNUNET_TIME_absolute_to_timestamp (a);
+    TALER_MHD_get_date_string (km.abs_time,
+                               dat);
     resp = TALER_MHD_MAKE_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("supported_kyc_requirements",
                                     TALER_KYCLOGIC_get_satisfiable ()),
@@ -50,6 +65,15 @@ TEH_handler_config (struct TEH_RequestContext *rc,
                                "urn:net:taler:specs:exchange:c-reference"),
       GNUNET_JSON_pack_string ("version",
                                EXCHANGE_PROTOCOL_VERSION));
+
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (resp,
+                                           MHD_HTTP_HEADER_EXPIRES,
+                                           dat));
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (resp,
+                                           MHD_HTTP_HEADER_CACHE_CONTROL,
+                                           "public,max-age=21600")); /* 6h */
   }
   return MHD_queue_response (rc->connection,
                              MHD_HTTP_OK,

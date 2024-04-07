@@ -2290,6 +2290,12 @@ setup_general_response_headers (void *cls,
     r = GNUNET_TIME_relative_min (TEH_max_keys_caching,
                                   ksh->rekey_frequency);
     a = GNUNET_TIME_relative_to_absolute (r);
+    /* Round up to next full day to ensure the expiration
+       time does not become a fingerprint! */
+    a = GNUNET_TIME_absolute_round_down (a,
+                                         GNUNET_TIME_UNIT_DAYS);
+    a = GNUNET_TIME_absolute_add (a,
+                                  GNUNET_TIME_UNIT_DAYS);
     km = GNUNET_TIME_absolute_to_timestamp (a);
     we = GNUNET_TIME_absolute_to_timestamp (wire_state->cache_expiration);
     m = GNUNET_TIME_timestamp_min (we,
