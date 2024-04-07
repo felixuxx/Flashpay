@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019, 2020, 2022 Taler Systems SA
+  Copyright (C) 2019, 2020, 2022, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -187,6 +187,12 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
 
   a = GNUNET_TIME_relative_to_absolute (MAX_TERMS_CACHING);
   m = GNUNET_TIME_absolute_to_timestamp (a);
+  /* Round up to next full day to ensure the expiration
+     time does not become a fingerprint! */
+  a = GNUNET_TIME_absolute_round_down (a,
+                                       MAX_TERMS_CACHING);
+  a = GNUNET_TIME_absolute_add (a,
+                                MAX_TERMS_CACHING);
   TALER_MHD_get_date_string (m.abs_time,
                              dat);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
