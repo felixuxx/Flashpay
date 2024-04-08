@@ -261,6 +261,13 @@ TALER_build_pos_confirmation (const char *pos_key,
       struct GNUNET_HashCode hkey;
       struct TALER_AmountNBO ntotal;
 
+      if ( (NULL == total) ||
+           (GNUNET_YES !=
+            TALER_amount_is_valid (total) ) )
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       TALER_amount_hton (&ntotal,
                          total);
       GNUNET_assert (GNUNET_YES ==
