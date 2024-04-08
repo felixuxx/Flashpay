@@ -266,7 +266,7 @@ TALER_build_pos_confirmation (const char *pos_key,
             TALER_amount_is_valid (total) ) )
       {
         GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        return NULL;
       }
       TALER_amount_hton (&ntotal,
                          total);
