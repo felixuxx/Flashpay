@@ -62,7 +62,7 @@ TEH_handler_config (struct TEH_RequestContext *rc,
       GNUNET_JSON_pack_string ("name",
                                "taler-exchange"),
       GNUNET_JSON_pack_string ("implementation",
-                               "urn:net:taler:specs:exchange:c-reference"),
+                               "urn:net:taler:specs:taler-exchange:c-reference"),
       GNUNET_JSON_pack_string ("version",
                                EXCHANGE_PROTOCOL_VERSION));
 
