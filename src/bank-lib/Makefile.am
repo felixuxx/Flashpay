@@ -51,7 +51,7 @@ libtalerbank_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
-  $(LIBGNURLCURL_LIBS) \
+  -lcurl \
   $(XLIB)
 
 libtalerfakebank_la_LDFLAGS = \
@@ -94,7 +94,7 @@ libtalerfakebank_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
-  $(LIBGNURLCURL_LIBS) \
+  -lcurl \
   -lmicrohttpd \
   -lpthread \
   $(XLIB)

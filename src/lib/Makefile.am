@@ -87,8 +87,8 @@ libtalerexchange_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  -lcurl \
   -lm \
-  $(LIBGNURLCURL_LIBS) \
   $(XLIB)
 
 libtalerauditor_la_LDFLAGS = \
@@ -106,8 +106,8 @@ libtalerauditor_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  -lcurl \
   -lm \
-  $(LIBGNURLCURL_LIBS) \
   $(XLIB)
 
 

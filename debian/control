@@ -54,8 +54,7 @@ Depends:
  pandoc,
  groff,
  ghostscript,
- ${misc:Depends},
- ${shlibs:Depends}
+ ${misc:Depends}
 Description: Tool to generate the terms of service
   and privacy policy for various languages and data
   formats. Useful for various GNU Taler components.
