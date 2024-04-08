@@ -357,7 +357,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
-                                         "public max-age=864000"));
+                                         "public,max-age=864000"));
   if (NULL != legal)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,

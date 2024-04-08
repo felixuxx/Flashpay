@@ -2273,12 +2273,10 @@ setup_general_response_headers (void *cls,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          "application/json"));
-  TALER_MHD_get_date_string (ksh->reload_time.abs_time,
-                             dat);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
-                                         MHD_HTTP_HEADER_LAST_MODIFIED,
-                                         dat));
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "public,must-revalidate,max-age=86400"));
   if (! GNUNET_TIME_relative_is_zero (ksh->rekey_frequency))
   {
     struct GNUNET_TIME_Relative r;
@@ -2320,11 +2318,6 @@ setup_general_response_headers (void *cls,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_VARY,
                                          MHD_HTTP_HEADER_ACCEPT_ENCODING));
-  /* Information is always public, revalidate after 1 hour */
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (response,
-                                         MHD_HTTP_HEADER_CACHE_CONTROL,
-                                         "public,max-age=3600"));
 }
 
 
@@ -2602,6 +2595,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_assert (NULL != krd.response_uncompressed);
     setup_general_response_headers (ksh,
                                     krd.response_uncompressed);
+    /* Information is always public, revalidate after 1 day */
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (krd.response_uncompressed,
                                            MHD_HTTP_HEADER_ETAG,
@@ -2623,16 +2617,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                               "deflate")) );
     setup_general_response_headers (ksh,
                                     krd.response_compressed);
-    /* Set cache control headers: our response varies depending on these headers */
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (krd.response_compressed,
-                                           MHD_HTTP_HEADER_VARY,
-                                           MHD_HTTP_HEADER_ACCEPT_ENCODING));
     /* Information is always public, revalidate after 1 day */
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (krd.response_compressed,
-                                           MHD_HTTP_HEADER_CACHE_CONTROL,
-                                           "public,max-age=86400"));
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (krd.response_compressed,
                                            MHD_HTTP_HEADER_ETAG,
