@@ -29,6 +29,11 @@
 
 set -eu
 
+# These break TALER_HOME control via TALER_TEST_HOME...
+unset XDG_DATA_HOME
+unset XDG_CONFIG_HOME
+unset XDG_CACHE_HOME
+
 EXIT_STATUS=2
 
 # Exit, with status code "skip" (no 'real' failure)
