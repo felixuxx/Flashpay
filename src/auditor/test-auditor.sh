@@ -166,7 +166,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-aggregation.out" \
               2> "${MY_TMP_DIR}/test-audit-aggregation.err" \
-        || exit_fail "aggregation audit failed"
+        || exit_fail "aggregation audit failed (see ${MY_TMP_DIR}/test-audit-aggregation.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-aggregation \
               -L DEBUG \
@@ -174,7 +174,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-aggregation-inc.out" \
               2> "${MY_TMP_DIR}/test-audit-aggregation-inc.err" \
-        || exit_fail "incremental aggregation audit failed"
+        || exit_fail "incremental aggregation audit failed (see ${MY_TMP_DIR}/test-audit-aggregation-inc.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-coins \
               -L DEBUG \
@@ -182,7 +182,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-coins.out" \
               2> "${MY_TMP_DIR}/test-audit-coins.err" \
-        || exit_fail "coin audit failed"
+        || exit_fail "coin audit failed (see ${MY_TMP_DIR}/test-audit-coins.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-coins \
               -L DEBUG  \
@@ -190,7 +190,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-coins-inc.out" \
               2> "${MY_TMP_DIR}/test-audit-coins-inc.err" \
-        || exit_fail "incremental coin audit failed"
+        || exit_fail "incremental coin audit failed (see ${MY_TMP_DIR}/test-audit-coins-inc.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-deposits \
               -L DEBUG \
@@ -198,7 +198,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-deposits.out" \
               2> "${MY_TMP_DIR}/test-audit-deposits.err" \
-        || exit_fail "deposits audit failed"
+        || exit_fail "deposits audit failed (see ${MY_TMP_DIR}/test-audit-deposits.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-deposits \
               -L DEBUG \
@@ -206,7 +206,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-deposits-inc.out" \
               2> "${MY_TMP_DIR}/test-audit-deposits-inc.err" \
-        || exit_fail "incremental deposits audit failed"
+        || exit_fail "incremental deposits audit failed (see ${MY_TMP_DIR}/test-audit-deposits-inc.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-reserves \
               -i \
@@ -215,7 +215,7 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-reserves.out" \
               2> "${MY_TMP_DIR}/test-audit-reserves.err" \
-        || exit_fail "reserves audit failed"
+        || exit_fail "reserves audit failed (see ${MY_TMP_DIR}/test-audit-reserves.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-reserves \
               -i \
@@ -224,25 +224,25 @@ function audit_only () {
               -t \
               > "${MY_TMP_DIR}/test-audit-reserves-inc.out" \
               2> "${MY_TMP_DIR}/test-audit-reserves-inc.err" \
-        || exit_fail "incremental reserves audit failed"
+        || exit_fail "incremental reserves audit failed (see ${MY_TMP_DIR}/test-audit-reserves-inc.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-wire \
               -i \
               -L DEBUG \
               -c "$CONF" \
               -t \
-              > "${MY_TMP_DIR}/test-wire-audit.out" \
-              2> "${MY_TMP_DIR}/test-wire-audit.err" \
-        || exit_fail "wire audit failed"
+              > "${MY_TMP_DIR}/test-audit-wire.out" \
+              2> "${MY_TMP_DIR}/test-audit-wire.err" \
+        || exit_fail "wire audit failed (see ${MY_TMP_DIR}/test-audit-wire.*)"
     echo -n "."
     $VALGRIND taler-helper-auditor-wire \
               -i \
               -L DEBUG \
               -c "$CONF" \
               -t \
-              > "${MY_TMP_DIR}/test-wire-audit-inc.out" \
-              2> "${MY_TMP_DIR}/test-wire-audit-inc.err" \
-        || exit_fail "wire audit inc failed"
+              > "${MY_TMP_DIR}/test-audit-wire-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-wire-inc.err" \
+        || exit_fail "wire audit inc failed (see ${MY_TMP_DIR}/test-audit-wire-inc.*)"
     echo -n "."
 
     echo " DONE"
