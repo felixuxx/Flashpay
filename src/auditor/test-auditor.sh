@@ -2211,32 +2211,45 @@ grep -v host \
      > "$TMPDIR/pg_hba.conf.new"
 mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
 "${POSTGRES_PATH}/pg_ctl" \
-                -D "$TMPDIR" \
-                -l "${MY_TMP_DIR}/postgres.log" \
-                start \
-                > "${MY_TMP_DIR}/postgres-start.log" \
-                2> "${MY_TMP_DIR}/postgres-start.err"
+    -D "$TMPDIR" \
+    -l "${MY_TMP_DIR}/postgres.log" \
+    start \
+    > "${MY_TMP_DIR}/postgres-start.log" \
+    2> "${MY_TMP_DIR}/postgres-start.err"
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 MYDIR="${MY_TMP_DIR}/basedb"
 mkdir -p "${MYDIR}"
-echo "Generating fresh database at $MYDIR"
 
-if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/$DB"
+if [ -z $REUSE_BASEDB_DIR ]
 then
-    echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
-    dropdb "auditor-basedb" >/dev/null 2>/dev/null || true
-    createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at $PGHOST"
-    echo " DONE"
-    check_with_database "$MYDIR/$DB"
-    if [ "$fail" != "0" ]
+    echo "Generating fresh database at $MYDIR"
+
+    if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/$DB"
     then
-        exit "$fail"
+        echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
+        dropdb "auditor-basedb" >/dev/null 2>/dev/null || true
+        createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at $PGHOST"
+        echo " DONE"
+    else
+        echo "Generation failed"
+        exit 1
     fi
 else
-    echo "Generation failed"
-    exit 1
+    echo "Reusing existing database from ${REUSE_BASEDB_DIR}"
+    cp -r "${REUSE_BASEDB_DIR}/basedb"/* "${MYDIR}/"
+fi
+
+check_with_database "$MYDIR/$DB"
+if [ "$fail" != "0" ]
+then
+    exit "$fail"
+fi
+
+if [ -z $REUSE_BASEDB_DIR ]
+then
+    echo "Run 'export REUSE_BASEDB_DIR=${MY_TMP_DIR}' to re-run tests against the same database"
 fi
 
 exit 0

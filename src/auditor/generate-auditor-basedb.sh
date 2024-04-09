@@ -119,7 +119,6 @@ taler-wallet-cli \
 echo " DONE"
 
 taler-wallet-cli --wallet-db="$WALLET_DB" run-until-done
-taler-wallet-cli --wallet-db="$WALLET_DB" advanced run-pending
 
 # Dump database
 mkdir -p "$(dirname "$BASEDB")"
