@@ -79,8 +79,8 @@ EXTRA_DIST = \
   CHANGELOG.md \
   mustach-json-c.h \
   mustach-json-c.c \
-  mustach-cjson-c.h \
-  mustach-cjson-c.c \
+  mustach-cjson.h \
+  mustach-cjson.c \
   test1/json \
   test1/Makefile \
   test1/must \
@@ -126,7 +126,7 @@ EXTRA_DIST = \
   test8/must \
   test8/resu.ref \
   test8/vg.ref \
-  test-specs.c \
-  test-specs-cjson.ref \
-  test-specs-jansson.ref \
-  test-specs-json-c.ref
+  test-specs/test-specs.c \
+  test-specs/test-specs-cjson.ref \
+  test-specs/test-specs-jansson.ref \
+  test-specs/test-specs-json-c.ref
