@@ -1,3 +1,16 @@
+taler-exchange (0.10.1) unstable; urgency=low
+
+  * Fixed crash in OTP calculation logic if required amount was not
+    provided.
+  * Fixed HTTP headers for /terms, /config and /keys responses
+    (remove last-modified-since distinguisher, remove duplicate headers)
+  * Improved systemd files (new offline timer job, exchange slice)
+  * Implement exchange protocol v19 (include refunds in transaction
+    aggregation data, expose wire account priorities)
+  * Update mustach to latest version
+
+ -- Christian Grothoff <grothoff@gnu.org>  Tue, 9 Apr 2024 09:50:12 +0200
+
 taler-exchange (0.10.0) unstable; urgency=low
 
   * Fixed major issue where uploading wire data to an
