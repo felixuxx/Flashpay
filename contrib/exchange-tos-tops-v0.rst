@@ -35,12 +35,28 @@ Mobile-Marketing. Diese Mehrwertleistungen erlauben Kundinnen und Kunden u.a., C
 Stempelkarten und weitere Kampagnen in der TALER App zu erhalten und zu verwalten, Stempel
 zu sammeln und Treuegeschenke, Rabatte und Gutschriften über die TALER App einzulösen.
 
+[NETZBON-NEU]
+Der Verein Soziale Ökonomie arbeitet an der Digitalisierung des NetzBon mit GNU Taler, 
+einem digitalen Bezahlsystem, das komplett auf Freier Software und quelloffener Software 
+(FLOSS, Free Libre and Open-Source Software) basiert und den Grundsätzen der Sozialen 
+Ökonomie folgt. Die Taler Operations AG stellt dieses Bezahlsystem dem Verein Soziale 
+Ökonomie zur Verfügung. Die Erweiterung von NetzBon mit eNetzBon soll die Effizienz und 
+Wirtschaftlichkeit des NetzBon verbessern, ohne jedoch die physische Form des NetzBon in 
+naher Zukunft abzuschaffen.
+[NETZBON-NEU]
+
 1.3. Technische Voraussetzungen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 TALER kann "_____________________". Benötigt wird "__________________________".
 Die Nutzung der Zahlungsfunktion und der Mehrwertleistungen erfordert eine aktive
 Internetverbindung.
+
+[NETZBON-NEU]
+Um die angebotenen Dienste wahrnehmen zu können, müssen Nutzer ein Taler-Wallet 
+(elektronische Geldbörse) als Taler-App auf ihrem Smartphone oder als Erweiterung in einem 
+Browser auf dem PC installieren.
+[NETZBON-NEU]
 
 1.4. Registrierung und Identifizierung
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +72,28 @@ TALER aktualisiert werden.
 Die TALER AG behält sich vor, Registrierungsgesuche ohne Angabe von Gründen abzulehnen bzw.
 bereits erfolgte Registrationen wieder rückgängig zu machen.
 
+[NETZBON-NEU]
+Es werden keine Daten von zahlenden Nutzern benötigt und es erfolgt auch keine 
+Registrierung oder Kontenanlage der Nutzer. Sie können ihre Waren ohne Preisgabe ihrer 
+Identität erwerben.
 
+Am eNetzBon-System teilnehmende Betriebe (Händler, Verkäufer) halten beim Verein Soziale 
+Ökonomie interne eNetzBon-Konten, auf welche sie die ihnen übergebenen Bareinzahlungen von 
+Nutzern (Kunden, Käufern) übertragen, damit die Nutzer dann eNetzBon in ihre persönlichen 
+Wallets abheben können. Sie benötigen diese internen eNetzBon-Konten ebenfalls für den 
+Empfang von Zahlungen der Nutzer für Güter (Waren und Dienstleistungen) der Betriebe.
+
+Die Nutzer leisten Ihre Einzahlung an das Bezahlsystem entweder in bar an den Verein 
+Soziale Ökonomie oder an seine Mitglieder (Händler, Verkäufer) oder überweisen von ihrem 
+bestehenden Girokonto bei einer Schweizer Bank an das Bankkonto des Vereins Soziale Ökonomie 
+in der Währung Schweizer Franken (CHF), um dann wertbasierte elektronische Münzen in ihre 
+Taler-Wallets abzuheben. Sie beziehen damit digitale Wertmarken, die wie ein 
+Gutschein oder Prepaid-Guthaben zu betrachten sind. Sie werden auch als Token 
+oder Coins bezeichnet. Die elektronischen Münzen werden in der Komplementärwährung 
+"eNetzBon" im Taler-Wallet angezeigt und stellen Repräsentanten der Geldwerte auf dem 
+Verrechnungskonto des Vereins Soziale Ökonomie in "NetzBon" dar.
+[NETZBON-NEU]
+                      
 1.5. Geheimhaltung
 ~~~~~~~~~~~~~~~~~~
 
@@ -68,6 +105,11 @@ AG, aber insbesondere in folgenden Fällen, aufgehoben:
 * Wahrnehmung gesetzlicher Auskunftspflichten und Erfüllung regulatorischer Vorgaben
 * Inkasso von Forderungen der TALER AG?
 * Gerichtliche Auseinandersetzungen.
+
+[NETZBON-NEU]
+Es werden keine Daten von zahlenden Nutzern benötigt und auch nicht erfasst. Es erfolgt auch 
+keine Registrierung oder Kontenanlage der Nutzer.
+[NETZBON-NEU]
 
 1.6. Support
 ~~~~~~~~~~~~
@@ -105,6 +147,17 @@ ergeben. Insbesondere werden Handlungen, die eine Drittperson unberechtigt mit d
 auf dem Smartphone einer Kundin bzw. Kunden vornimmt, der Kundin bzw. dem Kunden
 zugerechnet.
 
+[NETZBON-NEU]
+Die Nutzer müssen sich darüber im klaren sein, elektronisches Geld wie Bargeld zu 
+behandeln und ebenso zu sichern, d.h. ein Backup der Wallet-Daten anzulegen. Die Nutzer der 
+Taler-App sind daher verpflichtet, den Zugang zum digitalen Endgerät zu sichern und vor 
+unbefugtem Zugriff zu bewahren. Sie müssen die Wallet-Daten mit einer Sicherungskopie auf 
+einem anderen Gerät speichern. Die Exportfunktion des Wallet hilft dabei, ein Backup der 
+Wallet-Daten anzulegen und zu speichern. Ein verlorenes Nutzergerät mit einem Wallet darauf 
+ohne Backup der eNetzBon auf einem anderen Gerät oder Datenträger bedeutet einen 
+Totalverlust des Gegenwerts des NetzBon-Guthabens.
+[NETZBON-NEU]
+
 1.8. Nutzung; Missbräuche
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -115,6 +168,17 @@ Vorankündigung entschädigungslos ändern, einschränken oder einstellen, den V
 und entschädigungslos auﬂösen und gegebenenfalls Schadenersatz sowie die Freistellung von
 Ansprüchen Dritter verlangen. Dasselbe gilt im Falle von unzutreffenden oder unvollständigen
 Angaben der Kunden bei der Registrierung.
+
+[NETZBON-NEU]
+Die Taler-App ermöglicht keine direkten Interaktionen, sondern dient ausschliesslich dem 
+Bezug und der Verwendung von eNetzBon bei teilnehmenden Geschäften. Spenden sind möglich. 
+Die Nutzer verpflichten sich, die Taler-App gemäss den geltenden Gesetzen und Vorschriften 
+zu verwenden. Dem Nutzer ist es nur möglich, mit öffentlichen Shops zu interagieren. Mit 
+anderen Privatpersonen kann ein Nutzer nicht interagieren.
+
+Der Verein Soziale Ökonomie behält sich vor, bei Verletzung von Regeln oder Missbrauch 
+gewisse Konten zu löschen.
+[NETZBON-NEU]
 
 1.9. Haftung
 ~~~~~~~~~~~~
@@ -156,7 +220,10 @@ sicher.
 Die TALER AG kann die AGB jederzeit ändern. Änderungen werden auf geeignete Weise bekannt
 gegeben. Ist die Kundin bzw. der Kunde mit den Änderungen nicht einverstanden, so kann die
 Kundin bzw. der Kunde die TALER App nicht mehr verwenden.
+
 1.12. Vorbehalt gesetzlicher Regelungen und Beschränkung der Dienstleistungen
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Allfällige Gesetzesbestimmungen, die den Betrieb und die Benutzung von Smartphones,
 Zahlungssystemen, des Internets und sonstiger dedizierter Infrastruktur regeln, bleiben
 vorbehalten und gelten ab ihrer Inkraftsetzung auch für die vorliegenden Dienstleistungen.
@@ -216,6 +283,23 @@ Auditoren offengelegt werden
 Weitere Informationen zu den Datenbearbeitungen finden sich in der Datenschutzerklärung auf
 der Webseite der TALER AG (www.TALER.ch).
 
+[NETZBON-NEU]
+Die Datenschutzrichtlinien sind in einem separaten Dokument festgelegt, das die Nutzer auch 
+in der Taler-App finden. Der Schutz der persönlichen Daten und finanziellen Informationen 
+hat für uns höchste Priorität. Daten der Nutzer werden nicht erhoben. Beim Bezahlen mit 
+eNetzBon werden nur Ort, Uhrzeit und der die eNetzBon empfangende Betrieb (Händler, 
+Verkäufer) erhoben. Die anonymisierten Daten des Kaufs und der Überweisung von NetzBon an 
+den Betrieb werden im Falle einer Untersuchung der Finma erhoben. Dies betrifft jedoch nicht 
+Nutzer, die mit eNetzBon zahlen, sondern die Transaktionen in NetzBon zwischen dem Verein 
+Soziale Ökonomie und den teilnehmenden Betrieben.
+
+Den Datenschutzbeauftragten des Vereins Soziale Ökonomie erreichen Sie beim Sitz des Vereins 
+in der Klybeckstrasse 95, 4057 Basel, und per E-Mail an kontakt@sozialeoekonomie.org. 
+
+Den Datenschutzbeauftragten der Taler Operations AG erreichen Sie per Post an Taler 
+Operations AG, Höheweg 80, 2502 Biel, und über die unten genannten Kontaktmöglichkeiten.
+[NETZBON-NEU]
+
 1.15. Dauer und Kündigung
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -245,6 +329,13 @@ Staatsverträgen.
 Unter dem Vorbehalt von entgegenstehenden, zwingenden gesetzlichen Bestimmungen ist Zürich
 ausschliesslicher Gerichtsstand und Erfüllungsort. Für Kundinnen und Kunden mit Wohnsitz
 ausserhalb der Schweiz ist Zürich sodann auch Betreibungsort.
+
+[NETZBON-NEU]
+Bei etwaigen Streitigkeiten oder Unstimmigkeiten, die aus der Nutzung von Taler, der 
+Taler-App und eNetzBon entstehen, verpflichten sich die Parteien, zunächst eine gütliche 
+Einigung anzustreben. Wenn keine Einigung erzielt werden kann, unterliegt die 
+Streitbeilegung den geltenden schweizerischen Gesetzen und der Gerichtsbarkeit von Biel.
+[NETZBON-NEU]
 
 2. Zahlungsfunktionen
 ---------------------
