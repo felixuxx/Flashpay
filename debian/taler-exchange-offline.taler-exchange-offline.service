@@ -21,4 +21,4 @@ PrivateDevices=yes
 Environment="FIAT_CURRENCY=CHF"
 Environment="REGIO_CURRENCY=NETZBON"
 
-ExecStart=bash -c 'taler-exchange-offline download sign wire-fee now iban "${FIAT_CURRENCY}":0 "${FIAT_CURRENCY}":0 wire-fee now x-taler-bank "${REGIO_CURRENCY}":0 "${REGIO_CURRENCY}":0 global-fee now "${REGIO_CURRENCY}:0" "${REGIO_CURRENCY}:0" "${REGIO_CURRENCY}:0" 4w 6a 4 upload'
+ExecStart=bash -c 'taler-exchange-offline download sign wire-fee now iban "${FIAT_CURRENCY}":0 "${FIAT_CURRENCY}":0 wire-fee now x-taler-bank "${REGIO_CURRENCY}":0 "${REGIO_CURRENCY}":0 global-fee now "${REGIO_CURRENCY}:0" "${REGIO_CURRENCY}:0" "${REGIO_CURRENCY}:0" 4weeks 6years 4 upload'
