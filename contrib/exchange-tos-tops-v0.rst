@@ -370,6 +370,31 @@ Ladeoption mehrere Tage Zeit in Anspruch nehmen.
 Die Kundin bzw. der Kunde erteilt für den Fall der Einrichtung der LSV-Anbindung der TALER
 AG die Ermächtigung, einzelne Daten zwecks Bonitätsprüfung an Dritte weitergeben zu können.
 
+[NETZBON-KOMMENTAR]
+Die Nutzer können eNetzBon durch zwei Verfahren erwerben bzw. das Guthaben auf ihrem Wallet 
+erhöhen:
+
+a. Per Bareinzahlung durch Nutzung der "Taler Cashier-App" in der 
+Markthalle und in der Buchhandlung, wo ein Nutzer den abzuhebenden Betrag in CHF an das 
+Personal bar übergeben kann und dann durch das Wallet der Betrag in CHF abgehoben und im 
+Wallet in eNetzBon umgetauscht wird.
+
+b. Per Banküberweisung an das PostFinanz-Konto des Vereins Soziale Ökonomie. Das Wallet 
+hilft dabei den Nutzern, den Abhebevorgang einzuleiten und gibt dazu einen Verwendungszweck 
+an, d.h. eine mehrstellige Kombination aus Nummer und Buchstaben, die im Kontoauszug des 
+persönlichhen Girokontos des jeweiligen Nutzers als Buchungstext angezeigt wird. Mit diesem 
+Verwendungszweck kann das Wallet den Betrag zuerst in CHF abheben und dann im Wallet in 
+eNetzBon umtauschen. 
+
+Der Preis eines eNetzBon beträgt 1 CHF. Bitte beachten Sie, dass NetzBon nicht 
+rückerstattbar sind, daher müssen sie ausgegeben werden.
+
+In der Phase der Markteinführung von eNetzBon werden keine Transaktionskosten von Nutzern 
+erhoben. Bei der Bezahlung mit eNetzBon fallen daher vorerst keine Transaktionsgebühren an. 
+Diese Allgemeinen Geschäftsbedingungen erlauben jedoch die Möglichkeit zukünftiger 
+Änderungen der Gebührenordnung.
+[NETZBON-KOMMENTAR]   
+                        
 2.3. Abbuchen
 ~~~~~~~~~~~~~
 
