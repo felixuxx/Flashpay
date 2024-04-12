@@ -1,3 +1,9 @@
+taler-exchange (0.10.2) unstable; urgency=low
+
+  * Updated man pages and other resources for release.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Fri, 12 Apr 2024 09:50:12 +0200
+
 taler-exchange (0.10.1) unstable; urgency=low
 
   * Fixed crash in OTP calculation logic if required amount was not
