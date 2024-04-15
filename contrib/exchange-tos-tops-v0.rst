@@ -16,6 +16,51 @@ TALER App und die von der TALER AG über die TALER erbrachten Dienstleistungen.
 Diese AGB gelten als akzeptiert, sobald die Kundin bzw. der Kunde in der TALER App das
 Einverständnis erklärt hat.
 
+[KOMMENTAR SK]
+1. Wenn es wirklich nötig ist, für "Taler Operations AG" eine Abkürzung zu verwenden, dann 
+würde "TALER AG" aus Sicht der GNU-Community den Namen von GNU Taler sehr vereinnahmen. 
+Mein Vorschlag wäre noch kürzer als TALER AG und birgt keine Verwechslungsgefahr, 
+Vereinnahmung oder Anmaßung: TOPS AG
+2. Bitte lasst uns Gendersprache vermeiden und statt "**Kundin und Kunde**" lieber 
+"**Nutzer**" verwenden und möglichst im Plural schreiben.
+3. **Zahlungsdienst** wäre IMHO rechtlich und sprachlich besser als "Bezahlungssystem". 
+Dieser Begriff entspricht dem englischen 'payment service provider' auch nach ISO 220022.
+4. Ich würde dem Zahlungsdienst keinen "Namen" geben - vor allem nicht TALER, weil das 
+sofort mit einer Währung assoziiert wird. Taler ist jedoch keine Währung, sondern ein 
+Bezahlsystem, das in unserem Fall in CHF denominiertes e-Geld emittiert, genauer 
+gesagt TOPS-CHF. Wenn wir dafür eine Kurzbezeichnung dafür brauchen, dann wäre 
+mein Vorschlag **eCHF**.
+5. Weitere Begriffsbestimmungen wären hier sinnvoll:
+- **Zahlungsdienst** bezeichnet die Dienstleistung der Taler Operations AG mit Sitz in 
+Biel (Höheweg 80, 2502 Biel, Mitglied in der anerkannten Selbstregulierungsorganisation 
+gemäss Art. 24 GwG, dem VQF - Verein zur Qualitätssicherung von Finanzdienstleistungen).
+- **Selbstregulierung** bezeichnet die Eigenschaft der Taler Operations AG als Mitglied 
+einer Selbstregulierungsorganisation wie dem VQF und Betreiberin einer 
+Sandbox-Dienstleistung nach Art. 6 Abs. 2 BankV ohne gewerbsmäßige Bankeneigenschaft 
+(Nichtbank).
+- **Taler-Wallet** bezeichnet eine von Taler Operations AG bereitgestellte Software, die 
+digitales Bargeld (e-Geld) verwaltet, welches der Zahlungsdienst emittiert und zur 
+Zahlung an Begünstigte wieder einlöst.
+- **Nutzer** bezeichnet Inhaber von Taler-Wallets und damit Zahlende bzw. potenziell 
+Zahlende.
+- **Begünstigte** bezeichnet Händler, Betriebe, Verkäufer und sonstige Empfänger von 
+Überweisungen des Zahlungsdiensts.
+- **Überweisungen von Nutzern** bezeichnet die Überweisungen an den hier angebotenen 
+Zahlungsdienst mit dem Ziel des Abhebens von e-Geld in ein persönliches Wallet, die als 
+Publikumseinlagen bei Nichtbanken gelten. Taler Operations AG unterliegt nicht der 
+Einlagensicherung und als Nichtbank auch nicht der Bankenaufsicht. Die entgegengenommen 
+Gelder werden auf einem Sammelkonto aufbewahrt, um Zahlungen zwischen den Nutzern bzw. 
+zwischen Zahlenden (Käufern) und Begünstigen (Verkäufern) auszuführen.
+- **Überweisungen an Begünstigte** bezeichnet die Überweisungen des Zahlungsdiensts an 
+Händler, Betriebe, Verkäufer und sonstige Empfänger, die IBAN-Konten an Finanzinstituten in 
+der Schweiz führen müssen, um die Zahlungen ihrer Kunden über den Zahlungsdienst empfangen 
+zu können.
+- **Geschäftsbeziehung** bezeichnet die Beziehung zwischen Taler Operations AG und den 
+Begünstigten (Händler, Betriebe, Verkäufer und sonstige Empfänger). Sollten für über 12 
+Monate keine Transaktionen an die Begünstigen erfolgen, gilt die Geschäftsbeziehung als 
+beendet.
+[KOMMENTAR SK]
+
 1.2. Zugang zu den TALER Dienstleistungen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -45,6 +90,14 @@ Wirtschaftlichkeit des NetzBon verbessern, ohne jedoch die physische Form des Ne
 naher Zukunft abzuschaffen.
 [NETZBON-NEU]
 
+[KOMMENTAR SK]
+- Treffender als "P2M-Zahlung" wäre m.E. "C2M-Zahlung" (Customer-to-Merchant), weil die 
+Zahlenden im Normalfall keine "Peers" sind, sondern einfach nur deren Kunden. P2P-Zahlungen 
+liegen hingegen definitionsgemäß auch vor, wenn Zahlende von ihrem Wallet auf das Wallet 
+eines Händlers Coins übertragen (Wallet-Exchange-Wallet). 
+- Müssen wir "P2M" als Begriff in den AGB unbedingt verwenden? Bitte diskutieren.
+[KOMMENTAR SK]
+
 1.3. Technische Voraussetzungen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -57,6 +110,14 @@ Um die angebotenen Dienste wahrnehmen zu können, müssen Nutzer ein Taler-Walle
 (elektronische Geldbörse) als Taler-App auf ihrem Smartphone oder als Erweiterung in einem 
 Browser auf dem PC installieren.
 [NETZBON-NEU]
+
+[KOMMENTAR SK]
+- Mir ist nicht klar, was in die Leerzeilen kommen soll. 
+- Der Satz darunter ist korrekt, aber "Mehrwertleistungen" ein TWINT-Begriff, den wir 
+streichen sollten. 
+- Ich empfehle, den Satz von NETZBON zu übernehmen, denn er erwähnt auch die 
+Browser-Erweiterungen und spricht allumfassend von "Diensten".
+[KOMMENTAR SK]
 
 1.4. Registrierung und Identifizierung
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,7 +154,31 @@ oder Coins bezeichnet. Die elektronischen Münzen werden in der Komplementärwä
 "eNetzBon" im Taler-Wallet angezeigt und stellen Repräsentanten der Geldwerte auf dem 
 Verrechnungskonto des Vereins Soziale Ökonomie in "NetzBon" dar.
 [NETZBON-NEU]
-                      
+
+[KOMMENTAR SK]
+Statt des ersten Absatzes von 1.4.:
+Zur Nutzung des Zahlungsdiensts bei Überweisungen an **Begünstige** von über 15.000 
+CHF/Jahr sind diese verpflichtet, sich in bei Taler Operations AG zu registrieren und die 
+dabei verlangten Informationen zur Verfügung zu stellen. Die Taler Operations AG behält
+sich vor, zur Erfüllung regulatorischer Vorgaben jederzeit weitere Informationen zu
+verlangen. 
+
+Taler Operations AG benötigt zur Registrierung der Händler deren IBAN, Adresse und 
+Telefonnummer (AMLA-Akte) oder es gelten die Empfangslimiten für Händler. Zur 
+Nutzung des Zahlungsdiensts gehen die Begünstigten eine Geschäftsbeziehung mit Taler 
+Operations AG ein. Ab einer bestimmten Umsatzhöhe sind sie verpflichtet, sich zu 
+registrieren und die verlangten Informationen zur Verfügung zu stellen.
+
+Es erfolgt keine Registrierung oder Kontenanlage der **Nutzer** bei Taler Operations AG 
+oder dem Bezahlsystem bzw. Zahlungsdienst. Es werden jedoch die IBAN-Konten erfasst, von 
+denen die eingehenden Überweisungen erfolgen. Die Nutzer brauchen für das Abheben in 
+Taler-Wallets eine Schweizer Telefonnummer zum Empfang von TANs, die der Zahlungsdienst 
+versendet. Es gelten Höchstabhebegrenzen von 5.000 CHF pro Monat bzw. 15.000 CHF pro Jahr 
+für die Nutzer. Bei Zahlungen an andere Nutzer (P2P-Zahlungen) bestehen für Nutzer mit
+Wohnsitz in der Schweiz Limiten von CHF 1.000 pro Monat und CHF 5.000 pro Kalenderjahr für
+das Senden und das Empfangen von e-Geld.
+[KOMMENTAR SK]
+
 1.5. Geheimhaltung
 ~~~~~~~~~~~~~~~~~~
 
@@ -111,6 +196,11 @@ Es werden keine Daten von zahlenden Nutzern benötigt und auch nicht erfasst. Es
 keine Registrierung oder Kontenanlage der Nutzer.
 [NETZBON-NEU]
 
+[KOMMENTAR SK]
+- Satz 1: Geschäftsbeziehung **mit Begünstigten**
+- Ergänzen: Satz aus NETZBON-NEU
+[KOMMENTAR SK]
+
 1.6. Support
 ~~~~~~~~~~~~
 
@@ -118,6 +208,12 @@ Die TALER AG stellt den Kundinnen und Kunden im Sinne eines technischen Supports
 TALER eine Hilfefunktion zur Verfügung. Für die Erbringung dieses Supports können von der
 TALER AG auch Dritte beigezogen werden, an welche hierfür Zugriff auf relevante Daten
 gegeben werden kann.
+
+[KOMMENTAR SK]
+Ich würde hier die Haftung für die Aktionen der Dritten einschränken. Zugriff auf relevante 
+Daten hätten dritte Parteien wie z.B. Auditoren oder Behörden übrigens auch nur bei Händlern 
+in Bezug auf deren Daten und Umsätze. Bitte diskutieren.
+[KOMMENTAR SK]
 
 1.7. Sorgfalts- und andere Pflichten der Kundinnen und Kunden
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -158,6 +254,18 @@ ohne Backup der eNetzBon auf einem anderen Gerät oder Datenträger bedeutet ein
 Totalverlust des Gegenwerts des NetzBon-Guthabens.
 [NETZBON-NEU]
 
+[KOMMENTAR SK]
+- Streichen: * Der Code für die Nutzung von TALER ist geheim zu halten... 
+- Streichen: * Der gewählte Code darf nicht...
+- Streichen: * Es ist dafür zu sorgen, dass... (ist wohl ein TWINT-Rest)
+- Stattdessen den Text aus NETZBON-NEU verwenden und ergänzen mit:
+* Es ist dafür zu sorgen, dass sich das Endgerät mit einem darauf installierten Taler-Wallet 
+innerhalb eines Jahres nach der letzten Transaktion mit dem Zahlungsdienst über das Internet 
+verbindet, ansonsten kann das Guthaben im Wallet verloren werden. Ein Erneuern des Guthabens 
+erfolgt regulär einen Monat vor dem Ende der Gültigkeit des elektronischen Bargelds, das ein 
+Jahr beträgt.
+[KOMMENTAR SK]
+
 1.8. Nutzung; Missbräuche
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -179,6 +287,16 @@ anderen Privatpersonen kann ein Nutzer nicht interagieren.
 Der Verein Soziale Ökonomie behält sich vor, bei Verletzung von Regeln oder Missbrauch 
 gewisse Konten zu löschen.
 [NETZBON-NEU]
+
+[KOMMENTAR SK]
+- Satz 1: die Kundinnen und Kunden --> die **Nutzer**
+- Satz 2: Dasselbe gilt im Falle von unzutreffenden oder unvollständigen Angaben der 
+**Begünstigten (Händler, Verkäufer)** bei der Registrierung.
+
+- In NETZBON-NEU streichen: Mit anderen Privatpersonen kann ein Nutzer nicht interagieren.
+- Ändern: Der Verein Soziale Ökonomie behält sich vor, bei Verletzung von Regeln oder 
+Missbrauch Konten **(von Händlern, Betrieben, Verkäufern) zu sperren bzw.** zu löschen.
+[KOMMENTAR SK]
 
 1.9. Haftung
 ~~~~~~~~~~~~
@@ -206,6 +324,22 @@ TALER AG aufgrund der Nichteinhaltung dieser AGB oder gesetzlichen Vorgaben, auf
 fehlerhafter oder unvollständiger Angaben der Kundin bzw. des Kunden oder der Ausführung von
 Anweisungen entstehen.
 
+[KOMMENTAR SK]
+- Vorschlag zur Ergänzung des obigen Absatzes:
+Die Taler Operations AG haftet bei der Erfüllung ihrer Verpflichtungen für jedes Verschulden 
+ihrer Mitarbeiter und der Personen, die sie zur Erfüllung ihrer Verpflichtungen hinzuzieht. 
+Soweit die Sonderbedingungen für einzelne Geschäftsbeziehungen oder sonstige Vereinbarungen 
+etwas Abweichendes regeln, gehen diese Regelungen vor.
+
+Hat ein Nutzer des Taler-Bezahlsystems durch schuldhaftes Verhalten - zum Beispiel durch 
+Verletzung von Mitwirkungspflichten wie regelmässige Sicherungen und Vorsichtsmassnahmen - 
+zur Entstehung eines Schadens beigetragen, bestimmt sich nach den Grundsätzen des 
+Mitverschuldens, in welchem Umfang Taler Operations AG und Nutzer den Schaden zu tragen 
+haben.
+
+- Streichen: * in Bezug auf Mehrwertleistungen;
+[KOMMENTAR SK]
+
 1.10. Kommunikation
 ~~~~~~~~~~~~~~~~~~~
 
@@ -214,12 +348,34 @@ Die Kommunikation zwischen der TALER AG und den Kundinnen und Kunden erfolgt gru
 TALER App kontaktieren. Eine solche Kommunikation ist nicht zwingend vertraulich oder
 sicher.
 
+[KOMMENTAR SK]
+- Satz 1: Die Kommunikation zwischen der TALER AG und den Begünstigten erfolgt grundsätzlich
+über die TALER AG.
+- Satz 2: Bei Bedarf kann die TALER AG die registrierten Begünstigten (Händler, Betriebe, 
+Verkäufer) kontaktieren.
+- Ergänzen: Falls eine Kommunikation zwischen der TALER AG und den Nutzern notwendig werden 
+sollte, kann diese über ein Finanzinstitut (Bank des überweisenden Girokontos der Nutzer) 
+oder/und über die Taler-Apps erfolgen, sofern dies technisch möglich ist.
+[KOMMENTAR SK]
+
 1.11. Änderung AGB
 ~~~~~~~~~~~~~~~~~~
 
 Die TALER AG kann die AGB jederzeit ändern. Änderungen werden auf geeignete Weise bekannt
 gegeben. Ist die Kundin bzw. der Kunde mit den Änderungen nicht einverstanden, so kann die
 Kundin bzw. der Kunde die TALER App nicht mehr verwenden.
+
+[KOMMENTAR SK]
+Vorschlag statt des obigen Absatzes:
+Die Taler Operations AG behält sich das Recht vor, diese Allgemeinen Geschäftsbedingungen 
+(AGB) ändern zu können. Die Nutzer werden über Änderungen in der Taler-App benachrichtigt. 
+Die fortgesetzte Nutzung der Taler-App nach Änderungen der AGB gilt als Zustimmung zu den 
+geänderten Bedingungen.
+
+Der Zahlungsdienst sendet automatisch Änderungen in den AGB und Datenschutzbestimmungen 
+an die Taler-Wallets mit der Notwendigkeit der Bestätigung durch die Nutzer, nach der sie 
+die Taler-App weiterverwenden können.
+[KOMMENTAR SK]
 
 1.12. Vorbehalt gesetzlicher Regelungen und Beschränkung der Dienstleistungen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -255,6 +411,13 @@ Für die Dauer des Vertrages erhalten die Kundinnen und Kunden das unübertragba
 ausschliessliche Recht zur Nutzung von TALER. Inhalt und Umfang dieses Rechts ergeben sich
 aus den vorliegenden AGB. Alle Immaterialgüterrechte verbleiben bei der TALER AG oder den
 berechtigten Dritten.
+
+[KOMMENTAR SK]
+Satz 1: Für die Dauer der **Nutzung** erhalten die Nutzer das unübertragbare, nicht 
+ausschliessliche Recht zur Verwendung des Bezahlsystems. Die Vertragspartner (Händler, 
+Betriebe, Verkäufer) als Begünstigte erhalten im Fall der Nutzung der P2P- oder 
+P2M-Funktion des Bezahlsystems dieses Recht wie alle anderen Nutzer eingeräumt.
+[KOMMENTAR SK]
 
 1.14 Datenschutz
 ~~~~~~~~~~~~~~~~
@@ -300,6 +463,12 @@ Den Datenschutzbeauftragten der Taler Operations AG erreichen Sie per Post an Ta
 Operations AG, Höheweg 80, 2502 Biel, und über die unten genannten Kontaktmöglichkeiten.
 [NETZBON-NEU]
 
+[KOMMENTAR SK]
+- Satz 1 von 1.14.: Kundinnen und Kunden --> Begünstigte
+- Beide Texte können ansonsten nach Korrektur orthografischer Fehler so bleiben und sollten 
+auch in den AGB so angezeigt werden. Bitte diskutieren und eventuell kürzen.
+[KOMMENTAR SK]
+
 1.15. Dauer und Kündigung
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -312,12 +481,32 @@ an die zuletzt bekanntgegebene (E-Mail-) Adresse der Kundin bzw. des Kunden.
 Erfolgt während 4 Jahren keine Transaktion, gilt die Geschäftsbeziehung als durch die Kundin
 bzw. den Kunden gekündigt.
 
+[KOMMENTAR SK]
+- Satz 1: Die Geschäftsbeziehung zwischen den Begünstigten (Händler, Betriebe, Verkäufer 
+und sonstige Empfänger von Überweisungen des Zahlungsdienst an die begünstigten 
+IBAN-Konten) und dem Zahlungsdienstleister wird auf eine unbestimmte Dauer abgeschlossen.
+- Satz 2: Die Nutzer von Taler-Wallets können das Guthaben jederzeit an die Bankkonten 
+zurücküberweisen lassen, von denen die Überweisung der Nutzer an den Zahlungsdienst 
+erfolgte, und so das Guthaben auf Null setzen.
+- Satz 3: Die TALER AG kann die Geschäftsbeziehung mit den Begünstigten jederzeit - 
+insbesondere in Missbrauchsfällen mit sofortiger Wirkung - kündigen.
+- Satz 4: Eine schriftliche Kündigung der TALER AG erfolgt an eine der zuletzt 
+bekanntgegebenen Adressen der Geschäftspartner (z.B. per E-Mail oder Brief).
+- Satz 5: Streichen
+[KOMMENTAR SK]
+
 1.16. Übertragung
 ~~~~~~~~~~~~~~~~~
 
 Die TALER AG kann die Vertragsbeziehung mit der Kundin bzw. dem Kunden
 (inkl. einem allfälligen Guthaben) jederzeit und ohne vorgängige Information auf eine andere
 Gesellschaft der TALER Gruppe übertragen.
+
+[KOMMENTAR SK]
+Änderungsvorschlag:
+Die Taler Operations AG kann eine vertraglich geregelte Geschäftsbeziehung jederzeit an 
+eine andere Firma ihrer Muttergesellschaft übertragen.
+[KOMMENTAR SK]
 
 1.17. Anwendbares Recht und Gerichtsstand
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -337,6 +526,12 @@ Einigung anzustreben. Wenn keine Einigung erzielt werden kann, unterliegt die
 Streitbeilegung den geltenden schweizerischen Gesetzen und der Gerichtsbarkeit von Biel.
 [NETZBON-NEU]
 
+[KOMMENTAR SK]
+- Satz 1: Kundinnen und Kunden --> Nutzern
+- Satz 2: Zürich --> Biel
+- Satz aus NETZBON-NEU ebenfalls verwenden
+[KOMMENTAR SK]
+
 2. Zahlungsfunktionen
 ---------------------
 
@@ -349,6 +544,13 @@ Wohnsitz in der Schweiz Limiten von CHF 1‘000 pro Monat und CHF 5‘000 pro Ka
 das Senden und das Empfangen von Geld
 Die TALER AG behält sich vor, diese Limite jederzeit zu senken oder zu erhöhen bzw.
 zusätzliche Limite einzuführen, insbesondere aus regulatorischen sowie Sicherheitsgründen.
+
+[KOMMENTAR SK]
+Änderungsvorschlag für Satz 3:
+Die TALER AG behält sich insbesondere aus regulatorischen Gründen vor, die Limite jederzeit 
+zu senken oder zu erhöhen. Die Änderung wird in aktualisierten AGB angezeigt, welche die 
+Nutzer vor der weiteren Nutzung des Zahlungsdiensts zu bestätigen haben.
+[KOMMENTAR SK]
 
 2.2. Aufbuchen
 ~~~~~~~~~~~~~~
@@ -393,12 +595,27 @@ In der Phase der Markteinführung von eNetzBon werden keine Transaktionskosten v
 erhoben. Bei der Bezahlung mit eNetzBon fallen daher vorerst keine Transaktionsgebühren an. 
 Diese Allgemeinen Geschäftsbedingungen erlauben jedoch die Möglichkeit zukünftiger 
 Änderungen der Gebührenordnung.
-[NETZBON-KOMMENTAR]   
-                        
+[NETZBON-KOMMENTAR]
+
+[KOMMENTAR SK]
+- Satz 3 in 2.2.: Streichen: (sog. Coins)
+- Satz 5: durch die Kundinnen und Kunden --> durch die Nutzer
+- Satz 6: Das TALER Guthaben --> Guthaben der Nutzer in Wallets
+- Satz 7: Kundinnen und Kunden --> Nutzer
+- Satz 8: Aufladen bzw. Entladen des TALER Guthabens --> Erhöhen und Verringern des 
+Guthabens im Wallet
+- Satz 9: Diesen Satz kann ich nicht interpretieren (was ist LSV-Anbindung?); Kundin bzw. 
+der Kunde --> Nutzer
+[KOMMENTAR SK]
+
 2.3. Abbuchen
 ~~~~~~~~~~~~~
 
 Das Entladen muss "_____________________________________________".
+
+[KOMMENTAR SK]
+Was soll in den Platzhalter kommen?
+[KOMMENTAR SK]
 
 2.4. Zahlen mit TALER
 ~~~~~~~~~~~~~~~~~~~~~
@@ -410,12 +627,29 @@ und an andere TALER Nutzer im Rahmen der geltenden Limiten bezahlen.
 Bei einer Bezahlung wird der entsprechende Betrag direkt vom TALER Wallet abgebucht. Es muss
 mindestes im TALER Wallet in Höhe des Transaktionsbetrags verfügbar sein.
 
+[KOMMENTAR SK]
+Änderungsvorschlag für Satz 1: Die Nutzer können mit dem im Smartphone oder Webbrowser 
+installierten Taler-Wallet innerhalb der geltenden Limiten bezahlen bei natürlichen und 
+juristischen Personen, die diese Bezahloption akzeptieren und ein Schweizer Bankkonto zum 
+Geldempfang führen (z.B. Ladengeschäfte, Webshops, Apps und sonstige Begünstigte).
+[KOMMENTAR SK]
+
 2.5. Belastung der Bezahlungen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Die Kundinnen und Kunden anerkennen sämtliche getätigten P2M- und P2P-Zahlungen, welche mit
 dem TALER Wallet von ihrem Smartphone aus erfolgt sind, selbst wenn diese Zahlungen ohne
 ihre Zustimmung erfolgt sind.
+
+[KOMMENTAR SK]
+Es handelt sich bei dem Guthaben auf den Wallets der Nutzer um digitales Bargeld, dessen 
+Eigentümerschaft technisch nicht ermittelbar ist. Jeder Teil des Guthabens erscheint in 
+Form einer Datei mit alphanumerischen Zeichenfolgen und wird beim Abheben ins Wallet blind 
+signiert, wodurch der Signatar keinen Rückschluss auf den Eigentümer des eingelösten 
+Guthabens ziehen kann. Ist ein Guthaben eingelöst worden, kann dieses nicht noch ein 
+weiteres Mal eingelöst werden. Wer das Guthaben zuerst einlöst, hat den Wert des Guthabens 
+zur Zahlung verwendet.
+[KOMMENTAR SK]
 
 2.6. Preise und Drittvergütungen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -447,3 +681,25 @@ anzubieten. **Die Kundin bzw. der Kunde verzichtet auf die Erstattung sämtlich
 Drittvergütungen, die die TALER AG in der Vergangenheit erhalten hat und in Zukunft erhalten
 könnte.**
 
+[KOMMENTAR SK]
+- Satz 1: --> Die Installation von Taler-Wallets ...
+- Satz 2: Internationale **eingehende** Zahlungen in Fremdwährungen werden automatisch zu 
+einem von **der Schweizerischen Nationalbank** festgestellten Wechselkurs in Schweizer 
+Franken umgerechnet.
+- Satz 6: Bei Rückbuchungen aus dem Guthaben in Taler-Wallets auf Nutzeranweisung oder bei 
+erfolglosem Abheben ins Wallet erfolgen diese in derselben internationalen Fremdwährung wie 
+die Eingangszahlung und verringert um anfallende Gebühren für Rücküberweisungen und 
+Fremdwährungstransaktionen.
+- Satz 7 streichen
+- Satz 8: TALER --> Taler Operations AG
+- Satz 11: Eine Anpassung gilt als genehmigt, wenn die **Nutzer** die aktualisierten AGB in 
+der App akzeptieren. Eine Anpassung gilt als genehmigt, wenn die Begünstigten (Händler, 
+Betriebe, Verkäufer) nicht vor Inkrafttreten der Änderung den Vertrag kündigen.
+- Sätze 14 bis Ende: Bitte streichen, denn "Mehrwertleistungen" umfassen bei TWINT z.B. 
+“Mobile-Marketing-Kampagnen”, Rabatt- und Kundenbindungsprogramme und die "Später 
+zahlen"-Funktion. Diese Funktionen sind jedoch für das Taler-Bezahlsystem abträglich und 
+dürften sowieso eher von der Seite der Händler angeboten werden.
+
+Dankeschön, dass alle Kommentare bis hierhin durchgelesen wurden! Der AGB-Text muss ggf. 
+stilistisch noch umformuliert werden, denn er ist zu weiten Teilen identisch mit TWINT-AGB.
+[KOMMENTAR SK]
