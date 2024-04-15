@@ -173,8 +173,8 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
  * @return MHD result code
  */
 #define TALER_MHD_REPLY_JSON_PACK(connection,response_code,...) \
-  TALER_MHD_reply_json_steal (connection, GNUNET_JSON_PACK (__VA_ARGS__), \
-                              response_code)
+        TALER_MHD_reply_json_steal (connection, GNUNET_JSON_PACK (__VA_ARGS__), \
+                                    response_code)
 
 
 /**
@@ -259,7 +259,7 @@ TALER_MHD_make_json_pack (const char *fmt,
  * @return MHD response object
  */
 #define TALER_MHD_MAKE_JSON_PACK(...) \
-  TALER_MHD_make_json_steal (GNUNET_JSON_PACK (__VA_ARGS__))
+        TALER_MHD_make_json_steal (GNUNET_JSON_PACK (__VA_ARGS__))
 
 
 /**
@@ -270,8 +270,8 @@ TALER_MHD_make_json_pack (const char *fmt,
  * @return packer array entries (two!)
  */
 #define TALER_MHD_PACK_EC(ec) \
-  GNUNET_JSON_pack_uint64 ("code", ec), \
-  GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec))
+        GNUNET_JSON_pack_uint64 ("code", ec), \
+        GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec))
 
 /**
  * Create a response indicating an internal error.
@@ -462,19 +462,19 @@ TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
  *         the current time plus the value given under "timeout_ms" otherwise
  */
 #define TALER_MHD_parse_request_timeout(connection,expiration) \
-  do {                                                         \
-    switch (TALER_MHD_parse_request_arg_timeout (connection,   \
-                                                 expiration))  \
-    {                      \
-    case GNUNET_SYSERR:    \
-      GNUNET_break (0);    \
-      return MHD_NO;       \
-    case GNUNET_NO:        \
-      GNUNET_break_op (0); \
-    case GNUNET_OK:        \
-      break;               \
-    }                      \
-  } while (0)
+        do {                                                         \
+          switch (TALER_MHD_parse_request_arg_timeout (connection,   \
+                                                       expiration))  \
+          {                      \
+          case GNUNET_SYSERR:    \
+            GNUNET_break (0);    \
+            return MHD_NO;       \
+          case GNUNET_NO:        \
+            GNUNET_break_op (0); \
+          case GNUNET_OK:        \
+            break;               \
+          }                      \
+        } while (0)
 
 
 /**
@@ -505,20 +505,20 @@ TALER_MHD_parse_request_arg_number (struct MHD_Connection *connection,
  *    unchanged if value was not specified
  */
 #define TALER_MHD_parse_request_number(connection,name,off)  \
-  do {                                                         \
-    switch (TALER_MHD_parse_request_arg_number (connection,   \
-                                                name, \
-                                                off))  \
-    {                      \
-    case GNUNET_SYSERR:    \
-      GNUNET_break (0);    \
-      return MHD_NO;       \
-    case GNUNET_NO:        \
-      GNUNET_break_op (0); \
-    case GNUNET_OK:        \
-      break;               \
-    }                      \
-  } while (0)
+        do {                                                         \
+          switch (TALER_MHD_parse_request_arg_number (connection,   \
+                                                      name, \
+                                                      off))  \
+          {                      \
+          case GNUNET_SYSERR:    \
+            GNUNET_break (0);    \
+            return MHD_NO;       \
+          case GNUNET_NO:        \
+            GNUNET_break_op (0); \
+          case GNUNET_OK:        \
+            break;               \
+          }                      \
+        } while (0)
 
 
 /**
@@ -549,20 +549,20 @@ TALER_MHD_parse_request_arg_snumber (struct MHD_Connection *connection,
  *    unchanged if value was not specified
  */
 #define TALER_MHD_parse_request_snumber(connection,name,val)  \
-  do {                                                         \
-    switch (TALER_MHD_parse_request_arg_snumber (connection,   \
-                                                 name, \
-                                                 val))  \
-    {                      \
-    case GNUNET_SYSERR:    \
-      GNUNET_break (0);    \
-      return MHD_NO;       \
-    case GNUNET_NO:        \
-      GNUNET_break_op (0); \
-    case GNUNET_OK:        \
-      break;               \
-    }                      \
-  } while (0)
+        do {                                                         \
+          switch (TALER_MHD_parse_request_arg_snumber (connection,   \
+                                                       name, \
+                                                       val))  \
+          {                      \
+          case GNUNET_SYSERR:    \
+            GNUNET_break (0);    \
+            return MHD_NO;       \
+          case GNUNET_NO:        \
+            GNUNET_break_op (0); \
+          case GNUNET_OK:        \
+            break;               \
+          }                      \
+        } while (0)
 
 
 /**
@@ -593,20 +593,42 @@ TALER_MHD_parse_request_arg_amount (struct MHD_Connection *connection,
  *    unchanged if value was not specified
  */
 #define TALER_MHD_parse_request_amount(connection,name,val)  \
-  do {                                                         \
-    switch (TALER_MHD_parse_request_arg_amount (connection,   \
-                                                name, \
-                                                val))  \
-    {                      \
-    case GNUNET_SYSERR:    \
-      GNUNET_break (0);    \
-      return MHD_NO;       \
-    case GNUNET_NO:        \
-      GNUNET_break_op (0); \
-    case GNUNET_OK:        \
-      break;               \
-    }                      \
-  } while (0)
+        do {                                                         \
+          switch (TALER_MHD_parse_request_arg_amount (connection,   \
+                                                      name, \
+                                                      val))  \
+          {                      \
+          case GNUNET_SYSERR:    \
+            GNUNET_break (0);    \
+            return MHD_NO;       \
+          case GNUNET_NO:        \
+            GNUNET_break_op (0); \
+          case GNUNET_OK:        \
+            break;               \
+          }                      \
+        } while (0)
+
+
+/**
+ * Determines which of the given choices is preferred
+ * by the client. Parses an HTTP header such as
+ * "Accept:" or "Language:" to find entries matching
+ * the list of strings given in the variadic argument
+ * list. Returns the index of the preferred choice.
+ *
+ * @param connection HTTP request handle
+ * @param header type of HTTP header to evaluate
+ * @param ... NULL-terminated list of choices to
+ *        check for in the header
+ * @return -1 if none of the given choices is in
+ *         the header, -2 if the header is missing,
+ *         otherwise index of preferred choice in
+ *         the varargs list
+ */
+int
+TALER_MHD_check_accept (struct MHD_Connection *connection,
+                        const char *header,
+                        ...);
 
 
 /**
@@ -670,28 +692,28 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 #define TALER_MHD_parse_request_arg_auto(connection,name,val,required) \
-  do {                                                                 \
-    bool p;                                                            \
-    switch (TALER_MHD_parse_request_arg_data (connection, name,        \
-                                              val, sizeof (*val), &p)) \
-    {                      \
-    case GNUNET_SYSERR:    \
-      GNUNET_break (0);    \
-      return MHD_NO;       \
-    case GNUNET_NO:        \
-      GNUNET_break_op (0); \
-      return MHD_YES;      \
-    case GNUNET_OK:        \
-      if (required & (! p)) \
-      return TALER_MHD_reply_with_error (   \
-        connection,                         \
-        MHD_HTTP_BAD_REQUEST,               \
-        TALER_EC_GENERIC_PARAMETER_MISSING, \
-        name);                              \
-      required = p;                         \
-      break;               \
-    }                      \
-  } while (0)
+        do {                                                                 \
+          bool p;                                                            \
+          switch (TALER_MHD_parse_request_arg_data (connection, name,        \
+                                                    val, sizeof (*val), &p)) \
+          {                      \
+          case GNUNET_SYSERR:    \
+            GNUNET_break (0);    \
+            return MHD_NO;       \
+          case GNUNET_NO:        \
+            GNUNET_break_op (0); \
+            return MHD_YES;      \
+          case GNUNET_OK:        \
+            if (required & (! p)) \
+            return TALER_MHD_reply_with_error (   \
+              connection,                         \
+              MHD_HTTP_BAD_REQUEST,               \
+              TALER_EC_GENERIC_PARAMETER_MISSING, \
+              name);                              \
+            required = p;                         \
+            break;               \
+          }                      \
+        } while (0)
 
 
 /**
@@ -706,10 +728,10 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 #define TALER_MHD_parse_request_arg_auto_t(connection,name,val) \
-  do {                                                          \
-    bool b = true;                                              \
-    TALER_MHD_parse_request_arg_auto (connection,name,val,b);   \
-  } while (0)
+        do {                                                          \
+          bool b = true;                                              \
+          TALER_MHD_parse_request_arg_auto (connection,name,val,b);   \
+        } while (0)
 
 /**
  * Extract fixed-size base32crockford encoded data from request.
@@ -725,28 +747,28 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 #define TALER_MHD_parse_request_header_auto(connection,name,val,required) \
-  do {                                                                    \
-    bool p;                                                               \
-    switch (TALER_MHD_parse_request_header_data (connection, name,        \
-                                                 val, sizeof (*val), &p)) \
-    {                       \
-    case GNUNET_SYSERR:     \
-      GNUNET_break (0);     \
-      return MHD_NO;        \
-    case GNUNET_NO:         \
-      GNUNET_break_op (0);  \
-      return MHD_YES;       \
-    case GNUNET_OK:         \
-      if (required & (! p)) \
-      return TALER_MHD_reply_with_error (   \
-        connection,                         \
-        MHD_HTTP_BAD_REQUEST,               \
-        TALER_EC_GENERIC_PARAMETER_MISSING, \
-        name);                              \
-      required = p;                         \
-      break;               \
-    }                      \
-  } while (0)
+        do {                                                                    \
+          bool p;                                                               \
+          switch (TALER_MHD_parse_request_header_data (connection, name,        \
+                                                       val, sizeof (*val), &p)) \
+          {                       \
+          case GNUNET_SYSERR:     \
+            GNUNET_break (0);     \
+            return MHD_NO;        \
+          case GNUNET_NO:         \
+            GNUNET_break_op (0);  \
+            return MHD_YES;       \
+          case GNUNET_OK:         \
+            if (required & (! p)) \
+            return TALER_MHD_reply_with_error (   \
+              connection,                         \
+              MHD_HTTP_BAD_REQUEST,               \
+              TALER_EC_GENERIC_PARAMETER_MISSING, \
+              name);                              \
+            required = p;                         \
+            break;               \
+          }                      \
+        } while (0)
 
 
 /**
@@ -761,10 +783,10 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 #define TALER_MHD_parse_request_header_auto_t(connection,name,val) \
-  do {                                                             \
-    bool b = true;                                                 \
-    TALER_MHD_parse_request_header_auto (connection,name,val,b);   \
-  } while (0)
+        do {                                                             \
+          bool b = true;                                                 \
+          TALER_MHD_parse_request_header_auto (connection,name,val,b);   \
+        } while (0)
 
 
 /**
@@ -795,19 +817,19 @@ TALER_MHD_check_content_length_ (struct MHD_Connection *connection,
  * @param max_len maximum allowed content length
  */
 #define TALER_MHD_check_content_length(connection,max_len)         \
-  do {                                                             \
-    switch (TALER_MHD_check_content_length_ (connection, max_len)) \
-    {                       \
-    case GNUNET_SYSERR:     \
-      GNUNET_break (0);     \
-      return MHD_NO;        \
-    case GNUNET_NO:         \
-      GNUNET_break_op (0);  \
-      return MHD_YES;       \
-    case GNUNET_OK:         \
-      break;                \
-    }                       \
-  } while (0)
+        do {                                                             \
+          switch (TALER_MHD_check_content_length_ (connection, max_len)) \
+          {                       \
+          case GNUNET_SYSERR:     \
+            GNUNET_break (0);     \
+            return MHD_NO;        \
+          case GNUNET_NO:         \
+            GNUNET_break_op (0);  \
+            return MHD_YES;       \
+          case GNUNET_OK:         \
+            break;                \
+          }                       \
+        } while (0)
 
 
 /**

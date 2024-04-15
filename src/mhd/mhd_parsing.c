@@ -508,4 +508,66 @@ TALER_MHD_check_content_length_ (struct MHD_Connection *connection,
 }
 
 
+int
+TALER_MHD_check_accept (struct MHD_Connection *connection,
+                        const char *header,
+                        ...)
+{
+  bool ret = false;
+  const char *accept;
+  char *a;
+  char *saveptr;
+
+  accept = MHD_lookup_connection_value (connection,
+                                        MHD_HEADER_KIND,
+                                        header);
+  if (NULL == accept)
+    return -2; /* no Accept header set */
+
+  a = GNUNET_strdup (accept);
+  for (char *t = strtok_r (a, ",", &saveptr);
+       NULL != t;
+       t = strtok_r (NULL, ",", &saveptr))
+  {
+    char *end;
+
+    /* skip leading whitespace */
+    while (isspace ((unsigned char) t[0]))
+      t++;
+    /* trim of ';q=' parameter and everything after space */
+    /* FIXME: eventually, we might want to parse the "q=$FLOAT"
+       part after the ';' and figure out which one is the
+       best/preferred match instead of returning a boolean... */
+    end = strchr (t, ';');
+    if (NULL != end)
+      *end = '\0';
+    end = strchr (t, ' ');
+    if (NULL != end)
+      *end = '\0';
+    {
+      va_list ap;
+      int off = 0;
+      const char *val;
+
+      va_start (ap,
+                header);
+      while (NULL != (val = va_arg (ap,
+                                    const char *)))
+      {
+        if (0 == strcasecmp (val,
+                             t))
+        {
+          ret = off;
+          break;
+        }
+        off++;
+      }
+      va_end (ap);
+    }
+  }
+  GNUNET_free (a);
+  return ret;
+}
+
+
 /* end of mhd_parsing.c */

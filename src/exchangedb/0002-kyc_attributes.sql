@@ -107,16 +107,6 @@ BEGIN
       ' ADD CONSTRAINT ' || table_name || '_serial_key '
         'UNIQUE (kyc_attributes_serial_id)'
   );
-  -- The legitimization_serial is a foreign key.
-  -- But, due to partitioning by h_payto, we can not simply reference
-  -- the serial id of the legitimization_processes. Thus, the following
-  -- is commented out.
-  --  EXECUTE FORMAT (
-  --    'ALTER TABLE ' || table_name ||
-  --    ' ADD CONSTRAINT ' || table_name || '_foreign_legitimization_processes'
-  --    ' FOREIGN KEY (legitimization_serial) '
-  --    ' REFERENCES legitimization_processes (legitimization_process_serial_id)' -- ON DELETE CASCADE
-  --  );
   -- To search similar users (e.g. during AML checks)
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_similarity_index '

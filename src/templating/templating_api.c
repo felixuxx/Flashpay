@@ -221,7 +221,7 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to load template `%s'\n",
                   template);
-      *http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      *http_status = MHD_HTTP_NOT_ACCEPTABLE;
       *reply = TALER_MHD_make_error (TALER_EC_GENERIC_FAILED_TO_LOAD_TEMPLATE,
                                      template);
       return GNUNET_NO;
@@ -432,11 +432,12 @@ load_template (void *cls,
 
 
 MHD_RESULT
-TALER_TEMPLATING_reply_error (struct MHD_Connection *connection,
-                              const char *template_basename,
-                              unsigned int http_status,
-                              enum TALER_ErrorCode ec,
-                              const char *detail)
+TALER_TEMPLATING_reply_error (
+  struct MHD_Connection *connection,
+  const char *template_basename,
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  const char *detail)
 {
   json_t *data;
   enum GNUNET_GenericReturnValue ret;
