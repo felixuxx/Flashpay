@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019-2022 Taler Systems SA
+  Copyright (C) 2019-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -101,7 +101,9 @@ TALER_payto_get_method (const char *payto_uri)
 char *
 TALER_xtalerbank_account_from_payto (const char *payto)
 {
+  const char *host;
   const char *beg;
+  const char *nxt;
   const char *end;
 
   if (0 != strncasecmp (payto,
@@ -111,23 +113,27 @@ TALER_xtalerbank_account_from_payto (const char *payto)
     GNUNET_break_op (0);
     return NULL;
   }
-  beg = strchr (&payto[strlen (PAYTO "x-taler-bank/")],
+  host = &payto[strlen (PAYTO "x-taler-bank/")];
+  beg = strchr (host,
                 '/');
   if (NULL == beg)
   {
     GNUNET_break_op (0);
     return NULL;
   }
-  beg++; /* now points to $ACCOUNT */
+  beg++; /* now points to $ACCOUNT or $PATH */
+  nxt = strchr (beg,
+                '/');
   end = strchr (beg,
                 '?');
   if (NULL == end)
+    end = &beg[strlen (beg)];
+  while ( (NULL != nxt) &&
+          (end - nxt > 0) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Invalid payto URI `%s'\n",
-                payto);
-    GNUNET_break_op (0);
-    return GNUNET_strdup (beg); /* optional part is missing */
+    beg = nxt + 1;
+    nxt = strchr (beg,
+                  '/');
   }
   return GNUNET_strndup (beg,
                          end - beg);
@@ -200,36 +206,63 @@ static char *
 validate_payto_xtalerbank (const char *account_url)
 {
   const char *user;
+  const char *nxt;
+  const char *beg;
+  const char *end;
   const char *host;
   bool dot_ok;
   bool post_colon;
+  bool port_ok;
 
-#define XTALERBANK_PREFIX "payto://x-taler-bank/"
+#define XTALERBANK_PREFIX PAYTO "x-taler-bank/"
   if (0 != strncasecmp (account_url,
                         XTALERBANK_PREFIX,
                         strlen (XTALERBANK_PREFIX)))
     return NULL; /* not an IBAN */
   host = &account_url[strlen (XTALERBANK_PREFIX)];
 #undef XTALERBANK_PREFIX
-  user = strchr (host, '/');
-  if (NULL == user)
+  beg = strchr (host,
+                '/');
+  if (NULL == beg)
   {
     return GNUNET_strdup ("account name missing");
   }
-  if (user == host)
+  beg++; /* now points to $ACCOUNT or $PATH */
+  nxt = strchr (beg,
+                '/');
+  end = strchr (beg,
+                '?');
+  if (NULL == end)
+  {
+    return GNUNET_strdup ("'receiver-name' parameter missing");
+  }
+  while ( (NULL != nxt) &&
+          (end - nxt > 0) )
+  {
+    beg = nxt + 1;
+    nxt = strchr (beg,
+                  '/');
+  }
+  user = beg;
+  if (user == host + 1)
   {
     return GNUNET_strdup ("domain name missing");
   }
   if ('-' == host[0])
     return GNUNET_strdup ("invalid character '-' at start of domain name");
-  if (NULL != strchr (user + 1, '/'))
-    return GNUNET_strdup ("invalid character '/' after account name");
   dot_ok = false;
   post_colon = false;
+  port_ok = false;
   while (host != user)
   {
     char c = host[0];
 
+    if ('/' == c)
+    {
+      /* path started, do not care about characters
+         in the path */
+      break;
+    }
     if (':' == c)
     {
       post_colon = true;
@@ -247,6 +280,7 @@ validate_payto_xtalerbank (const char *account_url)
                          c);
         return err;
       }
+      port_ok = true;
     }
     else
     {
@@ -274,6 +308,10 @@ validate_payto_xtalerbank (const char *account_url)
       }
     }
     host++;
+  }
+  if (post_colon && (! port_ok) )
+  {
+    return GNUNET_strdup ("port missing after ':'");
   }
   {
     char *target;
@@ -304,7 +342,7 @@ TALER_payto_validate (const char *payto_uri)
     /* This is more strict than RFC 8905, alas we do not need to support messages/instructions/etc.,
        and it is generally better to start with a narrow whitelist; we can be more permissive later ...*/
 #define ALLOWED_CHARACTERS \
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:&?-.,=+%"
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:&?-.,=+%~"
     if (NULL == strchr (ALLOWED_CHARACTERS,
                         (int) payto_uri[i]))
     {
@@ -358,10 +396,10 @@ TALER_payto_get_receiver_name (const char *payto)
 
 
 /**
- * Normalize "payto://x-taler-bank/$HOSTNAME/$USERNAME"
+ * Normalize "payto://x-taler-bank/$HOSTNAME/[$PATH/]$USERNAME"
  * URI in @a input.
  *
- * Converts to lower-case, except for $USERNAME which
+ * Converts to lower-case, except for [$PATH/]$USERNAME which
  * is case-sensitive.
  *
  * @param len number of bytes in @a input

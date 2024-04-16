@@ -22,16 +22,16 @@
 #include "taler_util.h"
 
 #define CHECK(a,b) do { \
-    GNUNET_assert (a != NULL); \
-    GNUNET_assert (b != NULL); \
-    if (0 != strcmp (a,b)) {   \
-      GNUNET_break (0); \
-      fprintf (stderr, "Got %s, wanted %s\n", b, a); \
-      GNUNET_free (b); \
-      return 1; \
-    } else { \
-      GNUNET_free (b); \
-    }  \
+          GNUNET_assert (a != NULL); \
+          GNUNET_assert (b != NULL); \
+          if (0 != strcmp (a,b)) {   \
+            GNUNET_break (0); \
+            fprintf (stderr, "Got %s, wanted %s\n", b, a); \
+            GNUNET_free (b); \
+            return 1; \
+          } else { \
+            GNUNET_free (b); \
+          }  \
 } while (0)
 
 
@@ -54,11 +54,20 @@ main (int argc,
     "payto://x-taler-bank/hostname/username?receiver-name=foo");
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
+    "payto://x-taler-bank/hostname/~path/username?receiver-name=foo");
+  GNUNET_assert (NULL == r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/hostname/~path/username?receiver-name=fo/o");
+  GNUNET_assert (NULL == r);
+  r = TALER_payto_validate (
+    "payto://x-taler-bank/hostname/path/username?receiver-name=foo");
+  GNUNET_assert (NULL == r);
+  r = TALER_payto_validate (
     "payto://x-taler-bank/https://hostname/username?receiver-name=foo");
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/hostname/username/extra?receiver-name=foo");
+    "payto://x-taler-bank/hostname:4a2/path/username?receiver-name=foo");
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
@@ -79,6 +88,14 @@ main (int argc,
   GNUNET_free (r);
   r = TALER_xtalerbank_account_from_payto (
     "payto://x-taler-bank/localhost:1080/alice");
+  CHECK ("alice",
+         r);
+  r = TALER_xtalerbank_account_from_payto (
+    "payto://x-taler-bank/localhost:1080/path/alice");
+  CHECK ("alice",
+         r);
+  r = TALER_xtalerbank_account_from_payto (
+    "payto://x-taler-bank/localhost:1080/path/alice?receiver-name=ali/cia");
   CHECK ("alice",
          r);
   r = TALER_xtalerbank_account_from_payto (
