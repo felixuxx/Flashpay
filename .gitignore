@@ -171,3 +171,5 @@ contrib/tos/conf.py
 contrib/pp/conf.py
 src/auditordb/test_auditordb_checkpoints-postgres
 src/auditordb/test_auditordb_checkpoints_postgres
+/.cache
+/compile_commands.json
