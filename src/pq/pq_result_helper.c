@@ -1544,8 +1544,6 @@ TALER_PQ_result_spec_array_amount (
     .cls = info,
   };
   return res;
-
-
 }
 
 
@@ -1574,9 +1572,6 @@ TALER_PQ_result_spec_array_hash_code (
     .cls = info,
   };
   return res;
-
-
 }
-
 
 /* end of pq_result_helper.c */

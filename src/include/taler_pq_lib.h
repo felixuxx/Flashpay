@@ -422,31 +422,6 @@ TALER_PQ_result_spec_array_amount (
   struct TALER_Amount **amounts);
 
 
-/**
- * Blind sign public key expected.
- *
- * @param name name of the field in the table
- * @param[out] public_key where to store the denomination signature
- * @return array entry for the result specification to use
- */
-struct GNUNET_PQ_ResultSpec
-TALER_PQ_result_spec_blind_sign_pub (
-  const char *name,
-  struct GNUNET_CRYPTO_BlindSignPublicKey *public_key);
-
-
-/**
- * Blind sign private key expected.
- *
- * @param name name of the field in the table
- * @param[out] private_key where to store the denomination signature
- * @return array entry for the result specification to use
- */
-struct GNUNET_PQ_ResultSpec
-TALER_PQ_result_spec_blind_sign_priv (
-  const char *name,
-  struct GNUNET_CRYPTO_BlindSignPrivateKey *private_key);
-
 #endif  /* TALER_PQ_LIB_H_ */
 
 /* end of include/taler_pq_lib.h */
