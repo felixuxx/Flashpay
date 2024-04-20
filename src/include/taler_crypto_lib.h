@@ -5916,18 +5916,15 @@ TALER_denomination_group_get_key (
 /**
  * Token family public key.
  */
-struct TALER_TokenFamilyPublicKey
+struct TALER_TokenIssuePublicKey
 {
-  /**
-   * Type of the signature.
-   */
-  struct GNUNET_CRYPTO_BlindSignPublicKey public_key;
+  struct GNUNET_CRYPTO_BlindSignPublicKey *public_key;
 };
 
 /**
  * Hash of a public key of a token family.
  */
-struct TALER_TokenFamilyPublicKeyHash
+struct TALER_TokenIssuePublicKeyHash
 {
   /**
    * Hash of the token public key.
@@ -5938,15 +5935,15 @@ struct TALER_TokenFamilyPublicKeyHash
 /**
  * Token family private key.
  */
-struct TALER_TokenFamilyPrivateKey
+struct TALER_TokenIssuePrivateKey
 {
-  struct GNUNET_CRYPTO_BlindSignPrivateKey private_key;
+  struct GNUNET_CRYPTO_BlindSignPrivateKey *private_key;
 };
 
 /**
  * Token public key.
  */
-struct TALER_TokenPublicKey
+struct TALER_TokenUsePublicKey
 {
   struct GNUNET_CRYPTO_EddsaPublicKey public_key;
 };
@@ -5954,15 +5951,23 @@ struct TALER_TokenPublicKey
 /**
  * Signature made using a token private key.
  */
-struct TALER_TokenSignature
+struct TALER_TokenUseSignature
 {
   struct GNUNET_CRYPTO_EddsaSignature signature;
 };
 
 /**
- * Blind signature for a token (signed by merchant).
+ * Unblinded signature created using merchants token issue private key.
  */
-struct TALER_TokenBlindSignature
+struct TALER_TokenIssueSignature
+{
+  struct GNUNET_CRYPTO_UnblindedSignature signature;
+};
+
+/**
+ * Blind signature created using merchants token issue private key.
+ */
+struct TALER_TokenIssueBlindSignature
 {
   struct GNUNET_CRYPTO_BlindedSignature signature;
 };
