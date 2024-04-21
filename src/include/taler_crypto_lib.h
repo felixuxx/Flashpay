@@ -5961,7 +5961,7 @@ struct TALER_TokenUseSignature
  */
 struct TALER_TokenIssueSignature
 {
-  struct GNUNET_CRYPTO_UnblindedSignature signature;
+  struct GNUNET_CRYPTO_UnblindedSignature *signature;
 };
 
 /**
@@ -5971,5 +5971,13 @@ struct TALER_TokenIssueBlindSignature
 {
   struct GNUNET_CRYPTO_BlindedSignature signature;
 };
+
+/**
+ * Free internals of @a issue_sig, but not @a issue_sig itself.
+ *
+ * @param[in] issue_sig signature to free
+ */
+void
+TALER_token_issue_sig_free (struct TALER_TokenIssueSignature *issue_sig);
 
 #endif

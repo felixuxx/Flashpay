@@ -102,6 +102,7 @@ libtalerutil_la_SOURCES = \
   payto.c \
   secmod_signatures.c \
   taler_error_codes.c \
+  tokens.c \
   url.c \
   util.c \
   wallet_signatures.c \

@@ -533,6 +533,135 @@ TALER_JSON_spec_age_commitment (const char *name,
 
 
 /**
+ * Parse given JSON object to token issue signature.
+ * TODO: Exctract common between this and parse_denom_sig function to a helper.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_token_issue_sig (void *cls,
+                       json_t *root,
+                       struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_TokenIssueSignature *issue_sig = spec->ptr;
+  struct GNUNET_CRYPTO_UnblindedSignature *unblinded_sig;
+  const char *cipher;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_string ("cipher",
+                             &cipher),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  unblinded_sig = GNUNET_new (struct GNUNET_CRYPTO_UnblindedSignature);
+  unblinded_sig->cipher = string_to_cipher (cipher);
+  unblinded_sig->rc = 1;
+  switch (unblinded_sig->cipher)
+  {
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_rsa_signature (
+          "rsa_signature",
+          &unblinded_sig->details.rsa_signature),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        GNUNET_free (unblinded_sig);
+        return GNUNET_SYSERR;
+      }
+      issue_sig->signature = unblinded_sig;
+      return GNUNET_OK;
+    }
+  case GNUNET_CRYPTO_BSA_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_fixed_auto ("cs_signature_r",
+                                     &unblinded_sig->details.cs_signature.
+                                     r_point),
+        GNUNET_JSON_spec_fixed_auto ("cs_signature_s",
+                                     &unblinded_sig->details.cs_signature.
+                                     s_scalar),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        GNUNET_free (unblinded_sig);
+        return GNUNET_SYSERR;
+      }
+      issue_sig->signature = unblinded_sig;
+      return GNUNET_OK;
+    }
+  }
+  GNUNET_break_op (0);
+  GNUNET_free (unblinded_sig);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Cleanup data left from parsing token issue signature.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_token_issue_sig (void *cls,
+                       struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_TokenIssueSignature *issue_sig = spec->ptr;
+
+  (void) cls;
+  TALER_token_issue_sig_free (issue_sig);
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_token_issue_sig (const char *field,
+                                 struct TALER_TokenIssueSignature *sig)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_token_issue_sig,
+    .cleaner = &clean_token_issue_sig,
+    .field = field,
+    .ptr = sig
+  };
+
+  sig->signature = NULL;
+  return ret;
+}
+
+
+/**
  * Parse given JSON object to denomination public key.
  *
  * @param cls closure, NULL

@@ -588,6 +588,18 @@ TALER_JSON_spec_i18n_str (const char *name,
 
 
 /**
+ * Generate line in parser specification for a
+ * token issue signature.
+ *
+ * @param field name of the field
+ * @param[out] sig the signature to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_token_issue_sig (const char *field,
+                                 struct TALER_TokenIssueSignature *sig);
+
+/**
  * Hash a JSON for binary signing.
  *
  * See https://tools.ietf.org/html/draft-rundgren-json-canonicalization-scheme-15
