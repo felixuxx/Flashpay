@@ -42,7 +42,7 @@ fi
 # Generate Makefile.am in contrib/
 cd contrib
 rm -f Makefile.am
-find wallet-core/aml-backoffice/ -type f -printf '  %p \\\n' | sort > Makefile.am.ext
+find wallet-core/aml-backoffice/ -type f | sort | awk '{print "  " $1 " \\" }' > Makefile.am.ext
 # Remove extra '\' at the end of the file
 truncate -s -2 Makefile.am.ext
 cat Makefile.am.in Makefile.am.ext >> Makefile.am
