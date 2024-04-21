@@ -3741,6 +3741,14 @@ TALER_wallet_coin_history_sign (
   struct TALER_CoinSpendSignatureP *coin_sig);
 
 
+void
+TALER_wallet_token_use_sign ();
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_token_use_verify ();
+
+
 /* ********************* merchant signing ************************** */
 
 
@@ -3783,6 +3791,14 @@ TALER_merchant_refund_verify (
   const struct TALER_Amount *amount,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_MerchantSignatureP *merchant_sig);
+
+
+void
+TALER_merchant_token_issue_sign ();
+
+
+enum GNUNET_GenericReturnValue
+TALER_merchant_token_issue_verify ();
 
 
 /* ********************* exchange deposit signing ************************* */
