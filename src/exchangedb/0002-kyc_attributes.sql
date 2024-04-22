@@ -133,7 +133,7 @@ BEGIN
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_legitimization_processes'
     ' FOREIGN KEY (legitimization_serial) '
-    ' REFERENCES legitimization_processes (legitimization_process_serial_id)' -- ON DELETE CASCADE
+    ' REFERENCES legitimization_processes (legitimization_process_serial_id)' -- ON DELETE SET NULL?
   );
 END $$;
 
