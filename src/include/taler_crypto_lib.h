@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -49,34 +49,6 @@
  */
 #define TALER_CNC_KAPPA 3
 #define TALER_CNC_KAPPA_MINUS_ONE_STR "2"
-
-
-/**
- * Possible AML decision states.
- */
-enum TALER_AmlDecisionState
-{
-
-  /**
-   * All AML requirements are currently satisfied.
-   */
-  TALER_AML_NORMAL = 0,
-
-  /**
-   * An AML investigation is pending.
-   */
-  TALER_AML_PENDING = 1,
-
-  /**
-   * An AML decision has concluded that the funds must be frozen.
-   */
-  TALER_AML_FROZEN = 2,
-
-  /**
-   * Maximum allowed numeric value for AML status.
-   */
-  TALER_AML_MAX = 2
-};
 
 
 /**
@@ -224,6 +196,38 @@ struct TALER_MerchantPublicKeyP
    * Taler uses EdDSA for merchants.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * @brief Type of a token used for symmetric access
+ * control to the KYC process of an account.
+ */
+struct TALER_AccountAccessTokenP
+{
+  /**
+   * Random bytes with enough entropy to prevent brute-force
+   * attacks.
+   */
+  uint32_t token[32 / sizeof (uint32_t)];
+};
+
+/**
+ * @brief Type of public keys to for KYC authorizations.
+ * Either a merchant's public key or a reserve public
+ * key will do.
+ */
+union TALER_AccountPublicKeyP
+{
+  /**
+   * Public key of merchants.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Public key of reserves.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
 };
 
 
@@ -2543,13 +2547,9 @@ TALER_officer_aml_query_verify (
  *
  * @param justification human-readable justification
  * @param decision_time when was the decision made
- * @param new_threshold at what monthly amount threshold
- *                      should a revision be triggered
  * @param h_payto payto URI hash of the account the
  *                      decision is about
- * @param new_state updated AML state
- * @param kyc_requirements additional KYC requirements to
- *           impose, can be NULL
+ * @param new_rules new KYC rules to apply to the account
  * @param officer_priv private key of AML officer
  * @param[out] officer_sig where to write the signature
  */
@@ -2557,10 +2557,8 @@ void
 TALER_officer_aml_decision_sign (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
-  enum TALER_AmlDecisionState new_state,
-  const json_t *kyc_requirements,
+  const json_t *new_rules,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig);
 
@@ -2570,13 +2568,9 @@ TALER_officer_aml_decision_sign (
  *
  * @param justification human-readable justification
  * @param decision_time when was the decision made
- * @param new_threshold at what monthly amount threshold
- *                      should a revision be triggered
  * @param h_payto payto URI hash of the account the
  *                      decision is about
- * @param new_state updated AML state
- * @param kyc_requirements additional KYC requirements to
- *           impose, can be NULL
+ * @param new_rules new KYC rules to apply to the account
  * @param officer_pub public key of AML officer
  * @param officer_sig signature to verify
  * @return #GNUNET_OK if the signature is valid
@@ -2585,10 +2579,8 @@ enum GNUNET_GenericReturnValue
 TALER_officer_aml_decision_verify (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
-  enum TALER_AmlDecisionState new_state,
-  const json_t *kyc_requirements,
+  const json_t *new_rules,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig);
 

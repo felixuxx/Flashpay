@@ -815,7 +815,8 @@ TALER_JSON_spec_blinded_denom_sig (
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_planchet (const char *field,
-                                  struct TALER_BlindedPlanchet *blinded_planchet)
+                                  struct TALER_BlindedPlanchet *blinded_planchet
+                                  )
 {
   blinded_planchet->blinded_message = NULL;
   return GNUNET_JSON_spec_blinded_message (field,
@@ -1137,54 +1138,6 @@ TALER_JSON_spec_ec (const char *field,
   };
 
   *ec = TALER_EC_NONE;
-  return ret;
-}
-
-
-/**
- * Parse given JSON object with AML decision.
- *
- * @param cls closure, NULL
- * @param root the json object representing data
- * @param[out] spec where to write the data
- * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
- */
-static enum GNUNET_GenericReturnValue
-parse_aml_decision (void *cls,
-                    json_t *root,
-                    struct GNUNET_JSON_Specification *spec)
-{
-  enum TALER_AmlDecisionState *aml = spec->ptr;
-  json_int_t num;
-
-  (void) cls;
-  if (! json_is_integer (root))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  num = json_integer_value (root);
-  if ( (num > TALER_AML_MAX) ||
-       (num < 0) )
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  *aml = (enum TALER_AmlDecisionState) num;
-  return GNUNET_OK;
-}
-
-
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_aml_decision (const char *field,
-                              enum TALER_AmlDecisionState *aml_state)
-{
-  struct GNUNET_JSON_Specification ret = {
-    .parser = &parse_aml_decision,
-    .field = field,
-    .ptr = aml_state
-  };
-
   return ret;
 }
 

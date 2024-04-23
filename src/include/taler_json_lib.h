@@ -67,9 +67,9 @@ struct TALER_EncryptedContract
  * @deprecated
  */
 #define TALER_json_warn(error)                                         \
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                                \
-              "JSON parsing failed at %s:%u: %s (%s)\n",                  \
-              __FILE__, __LINE__, error.text, error.source)
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                                \
+                    "JSON parsing failed at %s:%u: %s (%s)\n",                  \
+                    __FILE__, __LINE__, error.text, error.source)
 
 
 /**
@@ -92,8 +92,8 @@ TALER_JSON_pack_time_abs_human (const char *name,
  * @param ec error code to encode using canonical field names
  */
 #define TALER_JSON_pack_ec(ec) \
-  GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)), \
-  GNUNET_JSON_pack_uint64 ("code", ec)
+        GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)), \
+        GNUNET_JSON_pack_uint64 ("code", ec)
 
 
 /**
@@ -349,10 +349,10 @@ TALER_JSON_spec_otp_type (const char *name,
  * @param[out] dfs a `struct TALER_DenomFeeSet` to initialize
  */
 #define TALER_JSON_SPEC_DENOM_FEES(pfx,currency,dfs) \
-  TALER_JSON_spec_amount (pfx "_withdraw", (currency), &(dfs)->withdraw), \
-  TALER_JSON_spec_amount (pfx "_deposit", (currency), &(dfs)->deposit),   \
-  TALER_JSON_spec_amount (pfx "_refresh", (currency), &(dfs)->refresh),   \
-  TALER_JSON_spec_amount (pfx "_refund", (currency), &(dfs)->refund)
+        TALER_JSON_spec_amount (pfx "_withdraw", (currency), &(dfs)->withdraw), \
+        TALER_JSON_spec_amount (pfx "_deposit", (currency), &(dfs)->deposit),   \
+        TALER_JSON_spec_amount (pfx "_refresh", (currency), &(dfs)->refresh),   \
+        TALER_JSON_spec_amount (pfx "_refund", (currency), &(dfs)->refund)
 
 
 /**
@@ -363,10 +363,10 @@ TALER_JSON_spec_otp_type (const char *name,
  * @param dfs a `struct TALER_DenomFeeSet` to pack
  */
 #define TALER_JSON_PACK_DENOM_FEES(pfx, dfs) \
-  TALER_JSON_pack_amount (pfx "_withdraw", &(dfs)->withdraw),   \
-  TALER_JSON_pack_amount (pfx "_deposit", &(dfs)->deposit),     \
-  TALER_JSON_pack_amount (pfx "_refresh", &(dfs)->refresh),     \
-  TALER_JSON_pack_amount (pfx "_refund", &(dfs)->refund)
+        TALER_JSON_pack_amount (pfx "_withdraw", &(dfs)->withdraw),   \
+        TALER_JSON_pack_amount (pfx "_deposit", &(dfs)->deposit),     \
+        TALER_JSON_pack_amount (pfx "_refresh", &(dfs)->refresh),     \
+        TALER_JSON_pack_amount (pfx "_refund", &(dfs)->refund)
 
 
 /**
@@ -376,9 +376,9 @@ TALER_JSON_spec_otp_type (const char *name,
  * @param[out] gfs a `struct TALER_GlobalFeeSet` to initialize
  */
 #define TALER_JSON_SPEC_GLOBAL_FEES(currency,gfs) \
-  TALER_JSON_spec_amount ("history_fee", (currency), &(gfs)->history),   \
-  TALER_JSON_spec_amount ("account_fee", (currency), &(gfs)->account),   \
-  TALER_JSON_spec_amount ("purse_fee", (currency), &(gfs)->purse)
+        TALER_JSON_spec_amount ("history_fee", (currency), &(gfs)->history),   \
+        TALER_JSON_spec_amount ("account_fee", (currency), &(gfs)->account),   \
+        TALER_JSON_spec_amount ("purse_fee", (currency), &(gfs)->purse)
 
 /**
  * Macro to pack all of the global fees.
@@ -386,9 +386,9 @@ TALER_JSON_spec_otp_type (const char *name,
  * @param gfs a `struct TALER_GlobalFeeSet` to pack
  */
 #define TALER_JSON_PACK_GLOBAL_FEES(gfs) \
-  TALER_JSON_pack_amount ("history_fee", &(gfs)->history),     \
-  TALER_JSON_pack_amount ("account_fee", &(gfs)->account),     \
-  TALER_JSON_pack_amount ("purse_fee", &(gfs)->purse)
+        TALER_JSON_pack_amount ("history_fee", &(gfs)->history),     \
+        TALER_JSON_pack_amount ("account_fee", &(gfs)->account),     \
+        TALER_JSON_pack_amount ("purse_fee", &(gfs)->purse)
 
 
 /**
@@ -452,18 +452,6 @@ TALER_JSON_spec_web_url (const char *field,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_payto_uri (const char *field,
                            const char **payto_uri);
-
-
-/**
- * Generate line in parser specification for AML decision states.
- *
- * @param field name of the field
- * @param[out] aml_state AML state to initialize
- * @return corresponding field spec
- */
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_aml_decision (const char *field,
-                              enum TALER_AmlDecisionState *aml_state);
 
 
 /**
@@ -572,7 +560,8 @@ TALER_JSON_spec_exchange_withdraw_values (
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_planchet (const char *field,
-                                  struct TALER_BlindedPlanchet *blinded_planchet);
+                                  struct TALER_BlindedPlanchet *blinded_planchet
+                                  );
 
 
 /**

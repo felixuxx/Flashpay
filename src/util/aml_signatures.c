@@ -37,19 +37,9 @@ struct TALER_AmlDecisionPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the justification text.
-   */
-  struct GNUNET_HashCode h_justification GNUNET_PACKED;
-
-  /**
    * Time when this decision was made.
    */
   struct GNUNET_TIME_TimestampNBO decision_time;
-
-  /**
-   * New threshold for triggering possibly a new AML process.
-   */
-  struct TALER_AmountNBO new_threshold;
 
   /**
    * Hash of the account identifier to which the decision applies.
@@ -57,15 +47,14 @@ struct TALER_AmlDecisionPS
   struct TALER_PaytoHashP h_payto GNUNET_PACKED;
 
   /**
-   * Hash over JSON array with KYC requirements that were imposed. All zeros
-   * for none.
+   * Hash over the justification text.
    */
-  struct GNUNET_HashCode h_kyc_requirements;
+  struct GNUNET_HashCode h_justification GNUNET_PACKED;
 
   /**
-   * What is the new AML status?
+   * Hash over JSON object with new KYC rules.
    */
-  uint32_t new_state GNUNET_PACKED;
+  struct GNUNET_HashCode h_new_rules;
 
 };
 
@@ -75,10 +64,8 @@ void
 TALER_officer_aml_decision_sign (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
-  enum TALER_AmlDecisionState new_state,
-  const json_t *kyc_requirements,
+  const json_t *new_rules,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig)
 {
@@ -86,18 +73,15 @@ TALER_officer_aml_decision_sign (
     .purpose.purpose = htonl (TALER_SIGNATURE_AML_DECISION),
     .purpose.size = htonl (sizeof (ad)),
     .decision_time = GNUNET_TIME_timestamp_hton (decision_time),
-    .h_payto = *h_payto,
-    .new_state = htonl ((uint32_t) new_state)
+    .h_payto = *h_payto
   };
 
   GNUNET_CRYPTO_hash (justification,
                       strlen (justification),
                       &ad.h_justification);
-  TALER_amount_hton (&ad.new_threshold,
-                     new_threshold);
-  if (NULL != kyc_requirements)
-    TALER_json_hash (kyc_requirements,
-                     &ad.h_kyc_requirements);
+  if (NULL != new_rules)
+    TALER_json_hash (new_rules,
+                     &ad.h_new_rules);
   GNUNET_CRYPTO_eddsa_sign (&officer_priv->eddsa_priv,
                             &ad,
                             &officer_sig->eddsa_signature);
@@ -108,10 +92,8 @@ enum GNUNET_GenericReturnValue
 TALER_officer_aml_decision_verify (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
-  enum TALER_AmlDecisionState new_state,
-  const json_t *kyc_requirements,
+  const json_t *new_rules,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig)
 {
@@ -119,18 +101,15 @@ TALER_officer_aml_decision_verify (
     .purpose.purpose = htonl (TALER_SIGNATURE_AML_DECISION),
     .purpose.size = htonl (sizeof (ad)),
     .decision_time = GNUNET_TIME_timestamp_hton (decision_time),
-    .h_payto = *h_payto,
-    .new_state = htonl ((uint32_t) new_state)
+    .h_payto = *h_payto
   };
 
   GNUNET_CRYPTO_hash (justification,
                       strlen (justification),
                       &ad.h_justification);
-  TALER_amount_hton (&ad.new_threshold,
-                     new_threshold);
-  if (NULL != kyc_requirements)
-    TALER_json_hash (kyc_requirements,
-                     &ad.h_kyc_requirements);
+  if (NULL != new_rules)
+    TALER_json_hash (new_rules,
+                     &ad.h_new_rules);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_AML_DECISION,
     &ad,

@@ -2465,6 +2465,34 @@ TALER_EXCHANGE_reserves_history_cancel (
 
 
 /**
+ * Information returned when a client needs to pass
+ * a KYC check before the transaction may succeed.
+ */
+struct TALER_EXCHANGE_KycNeededRedirect
+{
+
+  /**
+   * Hash of the payto-URI of the account to KYC;
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Public key needed to access the KYC state of
+   * this account. All zeros if a wire transfer
+   * is required first to establish the key.
+   */
+  union TALER_AccountPublicKeyP account_pub;
+
+  /**
+   * Legitimization requirement that the merchant should use
+   * to check for its KYC status, 0 if not known.
+   */
+  uint64_t requirement_row;
+
+};
+
+
+/**
  * Information input into the withdraw process per coin.
  */
 struct TALER_EXCHANGE_WithdrawCoinInput
@@ -2558,20 +2586,7 @@ struct TALER_EXCHANGE_BatchWithdrawResponse
     /**
      * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
-    struct
-    {
-
-      /**
-       * Hash of the payto-URI of the account to KYC;
-       */
-      struct TALER_PaytoHashP h_payto;
-
-      /**
-       * Legitimization requirement that the merchant should use
-       * to check for its KYC status, 0 if not known.
-       */
-      uint64_t requirement_row;
-    } unavailable_for_legal_reasons;
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
     /**
      * Details if the status is #MHD_HTTP_CONFLICT.
@@ -2782,19 +2797,10 @@ struct TALER_EXCHANGE_BatchWithdraw2Response
 
     } ok;
 
-    struct
-    {
-      /**
-       * Hash of the payto-URI of the account to KYC;
-       */
-      struct TALER_PaytoHashP h_payto;
-
-      /**
-       * ID identifying the KYC requirement to withdraw.
-       */
-      uint64_t kyc_requirement_id;
-
-    } unavailable_for_legal_reasons;
+    /**
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 
@@ -3942,16 +3948,17 @@ struct TALER_EXCHANGE_GetDepositResponse
       struct GNUNET_TIME_Timestamp execution_time;
 
       /**
+       * Public key needed to access the KYC state of
+       * this account. All zeros if a wire transfer
+       * is required first to establish the key.
+       */
+      union TALER_AccountPublicKeyP account_pub;
+
+      /**
        * KYC legitimization requirement that the merchant should use to check
        * for its KYC status.
        */
       uint64_t requirement_row;
-
-      /**
-       * Current AML state for the account. May explain why transfers are
-       * not happening.
-       */
-      enum TALER_AmlDecisionState aml_decision;
 
       /**
        * Set to 'true' if the KYC check is already finished and
@@ -4224,6 +4231,74 @@ struct TALER_EXCHANGE_KycCheckHandle;
 
 
 /**
+ * Applicable limits for an account. Exceeding these limits may trigger
+ * additional KYC requirements or be categorically verboten.
+ */
+struct TALER_EXCHANGE_AccountLimit
+{
+
+  /**
+   * Operation type for which the restriction applies.
+   * Should be one of "WITHDRAW", "DEPOSIT", "P2P-RECEIVE"
+   * or "WALLET-BALANCE".
+   */
+  const char *operation_type;
+
+  /**
+   * Timeframe over which the @e threshold is computed.
+   */
+  struct GNUNET_TIME_Relative timeframe;
+
+  /**
+   * The maximum amount transacted within the given @e timeframe for the
+   * specified @e operation_type.
+   */
+  struct TALER_Amount threshold;
+
+  /**
+   * True if this is a soft limit and passing KYC checks
+   * or AML reviews may raise this limit. False if this
+   * is a hard limit that the exchange will not permit
+   * the client to exceed.
+   */
+  bool soft_limit;
+};
+
+
+/**
+ * KYC/AML status information about an account.
+ */
+struct TALER_EXCHANGE_AccountKycStatus
+{
+
+  /**
+   * Current AML state for the target account.  True if operations are not
+   * happening due to staff processing paperwork *or* due to legal
+   * requirements (so the client cannot do anything but wait).
+   */
+  bool aml_review;
+
+  /**
+   * Length of the @e limits array.
+   */
+  unsigned int limits_length;
+
+  /**
+   * Array of length @e limits_array with (exposed) limits that apply to the
+   * account.
+   */
+  struct TALER_EXCHANGE_AccountLimit *limits;
+
+  /**
+   * URL the user should open in a browser if the KYC process is to be
+   * run. Returned if @e http_status is #MHD_HTTP_ACCEPTED.
+   */
+  const char *kyc_url;
+
+};
+
+
+/**
  * KYC status response details.
  */
 struct TALER_EXCHANGE_KycStatus
@@ -4238,78 +4313,23 @@ struct TALER_EXCHANGE_KycStatus
    */
   enum TALER_ErrorCode ec;
 
+  /**
+   * Details depending on @e http_status.
+   */
   union
   {
 
     /**
      * KYC is OK, affirmation returned by the exchange.
      */
-    struct
-    {
-
-      /**
-       * Details about which KYC check(s) were passed.
-       */
-      const json_t *kyc_details;
-
-      /**
-       * Time of the affirmation.
-       */
-      struct GNUNET_TIME_Timestamp timestamp;
-
-      /**
-       * The signing public key used for @e exchange_sig.
-       */
-      struct TALER_ExchangePublicKeyP exchange_pub;
-
-      /**
-       * Signature of purpose
-       * #TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS affirming
-       * the successful KYC process.
-       */
-      struct TALER_ExchangeSignatureP exchange_sig;
-
-      /**
-       * AML status for the account.
-       */
-      enum TALER_AmlDecisionState aml_status;
-
-    } ok;
+    struct TALER_EXCHANGE_AccountKycStatus ok;
 
     /**
      * KYC is required.
      */
-    struct
-    {
+    struct TALER_EXCHANGE_AccountKycStatus accepted;
 
-      /**
-       * URL the user should open in a browser if
-       * the KYC process is to be run. Returned if
-       * @e http_status is #MHD_HTTP_ACCEPTED.
-       */
-      const char *kyc_url;
-
-      /**
-       * AML status for the account.
-       */
-      enum TALER_AmlDecisionState aml_status;
-
-    } accepted;
-
-    /**
-     * KYC is OK, but account needs positive AML decision.
-     */
-    struct
-    {
-
-      /**
-       * AML status for the account.
-       */
-      enum TALER_AmlDecisionState aml_status;
-
-    } unavailable_for_legal_reasons;
-
-  } details;
+  };
 
 };
 
@@ -4472,21 +4492,9 @@ struct TALER_EXCHANGE_WalletKycResponse
   {
 
     /**
-     * In case @e http_status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
-    struct
-    {
-      /**
-       * Wallet's KYC requirement row.
-       */
-      uint64_t requirement_row;
-
-      /**
-       * Hash of the payto-URI identifying the wallet to KYC.
-       */
-      struct TALER_PaytoHashP h_payto;
-
-    } unavailable_for_legal_reasons;
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 
@@ -5230,14 +5238,10 @@ TALER_EXCHANGE_management_update_aml_officer_cancel (
 
 /**
  * Summary data about an AML decision.
+ * FIXME: not exactly a summary anymore...
  */
 struct TALER_EXCHANGE_AmlDecisionSummary
 {
-  /**
-   * What is the current monthly threshold.
-   */
-  struct TALER_Amount threshold;
-
   /**
    * Account the decision was made for.
    */
@@ -5249,9 +5253,36 @@ struct TALER_EXCHANGE_AmlDecisionSummary
   uint64_t rowid;
 
   /**
-   * Current decision state.
+   * When was the decision taken?
    */
-  enum TALER_AmlDecisionState current_state;
+  struct GNUNET_TIME_Absolute decision_time;
+
+  /**
+   * When will this decision expire?
+   */
+  struct GNUNET_TIME_Absolute expiration_time;
+
+  /**
+   * Properties set for the account.
+   */
+  const json_t *jproperties;
+
+  /**
+   * What are the current rules for the account?
+   * FIXME: probably should be parsed here...
+   */
+  const json_t *account_rules;
+
+  /**
+   * Should AML staff investigate this account?
+   */
+  bool to_investigate;
+
+  /**
+   * Is this the currently active decision?
+   */
+  bool is_active;
+
 };
 
 
@@ -5317,9 +5348,11 @@ struct TALER_EXCHANGE_LookupAmlDecisions;
  *
  * @param ctx the context
  * @param exchange_url HTTP base URL for the exchange
- * @param start row number starting point (exclusive rowid)
- * @param delta number of records to return, negative for descending, positive for ascending from start
- * @param state type of AML decisions to return
+ * @param h_payto which account should we return the AML decision history for, NULL to return all accounts
+ * @param offset row number starting point (exclusive rowid)
+ * @param limit number of records to return, negative for descending, positive for ascending from start
+ * @param investigation_only filter by investigation state
+ * @param active_only filter for only active states
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -5329,9 +5362,11 @@ struct TALER_EXCHANGE_LookupAmlDecisions *
 TALER_EXCHANGE_lookup_aml_decisions (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
-  uint64_t start,
-  int delta,
-  enum TALER_AmlDecisionState state,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_EXCHANGE_YesNoAll investigation_only,
+  enum TALER_EXCHANGE_YesNoAll active_only,
+  uint64_t offset,
+  int64_t limit,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
   void *cb_cls);
@@ -5348,41 +5383,9 @@ TALER_EXCHANGE_lookup_aml_decisions_cancel (
 
 
 /**
- * Detailed data about an AML decision.
+ * Detailed KYC attribute data collected during a KYC process for the account.
  */
-struct TALER_EXCHANGE_AmlDecisionDetail
-{
-  /**
-   * When was the decision made.
-   */
-  struct GNUNET_TIME_Timestamp decision_time;
-
-  /**
-   * New threshold set by this decision.
-   */
-  struct TALER_Amount new_threshold;
-
-  /**
-   * Who made the decision?
-   */
-  struct TALER_AmlOfficerPublicKeyP decider_pub;
-
-  /**
-   * Justification given for the decision.
-   */
-  const char *justification;
-
-  /**
-   * New decision state.
-   */
-  enum TALER_AmlDecisionState new_state;
-};
-
-
-/**
- * Detailed data collected during a KYC process for the account.
- */
-struct TALER_EXCHANGE_KycHistoryDetail
+struct TALER_EXCHANGE_KycAttributeDetail
 {
   /**
    * Configuration section name of the KYC provider that contributed the data.
@@ -5403,9 +5406,9 @@ struct TALER_EXCHANGE_KycHistoryDetail
 
 
 /**
- * Information about AML decision details returned by the exchange.
+ * Information about KYC attributes returned by the exchange.
  */
-struct TALER_EXCHANGE_AmlDecisionResponse
+struct TALER_EXCHANGE_KycAttributesResponse
 {
   /**
    * HTTP response details.
@@ -5425,19 +5428,9 @@ struct TALER_EXCHANGE_AmlDecisionResponse
     {
 
       /**
-       * Array of AML decision details returned by the exchange.
+       * Array of KYC attribute data returned by the exchange.
        */
-      const struct TALER_EXCHANGE_AmlDecisionDetail *aml_history;
-
-      /**
-       * Length of the @e aml_history array.
-       */
-      unsigned int aml_history_length;
-
-      /**
-       * Array of KYC data collections returned by the exchange.
-       */
-      const struct TALER_EXCHANGE_KycHistoryDetail *kyc_attributes;
+      const struct TALER_EXCHANGE_KycAttributeDetail *kyc_attributes;
 
       /**
        * Length of the @e kyc_attributes array.
@@ -5451,55 +5444,56 @@ struct TALER_EXCHANGE_AmlDecisionResponse
 
 
 /**
- * Function called with summary information about
- * AML decisions.
+ * Function called with information about KYC attributes.
  *
  * @param cls closure
- * @param adr response data
+ * @param kar response data
  */
 typedef void
-(*TALER_EXCHANGE_LookupAmlDecisionCallback) (
+(*TALER_EXCHANGE_LookupKycAttributesCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_AmlDecisionResponse *adr);
+  const struct TALER_EXCHANGE_KycAttributesResponse *kar);
 
 
 /**
- * @brief Handle for a POST /aml/$OFFICER_PUB/decision/$H_PAYTO request.
+ * @brief Handle for a GET /aml/$OFFICER_PUB/attributes/$H_PAYTO request.
  */
-struct TALER_EXCHANGE_LookupAmlDecision;
+struct TALER_EXCHANGE_LookupKycAttributes;
 
 
 /**
- * Inform the exchange that an AML decision has been taken.
+ * Lookup KYC attribute data of a given account.
  *
  * @param ctx the context
  * @param exchange_url HTTP base URL for the exchange
  * @param h_payto which account to return the decision history for
+ * @param offset row number starting point (exclusive rowid)
+ * @param limit number of records to return, negative for descending, positive for ascending from start
  * @param officer_priv private key of the deciding AML officer
- * @param history true to return the full history, otherwise only the last decision
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
  */
-struct TALER_EXCHANGE_LookupAmlDecision *
-TALER_EXCHANGE_lookup_aml_decision (
+struct TALER_EXCHANGE_LookupKycAttributes *
+TALER_EXCHANGE_lookup_kyc_attributes (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
   const struct TALER_PaytoHashP *h_payto,
+  uint64_t offset,
+  int64_t limit,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
-  bool history,
-  TALER_EXCHANGE_LookupAmlDecisionCallback cb,
+  TALER_EXCHANGE_LookupKycAttributesCallback cb,
   void *cb_cls);
 
 
 /**
- * Cancel #TALER_EXCHANGE_lookup_aml_decision() operation.
+ * Cancel #TALER_EXCHANGE_lookup_kyc_attributes() operation.
  *
  * @param rh handle of the operation to cancel
  */
 void
-TALER_EXCHANGE_lookup_aml_decision_cancel (
-  struct TALER_EXCHANGE_LookupAmlDecision *rh);
+TALER_EXCHANGE_lookup_kyc_attributes_cancel (
+  struct TALER_EXCHANGE_LookupKycAttributes *rh);
 
 
 /**
@@ -5537,29 +5531,29 @@ typedef void
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param justification human-readable justification
- * @param decision_time when was the decision made
- * @param new_threshold at what monthly amount threshold
- *                      should a revision be triggered
  * @param h_payto payto URI hash of the account the
  *                      decision is about
- * @param new_state updated AML state
- * @param kyc_requirements JSON array of KYC requirements being imposed, NULL for none
+ * @param decision_time when was the decision made
+ * @param expiration_time when do the new rules expire
+ * @param new_rules new rules for the account; FIXME: avoid JSON?
+ * @param properties properties for the account
+ * @param justification human-readable justification
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
  */
+// FIXME: more arguments needed...
 struct TALER_EXCHANGE_AddAmlDecision *
 TALER_EXCHANGE_add_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const char *justification,
-  struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
-  enum TALER_AmlDecisionState new_state,
-  const json_t *kyc_requirements,
+  struct GNUNET_TIME_Timestamp decision_time,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  const json_t *new_rules,
+  const json_t *properties,
+  const char *justification,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_AddAmlDecisionCallback cb,
   void *cb_cls);
@@ -6559,14 +6553,7 @@ struct TALER_EXCHANGE_AccountMergeResponse
     /**
      * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
-    struct
-    {
-      /**
-       * Requirement row target that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t requirement_row;
-    } unavailable_for_legal_reasons;
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 
@@ -6669,16 +6656,9 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
     } ok;
 
     /**
-   * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
-   */
-    struct
-    {
-      /**
-       * Requirement row that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t requirement_row;
-    } unavailable_for_legal_reasons;
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 
@@ -6931,23 +6911,9 @@ struct TALER_EXCHANGE_ReserveOpenResult
     } conflict;
 
     /**
-     * Information returned if KYC is required to proceed, set if
-     * @e hr.http_status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
-    struct
-    {
-      /**
-       * Requirement row that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t requirement_row;
-
-      /**
-       * Hash of the payto-URI of the account to KYC;
-       */
-      struct TALER_PaytoHashP h_payto;
-
-    } unavailable_for_legal_reasons;
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 
@@ -7256,23 +7222,9 @@ struct TALER_EXCHANGE_ReserveCloseResult
     } ok;
 
     /**
-     * Information returned if KYC is required to proceed, set if
-     * @e hr.http_status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
-    struct
-    {
-      /**
-       * Requirement row that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t requirement_row;
-
-      /**
-       * Hash of the payto-URI of the account to KYC;
-       */
-      struct TALER_PaytoHashP h_payto;
-
-    } unavailable_for_legal_reasons;
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 
