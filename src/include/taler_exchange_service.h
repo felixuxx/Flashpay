@@ -4239,10 +4239,8 @@ struct TALER_EXCHANGE_AccountLimit
 
   /**
    * Operation type for which the restriction applies.
-   * Should be one of "WITHDRAW", "DEPOSIT", "P2P-RECEIVE"
-   * or "WALLET-BALANCE".
    */
-  const char *operation_type;
+  enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
 
   /**
    * Timeframe over which the @e threshold is computed.
@@ -4290,10 +4288,9 @@ struct TALER_EXCHANGE_AccountKycStatus
   struct TALER_EXCHANGE_AccountLimit *limits;
 
   /**
-   * URL the user should open in a browser if the KYC process is to be
-   * run. Returned if @e http_status is #MHD_HTTP_ACCEPTED.
+   * Access token the user needs to start a KYC process.
    */
-  const char *kyc_url;
+  struct TALER_AccountAccessTokenP access_token;
 
 };
 
@@ -4346,15 +4343,13 @@ typedef void
 
 
 /**
- * Run interaction with exchange to check KYC status
- * of a merchant.
+ * Run interaction with exchange to check KYC status of a merchant
+ * or wallet account.
  *
  * @param ctx CURL context
  * @param url exchange base URL
- * @param keys keys of the exchange
  * @param requirement_row number identifying the KYC requirement
- * @param h_payto hash of the payto:// URI at @a payment_target
- * @param ut type of the entity performing the KYC check
+ * @param pk private key to authorize the request with
  * @param timeout how long to wait for a positive KYC status
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
@@ -4364,10 +4359,8 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  struct TALER_EXCHANGE_Keys *keys,
   uint64_t requirement_row,
-  const struct TALER_PaytoHashP *h_payto,
-  enum TALER_KYCLOGIC_KycUserType ut,
+  const struct GNUNET_CRYPTO_EddsaPrivateKey *pk,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
   void *cb_cls);
@@ -5237,10 +5230,9 @@ TALER_EXCHANGE_management_update_aml_officer_cancel (
 
 
 /**
- * Summary data about an AML decision.
- * FIXME: not exactly a summary anymore...
+ * Data about an AML decision.
  */
-struct TALER_EXCHANGE_AmlDecisionSummary
+struct TALER_EXCHANGE_AmlDecision
 {
   /**
    * Account the decision was made for.
@@ -5311,7 +5303,7 @@ struct TALER_EXCHANGE_AmlDecisionsResponse
       /**
        * Array of AML decision summaries returned by the exchange.
        */
-      const struct TALER_EXCHANGE_AmlDecisionSummary *decisions;
+      const struct TALER_EXCHANGE_AmlDecision *decisions;
 
       /**
        * Length of the @e decisions array.

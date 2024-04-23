@@ -27,23 +27,6 @@
 
 
 /**
- * Enumeration for our KYC user types.
- */
-enum TALER_KYCLOGIC_KycUserType
-{
-  /**
-   * KYC rule is for an individual.
-   */
-  TALER_KYCLOGIC_KYC_UT_INDIVIDUAL = 0,
-
-  /**
-   * KYC rule is for a business.
-   */
-  TALER_KYCLOGIC_KYC_UT_BUSINESS = 1
-};
-
-
-/**
  * Enumeration of possible events that may trigger
  * KYC requirements.
  */
@@ -106,30 +89,6 @@ TALER_KYCLOGIC_kyc_trigger_from_string (
  */
 const char *
 TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger);
-
-
-/**
- * Parse user type string into enumeration value.
- *
- * @param ut_s string to parse
- * @param[out] ut set to the value found
- * @return #GNUNET_OK on success, #GNUNET_NO if option
- *         does not exist, #GNUNET_SYSERR if option is
- *         malformed
- */
-enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_kyc_user_type_from_string (const char *ut_s,
-                                          enum TALER_KYCLOGIC_KycUserType *ut);
-
-
-/**
- * Convert KYC user type to human-readable string.
- *
- * @param ut value to convert
- * @return human-readable representation of the @a ut
- */
-const char *
-TALER_KYCLOGIC_kyc_user_type2s (enum TALER_KYCLOGIC_KycUserType ut);
 
 
 /**
@@ -337,7 +296,8 @@ enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
                                       enum TALER_KYCLOGIC_KycUserType ut,
                                       struct TALER_KYCLOGIC_Plugin **plugin,
-                                      struct TALER_KYCLOGIC_ProviderDetails **pd,
+                                      struct TALER_KYCLOGIC_ProviderDetails **pd
+                                      ,
                                       const char **configuration_section);
 
 

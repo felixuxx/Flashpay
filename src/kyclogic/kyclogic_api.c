@@ -89,10 +89,6 @@ struct TALER_KYCLOGIC_KycProvider
    */
   unsigned int num_checks;
 
-  /**
-   * Type of user this provider supports.
-   */
-  enum TALER_KYCLOGIC_KycUserType user_type;
 };
 
 
@@ -225,49 +221,6 @@ TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger)
     return "balance";
   case TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE:
     return "close";
-  }
-  GNUNET_break (0);
-  return NULL;
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_kyc_user_type_from_string (const char *ut_s,
-                                          enum TALER_KYCLOGIC_KycUserType *ut)
-{
-  struct
-  {
-    const char *in;
-    enum TALER_KYCLOGIC_KycUserType out;
-  } map [] = {
-    { "individual", TALER_KYCLOGIC_KYC_UT_INDIVIDUAL },
-    { "business", TALER_KYCLOGIC_KYC_UT_BUSINESS  },
-    { NULL, 0 }
-  };
-
-  for (unsigned int i = 0; NULL != map[i].in; i++)
-    if (0 == strcasecmp (map[i].in,
-                         ut_s))
-    {
-      *ut = map[i].out;
-      return GNUNET_OK;
-    }
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Invalid user type `%s'\n",
-              ut_s);
-  return GNUNET_SYSERR;
-}
-
-
-const char *
-TALER_KYCLOGIC_kyc_user_type2s (enum TALER_KYCLOGIC_KycUserType ut)
-{
-  switch (ut)
-  {
-  case TALER_KYCLOGIC_KYC_UT_INDIVIDUAL:
-    return "individual";
-  case TALER_KYCLOGIC_KYC_UT_BUSINESS:
-    return "business";
   }
   GNUNET_break (0);
   return NULL;
@@ -1342,7 +1295,8 @@ enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
                                       enum TALER_KYCLOGIC_KycUserType ut,
                                       struct TALER_KYCLOGIC_Plugin **plugin,
-                                      struct TALER_KYCLOGIC_ProviderDetails **pd,
+                                      struct TALER_KYCLOGIC_ProviderDetails **pd
+                                      ,
                                       const char **configuration_section)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];

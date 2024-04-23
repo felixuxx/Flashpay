@@ -34,7 +34,7 @@ AS $$
 BEGIN
   PERFORM create_partitioned_table(
     'ALTER TABLE %I'
-    ' ADD COLUMN target_token BYTEA UNIQUE CHECK(LENGTH(target_token)=32) DEFAULT random_bytea(32)'
+    ' ADD COLUMN access_token BYTEA UNIQUE CHECK(LENGTH(access_token)=32) DEFAULT random_bytea(32)'
     ',ADD COLUMN target_pub BYTEA CHECK(LENGTH(target_pub)=32) DEFAULT NULL'
     ';'
     ,'wire_targets'
@@ -43,7 +43,7 @@ BEGIN
 
   PERFORM comment_partitioned_column(
      'high-entropy random value that is used as a bearer token used to authenticate access to the KYC SPA and its state (without requiring a signature)'
-    ,'target_token'
+    ,'access_token'
     ,'wire_targets'
     ,partition_suffix
   );

@@ -21,17 +21,17 @@ CREATE OR REPLACE FUNCTION exchange_do_recoup_by_reserve(
 RETURNS TABLE
 (
   denom_sig            BYTEA,
-  denominations_serial BIGINT,
+  denominations_serial INT8,
   coin_pub             BYTEA,
   coin_sig             BYTEA,
   coin_blind           BYTEA,
   amount               taler_amount,
-  recoup_timestamp     BIGINT
+  recoup_timestamp     INT8
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  res_uuid BIGINT;
+  res_uuid INT8;
   blind_ev BYTEA;
   c_pub    BYTEA;
 BEGIN
