@@ -4222,7 +4222,7 @@ TALER_EXCHANGE_recoup_refresh_cancel (
   struct TALER_EXCHANGE_RecoupRefreshHandle *ph);
 
 
-/* *********************  /kyc* *********************** */
+/* *********************  KYC *********************** */
 
 /**
  * Handle for a ``/kyc-check`` operation.
@@ -4373,6 +4373,11 @@ TALER_EXCHANGE_kyc_check (
  */
 void
 TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
+
+
+// FIXME: /kyc-info API
+// FIXME: /kyc-upload API
+// FIXME: /kyc-start API
 
 
 /**
@@ -5229,6 +5234,9 @@ TALER_EXCHANGE_management_update_aml_officer_cancel (
   struct TALER_EXCHANGE_ManagementUpdateAmlOfficer *rh);
 
 
+// FIXME: GET /aml/$OFFICER_PUB/measures endpoint
+// FIXME: GET /aml/$OFFICER_PUB/kyc-statistics endpoint
+
 /**
  * Data about an AML decision.
  */
@@ -5260,10 +5268,14 @@ struct TALER_EXCHANGE_AmlDecision
   const json_t *jproperties;
 
   /**
-   * What are the current rules for the account?
-   * FIXME: probably should be parsed here...
+   * What are the current limits for the account?
    */
-  const json_t *account_rules;
+  const struct TALER_EXCHANGE_AccountLimit *limits;
+
+  /**
+   * Length of the @e limits array.
+   */
+  unsigned int limits_length;
 
   /**
    * Should AML staff investigate this account?
@@ -5317,8 +5329,7 @@ struct TALER_EXCHANGE_AmlDecisionsResponse
 
 
 /**
- * Function called with summary information about
- * AML decisions.
+ * Function called with information about AML decisions.
  *
  * @param cls closure
  * @param adr response data
@@ -5330,21 +5341,21 @@ typedef void
 
 
 /**
- * @brief Handle for a POST /aml/$OFFICER_PUB/decisions/$STATUS request.
+ * @brief Handle for a POST /aml/$OFFICER_PUB/decisions request.
  */
 struct TALER_EXCHANGE_LookupAmlDecisions;
 
 
 /**
- * Inform the exchange that an AML decision has been taken.
+ * Inform AML SPA client about AML decisions that were been taken.
  *
  * @param ctx the context
  * @param exchange_url HTTP base URL for the exchange
  * @param h_payto which account should we return the AML decision history for, NULL to return all accounts
- * @param offset row number starting point (exclusive rowid)
- * @param limit number of records to return, negative for descending, positive for ascending from start
  * @param investigation_only filter by investigation state
  * @param active_only filter for only active states
+ * @param offset row number starting point (exclusive rowid)
+ * @param limit number of records to return, negative for descending, positive for ascending from start
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -5454,7 +5465,7 @@ struct TALER_EXCHANGE_LookupKycAttributes;
 
 
 /**
- * Lookup KYC attribute data of a given account.
+ * Endpoint for the AML SPA to lookup KYC attribute data of a given account.
  *
  * @param ctx the context
  * @param exchange_url HTTP base URL for the exchange
@@ -5489,7 +5500,7 @@ TALER_EXCHANGE_lookup_kyc_attributes_cancel (
 
 
 /**
- * @brief Handle for a POST /aml-decision/$OFFICER_PUB request.
+ * @brief Handle for a POST /aml/$OFFICER_PUB/decision request.
  */
 struct TALER_EXCHANGE_AddAmlDecision;
 
@@ -5507,8 +5518,7 @@ struct TALER_EXCHANGE_AddAmlDecisionResponse
 
 
 /**
- * Function called with information about storing an
- * an AML decision.
+ * Function called with information about storing an an AML decision.
  *
  * @param cls closure
  * @param adr response data
@@ -5517,6 +5527,7 @@ typedef void
 (*TALER_EXCHANGE_AddAmlDecisionCallback) (
   void *cls,
   const struct TALER_EXCHANGE_AddAmlDecisionResponse *adr);
+
 
 /**
  * Inform the exchange that an AML decision has been taken.
@@ -5527,15 +5538,16 @@ typedef void
  *                      decision is about
  * @param decision_time when was the decision made
  * @param expiration_time when do the new rules expire
- * @param new_rules new rules for the account; FIXME: avoid JSON?
+ * @param num_limits length of the @a limits array
+ * @param limits new limits for the account
  * @param properties properties for the account
+ * @param keep_investigating true to keep the investigation open
  * @param justification human-readable justification
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
  */
-// FIXME: more arguments needed...
 struct TALER_EXCHANGE_AddAmlDecision *
 TALER_EXCHANGE_add_aml_decision (
   struct GNUNET_CURL_Context *ctx,
@@ -5543,8 +5555,10 @@ TALER_EXCHANGE_add_aml_decision (
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Timestamp expiration_time,
-  const json_t *new_rules,
+  unsigned int num_limits,
+  const struct TALER_EXCHANGE_AccountLimit limits[static num_limits],
   const json_t *properties,
+  bool keep_investigating,
   const char *justification,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_AddAmlDecisionCallback cb,
