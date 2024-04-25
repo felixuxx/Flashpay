@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020-2023 Taler Systems SA
+   Copyright (C) 2020-2024 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published
@@ -210,118 +210,15 @@ lrbt_cb_table_wire_targets (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &td.details.wire_targets.payto_uri),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      ctx->error = true;
-      return;
-    }
-    ctx->cb (ctx->cb_cls,
-             &td);
-    GNUNET_PQ_cleanup_result (rs);
-  }
-}
-
-
-/**
- * Function called with legitimization_processes table entries.
- *
- * @param cls closure
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-lrbt_cb_table_legitimization_processes (void *cls,
-                                        PGresult *result,
-                                        unsigned int num_results)
-{
-  struct LookupRecordsByTableContext *ctx = cls;
-  struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES
-  };
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
-        "h_payto",
-        &td.details.legitimization_processes.h_payto),
-      GNUNET_PQ_result_spec_timestamp (
-        "expiration_time",
-        &td.details.legitimization_processes.expiration_time),
+        "access_token",
+        &td.details.wire_targets.target_token),
       GNUNET_PQ_result_spec_string (
-        "provider_section",
-        &td.details.legitimization_processes.provider_section),
-      GNUNET_PQ_result_spec_string (
-        "provider_user_id",
-        &td.details.legitimization_processes.provider_user_id),
-      GNUNET_PQ_result_spec_string (
-        "provider_legitimization_id",
-        &td.details.legitimization_processes.provider_legitimization_id),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      ctx->error = true;
-      return;
-    }
-    ctx->cb (ctx->cb_cls,
-             &td);
-    GNUNET_PQ_cleanup_result (rs);
-  }
-}
-
-
-/**
- * Function called with legitimization_requirements table entries.
- *
- * @param cls closure
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-lrbt_cb_table_legitimization_requirements (void *cls,
-                                           PGresult *result,
-                                           unsigned int num_results)
-{
-  struct LookupRecordsByTableContext *ctx = cls;
-  struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS
-  };
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "h_payto",
-        &td.details.legitimization_requirements.h_payto),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_auto_from_type (
-          "reserve_pub",
-          &td.details.legitimization_requirements.reserve_pub),
-        &td.details.legitimization_requirements.no_reserve_pub),
-      GNUNET_PQ_result_spec_string (
-        "required_checks",
-        &td.details.legitimization_requirements.required_checks),
+        "payto_uri",
+        &td.details.wire_targets.payto_uri),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1093,7 +990,8 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
       GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
-                                            &td.details.refresh_transfer_keys.tp),
+                                            &td.details.refresh_transfer_keys.tp
+                                            ),
       GNUNET_PQ_result_spec_variable_size ("transfer_privs",
                                            &tpriv,
                                            &tpriv_size),
@@ -1638,7 +1536,8 @@ lrbt_cb_table_recoup_refresh (void *cls,
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                            &td.details.recoup_refresh.coin_sig),
+                                            &td.details.recoup_refresh.coin_sig)
+      ,
       GNUNET_PQ_result_spec_auto_from_type (
         "coin_blind",
         &td.details.recoup_refresh.coin_blind),
@@ -2630,143 +2529,6 @@ lrbt_cb_table_aml_staff (void *cls,
 
 
 /**
- * Function called with aml_history table entries.
- *
- * @param cls closure
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-lrbt_cb_table_aml_history (void *cls,
-                           PGresult *result,
-                           unsigned int num_results)
-{
-  struct LookupRecordsByTableContext *ctx = cls;
-  struct PostgresClosure *pg = ctx->pg;
-  struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_AML_HISTORY
-  };
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    uint32_t status32;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 (
-        "aml_history_serial_id",
-        &td.serial),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "h_payto",
-        &td.details.aml_history.h_payto),
-      TALER_PQ_RESULT_SPEC_AMOUNT (
-        "new_threshold",
-        &td.details.aml_history.new_threshold),
-      GNUNET_PQ_result_spec_uint32 (
-        "new_status",
-        &status32),
-      GNUNET_PQ_result_spec_timestamp (
-        "decision_time",
-        &td.details.aml_history.decision_time),
-      GNUNET_PQ_result_spec_string (
-        "justification",
-        &td.details.aml_history.justification),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string (
-          "kyc_requirements",
-          &td.details.aml_history.kyc_requirements),
-        NULL),
-      GNUNET_PQ_result_spec_uint64 (
-        "kyc_req_row",
-        &td.details.aml_history.kyc_req_row),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "decider_pub",
-        &td.details.aml_history.decider_pub),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "decider_sig",
-        &td.details.aml_history.decider_sig),
-      GNUNET_PQ_result_spec_end
-    };
-
-    td.details.aml_history.kyc_requirements = NULL;
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      ctx->error = true;
-      return;
-    }
-    td.details.aml_history.new_status
-      = (enum TALER_AmlDecisionState) status32;
-    ctx->cb (ctx->cb_cls,
-             &td);
-    GNUNET_PQ_cleanup_result (rs);
-  }
-}
-
-
-/**
- * Function called with kyc_attributes table entries.
- *
- * @param cls closure
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-lrbt_cb_table_kyc_attributes (void *cls,
-                              PGresult *result,
-                              unsigned int num_results)
-{
-  struct LookupRecordsByTableContext *ctx = cls;
-  struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES
-  };
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 (
-        "kyc_attributes_serial_id",
-        &td.serial),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "h_payto",
-        &td.details.kyc_attributes.h_payto),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "kyc_prox",
-        &td.details.kyc_attributes.kyc_prox),
-      GNUNET_PQ_result_spec_string (
-        "provider",
-        &td.details.kyc_attributes.provider),
-      GNUNET_PQ_result_spec_timestamp (
-        "collection_time",
-        &td.details.kyc_attributes.collection_time),
-      GNUNET_PQ_result_spec_timestamp (
-        "expiration_time",
-        &td.details.kyc_attributes.expiration_time),
-      GNUNET_PQ_result_spec_variable_size (
-        "encrypted_attributes",
-        &td.details.kyc_attributes.encrypted_attributes,
-        &td.details.kyc_attributes.encrypted_attributes_size),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      ctx->error = true;
-      return;
-    }
-    ctx->cb (ctx->cb_cls,
-             &td);
-    GNUNET_PQ_cleanup_result (rs);
-  }
-}
-
-
-/**
  * Function called with purse_deletion table entries.
  *
  * @param cls closure
@@ -2877,12 +2639,358 @@ lrbt_cb_table_age_withdraw (void *cls,
 
 
 /**
+ * Function called with legitimization_measures table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_legitimization_measures (void *cls,
+                                       PGresult *result,
+                                       unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_MEASURES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "access_token",
+        &td.details.legitimization_measures.target_token),
+      GNUNET_PQ_result_spec_timestamp (
+        "start_time",
+        &td.details.legitimization_measures.start_time),
+      TALER_PQ_result_spec_json (
+        "jmeasures",
+        &td.details.legitimization_measures.measures),
+      GNUNET_PQ_result_spec_uint32 (
+        "display_priority",
+        &td.details.legitimization_measures.display_priority),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with legitimization_outcomes table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_legitimization_outcomes (void *cls,
+                                       PGresult *result,
+                                       unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_OUTCOMES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.legitimization_outcomes.h_payto),
+      GNUNET_PQ_result_spec_timestamp (
+        "decision_time",
+        &td.details.legitimization_outcomes.decision_time),
+      GNUNET_PQ_result_spec_timestamp (
+        "expiration_time",
+        &td.details.legitimization_outcomes.expiration_time),
+      TALER_PQ_result_spec_json (
+        "jproperties",
+        &td.details.legitimization_outcomes.properties),
+      GNUNET_PQ_result_spec_bool (
+        "to_investigate_id",
+        &td.details.legitimization_outcomes.to_investigate),
+      TALER_PQ_result_spec_json (
+        "jnew_rules",
+        &td.details.legitimization_outcomes.new_rules),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with legitimization_processes table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_legitimization_processes (void *cls,
+                                        PGresult *result,
+                                        unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.legitimization_processes.h_payto),
+      GNUNET_PQ_result_spec_timestamp (
+        "start_time",
+        &td.details.legitimization_processes.start_time),
+      GNUNET_PQ_result_spec_timestamp (
+        "expiration_time",
+        &td.details.legitimization_processes.expiration_time),
+      GNUNET_PQ_result_spec_uint64 (
+        "legitimization_measure_serial_id",
+        &td.details.legitimization_processes.legitimization_measure_serial_id),
+      GNUNET_PQ_result_spec_uint32 (
+        "measure_index",
+        &td.details.legitimization_processes.measure_index),
+      GNUNET_PQ_result_spec_string (
+        "provider_section",
+        &td.details.legitimization_processes.provider_section),
+      GNUNET_PQ_result_spec_string (
+        "provider_user_id",
+        &td.details.legitimization_processes.provider_user_id),
+      GNUNET_PQ_result_spec_string (
+        "provider_legitimization_id",
+        &td.details.legitimization_processes.provider_legitimization_id),
+      GNUNET_PQ_result_spec_string (
+        "redirect_url",
+        &td.details.legitimization_processes.redirect_url),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with kyc_attributes table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_kyc_attributes (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "kyc_attributes_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.kyc_attributes.h_payto),
+      GNUNET_PQ_result_spec_uint64 (
+        "legitimization_process_serial_id",
+        &td.details.kyc_attributes.legitimization_process_serial_id),
+      GNUNET_PQ_result_spec_timestamp (
+        "collection_time",
+        &td.details.kyc_attributes.collection_time),
+      GNUNET_PQ_result_spec_timestamp (
+        "expiration_time",
+        &td.details.kyc_attributes.expiration_time),
+      GNUNET_PQ_result_spec_uint64 (
+        "trigger_outcome_serial",
+        &td.details.kyc_attributes.trigger_outcome_serial),
+      GNUNET_PQ_result_spec_variable_size (
+        "encrypted_attributes",
+        &td.details.kyc_attributes.encrypted_attributes,
+        &td.details.kyc_attributes.encrypted_attributes_size),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with aml_history table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_aml_history (void *cls,
+                           PGresult *result,
+                           unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_AML_HISTORY
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "aml_history_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.aml_history.h_payto),
+      GNUNET_PQ_result_spec_uint64 (
+        "outcome_serial_id",
+        &td.details.aml_history.outcome_serial_id),
+      GNUNET_PQ_result_spec_string (
+        "justification",
+        &td.details.aml_history.justification),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "decider_pub",
+        &td.details.aml_history.decider_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "decider_sig",
+        &td.details.aml_history.decider_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with kyc_events table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_kyc_events (void *cls,
+                          PGresult *result,
+                          unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_KYC_EVENTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "kyc_event_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_timestamp (
+        "event_timestamp",
+        &td.details.kyc_events.event_timestamp),
+      GNUNET_PQ_result_spec_string (
+        "event_type",
+        &td.details.kyc_events.event_type),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
  * Assign statement to @a n and PREPARE
  * @a sql under name @a n.
  */
 #define XPREPARE(n,sql) \
-  statement = n;        \
-  PREPARE (pg, n, sql);
+        statement = n;        \
+        PREPARE (pg, n, sql);
 
 
 enum GNUNET_DB_QueryStatus
@@ -2945,38 +3053,12 @@ TEH_PG_lookup_records_by_table (void *cls,
     XPREPARE ("select_above_serial_by_table_wire_targets",
               "SELECT"
               " wire_target_serial_id AS serial"
+              ",access_token"
               ",payto_uri"
               " FROM wire_targets"
               " WHERE wire_target_serial_id > $1"
               " ORDER BY wire_target_serial_id ASC;");
     rh = &lrbt_cb_table_wire_targets;
-    break;
-  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
-    XPREPARE ("select_above_serial_by_table_legitimization_processes",
-              "SELECT"
-              " legitimization_process_serial_id AS serial"
-              ",h_payto"
-              ",reserve_pub"
-              ",expiration_time"
-              ",provider_section"
-              ",provider_user_id"
-              ",provider_legitimization_id"
-              " FROM legitimization_processes"
-              " WHERE legitimization_process_serial_id > $1"
-              " ORDER BY legitimization_process_serial_id ASC;");
-    rh = &lrbt_cb_table_legitimization_processes;
-    break;
-  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS:
-    XPREPARE ("select_above_serial_by_table_legitimization_requirements",
-              "SELECT"
-              " legitimization_requirement_serial_id AS serial"
-              ",h_payto"
-              ",reserve_pub"
-              ",required_checks"
-              " FROM legitimization_requirements"
-              " WHERE legitimization_requirement_serial_id > $1"
-              " ORDER BY legitimization_requirement_serial_id ASC;");
-    rh = &lrbt_cb_table_legitimization_requirements;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     XPREPARE ("select_above_serial_by_table_reserves",
@@ -3514,39 +3596,6 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY aml_staff_uuid ASC;");
     rh = &lrbt_cb_table_aml_staff;
     break;
-  case TALER_EXCHANGEDB_RT_AML_HISTORY:
-    XPREPARE ("select_above_serial_by_table_aml_history",
-              "SELECT"
-              " aml_history_serial_id"
-              ",h_payto"
-              ",new_threshold"
-              ",new_status"
-              ",decision_time"
-              ",justification"
-              ",kyc_requirements"
-              ",kyc_req_row"
-              ",decider_pub"
-              ",decider_sig"
-              " FROM aml_history"
-              " WHERE aml_history_serial_id > $1"
-              " ORDER BY aml_history_serial_id ASC;");
-    rh = &lrbt_cb_table_aml_history;
-    break;
-  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
-    XPREPARE ("select_above_serial_by_table_kyc_attributes",
-              "SELECT"
-              " kyc_attributes_serial_id"
-              ",h_payto"
-              ",kyc_prox"
-              ",provider"
-              ",collection_time"
-              ",expiration_time"
-              ",encrypted_attributes"
-              " FROM kyc_attributes"
-              " WHERE kyc_attributes_serial_id > $1"
-              " ORDER BY kyc_attributes_serial_id ASC;");
-    rh = &lrbt_cb_table_kyc_attributes;
-    break;
   case TALER_EXCHANGEDB_RT_PURSE_DELETION:
     XPREPARE ("select_above_serial_by_table_purse_deletion",
               "SELECT"
@@ -3573,6 +3622,92 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY age_withdraw_id ASC;");
     /* TODO[oec]: MORE FIELDS! */
     rh = &lrbt_cb_table_age_withdraw;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_MEASURES:
+    XPREPARE ("select_above_serial_by_table_legitimization_measures",
+              "SELECT"
+              " legitimization_measure_serial_id AS serial"
+              ",access_token"
+              ",start_time"
+              ",jmeasures"
+              ",display_priority"
+              " FROM legitimization_measures"
+              " WHERE legitimization_measure_serial_id > $1"
+              " ORDER BY legitimization_measure_serial_id ASC;");
+    rh = &lrbt_cb_table_legitimization_measures;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_OUTCOMES:
+    XPREPARE ("select_above_serial_by_table_legitimization_outcomes",
+              "SELECT"
+              " outcome_serial_id AS serial"
+              ",h_payto"
+              ",decision_time"
+              ",expiration_time"
+              ",jproperties"
+              ",to_investigate"
+              ",jnew_rules"
+              " FROM legitimization_outcomes"
+              " WHERE outcome_serial_id > $1"
+              " ORDER BY outcome_serial_id ASC;");
+    rh = &lrbt_cb_table_legitimization_outcomes;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
+    XPREPARE ("select_above_serial_by_table_legitimization_processes",
+              "SELECT"
+              " legitimization_process_serial_id AS serial"
+              ",h_payto"
+              ",start_time"
+              ",expiration_time"
+              ",legitimization_measure_serial_id"
+              ",measure_index"
+              ",provider_section"
+              ",provider_user_id"
+              ",provider_legitimization_id"
+              ",redirect_url"
+              " FROM legitimization_processes"
+              " WHERE legitimization_process_serial_id > $1"
+              " ORDER BY legitimization_process_serial_id ASC;");
+    rh = &lrbt_cb_table_legitimization_processes;
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
+    XPREPARE ("select_above_serial_by_table_kyc_attributes",
+              "SELECT"
+              " kyc_attributes_serial_id"
+              ",h_payto"
+              ",legitimization_process_serial_id"
+              ",collection_time"
+              ",expiration_time"
+              ",trigger_outcome_serial"
+              ",encrypted_attributes"
+              " FROM kyc_attributes"
+              " WHERE kyc_attributes_serial_id > $1"
+              " ORDER BY kyc_attributes_serial_id ASC;");
+    rh = &lrbt_cb_table_kyc_attributes;
+    break;
+  case TALER_EXCHANGEDB_RT_AML_HISTORY:
+    XPREPARE ("select_above_serial_by_table_aml_history",
+              "SELECT"
+              " aml_history_serial_id"
+              ",h_payto"
+              ",outcome_serial_id"
+              ",justification"
+              ",decider_pub"
+              ",decider_sig"
+              " FROM aml_history"
+              " WHERE aml_history_serial_id > $1"
+              " ORDER BY aml_history_serial_id ASC;");
+    rh = &lrbt_cb_table_aml_history;
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_EVENTS:
+    XPREPARE ("select_above_serial_by_table_kyc_events",
+              "SELECT"
+              " kyc_event_serial_id AS serial"
+              ",event_timestamp"
+              ",event_type"
+              " FROM kyc_events"
+              " WHERE kyc_event_serial_id > $1"
+              " ORDER BY kyc_event_serial_id ASC;");
+    rh = &lrbt_cb_table_kyc_events;
     break;
   }
   if (NULL == rh)

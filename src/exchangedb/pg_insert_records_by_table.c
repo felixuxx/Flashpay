@@ -172,22 +172,25 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&payto_hash),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wire_targets.target_token),
     GNUNET_PQ_query_param_string (
       td->details.wire_targets.payto_uri),
     GNUNET_PQ_query_param_end
   };
 
+  TALER_payto_hash (
+    td->details.wire_targets.payto_uri,
+    &payto_hash);
   PREPARE (pg,
            "insert_into_table_wire_targets",
            "INSERT INTO wire_targets"
            "(wire_target_serial_id"
            ",wire_target_h_payto"
+           ",target_token"
            ",payto_uri"
            ") VALUES "
-           "($1, $2, $3);");
-  TALER_payto_hash (
-    td->details.wire_targets.payto_uri,
-    &payto_hash);
+           "($1, $2, $3, $4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_targets",
                                              params);
@@ -201,38 +204,35 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_legitimization_processes (struct PostgresClosure *pg,
-                                        const struct
-                                        TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_legitimization_measures (
+  struct PostgresClosure *pg,
+  const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.legitimization_processes.h_payto),
+      &td->details.legitimization_measures.target_token),
     GNUNET_PQ_query_param_timestamp (
-      &td->details.legitimization_processes.expiration_time),
-    GNUNET_PQ_query_param_string (
-      td->details.legitimization_processes.provider_section),
-    GNUNET_PQ_query_param_string (
-      td->details.legitimization_processes.provider_user_id),
-    GNUNET_PQ_query_param_string (
-      td->details.legitimization_processes.provider_legitimization_id),
+      &td->details.legitimization_measures.start_time),
+    TALER_PQ_query_param_json (
+      td->details.legitimization_measures.measures),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.legitimization_measures.display_priority),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_legitimization_processes",
-           "INSERT INTO legitimization_processes"
-           "(legitimization_process_serial_id"
-           ",h_payto"
-           ",expiration_time"
-           ",provider_section"
-           ",provider_user_id"
-           ",provider_legitimization_id"
+           "insert_into_table_legitimization_measures",
+           "INSERT INTO legitimization_measures"
+           "(legitimization_measure_serial_id"
+           ",access_token"
+           ",start_time"
+           ",jmeasures"
+           ",display_priority"
            ") VALUES "
-           "($1, $3, $4, $5, $6, %7);");
+           "($1, $2, $3, $4, $5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_legitimization_processes",
+                                             "insert_into_table_legitimization_measures",
                                              params);
 }
 
@@ -244,34 +244,96 @@ irbt_cb_table_legitimization_processes (struct PostgresClosure *pg,
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_legitimization_requirements (struct PostgresClosure *pg,
-                                           const struct
-                                           TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_legitimization_outcomes (
+  struct PostgresClosure *pg,
+  const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.legitimization_requirements.h_payto),
-    td->details.legitimization_requirements.no_reserve_pub
-      ? GNUNET_PQ_query_param_null ()
-      : GNUNET_PQ_query_param_auto_from_type (
-      &td->details.legitimization_requirements.reserve_pub),
-    GNUNET_PQ_query_param_string (
-      td->details.legitimization_requirements.required_checks),
+      &td->details.legitimization_outcomes.h_payto),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.legitimization_outcomes.decision_time),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.legitimization_outcomes.expiration_time),
+    TALER_PQ_query_param_json (
+      td->details.legitimization_outcomes.properties),
+    GNUNET_PQ_query_param_bool (
+      td->details.legitimization_outcomes.to_investigate),
+    TALER_PQ_query_param_json (
+      td->details.legitimization_outcomes.new_rules),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_legitimization_requirements",
-           "INSERT INTO legitimization_requirements"
-           "(legitimization_requirement_serial_id"
+           "insert_into_table_legitimization_outcomes",
+           "INSERT INTO legitimization_outcomes"
+           "(outcome_serial_id"
            ",h_payto"
-           ",reserve_pub"
-           ",required_checks"
+           ",decision_time"
+           ",expiration_time"
+           ",jproperties"
+           ",to_investigate"
+           ",jnew_rules"
            ") VALUES "
-           "($1, $2, $3);");
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_legitimization_requirements",
+                                             "insert_into_table_legitimization_outcomes",
+                                             params);
+}
+
+
+/**
+ * Function called with records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_legitimization_processes (
+  struct PostgresClosure *pg,
+  const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.legitimization_processes.h_payto),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.legitimization_processes.start_time),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.legitimization_processes.expiration_time),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.legitimization_processes.legitimization_measure_serial_id),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.legitimization_processes.measure_index),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.provider_section),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.provider_user_id),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.provider_legitimization_id),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.redirect_url),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_legitimization_processes",
+           "INSERT INTO legitimization_processes"
+           "(legitimization_process_serial_id"
+           ",h_payto"
+           ",start_time"
+           ",expiration_time"
+           ",legitimization_measure_serial_id"
+           ",measure_index"
+           ",provider_section"
+           ",provider_user_id"
+           ",provider_legitimization_id"
+           ",redirect_url"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_legitimization_processes",
                                              params);
 }
 
@@ -1983,64 +2045,6 @@ irbt_cb_table_aml_staff (struct PostgresClosure *pg,
 
 
 /**
- * Function called with aml_history records to insert into table.
- *
- * @param pg plugin context
- * @param td record to insert
- */
-static enum GNUNET_DB_QueryStatus
-irbt_cb_table_aml_history (struct PostgresClosure *pg,
-                           const struct TALER_EXCHANGEDB_TableData *td)
-{
-  uint32_t status32 = td->details.aml_history.new_status;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.aml_history.h_payto),
-    TALER_PQ_query_param_amount (
-      pg->conn,
-      &td->details.aml_history.new_threshold),
-    GNUNET_PQ_query_param_uint32 (
-      &status32),
-    GNUNET_PQ_query_param_timestamp (
-      &td->details.aml_history.decision_time),
-    GNUNET_PQ_query_param_string (
-      td->details.aml_history.justification),
-    (NULL == td->details.aml_history.kyc_requirements)
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (
-      td->details.aml_history.kyc_requirements),
-    GNUNET_PQ_query_param_uint64 (
-      &td->details.aml_history.kyc_req_row),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.aml_history.decider_pub),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.aml_history.decider_sig),
-    GNUNET_PQ_query_param_end
-  };
-
-  PREPARE (pg,
-           "insert_into_table_aml_history",
-           "INSERT INTO aml_history"
-           "(aml_history_serial_id"
-           ",h_payto"
-           ",new_threshold"
-           ",new_status"
-           ",decision_time"
-           ",justification"
-           ",kyc_requirements"
-           ",kyc_req_row"
-           ",decider_pub"
-           ",decider_sig"
-           ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_aml_history",
-                                             params);
-}
-
-
-/**
  * Function called with kyc_attributes records to insert into table.
  *
  * @param pg plugin context
@@ -2054,14 +2058,14 @@ irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.kyc_attributes.h_payto),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.kyc_attributes.kyc_prox),
-    GNUNET_PQ_query_param_string (
-      td->details.kyc_attributes.provider),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.kyc_attributes.legitimization_process_serial_id),
     GNUNET_PQ_query_param_timestamp (
       &td->details.kyc_attributes.collection_time),
     GNUNET_PQ_query_param_timestamp (
       &td->details.kyc_attributes.expiration_time),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.kyc_attributes.trigger_outcome_serial),
     GNUNET_PQ_query_param_fixed_size (
       &td->details.kyc_attributes.encrypted_attributes,
       td->details.kyc_attributes.encrypted_attributes_size),
@@ -2073,15 +2077,90 @@ irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
            "INSERT INTO kyc_attributes"
            "(kyc_attributes_serial_id"
            ",h_payto"
-           ",kyc_prox"
-           ",provider"
+           ",legitimization_process_serial_id"
            ",collection_time"
            ",expiration_time"
+           ",trigger_outcome_serial"
            ",encrypted_attributes"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_kyc_attributes",
+                                             params);
+}
+
+
+/**
+ * Function called with aml_history records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_aml_history (struct PostgresClosure *pg,
+                           const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_history.h_payto),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.aml_history.outcome_serial_id),
+    GNUNET_PQ_query_param_string (
+      td->details.aml_history.justification),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_history.decider_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_history.decider_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_aml_history",
+           "INSERT INTO aml_history"
+           "(aml_history_serial_id"
+           ",h_payto"
+           ",outcome_serial_id"
+           ",justification"
+           ",decider_pub"
+           ",decider_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_aml_history",
+                                             params);
+}
+
+
+/**
+ * Function called with kyc_event records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_kyc_events (struct PostgresClosure *pg,
+                          const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.kyc_events.event_timestamp),
+    GNUNET_PQ_query_param_string (
+      td->details.kyc_events.event_type),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_kyc_events",
+           "INSERT INTO kyc_events"
+           "(kyc_event_serial_id"
+           ",event_timestamp"
+           ",event_type"
+           ") VALUES "
+           "($1, $2, $3);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_kyc_events",
                                              params);
 }
 
@@ -2184,12 +2263,6 @@ TEH_PG_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
     rh = &irbt_cb_table_wire_targets;
-    break;
-  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
-    rh = &irbt_cb_table_legitimization_processes;
-    break;
-  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS:
-    rh = &irbt_cb_table_legitimization_requirements;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     rh = &irbt_cb_table_reserves;
@@ -2308,17 +2381,29 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_AML_STAFF:
     rh = &irbt_cb_table_aml_staff;
     break;
-  case TALER_EXCHANGEDB_RT_AML_HISTORY:
-    rh = &irbt_cb_table_aml_history;
-    break;
-  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
-    rh = &irbt_cb_table_kyc_attributes;
-    break;
   case TALER_EXCHANGEDB_RT_PURSE_DELETION:
     rh = &irbt_cb_table_purse_deletion;
     break;
   case TALER_EXCHANGEDB_RT_AGE_WITHDRAW:
     rh = &irbt_cb_table_age_withdraw;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_MEASURES:
+    rh = &irbt_cb_table_legitimization_measures;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_OUTCOMES:
+    rh = &irbt_cb_table_legitimization_outcomes;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
+    rh = &irbt_cb_table_legitimization_processes;
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
+    rh = &irbt_cb_table_kyc_attributes;
+    break;
+  case TALER_EXCHANGEDB_RT_AML_HISTORY:
+    rh = &irbt_cb_table_aml_history;
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_EVENTS:
+    rh = &irbt_cb_table_kyc_events;
     break;
   }
   if (NULL == rh)

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022-2023 Taler Systems SA
+   Copyright (C) 2022-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -31,8 +31,8 @@
  * @a sql under name @a n.
  */
 #define XPREPARE(n,sql) \
-  statement = n;        \
-  PREPARE (pg, n, sql);
+        statement = n;        \
+        PREPARE (pg, n, sql);
 
 
 enum GNUNET_DB_QueryStatus
@@ -75,22 +75,6 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " wire_target_serial_id AS serial"
               " FROM wire_targets"
               " ORDER BY wire_target_serial_id DESC"
-              " LIMIT 1;");
-    break;
-  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
-    XPREPARE ("select_serial_by_table_legitimization_processes",
-              "SELECT"
-              " legitimization_process_serial_id AS serial"
-              " FROM legitimization_processes"
-              " ORDER BY legitimization_process_serial_id DESC"
-              " LIMIT 1;");
-    break;
-  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS:
-    XPREPARE ("select_serial_by_table_legitimization_requiremetns",
-              "SELECT"
-              " legitimization_requirement_serial_id AS serial"
-              " FROM legitimization_requirements"
-              " ORDER BY legitimization_requirement_serial_id DESC"
               " LIMIT 1;");
     break;
   case TALER_EXCHANGEDB_RT_RESERVES:
@@ -407,24 +391,6 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " LIMIT 1;");
     statement = "select_serial_by_table_aml_staff";
     break;
-  case TALER_EXCHANGEDB_RT_AML_HISTORY:
-    XPREPARE ("select_serial_by_table_aml_history",
-              "SELECT"
-              " aml_history_serial_id AS serial"
-              " FROM aml_history"
-              " ORDER BY aml_history_serial_id DESC"
-              " LIMIT 1;");
-    statement = "select_serial_by_table_aml_history";
-    break;
-  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
-    XPREPARE ("select_serial_by_table_kyc_attributes",
-              "SELECT"
-              " kyc_attributes_serial_id AS serial"
-              " FROM kyc_attributes"
-              " ORDER BY kyc_attributes_serial_id DESC"
-              " LIMIT 1;");
-    statement = "select_serial_by_table_kyc_attributes";
-    break;
   case TALER_EXCHANGEDB_RT_PURSE_DELETION:
     XPREPARE ("select_serial_by_table_purse_deletion",
               "SELECT"
@@ -442,6 +408,56 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY age_withdraw_id DESC"
               " LIMIT 1;");
     statement = "select_serial_by_table_age_withdraw";
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_MEASURES:
+    XPREPARE ("select_serial_by_table_legitimization_measures",
+              "SELECT"
+              " legitimization_measure_serial_id AS serial"
+              " FROM legitimization_measures"
+              " ORDER BY legitimization_measure_serial_id DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_OUTCOMES:
+    XPREPARE ("select_serial_by_table_legitimization_outcomes",
+              "SELECT"
+              " outcome_serial_id AS serial"
+              " FROM legitimization_outcomes"
+              " ORDER BY outcome_serial_id DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
+    XPREPARE ("select_serial_by_table_legitimization_processes",
+              "SELECT"
+              " legitimization_process_serial_id AS serial"
+              " FROM legitimization_processes"
+              " ORDER BY legitimization_process_serial_id DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
+    XPREPARE ("select_serial_by_table_kyc_attributes",
+              "SELECT"
+              " kyc_attributes_serial_id AS serial"
+              " FROM kyc_attributes"
+              " ORDER BY kyc_attributes_serial_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_kyc_attributes";
+    break;
+  case TALER_EXCHANGEDB_RT_AML_HISTORY:
+    XPREPARE ("select_serial_by_table_aml_history",
+              "SELECT"
+              " aml_history_serial_id AS serial"
+              " FROM aml_history"
+              " ORDER BY aml_history_serial_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_aml_history";
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_EVENTS:
+    XPREPARE ("select_serial_by_table_kyc_events",
+              "SELECT"
+              " kyc_event_serial_id AS serial"
+              " FROM kyc_events"
+              " ORDER BY kyc_event_serial_id DESC"
+              " LIMIT 1;");
     break;
   }
   if (NULL == statement)
