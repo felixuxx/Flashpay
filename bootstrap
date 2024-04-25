@@ -8,12 +8,6 @@ if ! git --version >/dev/null; then
   exit 1
 fi
 
-if ! pandoc --version >/dev/null; then
-  echo "pandoc not installed"
-  exit 1
-fi
-
-
 echo "$0: Updating submodules"
 echo | git submodule update --init --force --remote
 
@@ -42,7 +36,7 @@ fi
 # Generate Makefile.am in contrib/
 cd contrib
 rm -f Makefile.am
-find wallet-core/aml-backoffice/ -type f -printf '  %p \\\n' | sort > Makefile.am.ext
+find wallet-core/aml-backoffice/ -type f | sort | awk '{print "  " $1 " \\" }' > Makefile.am.ext
 # Remove extra '\' at the end of the file
 truncate -s -2 Makefile.am.ext
 cat Makefile.am.in Makefile.am.ext >> Makefile.am

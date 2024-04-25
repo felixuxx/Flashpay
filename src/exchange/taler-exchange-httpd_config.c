@@ -33,10 +33,17 @@ TEH_handler_config (struct TEH_RequestContext *rc,
                     const char *const args[])
 {
   static struct MHD_Response *resp;
+  static struct GNUNET_TIME_Absolute a;
 
+  (void) args;
+  if ( (GNUNET_TIME_absolute_is_past (a)) &&
+       (NULL != resp) )
+  {
+    MHD_destroy_response (resp);
+    resp = NULL;
+  }
   if (NULL == resp)
   {
-    struct GNUNET_TIME_Absolute a;
     struct GNUNET_TIME_Timestamp km;
     char dat[128];
 
@@ -62,7 +69,8 @@ TEH_handler_config (struct TEH_RequestContext *rc,
       GNUNET_JSON_pack_string ("name",
                                "taler-exchange"),
       GNUNET_JSON_pack_string ("implementation",
-                               "urn:net:taler:specs:taler-exchange:c-reference"),
+                               "urn:net:taler:specs:taler-exchange:c-reference")
+      ,
       GNUNET_JSON_pack_string ("version",
                                EXCHANGE_PROTOCOL_VERSION));
 
