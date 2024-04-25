@@ -23,7 +23,7 @@
 
 
 void
-TALER_token_issue_sig_free (struct TALER_TokenIssueSignature *issue_sig)
+TALER_token_issue_sig_free (struct TALER_TokenIssueSignatureP *issue_sig)
 {
   if (NULL != issue_sig->signature)
   {
