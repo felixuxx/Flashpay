@@ -546,7 +546,7 @@ parse_token_issue_sig (void *cls,
                        json_t *root,
                        struct GNUNET_JSON_Specification *spec)
 {
-  struct TALER_TokenIssueSignature *issue_sig = spec->ptr;
+  struct TALER_TokenIssueSignatureP *issue_sig = spec->ptr;
   struct GNUNET_CRYPTO_UnblindedSignature *unblinded_sig;
   const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
@@ -638,7 +638,7 @@ static void
 clean_token_issue_sig (void *cls,
                        struct GNUNET_JSON_Specification *spec)
 {
-  struct TALER_TokenIssueSignature *issue_sig = spec->ptr;
+  struct TALER_TokenIssueSignatureP *issue_sig = spec->ptr;
 
   (void) cls;
   TALER_token_issue_sig_free (issue_sig);
@@ -647,7 +647,7 @@ clean_token_issue_sig (void *cls,
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_issue_sig (const char *field,
-                                 struct TALER_TokenIssueSignature *sig)
+                                 struct TALER_TokenIssueSignatureP *sig)
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_token_issue_sig,

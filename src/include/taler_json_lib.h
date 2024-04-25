@@ -597,7 +597,7 @@ TALER_JSON_spec_i18n_str (const char *name,
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_issue_sig (const char *field,
-                                 struct TALER_TokenIssueSignature *sig);
+                                 struct TALER_TokenIssueSignatureP *sig);
 
 /**
  * Hash a JSON for binary signing.

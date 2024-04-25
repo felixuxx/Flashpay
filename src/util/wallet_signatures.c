@@ -23,6 +23,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include <gnunet/gnunet_common.h>
+#include <stdint.h>
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
@@ -1826,5 +1827,74 @@ TALER_wallet_econtract_upload_verify (
                                                 purse_sig);
 }
 
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by wallet to confirm usage of a coin for a transaction.
+ */
+struct TALER_TokenUseRequestPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_TOKEN_USE
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the contract for which this token is used.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
+
+  /**
+   * Hash over a JSON containing data provided by the
+   * wallet to complete the contract upon payment.
+   */
+  struct GNUNET_HashCode wallet_data_hash;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_wallet_token_use_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct GNUNET_HashCode *wallet_data_hash,
+  const struct TALER_TokenUsePrivateKeyP *token_use_priv,
+  struct TALER_TokenUseSignatureP *token_sig)
+{
+  struct TALER_TokenUseRequestPS tur = {
+    .purpose.size = htonl (sizeof (tur)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_TOKEN_USE),
+    .h_contract_terms = *h_contract_terms,
+    .wallet_data_hash = *wallet_data_hash
+  };
+
+  GNUNET_CRYPTO_eddsa_sign (&token_use_priv->private_key,
+                            &tur,
+                            &token_sig->signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_token_use_verify (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct GNUNET_HashCode *wallet_data_hash,
+  const struct TALER_TokenUsePublicKeyP *token_use_pub,
+  const struct TALER_TokenUseSignatureP *token_sig)
+{
+  struct TALER_TokenUseRequestPS tur = {
+    .purpose.size = htonl (sizeof (tur)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_TOKEN_USE),
+    .h_contract_terms = *h_contract_terms,
+    .wallet_data_hash = *wallet_data_hash
+  };
+
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_TOKEN_USE,
+                                     &tur,
+                                     &token_sig->signature,
+                                     &token_use_pub->public_key);
+}
 
 /* end of wallet_signatures.c */
