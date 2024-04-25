@@ -37,9 +37,7 @@ TEH_PG_lookup_transfer_by_deposit (
   struct TALER_WireTransferIdentifierRawP *wtid,
   struct GNUNET_TIME_Timestamp *exec_time,
   struct TALER_Amount *amount_with_fee,
-  struct TALER_Amount *deposit_fee,
-  struct TALER_EXCHANGEDB_KycStatus *kyc,
-  enum TALER_AmlDecisionState *aml_decision)
+  struct TALER_Amount *deposit_fee)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -67,9 +65,6 @@ TEH_PG_lookup_transfer_by_deposit (
     GNUNET_PQ_result_spec_end
   };
 
-  memset (kyc,
-          0,
-          sizeof (*kyc));
   /* check if the aggregation record exists and get it */
   PREPARE (pg,
            "lookup_deposit_wtid",
@@ -114,8 +109,6 @@ TEH_PG_lookup_transfer_by_deposit (
                        h_wire))
     {
       *pending = false;
-      kyc->ok = true;
-      *aml_decision = TALER_AML_NORMAL;
       GNUNET_PQ_cleanup_result (rs);
       return qs;
     }
@@ -135,29 +128,11 @@ TEH_PG_lookup_transfer_by_deposit (
     /* Check if transaction exists in deposits, so that we just
        do not have a WTID yet. In that case, return without wtid
        (by setting 'pending' true). */
-    uint32_t status32 = TALER_AML_NORMAL;
-    uint64_t aml_kyc_row = 0;
     struct GNUNET_PQ_ResultSpec rs2[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                             &wire_salt),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
-      /* See Postgresql bug #18380 */
-#define BUG 1
-#if BUG
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_uint64 ("legitimization_requirement_serial_id",
-                                      &kyc->requirement_row),
-        NULL),
-#endif
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_uint64 ("kyc_requirement",
-                                      &aml_kyc_row),
-        NULL),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_uint32 ("status",
-                                      &status32),
-        NULL),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    amount_with_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
@@ -175,11 +150,6 @@ TEH_PG_lookup_transfer_by_deposit (
              ",cdep.amount_with_fee"
              ",denom.fee_deposit"
              ",bdep.wire_deadline"
-#if BUG
-             ",agt.legitimization_requirement_serial_id"
-#endif
-             ",aml.status"
-             ",aml.kyc_requirement"
              " FROM coin_deposits cdep"
              " JOIN batch_deposits bdep"
              "   USING (batch_deposit_serial_id)"
@@ -189,13 +159,6 @@ TEH_PG_lookup_transfer_by_deposit (
              "   ON (kc.coin_pub = cdep.coin_pub)"
              " JOIN denominations denom"
              "   USING (denominations_serial)"
-#if BUG
-             " LEFT JOIN aggregation_transient agt "
-             "   ON ( (bdep.wire_target_h_payto = agt.wire_target_h_payto) AND"
-             "        (bdep.merchant_pub = agt.merchant_pub) )"
-#endif
-             " LEFT JOIN aml_status aml"
-             "   ON (wt.wire_target_h_payto = aml.h_payto)"
              " WHERE cdep.coin_pub=$1"
              "   AND bdep.merchant_pub=$3"
              "   AND bdep.h_contract_terms=$2"
@@ -210,17 +173,6 @@ TEH_PG_lookup_transfer_by_deposit (
     {
       struct TALER_MerchantWireHashP wh;
 
-      *aml_decision = (enum TALER_AmlDecisionState) status32;
-      if (0 == kyc->requirement_row)
-        kyc->ok = true; /* technically: unknown */
-      if ( (kyc->ok) &&
-           (TALER_AML_FROZEN == *aml_decision) &&
-           (0 != aml_kyc_row) )
-      {
-        /* KYC required via AML */
-        kyc->ok = false;
-        kyc->requirement_row = aml_kyc_row;
-      }
       TALER_merchant_wire_signature_hash (payto_uri,
                                           &wire_salt,
                                           &wh);
@@ -233,7 +185,6 @@ TEH_PG_lookup_transfer_by_deposit (
       }
       GNUNET_PQ_cleanup_result (rs2);
     }
-    *aml_decision = TALER_AML_NORMAL;
     return qs;
   }
 }

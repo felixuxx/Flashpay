@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2023 Taler Systems SA
+-- Copyright (C) 2023, 2024 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -14,21 +14,24 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
+DROP FUNCTION IF EXISTS exchange_do_insert_aml_decision;
 CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_h_payto BYTEA,
-  IN in_new_threshold taler_amount,
-  IN in_new_status INT4,
   IN in_decision_time INT8,
+  IN in_expiration_time INT8,
+  IN in_properties TEXT,
+  IN in_new_rules TEXT,
+  IN in_to_investigate BOOLEAN,
   IN in_justification TEXT,
   IN in_decider_pub BYTEA,
   IN in_decider_sig BYTEA,
   IN in_notify_s TEXT,
-  IN in_kyc_requirements TEXT,
-  IN in_requirement_row INT8,
   OUT out_invalid_officer BOOLEAN,
   OUT out_last_date INT8)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  my_outcome_serial_id INT8;
 BEGIN
 -- Check officer is eligible to make decisions.
 PERFORM
@@ -47,9 +50,11 @@ out_invalid_officer=FALSE;
 -- Check no more recent decision exists.
 SELECT decision_time
   INTO out_last_date
-  FROM aml_history
+  FROM legitimization_outcomes
   WHERE h_payto=in_h_payto
+   AND is_active
   ORDER BY decision_time DESC;
+
 IF FOUND
 THEN
   IF out_last_date >= in_decision_time
@@ -57,71 +62,63 @@ THEN
     -- Refuse to insert older decision.
     RETURN;
   END IF;
-  UPDATE aml_status
-    SET threshold=in_new_threshold
-       ,status=in_new_status
-       ,kyc_requirement=in_requirement_row
-   WHERE h_payto=in_h_payto;
-  ASSERT FOUND, 'cannot have AML decision history but no AML status';
+  UPDATE legitimization_outcomes
+     SET is_active=FALSE
+   WHERE h_payto=in_h_payto
+     AND is_active;
 ELSE
   out_last_date = 0;
-  INSERT INTO aml_status
-    (h_payto
-    ,threshold
-    ,status
-    ,kyc_requirement)
-    VALUES
-    (in_h_payto
-    ,in_new_threshold
-    ,in_new_status
-    ,in_requirement_row)
-    ON CONFLICT (h_payto) DO
-    UPDATE SET
-       threshold=in_new_threshold
-      ,status=in_new_status;
 END IF;
+
+INSERT INTO legitimization_outcomes
+  (h_payto
+  ,decision_time
+  ,expiration_time
+  ,jproperties
+  ,to_investigate
+  ,jnew_rules
+  )
+  VALUES
+  (in_h_payto
+  ,in_decision_time
+  ,in_expiration_time
+  ,in_properties,
+  ,in_to_investigate
+  ,in_new_rules
+  )
+  RETURNING
+    outcome_serial_id
+  INTO
+    my_outcome_serial_id;
 
 
 INSERT INTO aml_history
   (h_payto
-  ,new_threshold
-  ,new_status
-  ,decision_time
+  ,outcome_serial_id
   ,justification
-  ,kyc_requirements
-  ,kyc_req_row
   ,decider_pub
   ,decider_sig
   ) VALUES
   (in_h_payto
-  ,in_new_threshold
-  ,in_new_status
-  ,in_decision_time
+  ,my_outcome_serial_id
   ,in_justification
-  ,in_kyc_requirements
-  ,in_requirement_row
   ,in_decider_pub
-  ,in_decider_sig);
-
+  ,in_decider_sig
+  );
 
 -- wake up taler-exchange-aggregator
-IF 0 = in_new_status
-THEN
-  INSERT INTO kyc_alerts
-    (h_payto
-    ,trigger_type)
-    VALUES
-    (in_h_payto,1);
+INSERT INTO kyc_alerts
+  (h_payto
+  ,trigger_type)
+  VALUES
+  (in_h_payto,1);
 
-   EXECUTE FORMAT (
-     'NOTIFY %s'
-    ,in_notify_s);
-
-END IF;
-
+ EXECUTE FORMAT (
+   'NOTIFY %s'
+  ,in_notify_s);
 
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, taler_amount, INT4, INT8, TEXT, BYTEA, BYTEA, TEXT, TEXT, INT8)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, BYTEA, BYTEA, TEXT)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

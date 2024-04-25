@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020-2023 Taler Systems SA
+   Copyright (C) 2020-2024 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published

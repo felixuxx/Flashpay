@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022, 2023 Taler Systems SA
+   Copyright (C) 2022, 2023, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -31,42 +31,37 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_aml_decision (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  const struct TALER_Amount *new_threshold,
-  enum TALER_AmlDecisionState new_status,
   struct GNUNET_TIME_Timestamp decision_time,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  const json_t *properties,
+  const json_t *new_rules,
+  bool to_investigate,
   const char *justification,
-  const json_t *kyc_requirements,
-  uint64_t requirements_row,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,
   struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
-  uint32_t ns = (uint32_t) new_status;
   struct TALER_KycCompletedEventP rep = {
     .header.size = htons (sizeof (rep)),
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
     .h_payto = *h_payto
   };
   char *notify_s = GNUNET_PQ_get_event_notify_channel (&rep.header);
-  char *kyc_s = (NULL != kyc_requirements)
-    ? json_dumps (kyc_requirements, JSON_COMPACT)
-    : NULL;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    TALER_PQ_query_param_amount (pg->conn,
-                                 new_threshold),
-    GNUNET_PQ_query_param_uint32 (&ns),
     GNUNET_PQ_query_param_timestamp (&decision_time),
+    GNUNET_PQ_query_param_timestamp (&expiration_time),
+    NULL != properties
+    ? TALER_PQ_query_param_json (properties)
+    : GNUNET_PQ_query_param_null (),
+    TALER_PQ_query_param_json (new_rules),
+    GNUNET_PQ_query_param_bool (to_investigate),
     GNUNET_PQ_query_param_string (justification),
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
     GNUNET_PQ_query_param_auto_from_type (decider_sig),
     GNUNET_PQ_query_param_string (notify_s),
-    NULL != kyc_requirements
-    ? GNUNET_PQ_query_param_string (kyc_s)
-    : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_uint64 (&requirements_row),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -91,7 +86,5 @@ TEH_PG_insert_aml_decision (
                                                  rs);
   GNUNET_free (notify_s);
   GNUNET_PQ_event_do_poll (pg->conn);
-  if (NULL != kyc_s)
-    free (kyc_s);
   return qs;
 }

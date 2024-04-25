@@ -56,8 +56,6 @@ TEH_PG_lookup_transfer_by_deposit (
   struct TALER_WireTransferIdentifierRawP *wtid,
   struct GNUNET_TIME_Timestamp *exec_time,
   struct TALER_Amount *amount_with_fee,
-  struct TALER_Amount *deposit_fee,
-  struct TALER_EXCHANGEDB_KycStatus *kyc,
-  enum TALER_AmlDecisionState *aml_decision);
+  struct TALER_Amount *deposit_fee);
 
 #endif

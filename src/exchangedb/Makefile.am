@@ -108,7 +108,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_satisfied_kyc_processes.h pg_select_satisfied_kyc_processes.c \
   pg_get_pending_kyc_requirement_process.h pg_get_pending_kyc_requirement_process.c \
   pg_kyc_provider_account_lookup.h pg_kyc_provider_account_lookup.c \
-  pg_lookup_kyc_requirement_by_row.h pg_lookup_kyc_requirement_by_row.c \
   pg_insert_kyc_requirement_for_account.h pg_insert_kyc_requirement_for_account.c \
   pg_lookup_kyc_process_by_account.h pg_lookup_kyc_process_by_account.c \
   pg_update_kyc_process_by_row.h pg_update_kyc_process_by_row.c \
@@ -120,7 +119,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_get_drain_profit.h pg_get_drain_profit.c \
   pg_get_purse_deposit.h pg_get_purse_deposit.c \
   pg_insert_contract.h pg_insert_contract.c \
-  pg_select_aml_threshold.h pg_select_aml_threshold.c \
   pg_select_contract.h pg_select_contract.c \
   pg_select_purse_merge.h pg_select_purse_merge.c \
   pg_select_contract_by_purse.h pg_select_contract_by_purse.c \
@@ -170,8 +168,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_test_aml_officer.h pg_test_aml_officer.c \
   pg_lookup_aml_officer.h pg_lookup_aml_officer.c \
   pg_trigger_aml_process.h pg_trigger_aml_process.c \
-  pg_select_aml_process.h pg_select_aml_process.c \
-  pg_select_aml_history.h pg_select_aml_history.c \
   pg_insert_aml_decision.h pg_insert_aml_decision.c \
   pg_select_aggregation_transient.h pg_select_aggregation_transient.c \
   pg_find_aggregation_transient.h pg_find_aggregation_transient.c \
@@ -214,7 +210,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_insert_denomination_revocation.h pg_insert_denomination_revocation.c \
   pg_get_denomination_revocation.h pg_get_denomination_revocation.c \
   pg_select_batch_deposits_missing_wire.h pg_select_batch_deposits_missing_wire.c \
-  pg_select_justification_for_missing_wire.h pg_select_justification_for_missing_wire.c \
   pg_select_aggregations_above_serial.h pg_select_aggregations_above_serial.c \
   pg_lookup_auditor_timestamp.h pg_lookup_auditor_timestamp.c \
   pg_lookup_auditor_status.h pg_lookup_auditor_status.c \
@@ -285,6 +280,14 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
+
+#  pg_lookup_kyc_requirement_by_row.h pg_lookup_kyc_requirement_by_row.c
+#  pg_select_justification_for_missing_wire.h pg_select_justification_for_missing_wire.c
+#  pg_select_aml_process.h pg_select_aml_process.c
+#  pg_select_aml_history.h pg_select_aml_history.c
+#  pg_select_aml_threshold.h pg_select_aml_threshold.c
+
+
 libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS)
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \

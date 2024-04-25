@@ -52,7 +52,6 @@
 #include "pg_lookup_records_by_table.h"
 #include "pg_lookup_serial_by_table.h"
 #include "pg_select_account_merges_above_serial_id.h"
-#include "pg_select_aml_threshold.h"
 #include "pg_select_all_purse_decisions_above_serial_id.h"
 #include "pg_select_purse.h"
 #include "pg_select_purse_deposits_above_serial_id.h"
@@ -69,7 +68,6 @@
 #include "pg_select_satisfied_kyc_processes.h"
 #include "pg_select_aggregation_amounts_for_kyc_check.h"
 #include "pg_kyc_provider_account_lookup.h"
-#include "pg_lookup_kyc_requirement_by_row.h"
 #include "pg_insert_kyc_requirement_for_account.h"
 #include "pg_lookup_kyc_process_by_account.h"
 #include "pg_update_kyc_process_by_row.h"
@@ -179,7 +177,6 @@
 #include "pg_insert_denomination_revocation.h"
 #include "pg_get_denomination_revocation.h"
 #include "pg_select_batch_deposits_missing_wire.h"
-#include "pg_select_justification_for_missing_wire.h"
 #include "pg_select_aggregations_above_serial.h"
 #include "pg_lookup_auditor_timestamp.h"
 #include "pg_lookup_auditor_status.h"
@@ -216,8 +213,11 @@
 #include "pg_test_aml_officer.h"
 #include "pg_lookup_aml_officer.h"
 #include "pg_trigger_aml_process.h"
-#include "pg_select_aml_process.h"
-#include "pg_select_aml_history.h"
+// #include "pg_select_justification_for_missing_wire.h"
+// #include "pg_lookup_kyc_requirement_by_row.h"
+// #include "pg_select_aml_history.h"
+// #include "pg_select_aml_process.h"
+// #include "pg_select_aml_threshold.h"
 #include "pg_insert_aml_decision.h"
 #include "pg_batch_ensure_coin_known.h"
 
@@ -236,14 +236,14 @@
  * @param conn SQL connection that was used
  */
 #define BREAK_DB_ERR(result,conn) do {                                  \
-    GNUNET_break (0);                                                   \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                "Database failure: %s/%s/%s/%s/%s",                     \
-                PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),   \
-                PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),    \
-                PQresultErrorMessage (result),                          \
-                PQresStatus (PQresultStatus (result)),                  \
-                PQerrorMessage (conn));                                 \
+          GNUNET_break (0);                                                   \
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                      "Database failure: %s/%s/%s/%s/%s",                     \
+                      PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),   \
+                      PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),    \
+                      PQresultErrorMessage (result),                          \
+                      PQresStatus (PQresultStatus (result)),                  \
+                      PQerrorMessage (conn));                                 \
 } while (0)
 
 
@@ -464,8 +464,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_account_merges_above_serial_id;
   plugin->select_all_purse_decisions_above_serial_id
     = &TEH_PG_select_all_purse_decisions_above_serial_id;
-  plugin->select_aml_threshold
-    = &TEH_PG_select_aml_threshold;
   plugin->select_purse
     = &TEH_PG_select_purse;
   plugin->select_purse_deposits_above_serial_id
@@ -494,8 +492,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_satisfied_kyc_processes;
   plugin->kyc_provider_account_lookup
     = &TEH_PG_kyc_provider_account_lookup;
-  plugin->lookup_kyc_requirement_by_row
-    = &TEH_PG_lookup_kyc_requirement_by_row;
   plugin->insert_kyc_requirement_for_account
     = &TEH_PG_insert_kyc_requirement_for_account;
   plugin->lookup_kyc_process_by_account
@@ -710,8 +706,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_denomination_revocation;
   plugin->select_batch_deposits_missing_wire
     = &TEH_PG_select_batch_deposits_missing_wire;
-  plugin->select_justification_for_missing_wire
-    = &TEH_PG_select_justification_for_missing_wire;
   plugin->select_aggregations_above_serial
     = &TEH_PG_select_aggregations_above_serial;
   plugin->lookup_auditor_timestamp
@@ -782,10 +776,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_lookup_aml_officer;
   plugin->trigger_aml_process
     = &TEH_PG_trigger_aml_process;
-  plugin->select_aml_process
-    = &TEH_PG_select_aml_process;
-  plugin->select_aml_history
-    = &TEH_PG_select_aml_history;
   plugin->insert_aml_decision
     = &TEH_PG_insert_aml_decision;
 
