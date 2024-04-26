@@ -1,7 +1,7 @@
 ﻿Terms of Service
 ================
 
-Last update: 22.2.2024
+Last update: 26.2.2024
 ----------------------
 
 Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment service
@@ -128,7 +128,7 @@ modified or unmodified form. However, the GPL is a strong copyleft license,
 which means that any derivative works must be distributed under the same
 license terms as the original software. If you have any questions, you should
 review the GNU GPL’s full terms and conditions on the GNU GPL Licenses page 
-(https://www.gnu.org/licenses/gpl-3.0.en.html/). “Taler” itself is a trademark
+(https://www.gnu.org/licenses/). “Taler” itself is a trademark
 of Taler Systems SA. You are welcome to use the name in relation to processing
 payments based on the Taler protocol, assuming your use is compatible with an
 official release from the GNU Project that is not older than two years.
@@ -150,10 +150,9 @@ damages, or claims arising from:
 2) server failure or data loss;
 3) unauthorized access to the Taler Wallet application;
 4) bugs or other errors in the Taler Wallet software; and
-5) any unauthorized third party activities, including, but not limited to,
-the use of viruses, phishing, brute forcing, or other means of attack 
-against the Taler Wallet. We make no representations concerning any
-Third Party Content contained in or accessed through our Services.
+5) any unauthorized third party activities, including, but not limited to, the use of 
+viruses, phishing, brute forcing, or other means of attack against the Taler Wallet. We make no 
+representations concerning any Third Party Content contained in or accessed through our Services.
 
 Any other terms, conditions, warranties, or representations associated with
 such content, are solely between you and such organizations and/or individuals.
@@ -165,16 +164,16 @@ acting, or purporting to act on our behalf (collectively the “Taler Parties”
 be liable to you under contract, tort, strict liability, negligence, or any
 other legal or equitable theory, for:
 
-1) any lost profits, data loss, cost of procurement of substitute goods or services,
-or direct, indirect, incidental, special, punitive, compensatory,
-or consequential damages of any kind whatsoever resulting from:
+1) any direct damages or 
+2) any lost profits, data loss, cost of procurement of substitute goods or services, or 
+direct, indirect, incidental, special, punitive, compensatory, or consequential damages of any kind 
+whatsoever resulting from:
 
 * your use of, or conduct in connection with, our services;
 * any unauthorized use of your wallet and/or private key due to your failure to maintain the confidentiality of your wallet;
 * any interruption or cessation of transmission to or from the services; or
-* any bugs, viruses, trojan horses, or the like that are found in the Taler Wallet software or that may be transmitted to or through our services by any third party (regardless of the source of origination), or 
-
-2) any direct damages.
+* any bugs, viruses, trojan horses, or the like that are found in the Taler Wallet software 
+or that may be transmitted to or through our services by any third party (regardless of the source of origination).
 
 These limitations apply regardless of legal theory, whether based on tort,
 strict liability, breach of contract, breach of warranty, or any other legal

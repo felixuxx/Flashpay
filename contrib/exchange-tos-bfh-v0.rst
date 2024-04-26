@@ -152,7 +152,7 @@ modified or unmodified form. However, the GPL is a strong copyleft license,
 which means that any derivative works must be distributed under the same
 license terms as the original software. If you have any questions, you should
 review the GNU GPL’s full terms and conditions at
-https://www.gnu.org/licenses/gpl-3.0.en.html.  “Taler” itself is a trademark
+https://www.gnu.org/licenses/.  “Taler” itself is a trademark
 of Taler Systems SA. You are welcome to use the name in relation to processing
 payments using the Taler protocol, assuming your use is compatible with an
 official release from the GNU Project that is not older than two years.
