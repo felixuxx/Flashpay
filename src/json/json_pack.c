@@ -145,37 +145,28 @@ TALER_JSON_pack_denom_sig (
   const char *name,
   const struct TALER_DenominationSignature *sig)
 {
-  const struct GNUNET_CRYPTO_UnblindedSignature *bs;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
-
   if (NULL == sig)
     return ps;
-  bs = sig->unblinded_sig;
-  switch (bs->cipher)
-  {
-  case GNUNET_CRYPTO_BSA_INVALID:
-    break;
-  case GNUNET_CRYPTO_BSA_RSA:
-    ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("cipher",
-                               "RSA"),
-      GNUNET_JSON_pack_rsa_signature ("rsa_signature",
-                                      bs->details.rsa_signature));
+  return GNUNET_JSON_pack_unblinded_signature (name,
+                                               sig->unblinded_sig);
+}
+
+
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_token_issue_sig (
+  const char *name,
+  const struct TALER_TokenIssueSignatureP *sig)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+  if (NULL == sig)
     return ps;
-  case GNUNET_CRYPTO_BSA_CS:
-    ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("cipher",
-                               "CS"),
-      GNUNET_JSON_pack_data_auto ("cs_signature_r",
-                                  &bs->details.cs_signature.r_point),
-      GNUNET_JSON_pack_data_auto ("cs_signature_s",
-                                  &bs->details.cs_signature.s_scalar));
-    return ps;
-  }
-  GNUNET_assert (0);
-  return ps;
+  return GNUNET_JSON_pack_unblinded_signature (name,
+                                               sig->signature);
 }
 
 

@@ -154,6 +154,20 @@ TALER_JSON_pack_blinded_planchet (
 
 
 /**
+  * Generate packer instruction for a JSON field of type
+  * blinded token issue signature.
+  *
+  * @param name name of the field to add to the object
+  * @param sig token issue signature
+  * @return json pack specification
+  */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_token_issue_sig (
+  const char *name,
+  const struct TALER_TokenIssueSignatureP *sig);
+
+
+/**
  * Generate packer instruction for a JSON field of type
  * exchange withdraw values (/csr).
  *
