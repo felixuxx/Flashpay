@@ -534,7 +534,7 @@ TALER_JSON_spec_age_commitment (const char *name,
 
 /**
  * Parse given JSON object to token issue signature.
- * TODO: Exctract common between this and parse_denom_sig function to a helper.
+ * TODO: Exctract common code between this and parse_denom_sig function to a helper.
  *
  * @param cls closure, NULL
  * @param root the json object representing data
@@ -658,6 +658,16 @@ TALER_JSON_spec_token_issue_sig (const char *field,
 
   sig->signature = NULL;
   return ret;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_token_envelope (const char *field,
+                                struct TALER_TokenEnvelopeP *env)
+{
+  env->blinded_pub = NULL;
+  return GNUNET_JSON_spec_blinded_message (field,
+                                           &env->blinded_pub);
 }
 
 
@@ -1148,135 +1158,13 @@ TALER_JSON_spec_blinded_denom_sig (
 }
 
 
-/**
- * Parse given JSON object to blinded planchet.
- *
- * @param cls closure, NULL
- * @param root the json object representing data
- * @param[out] spec where to write the data
- * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
- */
-static enum GNUNET_GenericReturnValue
-parse_blinded_planchet (void *cls,
-                        json_t *root,
-                        struct GNUNET_JSON_Specification *spec)
-{
-  struct TALER_BlindedPlanchet *blinded_planchet = spec->ptr;
-  struct GNUNET_CRYPTO_BlindedMessage *blinded_message;
-  const char *cipher;
-  struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_string ("cipher",
-                             &cipher),
-    GNUNET_JSON_spec_end ()
-  };
-  const char *emsg;
-  unsigned int eline;
-
-  (void) cls;
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (root,
-                         dspec,
-                         &emsg,
-                         &eline))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  blinded_message = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
-  blinded_message->rc = 1;
-  blinded_message->cipher = string_to_cipher (cipher);
-  switch (blinded_message->cipher)
-  {
-  case GNUNET_CRYPTO_BSA_INVALID:
-    break;
-  case GNUNET_CRYPTO_BSA_RSA:
-    {
-      struct GNUNET_JSON_Specification ispec[] = {
-        GNUNET_JSON_spec_varsize (
-          "rsa_blinded_planchet",
-          &blinded_message->details.rsa_blinded_message.blinded_msg,
-          &blinded_message->details.rsa_blinded_message.blinded_msg_size),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (root,
-                             ispec,
-                             &emsg,
-                             &eline))
-      {
-        GNUNET_break_op (0);
-        GNUNET_free (blinded_message);
-        return GNUNET_SYSERR;
-      }
-      blinded_planchet->blinded_message = blinded_message;
-      return GNUNET_OK;
-    }
-  case GNUNET_CRYPTO_BSA_CS:
-    {
-      struct GNUNET_JSON_Specification ispec[] = {
-        GNUNET_JSON_spec_fixed_auto (
-          "cs_nonce",
-          &blinded_message->details.cs_blinded_message.nonce),
-        GNUNET_JSON_spec_fixed_auto (
-          "cs_blinded_c0",
-          &blinded_message->details.cs_blinded_message.c[0]),
-        GNUNET_JSON_spec_fixed_auto (
-          "cs_blinded_c1",
-          &blinded_message->details.cs_blinded_message.c[1]),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (root,
-                             ispec,
-                             &emsg,
-                             &eline))
-      {
-        GNUNET_break_op (0);
-        GNUNET_free (blinded_message);
-        return GNUNET_SYSERR;
-      }
-      blinded_planchet->blinded_message = blinded_message;
-      return GNUNET_OK;
-    }
-  }
-  GNUNET_break_op (0);
-  GNUNET_free (blinded_message);
-  return GNUNET_SYSERR;
-}
-
-
-/**
- * Cleanup data left from parsing blinded planchet.
- *
- * @param cls closure, NULL
- * @param[out] spec where to free the data
- */
-static void
-clean_blinded_planchet (void *cls,
-                        struct GNUNET_JSON_Specification *spec)
-{
-  struct TALER_BlindedPlanchet *blinded_planchet = spec->ptr;
-
-  (void) cls;
-  TALER_blinded_planchet_free (blinded_planchet);
-}
-
-
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_planchet (const char *field,
                                   struct TALER_BlindedPlanchet *blinded_planchet)
 {
-  struct GNUNET_JSON_Specification ret = {
-    .parser = &parse_blinded_planchet,
-    .cleaner = &clean_blinded_planchet,
-    .field = field,
-    .ptr = blinded_planchet
-  };
-
   blinded_planchet->blinded_message = NULL;
-  return ret;
+  return GNUNET_JSON_spec_blinded_message (field,
+                                           &blinded_planchet->blinded_message);
 }
 
 

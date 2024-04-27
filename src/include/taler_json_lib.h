@@ -613,6 +613,20 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_issue_sig (const char *field,
                                  struct TALER_TokenIssueSignatureP *sig);
 
+
+/**
+ * Generate line in parser specification for a
+ * token envelope.
+ *
+ * @param field name of the field
+ * @param[out] env the envelope to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_token_envelope (const char *field,
+                                struct TALER_TokenEnvelopeP *env);
+
+
 /**
  * Hash a JSON for binary signing.
  *

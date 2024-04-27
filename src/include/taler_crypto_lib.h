@@ -2336,7 +2336,7 @@ struct TALER_TokenEnvelopeP
   /**
    * Blinded public key of the token.
    */
-  struct GNUNET_CRYPTO_BlindedMessage blinded_pub;
+  struct GNUNET_CRYPTO_BlindedMessage *blinded_pub;
 };
 
 
