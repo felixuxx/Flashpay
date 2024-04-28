@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022-2023 Taler Systems SA
+  Copyright (C) 2022-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -25,13 +25,63 @@
  * Name of the KYC check that may never be passed. Useful if some
  * operations/amounts are categorically forbidden.
  */
-#define KYC_CHECK_IMPOSSIBLE "impossible"
+#define KYC_CHECK_IMPOSSIBLE "verboten"
 
 /**
  * Information about a KYC provider.
  */
-struct TALER_KYCLOGIC_KycProvider;
+struct TALER_KYCLOGIC_KycProvider
+{
 
+  /**
+   * Cost of running this provider's KYC process.
+   */
+  struct TALER_Amount cost;
+
+  /**
+   * Name of the provider (configuration section name).
+   */
+  char *provider_name;
+
+  /**
+   * Name of a program to run to convert output of the
+   * plugin into the desired set of attributes.
+   */
+  char *converter_name;
+
+  /**
+   * Logic to run for this provider.
+   */
+  struct TALER_KYCLOGIC_Plugin *logic;
+
+  /**
+   * Provider-specific details to pass to the @e logic functions.
+   */
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+};
+
+
+/**
+ * Types of KYC checks.
+ */
+enum CheckType
+{
+  /**
+   * Wait for staff or contact staff out-of-band.
+   */
+  CT_INFO,
+
+  /**
+   * SPA should show an inline form.
+   */
+  CT_FORM,
+
+  /**
+   * SPA may start external KYC process.
+   */
+  CT_LINK
+};
 
 /**
  * Abstract representation of a KYC check.
@@ -41,62 +91,105 @@ struct TALER_KYCLOGIC_KycCheck
   /**
    * Human-readable name given to the KYC check.
    */
-  char *name;
+  char *check_name;
 
   /**
-   * Array of @e num_providers providers that offer this type of KYC check.
+   * Human-readable description of the check in English.
    */
-  struct TALER_KYCLOGIC_KycProvider **providers;
+  char *description;
 
   /**
-   * Length of the @e providers array.
+   * Optional translations of @e description, can be
+   * NULL.
    */
-  unsigned int num_providers;
-
-};
-
-
-struct TALER_KYCLOGIC_KycProvider
-{
-  /**
-   * Name of the provider (configuration section name).
-   */
-  const char *provider_section_name;
+  json_t *description_i18n;
 
   /**
-   * Array of @e num_checks checks performed by this provider.
+   * Array of fields that the context must provide as
+   * inputs for this check.
    */
-  struct TALER_KYCLOGIC_KycCheck **provided_checks;
+  char **requires;
 
   /**
-   * Logic to run for this provider.
+   * Length of the @e requires array.
    */
-  struct TALER_KYCLOGIC_Plugin *logic;
+  unsigned int num_requires;
 
   /**
-   * @e provider_section_name specific details to
-   * pass to the @e logic functions.
+   * Name of an original measure to take as a fallback
+   * in case the check fails.
    */
-  struct TALER_KYCLOGIC_ProviderDetails *pd;
+  char *fallback;
 
   /**
-   * Cost of running this provider's KYC.
+   * Array of outputs provided by the check. Names of the attributes provided
+   * by the check for the AML program.  Either from the configuration or
+   * obtained via the converter.
    */
-  unsigned long long cost;
+  char **outputs;
 
   /**
-   * Length of the @e checks array.
+   * Length of the @e requires array.
    */
-  unsigned int num_checks;
+  unsigned int num_requires;
+
+  /**
+   * True if clients can voluntarily trigger this check.
+   */
+  bool voluntary;
+
+  /**
+   * Type of the KYC check.
+   */
+  enum CheckType type;
+
+  /**
+   * Details depending on @e type.
+   */
+  union
+  {
+
+    /**
+     * Fields present only if @e type is #CT_FORM.
+     */
+    struct
+    {
+
+      /**
+       * Name of the form to render.
+       */
+      char *name;
+
+    } form;
+
+    /**
+     * Fields present only if @e type is CT_LINK.
+     */
+    struct
+    {
+
+      /**
+       * Provider used.
+       */
+      const struct TALER_KYCLOGIC_KycProvider *provider;
+
+    } link;
+
+  } details;
 
 };
 
 
 /**
- * Condition that triggers a need to perform KYC.
+ * Rule that triggers some measure(s).
  */
-struct TALER_KYCLOGIC_KycTrigger
+struct TALER_KYCLOGIC_KycRule
 {
+
+  /**
+   * Name of the rule (configuration section name).
+   */
+  char *rule_name;
 
   /**
    * Timeframe to consider for computing the amount
@@ -112,20 +205,82 @@ struct TALER_KYCLOGIC_KycTrigger
   struct TALER_Amount threshold;
 
   /**
-   * Array of @e num_checks checks to apply on this trigger.
+   * Array of names of measures to apply on this trigger.
    */
-  struct TALER_KYCLOGIC_KycCheck **required_checks;
+  char **next_measures;
 
   /**
-   * Length of the @e checks array.
+   * Length of the @e next_measures array.
    */
-  unsigned int num_checks;
+  unsigned int num_measures;
 
   /**
-   * What event is this trigger for?
+   * What operation type is this rule for?
    */
   enum TALER_KYCLOGIC_KycTriggerEvent trigger;
 
+  /**
+   * True if all @e next_measures will eventually need to
+   * be satisfied, False if the user has a choice between them.
+   */
+  bool is_and_combinator;
+
+  /**
+   * True if this rule and the general nature of the next measures
+   * should be exposed to the client.
+   */
+  bool exposed;
+
+};
+
+
+/**
+ * AML programs.
+ */
+struct TALER_KYCLOGIC_AmlProgram
+{
+
+  /**
+   * Name of the AML program configuration section.
+   */
+  char *program_name;
+
+  /**
+   * Name of the AML program (binary) to run.
+   */
+  char *command;
+
+  /**
+   * Human-readable description of what this AML helper
+   * program will do.
+   */
+  char *description;
+
+  /**
+   * Name of an original measure to take in case the
+   * @e command fails.
+   */
+  char *fallback;
+
+  /**
+   * Output of @e command "--required-context".
+   */
+  char **required_contexts;
+
+  /**
+   * Length of the @e required_contexts array.
+   */
+  unsigned int num_required_contexts;
+
+  /**
+   * Output of @e command "--required-attributes".
+   */
+  char **required_attributes;
+
+  /**
+   * Length of the @e required_attributes array.
+   */
+  unsigned int num_required_attributes;
 };
 
 
@@ -140,6 +295,16 @@ static struct TALER_KYCLOGIC_Plugin **kyc_logics;
 static unsigned int num_kyc_logics;
 
 /**
+ * Array of configured providers.
+ */
+static struct TALER_KYCLOGIC_KycProvider **kyc_providers;
+
+/**
+ * Length of the #kyc_providers array.
+ */
+static unsigned int num_kyc_providers;
+
+/**
  * Array of @e num_kyc_checks known types of
  * KYC checks.
  */
@@ -151,30 +316,167 @@ static struct TALER_KYCLOGIC_KycCheck **kyc_checks;
 static unsigned int num_kyc_checks;
 
 /**
- * Array of configured triggers.
+ * Array of configured rules that apply if we do
+ * not have an AMLA record.
  */
-static struct TALER_KYCLOGIC_KycTrigger **kyc_triggers;
+static struct TALER_KYCLOGIC_KycRule **kyc_rules;
 
 /**
- * Length of the #kyc_triggers array.
+ * Length of the #kyc_rules array.
  */
-static unsigned int num_kyc_triggers;
+static unsigned int num_kyc_rules;
 
 /**
- * Array of configured providers.
+ * Array of available AML programs.
  */
-static struct TALER_KYCLOGIC_KycProvider **kyc_providers;
+static struct TALER_KYCLOGIC_AmlProgram **aml_programs;
 
 /**
- * Length of the #kyc_providers array.
+ * Length of the #aml_programs array.
  */
-static unsigned int num_kyc_providers;
+static unsigned int num_aml_programs;
+
+
+/**
+ * Run @a command with @a argument and return the
+ * respective output from stdout.
+ *
+ * @param command binary to run
+ * @param argument command-line argument to pass
+ * @return NULL if @a command failed
+ */
+static char *
+command_output (const char *command,
+                const char *argument)
+{
+  char *rval;
+  size_t sval;
+  size_t soff;
+  ssize_t ret;
+  int sout[2];
+  pid_t chld;
+
+  if (0 != pipe (sout))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "pipe");
+    return NULL;
+  }
+  chld = fork ();
+  if (-1 == chld)
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "fork");
+    return NULL;
+  }
+  if (0 == chld)
+  {
+    GNUNET_break (0 ==
+                  close (sout[0]));
+    GNUNET_break (0 ==
+                  close (STDOUT_FILENO));
+    GNUNET_assert (STDOUT_FILENO ==
+                   dup2 (sout[1],
+                         STDOUT_FILENO));
+    GNUNET_break (0 ==
+                  close (sout[1]));
+    execlp (command,
+            command,
+            argument,
+            NULL);
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "exec",
+                              command);
+    exit (EXIT_FAILURE);
+  }
+  GNUNET_break (0 ==
+                close (sout[1]));
+  sval = 1024;
+  rval = GNUNET_malloc (sval);
+  soff = 0;
+  while (0 < (ret = read (sout[0],
+                          rval + soff,
+                          sval - soff)) )
+  {
+    soff += ret;
+    if (soff == sval)
+    {
+      GNUNET_array_grow (rval,
+                         sval,
+                         sval * 2);
+    }
+  }
+  GNUNET_break (0 == close (sout[0]));
+  {
+    int wstatus;
+
+    GNUNET_break (chld ==
+                  waitpid (chld,
+                           &wstatus,
+                           0));
+    if ( (! WIFEXITED (wstatus)) ||
+         (0 != WEXITSTATUS (wstatus)) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Command `%s' %s failed with status %d\n",
+                  command,
+                  arguments,
+                  wstatus);
+      GNUNET_array_grow (rval,
+                         sval,
+                         0);
+      return NULL;
+    }
+  }
+  GNUNET_array_grow (rval,
+                     sval,
+                     soff + 1);
+  rval[soff] = '\0';
+  return rval;
+}
+
+
+/**
+ * Convert check type @a ctype_s into @a ctype.
+ *
+ * @param ctype_s check type as a string
+ * @param[out] ctype set to check type as enum
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+check_type_from_string (
+  const char *ctype_s,
+  enum CheckType *ctype)
+{
+  struct
+  {
+    const char *in;
+    enum CheckType out;
+  } map [] = {
+    { "INFO", CT_INFO },
+    { "LINK", CT_LINK },
+    { "FORM", CT_FORM  },
+    { NULL, 0 }
+  };
+
+  for (unsigned int i = 0; NULL != map[i].in; i++)
+    if (0 == strcasecmp (map[i].in,
+                         ctype_s))
+    {
+      *ctype = map[i].out;
+      return GNUNET_OK;
+    }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Invalid check type `%s'\n",
+              ctype_s);
+  return GNUNET_SYSERR;
+}
 
 
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_kyc_trigger_from_string (const char *trigger_s,
-                                        enum TALER_KYCLOGIC_KycTriggerEvent *
-                                        trigger)
+TALER_KYCLOGIC_kyc_trigger_from_string (
+  const char *trigger_s,
+  enum TALER_KYCLOGIC_KycTriggerEvent *trigger)
 {
   struct
   {
@@ -205,7 +507,8 @@ TALER_KYCLOGIC_kyc_trigger_from_string (const char *trigger_s,
 
 
 const char *
-TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger)
+TALER_KYCLOGIC_kyc_trigger2s (
+  enum TALER_KYCLOGIC_KycTriggerEvent trigger)
 {
   switch (trigger)
   {
@@ -224,38 +527,6 @@ TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger)
   }
   GNUNET_break (0);
   return NULL;
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_check_satisfiable (
-  const char *check_name)
-{
-  for (unsigned int i = 0; i<num_kyc_checks; i++)
-    if (0 == strcmp (check_name,
-                     kyc_checks[i]->name))
-      return GNUNET_OK;
-  if (0 == strcmp (check_name,
-                   KYC_CHECK_IMPOSSIBLE))
-    return GNUNET_NO;
-  return GNUNET_SYSERR;
-}
-
-
-json_t *
-TALER_KYCLOGIC_get_satisfiable ()
-{
-  json_t *requirements;
-
-  requirements = json_array ();
-  GNUNET_assert (NULL != requirements);
-  for (unsigned int i = 0; i<num_kyc_checks; i++)
-    GNUNET_assert (
-      0 ==
-      json_array_append_new (
-        requirements,
-        json_string (kyc_checks[i]->name)));
-  return requirements;
 }
 
 
@@ -300,64 +571,6 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
- * Add check type to global array of checks.  First checks if the type already
- * exists, otherwise adds a new one.
- *
- * @param check name of the check
- * @return pointer into the global list
- */
-static struct TALER_KYCLOGIC_KycCheck *
-add_check (const char *check)
-{
-  struct TALER_KYCLOGIC_KycCheck *kc;
-
-  for (unsigned int i = 0; i<num_kyc_checks; i++)
-    if (0 == strcasecmp (check,
-                         kyc_checks[i]->name))
-      return kyc_checks[i];
-  kc = GNUNET_new (struct TALER_KYCLOGIC_KycCheck);
-  kc->name = GNUNET_strdup (check);
-  GNUNET_array_append (kyc_checks,
-                       num_kyc_checks,
-                       kc);
-  return kc;
-}
-
-
-/**
- * Parse list of checks from @a checks and build an array of aliases into the
- * global checks array in @a provided_checks.
- *
- * @param[in,out] checks list of checks; clobbered
- * @param[out] p_checks where to put array of aliases
- * @param[out] num_p_checks set to length of @a p_checks array
- */
-static void
-add_checks (char *checks,
-            struct TALER_KYCLOGIC_KycCheck ***p_checks,
-            unsigned int *num_p_checks)
-{
-  char *sptr;
-  struct TALER_KYCLOGIC_KycCheck **rchecks = NULL;
-  unsigned int num_rchecks = 0;
-
-  for (char *tok = strtok_r (checks, " ", &sptr);
-       NULL != tok;
-       tok = strtok_r (NULL, " ", &sptr))
-  {
-    struct TALER_KYCLOGIC_KycCheck *kc;
-
-    kc = add_check (tok);
-    GNUNET_array_append (rchecks,
-                         num_rchecks,
-                         kc);
-  }
-  *p_checks = rchecks;
-  *num_p_checks = num_rchecks;
-}
-
-
-/**
  * Parse configuration of a KYC provider.
  *
  * @param cfg configuration to parse
@@ -368,48 +581,35 @@ static enum GNUNET_GenericReturnValue
 add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
               const char *section)
 {
-  unsigned long long cost;
+  struct TALER_Amount cost;
   char *logic;
-  char *ut_s;
-  enum TALER_KYCLOGIC_KycUserType ut;
-  char *checks;
+  char *converter;
   struct TALER_KYCLOGIC_Plugin *lp;
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
-                                             section,
-                                             "COST",
-                                             &cost))
+      TALER_config_get_amount (cfg,
+                               section,
+                               "COST",
+                               &cost))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "COST",
-                               "number required");
+                               "amount required");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
-                                             "USER_TYPE",
-                                             &ut_s))
+                                             "CONVERTER",
+                                             &converter))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "USER_TYPE");
+                               "CONVERTER");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      TALER_KYCLOGIC_kyc_user_type_from_string (ut_s,
-                                                &ut))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "USER_TYPE",
-                               "valid user type required");
-    GNUNET_free (ut_s);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (ut_s);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
@@ -419,195 +619,84 @@ add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "LOGIC");
+    GNUNET_free (converter);
     return GNUNET_SYSERR;
   }
   lp = load_logic (cfg,
                    logic);
   if (NULL == lp)
   {
-    GNUNET_free (logic);
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "LOGIC",
                                "logic plugin could not be loaded");
+    GNUNET_free (logic);
+    GNUNET_free (converter);
     return GNUNET_SYSERR;
   }
   GNUNET_free (logic);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             section,
-                                             "PROVIDED_CHECKS",
-                                             &checks))
+  pd = lp->load_configuration (lp->cls,
+                               section);
+  if (NULL == pd)
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "PROVIDED_CHECKS");
+    GNUNET_free (converter);
     return GNUNET_SYSERR;
   }
+
   {
     struct TALER_KYCLOGIC_KycProvider *kp;
 
     kp = GNUNET_new (struct TALER_KYCLOGIC_KycProvider);
-    kp->provider_section_name = section;
-    kp->user_type = ut;
-    kp->logic = lp;
     kp->cost = cost;
-    add_checks (checks,
-                &kp->provided_checks,
-                &kp->num_checks);
-    GNUNET_free (checks);
-    kp->pd = lp->load_configuration (lp->cls,
-                                     section);
-    if (NULL == kp->pd)
-    {
-      GNUNET_free (kp);
-      return GNUNET_SYSERR;
-    }
+    kp->provider_name
+      = GNUNET_strdup (&section[strlen ("kyc-provider-")]);
+    kp->converter_name = converter;
+    kp->logic = lp;
+    kp->pd = pd;
     GNUNET_array_append (kyc_providers,
                          num_kyc_providers,
                          kp);
-    for (unsigned int i = 0; i<kp->num_checks; i++)
-    {
-      struct TALER_KYCLOGIC_KycCheck *kc = kp->provided_checks[i];
-
-      GNUNET_array_append (kc->providers,
-                           kc->num_providers,
-                           kp);
-    }
   }
   return GNUNET_OK;
 }
 
 
 /**
- * Parse configuration @a cfg in section @a section for
- * the specification of a KYC trigger.
+ * Tokenize @a input along @a token
+ * and build an array of the tokens.
  *
- * @param cfg configuration to parse
- * @param section configuration section to parse
- * @return #GNUNET_OK on success
+ * @param[in,out] input the input to tokenize; clobbered
+ * @param sep separator between tokens to separate @a input on
+ * @param[out] p_strs where to put array of tokens
+ * @param[out] num_p_strs set to length of @a p_strs array
  */
-static enum GNUNET_GenericReturnValue
-add_trigger (const struct GNUNET_CONFIGURATION_Handle *cfg,
-             const char *section)
+static void
+add_tokens (char *input,
+            const char *sep,
+            char ***p_strs,
+            unsigned int *num_strs)
 {
-  char *ot_s;
-  struct TALER_Amount threshold;
-  struct GNUNET_TIME_Relative timeframe;
-  char *checks;
-  enum TALER_KYCLOGIC_KycTriggerEvent ot;
+  char *sptr;
+  char **rstr = NULL;
+  unsigned int num_rstr = 0;
 
-  if (GNUNET_OK !=
-      TALER_config_get_amount (cfg,
-                               section,
-                               "THRESHOLD",
-                               &threshold))
+  for (char *tok = strtok_r (input, sep, &sptr);
+       NULL != tok;
+       tok = strtok_r (NULL, sep, &sptr))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "THRESHOLD",
-                               "amount required");
-    return GNUNET_SYSERR;
+    GNUNET_array_append (rstr,
+                         num_rstr,
+                         GNUNET_strdup (tok));
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             section,
-                                             "OPERATION_TYPE",
-                                             &ot_s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "OPERATION_TYPE");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_KYCLOGIC_kyc_trigger_from_string (ot_s,
-                                              &ot))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "OPERATION_TYPE",
-                               "valid trigger type required");
-    GNUNET_free (ot_s);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (ot_s);
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           section,
-                                           "TIMEFRAME",
-                                           &timeframe))
-  {
-    if (TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE == ot)
-    {
-      timeframe = GNUNET_TIME_UNIT_ZERO;
-    }
-    else
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 "TIMEFRAME",
-                                 "duration required");
-      return GNUNET_SYSERR;
-    }
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             section,
-                                             "REQUIRED_CHECKS",
-                                             &checks))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "REQUIRED_CHECKS");
-    return GNUNET_SYSERR;
-  }
-
-  {
-    struct TALER_KYCLOGIC_KycTrigger *kt;
-
-    kt = GNUNET_new (struct TALER_KYCLOGIC_KycTrigger);
-    kt->timeframe = timeframe;
-    kt->threshold = threshold;
-    kt->trigger = ot;
-    add_checks (checks,
-                &kt->required_checks,
-                &kt->num_checks);
-    GNUNET_free (checks);
-    GNUNET_array_append (kyc_triggers,
-                         num_kyc_triggers,
-                         kt);
-    for (unsigned int i = 0; i<kt->num_checks; i++)
-    {
-      const struct TALER_KYCLOGIC_KycCheck *ck = kt->required_checks[i];
-
-      if (0 != ck->num_providers)
-        continue;
-      if (0 == strcmp (ck->name,
-                       KYC_CHECK_IMPOSSIBLE))
-        continue;
-      {
-        char *msg;
-
-        GNUNET_asprintf (&msg,
-                         "Required check `%s' cannot be satisfied: not provided by any provider",
-                         ck->name);
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   section,
-                                   "REQUIRED_CHECKS",
-                                   msg);
-        GNUNET_free (msg);
-      }
-      return GNUNET_SYSERR;
-    }
-  }
-  return GNUNET_OK;
+  *p_strs = rstr;
+  *num_strs = num_rstr;
 }
 
 
 /**
- * Closure for #handle_section().
+ * Closure for the handle_XXX_section functions
+ * that parse configuration sections matching certain
+ * prefixes.
  */
 struct SectionContext
 {
@@ -642,9 +731,184 @@ handle_provider_section (void *cls,
     if (GNUNET_OK !=
         add_provider (sc->cfg,
                       section))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Setup failed in configuration section `%s'\n",
+                  section);
       sc->result = false;
+    }
     return;
   }
+}
+
+
+/**
+ * Parse configuration @a cfg in section @a section for
+ * the specification of a KYC check.
+ *
+ * @param cfg configuration to parse
+ * @param section configuration section to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
+           const char *section)
+{
+  bool voluntary;
+  enum CheckType ct;
+  char *form_name = NULL;
+  char *description = NULL;
+  json_t *description_i18n = NULL;
+  char *requires = NULL;
+  char *outputs = NULL;
+  char *fallback = NULL;
+
+  voluntary = (GNUNET_YES ==
+               GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                                     section,
+                                                     "VOLUNTARY"));
+
+  {
+    char *type_s;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               section,
+                                               "TYPE",
+                                               &type_s))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "TYPE");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        check_type_from_string (type_s,
+                                &ct))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "TYPE",
+                                 "valid check type required");
+      GNUNET_free (type_s);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (type_s);
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "DESCRIPTION",
+                                             &description))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "DESCRIPTION",
+                               "description required");
+    goto fail;
+  }
+
+  {
+    char *tmp;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               section,
+                                               "DESCRIPTION_I18N",
+                                               &tmp))
+    {
+      json_error_t err;
+
+      description_i18n = json_loads (tmp,
+                                     JSON_REJECT_DUPLICATES,
+                                     &err);
+      GNUNET_free (tmp);
+      if (NULL == description_i18n)
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   section,
+                                   "DESCRIPTION_I18N",
+                                   err.text);
+        goto fail;
+      }
+      if (! TALER_JSON_check_i18n (description_i18n) )
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   section,
+                                   "DESCRIPTION_I18N",
+                                   "JSON with internationalization map required");
+        goto fail;
+      }
+    }
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "REQUIRES",
+                                             &requires))
+  {
+    /* no requirements is OK */
+    requires = GNUNET_strdup ("");
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "OUTPUTS",
+                                             &outputs))
+  {
+    /* no outputs is OK */
+    outputs = GNUNET_strdup ("");
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "FALLBACK",
+                                             &fallback))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FALLBACK",
+                               "fallback measure required");
+    goto fail;
+  }
+
+  {
+    struct TALER_KYCLOGIC_KycCheck *kc;
+
+    kc = GNUNET_new (struct TALER_KYCLOGIC_KycCheck);
+    kc->check_name = GNUNET_strdup (&section[strlen ("kyc-check-")]);
+    kc->description = description;
+    kc->description_i18n = description_i18n;
+    kc->requires = requires;
+    kc->fallback = fallback;
+    kc->outputs = outputs;
+    add_tokens (requires,
+                ";",
+                &kc->requires,
+                &kc->num_requires);
+    GNUNET_free (requires);
+    add_tokens (outputs,
+                " ",
+                &kc->outputs,
+                &kc->num_outputs);
+    GNUNET_free (outputs);
+    GNUNET_array_append (kyc_checks,
+                         num_kyc_checks,
+                         kc);
+  }
+  return GNUNET_OK;
+fail:
+  GNUNET_free (form_name);
+  GNUNET_free (description);
+  json_decref (description_i18n);
+  GNUNET_free (requires);
+  GNUNET_free (outputs);
+  GNUNET_free (fallback);
+  return GNUNET_SYSERR;
 }
 
 
@@ -655,18 +919,18 @@ handle_provider_section (void *cls,
  * @param section name of the section
  */
 static void
-handle_trigger_section (void *cls,
-                        const char *section)
+handle_check_section (void *cls,
+                      const char *section)
 {
   struct SectionContext *sc = cls;
 
   if (0 == strncasecmp (section,
-                        "kyc-legitimization-",
-                        strlen ("kyc-legitimization-")))
+                        "kyc-check-",
+                        strlen ("kyc-check-")))
   {
     if (GNUNET_OK !=
-        add_trigger (sc->cfg,
-                     section))
+        add_check (sc->cfg,
+                   section))
       sc->result = false;
     return;
   }
@@ -674,8 +938,307 @@ handle_trigger_section (void *cls,
 
 
 /**
- * Comparator for qsort. Compares two triggers
- * by timeframe to sort triggers by time.
+ * Parse configuration @a cfg in section @a section for
+ * the specification of a KYC rule.
+ *
+ * @param cfg configuration to parse
+ * @param section configuration section to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
+          const char *section)
+{
+  struct TALER_Amount threshold;
+  struct GNUNET_TIME_Relative timeframe;
+  enum TALER_KYCLOGIC_KycTriggerEvent ot;
+  char *measures;
+  bool exposed;
+  bool is_and;
+
+  if (GNUNET_YES !=
+      GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                            section,
+                                            "ENABLED"))
+    return GNUNET_OK;
+  if (GNUNET_OK !=
+      TALER_config_get_amount (cfg,
+                               section,
+                               "THRESHOLD",
+                               &threshold))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "THRESHOLD",
+                               "amount required");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_YES !=
+      GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                            section,
+                                            "EXPOSED"))
+    exposed = false;
+  {
+    enum GNUNET_GenericReturnValue r;
+
+    r = GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                              section,
+                                              "IS_AND_COMBINATOR");
+    if (GNUNET_SYSERR == r)
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "IS_AND_COMBINATOR",
+                                 "YES or NO required");
+      return GNUNET_SYSERR;
+    }
+    is_and = (GNUNET_YES == r);
+  }
+
+  {
+    char *ot_s;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               section,
+                                               "OPERATION_TYPE",
+                                               &ot_s))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "OPERATION_TYPE");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_kyc_trigger_from_string (ot_s,
+                                                &ot))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "OPERATION_TYPE",
+                                 "valid trigger type required");
+      GNUNET_free (ot_s);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (ot_s);
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           section,
+                                           "TIMEFRAME",
+                                           &timeframe))
+  {
+    if (TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE == ot)
+    {
+      timeframe = GNUNET_TIME_UNIT_ZERO;
+    }
+    else
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "TIMEFRAME",
+                                 "duration required");
+      return GNUNET_SYSERR;
+    }
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "NEXT_MEASURES",
+                                             &measures))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "NEXT_MEASURES");
+    return GNUNET_SYSERR;
+  }
+
+  {
+    struct TALER_KYCLOGIC_KycRule *kt;
+
+    kt = GNUNET_new (struct TALER_KYCLOGIC_KycRule);
+    kt->rule_name = GNUNET_strdup (&section[strlen ("kyc-rule-")]);
+    kt->timeframe = timeframe;
+    kt->threshold = threshold;
+    kt->trigger = ot;
+    kt->is_and_combinator = is_and;
+    kt->exposed = exposed;
+    add_tokens (measures,
+                " ",
+                &kt->next_measures,
+                &kt->num_measures);
+    GNUNET_free (measures);
+    GNUNET_array_append (kyc_rules,
+                         num_kyc_rules,
+                         kt);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function to iterate over configuration sections.
+ *
+ * @param cls a `struct SectionContext *`
+ * @param section name of the section
+ */
+static void
+handle_rule_section (void *cls,
+                     const char *section)
+{
+  struct SectionContext *sc = cls;
+
+  if (0 == strncasecmp (section,
+                        "kyc-rule-",
+                        strlen ("kyc-rule-")))
+  {
+    if (GNUNET_OK !=
+        add_rule (sc->cfg,
+                  section))
+      sc->result = false;
+    return;
+  }
+}
+
+
+/**
+ * Parse configuration @a cfg in section @a section for
+ * the specification of an AML program.
+ *
+ * @param cfg configuration to parse
+ * @param section configuration section to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
+             const char *section)
+{
+  char *command = NULL;
+  char *description = NULL;
+  char *fallback = NULL;
+  char *required_contexts = NULL;
+  char *required_attributes = NULL;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "COMMAND",
+                                             &command))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "COMMAND",
+                               "command required");
+    goto fail;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "DESCRIPTION",
+                                             &description))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "DESCRIPTION",
+                               "description required");
+    goto fail;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "FALLBACK",
+                                             &fallback))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "FALLBACK",
+                               "fallback measure name required");
+    goto fail;
+  }
+
+  required_contexts = command_output (command,
+                                      "--required-context");
+  if (NULL == required_contexts)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "COMMAND",
+                               "output for --required-context invalid");
+    goto fail;
+  }
+  required_attributes = command_output (command,
+                                        "--required-attributes");
+  if (NULL == required_attributes)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "COMMAND",
+                               "output for --required-attributes invalid");
+    goto fail;
+  }
+
+  {
+    struct TALER_KYCLOGIC_AmlProgram *ap;
+
+    ap = GNUNET_new (struct TALER_KYCLOGIC_AmlProgram);
+    ap->program_name = GNUNET_strdup (&section[strlen ("kyc-check-")]);
+    ap->command = command;
+    ap->description = description;
+    ap->fallback = fallback;
+    add_tokens (required_contexts,
+                "\n",
+                &ap->required_contexts,
+                &ap->num_required_contexts);
+    GNUNET_free (required_contexts);
+    add_tokens (required_attributes,
+                "\n",
+                &ap->required_attributes,
+                &ap->num_required_attributes);
+    GNUNET_free (required_attributes);
+    GNUNET_array_append (aml_programs,
+                         num_aml_programs,
+                         ap);
+  }
+  return GNUNET_OK;
+fail:
+  GNUNET_free (command);
+  GNUNET_free (description);
+  GNUNET_free (required_contexts);
+  GNUNET_free (required_attributes);
+  GNUNET_free (fallback);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function to iterate over configuration sections.
+ *
+ * @param cls a `struct SectionContext *`
+ * @param section name of the section
+ */
+static void
+handle_program_section (void *cls,
+                        const char *section)
+{
+  struct SectionContext *sc = cls;
+
+  if (0 == strncasecmp (section,
+                        "aml-program-",
+                        strlen ("aml-program-")))
+  {
+    if (GNUNET_OK !=
+        add_rule (sc->cfg,
+                  section))
+      sc->result = false;
+    return;
+  }
+}
+
+
+/**
+ * Comparator for qsort. Compares two rules
+ * by timeframe to sort rules by time.
  *
  * @param p1 first trigger to compare
  * @param p2 second trigger to compare
@@ -685,18 +1248,18 @@ static int
 sort_by_timeframe (const void *p1,
                    const void *p2)
 {
-  struct TALER_KYCLOGIC_KycTrigger **t1 = (struct
-                                           TALER_KYCLOGIC_KycTrigger **) p1;
-  struct TALER_KYCLOGIC_KycTrigger **t2 = (struct
-                                           TALER_KYCLOGIC_KycTrigger **) p2;
+  struct TALER_KYCLOGIC_KycRule **r1
+    = (struct TALER_KYCLOGIC_KycRule **) p1;
+  struct TALER_KYCLOGIC_KycRule **r2
+    = (struct TALER_KYCLOGIC_KycRule **) p2;
 
-  if (GNUNET_TIME_relative_cmp ((*t1)->timeframe,
+  if (GNUNET_TIME_relative_cmp ((*r1)->timeframe,
                                 <,
-                                (*t2)->timeframe))
+                                (*r2)->timeframe))
     return -1;
-  if (GNUNET_TIME_relative_cmp ((*t1)->timeframe,
+  if (GNUNET_TIME_relative_cmp ((*r1)->timeframe,
                                 >,
-                                (*t2)->timeframe))
+                                (*r2)->timeframe))
     return 1;
   return 0;
 }
@@ -714,7 +1277,13 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                          &handle_provider_section,
                                          &sc);
   GNUNET_CONFIGURATION_iterate_sections (cfg,
+                                         &handle_check_section,
+                                         &sc);
+  GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &handle_trigger_section,
+                                         &sc);
+  GNUNET_CONFIGURATION_iterate_sections (cfg,
+                                         &handle_program_section,
                                          &sc);
   if (! sc.result)
   {
@@ -722,22 +1291,12 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
     return GNUNET_SYSERR;
   }
 
-  /* sanity check: ensure at least one provider exists
-     for any trigger and indidivual or business. */
-  for (unsigned int i = 0; i<num_kyc_checks; i++)
-    if (0 == kyc_checks[i]->num_providers)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "No provider available for required KYC check `%s'\n",
-                  kyc_checks[i]->name);
-      TALER_KYCLOGIC_kyc_done ();
-      return GNUNET_SYSERR;
-    }
   if (0 != num_kyc_triggers)
     qsort (kyc_triggers,
            num_kyc_triggers,
            sizeof (struct TALER_KYCLOGIC_KycTrigger *),
            &sort_by_timeframe);
+  // FIXME: add configuration sanity checking!
   return GNUNET_OK;
 }
 
@@ -745,13 +1304,16 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 void
 TALER_KYCLOGIC_kyc_done (void)
 {
-  for (unsigned int i = 0; i<num_kyc_triggers; i++)
+  for (unsigned int i = 0; i<num_kyc_rules; i++)
   {
-    struct TALER_KYCLOGIC_KycTrigger *kt = kyc_triggers[i];
+    struct TALER_KYCLOGIC_KycRule *kt = kyc_rules[i];
 
-    GNUNET_array_grow (kt->required_checks,
-                       kt->num_checks,
+    for (unsigned int j = 0; j<kt->num_measures; j++)
+      GNUNET_free (kt->next_measures[j]);
+    GNUNET_array_grow (kt->next_measures,
+                       kt->num_measures,
                        0);
+    GNUNET_free (kt->rule_name);
     GNUNET_free (kt);
   }
   GNUNET_array_grow (kyc_triggers,
@@ -762,9 +1324,8 @@ TALER_KYCLOGIC_kyc_done (void)
     struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
 
     kp->logic->unload_configuration (kp->pd);
-    GNUNET_array_grow (kp->provided_checks,
-                       kp->num_checks,
-                       0);
+    GNUNET_free (kp->provider_name);
+    GNUNET_free (kp->converter_name);
     GNUNET_free (kp);
   }
   GNUNET_array_grow (kyc_providers,
@@ -787,16 +1348,65 @@ TALER_KYCLOGIC_kyc_done (void)
   {
     struct TALER_KYCLOGIC_KycCheck *kc = kyc_checks[i];
 
-    GNUNET_array_grow (kc->providers,
-                       kc->num_providers,
+    GNUNET_free (kc->check_name);
+    GNUNET_free (kc->description);
+    json_decref (kc->description_i18n);
+    for (unsigned int j = 0; i<num_requires; j++)
+      GNUNET_free (kc->requires[j]);
+    GNUNET_array_grow (kc->requires,
+                       kc->num_requires,
                        0);
-    GNUNET_free (kc->name);
+    GNUNET_free (kc->fallback);
+    for (unsigned int j = 0; i<num_outputs; j++)
+      GNUNET_free (kc->outputs[j]);
+    GNUNET_array_grow (kc->outputs,
+                       kc->num_outputs,
+                       0);
+    switch (kc->type)
+    {
+    case CT_INFO:
+      break;
+    case CT_FORM:
+      GNUNET_free (kc->details.form.name);
+      break;
+    case CT_LINK:
+      break;
+    }
     GNUNET_free (kc);
   }
   GNUNET_array_grow (kyc_checks,
                      num_kyc_checks,
                      0);
+  for (unsigned int i = 0; i<num_aml_programs; i++)
+  {
+    struct TALER_KYCLOGIC_AmlProgram *ap = aml_programs[i];
+
+    GNUNET_free (ap->program_name);
+    GNUNET_free (ap->command);
+    GNUNET_free (ap->description);
+    GNUNET_free (ap->fallback);
+    for (unsigned int j = 0; i<num_required_contexts; j++)
+      GNUNET_free (kc->required_contexts[j]);
+    GNUNET_array_grow (ap->required_contexts,
+                       ap->num_required_contexts,
+                       0);
+    for (unsigned int j = 0; i<num_required_attributes; j++)
+      GNUNET_free (kc->required_attributes[j]);
+    GNUNET_array_grow (ap->required_attributes,
+                       ap->num_required_attributes,
+                       0);
+    GNUNET_free (ap);
+  }
+  GNUNET_array_grow (aml_programs,
+                     num_aml_programs,
+                     0);
 }
+
+
+/* end of taler-exchange-httpd_kyc.c */
+
+#if 0
+// FIXME from here...
 
 
 /**
@@ -1032,13 +1642,14 @@ remove_satisfied (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
-                                  const struct TALER_PaytoHashP *h_payto,
-                                  TALER_KYCLOGIC_KycSatisfiedIterator ki,
-                                  void *ki_cls,
-                                  TALER_KYCLOGIC_KycAmountIterator ai,
-                                  void *ai_cls,
-                                  char **required)
+TALER_KYCLOGIC_kyc_test_required (
+  enum TALER_KYCLOGIC_KycTriggerEvent event,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_KYCLOGIC_KycSatisfiedIterator ki,
+  void *ki_cls,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls,
+  char **required)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
@@ -1202,12 +1813,13 @@ TALER_KYCLOGIC_kyc_get_details (
 
 
 enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_check_satisfied (char **requirements,
-                                const struct TALER_PaytoHashP *h_payto,
-                                json_t **kyc_details,
-                                TALER_KYCLOGIC_KycSatisfiedIterator ki,
-                                void *ki_cls,
-                                bool *satisfied)
+TALER_KYCLOGIC_check_satisfied (
+  char **requirements,
+  const struct TALER_PaytoHashP *h_payto,
+  json_t **kyc_details,
+  TALER_KYCLOGIC_KycSatisfiedIterator ki,
+  void *ki_cls,
+  bool *satisfied)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
@@ -1292,12 +1904,12 @@ TALER_KYCLOGIC_check_satisfied (char **requirements,
 
 
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
-                                      enum TALER_KYCLOGIC_KycUserType ut,
-                                      struct TALER_KYCLOGIC_Plugin **plugin,
-                                      struct TALER_KYCLOGIC_ProviderDetails **pd
-                                      ,
-                                      const char **configuration_section)
+TALER_KYCLOGIC_requirements_to_logic (
+  const char *requirements,
+  enum TALER_KYCLOGIC_KycUserType ut,
+  struct TALER_KYCLOGIC_Plugin **plugin,
+  struct TALER_KYCLOGIC_ProviderDetails **pd,
+  const char **configuration_section)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
@@ -1378,10 +1990,11 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
 
 
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_lookup_logic (const char *name,
-                             struct TALER_KYCLOGIC_Plugin **plugin,
-                             struct TALER_KYCLOGIC_ProviderDetails **pd,
-                             const char **provider_section)
+TALER_KYCLOGIC_lookup_logic (
+  const char *name,
+  struct TALER_KYCLOGIC_Plugin **plugin,
+  struct TALER_KYCLOGIC_ProviderDetails **pd,
+  const char **provider_section)
 {
   for (unsigned int i = 0; i<num_kyc_providers; i++)
   {
@@ -1463,4 +2076,36 @@ TALER_KYCLOGIC_lookup_checks (const char *section_name,
 }
 
 
-/* end of taler-exchange-httpd_kyc.c */
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_check_satisfiable (
+  const char *check_name)
+{
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+    if (0 == strcmp (check_name,
+                     kyc_checks[i]->name))
+      return GNUNET_OK;
+  if (0 == strcmp (check_name,
+                   KYC_CHECK_IMPOSSIBLE))
+    return GNUNET_NO;
+  return GNUNET_SYSERR;
+}
+
+
+json_t *
+TALER_KYCLOGIC_get_satisfiable ()
+{
+  json_t *requirements;
+
+  requirements = json_array ();
+  GNUNET_assert (NULL != requirements);
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        requirements,
+        json_string (kyc_checks[i]->name)));
+  return requirements;
+}
+
+
+#endif

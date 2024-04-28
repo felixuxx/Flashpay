@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -124,10 +124,11 @@ TALER_KYCLOGIC_kyc_done (void);
  * @param cb_cls closure for @a cb
  */
 typedef void
-(*TALER_KYCLOGIC_KycAmountIterator)(void *cls,
-                                    struct GNUNET_TIME_Absolute limit,
-                                    TALER_EXCHANGEDB_KycAmountCallback cb,
-                                    void *cb_cls);
+(*TALER_KYCLOGIC_KycAmountIterator)(
+  void *cls,
+  struct GNUNET_TIME_Absolute limit,
+  TALER_EXCHANGEDB_KycAmountCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -139,8 +140,9 @@ typedef void
  * @param threshold a relevant threshold amount
  */
 typedef void
-(*TALER_KYCLOGIC_KycThresholdIterator)(void *cls,
-                                       const struct TALER_Amount *threshold);
+(*TALER_KYCLOGIC_KycThresholdIterator)(
+  void *cls,
+  const struct TALER_Amount *threshold);
 
 
 /**
@@ -182,13 +184,14 @@ typedef enum GNUNET_DB_QueryStatus
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
-                                  const struct TALER_PaytoHashP *h_payto,
-                                  TALER_KYCLOGIC_KycSatisfiedIterator ki,
-                                  void *ki_cls,
-                                  TALER_KYCLOGIC_KycAmountIterator ai,
-                                  void *ai_cls,
-                                  char **required);
+TALER_KYCLOGIC_kyc_test_required (
+  enum TALER_KYCLOGIC_KycTriggerEvent event,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_KYCLOGIC_KycSatisfiedIterator ki,
+  void *ki_cls,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls,
+  char **required);
 
 
 /**
@@ -206,12 +209,13 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
  * @return transaction status (from @a ki)
  */
 enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_check_satisfied (char **requirements,
-                                const struct TALER_PaytoHashP *h_payto,
-                                json_t **kyc_details,
-                                TALER_KYCLOGIC_KycSatisfiedIterator ki,
-                                void *ki_cls,
-                                bool *satisfied);
+TALER_KYCLOGIC_check_satisfied (
+  char **requirements,
+  const struct TALER_PaytoHashP *h_payto,
+  json_t **kyc_details,
+  TALER_KYCLOGIC_KycSatisfiedIterator ki,
+  void *ki_cls,
+  bool *satisfied);
 
 
 /**
@@ -293,12 +297,12 @@ TALER_KYCLOGIC_get_satisfiable (void);
  * @param[out] configuration_section set to the name of the KYC logic configuration section * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
-                                      enum TALER_KYCLOGIC_KycUserType ut,
-                                      struct TALER_KYCLOGIC_Plugin **plugin,
-                                      struct TALER_KYCLOGIC_ProviderDetails **pd
-                                      ,
-                                      const char **configuration_section);
+TALER_KYCLOGIC_requirements_to_logic (
+  const char *requirements,
+  enum TALER_KYCLOGIC_KycUserType ut,
+  struct TALER_KYCLOGIC_Plugin **plugin,
+  struct TALER_KYCLOGIC_ProviderDetails **pd,
+  const char **configuration_section);
 
 
 /**
@@ -311,10 +315,11 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_lookup_logic (const char *name,
-                             struct TALER_KYCLOGIC_Plugin **plugin,
-                             struct TALER_KYCLOGIC_ProviderDetails **pd,
-                             const char **configuration_section);
+TALER_KYCLOGIC_lookup_logic (
+  const char *name,
+  struct TALER_KYCLOGIC_Plugin **plugin,
+  struct TALER_KYCLOGIC_ProviderDetails **pd,
+  const char **configuration_section);
 
 
 /**
@@ -327,8 +332,9 @@ TALER_KYCLOGIC_lookup_logic (const char *name,
  *   names of the checks provided by this KYC provider
  */
 void
-TALER_KYCLOGIC_lookup_checks (const char *section_name,
-                              unsigned int *num_checks,
-                              char ***provided_checks);
+TALER_KYCLOGIC_lookup_checks (
+  const char *section_name,
+  unsigned int *num_checks,
+  char ***provided_checks);
 
 #endif
