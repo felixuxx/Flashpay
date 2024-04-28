@@ -168,6 +168,19 @@ TALER_JSON_pack_token_issue_sig (
 
 
 /**
+  * Generate packer instruction for a JSON field of type token envelope.
+  *
+  * @param name name of the field to add to the object
+  * @param envelope blinded token envelope
+  * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_token_envelope (
+  const char *name,
+  const struct TALER_TokenEnvelopeP *envelope);
+
+
+/**
  * Generate packer instruction for a JSON field of type
  * exchange withdraw values (/csr).
  *

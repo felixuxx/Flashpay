@@ -171,6 +171,22 @@ TALER_JSON_pack_token_issue_sig (
 
 
 struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_token_envelope (
+  const char *name,
+  const struct TALER_TokenEnvelopeP *envelope)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  if (NULL == envelope)
+    return ps;
+  return GNUNET_JSON_pack_blinded_message (name,
+                                           envelope->blinded_pub);
+}
+
+
+struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_exchange_withdraw_values (
   const char *name,
   const struct TALER_ExchangeWithdrawValues *ewv)
@@ -263,37 +279,8 @@ TALER_JSON_pack_blinded_planchet (
 
   if (NULL == blinded_planchet)
     return ps;
-  bm = blinded_planchet->blinded_message;
-  switch (bm->cipher)
-  {
-  case GNUNET_CRYPTO_BSA_INVALID:
-    break;
-  case GNUNET_CRYPTO_BSA_RSA:
-    ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("cipher",
-                               "RSA"),
-      GNUNET_JSON_pack_data_varsize (
-        "rsa_blinded_planchet",
-        bm->details.rsa_blinded_message.blinded_msg,
-        bm->details.rsa_blinded_message.blinded_msg_size));
-    return ps;
-  case GNUNET_CRYPTO_BSA_CS:
-    ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("cipher",
-                               "CS"),
-      GNUNET_JSON_pack_data_auto (
-        "cs_nonce",
-        &bm->details.cs_blinded_message.nonce),
-      GNUNET_JSON_pack_data_auto (
-        "cs_blinded_c0",
-        &bm->details.cs_blinded_message.c[0]),
-      GNUNET_JSON_pack_data_auto (
-        "cs_blinded_c1",
-        &bm->details.cs_blinded_message.c[1]));
-    return ps;
-  }
-  GNUNET_assert (0);
-  return ps;
+  return GNUNET_JSON_pack_blinded_message (name,
+                                           blinded_planchet->blinded_message);
 }
 
 
