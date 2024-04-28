@@ -1,7 +1,7 @@
-﻿Terms Of Service
+﻿Terms of Service
 ================
 
-Last Updated: 09.06.2022
+Last update: 26.04.2024
 
 Welcome! The ICE research center of the Bern University of Applied Sciences
 in Switzerland (“we,” “our,” or “us”) provides an experimental payment service
@@ -34,22 +34,22 @@ carefully.
 Highlights:
 ~~~~~~~~~~~
 
-    • You are responsible for keeping the data in your Taler Wallet at all times
+* You are responsible for keeping the data in your Taler Wallet at all times
       under your control. Any losses arising from you not being in control of
       your private information are your problem.
-    • We may transfer funds we receive from our users to any legal
+* We may transfer funds we receive from our users to any legal
       recipient to the best of our ability within the limitations of the law and
       our implementation. However, the Services offered today are highly
       experimental and the set of recipients of funds is severely restricted.
       Again, we stress this is a research experiment and technically all funds
       held by the exchange are owned by the research group of the university.
-    • For our Services, we may charge transaction fees. The specific fee structure
+* For our Services, we may charge transaction fees. The specific fee structure
       is provided based on the Taler protocol and should be shown to you when you
       withdraw electronic coins using a Taler Wallet. You agree and understand
       that the Taler protocol allows for the fee structure to change.
-    • You agree to not intentionally overwhelm our systems with requests and
+* You agree to not intentionally overwhelm our systems with requests and
       follow responsible disclosure if you find security issues in our services.
-    • We cannot be held accountable for our Services not being available due to
+* We cannot be held accountable for our Services not being available due to
       any circumstances. If we modify or terminate our services,
       we may give you the opportunity to recover your funds. However,
       given the experimental state of the Services today, this may not be
@@ -152,7 +152,7 @@ modified or unmodified form. However, the GPL is a strong copyleft license,
 which means that any derivative works must be distributed under the same
 license terms as the original software. If you have any questions, you should
 review the GNU GPL’s full terms and conditions at
-https://www.gnu.org/licenses/gpl-3.0.en.html.  “Taler” itself is a trademark
+https://www.gnu.org/licenses/.  “Taler” itself is a trademark
 of Taler Systems SA. You are welcome to use the name in relation to processing
 payments using the Taler protocol, assuming your use is compatible with an
 official release from the GNU Project that is not older than two years.
@@ -171,15 +171,13 @@ Taler Wallet, including, but not limited to your Taler Wallet coins or backup
 encryption keys.  You release us from all liability related to any losses,
 damages, or claims arising from:
 
-(a) user error such as forgotten passwords, incorrectly constructed
-    transactions;
-(b) server failure or data loss;
-(c) unauthorized access to the Taler Wallet application;
-(d) bugs or other errors in the Taler Wallet software; and
-(e) any unauthorized third party activities, including, but not limited to,
-    the use of viruses, phishing, brute forcing, or other means of attack
-    against the Taler Wallet. We make no representations concerning any
-    Third Party Content contained in or accessed through our Services.
+1) user error such as forgotten passwords, incorrectly constructed transactions;
+2) server failure or data loss;
+3) unauthorized access to the Taler Wallet application;
+4) bugs or other errors in the Taler Wallet software; and
+5) any unauthorized third party activities, including, but not limited to, the use of 
+viruses, phishing, brute forcing, or other means of attack against the Taler Wallet. We make no 
+representations concerning any Third Party Content contained in or accessed through our Services.
 
 Any other terms, conditions, warranties, or representations associated with
 such content, are solely between you and such organizations and/or
@@ -192,19 +190,18 @@ acting, or purporting to act on our behalf (collectively the “Taler Parties”
 be liable to you under contract, tort, strict liability, negligence, or any
 other legal or equitable theory, for:
 
-(a) any lost profits, data loss, cost of procurement of substitute goods or
-    services, or direct, indirect, incidental, special, punitive, compensatory,
-    or consequential damages of any kind whatsoever resulting from:
+1) any direct damages or 
+2) any lost profits, data loss, cost of procurement of substitute goods or services, or 
+direct, indirect, incidental, special, punitive, compensatory, or consequential damages of any kind 
+whatsoever resulting from:
 
-  (i) your use of, or conduct in connection with, our services;
-  (ii) any unauthorized use of your wallet and/or private key due to your
-       failure to maintain the confidentiality of your wallet;
-  (iii) any interruption or cessation of transmission to or from the services; or
-  (iv) any bugs, viruses, trojan horses, or the like that are found in the Taler
-       Wallet software or that may be transmitted to or through our services by
-       any third party (regardless of the source of origination), or
-
-(b) any direct damages.
+* your use of, or conduct in connection with, our services;
+* any unauthorized use of your wallet and/or private key due to your failure to maintain the 
+confidentiality of your wallet;
+* any interruption or cessation of transmission to or from the services; or
+* any bugs, viruses, trojan horses, or the like that are found in the Taler Wallet software 
+or that may be transmitted to or through our services by any third party (regardless of the source 
+of origination).
 
 These limitations apply regardless of legal theory, whether based on tort,
 strict liability, breach of contract, breach of warranty, or any other legal
