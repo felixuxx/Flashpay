@@ -4326,7 +4326,7 @@ struct TALER_EXCHANGE_KycStatus
      */
     struct TALER_EXCHANGE_AccountKycStatus accepted;
 
-  };
+  } details;
 
 };
 
@@ -4375,7 +4375,175 @@ void
 TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
 
 
-// FIXME: /kyc-info API
+/**
+ * Information about a KYC requirement.
+ */
+struct TALER_EXCHANGE_RequirementInformation
+{
+  /**
+   * Which form should be run. Special values are
+   * "INFO" (only show information, no form) and
+   * "LINK" (only link to "/kyc-start/$ID").
+   */
+  const char *form;
+
+  /**
+   * Description of the check.
+   */
+  const char *description;
+
+  /**
+   * Translations of @e description, if available.
+   */
+  const json_t *description_i18n;
+
+  /**
+   * ID of the requirement, NULL if
+   * @e form is "INFO". Used to construct
+   * the "/kyc-upload/$ID" and "/kyc-start/$ID" endpoints.
+   */
+  const char *id;
+
+};
+
+
+/**
+ * Information about a KYC check the client may
+ * try to satisfy voluntarily.
+ */
+struct TALER_EXCHANGE_VoluntaryCheckInformation
+{
+
+  /**
+   * Name of the check.
+   */
+  const char *name;
+
+  /**
+   * Description of the check.
+   */
+  const char *description;
+
+  /**
+   * Translations of @e description, if available.
+   */
+  const json_t *description_i18n;
+
+  // FIXME: is the above in any way sufficient
+  // to begin the check? Do we not need at least
+  // something more??!?
+};
+
+
+/**
+ * KYC info response details.
+ */
+struct TALER_EXCHANGE_KycProcessClientInformation
+{
+  /**
+   * HTTP status code returned by the exchange.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, if any.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Details depending on @e http_status.
+   */
+  union
+  {
+
+    /**
+     * @e http_status is OK.
+     */
+    struct
+    {
+
+      /**
+       * Array with information about availalbe voluntary
+       * checks.
+       */
+      const struct TALER_EXCHANGE_RequirementInformation *requirements;
+
+      /**
+       * Array with information about availalbe voluntary
+       * checks.
+       * FIXME: not implemented until **vATTEST**.
+       */
+      const struct TALER_EXCHANGE_VoluntaryCheckInformation *vci;
+
+      /**
+       * Length of the @e requirements array.
+       */
+      unsigned int requirements_length;
+
+      /**
+       * Length of the @e vci array.
+       */
+      unsigned int vci_length;
+
+      /**
+       * True if all @e requirements are expected to be
+       * required, False if only one of the requirements
+       * is expected to be fulfilled.
+       */
+      bool is_and_combinator;
+
+    } ok;
+
+  } details;
+
+};
+
+/**
+ * Function called with the result of a KYC info request.
+ *
+ * @param cls closure
+ * @param kpci information about available KYC operations
+ */
+typedef void
+(*TALER_EXCHANGE_KycInfoCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_KycProcessClientInformation *kpci);
+
+
+/**
+ * Run interaction with exchange to check KYC
+ * information for a merchant or wallet account
+ * identified via a @a token.
+ *
+ * @param ctx CURL context
+ * @param url exchange base URL
+ * @param token access token of the client
+ * @param if_none_match HTTP ETag from previous response
+ * @param timeout how long to wait for a change in @a if_none_match
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return NULL on error
+ */
+struct TALER_EXCHANGE_KycInfoHandle *
+TALER_EXCHANGE_kyc_info (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct GNUNET_CRYPTO_AccountAccessTokenP *token,
+  const char *if_none_match,
+  struct GNUNET_TIME_Relative timeout,
+  TALER_EXCHANGE_KycStatusCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel KYC info operation.
+ *
+ * @param kih handle for operation to cancel
+ */
+void
+TALER_EXCHANGE_kyc_info_cancel (struct TALER_EXCHANGE_KycInfoHandle *kih);
+
+
 // FIXME: /kyc-upload API
 // FIXME: /kyc-start API
 
