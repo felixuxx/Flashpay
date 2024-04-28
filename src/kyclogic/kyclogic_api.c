@@ -129,9 +129,9 @@ struct TALER_KYCLOGIC_KycCheck
   char **outputs;
 
   /**
-   * Length of the @e requires array.
+   * Length of the @e outputs array.
    */
-  unsigned int num_requires;
+  unsigned int num_outputs;
 
   /**
    * True if clients can voluntarily trigger this check.
@@ -350,7 +350,7 @@ command_output (const char *command,
                 const char *argument)
 {
   char *rval;
-  size_t sval;
+  unsigned int sval;
   size_t soff;
   ssize_t ret;
   int sout[2];
@@ -420,7 +420,7 @@ command_output (const char *command,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Command `%s' %s failed with status %d\n",
                   command,
-                  arguments,
+                  argument,
                   wstatus);
       GNUNET_array_grow (rval,
                          sval,
@@ -881,11 +881,10 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
     kc = GNUNET_new (struct TALER_KYCLOGIC_KycCheck);
     kc->check_name = GNUNET_strdup (&section[strlen ("kyc-check-")]);
+    kc->voluntary = voluntary;
     kc->description = description;
     kc->description_i18n = description_i18n;
-    kc->requires = requires;
     kc->fallback = fallback;
-    kc->outputs = outputs;
     add_tokens (requires,
                 ";",
                 &kc->requires,
@@ -1228,8 +1227,8 @@ handle_program_section (void *cls,
                         strlen ("aml-program-")))
   {
     if (GNUNET_OK !=
-        add_rule (sc->cfg,
-                  section))
+        add_program (sc->cfg,
+                     section))
       sc->result = false;
     return;
   }
@@ -1280,7 +1279,7 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                          &handle_check_section,
                                          &sc);
   GNUNET_CONFIGURATION_iterate_sections (cfg,
-                                         &handle_trigger_section,
+                                         &handle_rule_section,
                                          &sc);
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &handle_program_section,
@@ -1291,10 +1290,10 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
     return GNUNET_SYSERR;
   }
 
-  if (0 != num_kyc_triggers)
-    qsort (kyc_triggers,
-           num_kyc_triggers,
-           sizeof (struct TALER_KYCLOGIC_KycTrigger *),
+  if (0 != num_kyc_rules)
+    qsort (kyc_rules,
+           num_kyc_rules,
+           sizeof (struct TALER_KYCLOGIC_KycRule *),
            &sort_by_timeframe);
   // FIXME: add configuration sanity checking!
   return GNUNET_OK;
@@ -1316,8 +1315,8 @@ TALER_KYCLOGIC_kyc_done (void)
     GNUNET_free (kt->rule_name);
     GNUNET_free (kt);
   }
-  GNUNET_array_grow (kyc_triggers,
-                     num_kyc_triggers,
+  GNUNET_array_grow (kyc_rules,
+                     num_kyc_rules,
                      0);
   for (unsigned int i = 0; i<num_kyc_providers; i++)
   {
@@ -1351,13 +1350,13 @@ TALER_KYCLOGIC_kyc_done (void)
     GNUNET_free (kc->check_name);
     GNUNET_free (kc->description);
     json_decref (kc->description_i18n);
-    for (unsigned int j = 0; i<num_requires; j++)
+    for (unsigned int j = 0; i<kc->num_requires; j++)
       GNUNET_free (kc->requires[j]);
     GNUNET_array_grow (kc->requires,
                        kc->num_requires,
                        0);
     GNUNET_free (kc->fallback);
-    for (unsigned int j = 0; i<num_outputs; j++)
+    for (unsigned int j = 0; i<kc->num_outputs; j++)
       GNUNET_free (kc->outputs[j]);
     GNUNET_array_grow (kc->outputs,
                        kc->num_outputs,
@@ -1385,13 +1384,13 @@ TALER_KYCLOGIC_kyc_done (void)
     GNUNET_free (ap->command);
     GNUNET_free (ap->description);
     GNUNET_free (ap->fallback);
-    for (unsigned int j = 0; i<num_required_contexts; j++)
-      GNUNET_free (kc->required_contexts[j]);
+    for (unsigned int j = 0; i<ap->num_required_contexts; j++)
+      GNUNET_free (ap->required_contexts[j]);
     GNUNET_array_grow (ap->required_contexts,
                        ap->num_required_contexts,
                        0);
-    for (unsigned int j = 0; i<num_required_attributes; j++)
-      GNUNET_free (kc->required_attributes[j]);
+    for (unsigned int j = 0; i<ap->num_required_attributes; j++)
+      GNUNET_free (ap->required_attributes[j]);
     GNUNET_array_grow (ap->required_attributes,
                        ap->num_required_attributes,
                        0);

@@ -299,7 +299,6 @@ TALER_KYCLOGIC_get_satisfiable (void);
 enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_requirements_to_logic (
   const char *requirements,
-  enum TALER_KYCLOGIC_KycUserType ut,
   struct TALER_KYCLOGIC_Plugin **plugin,
   struct TALER_KYCLOGIC_ProviderDetails **pd,
   const char **configuration_section);
