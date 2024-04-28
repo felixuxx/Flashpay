@@ -4376,6 +4376,12 @@ TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
 
 
 /**
+ * Handle for a "/kyc-info/" request.
+ */
+struct TALER_EXCHANGE_KycInfoHandle;
+
+
+/**
  * Information about a KYC requirement.
  */
 struct TALER_EXCHANGE_RequirementInformation
@@ -4544,8 +4550,93 @@ void
 TALER_EXCHANGE_kyc_info_cancel (struct TALER_EXCHANGE_KycInfoHandle *kih);
 
 
-// FIXME: /kyc-upload API
-// FIXME: /kyc-start API
+// FIXME: /kyc-upload API?
+
+
+/**
+ * Handle for an operation to start the KYC process.
+ */
+struct TALER_EXCHANGE_KycStartHandle;
+
+
+/**
+ * KYC start response details.
+ */
+struct TALER_EXCHANGE_KycStartResponse
+{
+  /**
+   * HTTP status code returned by the exchange.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, if any.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Details depending on @e http_status.
+   */
+  union
+  {
+
+    /**
+     * @e http_status is OK.
+     */
+    struct
+    {
+
+      /**
+       * Which URL to redirect to to begin the KYC process.
+       */
+      const char *redirect_url;
+
+    } ok;
+
+  } details;
+
+};
+
+/**
+ * Function called with the result of a KYC start request.
+ *
+ * @param cls closure
+ * @param ksr information about the started KYC operation
+ */
+typedef void
+(*TALER_EXCHANGE_KycStartCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_KycStartResponse *ksr);
+
+
+/**
+ * Run interaction with exchange to check KYC
+ * information for a merchant or wallet account
+ * identified via a @a token.
+ *
+ * @param ctx CURL context
+ * @param url exchange base URL
+ * @param id identifier for the KYC process to start
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return NULL on error
+ */
+struct TALER_EXCHANGE_KycStartHandle *
+TALER_EXCHANGE_kyc_start (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const char *id,
+  TALER_EXCHANGE_KycStartCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel KYC start operation.
+ *
+ * @param[in] ksh handle for operation to cancel
+ */
+void
+TALER_EXCHANGE_kyc_start_cancel (struct TALER_EXCHANGE_KycStartHandle *ksh);
 
 
 /**
@@ -5402,8 +5493,315 @@ TALER_EXCHANGE_management_update_aml_officer_cancel (
   struct TALER_EXCHANGE_ManagementUpdateAmlOfficer *rh);
 
 
-// FIXME: GET /aml/$OFFICER_PUB/measures endpoint
-// FIXME: GET /aml/$OFFICER_PUB/kyc-statistics endpoint
+/**
+ * @brief Handle for a GET /aml/$OFFICER_PUB/measures request.
+ */
+struct TALER_EXCHANGE_AmlGetMeasuresHandle;
+
+
+/**
+ * Information about a root measures available at the exchange
+ */
+struct TALER_EXCHANGE_AvailableAmlMeasures
+{
+  /**
+   * Name of the measure.
+   */
+  const char *measure_name;
+
+  /**
+   * Name of the KYC check.
+   */
+  const char *check_name;
+
+  /**
+   * Name of the AML program.
+   */
+  const char *prog_name;
+
+  /**
+   * Context for the check. Can be NULL.
+   */
+  const json_t*context;
+};
+
+/**
+ * Information about an AML programs available at the exchange
+ */
+struct TALER_EXCHANGE_AvailableAmlPrograms
+{
+
+  /**
+   * Name of the AML program.
+   */
+  const char *prog_name;
+
+  /**
+   * Description of what the AML program does.
+   */
+  const char *description;
+
+  /**
+   * Array of required field names in the context to run this AML program. SPA
+   * must check that the AML staff is providing adequate CONTEXT when defining
+   * a measure using this program.
+   */
+  const char **contexts;
+
+  /**
+   * List of required attribute names in the input of this AML program.  These
+   * attributes are the minimum that the check must produce (it may produce
+   * more).
+   */
+  const char **inputs;
+
+  /**
+   * Length of the @e contexts array.
+   */
+  unsigned int contexts_length;
+
+  /**
+   * Length of the @e inputs array.
+   */
+  unsigned int inputs_length;
+};
+
+
+/**
+ * Information about a KYC check available at the exchange
+ */
+struct TALER_EXCHANGE_AvailableKycChecks
+{
+
+  /**
+   * Name of the KYC check.
+   */
+  const char *check_name;
+
+  /**
+   * Description of the KYC check.
+   */
+  const char *description;
+
+  /**
+   * Internationalized description of the KYC check.
+   */
+  const json_t *description_i18n;
+
+  /**
+   * Name of the root measure that is to be taken when this check fails.
+   */
+  const char *fallback;
+
+  /**
+   * Array with the names of the fields that the CONTEXT must provide as
+   * inputs to this check.  SPA must check that the AML staff is providing
+   * adequate CONTEXT when defining a measure using this check.
+   */
+  const char **requires;
+
+  /**
+   * Array of the attributes names the check will output.  SPA must check that
+   * the outputs match the required inputs when combining a KYC check with an
+   * AML program into a measure.
+   */
+  const char **outputs;
+
+  /**
+   * Length of the @e requires array.
+   */
+  unsigned int requires_length;
+
+  /**
+   * Length of the @e outputs array.
+   */
+  unsigned int outputs_length;
+};
+
+
+/**
+ * Response from a GET /aml/$OFFICER_PUB/measures request.
+ */
+struct TALER_EXCHANGE_AmlGetMeasuresResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Information about the root measures available at the exchange
+       */
+      struct TALER_EXCHANGE_AvailableAmlMeasures *roots;
+
+      /**
+       * Information about the AML programs available at the exchange
+       */
+      struct TALER_EXCHANGE_AvailableAmlPrograms *programs;
+
+      /**
+       * Information about KYC checks available at the exchange
+       */
+      struct TALER_EXCHANGE_AvailableKycChecks *checks;
+
+      /**
+       * Length of the @e roots array.
+       */
+      unsigned int roots_length;
+
+      /**
+       * Length of the @e programs array.
+       */
+      unsigned int programs_length;
+
+      /**
+       * Length of the @e checks array.
+       */
+      unsigned int checks_length;
+
+    } ok;
+  } details;
+
+};
+
+
+/**
+ * Function called with information about available
+ * AML measures.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_AmlMeasuresCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_AmlGetMeasuresResponse *hr);
+
+
+/**
+ * Inform client about available AML measures.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param officer_priv private key of the officer
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_AmlGetMeasuresHandle *
+TALER_EXCHANGE_aml_get_measures (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  TALER_EXCHANGE_AmlMeasuresCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_aml_get_measures() operation.
+ *
+ * @param agml handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_aml_get_measures_cancel (
+  struct TALER_EXCHANGE_AmlGetMeasuresHandle *agml);
+
+
+/**
+ * Handle for a GET /aml/$OFFICER_PUB/kyc-statistics/$NAME request.
+ */
+struct TALER_EXCHANGE_KycGetStatisticsHandle;
+
+/**
+ * Response from a GET /aml/$OFFICER_PUB/kyc-statistics request.
+ */
+struct TALER_EXCHANGE_KycGetStatisticsResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Number of events of the specified type in the given time range.
+       */
+      unsigned long long counter;
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
+ * Function called with information about available
+ * AML statistics.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_KycStatisticsCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_KycGetStatisticsResponse *hr);
+
+
+/**
+ * Inform client about available AML statistics.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param name name of the statistic to get
+ * @param start_date specifies the start date when to start looking
+ * @param end_date specifies the end date when to stop looking (exclusive)
+ * @param officer_priv private key of the officer
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_KycGetStatisticsHandle *
+TALER_EXCHANGE_kyc_get_statistics (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const char *name,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  TALER_EXCHANGE_KycStatisticsCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_kyc_get_statistics() operation.
+ *
+ * @param kgs handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_kyc_get_statistics_cancel (
+  struct TALER_EXCHANGE_KycGetStatisticsHandle *kgs);
+
 
 /**
  * Data about an AML decision.
