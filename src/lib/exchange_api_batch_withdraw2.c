@@ -234,9 +234,14 @@ handle_reserve_batch_withdraw_finished (void *cls,
         GNUNET_JSON_spec_fixed_auto (
           "h_payto",
           &bwr.details.unavailable_for_legal_reasons.h_payto),
-        GNUNET_JSON_spec_uint64 ("requirement_row",
-                                 &bwr.details.unavailable_for_legal_reasons.
-                                 kyc_requirement_id),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_fixed_auto (
+            "account_pub",
+            &bwr.details.unavailable_for_legal_reasons.account_pub),
+          NULL),
+        GNUNET_JSON_spec_uint64 (
+          "requirement_row",
+          &bwr.details.unavailable_for_legal_reasons.requirement_row),
         GNUNET_JSON_spec_end ()
       };
 
