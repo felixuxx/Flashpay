@@ -127,12 +127,17 @@ struct TALER_EXCHANGE_AddAmlDecision *
 TALER_EXCHANGE_add_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const char *justification,
-  struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
-  enum TALER_AmlDecisionState new_state,
-  const json_t *kyc_requirements,
+  struct GNUNET_TIME_Timestamp decision_time,
+  const char *successor_measure,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  unsigned int num_rules,
+  const struct TALER_EXCHANGE_AccountRule *rules,
+  unsigned int num_measures,
+  const struct TALER_EXCHANGE_MeasureInformation *measures,
+  const json_t *properties,
+  bool keep_investigating,
+  const char *justification,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_AddAmlDecisionCallback cb,
   void *cb_cls)
@@ -142,15 +147,86 @@ TALER_EXCHANGE_add_aml_decision (
   struct TALER_EXCHANGE_AddAmlDecision *wh;
   CURL *eh;
   json_t *body;
+  json_t *new_rules;
+  json_t *jrules;
+  json_t *jmeasures;
+
+  jrules = json_array ();
+  GNUNET_assert (NULL != jrules);
+  for (unsigned int i = 0; i<num_rules; i++)
+  {
+    const struct TALER_EXCHANGE_AccountRule *al = &rules[i];
+    json_t *rule;
+    json_t *ameasures;
+
+    ameasures = json_array ();
+    GNUNET_assert (NULL != ameasures);
+    for (unsigned int j = 0; j<al->num_measures; j++)
+      GNUNET_assert (0 ==
+                     json_array_append_new (ameasures,
+                                            json_string (al->measures[j])));
+    rule = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("operation_type",
+                               TALER_KYCLOGIC_kyc_trigger2s (al->operation_type)
+                               ),
+      TALER_JSON_pack_amount ("threshold",
+                              &al->threshold),
+      GNUNET_JSON_pack_time_rel ("timeframe",
+                                 al->timeframe),
+      GNUNET_JSON_pack_array_steal ("measures",
+                                    ameasures),
+      GNUNET_JSON_pack_bool ("exposed",
+                             al->exposed),
+      GNUNET_JSON_pack_bool ("is_and_combinator",
+                             al->is_and_combinator),
+      GNUNET_JSON_pack_uint64 ("display_priority",
+                               al->display_priority)
+      );
+    GNUNET_break (0 ==
+                  json_array_append_new (jrules,
+                                         rule));
+  }
+
+  jmeasures = json_object ();
+  GNUNET_assert (NULL != jmeasures);
+  for (unsigned int i = 0; i<num_measures; i++)
+  {
+    const struct TALER_EXCHANGE_MeasureInformation *mi = &measures[i];
+    json_t *measure;
+
+    measure = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("check_name",
+                               mi->check_name),
+      GNUNET_JSON_pack_string ("prog_name",
+                               mi->prog_name),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("context",
+                                        (json_t *) mi->context))
+      );
+    GNUNET_break (0 ==
+                  json_object_set_new (jmeasures,
+                                       mi->measure_name,
+                                       measure));
+  }
+
+  new_rules = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_timestamp ("expiration_time",
+                                expiration_time),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("successor_measure",
+                               successor_measure)),
+    GNUNET_JSON_pack_array_steal ("rules",
+                                  jrules),
+    GNUNET_JSON_pack_array_steal ("custom_measures",
+                                  jmeasures)
+    );
 
   GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,
                                       &officer_pub.eddsa_pub);
   TALER_officer_aml_decision_sign (justification,
                                    decision_time,
-                                   new_threshold,
                                    h_payto,
-                                   new_state,
-                                   kyc_requirements,
+                                   new_rules,
                                    officer_priv,
                                    &officer_sig);
   wh = GNUNET_new (struct TALER_EXCHANGE_AddAmlDecision);
@@ -181,24 +257,22 @@ TALER_EXCHANGE_add_aml_decision (
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not construct request URL.\n");
     GNUNET_free (wh);
+    json_decref (new_rules);
     return NULL;
   }
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("justification",
                              justification),
-    GNUNET_JSON_pack_data_auto ("officer_sig",
-                                &officer_sig),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
-    GNUNET_JSON_pack_uint64 ("new_state",
-                             (uint32_t) new_state),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_array_incref ("kyc_requirements",
-                                     (json_t *) kyc_requirements)),
-    TALER_JSON_pack_amount ("new_threshold",
-                            new_threshold),
+    GNUNET_JSON_pack_object_steal ("new_rules",
+                                   new_rules),
+    GNUNET_JSON_pack_bool ("keep_investigating",
+                           keep_investigating),
     GNUNET_JSON_pack_timestamp ("decision_time",
-                                decision_time));
+                                decision_time),
+    GNUNET_JSON_pack_data_auto ("officer_sig",
+                                &officer_sig));
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

@@ -36,7 +36,7 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00100000
+#define TALER_EXCHANGE_API_VERSION 0x00100001
 
 /* *********************  /keys *********************** */
 
@@ -4534,7 +4534,7 @@ struct TALER_EXCHANGE_KycInfoHandle *
 TALER_EXCHANGE_kyc_info (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct GNUNET_CRYPTO_AccountAccessTokenP *token,
+  const struct TALER_AccountAccessTokenP *token,
   const char *if_none_match,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
@@ -6096,6 +6096,107 @@ typedef void
 
 
 /**
+ * Information about a possible measure.
+ */
+struct TALER_EXCHANGE_MeasureInformation
+{
+  /**
+   * Name of the measure.
+   */
+  const char *measure_name;
+
+  /**
+   * Name of the check triggered by the measure.
+   */
+  const char *check_name;
+
+  /**
+   * Name of the AML program to run after the measure.
+   */
+  const char *prog_name;
+
+  /**
+   * Context for the check and the AML program.
+   */
+  const json_t *context;
+};
+
+
+/**
+ * Rule that applies for an account, specifies the
+ * trigger and measures to apply.
+ */
+struct TALER_EXCHANGE_AccountRule
+{
+
+  /**
+   * Timeframe over which the @e threshold is computed.
+   */
+  struct GNUNET_TIME_Relative timeframe;
+
+  /**
+   * The maximum amount transacted within the given @e timeframe for the
+   * specified @e operation_type.
+   */
+  struct TALER_Amount threshold;
+
+  /**
+   * Array of names of measures to apply.
+   * Names listed can be original measures or
+   * custom measures from the AmlOutcome.
+   */
+  const char **measures;
+
+  /**
+   * Length of the @e measures array.
+   */
+  unsigned int num_measures;
+
+  /**
+   * If multiple rules apply to the same account
+   * at the same time, the number with the highest
+   * rule determines which set of measures will
+   * be activated and thus become visible for the
+   * user.
+   */
+  uint32_t display_priority;
+
+  /**
+   * Operation type for which the restriction applies.
+   */
+  enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
+
+  /**
+   * True if crossing this limit is categorically not
+   * allowed. The @e measures array will be ignored
+   * in this case.
+   */
+  bool verboten;
+
+  /**
+   * True if the rule (specifically, operation_type,
+   * threshold, timeframe) and the general nature of
+   * the measures (verboten or approval required)
+   * should be exposed to the client.
+   * Defaults to "false" if not set.
+   */
+  bool exposed;
+
+  /**
+   * True if all the measures will eventually need to
+   * be satisfied, false if any of the measures should
+   * do.  Primarily used by the SPA to indicate how
+   * the measures apply when showing them to the user;
+   * in the end, AML programs will decide after each
+   * measure what to do next.
+   * Default (if missing) is false.
+   */
+  bool is_and_combinator;
+
+};
+
+
+/**
  * Inform the exchange that an AML decision has been taken.
  *
  * @param ctx the context
@@ -6103,9 +6204,12 @@ typedef void
  * @param h_payto payto URI hash of the account the
  *                      decision is about
  * @param decision_time when was the decision made
+ * @param successor_measure measure to activate after @a expiration_time if no rule applied
  * @param expiration_time when do the new rules expire
- * @param num_limits length of the @a limits array
- * @param limits new limits for the account
+ * @param num_rules length of the @a rules array
+ * @param rules new rules for the account
+ * @param num_measures length of the @a measures array
+ * @param measures possible custom measures
  * @param properties properties for the account
  * @param keep_investigating true to keep the investigation open
  * @param justification human-readable justification
@@ -6120,9 +6224,12 @@ TALER_EXCHANGE_add_aml_decision (
   const char *url,
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
+  const char *successor_measure,
   struct GNUNET_TIME_Timestamp expiration_time,
-  unsigned int num_limits,
-  const struct TALER_EXCHANGE_AccountLimit limits[static num_limits],
+  unsigned int num_rules,
+  const struct TALER_EXCHANGE_AccountRule *rules,
+  unsigned int num_measures,
+  const struct TALER_EXCHANGE_MeasureInformation *measures,
   const json_t *properties,
   bool keep_investigating,
   const char *justification,

@@ -2550,6 +2550,7 @@ TALER_officer_aml_query_verify (
  * @param h_payto payto URI hash of the account the
  *                      decision is about
  * @param new_rules new KYC rules to apply to the account
+ *         Must be a "LegitimizationRuleSet".
  * @param officer_priv private key of AML officer
  * @param[out] officer_sig where to write the signature
  */
