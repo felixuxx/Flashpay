@@ -181,11 +181,14 @@ handle_deposit_wtid_finished (void *cls,
         GNUNET_JSON_spec_timestamp ("execution_time",
                                     &dr.details.accepted.execution_time),
         GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_fixed_auto (
+            "account_pub",
+            &dr.details.accepted.account_pub),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_uint64 ("requirement_row",
                                    &dr.details.accepted.requirement_row),
           &no_legi),
-        TALER_JSON_spec_aml_decision ("aml_decision",
-                                      &dr.details.accepted.aml_decision),
         GNUNET_JSON_spec_bool ("kyc_ok",
                                &dr.details.accepted.kyc_ok),
         GNUNET_JSON_spec_end ()
