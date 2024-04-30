@@ -346,49 +346,4 @@ TALER_merchant_contract_sign (
                             merch_sig);
 }
 
-
-// NB: "TALER_merchant_contract_verify" not (yet?) needed / not defined.
-
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * Message blindly signed by merchant to issue a new token.
- */
-struct TALER_TokenIssueRequestPS
-{
-
-  // TODO: Implement this struct
-
-};
-
-GNUNET_NETWORK_STRUCT_END
-
-
-void
-TALER_merchant_token_issue_sign (
-  const struct TALER_TokenEnvelopeP *envelope,
-  const struct TALER_TokenIssuePrivateKeyP *issue_priv,
-  struct TALER_TokenIssueBlindSignatureP *blind_sig)
-{
-
-}
-
-
-/**
- * Verify a token issue signature.
- *
- * @param use_pub token use public key
- * @param issue_pub token issue public key
- * @param ub_sig unblinded signature
- */
-enum GNUNET_GenericReturnValue
-TALER_merchant_token_issue_verify (
-  const struct TALER_TokenUsePublicKeyP *use_pub,
-  const struct TALER_TokenIssuePublicKeyP *issue_pub,
-  const struct TALER_TokenIssueSignatureP *ub_sig)
-{
-  return GNUNET_NO;
-}
-
 /* end of merchant_signatures.c */

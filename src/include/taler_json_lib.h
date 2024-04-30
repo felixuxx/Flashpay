@@ -629,6 +629,19 @@ TALER_JSON_spec_token_issue_sig (const char *field,
 
 /**
  * Generate line in parser specification for a
+ * blinded token issue signature.
+ *
+ * @param field name of the field
+ * @param[out] sig the blinded signature to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_blinded_token_issue_sig (
+  const char *field,
+  struct TALER_TokenIssueBlindSignatureP *sig);
+
+/**
+ * Generate line in parser specification for a
  * token envelope.
  *
  * @param field name of the field

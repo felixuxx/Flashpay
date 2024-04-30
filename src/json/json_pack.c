@@ -272,7 +272,6 @@ TALER_JSON_pack_blinded_planchet (
   const char *name,
   const struct TALER_BlindedPlanchet *blinded_planchet)
 {
-  const struct GNUNET_CRYPTO_BlindedMessage *bm;
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };

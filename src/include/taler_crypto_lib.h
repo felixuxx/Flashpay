@@ -20,6 +20,7 @@
  * @author Christian Grothoff <christian@grothoff.org>
  * @author Özgür Kesim <oec-taler@kesim.org>
  */
+#include <gnunet/gnunet_common.h>
 #if ! defined (__TALER_UTIL_LIB_H_INSIDE__)
 #error "Only <taler_util.h> can be included directly."
 #endif
@@ -2293,10 +2294,11 @@ struct TALER_TokenIssueSignatureP
 
 /**
  * Blinded signature created using merchants token issue private key.
+ * TODO: Rename to TALER_BlindedTokenIssueSignatureP
  */
 struct TALER_TokenIssueBlindSignatureP
 {
-  struct GNUNET_CRYPTO_BlindedSignature signature;
+  struct GNUNET_CRYPTO_BlindedSignature *signature;
 };
 
 
@@ -2307,6 +2309,15 @@ struct TALER_TokenIssueBlindSignatureP
 struct TALER_TokenUsePublicKeyP
 {
   struct GNUNET_CRYPTO_EddsaPublicKey public_key;
+};
+
+
+/**
+ * Has of the public key of a token.
+ */
+struct TALER_TokenUsePublicKeyHashP
+{
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -2328,6 +2339,36 @@ struct TALER_TokenUseSignatureP
   struct GNUNET_CRYPTO_EddsaSignature signature;
 };
 
+
+/**
+ * Master key material for the deriviation of tokens and
+ * blinding factors during token envelope creation.
+ */
+struct TALER_TokenUseMasterSecretP
+{
+
+  /**
+   * Key material.
+   */
+  uint32_t key_data[8];
+
+};
+
+
+/**
+ * Inputs needed from the merchant for blind signing tokens.
+ */
+struct TALER_TokenUseMerchantValues
+{
+
+  /**
+   * Input values.
+   */
+  struct GNUNET_CRYPTO_BlindingInputValues *blinding_inputs;
+};
+
+
+
 /**
  * The blinded token use public key of a token. Ready to be signed by the merchant.
  */
@@ -2347,6 +2388,125 @@ struct TALER_TokenEnvelopeP
  */
 void
 TALER_token_issue_sig_free (struct TALER_TokenIssueSignatureP *issue_sig);
+
+
+/**
+ * Free internals of @a issue_sig, but not @a issue_sig itself.
+ *
+ * @param[in] issue_sig signature to free
+ */
+void
+TALER_blinded_issue_sig_free (struct TALER_TokenIssueBlindSignatureP *issue_sig);
+
+
+/**
+ * Setup secret seed information for fresh tokens to be
+ * issued.
+ *
+ * @param[out] master value to initialize
+ */
+void
+TALER_token_use_setup_random (struct TALER_TokenUseMasterSecretP *master);
+
+
+/**
+ * Create private key for a token.
+ *
+ * @param master secret to derive token use private key from
+ * @param alg_values includes algorithm specific values
+ * @param[out] token_priv private key to initialize
+ */
+void
+TALER_token_use_setup_priv (
+  const struct TALER_TokenUseMasterSecretP *master,
+  const struct TALER_TokenUseMerchantValues *alg_values,
+  struct TALER_TokenUsePrivateKeyP *token_priv);
+
+
+/**
+ * Create a token use blinding secret @a bks given the wallets
+ * @a master secret and the alg_values from the merchant.
+ *
+ * @param master secret to derive blindings from
+ * @param alg_values withdraw values containing cipher and additional CS values
+ * @param[out] bks blinding secrets
+ */
+void
+TALER_token_use_blinding_secret_create (
+  const struct TALER_TokenUseMasterSecretP *master,
+  const struct TALER_TokenUseMerchantValues *alg_values,
+  union GNUNET_CRYPTO_BlindingSecretP *bks);
+
+
+/**
+ * Return the alg value singleton for creation of
+ * blinding secrets for RSA.
+ *
+ * @return singleton to use for RSA blinding
+ */
+const struct TALER_TokenUseMerchantValues *
+TALER_token_bling_input_rsa_singleton ();
+
+
+/**
+ * Make a (deep) copy of the given @a bi_src to
+ * @a bi_dst.
+ *
+ * @param[out] bi_dst target to copy to
+ * @param bi_src blinding input values to copy
+ */
+void
+TALER_token_blind_input_copy (struct TALER_TokenUseMerchantValues *bi_dst,
+                              const struct TALER_TokenUseMerchantValues *bi_src);
+
+
+/**
+ * Issue a new token by blindly signing a token envelope with
+ * the token issue private key.
+ *
+ * @param issue_priv private key to use for signing
+ * @param envelope token envelope to sign over
+ * @param[out] issue_sig where to write the signature
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKeyP *issue_priv,
+                        const struct TALER_TokenEnvelopeP *envelope,
+                        struct TALER_TokenIssueBlindSignatureP *issue_sig);
+
+
+/**
+ * Verify a token issue signature made by the merchant.
+ *
+ * @param use_pub token use public key
+ * @param issue_pub public key of the token issue
+ * @param ub_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_token_issue_verify (const struct TALER_TokenUsePublicKeyP *use_pub,
+                          const struct TALER_TokenIssuePublicKeyP *issue_pub,
+                          const struct TALER_TokenIssueSignatureP *ub_sig);
+
+/**
+ * Unblind blinded signature.
+ *
+ * @param[out] issue_sig where to write the unblinded signature
+ * @param blinded_sig the blinded signature
+ * @param secret blinding secret to use
+ * @param use_pub_hash token use public key hash for verification of the signature
+ * @param alg_values algorithm specific values
+ * @param issue_pub public key used for signing
+ * @return #GNUNET_OK on success or #GNUNET_SYSERR on failure
+ */
+enum GNUNET_GenericReturnValue
+TALER_token_issue_sig_unblind (
+  struct TALER_TokenIssueSignatureP *issue_sig,
+  const struct TALER_TokenIssueBlindSignatureP *blinded_sig,
+  const union GNUNET_CRYPTO_BlindingSecretP *secret,
+  const struct TALER_TokenUsePublicKeyHashP *use_pub_hash,
+  const struct TALER_TokenUseMerchantValues *alg_values,
+  const struct TALER_TokenIssuePublicKeyP *issue_pub);
 
 
 /* **************** AML officer signatures **************** */
@@ -3922,35 +4082,6 @@ TALER_merchant_refund_verify (
   const struct TALER_Amount *amount,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_MerchantSignatureP *merchant_sig);
-
-
-/**
- * Issue a new token by signing a token envelope, that contains the
- * blinded public key provided by the wallet.
- *
- * @param envelope the token envelope to sign
- * @param issue_priv token issue private key to sign with
- * @param[out] blind_sig where to write the blinded issue signature
- */
-void
-TALER_merchant_token_issue_sign (
-  const struct TALER_TokenEnvelopeP *envelope,
-  const struct TALER_TokenIssuePrivateKeyP *issue_priv,
-  struct TALER_TokenIssueBlindSignatureP *blind_sig);
-
-
-/**
- * Verify a token issue signature.
- *
- * @param use_pub token use public key
- * @param issue_pub token issue public key
- * @param ub_sig unblinded signature
- */
-enum GNUNET_GenericReturnValue
-TALER_merchant_token_issue_verify (
-  const struct TALER_TokenUsePublicKeyP *use_pub,
-  const struct TALER_TokenIssuePublicKeyP *issue_pub,
-  const struct TALER_TokenIssueSignatureP *ub_sig);
 
 
 /* ********************* exchange deposit signing ************************* */
