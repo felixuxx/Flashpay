@@ -58,6 +58,7 @@ reply_melt_success (struct MHD_Connection *connection,
          &pub,
          &sig)))
   {
+    GNUNET_break (0);
     return TALER_MHD_reply_with_ec (connection,
                                     ec,
                                     NULL);
