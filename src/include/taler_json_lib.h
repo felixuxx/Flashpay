@@ -26,40 +26,13 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_util.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_error_codes.h"
 
 /**
  * Version of this API, for compatibility tests.
  */
 #define TALER_JSON_LIB_VERSION 0x00020000
-
-/**
- * Details about an encrypted contract.
- */
-struct TALER_EncryptedContract
-{
-
-  /**
-   * Signature of the client affiming this encrypted contract.
-   */
-  struct TALER_PurseContractSignatureP econtract_sig;
-
-  /**
-   * Contract decryption key for the purse.
-   */
-  struct TALER_ContractDiffiePublicP contract_pub;
-
-  /**
-   * Encrypted contract, can be NULL.
-   */
-  void *econtract;
-
-  /**
-   * Number of bytes in @e econtract.
-   */
-  size_t econtract_size;
-
-};
 
 
 /**
@@ -338,6 +311,21 @@ TALER_JSON_spec_otp_key (const char *name,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_otp_type (const char *name,
                           enum TALER_MerchantConfirmationAlgorithm *mca);
+
+
+/**
+ * Provide specification to parse a KYC trigger
+ * event type.
+ * The value could be provided as an integer or
+ * as a descriptive string.
+ *
+ * @param name name of the OTP method type in the JSON
+ * @param[out] kte where to store the operation type
+ * @return spec for parsing trigger event type
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_kycte (const char *name,
+                       enum TALER_KYCLOGIC_KycTriggerEvent *kte);
 
 
 /**

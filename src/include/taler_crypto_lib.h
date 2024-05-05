@@ -1822,6 +1822,35 @@ struct TALER_FreshCoin
 };
 
 
+/**
+ * Details about an encrypted contract.
+ */
+struct TALER_EncryptedContract
+{
+
+  /**
+   * Signature of the client affiming this encrypted contract.
+   */
+  struct TALER_PurseContractSignatureP econtract_sig;
+
+  /**
+   * Contract decryption key for the purse.
+   */
+  struct TALER_ContractDiffiePublicP contract_pub;
+
+  /**
+   * Encrypted contract, can be NULL.
+   */
+  void *econtract;
+
+  /**
+   * Number of bytes in @e econtract.
+   */
+  size_t econtract_size;
+
+};
+
+
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**

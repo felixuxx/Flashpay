@@ -25,7 +25,7 @@
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_db_lib.h>
-#include "taler_json_lib.h"
+#include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_extensions_policy.h"
 

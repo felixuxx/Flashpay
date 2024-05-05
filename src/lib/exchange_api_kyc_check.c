@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021-2023 Taler Systems SA
+  Copyright (C) 2021-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -42,11 +42,6 @@ struct TALER_EXCHANGE_KycCheckHandle
   char *url;
 
   /**
-   * Keys of the exchange.
-   */
-  struct TALER_EXCHANGE_Keys *keys;
-
-  /**
    * Handle for the request.
    */
   struct GNUNET_CURL_Job *job;
@@ -61,12 +56,81 @@ struct TALER_EXCHANGE_KycCheckHandle
    */
   void *cb_cls;
 
-  /**
-   * Hash of the payto:// URL that is being KYC'ed.
-   */
-  struct TALER_PaytoHashP h_payto;
-
 };
+
+
+static enum GNUNET_GenericReturnValue
+parse_account_status (struct TALER_EXCHANGE_KycCheckHandle *kch,
+                      const json_t *j,
+                      struct TALER_EXCHANGE_KycStatus *ks,
+                      struct TALER_EXCHANGE_AccountKycStatus *aks)
+{
+  const json_t *limits = NULL;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_bool ("aml_review",
+                           &aks->aml_review),
+    GNUNET_JSON_spec_fixed_auto ("access_token",
+                                 &aks->access_token),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_array_const ("limits",
+                                    &limits),
+      NULL),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (j,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (NULL != limits) &&
+       (0 != json_array_size (limits)) )
+  {
+    size_t als = json_array_size (limits);
+    struct TALER_EXCHANGE_AccountLimit ala[GNUNET_NZL (als)];
+    size_t i;
+    json_t *limit;
+
+    json_array_foreach (limits, i, limit)
+    {
+      struct TALER_EXCHANGE_AccountLimit *al = &ala[i];
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_bool ("soft_limit",
+                               &al->soft_limit),
+        GNUNET_JSON_spec_relative_time ("timeframe",
+                                        &al->timeframe),
+        TALER_JSON_spec_kycte ("operation_type",
+                               &al->operation_type),
+        TALER_JSON_spec_amount_any ("threshold",
+                                    &al->threshold),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (limit,
+                             ispec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+    }
+    aks->limits = ala;
+    aks->limits_length = als;
+    kch->cb (kch->cb_cls,
+             ks);
+  }
+  else
+  {
+    kch->cb (kch->cb_cls,
+             ks);
+  }
+  GNUNET_JSON_parse_free (spec);
+  return GNUNET_OK;
+}
 
 
 /**
@@ -96,86 +160,33 @@ handle_kyc_check_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      const json_t *kyc_details;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &ks.details.ok.exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &ks.details.ok.exchange_pub),
-        GNUNET_JSON_spec_timestamp ("now",
-                                    &ks.details.ok.timestamp),
-        GNUNET_JSON_spec_object_const ("kyc_details",
-                                       &kyc_details),
-        TALER_JSON_spec_aml_decision ("aml_status",
-                                      &ks.details.ok.aml_status),
-        GNUNET_JSON_spec_end ()
-      };
-
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
+          parse_account_status (kch,
+                                j,
+                                &ks,
+                                &ks.details.ok))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      ks.details.ok.kyc_details = kyc_details;
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (kch->keys,
-                                           &ks.details.ok.exchange_pub))
-      {
-        GNUNET_break_op (0);
-        ks.http_status = 0;
-        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-        GNUNET_JSON_parse_free (spec);
-        break;
-      }
-
-      if (GNUNET_OK !=
-          TALER_exchange_online_account_setup_success_verify (
-            &kch->h_payto,
-            ks.details.ok.kyc_details,
-            ks.details.ok.timestamp,
-            &ks.details.ok.exchange_pub,
-            &ks.details.ok.exchange_sig))
-      {
-        GNUNET_break_op (0);
-        ks.http_status = 0;
-        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-        GNUNET_JSON_parse_free (spec);
-        break;
-      }
-      kch->cb (kch->cb_cls,
-               &ks);
-      GNUNET_JSON_parse_free (spec);
       TALER_EXCHANGE_kyc_check_cancel (kch);
       return;
     }
   case MHD_HTTP_ACCEPTED:
     {
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_web_url ("kyc_url",
-                                 &ks.details.accepted.kyc_url),
-        TALER_JSON_spec_aml_decision ("aml_status",
-                                      &ks.details.accepted.aml_status),
-        GNUNET_JSON_spec_end ()
-      };
-
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
+          parse_account_status (kch,
+                                j,
+                                &ks,
+                                &ks.details.accepted))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      kch->cb (kch->cb_cls,
-               &ks);
-      GNUNET_JSON_parse_free (spec);
       TALER_EXCHANGE_kyc_check_cancel (kch);
       return;
     }
@@ -192,31 +203,6 @@ handle_kyc_check_finished (void *cls,
   case MHD_HTTP_NOT_FOUND:
     ks.ec = TALER_JSON_get_error_code (j);
     break;
-  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
-    {
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_aml_decision (
-          "aml_status",
-          &ks.details.unavailable_for_legal_reasons.aml_status),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        ks.http_status = 0;
-        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-        break;
-      }
-      kch->cb (kch->cb_cls,
-               &ks);
-      GNUNET_JSON_parse_free (spec);
-      TALER_EXCHANGE_kyc_check_cancel (kch);
-      return;
-    }
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     ks.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
@@ -242,10 +228,8 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  struct TALER_EXCHANGE_Keys *keys,
   uint64_t requirement_row,
-  const struct TALER_PaytoHashP *h_payto,
-  enum TALER_KYCLOGIC_KycUserType ut,
+  const struct GNUNET_CRYPTO_EddsaPrivateKey *pk,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
   void *cb_cls)
@@ -255,27 +239,16 @@ TALER_EXCHANGE_kyc_check (
   char *arg_str;
 
   {
-    char payto_str[sizeof (*h_payto) * 2];
-    char *end;
     unsigned long long timeout_ms;
 
-    end = GNUNET_STRINGS_data_to_string (
-      h_payto,
-      sizeof (*h_payto),
-      payto_str,
-      sizeof (payto_str) - 1);
-    *end = '\0';
     timeout_ms = timeout.rel_value_us
                  / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
     GNUNET_asprintf (&arg_str,
-                     "kyc-check/%llu/%s/%s?timeout_ms=%llu",
+                     "kyc-check/%llu?timeout_ms=%llu",
                      (unsigned long long) requirement_row,
-                     payto_str,
-                     TALER_KYCLOGIC_kyc_user_type2s (ut),
                      timeout_ms);
   }
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
-  kch->h_payto = *h_payto;
   kch->cb = cb;
   kch->cb_cls = cb_cls;
   kch->url = TALER_url_join (url,
@@ -295,7 +268,6 @@ TALER_EXCHANGE_kyc_check (
     GNUNET_free (kch);
     return NULL;
   }
-  kch->keys = TALER_EXCHANGE_keys_incref (keys);
   kch->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                                eh,
                                                &handle_kyc_check_finished,
@@ -312,7 +284,6 @@ TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kch)
     GNUNET_CURL_job_cancel (kch->job);
     kch->job = NULL;
   }
-  TALER_EXCHANGE_keys_decref (kch->keys);
   GNUNET_free (kch->url);
   GNUNET_free (kch);
 }

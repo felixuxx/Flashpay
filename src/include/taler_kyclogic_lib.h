@@ -34,34 +34,39 @@ enum TALER_KYCLOGIC_KycTriggerEvent
 {
 
   /**
+   * Reserved value for invalid event types.
+   */
+  TALER_KYCLOGIC_KYC_TRIGGER_NONE = 0,
+
+  /**
    * Customer withdraws coins.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW = 0,
+  TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW = 1,
 
   /**
    * Merchant deposits coins.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT = 1,
+  TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT = 2,
 
   /**
    * Wallet receives P2P payment.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE = 2,
+  TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE = 3,
 
   /**
    * Wallet balance exceeds threshold.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE = 3,
+  TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE = 4,
 
   /**
    * Reserve is being closed by force.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 4,
+  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 5,
 
   /**
    * Customer withdraws coins via age-withdraw.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW = 5,
+  TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW = 6,
 };
 
 

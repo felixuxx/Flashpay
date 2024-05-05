@@ -1441,4 +1441,100 @@ TALER_JSON_spec_otp_type (const char *name,
 }
 
 
+/**
+ * Parse given JSON object to `enum TALER_KYCLOGIC_KycTriggerEvent`
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_kycte (void *cls,
+             json_t *root,
+             struct GNUNET_JSON_Specification *spec)
+{
+  static const struct Entry
+  {
+    const char *name;
+    enum TALER_KYCLOGIC_KycTriggerEvent val;
+  } lt [] = {
+    { .name = "NONE",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_NONE },
+    { .name = "WITHDRAW",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW },
+    { .name = "DEPOSIT",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT },
+    { .name = "P2P-RECEIVE",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE },
+    { .name = "WALLET-BALANCE",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
+    { .name = "RESERVE-CLOSE",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
+    { .name = "AGE-WITHDRAW",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW },
+    { .name = NULL,
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_NONE },
+  };
+  enum TALER_KYCLOGIC_KycTriggerEvent *res
+    = (enum TALER_KYCLOGIC_KycTriggerEvent *) spec->ptr;
+
+  (void) cls;
+  if (json_is_string (root))
+  {
+    const char *str;
+
+    str = json_string_value (root);
+    if (NULL == str)
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    for (unsigned int i = 0; NULL != lt[i].name; i++)
+    {
+      if (0 == strcasecmp (str,
+                           lt[i].name))
+      {
+        *res = lt[i].val;
+        return GNUNET_OK;
+      }
+    }
+    GNUNET_break_op (0);
+  }
+  if (json_is_integer (root))
+  {
+    json_int_t val;
+
+    val = json_integer_value (root);
+    for (unsigned int i = 0; NULL != lt[i].name; i++)
+    {
+      if (val == lt[i].val)
+      {
+        *res = lt[i].val;
+        return GNUNET_OK;
+      }
+    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_break_op (0);
+  return GNUNET_SYSERR;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_kycte (const char *name,
+                       enum TALER_KYCLOGIC_KycTriggerEvent *kte)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_kycte,
+    .field = name,
+    .ptr = kte
+  };
+
+  *kte = TALER_KYCLOGIC_KYC_TRIGGER_NONE;
+  return ret;
+}
+
+
 /* end of json/json_helper.c */
