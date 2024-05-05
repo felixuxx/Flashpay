@@ -283,11 +283,6 @@ static int global_ret;
 static char *requirements;
 
 /**
- * -i command-line flag.
- */
-static char *ut_s = "individual";
-
-/**
  * Handle for ongoing initiation operation.
  */
 static struct TALER_KYCLOGIC_InitiateHandle *ih;
@@ -1474,21 +1469,9 @@ run (void *cls,
   if (NULL != requirements)
   {
     struct TALER_KYCLOGIC_ProviderDetails *pd;
-    enum TALER_KYCLOGIC_KycUserType ut;
 
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_kyc_user_type_from_string (ut_s,
-                                                  &ut))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid user type specified ('-i')\n");
-      global_ret = EXIT_INVALIDARGUMENT;
-      GNUNET_SCHEDULER_shutdown ();
-      return;
-    }
-    if (GNUNET_OK !=
         TALER_KYCLOGIC_requirements_to_logic (requirements,
-                                              ut,
                                               &ih_logic,
                                               &pd,
                                               &provider_section_name))
@@ -1596,12 +1579,6 @@ main (int argc,
       "requirements",
       "CHECKS",
       "initiate KYC check for the given list of (space-separated) checks",
-      &requirements),
-    GNUNET_GETOPT_option_string (
-      'i',
-      "identify",
-      "USERTYPE",
-      "self-identify as USERTYPE 'business' or 'individual' (defaults to 'individual')",
       &requirements),
     GNUNET_GETOPT_option_string (
       'u',
