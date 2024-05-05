@@ -5821,12 +5821,12 @@ struct TALER_EXCHANGE_AmlDecision
   /**
    * When was the decision taken?
    */
-  struct GNUNET_TIME_Absolute decision_time;
+  struct GNUNET_TIME_Timestamp decision_time;
 
   /**
    * When will this decision expire?
    */
-  struct GNUNET_TIME_Absolute expiration_time;
+  struct GNUNET_TIME_Timestamp expiration_time;
 
   /**
    * Properties set for the account.

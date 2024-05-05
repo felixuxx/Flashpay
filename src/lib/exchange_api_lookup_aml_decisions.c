@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -31,7 +31,7 @@
 
 
 /**
- * @brief A /coins/$COIN_PUB/link Handle
+ * @brief A GET /aml/$OFFICER_PUB/decisions Handle
  */
 struct TALER_EXCHANGE_LookupAmlDecisions
 {
@@ -64,31 +64,22 @@ struct TALER_EXCHANGE_LookupAmlDecisions
 
 
 /**
- * Parse AML decision summary array.
+ * Parse AML limits array.
  *
- * @param decisions JSON array with AML decision summaries
+ * @param jlimits JSON array with AML rules
  * @param[out] decision_ar where to write the result
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-parse_aml_decisions (const json_t *decisions,
-                     struct TALER_EXCHANGE_AmlDecisionSummary *decision_ar)
+parse_limits (const json_t *jlimits,
+              struct TALER_EXCHANGE_AmlDecision *ds)
 {
   json_t *obj;
   size_t idx;
 
-  json_array_foreach (decisions, idx, obj)
+  json_array_foreach (jlimits, idx, obj)
   {
-    struct TALER_EXCHANGE_AmlDecisionSummary *decision = &decision_ar[idx];
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_fixed_auto ("h_payto",
-                                   &decision->h_payto),
-      TALER_JSON_spec_aml_decision ("current_state",
-                                    &decision->current_state),
-      TALER_JSON_spec_amount_any ("threshold",
-                                  &decision->threshold),
-      GNUNET_JSON_spec_uint64 ("rowid",
-                               &decision->rowid),
       GNUNET_JSON_spec_end ()
     };
 
@@ -97,6 +88,68 @@ parse_aml_decisions (const json_t *decisions,
                            spec,
                            NULL,
                            NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  // FIXME...
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Parse AML decision summary array.
+ *
+ * @param decisions JSON array with AML decision summaries
+ * @param[out] decision_ar where to write the result
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_aml_decisions (const json_t *decisions,
+                     struct TALER_EXCHANGE_AmlDecision *decision_ar)
+{
+  json_t *obj;
+  size_t idx;
+
+  json_array_foreach (decisions, idx, obj)
+  {
+    struct TALER_EXCHANGE_AmlDecision *decision = &decision_ar[idx];
+    const json_t *jlimits; // FIXME: not used!!!
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("h_payto",
+                                   &decision->h_payto),
+      GNUNET_JSON_spec_uint64 ("rowid",
+                               &decision->rowid),
+      GNUNET_JSON_spec_timestamp ("decision_time",
+                                  &decision->decision_time),
+      GNUNET_JSON_spec_timestamp ("expiration_time",
+                                  &decision->expiration_time),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_object_const ("properties",
+                                       &decision->jproperties),
+        NULL),
+      GNUNET_JSON_spec_array_const ("limits",
+                                    &jlimits),
+      GNUNET_JSON_spec_bool ("to_investigate",
+                             &decision->to_investigate),
+      GNUNET_JSON_spec_bool ("is_active",
+                             &decision->is_active),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (obj,
+                           spec,
+                           NULL,
+                           NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        parse_limits (jlimits,
+                      decision))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -137,12 +190,16 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  lr.details.ok.decisions_length = json_array_size (records);
+  lr.details.ok.decisions_length
+    = json_array_size (records);
   {
-    struct TALER_EXCHANGE_AmlDecisionSummary decisions[
+    struct TALER_EXCHANGE_AmlDecision decisions[
       GNUNET_NZL (lr.details.ok.decisions_length)];
     enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
+    memset (decisions,
+            0,
+            sizeof (decisions));
     lr.details.ok.decisions = decisions;
     ret = parse_aml_decisions (records,
                                decisions);
@@ -152,6 +209,7 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
                         &lr);
       lh->decisions_cb = NULL;
     }
+    // FIXME: free limits!
     return ret;
   }
 }
@@ -244,9 +302,11 @@ struct TALER_EXCHANGE_LookupAmlDecisions *
 TALER_EXCHANGE_lookup_aml_decisions (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
-  uint64_t start,
-  int delta,
-  enum TALER_AmlDecisionState state,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_EXCHANGE_YesNoAll investigation_only,
+  enum TALER_EXCHANGE_YesNoAll active_only,
+  uint64_t offset,
+  int64_t limit,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
   void *cb_cls)
@@ -255,22 +315,9 @@ TALER_EXCHANGE_lookup_aml_decisions (
   CURL *eh;
   struct TALER_AmlOfficerPublicKeyP officer_pub;
   struct TALER_AmlOfficerSignatureP officer_sig;
-  char arg_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2 + 32];
-  const char *state_str = NULL;
+  char arg_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2
+               + 32];
 
-  switch (state)
-  {
-  case TALER_AML_NORMAL:
-    state_str = "normal";
-    break;
-  case TALER_AML_PENDING:
-    state_str = "pending";
-    break;
-  case TALER_AML_FROZEN:
-    state_str = "frozen";
-    break;
-  }
-  GNUNET_assert (NULL != state_str);
   GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,
                                       &officer_pub.eddsa_pub);
   TALER_officer_aml_query_sign (officer_priv,
@@ -287,32 +334,55 @@ TALER_EXCHANGE_lookup_aml_decisions (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "aml/%s/decisions/%s",
-                     pub_str,
-                     state_str);
+                     "aml/%s/decisions",
+                     pub_str);
   }
   lh = GNUNET_new (struct TALER_EXCHANGE_LookupAmlDecisions);
   lh->decisions_cb = cb;
   lh->decisions_cb_cls = cb_cls;
   {
-    char delta_s[24];
-    char start_s[24];
+    char limit_s[24];
+    char offset_s[24];
+    char payto_s[sizeof (h_payto) * 2];
+    char *end;
 
-    GNUNET_snprintf (delta_s,
-                     sizeof (delta_s),
-                     "%d",
-                     delta);
-    GNUNET_snprintf (start_s,
-                     sizeof (start_s),
+    if (NULL != h_payto)
+    {
+      end = GNUNET_STRINGS_data_to_string (
+        h_payto,
+        sizeof (h_payto),
+        payto_s,
+        sizeof (payto_s));
+      *end = '\0';
+    }
+    GNUNET_snprintf (limit_s,
+                     sizeof (limit_s),
+                     "%lld",
+                     (long long) limit);
+    GNUNET_snprintf (offset_s,
+                     sizeof (offset_s),
                      "%llu",
-                     (unsigned long long) start);
-    lh->url = TALER_url_join (exchange_url,
-                              arg_str,
-                              "delta",
-                              delta_s,
-                              "start",
-                              start_s,
-                              NULL);
+                     (unsigned long long) offset);
+    lh->url = TALER_url_join (
+      exchange_url,
+      arg_str,
+      "limit",
+      limit_s,
+      "offset",
+      offset_s,
+      "h_payto",
+      NULL != h_payto
+      ? payto_s
+      : NULL,
+      "active",
+      TALER_EXCHANGE_YNA_ALL != active_only
+      ? TALER_yna_to_string (active_only)
+      : NULL,
+      "investigation",
+      TALER_EXCHANGE_YNA_ALL != investigation_only
+      ? TALER_yna_to_string (investigation_only)
+      : NULL,
+      NULL);
   }
   if (NULL == lh->url)
   {
