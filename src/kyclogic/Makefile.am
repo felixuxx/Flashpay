@@ -32,6 +32,7 @@ lib_LTLIBRARIES = \
 libtalerkyclogic_la_SOURCES = \
   kyclogic_api.c
 libtalerkyclogic_la_LIBADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -ljansson \
   -lgnunetutil \

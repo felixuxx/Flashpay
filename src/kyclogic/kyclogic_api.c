@@ -19,6 +19,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 
 /**
@@ -512,6 +513,9 @@ TALER_KYCLOGIC_kyc_trigger2s (
 {
   switch (trigger)
   {
+  case TALER_KYCLOGIC_KYC_TRIGGER_NONE:
+    GNUNET_break (0);
+    return NULL;
   case TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW:
     return "withdraw";
   case TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW:
