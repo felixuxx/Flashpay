@@ -5804,6 +5804,144 @@ TALER_EXCHANGE_kyc_get_statistics_cancel (
 
 
 /**
+ * KYC rule that determines limits for an account.
+ */
+struct TALER_EXCHANGE_KycRule
+{
+  /**
+   * Type of operation to which the rule applies.
+   */
+  enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
+
+  /**
+   * The measures will be taken if the given
+   * threshold is crossed over the given timeframe.
+   */
+  struct TALER_Amount threshold;
+
+  /**
+   * Over which duration should the @e threshold be
+   * computed.  All amounts of the respective
+   * @e operation_type will be added up for this
+   * duration and the sum compared to the @e threshold.
+   */
+  struct GNUNET_TIME_Relative timeframe;
+
+  /**
+   * Array of names of measures to apply.
+   * Names listed can be original measures or
+   * custom measures from the `AmlOutcome`.
+   */
+  const char **measures;
+
+  /**
+   * Length of the measures array.
+   */
+  unsigned int measures_length;
+
+  /**
+   * True if crossing these limits is simply categorically
+   * forbidden (no measure will be triggered, the request
+   * will just be always denied).
+   */
+  bool verboten;
+
+  /**
+   * True if the rule (specifically, @e operation_type,
+   * @e threshold and @e timeframe) and the general nature of
+   * the measures (@e verboten)
+   * should be exposed to the client.
+   */
+  bool exposed;
+
+  /**
+   * True if all the measures will eventually need to
+   * be satisfied, false if any of the measures should
+   * do.  Primarily used by the SPA to indicate how
+   * the measures apply when showing them to the user;
+   * in the end, AML programs will decide after each
+   * measure what to do next.
+   */
+  bool is_and_combinator;
+
+  /**
+   * If multiple rules apply to the same account
+   * at the same time, the number with the highest
+   * rule determines which set of measures will
+   * be activated and thus become visible for the
+   * user.
+   */
+  uint32_t display_priority;
+};
+
+
+/**
+ * Information about a (custom) measure.
+ */
+struct TALER_EXCHANGE_MeasureInformation
+{
+  /**
+   * Name of the measure.
+   */
+  const char *measure_name;
+
+  /**
+   * Name of the check.
+   */
+  const char *check_name;
+
+  /**
+   * Name of the AML program.
+   */
+  const char *prog_name;
+
+  /**
+   * Context for the check, can be NULL.
+   */
+  const json_t *context;
+
+};
+
+
+/**
+ * Set of legitimization rules with expiration data.
+ */
+struct TALER_EXCHANGE_LegitimizationRuleSet
+{
+
+  /**
+   * What successor measure applies to the account?
+   */
+  const char *successor_measure;
+
+  /**
+   * What are the current rules for the account?
+   */
+  const struct TALER_EXCHANGE_KycRule *rules;
+
+  /**
+   * What are custom measures that @e rules may refer to?
+   */
+  const struct TALER_EXCHANGE_MeasureInformation *measures;
+
+  /**
+   * When will this decision expire?
+   */
+  struct GNUNET_TIME_Timestamp expiration_time;
+
+  /**
+   * Length of the @e rules array.
+   */
+  unsigned int rules_length;
+
+  /**
+   * Length of the @e measures array.
+   */
+  unsigned int measures_length;
+};
+
+
+/**
  * Data about an AML decision.
  */
 struct TALER_EXCHANGE_AmlDecision
@@ -5819,29 +5957,19 @@ struct TALER_EXCHANGE_AmlDecision
   uint64_t rowid;
 
   /**
-   * When was the decision taken?
+   * When was the decision made?
    */
   struct GNUNET_TIME_Timestamp decision_time;
 
   /**
-   * When will this decision expire?
+   * What are the new rules?
    */
-  struct GNUNET_TIME_Timestamp expiration_time;
+  struct TALER_EXCHANGE_LegitimizationRuleSet limits;
 
   /**
    * Properties set for the account.
    */
   const json_t *jproperties;
-
-  /**
-   * What are the current limits for the account?
-   */
-  const struct TALER_EXCHANGE_AccountLimit *limits;
-
-  /**
-   * Length of the @e limits array.
-   */
-  unsigned int limits_length;
 
   /**
    * Should AML staff investigate this account?
@@ -6093,33 +6221,6 @@ typedef void
 (*TALER_EXCHANGE_AddAmlDecisionCallback) (
   void *cls,
   const struct TALER_EXCHANGE_AddAmlDecisionResponse *adr);
-
-
-/**
- * Information about a possible measure.
- */
-struct TALER_EXCHANGE_MeasureInformation
-{
-  /**
-   * Name of the measure.
-   */
-  const char *measure_name;
-
-  /**
-   * Name of the check triggered by the measure.
-   */
-  const char *check_name;
-
-  /**
-   * Name of the AML program to run after the measure.
-   */
-  const char *prog_name;
-
-  /**
-   * Context for the check and the AML program.
-   */
-  const json_t *context;
-};
 
 
 /**

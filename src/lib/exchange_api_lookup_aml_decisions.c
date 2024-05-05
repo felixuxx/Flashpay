@@ -60,54 +60,220 @@ struct TALER_EXCHANGE_LookupAmlDecisions
    * HTTP headers for the job.
    */
   struct curl_slist *job_headers;
+
+  /**
+   * Array with measure information.
+   */
+  struct TALER_EXCHANGE_MeasureInformation *mip;
+
+  /**
+   * Array with rule information.
+   */
+  struct TALER_EXCHANGE_KycRule *rp;
+
+  /**
+   * Array with all the measures (of all the rules!).
+   */
+  const char **mp;
 };
 
 
 /**
  * Parse AML limits array.
  *
+ * @param[in,out] lh handle to use for allocations
  * @param jlimits JSON array with AML rules
  * @param[out] decision_ar where to write the result
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-parse_limits (const json_t *jlimits,
+parse_limits (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
+              const json_t *jlimits,
               struct TALER_EXCHANGE_AmlDecision *ds)
 {
-  json_t *obj;
-  size_t idx;
+  struct TALER_EXCHANGE_LegitimizationRuleSet *limits
+    = &ds->limits;
+  const json_t *jrules;
+  const json_t *jmeasures;
+  size_t mip_len;
+  size_t rule_len;
+  size_t total;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_timestamp ("expiration_time",
+                                &limits->expiration_time),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("successor_measure",
+                               &limits->successor_measure),
+      NULL),
+    GNUNET_JSON_spec_array_const ("rules",
+                                  &jrules),
+    GNUNET_JSON_spec_object_const ("custom_measures",
+                                   &jmeasures),
+    GNUNET_JSON_spec_end ()
+  };
 
-  json_array_foreach (jlimits, idx, obj)
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (jlimits,
+                         spec,
+                         NULL,
+                         NULL))
   {
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_end ()
-    };
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
 
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (obj,
-                           spec,
-                           NULL,
-                           NULL))
+  mip_len = json_object_size (jmeasures);
+  lh->mip = GNUNET_new_array (mip_len,
+                              struct TALER_EXCHANGE_MeasureInformation);
+  limits->measures = lh->mip;
+  limits->measures_length = mip_len;
+
+  {
+    const char *measure_name;
+    const json_t *jmeasure;
+
+    json_object_foreach ((json_t*) jmeasures,
+                         measure_name,
+                         jmeasure)
     {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
+      struct TALER_EXCHANGE_MeasureInformation *mi
+        = &lh->mip[--mip_len];
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_string ("check_name",
+                                 &mi->check_name),
+        GNUNET_JSON_spec_string ("prog_name",
+                                 &mi->prog_name),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_object_const ("context",
+                                         &mi->context),
+          NULL),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (jmeasure,
+                             ispec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      mi->measure_name = measure_name;
     }
   }
-  // FIXME...
-  return GNUNET_SYSERR;
+
+  total = 0;
+
+  {
+    const json_t *rule;
+    size_t idx;
+
+    json_array_foreach ((json_t *) jrules,
+                        idx,
+                        rule)
+    {
+      total += json_array_size (json_object_get (rule,
+                                                 "measures"));
+    }
+  }
+
+  rule_len = json_array_size (jrules);
+  lh->rp = GNUNET_new_array (rule_len,
+                             struct TALER_EXCHANGE_KycRule);
+  lh->mp = GNUNET_new_array (total,
+                             const char *);
+
+  {
+    const json_t *rule;
+    size_t idx;
+
+    json_array_foreach ((json_t *) jrules,
+                        idx,
+                        rule)
+    {
+      const json_t *smeasures;
+      struct TALER_EXCHANGE_KycRule *r
+        = &lh->rp[--rule_len];
+      struct GNUNET_JSON_Specification ispec[] = {
+        TALER_JSON_spec_kycte ("operation_type",
+                               &r->operation_type),
+        TALER_JSON_spec_amount_any ("threshold",
+                                    &r->threshold),
+        GNUNET_JSON_spec_relative_time ("timeframe",
+                                        &r->timeframe),
+        GNUNET_JSON_spec_array_const ("measures",
+                                      &smeasures),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("exposed",
+                                 &r->exposed),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("is_and_combinator",
+                                 &r->is_and_combinator),
+          NULL),
+        GNUNET_JSON_spec_uint32 ("display_priority",
+                                 &r->display_priority),
+        GNUNET_JSON_spec_end ()
+      };
+      size_t mlen;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (rule,
+                             ispec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      mlen = json_array_size (smeasures);
+      GNUNET_assert (mlen <= total);
+      total -= mlen;
+
+      {
+        size_t midx;
+        const json_t *smeasure;
+
+        json_array_foreach (smeasures,
+                            midx,
+                            smeasure)
+        {
+          const char *sval = json_string_value (smeasure);
+
+          if (NULL == sval)
+          {
+            GNUNET_break_op (0);
+            return GNUNET_SYSERR;
+          }
+          lh->mp[total + midx] = sval;
+          if (0 == strcasecmp (sval,
+                               "verboten"))
+            r->verboten = true;
+        }
+      }
+      r->measures = &lh->mp[total];
+      r->measures_length = r->verboten ? 0 : total;
+    }
+  }
+  return GNUNET_OK;
 }
 
 
 /**
  * Parse AML decision summary array.
  *
+ * @param[in,out] lh handle to use for allocations
  * @param decisions JSON array with AML decision summaries
  * @param[out] decision_ar where to write the result
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-parse_aml_decisions (const json_t *decisions,
-                     struct TALER_EXCHANGE_AmlDecision *decision_ar)
+parse_aml_decisions (
+  struct TALER_EXCHANGE_LookupAmlDecisions *lh,
+  const json_t *decisions,
+  struct TALER_EXCHANGE_AmlDecision *decision_ar)
 {
   json_t *obj;
   size_t idx;
@@ -115,7 +281,7 @@ parse_aml_decisions (const json_t *decisions,
   json_array_foreach (decisions, idx, obj)
   {
     struct TALER_EXCHANGE_AmlDecision *decision = &decision_ar[idx];
-    const json_t *jlimits; // FIXME: not used!!!
+    const json_t *jlimits;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("h_payto",
                                    &decision->h_payto),
@@ -123,14 +289,12 @@ parse_aml_decisions (const json_t *decisions,
                                &decision->rowid),
       GNUNET_JSON_spec_timestamp ("decision_time",
                                   &decision->decision_time),
-      GNUNET_JSON_spec_timestamp ("expiration_time",
-                                  &decision->expiration_time),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_object_const ("properties",
                                        &decision->jproperties),
         NULL),
-      GNUNET_JSON_spec_array_const ("limits",
-                                    &jlimits),
+      GNUNET_JSON_spec_object_const ("limits",
+                                     &jlimits),
       GNUNET_JSON_spec_bool ("to_investigate",
                              &decision->to_investigate),
       GNUNET_JSON_spec_bool ("is_active",
@@ -148,7 +312,8 @@ parse_aml_decisions (const json_t *decisions,
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
-        parse_limits (jlimits,
+        parse_limits (lh,
+                      jlimits,
                       decision))
     {
       GNUNET_break_op (0);
@@ -201,7 +366,8 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
             0,
             sizeof (decisions));
     lr.details.ok.decisions = decisions;
-    ret = parse_aml_decisions (records,
+    ret = parse_aml_decisions (lh,
+                               records,
                                decisions);
     if (GNUNET_OK == ret)
     {
@@ -209,7 +375,9 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
                         &lr);
       lh->decisions_cb = NULL;
     }
-    // FIXME: free limits!
+    GNUNET_free (lh->mip);
+    GNUNET_free (lh->rp);
+    GNUNET_free (lh->mp);
     return ret;
   }
 }
