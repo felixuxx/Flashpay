@@ -1112,20 +1112,6 @@ typedef void
 
 
 /**
- * Function called on all KYC process names that the given
- * account has already passed.
- *
- * @param cls closure
- * @param kyc_provider_section_name configuration section
- *        of the respective KYC process
- */
-typedef void
-(*TALER_EXCHANGEDB_SatisfiedProviderCallback)(
-  void *cls,
-  const char *kyc_provider_section_name);
-
-
-/**
  * Function called on all legitimization operations
  * we have performed for the given account so far
  * (and that have not yet expired).
@@ -6874,21 +6860,21 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Call us on KYC processes satisfied for the given
-   * account.
+   * Return KYC rules that apply to the given account.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param h_payto account identifier
-   * @param spc function to call for each satisfied KYC process
-   * @param spc_cls closure for @a spc
+   * @param[out] expiration_time when do the @a jrules expire
+   * @param[out] jrules set to the active KYC rules for the
+   *    given account, set to NULL if no custom rules are active
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-    (*select_satisfied_kyc_processes)(
+    (*get_kyc_rules)(
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
-    TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
-    void *spc_cls);
+    struct GNUNET_TIME_Timestamp *expiration_time,
+    json_t **jrules);
 
 
   /**

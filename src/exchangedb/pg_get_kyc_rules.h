@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,34 +14,33 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_satisfied_kyc_processes.h
- * @brief implementation of the select_satisfied_kyc_processes function for Postgres
+ * @file exchangedb/pg_get_kyc_rules.h
+ * @brief implementation of the get_kyc_rules function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_SELECT_SATISFIED_KYC_PROCESSES_H
-#define PG_SELECT_SATISFIED_KYC_PROCESSES_H
+#ifndef PG_GET_KYC_RULES_H
+#define PG_GET_KYC_RULES_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
+
 /**
- * Call us on KYC processes satisfied for the given
- * account.
+ * Return KYC rules that apply to the given account.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param h_payto account identifier
- * @param spc function to call for each satisfied KYC process
- * @param spc_cls closure for @a spc
+ * @param[out] expiration_time when do the @a jrules expire
+ * @param[out] jrules set to the active KYC rules for the
+ *    given account, set to NULL if no custom rules are active
  * @return transaction status code
  */
-
-
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_satisfied_kyc_processes (
+TEH_PG_get_kyc_rules (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
-  void *spc_cls);
+  struct GNUNET_TIME_Timestamp *expiration_time,
+  json_t **jrules);
 
 #endif

@@ -232,7 +232,70 @@ struct TALER_KYCLOGIC_KycRule
    */
   bool exposed;
 
+  /**
+   * True if any of the measures is 'verboten' and
+   * thus this rule cannot ever be satisfied.
+   */
+  bool verboten;
+
 };
+
+
+/**
+ * Set of rules that applies to an account.
+ */
+struct TALER_KYCLOGIC_LegitimizationRuleSet
+{
+
+  /**
+   * When does this rule set expire?
+   */
+  struct GNUNET_TIME_Timestamp expiration_time;
+
+  /**
+   * Name of the successor measure after expiration.
+   * NULL for default rules.
+   */
+  char *successor_measure;
+
+  /**
+   * Array of the rules.
+   */
+  struct TALER_KYCLOGIC_KycRule **kyc_rules;
+
+  /**
+   * Array of custom measures the @e kyc_rules may refer
+   * to.
+   */
+  struct TALER_KYCLOGIC_Measures *custom_measures;
+
+  /**
+   * Length of the @e kyc_rules array.
+   */
+  unsigned int num_kyc_rules;
+
+  /**
+   * Length of the @e custom_measures array.
+   */
+  unsigned int num_custom_measures;
+};
+
+
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_rules_parse (
+  const json_t *jrules,
+  struct TALER_KYCLOGIC_KycRuleSet *rules)
+{
+  // FIXME!
+  return GNUNET_SYSERR;
+}
+
+
+void
+TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_KycRuleSet *krs)
+{
+  // fIXME
+}
 
 
 /**
@@ -317,15 +380,9 @@ static struct TALER_KYCLOGIC_KycCheck **kyc_checks;
 static unsigned int num_kyc_checks;
 
 /**
- * Array of configured rules that apply if we do
- * not have an AMLA record.
+ * Rules that apply if we do not have an AMLA record.
  */
-static struct TALER_KYCLOGIC_KycRule **kyc_rules;
-
-/**
- * Length of the #kyc_rules array.
- */
-static unsigned int num_kyc_rules;
+static struct TALER_KYCLOGIC_KycRuleSet default_rules;
 
 /**
  * Array of available AML programs.

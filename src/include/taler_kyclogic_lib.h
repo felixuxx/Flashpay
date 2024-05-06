@@ -151,21 +151,36 @@ typedef void
 
 
 /**
- * Call us on KYC processes satisfied for the given
- * account. Must match the ``select_satisfied_kyc_processes`` of the exchange database plugin.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto account identifier
- * @param spc function to call for each satisfied KYC process
- * @param spc_cls closure for @a spc
- * @return transaction status code
+ * Rule that triggers some measure(s).
  */
-typedef enum GNUNET_DB_QueryStatus
-(*TALER_KYCLOGIC_KycSatisfiedIterator)(
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
-  void *spc_cls);
+struct TALER_KYCLOGIC_KycRule;
+
+/**
+ * Set of rules that applies to an account.
+ */
+struct TALER_KYCLOGIC_KycRuleSet;
+
+
+/**
+ * Parse set of rules that applies to an account.
+ *
+ * @param jrules JSON representation to parse
+ * @param[out] lrs set to rule set
+ * @return #GNUNET_SYSERR JSON is invalid
+ */
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_rules_parse (
+  const json_t *jrules,
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
+
+
+/**
+ * Free set of legitimization rules.
+ *
+ * @param[in] lrs set of rules to free
+ */
+void
+TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
 
 
 /**
@@ -177,55 +192,30 @@ typedef enum GNUNET_DB_QueryStatus
  * @param event what type of operation is triggering the
  *         test if KYC is required
  * @param h_payto account the event is about
- * @param ki callback that returns list of already
- *    satisfied KYC checks, implemented by ``select_satisfied_kyc_processes`` of the exchangedb
- * @param ki_cls closure for @a ki
+ * @param lrs legitimization rules for @a h_payto
  * @param ai callback offered to inquire about historic
  *         amounts involved in this type of operation
  *         at the given account
  * @param ai_cls closure for @a ai
- * @param[out] required set to NULL if no check is needed,
- *   otherwise space-separated list of required checks
+ * @param[out] triggered_rule set to NULL if no rule
+ *   is triggered, otherwise the rule with measures
+ *   that must be satisfied (will be the highest
+ *   applicable rule by display priority)
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_kyc_test_required (
   enum TALER_KYCLOGIC_KycTriggerEvent event,
   const struct TALER_PaytoHashP *h_payto,
-  TALER_KYCLOGIC_KycSatisfiedIterator ki,
-  void *ki_cls,
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
-  char **required);
+  struct TALER_KYCLOGIC_KycRule **triggered_rule);
 
 
 /**
- * Check if the @a requirements are now satsified for
- * @a h_payto account.
- *
- * @param[in,out] requirements space-spearated list of requirements,
- *       already satisfied requirements are removed from the list
- * @param h_payto hash over the account
- * @param[out] kyc_details if satisfied, set to what kind of
- *             KYC information was collected
- * @param ki iterator over satisfied providers
- * @param ki_cls closure for @a ki
- * @param[out] satisfied set to true if the KYC check was satisfied
- * @return transaction status (from @a ki)
- */
-enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_check_satisfied (
-  char **requirements,
-  const struct TALER_PaytoHashP *h_payto,
-  json_t **kyc_details,
-  TALER_KYCLOGIC_KycSatisfiedIterator ki,
-  void *ki_cls,
-  bool *satisfied);
-
-
-/**
- * Iterate over all thresholds that are applicable
- * to a particular type of @a event
+ * Iterate over all thresholds that are applicable to a particular type of @a
+ * event under exposed global rules.
  *
  * @param event thresholds to look up
  * @param it function to call on each
@@ -239,61 +229,25 @@ TALER_KYCLOGIC_kyc_iterate_thresholds (
 
 
 /**
- * Function called with the provider details and
- * associated plugin closures for matching logics.
+ * Check if a given @a rule can be satisfied in principle.
  *
- * @param cls closure
- * @param pd provider details of a matching logic
- * @param plugin_cls closure of the plugin
- * @return #GNUNET_OK to continue to iterate
+ * @param rule the rule to check if it is verboten
+ * @return true if the check can be satisfied,
+ *         false if the check can never be satisfied,
  */
-typedef enum GNUNET_GenericReturnValue
-(*TALER_KYCLOGIC_DetailsCallback)(
-  void *cls,
-  const struct TALER_KYCLOGIC_ProviderDetails *pd,
-  void *plugin_cls);
+bool
+TALER_KYCLOGIC_is_satisfiable (
+  const struct TALER_KYCLOGIC_KycRule *rule);
 
 
 /**
- * Call @a cb for all logics with name @a logic_name,
- * providing the plugin closure and the @a pd configurations.
+ * Obtain the provider logic for a given set of @a lrs
+ * and a specific @a kyc_rule from @a lrs that was
+ * triggered and the choosen @a measure_name from the
+ * list of measures of that @a kyc_rule.
  *
- * @param logic_name name of the logic to match
- * @param cb function to call on matching results
- * @param cb_cls closure for @a cb
- */
-void
-TALER_KYCLOGIC_kyc_get_details (
-  const char *logic_name,
-  TALER_KYCLOGIC_DetailsCallback cb,
-  void *cb_cls);
-
-
-/**
- * Check if a given @a check_name is a legal name (properly
- * configured) and can be satisfied in principle.
- *
- * @param check_name name of the check to see if it is configured
- * @return #GNUNET_OK if the check can be satisfied,
- *         #GNUNET_NO if the check can never be satisfied,
- *         #GNUNET_SYSERR if the type of the check is unknown
- */
-enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_check_satisfiable (
-  const char *check_name);
-
-
-/**
- * Return list of all KYC checks that are possible.
- *
- * @return JSON array of strings with the allowed KYC checks
- */
-json_t *
-TALER_KYCLOGIC_get_satisfiable (void);
-
-
-/**
- * Obtain the provider logic for a given set of @a requirements.
+ * FIXME: we probably want to instead set up the logic
+ * with the context instead of just returning it here!
  *
  * @param requirements space-separated list of required checks
  * @param ut type of the entity performing the check
@@ -303,7 +257,9 @@ TALER_KYCLOGIC_get_satisfiable (void);
  */
 enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_requirements_to_logic (
-  const char *requirements,
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const struct TALER_KYCLOGIC_KycRule *kyc_rule,
+  const char *measure_name,
   struct TALER_KYCLOGIC_Plugin **plugin,
   struct TALER_KYCLOGIC_ProviderDetails **pd,
   const char **configuration_section);
@@ -326,6 +282,10 @@ TALER_KYCLOGIC_lookup_logic (
   const char **configuration_section);
 
 
+// FIXME: we probably want to instead have some
+// functionality that returns information that
+// is more directly applicable for /keys or /config
+// and not this:
 /**
  * Obtain array of KYC checks provided by the provider
  * configured in @a section_name.
@@ -340,5 +300,6 @@ TALER_KYCLOGIC_lookup_checks (
   const char *section_name,
   unsigned int *num_checks,
   char ***provided_checks);
+
 
 #endif
