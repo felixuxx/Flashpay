@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2022 Taler Systems SA
+  Copyright (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -490,49 +490,90 @@ return_relevant_amounts (void *cls,
 
 
 /**
- * Test if KYC is required for a transfer to @a h_payto.
+ * Test if legitimization rules are satisfied for a transfer to @a h_payto.
  *
  * @param[in,out] au_active aggregation unit to check for
  * @return true if KYC checks are satisfied
  */
 static bool
-kyc_satisfied (struct AggregationUnit *au_active)
+legitimization_satisfied (struct AggregationUnit *au_active)
 {
-  char *requirement;
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
+  struct TALER_KYCLOGIC_KycRule *requirement;
+  struct GNUNET_TIME_Timestamp expiration_time;
   enum GNUNET_DB_QueryStatus qs;
+  json_t *jrule;
 
   if (kyc_off)
     return true;
+
+  {
+    json_t *jrules;
+
+    qs = db_plugin->get_kyc_rules (db_plugin->cls,
+                                   &au_active->h_payto,
+                                   &expiration_time,
+                                   &jrules);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
+    }
+    if ( (qs > 0) &&
+         (GNUNET_TIME_absolute_is_past (expiration_time.abs_time)) )
+    {
+      json_decref (jrules);
+      jrules = NULL;
+      qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+    }
+    if (qs > 0)
+    {
+      lrs = TALER_KYCLOGIC_rules_parse (jrules);
+      if (NULL == lrs)
+      {
+        GNUNET_break (0);
+        json_decref (jrules);
+        return false;
+      }
+      json_decref (jrules);
+    }
+  }
   qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
     &au_active->h_payto,
-    db_plugin->select_satisfied_kyc_processes,
-    db_plugin->cls,
+    lrs,
     &return_relevant_amounts,
     (void *) au_active,
     &requirement);
   if (qs < 0)
   {
+    TALER_KYCLOGIC_rules_free (lrs);
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return false;
   }
   if (NULL == requirement)
+  {
+    TALER_KYCLOGIC_rules_free (lrs);
     return true;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC requirement for %s is %s\n",
               TALER_amount2s (&au_active->total_amount),
-              requirement);
-  qs = db_plugin->insert_kyc_requirement_for_account (
+              TALER_KYCLOGIC_rule2s (requirement));
+  jrule = TALER_KYCLOGIC_rule2j (requirement);
+  qs = db_plugin->trigger_kyc_rule_for_account (
     db_plugin->cls,
-    requirement,
     &au_active->h_payto,
-    NULL, /* not a reserve */
+    NULL,
+    jrule,
+    TALER_KYCLOGIC_rule2priority (requirement),
     &au_active->requirement_row);
+  json_decref (jrule);
   if (qs < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to persist KYC requirement `%s' in DB!\n",
-                requirement);
+                TALER_KYCLOGIC_rule2s (requirement));
   }
   else
   {
@@ -540,114 +581,7 @@ kyc_satisfied (struct AggregationUnit *au_active)
                 "Legitimization process %llu started\n",
                 (unsigned long long) au_active->requirement_row);
   }
-  GNUNET_free (requirement);
-  return false;
-}
-
-
-/**
- * Function called on each @a amount that was found to
- * be relevant for an AML check.
- *
- * @param cls closure with the `struct TALER_Amount *` where we store the sum
- * @param amount encountered transaction amount
- * @param date when was the amount encountered
- * @return #GNUNET_OK to continue to iterate,
- *         #GNUNET_NO to abort iteration
- *         #GNUNET_SYSERR on internal error (also abort itaration)
- */
-static enum GNUNET_GenericReturnValue
-sum_for_aml (
-  void *cls,
-  const struct TALER_Amount *amount,
-  struct GNUNET_TIME_Absolute date)
-{
-  struct TALER_Amount *sum = cls;
-
-  (void) date;
-  if (0 >
-      TALER_amount_add (sum,
-                        sum,
-                        amount))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Test if AML is required for a transfer to @a h_payto.
- *
- * @param[in,out] au_active aggregation unit to check for
- * @return true if AML checks are satisfied
- */
-static bool
-aml_satisfied (struct AggregationUnit *au_active)
-{
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_Amount total;
-  struct TALER_Amount threshold;
-  enum TALER_AmlDecisionState decision;
-  struct TALER_EXCHANGEDB_KycStatus kyc;
-
-  total = au_active->final_amount;
-  qs = db_plugin->select_aggregation_amounts_for_kyc_check (
-    db_plugin->cls,
-    &au_active->h_payto,
-    GNUNET_TIME_absolute_subtract (GNUNET_TIME_absolute_get (),
-                                   GNUNET_TIME_UNIT_MONTHS),
-    &sum_for_aml,
-    &total);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return false;
-  }
-  qs = db_plugin->select_aml_threshold (db_plugin->cls,
-                                        &au_active->h_payto,
-                                        &decision,
-                                        &kyc,
-                                        &threshold);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return false;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    threshold = aml_threshold; /* use default */
-    decision = TALER_AML_NORMAL;
-  }
-  switch (decision)
-  {
-  case TALER_AML_NORMAL:
-    if (0 >= TALER_amount_cmp (&total,
-                               &threshold))
-    {
-      /* total <= threshold, do nothing */
-      return true;
-    }
-    qs = db_plugin->trigger_aml_process (db_plugin->cls,
-                                         &au_active->h_payto,
-                                         &total);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return false;
-    }
-    return false;
-  case TALER_AML_PENDING:
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "AML already pending, doing nothing\n");
-    return false;
-  case TALER_AML_FROZEN:
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Account frozen, doing nothing\n");
-    return false;
-  }
-  GNUNET_assert (0);
+  TALER_KYCLOGIC_rules_free (lrs);
   return false;
 }
 
@@ -783,8 +717,7 @@ do_aggregate (struct AggregationUnit *au)
         TALER_amount_round_down (&au->final_amount,
                                  &currency_round_unit)) ||
        (TALER_amount_is_zero (&au->final_amount)) ||
-       (! kyc_satisfied (au)) ||
-       (! aml_satisfied (au)) )
+       (! legitimization_satisfied (au)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Not ready for wire transfer (%d/%s)\n",

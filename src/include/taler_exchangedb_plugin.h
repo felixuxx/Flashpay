@@ -998,7 +998,7 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
 {
   /**
    * Serial of the denomination key as in the DB.
-   * Can be used in calls to stored procedures in order to spare
+   * Can be used calls to stored procedures in order to spare
    * additional lookups.
    */
   uint64_t serial;
@@ -6717,18 +6717,20 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert KYC requirement for @a h_payto account into table.
    *
    * @param cls closure
-   * @param requirements requirements that must be checked
    * @param h_payto account that must be KYC'ed
-   * @param reserve_pub if account is a reserve, its public key, NULL otherwise
+   * @param account_pub public key authorizing access, NULL if not known
+   * @param jrule serialized KYC rule that was triggered
+   * @param display_priority priority of the rule
    * @param[out] requirement_row set to legitimization requirement row for this check
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
-    (*insert_kyc_requirement_for_account)(
+    (*trigger_kyc_rule_for_account)(
     void *cls,
-    const char *requirements,
     const struct TALER_PaytoHashP *h_payto,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const union TALER_AccountPublicKeyP *account_pub,
+    const json_t *jrule,
+    uint32_t display_priority,
     uint64_t *requirement_row);
 
 

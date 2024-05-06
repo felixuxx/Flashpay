@@ -158,20 +158,17 @@ struct TALER_KYCLOGIC_KycRule;
 /**
  * Set of rules that applies to an account.
  */
-struct TALER_KYCLOGIC_KycRuleSet;
+struct TALER_KYCLOGIC_LegitimizationRuleSet;
 
 
 /**
  * Parse set of rules that applies to an account.
  *
  * @param jrules JSON representation to parse
- * @param[out] lrs set to rule set
- * @return #GNUNET_SYSERR JSON is invalid
+ * @return rule set, NULL if JSON is invalid
  */
-enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_rules_parse (
-  const json_t *jrules,
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
+struct TALER_KYCLOGIC_LegitimizationRuleSet *
+TALER_KYCLOGIC_rules_parse (const json_t *jrules);
 
 
 /**
@@ -192,7 +189,8 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
  * @param event what type of operation is triggering the
  *         test if KYC is required
  * @param h_payto account the event is about
- * @param lrs legitimization rules for @a h_payto
+ * @param lrs legitimization rules for @a h_payto,
+ *         NULL to use default rules
  * @param ai callback offered to inquire about historic
  *         amounts involved in this type of operation
  *         at the given account
@@ -212,6 +210,17 @@ TALER_KYCLOGIC_kyc_test_required (
   void *ai_cls,
   struct TALER_KYCLOGIC_KycRule **triggered_rule);
 
+
+const char *
+TALER_KYCLOGIC_rule2s (struct TALER_KYCLOGIC_KycRule *r);
+
+
+json_t *
+TALER_KYCLOGIC_rule2j (struct TALER_KYCLOGIC_KycRule *r);
+
+
+uint32_t
+TALER_KYCLOGIC_rule2priority (struct TALER_KYCLOGIC_KycRule *r);
 
 /**
  * Iterate over all thresholds that are applicable to a particular type of @a

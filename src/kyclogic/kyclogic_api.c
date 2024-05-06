@@ -278,6 +278,11 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
    * Length of the @e custom_measures array.
    */
   unsigned int num_custom_measures;
+
+  /**
+   * Display priority for this rule.
+   */
+  uint32_t display_priority;
 };
 
 
@@ -295,6 +300,20 @@ void
 TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_KycRuleSet *krs)
 {
   // fIXME
+}
+
+
+const char *
+TALER_KYCLOGIC_rule2s (struct TALER_KYCLOGIC_KycRule *r)
+{
+  return r->rule_name;
+}
+
+
+uint32_t
+TALER_KYCLOGIC_rule2priority (struct TALER_KYCLOGIC_KycRule *r)
+{
+  return r->display_priority;
 }
 
 
