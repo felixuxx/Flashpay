@@ -148,7 +148,7 @@ TALER_token_use_blinding_secret_create (
 
 
 const struct TALER_TokenUseMerchantValues *
-TALER_token_bling_input_rsa_singleton ()
+TALER_token_blind_input_rsa_singleton ()
 {
   static struct GNUNET_CRYPTO_BlindingInputValues bi = {
     .cipher = GNUNET_CRYPTO_BSA_RSA
@@ -164,7 +164,7 @@ void
 TALER_token_blind_input_copy (struct TALER_TokenUseMerchantValues *bi_dst,
                               const struct TALER_TokenUseMerchantValues *bi_src)
 {
-  if (bi_src == TALER_token_bling_input_rsa_singleton ())
+  if (bi_src == TALER_token_blind_input_rsa_singleton ())
   {
     *bi_dst = *bi_src;
     return;
