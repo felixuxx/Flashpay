@@ -1406,7 +1406,7 @@ TALER_KYCLOGIC_kyc_done (void)
 }
 
 
-/* end of taler-exchange-httpd_kyc.c */
+/* end of kyclogic_api.c */
 
 #if 0
 // FIXME from here...
