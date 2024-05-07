@@ -240,9 +240,11 @@ amount_iterator (void *cls,
   struct PurseMergeContext *pcc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  cb (cb_cls,
-      &pcc->target_amount,
-      GNUNET_TIME_absolute_get ());
+  if (GNUNET_OK !=
+      cb (cb_cls,
+          &pcc->target_amount,
+          GNUNET_TIME_absolute_get ()))
+    return;
   qs = TEH_plugin->select_merge_amounts_for_kyc_check (
     TEH_plugin->cls,
     &pcc->h_payto,

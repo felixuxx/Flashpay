@@ -172,6 +172,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_reserves_get_attest.c taler-exchange-httpd_reserves_get_attest.h \
   taler-exchange-httpd_reserves_history.c taler-exchange-httpd_reserves_history.h \
   taler-exchange-httpd_reserves_open.c taler-exchange-httpd_reserves_open.h \
+  taler-exchange-httpd_reserves_purse.c taler-exchange-httpd_reserves_purse.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_spa.c taler-exchange-httpd_spa.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
@@ -179,7 +180,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
 #  taler-exchange-httpd_reserves_close.c taler-exchange-httpd_reserves_close.h \
-#  taler-exchange-httpd_reserves_purse.c taler-exchange-httpd_reserves_purse.h \
 #  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
 #  taler-exchange-httpd_kyc-wallet.c taler-exchange-httpd_kyc-wallet.h \
 #  taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \

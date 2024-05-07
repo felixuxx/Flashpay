@@ -31,6 +31,7 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_reserves_purse.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
 
@@ -152,9 +153,11 @@ amount_iterator (void *cls,
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  cb (cb_cls,
-      &rpc->deposit_total,
-      GNUNET_TIME_absolute_get ());
+  if (GNUNET_OK !=
+      cb (cb_cls,
+          &rpc->deposit_total,
+          GNUNET_TIME_absolute_get ()))
+    return;
   qs = TEH_plugin->select_merge_amounts_for_kyc_check (
     TEH_plugin->cls,
     &rpc->h_payto,
@@ -189,50 +192,22 @@ purse_transaction (void *cls,
 {
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  char *required;
+  union TALER_AccountPublicKeyP account_pub = {
+    .reserve_pub = *rpc->reserve_pub
+  };
 
-  qs = TALER_KYCLOGIC_kyc_test_required (
+  qs = TEH_legitimization_check (
+    &rpc->kyc,
+    connection,
+    mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     &rpc->h_payto,
-    TEH_plugin->select_satisfied_kyc_processes,
-    TEH_plugin->cls,
+    &account_pub,
     &amount_iterator,
-    rpc,
-    &required);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret =
-      TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                  TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                  "kyc_test_required");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (NULL != required)
-  {
-    rpc->kyc.ok = false;
-    qs = TEH_plugin->insert_kyc_requirement_for_account (
-      TEH_plugin->cls,
-      required,
-      &rpc->h_payto,
-      rpc->reserve_pub,
-      &rpc->kyc.requirement_row);
-    GNUNET_free (required);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_STORE_FAILED,
-                                      "insert_kyc_requirement_for_account");
-    }
+    rpc);
+  if ( (qs < 0) ||
+       (! rpc->kyc.ok) )
     return qs;
-  }
-  rpc->kyc.ok = true;
 
   {
     bool in_conflict = true;
