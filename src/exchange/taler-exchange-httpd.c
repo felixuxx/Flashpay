@@ -558,10 +558,6 @@ handle_get_aml (struct TEH_RequestContext *rc,
       .handler = &TEH_handler_aml_decisions_get
     },
     {
-      .op = "decision",
-      .handler = &TEH_handler_aml_decision_get
-    },
-    {
       .op = NULL,
       .handler = NULL
     },

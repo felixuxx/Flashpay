@@ -126,6 +126,8 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
   taler-exchange-httpd_age-withdraw.c taler-exchange-httpd_age-withdraw.h \
   taler-exchange-httpd_age-withdraw_reveal.c taler-exchange-httpd_age-withdraw_reveal.h \
+  taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
+  taler-exchange-httpd_aml-decisions-get.c \
   taler-exchange-httpd_auditors.c taler-exchange-httpd_auditors.h \
   taler-exchange-httpd_batch-deposit.c taler-exchange-httpd_batch-deposit.h \
   taler-exchange-httpd_batch-withdraw.c taler-exchange-httpd_batch-withdraw.h \
@@ -182,10 +184,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
-#  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
-#  taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
-#  taler-exchange-httpd_aml-decision-get.c \
-#  taler-exchange-httpd_aml-decisions-get.c
+#  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h
 
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \

@@ -33,26 +33,30 @@
 
 
 /**
- * Maximum number of records we return per request.
- */
-#define MAX_RECORDS 1024
-
-/**
  * Return AML status.
  *
  * @param cls closure
  * @param row_id current row in AML status table
  * @param h_payto account for which the attribute data is stored
- * @param threshold currently monthly threshold that would trigger an AML check
- * @param status what is the current AML decision
+ * @param decision_time when was the decision taken
+ * @param expiration_time when will the rules expire
+ * @param jproperties properties set for the account,
+ *    NULL if no properties were set
+ * @param to_investigate true if AML staff should look at the account
+ * @param is_active true if this is the currently active decision about the account
+ * @param account_rules current active rules for the account
  */
 static void
 record_cb (
   void *cls,
   uint64_t row_id,
   const struct TALER_PaytoHashP *h_payto,
-  const struct TALER_Amount *threshold,
-  enum TALER_AmlDecisionState status)
+  struct GNUNET_TIME_Absolute decision_time,
+  struct GNUNET_TIME_Absolute expiration_time,
+  const json_t *jproperties,
+  bool to_investigate,
+  bool is_active,
+  const json_t *account_rules)
 {
   json_t *records = cls;
 
@@ -63,10 +67,7 @@ record_cb (
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_payto",
                                     h_payto),
-        GNUNET_JSON_pack_int64 ("current_state",
-                                status),
-        TALER_JSON_pack_amount ("threshold",
-                                threshold),
+        // FIXME: pack other data!
         GNUNET_JSON_pack_int64 ("rowid",
                                 row_id)
         )));
@@ -79,12 +80,10 @@ TEH_handler_aml_decisions_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[])
 {
-  enum TALER_AmlDecisionState decision;
-  int delta = -20;
-  unsigned long long start;
-  const char *state_str = args[0];
+  long long limit = -20;
+  unsigned long long offset;
 
-  if (NULL == state_str)
+  if (NULL != args[0])
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
@@ -92,68 +91,43 @@ TEH_handler_aml_decisions_get (
                                        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                        args[0]);
   }
-  if (0 == strcmp (state_str,
-                   "pending"))
-    decision = TALER_AML_PENDING;
-  else if (0 == strcmp (state_str,
-                        "frozen"))
-    decision = TALER_AML_FROZEN;
-  else if (0 == strcmp (state_str,
-                        "normal"))
-    decision = TALER_AML_NORMAL;
-  else
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                       state_str);
-  }
-  if (NULL != args[1])
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                       args[1]);
-  }
 
   {
     const char *p;
 
     p = MHD_lookup_connection_value (rc->connection,
                                      MHD_GET_ARGUMENT_KIND,
-                                     "delta");
+                                     "limit");
     if (NULL != p)
     {
       char dummy;
 
       if (1 != sscanf (p,
-                       "%d%c",
-                       &delta,
+                       "%lld%c",
+                       &limit,
                        &dummy))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "delta");
+                                           "limit");
       }
     }
-    if (delta > 0)
-      start = 0;
+    if (limit > 0)
+      offset = 0;
     else
-      start = INT64_MAX;
+      offset = INT64_MAX;
     p = MHD_lookup_connection_value (rc->connection,
                                      MHD_GET_ARGUMENT_KIND,
-                                     "start");
+                                     "offset");
     if (NULL != p)
     {
       char dummy;
 
       if (1 != sscanf (p,
                        "%llu%c",
-                       &start,
+                       &offset,
                        &dummy))
       {
         GNUNET_break_op (0);
@@ -171,18 +145,15 @@ TEH_handler_aml_decisions_get (
 
     records = json_array ();
     GNUNET_assert (NULL != records);
-    if (INT_MIN == delta)
-      delta = INT_MIN + 1;
-    qs = TEH_plugin->select_aml_process (TEH_plugin->cls,
-                                         decision,
-                                         start,
-                                         GNUNET_MIN (MAX_RECORDS,
-                                                     delta > 0
-                                                     ? delta
-                                                     : -delta),
-                                         delta > 0,
-                                         &record_cb,
-                                         records);
+    qs = TEH_plugin->select_aml_decisions (
+      TEH_plugin->cls,
+      NULL /* FIXME! */,
+      0, /* FIXME */
+      0, /* FIXME */
+      offset,
+      limit,
+      &record_cb,
+      records);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:

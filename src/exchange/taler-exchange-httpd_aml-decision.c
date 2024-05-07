@@ -47,19 +47,14 @@ struct DecisionContext
   struct GNUNET_TIME_Timestamp decision_time;
 
   /**
-   * New threshold for revising the decision.
+   * New rules after the decision.
    */
-  struct TALER_Amount new_threshold;
+  const json_t *new_rules;
 
   /**
    * Hash of payto://-URI of affected account.
    */
   struct TALER_PaytoHashP h_payto;
-
-  /**
-   * New AML state.
-   */
-  enum TALER_AmlDecisionState new_state;
 
   /**
    * Signature affirming the decision.
@@ -70,11 +65,6 @@ struct DecisionContext
    * Public key of the AML officer.
    */
   const struct TALER_AmlOfficerPublicKeyP *officer_pub;
-
-  /**
-   * KYC requirements imposed, NULL for none.
-   */
-  const json_t *kyc_requirements;
 
 };
 
@@ -100,9 +90,11 @@ make_aml_decision (void *cls,
                    MHD_RESULT *mhd_ret)
 {
   struct DecisionContext *dc = cls;
-  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Timestamp last_date;
-  bool invalid_officer;
+  bool invalid_officer = -1;
+
+#if FIXME
+  enum GNUNET_DB_QueryStatus qs;
   uint64_t requirement_row = 0;
 
   if ( (NULL != dc->kyc_requirements) &&
@@ -154,7 +146,8 @@ make_aml_decision (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "select_satisfied_kyc_processes");
+                                               "select_satisfied_kyc_processes")
+        ;
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
       return qs;
@@ -209,6 +202,7 @@ make_aml_decision (void *cls,
     }
     return qs;
   }
+#endif
   if (invalid_officer)
   {
     GNUNET_break_op (0);
@@ -251,19 +245,12 @@ TEH_handler_post_aml_decision (
                                  &dc.officer_sig),
     GNUNET_JSON_spec_fixed_auto ("h_payto",
                                  &dc.h_payto),
-    TALER_JSON_spec_amount ("new_threshold",
-                            TEH_currency,
-                            &dc.new_threshold),
+    GNUNET_JSON_spec_object_const ("new_rules",
+                                   &dc.new_rules),
     GNUNET_JSON_spec_string ("justification",
                              &dc.justification),
     GNUNET_JSON_spec_timestamp ("decision_time",
                                 &dc.decision_time),
-    TALER_JSON_spec_aml_decision ("new_state",
-                                  &dc.new_state),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_array_const ("kyc_requirements",
-                                    &dc.kyc_requirements),
-      NULL),
     GNUNET_JSON_spec_end ()
   };
 
@@ -283,14 +270,13 @@ TEH_handler_post_aml_decision (
   }
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      TALER_officer_aml_decision_verify (dc.justification,
-                                         dc.decision_time,
-                                         &dc.new_threshold,
-                                         &dc.h_payto,
-                                         dc.new_state,
-                                         dc.kyc_requirements,
-                                         dc.officer_pub,
-                                         &dc.officer_sig))
+      TALER_officer_aml_decision_verify (
+        dc.justification,
+        dc.decision_time,
+        &dc.h_payto,
+        dc.new_rules,
+        dc.officer_pub,
+        &dc.officer_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
@@ -300,6 +286,7 @@ TEH_handler_post_aml_decision (
       NULL);
   }
 
+#if 0
   if (NULL != dc.kyc_requirements)
   {
     size_t index;
@@ -331,6 +318,7 @@ TEH_handler_post_aml_decision (
       }
     }
   }
+#endif
 
   {
     MHD_RESULT mhd_ret;
