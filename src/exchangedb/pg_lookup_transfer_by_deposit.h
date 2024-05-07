@@ -42,7 +42,6 @@
  * @param[out] amount_with_fee set to the total deposited amount
  * @param[out] deposit_fee set to how much the exchange did charge for the deposit
  * @param[out] kyc set to the kyc status of the receiver (if @a pending)
- * @param[out] aml_decision set to the AML status of the receiver
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
@@ -56,6 +55,7 @@ TEH_PG_lookup_transfer_by_deposit (
   struct TALER_WireTransferIdentifierRawP *wtid,
   struct GNUNET_TIME_Timestamp *exec_time,
   struct TALER_Amount *amount_with_fee,
-  struct TALER_Amount *deposit_fee);
+  struct TALER_Amount *deposit_fee,
+  struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 #endif

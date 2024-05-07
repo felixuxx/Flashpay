@@ -136,6 +136,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_contract.c taler-exchange-httpd_contract.h \
   taler-exchange-httpd_csr.c taler-exchange-httpd_csr.h \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
+  taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_extensions.c taler-exchange-httpd_extensions.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
   taler-exchange-httpd_kyc-proof.c taler-exchange-httpd_kyc-proof.h \
@@ -182,7 +183,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
 #  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
-#  taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
 #  taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
 #  taler-exchange-httpd_aml-decision-get.c \
 #  taler-exchange-httpd_aml-decisions-get.c

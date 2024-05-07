@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022-2023 Taler Systems SA
+   Copyright (C) 2022-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -37,7 +37,8 @@ TEH_PG_lookup_transfer_by_deposit (
   struct TALER_WireTransferIdentifierRawP *wtid,
   struct GNUNET_TIME_Timestamp *exec_time,
   struct TALER_Amount *amount_with_fee,
-  struct TALER_Amount *deposit_fee)
+  struct TALER_Amount *deposit_fee,
+  struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -66,6 +67,7 @@ TEH_PG_lookup_transfer_by_deposit (
   };
 
   /* check if the aggregation record exists and get it */
+  // FIXME: KYC initialization logic REMOVED, needs to be added back!
   PREPARE (pg,
            "lookup_deposit_wtid",
            "SELECT"
