@@ -162,6 +162,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_purses_deposit.c taler-exchange-httpd_purses_deposit.h \
   taler-exchange-httpd_purses_delete.c taler-exchange-httpd_purses_delete.h \
   taler-exchange-httpd_purses_get.c taler-exchange-httpd_purses_get.h \
+  taler-exchange-httpd_purses_merge.c taler-exchange-httpd_purses_merge.h \
   taler-exchange-httpd_recoup.c taler-exchange-httpd_recoup.h \
   taler-exchange-httpd_recoup-refresh.c taler-exchange-httpd_recoup-refresh.h \
   taler-exchange-httpd_refreshes_reveal.c taler-exchange-httpd_refreshes_reveal.h \
@@ -177,7 +178,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
-#  taler-exchange-httpd_purses_merge.c taler-exchange-httpd_purses_merge.h \
 #  taler-exchange-httpd_reserves_close.c taler-exchange-httpd_reserves_close.h \
 #  taler-exchange-httpd_reserves_purse.c taler-exchange-httpd_reserves_purse.h \
 #  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \

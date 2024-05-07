@@ -35,6 +35,103 @@
 #include "taler_util.h"
 
 
+enum GNUNET_DB_QueryStatus
+TEH_legitimization_check (
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  struct MHD_Connection *connection,
+  MHD_RESULT *mhd_ret,
+  enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const struct TALER_PaytoHashP *h_payto,
+  const union TALER_AccountPublicKeyP *account_pub,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls)
+{
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
+  struct TALER_KYCLOGIC_KycRule *requirement;
+  enum GNUNET_DB_QueryStatus qs;
+
+  {
+    json_t *jrules;
+
+    qs = TEH_plugin->get_kyc_rules (TEH_plugin->cls,
+                                    h_payto,
+                                    &jrules);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                            "get_kyc_rules");
+      }
+      return qs;
+    }
+    if (qs > 0)
+    {
+      lrs = TALER_KYCLOGIC_rules_parse (jrules);
+      GNUNET_break (NULL != lrs);
+      /* Fall back to default rules on parse error! */
+      json_decref (jrules);
+    }
+  }
+
+  qs = TALER_KYCLOGIC_kyc_test_required (
+    et,
+    h_payto,
+    lrs,
+    ai,
+    ai_cls,
+    &requirement);
+  if (qs < 0)
+  {
+    TALER_KYCLOGIC_rules_free (lrs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                          "kyc_test_required");
+    }
+    return qs;
+  }
+
+  if (NULL == requirement)
+  {
+    TALER_KYCLOGIC_rules_free (lrs);
+    kyc->ok = true;
+    return qs;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC requirement is %s\n",
+              TALER_KYCLOGIC_rule2s (requirement));
+  kyc->ok = false;
+  {
+    json_t *jrule;
+
+    jrule = TALER_KYCLOGIC_rule2j (requirement);
+    qs = TEH_plugin->trigger_kyc_rule_for_account (
+      TEH_plugin->cls,
+      h_payto,
+      account_pub,
+      jrule,
+      TALER_KYCLOGIC_rule2priority (requirement),
+      &kyc->requirement_row);
+    json_decref (jrule);
+  }
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "trigger_kyc_rule_for_account");
+  }
+  TALER_KYCLOGIC_rules_free (lrs);
+  return qs;
+}
+
+
 /**
  * Closure for #withdraw_amount_cb().
  */
@@ -88,11 +185,12 @@ withdraw_amount_cb (
           wc->withdraw_total,
           wc->now.abs_time))
     return;
-  qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (TEH_plugin->cls,
-                                                          &wc->h_payto,
-                                                          limit,
-                                                          cb,
-                                                          cb_cls);
+  qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
+    TEH_plugin->cls,
+    &wc->h_payto,
+    limit,
+    cb,
+    cb_cls);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Got %d additional transactions for this age-withdrawal and limit %llu\n",
               qs,
@@ -116,6 +214,9 @@ TEH_withdraw_kyc_check (
     .withdraw_total = withdraw_total,
     .now = now
   };
+  union TALER_AccountPublicKeyP account_pub = {
+    .reserve_pub = *reserve_pub
+  };
 
   /* Check if the money came from a wire transfer */
   qs = TEH_plugin->reserves_get_origin (
@@ -131,81 +232,18 @@ TEH_withdraw_kyc_check (
                                              "reserves_get_origin");
     return qs;
   }
-
   /* If _no_ results, reserve was created by merge,
      in which case no KYC check is required as the
      merge already did that. */
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
-    json_t *jrules;
-    struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
-    struct TALER_KYCLOGIC_KycRule *requirement;
-
-    qs = TEH_plugin->get_kyc_rules (TEH_plugin->cls,
-                                    &wc.h_payto,
-                                    &jrules);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    if (qs > 0)
-    {
-      lrs = TALER_KYCLOGIC_rules_parse (jrules);
-      GNUNET_break (NULL != lrs);
-      /* Fall back to default rules on parse error! */
-      json_decref (jrules);
-    }
-    qs = TALER_KYCLOGIC_kyc_test_required (
-      TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW,
-      &wc.h_payto,
-      lrs,
-      &withdraw_amount_cb,
-      &wc,
-      &requirement);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      TALER_KYCLOGIC_rules_free (lrs);
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                            "kyc_test_required");
-      return qs;
-    }
-
-    if (NULL != requirement)
-    {
-      json_t *jrule;
-      union TALER_AccountPublicKeyP account_pub;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "KYC requirement is %s\n",
-                  TALER_KYCLOGIC_rule2s (requirement));
-      jrule = TALER_KYCLOGIC_rule2j (requirement);
-      account_pub.reserve_pub
-        = *reserve_pub;
-      kyc->ok = false;
-      qs = TEH_plugin->trigger_kyc_rule_for_account (
-        TEH_plugin->cls,
-        &wc.h_payto,
-        &account_pub,
-        jrule,
-        TALER_KYCLOGIC_rule2priority (requirement),
-        &kyc->requirement_row);
-      TALER_KYCLOGIC_rules_free (lrs);
-      json_decref (jrule);
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      {
-        GNUNET_break (0);
-        *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                            TALER_EC_GENERIC_DB_STORE_FAILED,
-                                            "trigger_kyc_rule_for_account");
-      }
-      return qs;
-    }
-    TALER_KYCLOGIC_rules_free (lrs);
-  }
-  kyc->ok = true;
-  return qs;
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return qs;
+  return TEH_legitimization_check (
+    kyc,
+    connection,
+    mhd_ret,
+    TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW,
+    &wc.h_payto,
+    &account_pub,
+    &withdraw_amount_cb,
+    &wc);
 }

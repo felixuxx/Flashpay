@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -32,6 +32,7 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_purses_merge.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
 
@@ -279,50 +280,22 @@ merge_transaction (void *cls,
   bool in_conflict = true;
   bool no_balance = true;
   bool no_partner = true;
-  char *required;
+  union TALER_AccountPublicKeyP account_pub = {
+    .reserve_pub = pcc->reserve_pub
+  };
 
-  qs = TALER_KYCLOGIC_kyc_test_required (
+  qs = TEH_legitimization_check (
+    &pcc->kyc,
+    connection,
+    mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     &pcc->h_payto,
-    TEH_plugin->select_satisfied_kyc_processes,
-    TEH_plugin->cls,
+    &account_pub,
     &amount_iterator,
-    pcc,
-    &required);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret =
-      TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                  TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                  "kyc_test_required");
+    pcc);
+  if ( (qs < 0) ||
+       (! pcc->kyc.ok) )
     return qs;
-  }
-  if (NULL != required)
-  {
-    pcc->kyc.ok = false;
-    qs = TEH_plugin->insert_kyc_requirement_for_account (
-      TEH_plugin->cls,
-      required,
-      &pcc->h_payto,
-      &pcc->reserve_pub,
-      &pcc->kyc.requirement_row);
-    GNUNET_free (required);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_STORE_FAILED,
-                                      "insert_kyc_requirement_for_account");
-    }
-    return qs;
-  }
-  pcc->kyc.ok = true;
   qs = TEH_plugin->do_purse_merge (
     TEH_plugin->cls,
     pcc->purse_pub,

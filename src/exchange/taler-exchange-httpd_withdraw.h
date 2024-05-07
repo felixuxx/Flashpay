@@ -26,6 +26,32 @@
 
 
 /**
+ * Do legitimization check.
+ *
+ * @param[out] kyc set to kyc status
+ * @param[in,out] connection used to return hard errors
+ * @param[out] mhd_ret set if errors were returned
+ *     (only on hard error)
+ * @param et type of event we are checking
+ * @param account_pub public key of the account
+ * @param ai callback to get amounts involved historically
+ * @param ai_cls closure for @a ai
+ * @return transaction status, error will have been
+ *   queued if transaction status is set to hard error
+ */
+enum GNUNET_DB_QueryStatus
+TEH_legitimization_check (
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  struct MHD_Connection *connection,
+  MHD_RESULT *mhd_ret,
+  enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const struct TALER_PaytoHashP *h_payto,
+  const union TALER_AccountPublicKeyP *account_pub,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls);
+
+
+/**
  * Do legitimization check for withdrawing @a withdraw_total
  * from @a reserve_pub at time @a now.
  *
