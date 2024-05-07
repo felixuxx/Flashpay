@@ -1712,20 +1712,6 @@ TALER_CRYPTO_kyc_attributes_decrypt (
 
 
 /**
- * Takes a set of KYC attributes and extracts key
- * data that we use to detect similar / duplicate
- * entries in the database.
- *
- * @param attr set of KYC attributes
- * @param[out] kyc_prox set to the proximity hash
- */
-void
-TALER_CRYPTO_attributes_to_kyc_prox (
-  const json_t *attr,
-  struct GNUNET_ShortHashCode *kyc_prox);
-
-
-/**
  * Check if a coin is valid; that is, whether the denomination key exists,
  * is not expired, and the signature is correct.
  *

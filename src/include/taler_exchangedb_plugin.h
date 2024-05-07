@@ -6962,10 +6962,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param process_row KYC process row to update
    * @param h_payto account for which the attribute data is stored
-   * @param kyc_prox key for similarity search
-   * @param provider_section provider that must be checked
-   * @param num_checks how many checks do these attributes satisfy
-   * @param satisfied_checks array of checks satisfied by these attributes
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
    * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
@@ -6981,10 +6977,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t process_row,
     const struct TALER_PaytoHashP *h_payto,
-    const struct GNUNET_ShortHashCode *kyc_prox,
-    const char *provider_section,
-    unsigned int num_checks,
-    const char *satisfied_checks[static num_checks],
     uint32_t birthday,
     struct GNUNET_TIME_Timestamp collection_time,
     const char *provider_account_id,

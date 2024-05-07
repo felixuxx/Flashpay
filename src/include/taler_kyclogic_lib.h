@@ -114,6 +114,16 @@ TALER_KYCLOGIC_kyc_done (void);
 
 
 /**
+ * Return JSON array with amounts with thresholds that
+ * may change KYC requirements for the wallet.
+ *
+ * @return JSON array, NULL if no limits apply
+ */
+json_t *
+TALER_KYCLOGIC_get_wallet_thresholds (void);
+
+
+/**
  * Function called to iterate over KYC-relevant
  * transaction amounts for a particular time range.
  * Called within a database transaction, so must

@@ -2276,7 +2276,8 @@ setup_general_response_headers (void *cls,
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
-                                         "public,must-revalidate,max-age=86400"));
+                                         "public,must-revalidate,max-age=86400")
+                );
   if (! GNUNET_TIME_relative_is_zero (ksh->rekey_frequency))
   {
     struct GNUNET_TIME_Relative r;
@@ -2318,27 +2319,6 @@ setup_general_response_headers (void *cls,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_VARY,
                                          MHD_HTTP_HEADER_ACCEPT_ENCODING));
-}
-
-
-/**
- * Function called with wallet balance thresholds.
- *
- * @param[in,out] cls a `json **` where to put the array of json amounts discovered
- * @param threshold another threshold amount to add
- */
-static void
-wallet_threshold_cb (void *cls,
-                     const struct TALER_Amount *threshold)
-{
-  json_t **ret = cls;
-
-  if (NULL == *ret)
-    *ret = json_array ();
-  GNUNET_assert (0 ==
-                 json_array_append_new (*ret,
-                                        TALER_JSON_from_amount (
-                                          threshold)));
 }
 
 
@@ -2469,29 +2449,15 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                    ksh->global_fees),
     GNUNET_JSON_pack_timestamp ("list_issue_date",
                                 last_cherry_pick_date),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_array_steal (
+        "wallet_balance_limit_without_kyc",
+        TALER_KYCLOGIC_get_wallet_thresholds ())),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &exchange_pub),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
                                 &exchange_sig));
   GNUNET_assert (NULL != keys);
-
-  /* Set wallet limit if KYC is configured */
-  {
-    json_t *wblwk = NULL;
-
-    TALER_KYCLOGIC_kyc_iterate_thresholds (
-      TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
-      &wallet_threshold_cb,
-      &wblwk);
-    if (NULL != wblwk)
-      GNUNET_assert (
-        0 ==
-        json_object_set_new (
-          keys,
-          "wallet_balance_limit_without_kyc",
-          wblwk));
-  }
-
   /* Signal support for the configured, enabled extensions. */
   {
     json_t *extensions = json_object ();
@@ -2900,7 +2866,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
     denominations_by_group =
       GNUNET_CONTAINER_multihashmap_create (1024,
-                                            GNUNET_NO /* NO, because keys are only on the stack */);
+                                            GNUNET_NO /* NO, because keys are only on the stack */
+                                            );
     /* heap = max heap, sorted by start time */
     while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
     {
@@ -3267,7 +3234,8 @@ build_key_state (struct HelperState *hs,
   ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
                                                             true);
   ksh->signkey_map = GNUNET_CONTAINER_multipeermap_create (32,
-                                                           false /* MUST be false! */);
+                                                           false /* MUST be false! */
+                                                           );
   ksh->auditors = json_array ();
   GNUNET_assert (NULL != ksh->auditors);
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */

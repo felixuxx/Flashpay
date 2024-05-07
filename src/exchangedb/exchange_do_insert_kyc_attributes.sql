@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2023 Taler Systems SA
+-- Copyright (C) 2023, 2024 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -17,9 +17,6 @@
 CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
-  IN in_kyc_prox BYTEA,
-  IN in_provider_section TEXT,
-  IN in_satisfied_checks TEXT[],
   IN in_birthday INT4,
   IN in_provider_account_id TEXT,
   IN in_provider_legitimization_id TEXT,
@@ -39,18 +36,12 @@ BEGIN
 
 INSERT INTO exchange.kyc_attributes
   (h_payto
-  ,kyc_prox
-  ,provider
-  ,satisfied_checks
   ,collection_time
   ,expiration_time
   ,encrypted_attributes
   ,legitimization_serial
  ) VALUES
   (in_h_payto
-  ,in_kyc_prox
-  ,in_provider_section
-  ,in_satisfied_checks
   ,in_collection_time_ts
   ,in_expiration_time_ts
   ,in_enc_attributes
@@ -110,5 +101,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, BYTEA, TEXT, TEXT[], INT4, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, INT4, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
   IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';

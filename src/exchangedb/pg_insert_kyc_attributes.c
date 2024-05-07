@@ -31,10 +31,6 @@ TEH_PG_insert_kyc_attributes (
   void *cls,
   uint64_t process_row,
   const struct TALER_PaytoHashP *h_payto,
-  const struct GNUNET_ShortHashCode *kyc_prox,
-  const char *provider_section,
-  unsigned int num_checks,
-  const char *satisfied_checks[static num_checks],
   uint32_t birthday,
   struct GNUNET_TIME_Timestamp collection_time,
   const char *provider_account_id,
@@ -57,11 +53,6 @@ TEH_PG_insert_kyc_attributes (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_auto_from_type (kyc_prox),
-    GNUNET_PQ_query_param_string (provider_section),
-    GNUNET_PQ_query_param_array_ptrs_string (num_checks,
-                                             satisfied_checks,
-                                             pg->conn),
     GNUNET_PQ_query_param_uint32 (&birthday),
     (NULL == provider_account_id)
     ? GNUNET_PQ_query_param_null ()
@@ -94,7 +85,7 @@ TEH_PG_insert_kyc_attributes (
            "SELECT "
            " out_ok"
            " FROM exchange_do_insert_kyc_attributes "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "insert_kyc_attributes",
                                                  params,

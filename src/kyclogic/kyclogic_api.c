@@ -621,6 +621,27 @@ TALER_KYCLOGIC_kyc_trigger2s (
 }
 
 
+json_t *
+TALER_KYCLOGIC_get_wallet_thresholds (void)
+{
+#if 0
+  json_t *ret;
+
+  ret = json_array ();
+  GNUNET_assert (NULL != ret);
+  GNUNET_assert (
+    0 ==
+    json_array_append_new (
+      ret,
+      TALER_JSON_from_amount (
+        threshold)));
+  return ret;
+#endif
+  GNUNET_break (0); // FIXME: implement!
+  return NULL;
+}
+
+
 /**
  * Load KYC logic plugin.
  *

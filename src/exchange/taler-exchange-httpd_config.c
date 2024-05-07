@@ -59,20 +59,29 @@ TEH_handler_config (struct TEH_RequestContext *rc,
     TALER_MHD_get_date_string (km.abs_time,
                                dat);
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_array_steal ("supported_kyc_requirements",
-                                    TALER_KYCLOGIC_get_satisfiable ()),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_array_steal (
+          "wallet_balance_limit_without_kyc",
+          TALER_KYCLOGIC_get_wallet_thresholds ())),
+      /* Deprecate? */
+      GNUNET_JSON_pack_array_steal (
+        "supported_kyc_requirements",
+        json_array ()),
       GNUNET_JSON_pack_object_steal (
         "currency_specification",
         TALER_CONFIG_currency_specs_to_json (TEH_cspec)),
-      GNUNET_JSON_pack_string ("currency",
-                               TEH_currency),
-      GNUNET_JSON_pack_string ("name",
-                               "taler-exchange"),
-      GNUNET_JSON_pack_string ("implementation",
-                               "urn:net:taler:specs:taler-exchange:c-reference")
-      ,
-      GNUNET_JSON_pack_string ("version",
-                               EXCHANGE_PROTOCOL_VERSION));
+      GNUNET_JSON_pack_string (
+        "currency",
+        TEH_currency),
+      GNUNET_JSON_pack_string (
+        "name",
+        "taler-exchange"),
+      GNUNET_JSON_pack_string (
+        "implementation",
+        "urn:net:taler:specs:taler-exchange:c-reference"),
+      GNUNET_JSON_pack_string (
+        "version",
+        EXCHANGE_PROTOCOL_VERSION));
 
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,
