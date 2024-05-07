@@ -1754,7 +1754,7 @@ handle_mhd_request (void *cls,
       .url = "kyc-check",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_kyc_check,
-      .nargs = 3
+      .nargs = 1
     },
     {
       .url = "kyc-proof",

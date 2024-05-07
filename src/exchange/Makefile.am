@@ -141,6 +141,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_extensions.c taler-exchange-httpd_extensions.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
+  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
   taler-exchange-httpd_kyc-proof.c taler-exchange-httpd_kyc-proof.h \
   taler-exchange-httpd_kyc-wallet.c taler-exchange-httpd_kyc-wallet.h \
   taler-exchange-httpd_kyc-webhook.c taler-exchange-httpd_kyc-webhook.h \
@@ -184,7 +185,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
-#  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h
 
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \

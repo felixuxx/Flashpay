@@ -251,8 +251,10 @@ reserve_close_transaction (void *cls,
          (! rcc->kyc.ok) )
       return qs;
   }
-
-  rcc->kyc.ok = true;
+  else
+  {
+    rcc->kyc.ok = true;
+  }
   if (NULL == rcc->payto_uri)
     rcc->payto_uri = payto_uri;
 

@@ -3522,7 +3522,6 @@ typedef void
  * @param to_investigate true if AML staff should look at the account
  * @param is_active true if this is the currently active decision about the account
  * @param account_rules current active rules for the account
- * @param status what is the current AML decision
  */
 typedef void
 (*TALER_EXCHANGEDB_AmlDecisionCallback)(
