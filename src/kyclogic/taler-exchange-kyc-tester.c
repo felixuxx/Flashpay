@@ -278,9 +278,9 @@ static int run_webservice;
 static int global_ret;
 
 /**
- * -r command-line flag.
+ * -m command-line flag.
  */
-static char *requirements;
+static char *measure;
 
 /**
  * Handle for ongoing initiation operation.
@@ -1466,19 +1466,21 @@ run (void *cls,
     return;
   }
   global_ret = EXIT_SUCCESS;
-  if (NULL != requirements)
+  if (NULL != measure)
   {
     struct TALER_KYCLOGIC_ProviderDetails *pd;
 
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_requirements_to_logic (requirements,
+        TALER_KYCLOGIC_requirements_to_logic (NULL, /* FIXME! */
+                                              NULL, /* FIXME! */
+                                              measure,
                                               &ih_logic,
                                               &pd,
                                               &provider_section_name))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not initiate KYC for requirements `%s' (configuration error?)\n",
-                  requirements);
+                  "Could not initiate KYC for measure `%s' (configuration error?)\n",
+                  measure);
       global_ret = EXIT_NOTCONFIGURED;
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -1575,11 +1577,11 @@ main (int argc,
       "run the integrated HTTP service",
       &run_webservice),
     GNUNET_GETOPT_option_string (
-      'R',
-      "requirements",
-      "CHECKS",
-      "initiate KYC check for the given list of (space-separated) checks",
-      &requirements),
+      'm',
+      "measure",
+      "MEASURE_NAME",
+      "initiate KYC check for the selected measure",
+      &measure),
     GNUNET_GETOPT_option_string (
       'u',
       "user",

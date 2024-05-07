@@ -98,19 +98,6 @@ TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
 
 
 /**
- * Send information that an AML process is blocking
- * the operation right now.
- *
- * @param connection connection to the client
- * @param status current AML status
- * @return MHD result code
- */
-MHD_RESULT
-TEH_RESPONSE_reply_aml_blocked (struct MHD_Connection *connection,
-                                enum TALER_AmlDecisionState status);
-
-
-/**
  * Send assertion that the given denomination key hash
  * is not usable (typically expired) at this time.
  *

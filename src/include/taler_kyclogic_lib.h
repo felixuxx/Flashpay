@@ -222,6 +222,7 @@ TALER_KYCLOGIC_rule2j (struct TALER_KYCLOGIC_KycRule *r);
 uint32_t
 TALER_KYCLOGIC_rule2priority (struct TALER_KYCLOGIC_KycRule *r);
 
+
 /**
  * Iterate over all thresholds that are applicable to a particular type of @a
  * event under exposed global rules.
@@ -258,8 +259,9 @@ TALER_KYCLOGIC_is_satisfiable (
  * FIXME: we probably want to instead set up the logic
  * with the context instead of just returning it here!
  *
- * @param requirements space-separated list of required checks
- * @param ut type of the entity performing the check
+ * @param lrs rule set
+ * @param kyc_rule rule that was triggered
+ * @param measure_name selected measure
  * @param[out] plugin set to the KYC logic API
  * @param[out] pd set to the specific operation context
  * @param[out] configuration_section set to the name of the KYC logic configuration section * @return #GNUNET_OK on success
@@ -309,6 +311,41 @@ TALER_KYCLOGIC_lookup_checks (
   const char *section_name,
   unsigned int *num_checks,
   char ***provided_checks);
+
+
+/**
+ * Function called with the provider details and
+ * associated plugin closures for matching logics.
+ *
+ * @param cls closure
+ * @param pd provider details of a matching logic
+ * @param plugin_cls closure of the plugin
+ * @return #GNUNET_OK to continue to iterate
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_KYCLOGIC_DetailsCallback)(
+  void *cls,
+  const struct TALER_KYCLOGIC_ProviderDetails *pd,
+  void *plugin_cls);
+
+
+/**
+ * Call @a cb for all logics with name @a logic_name,
+ * providing the plugin closure and the @a pd configurations.
+ * Obtain the provider logic for a given set of @a lrs
+ * and a specific @a kyc_rule from @a lrs that was
+ * triggered and the choosen @a measure_name from the
+ * list of measures of that @a kyc_rule.
+  *
+ * @param logic_name name of the logic to match
+ * @param cb function to call on matching results
+ * @param cb_cls closure for @a cb
+ */
+void
+TALER_KYCLOGIC_kyc_get_details (
+  const char *logic_name,
+  TALER_KYCLOGIC_DetailsCallback cb,
+  void *cb_cls);
 
 
 #endif

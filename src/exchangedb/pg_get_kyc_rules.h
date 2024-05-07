@@ -31,7 +31,6 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param h_payto account identifier
- * @param[out] expiration_time when do the @a jrules expire
  * @param[out] jrules set to the active KYC rules for the
  *    given account, set to NULL if no custom rules are active
  * @return transaction status code
@@ -40,7 +39,6 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_kyc_rules (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  struct GNUNET_TIME_Timestamp *expiration_time,
   json_t **jrules);
 
 #endif

@@ -127,9 +127,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_age-withdraw.c taler-exchange-httpd_age-withdraw.h \
   taler-exchange-httpd_age-withdraw_reveal.c taler-exchange-httpd_age-withdraw_reveal.h \
   taler-exchange-httpd_auditors.c taler-exchange-httpd_auditors.h \
-  taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
-  taler-exchange-httpd_aml-decision-get.c \
-  taler-exchange-httpd_aml-decisions-get.c \
   taler-exchange-httpd_batch-deposit.c taler-exchange-httpd_batch-deposit.h \
   taler-exchange-httpd_batch-withdraw.c taler-exchange-httpd_batch-withdraw.h \
   taler-exchange-httpd_coins_get.c taler-exchange-httpd_coins_get.h \
@@ -139,12 +136,9 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_contract.c taler-exchange-httpd_contract.h \
   taler-exchange-httpd_csr.c taler-exchange-httpd_csr.h \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
-  taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_extensions.c taler-exchange-httpd_extensions.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
-  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
   taler-exchange-httpd_kyc-proof.c taler-exchange-httpd_kyc-proof.h \
-  taler-exchange-httpd_kyc-wallet.c taler-exchange-httpd_kyc-wallet.h \
   taler-exchange-httpd_kyc-webhook.c taler-exchange-httpd_kyc-webhook.h \
   taler-exchange-httpd_link.c taler-exchange-httpd_link.h \
   taler-exchange-httpd_management.h \
@@ -168,22 +162,30 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_purses_deposit.c taler-exchange-httpd_purses_deposit.h \
   taler-exchange-httpd_purses_delete.c taler-exchange-httpd_purses_delete.h \
   taler-exchange-httpd_purses_get.c taler-exchange-httpd_purses_get.h \
-  taler-exchange-httpd_purses_merge.c taler-exchange-httpd_purses_merge.h \
   taler-exchange-httpd_recoup.c taler-exchange-httpd_recoup.h \
   taler-exchange-httpd_recoup-refresh.c taler-exchange-httpd_recoup-refresh.h \
   taler-exchange-httpd_refreshes_reveal.c taler-exchange-httpd_refreshes_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
   taler-exchange-httpd_reserves_attest.c taler-exchange-httpd_reserves_attest.h \
-  taler-exchange-httpd_reserves_close.c taler-exchange-httpd_reserves_close.h \
   taler-exchange-httpd_reserves_get.c taler-exchange-httpd_reserves_get.h \
   taler-exchange-httpd_reserves_get_attest.c taler-exchange-httpd_reserves_get_attest.h \
   taler-exchange-httpd_reserves_history.c taler-exchange-httpd_reserves_history.h \
   taler-exchange-httpd_reserves_open.c taler-exchange-httpd_reserves_open.h \
-  taler-exchange-httpd_reserves_purse.c taler-exchange-httpd_reserves_purse.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_spa.c taler-exchange-httpd_spa.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
-  taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h
+  taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
+  taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
+
+#  taler-exchange-httpd_purses_merge.c taler-exchange-httpd_purses_merge.h \
+#  taler-exchange-httpd_reserves_close.c taler-exchange-httpd_reserves_close.h \
+#  taler-exchange-httpd_reserves_purse.c taler-exchange-httpd_reserves_purse.h \
+#  taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
+#  taler-exchange-httpd_kyc-wallet.c taler-exchange-httpd_kyc-wallet.h \
+#  taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
+#  taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
+#  taler-exchange-httpd_aml-decision-get.c \
+#  taler-exchange-httpd_aml-decisions-get.c
 
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \

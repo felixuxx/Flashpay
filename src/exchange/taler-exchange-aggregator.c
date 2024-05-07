@@ -500,7 +500,6 @@ legitimization_satisfied (struct AggregationUnit *au_active)
 {
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
   struct TALER_KYCLOGIC_KycRule *requirement;
-  struct GNUNET_TIME_Timestamp expiration_time;
   enum GNUNET_DB_QueryStatus qs;
   json_t *jrule;
 
@@ -512,29 +511,17 @@ legitimization_satisfied (struct AggregationUnit *au_active)
 
     qs = db_plugin->get_kyc_rules (db_plugin->cls,
                                    &au_active->h_payto,
-                                   &expiration_time,
                                    &jrules);
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-    if ( (qs > 0) &&
-         (GNUNET_TIME_absolute_is_past (expiration_time.abs_time)) )
-    {
-      json_decref (jrules);
-      jrules = NULL;
-      qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-    }
     if (qs > 0)
     {
       lrs = TALER_KYCLOGIC_rules_parse (jrules);
-      if (NULL == lrs)
-      {
-        GNUNET_break (0);
-        json_decref (jrules);
-        return false;
-      }
+      GNUNET_break (NULL != lrs);
+      /* Fall back to default rules on parse error! */
       json_decref (jrules);
     }
   }

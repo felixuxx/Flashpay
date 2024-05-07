@@ -33,6 +33,7 @@
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_age-withdraw.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler_util.h"
@@ -52,11 +53,6 @@ struct AgeWithdrawContext
    * Timestamp
    */
   struct GNUNET_TIME_Timestamp now;
-
-  /**
-   * Hash of the wire source URL, needed when kyc is needed.
-   */
-  struct TALER_PaytoHashP h_payto;
 
   /**
    * The data from the age-withdraw request, as we persist it
@@ -549,19 +545,18 @@ reply_age_withdraw_success (
 {
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  enum TALER_ErrorCode ec =
-    TALER_exchange_online_age_withdraw_confirmation_sign (
-      &TEH_keys_exchange_sign_,
-      ach,
-      noreveal_index,
-      &pub,
-      &sig);
+  enum TALER_ErrorCode ec;
 
+  ec = TALER_exchange_online_age_withdraw_confirmation_sign (
+    &TEH_keys_exchange_sign_,
+    ach,
+    noreveal_index,
+    &pub,
+    &sig);
   if (TALER_EC_NONE != ec)
     return TALER_MHD_reply_with_ec (connection,
                                     ec,
                                     NULL);
-
   return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
                                     GNUNET_JSON_pack_uint64 ("noreveal_index",
@@ -619,49 +614,6 @@ request_is_idempotent (struct MHD_Connection *con,
 
 
 /**
- * Function called to iterate over KYC-relevant transaction amounts for a
- * particular time range. Called within a database transaction, so must
- * not start a new one.
- *
- * @param cls closure, identifies the event type and account to iterate
- *        over events for
- * @param limit maximum time-range for which events should be fetched
- *        (timestamp in the past)
- * @param cb function to call on each event found, events must be returned
- *        in reverse chronological order
- * @param cb_cls closure for @a cb, of type struct AgeWithdrawContext
- */
-static void
-age_withdraw_amount_cb (void *cls,
-                        struct GNUNET_TIME_Absolute limit,
-                        TALER_EXCHANGEDB_KycAmountCallback cb,
-                        void *cb_cls)
-{
-  struct AgeWithdrawContext *awc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Signaling amount %s for KYC check during age-withdrawal\n",
-              TALER_amount2s (&awc->commitment.amount_with_fee));
-  if (GNUNET_OK !=
-      cb (cb_cls,
-          &awc->commitment.amount_with_fee,
-          awc->now.abs_time))
-    return;
-  qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (TEH_plugin->cls,
-                                                          &awc->h_payto,
-                                                          limit,
-                                                          cb,
-                                                          cb_cls);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Got %d additional transactions for this age-withdrawal and limit %llu\n",
-              qs,
-              (unsigned long long) limit.abs_value_us);
-  GNUNET_break (qs >= 0);
-}
-
-
-/**
  * Function implementing age withdraw transaction.  Runs the
  * transaction logic; IF it returns a non-error code, the transaction
  * logic MUST NOT queue a MHD response.  IF it returns an hard error,
@@ -682,135 +634,89 @@ age_withdraw_transaction (void *cls,
 {
   struct AgeWithdrawContext *awc = cls;
   enum GNUNET_DB_QueryStatus qs;
+  bool found = false;
+  bool balance_ok = false;
+  bool age_ok = false;
+  bool conflict = false;
+  uint16_t allowed_maximum_age = 0;
+  uint32_t reserve_birthday = 0;
+  struct TALER_Amount reserve_balance;
 
-  qs = TEH_plugin->reserves_get_origin (TEH_plugin->cls,
-                                        &awc->commitment.reserve_pub,
-                                        &awc->h_payto);
-  if (qs < 0)
+  qs = TEH_withdraw_kyc_check (&awc->kyc,
+                               connection,
+                               mhd_ret,
+                               &awc->commitment.reserve_pub,
+                               &awc->commitment.amount_with_fee,
+                               awc->now);
+  if ( (qs < 0) ||
+       (! awc->kyc.ok) )
     return qs;
-
-  /* If _no_ results, reserve was created by merge,
-     in which case no KYC check is required as the
-     merge already did that. */
-
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+  qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
+                                    &awc->commitment,
+                                    awc->now,
+                                    &found,
+                                    &balance_ok,
+                                    &reserve_balance,
+                                    &age_ok,
+                                    &allowed_maximum_age,
+                                    &reserve_birthday,
+                                    &conflict);
+  if (0 > qs)
   {
-    char *kyc_required;
-
-    qs = TALER_KYCLOGIC_kyc_test_required (
-      TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW,
-      &awc->h_payto,
-      TEH_plugin->select_satisfied_kyc_processes,
-      TEH_plugin->cls,
-      &age_withdraw_amount_cb,
-      awc,
-      &kyc_required);
-
-    if (qs < 0)
-    {
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      {
-        GNUNET_break (0);
-        *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                            "kyc_test_required");
-      }
-      return qs;
-    }
-
-    if (NULL != kyc_required)
-    {
-      /* Mark result and return by inserting KYC requirement into DB! */
-      awc->kyc.ok = false;
-      return TEH_plugin->insert_kyc_requirement_for_account (
-        TEH_plugin->cls,
-        kyc_required,
-        &awc->h_payto,
-        &awc->commitment.reserve_pub,
-        &awc->kyc.requirement_row);
-    }
-  }
-
-  awc->kyc.ok = true;
-
-  /* KYC requirement fulfilled, do the age-withdraw transaction */
-  {
-    bool found = false;
-    bool balance_ok = false;
-    bool age_ok = false;
-    bool conflict = false;
-    uint16_t allowed_maximum_age = 0;
-    uint32_t reserve_birthday = 0;
-    struct TALER_Amount reserve_balance;
-
-    qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
-                                      &awc->commitment,
-                                      awc->now,
-                                      &found,
-                                      &balance_ok,
-                                      &reserve_balance,
-                                      &age_ok,
-                                      &allowed_maximum_age,
-                                      &reserve_birthday,
-                                      &conflict);
-    if (0 > qs)
-    {
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                            "do_age_withdraw");
-      return qs;
-    }
-    if (! found)
-    {
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                          TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                          NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if (! age_ok)
-    {
-      enum TALER_ErrorCode ec =
-        TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE;
-
-      *mhd_ret =
-        TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          MHD_HTTP_CONFLICT,
-          TALER_MHD_PACK_EC (ec),
-          GNUNET_JSON_pack_uint64 ("allowed_maximum_age",
-                                   allowed_maximum_age),
-          GNUNET_JSON_pack_uint64 ("reserve_birthday",
-                                   reserve_birthday));
-
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if (! balance_ok)
-    {
-      TEH_plugin->rollback (TEH_plugin->cls);
-
-      *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
-        connection,
-        TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
-        &reserve_balance,
-        &awc->commitment.amount_with_fee,
-        &awc->commitment.reserve_pub);
-
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if (conflict)
-    {
-      /* do_age_withdraw signaled a conflict, so there MUST be an entry
-       * in the DB.  Put that into the response */
-      bool ok = request_is_idempotent (connection,
-                                       awc,
-                                       mhd_ret);
-      GNUNET_assert (ok);
-      return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-    }
-    *mhd_ret = -1;
+                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                          "do_age_withdraw");
+    return qs;
   }
+  if (! found)
+  {
+    *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                                        NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (! age_ok)
+  {
+    enum TALER_ErrorCode ec =
+      TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE;
 
+    *mhd_ret =
+      TALER_MHD_REPLY_JSON_PACK (
+        connection,
+        MHD_HTTP_CONFLICT,
+        TALER_MHD_PACK_EC (ec),
+        GNUNET_JSON_pack_uint64 ("allowed_maximum_age",
+                                 allowed_maximum_age),
+        GNUNET_JSON_pack_uint64 ("reserve_birthday",
+                                 reserve_birthday));
+
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (! balance_ok)
+  {
+    TEH_plugin->rollback (TEH_plugin->cls);
+
+    *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
+      connection,
+      TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
+      &reserve_balance,
+      &awc->commitment.amount_with_fee,
+      &awc->commitment.reserve_pub);
+
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (conflict)
+  {
+    /* do_age_withdraw signaled a conflict, so there MUST be an entry
+     * in the DB.  Put that into the response */
+    bool ok = request_is_idempotent (connection,
+                                     awc,
+                                     mhd_ret);
+    GNUNET_assert (ok);
+    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  }
+  *mhd_ret = -1;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     TEH_METRICS_num_success[TEH_MT_SUCCESS_AGE_WITHDRAW]++;
   return qs;
@@ -845,8 +751,6 @@ sign_and_do_age_withdraw (
   struct TALER_BlindedCoinHashP h_coin_evs[awc->num_coins];
   struct TALER_BlindedDenominationSignature denom_sigs[awc->num_coins];
   uint8_t noreveal_index;
-
-  awc->now = GNUNET_TIME_timestamp_get ();
 
   /* Pick the challenge */
   noreveal_index =
@@ -918,7 +822,10 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
   MHD_RESULT mhd_ret;
   const json_t *j_denom_hs;
   const json_t *j_blinded_coin_evs;
-  struct AgeWithdrawContext awc = {0};
+  struct AgeWithdrawContext awc = {
+    .commitment.reserve_pub = *reserve_pub,
+    .now = GNUNET_TIME_timestamp_get ()
+  };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("denom_hs",
                                   &j_denom_hs),
@@ -930,9 +837,6 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
                                  &awc.commitment.reserve_sig),
     GNUNET_JSON_spec_end ()
   };
-
-  awc.commitment.reserve_pub = *reserve_pub;
-
 
   /* Parse the JSON body */
   {
@@ -1000,7 +904,7 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
      * the DB-transaction */
     if (! awc.kyc.ok)
       mhd_ret = TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                                 &awc.h_payto,
+                                                 NULL, /* FIXME! */
                                                  &awc.kyc);
     else
       mhd_ret = reply_age_withdraw_success (rc->connection,

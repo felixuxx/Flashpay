@@ -123,11 +123,6 @@ struct DepositWtidContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
-   * AML status information for the receiving account.
-   */
-  enum TALER_AmlDecisionState aml_decision;
-
-  /**
    * Set to #GNUNET_YES by #handle_wtid if the wire transfer is still pending
    * (and the above were not set).
    * Set to #GNUNET_SYSERR if there was a serious error.
@@ -377,7 +372,8 @@ handle_track_transaction_request (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
-                                       "wire fees exceed aggregate in database");
+                                       "wire fees exceed aggregate in database")
+    ;
   if (GNUNET_YES == ctx->pending)
   {
     if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&

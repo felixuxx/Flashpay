@@ -354,31 +354,6 @@ TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
 
 
 MHD_RESULT
-TEH_RESPONSE_reply_aml_blocked (struct MHD_Connection *connection,
-                                enum TALER_AmlDecisionState status)
-{
-  enum TALER_ErrorCode ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-
-  switch (status)
-  {
-  case TALER_AML_NORMAL:
-    GNUNET_break (0);
-    return MHD_NO;
-  case TALER_AML_PENDING:
-    ec = TALER_EC_EXCHANGE_GENERIC_AML_PENDING;
-    break;
-  case TALER_AML_FROZEN:
-    ec = TALER_EC_EXCHANGE_GENERIC_AML_FROZEN;
-    break;
-  }
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-    TALER_JSON_pack_ec (ec));
-}
-
-
-MHD_RESULT
 TEH_RESPONSE_reply_not_modified (
   struct MHD_Connection *connection,
   const char *etags,
