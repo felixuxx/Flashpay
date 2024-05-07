@@ -37,13 +37,12 @@ TEH_PG_get_kyc_rules (
     = GNUNET_TIME_timestamp_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_timestamp ("now",
-                                     &now),
+    GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_json ("jnew_rules",
-                                jrules),
+    TALER_PQ_result_spec_json ("jnew_rules",
+                               jrules),
     GNUNET_PQ_result_spec_end
   };
 

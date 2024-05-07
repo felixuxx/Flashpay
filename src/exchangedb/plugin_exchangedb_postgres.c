@@ -65,7 +65,7 @@
 #include "pg_preflight.h"
 #include "pg_commit.h"
 #include "pg_drop_tables.h"
-#include "pg_select_satisfied_kyc_processes.h"
+#include "pg_get_kyc_rules.h"
 #include "pg_select_aggregation_amounts_for_kyc_check.h"
 #include "pg_kyc_provider_account_lookup.h"
 #include "pg_insert_kyc_requirement_for_account.h"
@@ -488,12 +488,11 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_preflight;
   plugin->select_aggregation_amounts_for_kyc_check
     = &TEH_PG_select_aggregation_amounts_for_kyc_check;
-  plugin->select_satisfied_kyc_processes
-    = &TEH_PG_select_satisfied_kyc_processes;
+  plugin->get_kyc_rules
+    = &TEH_PG_get_kyc_rules;
   plugin->kyc_provider_account_lookup
     = &TEH_PG_kyc_provider_account_lookup;
-  plugin->insert_kyc_requirement_for_account
-    = &TEH_PG_insert_kyc_requirement_for_account;
+  // FIXME: plugin->insert_kyc_requirement_for_account = &TEH_PG_insert_kyc_requirement_for_account;
   plugin->lookup_kyc_process_by_account
     = &TEH_PG_lookup_kyc_process_by_account;
   plugin->update_kyc_process_by_row
