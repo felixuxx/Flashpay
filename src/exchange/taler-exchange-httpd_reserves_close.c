@@ -29,6 +29,7 @@
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_close.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 
 
@@ -37,7 +38,7 @@
  * checking the request timestamp?
  */
 #define TIMESTAMP_TOLERANCE \
-  GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
 
 
 /**
@@ -228,64 +229,27 @@ reserve_close_transaction (void *cls,
     /* KYC check may be needed: we're not returning
        the money to the account that funded the reserve
        in the first place. */
-    char *kyc_needed;
+    union TALER_AccountPublicKeyP account_pub = {
+      /* FIXME: not the correct account pub, should extract
+         from inbound wire transfer! Or pass NULL here? */
+      .reserve_pub = *rcc->reserve_pub
+    };
 
     TALER_payto_hash (rcc->payto_uri,
                       &rcc->kyc_payto);
     rcc->qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-    qs = TALER_KYCLOGIC_kyc_test_required (
+    qs = TEH_legitimization_check (
+      &rcc->kyc,
+      connection,
+      mhd_ret,
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
       &rcc->kyc_payto,
-      TEH_plugin->select_satisfied_kyc_processes,
-      TEH_plugin->cls,
+      &account_pub,
       &amount_it,
-      rcc,
-      &kyc_needed);
-    if (qs < 0)
-    {
-      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-        return qs;
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                      "iterate_reserve_close_info");
+      rcc);
+    if ( (qs < 0) ||
+         (! rcc->kyc.ok) )
       return qs;
-    }
-    if (rcc->qs < 0)
-    {
-      if (GNUNET_DB_STATUS_SOFT_ERROR == rcc->qs)
-        return rcc->qs;
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                      "iterate_reserve_close_info");
-      return qs;
-    }
-    if (NULL != kyc_needed)
-    {
-      rcc->kyc.ok = false;
-      qs = TEH_plugin->insert_kyc_requirement_for_account (
-        TEH_plugin->cls,
-        kyc_needed,
-        &rcc->kyc_payto,
-        rcc->reserve_pub,
-        &rcc->kyc.requirement_row);
-      GNUNET_free (kyc_needed);
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      {
-        GNUNET_break (0);
-        *mhd_ret
-          = TALER_MHD_reply_with_error (connection,
-                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                        TALER_EC_GENERIC_DB_STORE_FAILED,
-                                        "insert_kyc_requirement_for_account");
-      }
-      return qs;
-    }
   }
 
   rcc->kyc.ok = true;

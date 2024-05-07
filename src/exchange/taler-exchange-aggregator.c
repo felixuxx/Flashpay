@@ -433,18 +433,20 @@ trigger_wire_transfer (const struct AggregationUnit *au_active)
   }
   /* Commit the WTID data to 'wire_out'  */
   if (qs >= 0)
-    qs = db_plugin->store_wire_transfer_out (db_plugin->cls,
-                                             au_active->execution_time,
-                                             &au_active->wtid,
-                                             &au_active->h_payto,
-                                             au_active->wa->section_name,
-                                             &au_active->final_amount);
+    qs = db_plugin->store_wire_transfer_out (
+      db_plugin->cls,
+      au_active->execution_time,
+      &au_active->wtid,
+      &au_active->h_payto,
+      au_active->wa->section_name,
+      &au_active->final_amount);
 
   if ( (qs >= 0) &&
        au_active->have_transient)
-    qs = db_plugin->delete_aggregation_transient (db_plugin->cls,
-                                                  &au_active->h_payto,
-                                                  &au_active->wtid);
+    qs = db_plugin->delete_aggregation_transient (
+      db_plugin->cls,
+      &au_active->h_payto,
+      &au_active->wtid);
   return qs;
 }
 
@@ -551,7 +553,7 @@ legitimization_satisfied (struct AggregationUnit *au_active)
   qs = db_plugin->trigger_kyc_rule_for_account (
     db_plugin->cls,
     &au_active->h_payto,
-    NULL,
+    NULL, /* FIXME: get account pub? Or is NULL fine? */
     jrule,
     TALER_KYCLOGIC_rule2priority (requirement),
     &au_active->requirement_row);

@@ -29,6 +29,7 @@
 #include "taler_kyclogic_lib.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_withdraw.h"
 
 
 /**
@@ -55,11 +56,6 @@ struct KycRequestContext
    * Balance threshold crossed by the wallet.
    */
   struct TALER_Amount balance;
-
-  /**
-   * Name of the required check.
-   */
-  char *required;
 
 };
 
@@ -112,59 +108,19 @@ wallet_kyc_check (void *cls,
                   MHD_RESULT *mhd_ret)
 {
   struct KycRequestContext *krc = cls;
-  enum GNUNET_DB_QueryStatus qs;
+  union TALER_AccountPublicKeyP account_pub = {
+    .reserve_pub = krc->reserve_pub
+  };
 
-  qs = TALER_KYCLOGIC_kyc_test_required (
+  return TEH_legitimization_check (
+    &krc->kyc,
+    connection,
+    mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
     &krc->h_payto,
-    TEH_plugin->select_satisfied_kyc_processes,
-    TEH_plugin->cls,
+    &account_pub,
     &balance_iterator,
-    krc,
-    &krc->required);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                           "kyc_test_required");
-    return qs;
-  }
-  if (NULL == krc->required)
-  {
-    krc->kyc.ok = true;
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC check required at %s is `%s'\n",
-              TALER_amount2s (&krc->balance),
-              krc->required);
-  krc->kyc.ok = false;
-  qs = TEH_plugin->insert_kyc_requirement_for_account (TEH_plugin->cls,
-                                                       krc->required,
-                                                       &krc->h_payto,
-                                                       &krc->reserve_pub,
-                                                       &krc->kyc.requirement_row);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                           "insert_kyc_requirement_for_account");
-    return qs;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC requirement inserted for wallet %s (%llu, %d)\n",
-              TALER_B2S (&krc->h_payto),
-              (unsigned long long) krc->kyc.requirement_row,
-              qs);
-  return qs;
+    krc);
 }
 
 
@@ -232,7 +188,7 @@ TEH_handler_kyc_wallet (
                                 &krc);
   if (GNUNET_SYSERR == ret)
     return res;
-  if (NULL == krc.required)
+  if (krc.kyc.ok)
   {
     /* KYC not required or already satisfied */
     return TALER_MHD_reply_static (
@@ -242,7 +198,6 @@ TEH_handler_kyc_wallet (
       NULL,
       0);
   }
-  GNUNET_free (krc.required);
   return TEH_RESPONSE_reply_kyc_required (rc->connection,
                                           &krc.h_payto,
                                           &krc.kyc);
