@@ -18,7 +18,7 @@
 */
 /**
  * @file testing/testing_api_cmd_check_aml_decisions.c
- * @brief command for testing /aml/$OFFICER/decisions/$FILTER
+ * @brief command for testing GET /aml/$OFFICER_PUB/decisions
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -51,9 +51,9 @@ struct AmlCheckState
   const char *ref_officer;
 
   /**
-   * Which states to filter by.
+   * Reference to command to the previous set AML status operation.
    */
-  enum TALER_AmlDecisionState filter;
+  const char *ref_operation;
 
   /**
    * Expected HTTP status.
@@ -64,15 +64,15 @@ struct AmlCheckState
 
 
 /**
- * Callback to analyze the /aml/$OFFICER_PUB/$decisions/$FILTER response, just used to check
+ * Callback to analyze the /aml/$OFFICER_PUB/$decision/$H_PAYTO response, just used to check
  * if the response code is acceptable.
  *
  * @param cls closure.
  * @param adr response details
  */
 static void
-check_aml_decisions_cb (void *cls,
-                        const struct TALER_EXCHANGE_AmlDecisionsResponse *adr)
+check_aml_decision_cb (void *cls,
+                       const struct TALER_EXCHANGE_AmlDecisionsResponse *adr)
 {
   struct AmlCheckState *ds = cls;
 
@@ -83,6 +83,49 @@ check_aml_decisions_cb (void *cls,
                                      adr->hr.http_status,
                                      ds->expected_http_status);
     return;
+  }
+  if (MHD_HTTP_OK == adr->hr.http_status)
+  {
+    const struct TALER_TESTING_Command *ref;
+    const char *justification;
+    const struct TALER_EXCHANGE_AmlDecision *oldest = NULL;
+
+    ref = TALER_TESTING_interpreter_lookup_command (ds->is,
+                                                    ds->ref_operation);
+    if (NULL == ref)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    GNUNET_assert (
+      GNUNET_OK ==
+      TALER_TESTING_get_trait_aml_justification (ref,
+                                                 &justification));
+    for (unsigned int i = 0; i<adr->details.ok.decisions_length; i++)
+    {
+      const struct TALER_EXCHANGE_AmlDecision *aml_history
+        = &adr->details.ok.decisions[i];
+
+      if ( (NULL == oldest) ||
+           (GNUNET_TIME_timestamp_cmp (oldest->decision_time,
+                                       >,
+                                       aml_history->decision_time)) )
+        oldest = aml_history;
+    }
+    if (NULL == oldest)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    if (0 != strcmp (oldest->justification,
+                     justification) )
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -96,11 +139,12 @@ check_aml_decisions_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
-check_aml_decisions_run (void *cls,
-                         const struct TALER_TESTING_Command *cmd,
-                         struct TALER_TESTING_Interpreter *is)
+check_aml_decision_run (void *cls,
+                        const struct TALER_TESTING_Command *cmd,
+                        struct TALER_TESTING_Interpreter *is)
 {
   struct AmlCheckState *ds = cls;
+  const struct TALER_PaytoHashP *h_payto;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
   const char *exchange_url;
@@ -122,6 +166,18 @@ check_aml_decisions_run (void *cls,
                    TALER_TESTING_get_trait_exchange_url (exchange_cmd,
                                                          &exchange_url));
   }
+
+  ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                  ds->ref_operation);
+  if (NULL == ref)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_h_payto (ref,
+                                                  &h_payto));
   ref = TALER_TESTING_interpreter_lookup_command (is,
                                                   ds->ref_officer);
   if (NULL == ref)
@@ -136,11 +192,13 @@ check_aml_decisions_run (void *cls,
   ds->dh = TALER_EXCHANGE_lookup_aml_decisions (
     TALER_TESTING_interpreter_get_context (is),
     exchange_url,
-    INT64_MAX,
-    -1, /* return last one for testing */
-    ds->filter,
+    h_payto,
+    TALER_EXCHANGE_YNA_ALL,
+    TALER_EXCHANGE_YNA_ALL,
+    UINT64_MAX,
+    -1,
     officer_priv,
-    &check_aml_decisions_cb,
+    &check_aml_decision_cb,
     ds);
   if (NULL == ds->dh)
   {
@@ -152,15 +210,15 @@ check_aml_decisions_run (void *cls,
 
 
 /**
- * Free the state of a "check_aml_decisions" CMD, and possibly cancel a
+ * Free the state of a "check_aml_decision" CMD, and possibly cancel a
  * pending operation thereof.
  *
  * @param cls closure, must be a `struct AmlCheckState`.
  * @param cmd the command which is being cleaned up.
  */
 static void
-check_aml_decisions_cleanup (void *cls,
-                             const struct TALER_TESTING_Command *cmd)
+check_aml_decision_cleanup (void *cls,
+                            const struct TALER_TESTING_Command *cmd)
 {
   struct AmlCheckState *ds = cls;
 
@@ -176,24 +234,24 @@ check_aml_decisions_cleanup (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_aml_decisions (
+TALER_TESTING_cmd_check_aml_decision (
   const char *label,
   const char *ref_officer,
-  enum TALER_AmlDecisionState filter,
+  const char *ref_operation,
   unsigned int expected_http_status)
 {
   struct AmlCheckState *ds;
 
   ds = GNUNET_new (struct AmlCheckState);
   ds->ref_officer = ref_officer;
-  ds->filter = filter;
+  ds->ref_operation = ref_operation;
   ds->expected_http_status = expected_http_status;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,
       .label = label,
-      .run = &check_aml_decisions_run,
-      .cleanup = &check_aml_decisions_cleanup
+      .run = &check_aml_decision_run,
+      .cleanup = &check_aml_decision_cleanup
     };
 
     return cmd;
@@ -201,4 +259,4 @@ TALER_TESTING_cmd_check_aml_decisions (
 }
 
 
-/* end of testing_api_cmd_check_aml_decisions.c */
+/* end of testing_api_cmd_check_aml_decision.c */

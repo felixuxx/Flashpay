@@ -45,9 +45,9 @@ struct KycCheckGetState
 
   /**
    * Set to the KYC URL *if* the exchange replied with
-   * a request for KYC (#MHD_HTTP_ACCEPTED).
+   * a request for KYC (#MHD_HTTP_ACCEPTED or #MHD_HTTP_OK).
    */
-  char *kyc_url;
+  struct TALER_AccountAccessTokenP access_token;
 
   /**
    * Handle to the "track transaction" pending operation.
@@ -85,9 +85,10 @@ check_kyc_cb (void *cls,
   switch (ks->http_status)
   {
   case MHD_HTTP_OK:
+    kcg->access_token = ks->details.ok.access_token;
     break;
   case MHD_HTTP_ACCEPTED:
-    kcg->kyc_url = GNUNET_strdup (ks->details.accepted.kyc_url);
+    kcg->access_token = ks->details.accepted.access_token;
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
@@ -114,7 +115,7 @@ check_kyc_run (void *cls,
   struct KycCheckGetState *kcg = cls;
   const struct TALER_TESTING_Command *res_cmd;
   const uint64_t *requirement_row;
-  const struct TALER_PaytoHashP *h_payto;
+  const union TALER_AccountPrivateKeyP *account_priv;
 
   (void) cmd;
   kcg->is = is;
@@ -136,8 +137,8 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_h_payto (res_cmd,
-                                       &h_payto))
+      TALER_TESTING_get_trait_account_priv (res_cmd,
+                                            &account_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
@@ -152,10 +153,8 @@ check_kyc_run (void *cls,
   kcg->kwh = TALER_EXCHANGE_kyc_check (
     TALER_TESTING_interpreter_get_context (is),
     TALER_TESTING_get_exchange_url (is),
-    TALER_TESTING_get_keys (is),
     *requirement_row,
-    h_payto,
-    TALER_KYCLOGIC_KYC_UT_INDIVIDUAL,
+    account_priv,
     GNUNET_TIME_UNIT_SECONDS,
     &check_kyc_cb,
     kcg);
@@ -183,7 +182,6 @@ check_kyc_cleanup (void *cls,
     TALER_EXCHANGE_kyc_check_cancel (kcg->kwh);
     kcg->kwh = NULL;
   }
-  GNUNET_free (kcg->kyc_url);
   GNUNET_free (kcg);
 }
 
@@ -205,7 +203,7 @@ check_kyc_traits (void *cls,
 {
   struct KycCheckGetState *kcg = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_kyc_url (kcg->kyc_url),
+    TALER_TESTING_make_trait_account_access_token (&kcg->access_token),
     TALER_TESTING_trait_end ()
   };
 

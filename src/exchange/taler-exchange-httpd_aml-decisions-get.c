@@ -37,6 +37,7 @@
  *
  * @param cls closure
  * @param row_id current row in AML status table
+ * @param justification human-readable reason for the decision
  * @param h_payto account for which the attribute data is stored
  * @param decision_time when was the decision taken
  * @param expiration_time when will the rules expire
@@ -50,6 +51,7 @@ static void
 record_cb (
   void *cls,
   uint64_t row_id,
+  const char *justification,
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute decision_time,
   struct GNUNET_TIME_Absolute expiration_time,
@@ -67,6 +69,8 @@ record_cb (
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_payto",
                                     h_payto),
+        GNUNET_JSON_pack_string ("justification",
+                                 justification),
         // FIXME: pack other data!
         GNUNET_JSON_pack_int64 ("rowid",
                                 row_id)
@@ -147,9 +151,9 @@ TEH_handler_aml_decisions_get (
     GNUNET_assert (NULL != records);
     qs = TEH_plugin->select_aml_decisions (
       TEH_plugin->cls,
-      NULL /* FIXME! */,
-      0, /* FIXME */
-      0, /* FIXME */
+      NULL /* FIXME: h_payto */,
+      0, /* FIXME: investigation_only */
+      0, /* FIXME: active_only */
       offset,
       limit,
       &record_cb,

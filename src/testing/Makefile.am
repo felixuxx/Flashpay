@@ -57,7 +57,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_batch.c \
   testing_api_cmd_batch_deposit.c \
   testing_api_cmd_batch_withdraw.c \
-  testing_api_cmd_check_aml_decision.c \
   testing_api_cmd_check_aml_decisions.c \
   testing_api_cmd_coin_history.c \
   testing_api_cmd_common.c \

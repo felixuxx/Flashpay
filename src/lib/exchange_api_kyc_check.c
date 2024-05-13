@@ -229,7 +229,7 @@ TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   uint64_t requirement_row,
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *pk,
+  const union TALER_AccountPrivateKeyP *account_priv,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
   void *cb_cls)
@@ -268,6 +268,7 @@ TALER_EXCHANGE_kyc_check (
     GNUNET_free (kch);
     return NULL;
   }
+  // FIXME: use account_priv!!
   kch->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                                eh,
                                                &handle_kyc_check_finished,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -63,24 +63,35 @@ struct AmlDecisionState
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * New AML state to use.
-   */
-  enum TALER_AmlDecisionState new_state;
-
-  /**
    * Justification given.
    */
   const char *justification;
 
   /**
-   * KYC requirement to add.
+   * Delay to apply to compute the expiration time
+   * for the rules.
    */
-  const char *kyc_requirement;
+  struct GNUNET_TIME_Relative expiration_delay;
 
   /**
-   * Threshold transaction amount.
+   * Successor measure to activate upon expiration.
    */
-  struct TALER_Amount new_threshold;
+  const char *successor_measure;
+
+  /**
+   * True to keep AML investigation open.
+   */
+  bool keep_investigating;
+
+  /**
+   * New rules to enforce.
+   */
+  json_t *new_rules;
+
+  /**
+   * Account properties to set.
+   */
+  json_t *properties;
 
   /**
    * Expected response code.
@@ -133,10 +144,32 @@ take_aml_decision_run (void *cls,
   const struct TALER_PaytoHashP *h_payto;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
-  json_t *kyc_requirements = NULL;
   const char *exchange_url;
+  const json_t *jrules;
+  const json_t *jmeasures;
+  struct GNUNET_TIME_Timestamp expiration_time
+    = GNUNET_TIME_relative_to_timestamp (ds->expiration_delay);
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_array_const ("rules",
+                                  &jrules),
+    GNUNET_JSON_spec_object_const ("custom_measures",
+                                   &jmeasures),
+    GNUNET_JSON_spec_end ()
+  };
+  unsigned int num_rules;
+  unsigned int num_measures;
 
   (void) cmd;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (ds->new_rules,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
   {
     const struct TALER_TESTING_Command *exchange_cmd;
 
@@ -187,28 +220,53 @@ take_aml_decision_run (void *cls,
     return;
   }
   ds->h_payto = *h_payto;
-  if (NULL != ds->kyc_requirement)
+
+  num_rules = json_array_size (jrules);
+  num_measures = json_object_size (jmeasures);
   {
-    kyc_requirements = json_array ();
-    GNUNET_assert (NULL != kyc_requirements);
-    GNUNET_assert (0 ==
-                   json_array_append (kyc_requirements,
-                                      json_string (ds->kyc_requirement)));
+    struct TALER_EXCHANGE_AccountRule rules[
+      GNUNET_NZL (num_rules)];
+    struct TALER_EXCHANGE_MeasureInformation measures[
+      GNUNET_NZL (num_measures)];
+    const json_t *jrule;
+    size_t i;
+    const json_t *jmeasure;
+    const char *mname;
+    unsigned int off;
+
+    json_array_foreach ((json_t *) jrules, i, jrule)
+    {
+      struct TALER_EXCHANGE_AccountRule *rule = &rules[i];
+      // FIXME: jrule -> rule
+    }
+    off = 0;
+    json_object_foreach ((json_t *) jrules, mname, jmeasure)
+    {
+      struct TALER_EXCHANGE_MeasureInformation *mi = &measures[off++];
+      // FIXME: jmeasure + mname -> mi
+    }
+    GNUNET_assert (off == num_measures);
+
+    ds->dh = TALER_EXCHANGE_add_aml_decision (
+      TALER_TESTING_interpreter_get_context (is),
+      exchange_url,
+      h_payto,
+      now,
+      ds->successor_measure,
+      expiration_time,
+      num_rules,
+      rules,
+      num_measures,
+      measures,
+      ds->properties,
+      ds->keep_investigating,
+      ds->justification,
+      officer_priv,
+      &take_aml_decision_cb,
+      ds);
+    // FIXME: free rules/measures data!
   }
 
-  ds->dh = TALER_EXCHANGE_add_aml_decision (
-    TALER_TESTING_interpreter_get_context (is),
-    exchange_url,
-    ds->justification,
-    now,
-    &ds->new_threshold,
-    h_payto,
-    ds->new_state,
-    kyc_requirements,
-    officer_priv,
-    &take_aml_decision_cb,
-    ds);
-  json_decref (kyc_requirements);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);
@@ -238,6 +296,7 @@ take_aml_decision_cleanup (void *cls,
     TALER_EXCHANGE_add_aml_decision_cancel (ds->dh);
     ds->dh = NULL;
   }
+  json_decref (ds->new_rules);
   GNUNET_free (ds);
 }
 
@@ -262,8 +321,6 @@ take_aml_decision_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_h_payto (&ws->h_payto),
     TALER_TESTING_make_trait_aml_justification (ws->justification),
-    TALER_TESTING_make_trait_aml_decision (&ws->new_state),
-    TALER_TESTING_make_trait_amount (&ws->new_threshold),
     TALER_TESTING_trait_end ()
   };
 
@@ -279,29 +336,31 @@ TALER_TESTING_cmd_take_aml_decision (
   const char *label,
   const char *ref_officer,
   const char *ref_operation,
-  const char *new_threshold,
+  bool keep_investigating,
+  struct GNUNET_TIME_Relative expiration_delay,
+  const char *successor_measure,
+  const char *new_rules,
+  const char *properties,
   const char *justification,
-  enum TALER_AmlDecisionState new_state,
-  const char *kyc_requirement,
   unsigned int expected_response)
 {
   struct AmlDecisionState *ds;
+  json_error_t err;
 
   ds = GNUNET_new (struct AmlDecisionState);
   ds->officer_ref_cmd = ref_officer;
   ds->account_ref_cmd = ref_operation;
-  ds->kyc_requirement = kyc_requirement;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (new_threshold,
-                              &ds->new_threshold))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                new_threshold,
-                label);
-    GNUNET_assert (0);
-  }
-  ds->new_state = new_state;
+  ds->keep_investigating = keep_investigating;
+  ds->expiration_delay = expiration_delay;
+  ds->successor_measure = successor_measure;
+  ds->new_rules = json_loads (new_rules,
+                              JSON_DECODE_ANY,
+                              &err);
+  GNUNET_assert (NULL != ds->new_rules);
+  ds->properties = json_loads (properties,
+                               0,
+                               &err);
+  GNUNET_assert (NULL != ds->properties);
   ds->justification = justification;
   ds->expected_response = expected_response;
   {

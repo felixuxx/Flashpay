@@ -246,6 +246,25 @@ struct TALER_MerchantPrivateKeyP
 
 
 /**
+ * @brief Type of private keys to for KYC authorizations.
+ * Either a merchant's private key or a reserve private
+ * key will do.
+ */
+union TALER_AccountPrivateKeyP
+{
+  /**
+   * Private key of merchants.
+   */
+  struct TALER_MerchantPrivateKeyP merchant_priv;
+
+  /**
+   * Private key of reserves.
+   */
+  struct TALER_ReservePrivateKeyP reserve_priv;
+};
+
+
+/**
  * @brief Type of signatures made by merchants.
  */
 struct TALER_MerchantSignatureP

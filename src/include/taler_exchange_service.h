@@ -4360,7 +4360,7 @@ TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   uint64_t requirement_row,
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *pk,
+  const union TALER_AccountPrivateKeyP *pk,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
   void *cb_cls);
@@ -5965,6 +5965,11 @@ struct TALER_EXCHANGE_AmlDecision
    * What are the new rules?
    */
   struct TALER_EXCHANGE_LegitimizationRuleSet limits;
+
+  /**
+   * Justification given for the decision.
+   */
+  const char *justification;
 
   /**
    * Properties set for the account.

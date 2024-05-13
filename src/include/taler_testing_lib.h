@@ -2415,10 +2415,12 @@ TALER_TESTING_cmd_set_officer (
  *       officer
  * @param ref_operation command that previously created an
  *       h_payto which to make an AML decision about
- * @param new_threshold new threshold to set
+ * @param keep_investigating true to keep investigating
+ * @param expiration_delay how long should the @a new_rules apply
+ * @param successor_measure measure to trigger on @a expiration_delay
+ * @param new_rules JSON with new rules for the account
+ * @param properties properties to set for the account
  * @param justification justification given for the decision
- * @param new_state new AML state for the account
- * @param kyc_requirement KYC requirement to impose
  * @param expected_response expected HTTP return status
  * @return the command
  */
@@ -2427,9 +2429,12 @@ TALER_TESTING_cmd_take_aml_decision (
   const char *label,
   const char *ref_officer,
   const char *ref_operation,
-  const char *new_threshold,
+  bool keep_investigating,
+  struct GNUNET_TIME_Relative expiration_delay,
+  const char *successor_measure,
+  const char *new_rules,
+  const char *properties,
   const char *justification,
-  const char *kyc_requirement,
   unsigned int expected_response);
 
 
@@ -2652,56 +2657,55 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
         op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
         op (officer_name, const char)                                    \
-          << << << < HEAD
-op (aml_decision, enum TALER_AmlDecisionState)                   \
-  ====== =
-    >> >> >> > f54d4f98 (complete exchange_api_lookup_aml_decisions.c logic)
-    op (aml_justification, const char)                               \
-    op (auditor_priv, const struct TALER_AuditorPrivateKeyP)         \
-    op (auditor_pub, const struct TALER_AuditorPublicKeyP)           \
-    op (master_priv, const struct TALER_MasterPrivateKeyP)           \
-    op (master_pub, const struct TALER_MasterPublicKeyP)             \
-    op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
-    op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
-    op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
-    op (merge_pub, const struct TALER_PurseMergePublicKeyP)          \
-    op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
-    op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
-    op (reserve_sig, const struct TALER_ReserveSignatureP)           \
-    op (h_payto, const struct TALER_PaytoHashP)                      \
-    op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
-    op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \
-    op (reserve_pub, const struct TALER_ReservePublicKeyP)           \
-    op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
-    op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
-    op (merchant_sig, const struct TALER_MerchantSignatureP)         \
-    op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
-    op (bank_auth_data, const struct TALER_BANK_AuthenticationData)  \
-    op (contract_terms, const json_t)                                \
-    op (wire_details, const json_t)                                  \
-    op (exchange_url, const char)                                    \
-    op (auditor_url, const char)                                     \
-    op (exchange_bank_account_url, const char)                       \
-    op (taler_uri, const char)                                       \
-    op (payto_uri, const char)                                       \
-    op (kyc_url, const char)                                         \
-    op (web_url, const char)                                         \
-    op (row, const uint64_t)                                         \
-    op (legi_requirement_row, const uint64_t)                        \
-    op (array_length, const unsigned int)                            \
-    op (credit_payto_uri, const char)                                \
-    op (debit_payto_uri, const char)                                 \
-    op (order_id, const char)                                        \
-    op (amount, const struct TALER_Amount)                           \
-    op (amount_with_fee, const struct TALER_Amount)                  \
-    op (batch_cmds, struct TALER_TESTING_Command)                    \
-    op (uuid, const struct GNUNET_Uuid)                              \
-    op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
-    op (claim_token, const struct TALER_ClaimTokenP)                 \
-    op (relative_time, const struct GNUNET_TIME_Relative)            \
-    op (fakebank, struct TALER_FAKEBANK_Handle)                      \
-    op (keys, struct TALER_EXCHANGE_Keys)                            \
-    op (process, struct GNUNET_OS_Process *)
+        op (aml_justification, const char)                               \
+        op (auditor_priv, const struct TALER_AuditorPrivateKeyP)         \
+        op (auditor_pub, const struct TALER_AuditorPublicKeyP)           \
+        op (master_priv, const struct TALER_MasterPrivateKeyP)           \
+        op (master_pub, const struct TALER_MasterPublicKeyP)             \
+        op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
+        op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
+        op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
+        op (merge_pub, const struct TALER_PurseMergePublicKeyP)          \
+        op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
+        op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
+        op (reserve_sig, const struct TALER_ReserveSignatureP)           \
+        op (h_payto, const struct TALER_PaytoHashP)                      \
+        op (account_access_token, const struct TALER_AccountAccessTokenP) \
+        op (account_priv, const union TALER_AccountPrivateKeyP)          \
+        op (account_pub, const union TALER_AccountPublicKeyP)            \
+        op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
+        op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \
+        op (reserve_pub, const struct TALER_ReservePublicKeyP)           \
+        op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
+        op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
+        op (merchant_sig, const struct TALER_MerchantSignatureP)         \
+        op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
+        op (bank_auth_data, const struct TALER_BANK_AuthenticationData)  \
+        op (contract_terms, const json_t)                                \
+        op (wire_details, const json_t)                                  \
+        op (exchange_url, const char)                                    \
+        op (auditor_url, const char)                                     \
+        op (exchange_bank_account_url, const char)                       \
+        op (taler_uri, const char)                                       \
+        op (payto_uri, const char)                                       \
+        op (kyc_url, const char)                                         \
+        op (web_url, const char)                                         \
+        op (row, const uint64_t)                                         \
+        op (legi_requirement_row, const uint64_t)                        \
+        op (array_length, const unsigned int)                            \
+        op (credit_payto_uri, const char)                                \
+        op (debit_payto_uri, const char)                                 \
+        op (order_id, const char)                                        \
+        op (amount, const struct TALER_Amount)                           \
+        op (amount_with_fee, const struct TALER_Amount)                  \
+        op (batch_cmds, struct TALER_TESTING_Command)                    \
+        op (uuid, const struct GNUNET_Uuid)                              \
+        op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
+        op (claim_token, const struct TALER_ClaimTokenP)                 \
+        op (relative_time, const struct GNUNET_TIME_Relative)            \
+        op (fakebank, struct TALER_FAKEBANK_Handle)                      \
+        op (keys, struct TALER_EXCHANGE_Keys)                            \
+        op (process, struct GNUNET_OS_Process *)
 
 
 /**
@@ -2732,9 +2736,9 @@ op (aml_decision, enum TALER_AmlDecisionState)                   \
         op (blinding_key, const union GNUNET_CRYPTO_BlindingSecretP)         \
         op (h_blinded_coin, const struct TALER_BlindedCoinHashP)
 
-    TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)
+TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)
 
-    TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
+TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
 
 
 #endif
