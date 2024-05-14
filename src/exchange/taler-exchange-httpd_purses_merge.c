@@ -230,21 +230,24 @@ reply_merge_success (struct MHD_Connection *connection,
  *        events must be returned in reverse chronological
  *        order
  * @param cb_cls closure for @a cb
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 amount_iterator (void *cls,
                  struct GNUNET_TIME_Absolute limit,
                  TALER_EXCHANGEDB_KycAmountCallback cb,
                  void *cb_cls)
 {
   struct PurseMergeContext *pcc = cls;
+  enum GNUNET_GenericReturnValue ret;
   enum GNUNET_DB_QueryStatus qs;
 
-  if (GNUNET_OK !=
-      cb (cb_cls,
-          &pcc->target_amount,
-          GNUNET_TIME_absolute_get ()))
-    return;
+  ret = cb (cb_cls,
+            &pcc->target_amount,
+            GNUNET_TIME_absolute_get ());
+  GNUNET_break (GNUNET_SYSERR != ret);
+  if (GNUNET_OK != ret)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = TEH_plugin->select_merge_amounts_for_kyc_check (
     TEH_plugin->cls,
     &pcc->h_payto,
@@ -256,6 +259,7 @@ amount_iterator (void *cls,
               qs,
               (unsigned long long) limit.abs_value_us);
   GNUNET_break (qs >= 0);
+  return qs;
 }
 
 

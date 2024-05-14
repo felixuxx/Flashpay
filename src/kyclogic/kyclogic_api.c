@@ -247,6 +247,21 @@ struct TALER_KYCLOGIC_KycRule
 
 
 /**
+ * KYC measure that can be taken.
+ */
+struct TALER_KYCLOGIC_Measure
+{
+  /**
+   * Name of the KYC measure.
+   */
+  char *measure_name;
+
+  // FIXME: other fields!?
+
+};
+
+
+/**
  * Set of rules that applies to an account.
  */
 struct TALER_KYCLOGIC_LegitimizationRuleSet
@@ -272,7 +287,7 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
    * Array of custom measures the @e kyc_rules may refer
    * to.
    */
-  struct TALER_KYCLOGIC_Measures *custom_measures;
+  struct TALER_KYCLOGIC_Measure *custom_measures;
 
   /**
    * Length of the @e kyc_rules array.
@@ -306,14 +321,14 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *krs)
 
 
 const char *
-TALER_KYCLOGIC_rule2s (struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r)
 {
   return r->rule_name;
 }
 
 
 json_t *
-TALER_KYCLOGIC_rule2j (struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rule2j (const struct TALER_KYCLOGIC_KycRule *r)
 {
   // FIXME!
   GNUNET_break (0);
@@ -322,7 +337,7 @@ TALER_KYCLOGIC_rule2j (struct TALER_KYCLOGIC_KycRule *r)
 
 
 uint32_t
-TALER_KYCLOGIC_rule2priority (struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rule2priority (const struct TALER_KYCLOGIC_KycRule *r)
 {
   return r->display_priority;
 }
@@ -624,21 +639,25 @@ TALER_KYCLOGIC_kyc_trigger2s (
 json_t *
 TALER_KYCLOGIC_get_wallet_thresholds (void)
 {
-#if 0
   json_t *ret;
 
   ret = json_array ();
   GNUNET_assert (NULL != ret);
-  GNUNET_assert (
-    0 ==
-    json_array_append_new (
-      ret,
-      TALER_JSON_from_amount (
-        threshold)));
+  for (unsigned int i = 0; i<default_rules.num_kyc_rules; i++)
+  {
+    struct TALER_KYCLOGIC_KycRule *rule
+      = default_rules.kyc_rules[i];
+
+    if (TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE != rule->trigger)
+      continue;
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        ret,
+        TALER_JSON_from_amount (
+          &rule->threshold)));
+  }
   return ret;
-#endif
-  GNUNET_break (0); // FIXME: implement!
-  return NULL;
 }
 
 
@@ -1524,6 +1543,69 @@ TALER_KYCLOGIC_requirements_to_logic (
   struct TALER_KYCLOGIC_ProviderDetails **pd,
   const char **configuration_section)
 {
+  bool found = false;
+  const struct TALER_KYCLOGIC_Measure *measure = NULL;
+
+  for (unsigned int i=0; i<kyc_rule->num_measures; i++)
+  {
+    if (0 != strcmp (measure_name,
+                     kyc_rule->next_measures[i]))
+      continue;
+    found = true;
+    break;
+  }
+  if (! found)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Measure `%s' not allowed for rule `%s'\n",
+                measure_name,
+                kyc_rule->rule_name);
+    return GNUNET_SYSERR;
+  }
+  if (kyc_rule->verboten)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Rule says operation is categorically is verboten, cannot take measures\n");
+    return GNUNET_SYSERR;
+  }
+  if (NULL != lrs)
+  {
+    for (unsigned int i=0; i<lrs->num_custom_measures; i++)
+    {
+      const struct TALER_KYCLOGIC_Measure *cm
+        = &lrs->custom_measures[i];
+
+      if (0 != strcmp (measure_name,
+                       cm->measure_name))
+        continue;
+      measure = cm;
+      break;
+    }
+  }
+  if (NULL == measure)
+  {
+    /* Try measures from default rules */
+    for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
+    {
+      const struct TALER_KYCLOGIC_Measure *cm
+        = &default_rules.custom_measures[i];
+
+      if (0 != strcmp (measure_name,
+                       cm->measure_name))
+        continue;
+      measure = cm;
+      break;
+    }
+  }
+  if (NULL == measure)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Measure `%s' unknown (but allowed by rule `%s')\n",
+                measure_name,
+                kyc_rule->rule_name);
+    return GNUNET_SYSERR;
+  }
+
 #if FIXME
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
@@ -1674,154 +1756,129 @@ TALER_KYCLOGIC_kyc_get_details (
 }
 
 
+/**
+ * Closure for check_amount().
+ */
+struct KycTestContext
+{
+  /**
+   * Rule set we apply.
+   */
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+
+  /**
+   * Events we care about.
+   */
+  enum TALER_KYCLOGIC_KycTriggerEvent event;
+
+  /**
+   * Total amount encountered so far, invalid if zero.
+   */
+  struct TALER_Amount sum;
+
+  /**
+   * Set to the triggered rule.
+   */
+  const struct TALER_KYCLOGIC_KycRule *triggered_rule;
+};
+
+
+/**
+ * Function called on each @a amount that was found to
+ * be relevant for a KYC check.  Evaluates the given
+ * @a amount and @a date against all the applicable
+ * rules in the legitimization rule set.
+ *
+ * @param cls our `struct KycTestContext *`
+ * @param amount encountered transaction amount
+ * @param date when was the amount encountered
+ * @return #GNUNET_OK to continue to iterate,
+ *         #GNUNET_NO to abort iteration,
+ *         #GNUNET_SYSERR on internal error (also abort itaration)
+ */
+static enum GNUNET_GenericReturnValue
+check_amount (
+  void *cls,
+  const struct TALER_Amount *amount,
+  struct GNUNET_TIME_Absolute date)
+{
+  struct KycTestContext *ktc = cls;
+  struct GNUNET_TIME_Relative dur;
+
+  dur = GNUNET_TIME_absolute_get_duration (date);
+  if (GNUNET_OK !=
+      TALER_amount_is_valid (&ktc->sum))
+    ktc->sum = *amount;
+  else
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&ktc->sum,
+                                     &ktc->sum,
+                                     amount));
+  for (unsigned int i=0; i<ktc->lrs->num_kyc_rules; i++)
+  {
+    const struct TALER_KYCLOGIC_KycRule *rule
+      = ktc->lrs->kyc_rules[i];
+
+    if (ktc->event != rule->trigger)
+      continue; /* wrong trigger event type */
+    if (GNUNET_TIME_relative_cmp (dur,
+                                  >,
+                                  rule->timeframe))
+      continue; /* out of time range for rule */
+    if (-1 == TALER_amount_cmp (&ktc->sum,
+                                &rule->threshold))
+      continue; /* sum < threshold */
+    if ( (NULL != ktc->triggered_rule) &&
+         (1 == TALER_amount_cmp (&ktc->triggered_rule->threshold,
+                                 &rule->threshold)) )
+      continue; /* threshold of triggered_rule > rule */
+    ktc->triggered_rule = rule;
+  }
+  return GNUNET_OK;
+}
+
+
 enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_kyc_test_required (
   enum TALER_KYCLOGIC_KycTriggerEvent event,
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
-  struct TALER_KYCLOGIC_KycRule **triggered_rule)
+  const struct TALER_KYCLOGIC_KycRule **triggered_rule)
 {
-#if FIXME
-  struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
-  unsigned int needed_cnt = 0;
-  char *ret;
-  struct GNUNET_TIME_Relative timeframe;
+  struct GNUNET_TIME_Relative range
+    = GNUNET_TIME_UNIT_ZERO;
+  enum GNUNET_DB_QueryStatus qs;
 
-  timeframe = GNUNET_TIME_UNIT_ZERO;
-  for (unsigned int i = 0; i<num_kyc_triggers; i++)
+  if (NULL == lrs)
+    lrs = &default_rules;
+  for (unsigned int i=0; i<lrs->num_kyc_rules; i++)
   {
-    const struct TALER_KYCLOGIC_KycTrigger *kt = kyc_triggers[i];
+    const struct TALER_KYCLOGIC_KycRule *rule
+      = lrs->kyc_rules[i];
 
-    if (event != kt->trigger)
+    if (event != rule->trigger)
       continue;
-    timeframe = GNUNET_TIME_relative_max (timeframe,
-                                          kt->timeframe);
+    range = GNUNET_TIME_relative_max (range,
+                                      rule->timeframe);
   }
+
   {
-    struct GNUNET_TIME_Absolute now;
-    struct ThresholdTestContext ttc = {
-      .event = event,
-      .needed = needed,
-      .needed_cnt = &needed_cnt
+    struct GNUNET_TIME_Absolute now
+      = GNUNET_TIME_absolute_get ();
+    struct KycTestContext ktc = {
+      .lrs = lrs,
+      .event = event
     };
 
-    now = GNUNET_TIME_absolute_get ();
-    ai (ai_cls,
-        GNUNET_TIME_absolute_subtract (now,
-                                       timeframe),
-        &eval_trigger,
-        &ttc);
+    qs = ai (ai_cls,
+             GNUNET_TIME_absolute_subtract (now,
+                                            range),
+             &check_amount,
+             &ktc);
+    *triggered_rule = ktc.triggered_rule;
   }
-  if (0 == needed_cnt)
-  {
-    *required = NULL;
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  }
-  timeframe = GNUNET_TIME_UNIT_ZERO;
-  for (unsigned int i = 0; i<num_kyc_triggers; i++)
-  {
-    const struct TALER_KYCLOGIC_KycTrigger *kt = kyc_triggers[i];
-
-    if (event != kt->trigger)
-      continue;
-    timeframe = GNUNET_TIME_relative_max (timeframe,
-                                          kt->timeframe);
-  }
-  {
-    struct GNUNET_TIME_Absolute now;
-    struct ThresholdTestContext ttc = {
-      .event = event,
-      .needed = needed,
-      .needed_cnt = &needed_cnt
-    };
-
-    now = GNUNET_TIME_absolute_get ();
-    ai (ai_cls,
-        GNUNET_TIME_absolute_subtract (now,
-                                       timeframe),
-        &eval_trigger,
-        &ttc);
-  }
-  if (0 == needed_cnt)
-  {
-    *required = NULL;
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  }
-  {
-    struct RemoveContext rc = {
-      .needed = needed,
-      .needed_cnt = &needed_cnt
-    };
-    enum GNUNET_DB_QueryStatus qs;
-
-    /* Check what provider checks are already satisfied for h_payto (with
-       database), remove those from the 'needed' array. */
-    qs = ki (ki_cls,
-             h_payto,
-             &remove_satisfied,
-             &rc);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-  }
-  if (0 == needed_cnt)
-  {
-    *required = NULL;
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  }
-  {
-    struct RemoveContext rc = {
-      .needed = needed,
-      .needed_cnt = &needed_cnt
-    };
-    enum GNUNET_DB_QueryStatus qs;
-
-    /* Check what provider checks are already satisfied for h_payto (with
-       database), remove those from the 'needed' array. */
-    qs = ki (ki_cls,
-             h_payto,
-             &remove_satisfied,
-             &rc);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-  }
-  if (0 == needed_cnt)
-  {
-    *required = NULL;
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  }
-  ret = NULL;
-  for (unsigned int k = 0; k<needed_cnt; k++)
-  {
-    const struct TALER_KYCLOGIC_KycCheck *kc = needed[k];
-
-    if (NULL == ret)
-    {
-      ret = GNUNET_strdup (kc->name);
-    }
-    else /* append */
-    {
-      char *tmp = ret;
-
-      GNUNET_asprintf (&ret,
-                       "%s %s",
-                       tmp,
-                       kc->name);
-      GNUNET_free (tmp);
-    }
-  }
-  *required = ret;
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-#else
-  GNUNET_break (0);
-  return GNUNET_DB_STATUS_HARD_ERROR;
-#endif
+  return qs;
 }
 
 
@@ -1981,194 +2038,6 @@ eval_trigger (void *cls,
   if (bump)
     return GNUNET_NO; /* we hit all possible triggers! */
   return GNUNET_OK;
-}
-
-
-/**
- * Closure for the #remove_satisfied().
- */
-struct RemoveContext
-{
-
-  /**
-   * Array of checks needed so far.
-   */
-  struct TALER_KYCLOGIC_KycCheck **needed;
-
-  /**
-   * Pointer to number of entries used in @a needed.
-   */
-  unsigned int *needed_cnt;
-
-  /**
-   * Object with information about collected KYC data.
-   */
-  json_t *kyc_details;
-};
-
-
-/**
- * Remove all checks satisfied by @a provider_name from
- * our list of checks.
- *
- * @param cls a `struct RemoveContext`
- * @param provider_name section name of provider that was already run previously
- */
-static void
-remove_satisfied (void *cls,
-                  const char *provider_name)
-{
-  struct RemoveContext *rc = cls;
-
-  for (unsigned int i = 0; i<num_kyc_providers; i++)
-  {
-    const struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
-
-    if (0 != strcasecmp (provider_name,
-                         kp->provider_section_name))
-      continue;
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Provider `%s' satisfied\n",
-                provider_name);
-    for (unsigned int j = 0; j<kp->num_checks; j++)
-    {
-      const struct TALER_KYCLOGIC_KycCheck *kc = kp->provided_checks[j];
-
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Provider satisfies check `%s'\n",
-                  kc->name);
-      if (NULL != rc->kyc_details)
-      {
-        GNUNET_assert (0 ==
-                       json_object_set_new (
-                         rc->kyc_details,
-                         kc->name,
-                         json_object ()));
-      }
-      for (unsigned int k = 0; k<*rc->needed_cnt; k++)
-        if (kc == rc->needed[k])
-        {
-          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                      "Removing check `%s' from list\n",
-                      kc->name);
-          rc->needed[k] = rc->needed[*rc->needed_cnt - 1];
-          (*rc->needed_cnt)--;
-          if (0 == *rc->needed_cnt)
-            return; /* for sure finished */
-          break;
-        }
-    }
-    break;
-  }
-}
-
-
-enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_check_satisfied (
-  char **requirements,
-  const struct TALER_PaytoHashP *h_payto,
-  json_t **kyc_details,
-  TALER_KYCLOGIC_KycSatisfiedIterator ki,
-  void *ki_cls,
-  bool *satisfied)
-{
-  struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
-  unsigned int needed_cnt = 0;
-
-  if (NULL == requirements)
-  {
-    *satisfied = true;
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  }
-  {
-    char *req = *requirements;
-
-    for (const char *tok = strtok (req, " ");
-         NULL != tok;
-         tok = strtok (NULL, " "))
-      needed[needed_cnt++] = add_check (tok);
-    GNUNET_free (req);
-    *requirements = NULL;
-  }
-
-  {
-    struct RemoveContext rc = {
-      .needed = needed,
-      .needed_cnt = &needed_cnt,
-    };
-    enum GNUNET_DB_QueryStatus qs;
-
-    rc.kyc_details = json_object ();
-    GNUNET_assert (NULL != rc.kyc_details);
-
-    /* Check what provider checks are already satisfied for h_payto (with
-       database), remove those from the 'needed' array. */
-    qs = ki (ki_cls,
-             h_payto,
-             &remove_satisfied,
-             &rc);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      *satisfied = false;
-      return qs;
-    }
-    if (0 != needed_cnt)
-    {
-      json_decref (rc.kyc_details);
-      *kyc_details = NULL;
-    }
-    else
-    {
-      *kyc_details = rc.kyc_details;
-    }
-  }
-  *satisfied = (0 == needed_cnt);
-
-  {
-    char *res = NULL;
-
-    for (unsigned int i = 0; i<needed_cnt; i++)
-    {
-      const struct TALER_KYCLOGIC_KycCheck *need = needed[i];
-
-      if (NULL == res)
-      {
-        res = GNUNET_strdup (need->name);
-      }
-      else
-      {
-        char *tmp;
-
-        GNUNET_asprintf (&tmp,
-                         "%s %s",
-                         res,
-                         need->name);
-        GNUNET_free (res);
-        res = tmp;
-      }
-    }
-    *requirements = res;
-  }
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-}
-
-
-void
-TALER_KYCLOGIC_kyc_iterate_thresholds (
-  enum TALER_KYCLOGIC_KycTriggerEvent event,
-  TALER_KYCLOGIC_KycThresholdIterator it,
-  void *it_cls)
-{
-  for (unsigned int i = 0; i<num_kyc_triggers; i++)
-  {
-    const struct TALER_KYCLOGIC_KycTrigger *kt = kyc_triggers[i];
-
-    if (event != kt->trigger)
-      continue;
-    it (it_cls,
-        &kt->threshold);
-  }
 }
 
 

@@ -137,8 +137,9 @@ TALER_KYCLOGIC_get_wallet_thresholds (void);
  *        events must be returned in reverse chronological
  *        order
  * @param cb_cls closure for @a cb
+ * @return transaction status
  */
-typedef void
+typedef enum GNUNET_DB_QueryStatus
 (*TALER_KYCLOGIC_KycAmountIterator)(
   void *cls,
   struct GNUNET_TIME_Absolute limit,
@@ -217,19 +218,19 @@ TALER_KYCLOGIC_kyc_test_required (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
-  struct TALER_KYCLOGIC_KycRule **triggered_rule);
+  const struct TALER_KYCLOGIC_KycRule **triggered_rule);
 
 
 const char *
-TALER_KYCLOGIC_rule2s (struct TALER_KYCLOGIC_KycRule *r);
+TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r);
 
 
 json_t *
-TALER_KYCLOGIC_rule2j (struct TALER_KYCLOGIC_KycRule *r);
+TALER_KYCLOGIC_rule2j (const struct TALER_KYCLOGIC_KycRule *r);
 
 
 uint32_t
-TALER_KYCLOGIC_rule2priority (struct TALER_KYCLOGIC_KycRule *r);
+TALER_KYCLOGIC_rule2priority (const struct TALER_KYCLOGIC_KycRule *r);
 
 
 /**

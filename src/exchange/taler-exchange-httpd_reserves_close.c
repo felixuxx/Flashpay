@@ -131,8 +131,9 @@ reply_reserve_close_success (struct MHD_Connection *connection,
  *        events must be returned in reverse chronological
  *        order
  * @param cb_cls closure for @a cb
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 amount_it (void *cls,
            struct GNUNET_TIME_Absolute limit,
            TALER_EXCHANGEDB_KycAmountCallback cb,
@@ -146,7 +147,7 @@ amount_it (void *cls,
             GNUNET_TIME_absolute_get ());
   GNUNET_break (GNUNET_SYSERR != ret);
   if (GNUNET_OK != ret)
-    return;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   rcc->qs
     = TEH_plugin->iterate_reserve_close_info (
         TEH_plugin->cls,
@@ -154,6 +155,7 @@ amount_it (void *cls,
         limit,
         cb,
         cb_cls);
+  return rcc->qs;
 }
 
 

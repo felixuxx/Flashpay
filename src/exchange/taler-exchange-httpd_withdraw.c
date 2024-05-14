@@ -47,7 +47,7 @@ TEH_legitimization_check (
   void *ai_cls)
 {
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
-  struct TALER_KYCLOGIC_KycRule *requirement;
+  const struct TALER_KYCLOGIC_KycRule *requirement;
   enum GNUNET_DB_QueryStatus qs;
 
   {
@@ -165,8 +165,9 @@ struct WithdrawContext
  * @param cb function to call on each event found, events must be returned
  *        in reverse chronological order
  * @param cb_cls closure for @a cb, of type struct AgeWithdrawContext
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 withdraw_amount_cb (
   void *cls,
   struct GNUNET_TIME_Absolute limit,
@@ -174,16 +175,18 @@ withdraw_amount_cb (
   void *cb_cls)
 {
   struct WithdrawContext *wc = cls;
+  enum GNUNET_GenericReturnValue ret;
   enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Signaling amount %s for KYC check during age-withdrawal\n",
               TALER_amount2s (wc->withdraw_total));
-  if (GNUNET_OK !=
-      cb (cb_cls,
-          wc->withdraw_total,
-          wc->now.abs_time))
-    return;
+  ret = cb (cb_cls,
+            wc->withdraw_total,
+            wc->now.abs_time);
+  GNUNET_break (GNUNET_SYSERR != ret);
+  if (GNUNET_OK != ret)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
     TEH_plugin->cls,
     &wc->h_payto,
@@ -195,6 +198,7 @@ withdraw_amount_cb (
               qs,
               (unsigned long long) limit.abs_value_us);
   GNUNET_break (qs >= 0);
+  return qs;
 }
 
 

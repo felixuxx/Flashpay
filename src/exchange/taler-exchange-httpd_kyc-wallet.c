@@ -73,18 +73,23 @@ struct KycRequestContext
  *        order
  * @param cb_cls closure for @a cb
  */
-static void
+static enum GNUNET_DB_QueryStatus
 balance_iterator (void *cls,
                   struct GNUNET_TIME_Absolute limit,
                   TALER_EXCHANGEDB_KycAmountCallback cb,
                   void *cb_cls)
 {
   struct KycRequestContext *krc = cls;
+  enum GNUNET_GenericReturnValue ret;
 
   (void) limit;
-  cb (cb_cls,
-      &krc->balance,
-      GNUNET_TIME_absolute_get ());
+  ret = cb (cb_cls,
+            &krc->balance,
+            GNUNET_TIME_absolute_get ());
+  GNUNET_break (GNUNET_SYSERR != ret);
+  if (GNUNET_OK != ret)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 

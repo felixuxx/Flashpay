@@ -1439,8 +1439,9 @@ initiate_cb (
  *        events must be returned in reverse chronological
  *        order
  * @param cb_cls closure for @a cb
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 amount_iterator (
   void *cls,
   struct GNUNET_TIME_Absolute limit,
@@ -1449,14 +1450,18 @@ amount_iterator (
 {
   const struct TALER_Amount *amount = cls;
   struct GNUNET_TIME_Absolute date;
+  enum GNUNET_GenericReturnValue ret;
 
   date = GNUNET_TIME_absolute_subtract (limit,
                                         GNUNET_TIME_UNIT_SECONDS);
 
-  GNUNET_break (GNUNET_SYSERR !=
-                cb (cb_cls,
-                    amount,
-                    date));
+  ret = cb (cb_cls,
+            amount,
+            date);
+  GNUNET_break (GNUNET_SYSERR != ret);
+  if (GNUNET_OK != ret)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -1477,7 +1482,7 @@ run (void *cls,
 {
   enum TALER_KYCLOGIC_KycTriggerEvent event;
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
-  struct TALER_KYCLOGIC_KycRule *rule = NULL;
+  const struct TALER_KYCLOGIC_KycRule *rule = NULL;
   int fh;
 
   (void) cls;

@@ -459,8 +459,9 @@ trigger_wire_transfer (const struct AggregationUnit *au_active)
  * @param limit time limit for the iteration
  * @param cb function to call with the amounts
  * @param cb_cls closure for @a cb
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 return_relevant_amounts (void *cls,
                          struct GNUNET_TIME_Absolute limit,
                          TALER_EXCHANGEDB_KycAmountCallback cb,
@@ -476,7 +477,7 @@ return_relevant_amounts (void *cls,
       cb (cb_cls,
           &au_active->total_amount,
           GNUNET_TIME_absolute_get ()))
-    return;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = db_plugin->select_aggregation_amounts_for_kyc_check (
     db_plugin->cls,
     &au_active->h_payto,
@@ -488,6 +489,7 @@ return_relevant_amounts (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to select aggregation amounts for KYC limit check!\n");
   }
+  return qs;
 }
 
 
@@ -501,7 +503,7 @@ static bool
 legitimization_satisfied (struct AggregationUnit *au_active)
 {
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
-  struct TALER_KYCLOGIC_KycRule *requirement;
+  const struct TALER_KYCLOGIC_KycRule *requirement;
   enum GNUNET_DB_QueryStatus qs;
   json_t *jrule;
 
