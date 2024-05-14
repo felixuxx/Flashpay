@@ -6090,9 +6090,9 @@ TALER_EXCHANGE_lookup_aml_decisions_cancel (
 struct TALER_EXCHANGE_KycAttributeDetail
 {
   /**
-   * Configuration section name of the KYC provider that contributed the data.
+   * Name of the KYC provider that contributed the data.
    */
-  const char *provider_section;
+  const char *provider_name;
 
   /**
    * The collected KYC data.

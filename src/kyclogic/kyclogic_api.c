@@ -45,11 +45,6 @@ struct TALER_KYCLOGIC_KycProvider
   char *provider_name;
 
   /**
-   * Name of the configuration section of the provider.
-   */
-  char *provider_section_name;
-
-  /**
    * Name of a program to run to convert output of the
    * plugin into the desired set of attributes.
    */
@@ -786,7 +781,6 @@ add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
     kp->cost = cost;
     kp->provider_name
       = GNUNET_strdup (&section[strlen ("kyc-provider-")]);
-    kp->provider_section_name = GNUNET_strdup (section);
     kp->converter_name = converter;
     kp->logic = lp;
     kp->pd = pd;
@@ -1462,7 +1456,6 @@ TALER_KYCLOGIC_kyc_done (void)
 
     kp->logic->unload_configuration (kp->pd);
     GNUNET_free (kp->provider_name);
-    GNUNET_free (kp->provider_section_name);
     GNUNET_free (kp->converter_name);
     GNUNET_free (kp);
   }
@@ -1713,7 +1706,7 @@ TALER_KYCLOGIC_lookup_logic (
       continue;
     *plugin = kp->logic;
     *pd = kp->pd;
-    *provider_section = kp->provider_name;
+    *provider_name = kp->provider_name;
     return GNUNET_OK;
   }
   for (unsigned int i = 0; i<num_kyc_logics; i++)
@@ -1726,7 +1719,7 @@ TALER_KYCLOGIC_lookup_logic (
       continue;
     *plugin = logic;
     *pd = NULL;
-    *provider_section = NULL;
+    *provider_name = NULL;
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
