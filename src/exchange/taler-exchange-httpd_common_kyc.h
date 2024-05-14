@@ -61,7 +61,7 @@ struct TEH_KycAmlTrigger;
  * @param scope the HTTP request logging scope
  * @param process_row legitimization process the webhook was about
  * @param account_id account the webhook was about
- * @param provider_section name of the configuration section of the logic that was run
+ * @param provider_name name of the provider with the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
@@ -76,7 +76,7 @@ struct TEH_KycAmlTrigger *
 TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
                   uint64_t process_row,
                   const struct TALER_PaytoHashP *account_id,
-                  const char *provider_section,
+                  const char *provider_name,
                   const char *provider_user_id,
                   const char *provider_legitimization_id,
                   struct GNUNET_TIME_Absolute expiration,
@@ -102,7 +102,7 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat);
  *
  * @param process_row legitimization process the webhook was about
  * @param account_id account the webhook was about
- * @param provider_section name of the configuration section of the logic that was run
+ * @param provider_name name KYC provider with the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @return true on success, false if updating the database failed
@@ -110,7 +110,7 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat);
 bool
 TEH_kyc_failed (uint64_t process_row,
                 const struct TALER_PaytoHashP *account_id,
-                const char *provider_section,
+                const char *provider_name,
                 const char *provider_user_id,
                 const char *provider_legitimization_id);
 

@@ -51,9 +51,9 @@ struct TEH_KycAmlTrigger
   uint64_t process_row;
 
   /**
-   * name of the configuration section of the logic that was run
+   * name of the provider with the logic that was run
    */
-  char *provider_section;
+  char *provider_name;
 
   /**
    * set to user ID at the provider, or NULL if not supported or unknown
@@ -161,6 +161,7 @@ kyc_aml_finished (void *cls,
     &kat->account_id,
     birthday,
     GNUNET_TIME_timestamp_get (),
+    kat->provider_name,
     kat->provider_user_id,
     kat->provider_legitimization_id,
     kat->expiration,
@@ -197,7 +198,7 @@ struct TEH_KycAmlTrigger *
 TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
                   uint64_t process_row,
                   const struct TALER_PaytoHashP *account_id,
-                  const char *provider_section,
+                  const char *provider_name,
                   const char *provider_user_id,
                   const char *provider_legitimization_id,
                   struct GNUNET_TIME_Absolute expiration,
@@ -213,8 +214,8 @@ TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
   kat->scope = *scope;
   kat->process_row = process_row;
   kat->account_id = *account_id;
-  kat->provider_section
-    = GNUNET_strdup (provider_section);
+  kat->provider_name
+    = GNUNET_strdup (provider_name);
   if (NULL != provider_user_id)
     kat->provider_user_id
       = GNUNET_strdup (provider_user_id);
@@ -253,7 +254,7 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
     TALER_JSON_external_conversion_stop (kat->kyc_aml);
     kat->kyc_aml = NULL;
   }
-  GNUNET_free (kat->provider_section);
+  GNUNET_free (kat->provider_name);
   GNUNET_free (kat->provider_user_id);
   GNUNET_free (kat->provider_legitimization_id);
   json_decref (kat->attributes);
@@ -269,7 +270,7 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
 bool
 TEH_kyc_failed (uint64_t process_row,
                 const struct TALER_PaytoHashP *account_id,
-                const char *provider_section,
+                const char *provider_name,
                 const char *provider_user_id,
                 const char *provider_legitimization_id)
 {
@@ -279,7 +280,7 @@ TEH_kyc_failed (uint64_t process_row,
     TEH_plugin->cls,
     process_row,
     account_id,
-    provider_section,
+    provider_name,
     provider_user_id,
     provider_legitimization_id);
   GNUNET_break (qs >= 0);
