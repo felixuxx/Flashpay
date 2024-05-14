@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -256,6 +256,22 @@ static char *cmd_provider_legitimization_id;
  * configuration data of the selected provider.
  */
 static const char *provider_section_name;
+
+/**
+ * Custom legitimization rule in JSON given as
+ * a string.
+ */
+static char *lrs_s;
+
+/**
+ * Type of the operation that triggers legitimization.
+ */
+static char *operation_s;
+
+/**
+ * Amount threshold crossed that triggers some rule.
+ */
+static struct TALER_Amount trigger_amount;
 
 /**
  * Row ID to use, override with '-r'
@@ -1410,6 +1426,41 @@ initiate_cb (
 
 
 /**
+ * Function called to iterate over KYC-relevant
+ * transaction amounts for a particular time range.
+ * Called within a database transaction, so must
+ * not start a new one.
+ *
+ * @param cls closure, identifies the event type and
+ *        account to iterate over events for
+ * @param limit maximum time-range for which events
+ *        should be fetched (timestamp in the past)
+ * @param cb function to call on each event found,
+ *        events must be returned in reverse chronological
+ *        order
+ * @param cb_cls closure for @a cb
+ */
+static void
+amount_iterator (
+  void *cls,
+  struct GNUNET_TIME_Absolute limit,
+  TALER_EXCHANGEDB_KycAmountCallback cb,
+  void *cb_cls)
+{
+  const struct TALER_Amount *amount = cls;
+  struct GNUNET_TIME_Absolute date;
+
+  date = GNUNET_TIME_absolute_subtract (limit,
+                                        GNUNET_TIME_UNIT_SECONDS);
+
+  GNUNET_break (GNUNET_SYSERR !=
+                cb (cb_cls,
+                    amount,
+                    date));
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure
@@ -1424,6 +1475,9 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *config)
 {
+  enum TALER_KYCLOGIC_KycTriggerEvent event;
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
+  struct TALER_KYCLOGIC_KycRule *rule = NULL;
   int fh;
 
   (void) cls;
@@ -1434,8 +1488,52 @@ run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not load templates. Installation broken.\n");
+    global_ret = EXIT_FAILURE;
     return;
   }
+  if (NULL != operation_s)
+  {
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_kyc_trigger_from_string (operation_s,
+                                                &event))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Malformed operation type `%s'\n",
+                  operation_s);
+      global_ret = EXIT_FAILURE;
+      return;
+    }
+  }
+
+  if (NULL != lrs_s)
+  {
+    json_t *jlrs;
+    json_error_t err;
+
+    jlrs = json_loads (lrs_s,
+                       JSON_REJECT_DUPLICATES,
+                       &err);
+    if (NULL == jlrs)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Malformed JSON for legitimization rule set: %s at %d\n",
+                  err.text,
+                  err.position);
+      global_ret = EXIT_INVALIDARGUMENT;
+      return;
+    }
+    lrs = TALER_KYCLOGIC_rules_parse (jlrs);
+    json_decref (jlrs);
+    if (NULL == lrs)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Malformed legitimization rule set `%s'\n",
+                  lrs_s);
+      global_ret = EXIT_INVALIDARGUMENT;
+      return;
+    }
+  }
+
   if (print_h_payto)
   {
     char *s;
@@ -1466,13 +1564,64 @@ run (void *cls,
     return;
   }
   global_ret = EXIT_SUCCESS;
-  if (NULL != measure)
+  if (NULL != operation_s)
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    if (GNUNET_OK ==
+        TALER_amount_is_valid (&trigger_amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Trigger amount command-line option (-t) required\n");
+      global_ret = EXIT_INVALIDARGUMENT;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    qs = TALER_KYCLOGIC_kyc_test_required (
+      event,
+      lrs,
+      &amount_iterator,
+      &trigger_amount,
+      &rule);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      global_ret = EXIT_NOTCONFIGURED;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_break (0);
+      global_ret = EXIT_NOTCONFIGURED;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      fprintf (stdout,
+               "KYC not required for the given operation type and amount\n");
+      global_ret = EXIT_SUCCESS;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      break;
+    }
+  }
+
+  if (NULL != rule)
   {
     struct TALER_KYCLOGIC_ProviderDetails *pd;
 
+    if (NULL == measure)
+    {
+      // FIXME: print rule!
+
+      global_ret = EXIT_SUCCESS;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_requirements_to_logic (NULL, /* FIXME! */
-                                              NULL, /* FIXME! */
+        TALER_KYCLOGIC_requirements_to_logic (lrs,
+                                              rule,
                                               measure,
                                               &ih_logic,
                                               &pd,
@@ -1485,6 +1634,9 @@ run (void *cls,
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Initiating KYC at provider `%s'\n",
+                provider_section_name);
     ih = ih_logic->initiate (ih_logic->cls,
                              pd,
                              &cmd_line_h_payto,
@@ -1560,6 +1712,25 @@ main (int argc,
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_help (
       "tool to test KYC provider integrations"),
+    GNUNET_GETOPT_option_string (
+      'm',
+      "measure",
+      "MEASURE_NAME",
+      "initiate KYC check for the selected measure",
+      &measure),
+    GNUNET_GETOPT_option_string (
+      'o',
+      "operation",
+      "OPERATION_TYPE",
+      "name of the operation that triggers legitimization (WITHDRAW, DEPOSIT, etc.)",
+      &operation_s),
+    GNUNET_GETOPT_option_base32_fixed_size (
+      'p',
+      "payto-hash",
+      "HASH",
+      "base32 encoding of the hash of a payto://-URI to use for the account (otherwise a random value will be used)",
+      &cmd_line_h_payto,
+      sizeof (cmd_line_h_payto)),
     GNUNET_GETOPT_option_flag (
       'P',
       "print-payto-hash",
@@ -1571,17 +1742,18 @@ main (int argc,
       "NUMBER",
       "override row ID to use in simulation (default: 42)",
       &kyc_row_id),
-    GNUNET_GETOPT_option_flag (
-      'w',
-      "run-webservice",
-      "run the integrated HTTP service",
-      &run_webservice),
     GNUNET_GETOPT_option_string (
-      'm',
-      "measure",
-      "MEASURE_NAME",
-      "initiate KYC check for the selected measure",
-      &measure),
+      'R',
+      "ruleset",
+      "JSON",
+      "use the given legitimization rule set (otherwise defaults from configuration are used)",
+      &lrs_s),
+    TALER_getopt_get_amount (
+      't',
+      "trigger",
+      "AMOUNT",
+      "threshold crossed that would trigger some legitimization rule",
+      &trigger_amount),
     GNUNET_GETOPT_option_string (
       'u',
       "user",
@@ -1594,13 +1766,11 @@ main (int argc,
       "ID",
       "use the given provider legitimization ID (overridden if -i is also used)",
       &cmd_provider_legitimization_id),
-    GNUNET_GETOPT_option_base32_fixed_size (
-      'p',
-      "payto-hash",
-      "HASH",
-      "base32 encoding of the hash of a payto://-URI to use for the account (otherwise a random value will be used)",
-      &cmd_line_h_payto,
-      sizeof (cmd_line_h_payto)),
+    GNUNET_GETOPT_option_flag (
+      'w',
+      "run-webservice",
+      "run the integrated HTTP service",
+      &run_webservice),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

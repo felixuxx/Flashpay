@@ -529,7 +529,6 @@ legitimization_satisfied (struct AggregationUnit *au_active)
   }
   qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
-    &au_active->h_payto,
     lrs,
     &return_relevant_amounts,
     (void *) au_active,

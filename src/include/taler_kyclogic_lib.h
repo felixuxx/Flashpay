@@ -191,15 +191,15 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
 
 
 /**
- * Check if KYC is provided for a particular operation. Returns the set of checks that still need to be satisfied.
+ * Check if KYC is provided for a particular operation. Returns the set of
+ * checks that still need to be satisfied.
  *
  * Called within a database transaction, so must
  * not start a new one.
  *
  * @param event what type of operation is triggering the
  *         test if KYC is required
- * @param h_payto account the event is about
- * @param lrs legitimization rules for @a h_payto,
+ * @param lrs legitimization rules to apply;
  *         NULL to use default rules
  * @param ai callback offered to inquire about historic
  *         amounts involved in this type of operation
@@ -214,7 +214,6 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
 enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_kyc_test_required (
   enum TALER_KYCLOGIC_KycTriggerEvent event,
-  const struct TALER_PaytoHashP *h_payto,
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,

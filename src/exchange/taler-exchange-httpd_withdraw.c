@@ -78,7 +78,6 @@ TEH_legitimization_check (
 
   qs = TALER_KYCLOGIC_kyc_test_required (
     et,
-    h_payto,
     lrs,
     ai,
     ai_cls,

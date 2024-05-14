@@ -1677,7 +1677,6 @@ TALER_KYCLOGIC_kyc_get_details (
 enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_kyc_test_required (
   enum TALER_KYCLOGIC_KycTriggerEvent event,
-  const struct TALER_PaytoHashP *h_payto,
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
