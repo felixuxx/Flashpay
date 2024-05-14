@@ -257,7 +257,20 @@ struct TALER_KYCLOGIC_Measure
    */
   char *measure_name;
 
-  // FIXME: other fields!?
+  /**
+   * Name of the KYC check.
+   */
+  char *check_name;
+
+  /**
+   * Name of the AML program.
+   */
+  char *prog_name;
+
+  /**
+   * Context for the check. Can be NULL.
+   */
+  json_t *context;
 
 };
 
@@ -457,13 +470,20 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
                          measure_name,
                          jmeasure)
     {
+      const char *check_name;
+      const char *prog_name;
+      const json_t *context = NULL;
       struct TALER_KYCLOGIC_Measure *measure
         = &lrs->custom_measures[off++];
       struct GNUNET_JSON_Specification ispec[] = {
-#if 0
-        GNUNET_JSON_spec_array_const ("FIXME",
-                                      &jxxx),
-#endif
+        GNUNET_JSON_spec_string ("check_name",
+                                 &check_name),
+        GNUNET_JSON_spec_string ("prog_name",
+                                 &prog_name),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_array_const ("context",
+                                        &context),
+          NULL),
         GNUNET_JSON_spec_end ()
       };
 
@@ -475,9 +495,15 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         GNUNET_break_op (0);
         goto cleanup;
       }
-
-      measure->measure_name = GNUNET_strdup (measure_name);
-      // FIXME!
+      measure->measure_name
+        = GNUNET_strdup (measure_name);
+      measure->check_name
+        = GNUNET_strdup (check_name);
+      measure->prog_name
+        = GNUNET_strdup (prog_name);
+      if (NULL != context)
+        measure->context
+          = json_incref ((json_t*) context);
     }
   }
   return lrs;
@@ -505,9 +531,10 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
     struct TALER_KYCLOGIC_Measure *measure
       = &lrs->custom_measures[i];
 
-    // FIXME
-    GNUNET_break (0);
     GNUNET_free (measure->measure_name);
+    GNUNET_free (measure->check_name);
+    GNUNET_free (measure->prog_name);
+    json_decref (measure->context);
   }
   GNUNET_free (lrs->kyc_rules);
   GNUNET_free (lrs->custom_measures);
