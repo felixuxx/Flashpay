@@ -252,12 +252,6 @@ static char *cmd_provider_user_id;
 static char *cmd_provider_legitimization_id;
 
 /**
- * Name of the configuration section with the
- * configuration data of the selected provider.
- */
-static const char *provider_section_name;
-
-/**
  * Custom legitimization rule in JSON given as
  * a string.
  */
@@ -961,10 +955,11 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
        /deposits/).  The value should be adjusted if we ever define protocol
        endpoints with plausibly longer inputs.  */
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_URI_TOO_LONG,
-                                       TALER_EC_GENERIC_URI_TOO_LONG,
-                                       url);
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_URI_TOO_LONG,
+      TALER_EC_GENERIC_URI_TOO_LONG,
+      url);
   }
 
   /* All POST endpoints come with a body in JSON format. So we parse
@@ -975,11 +970,12 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
   {
     enum GNUNET_GenericReturnValue res;
 
-    res = TALER_MHD_parse_post_json (rc->connection,
-                                     &rc->opaque_post_parsing_context,
-                                     upload_data,
-                                     upload_data_size,
-                                     &rc->root);
+    res = TALER_MHD_parse_post_json (
+      rc->connection,
+      &rc->opaque_post_parsing_context,
+      upload_data,
+      upload_data_size,
+      &rc->root);
     if (GNUNET_SYSERR == res)
     {
       GNUNET_assert (NULL == rc->root);
@@ -1026,10 +1022,11 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
                        rh->url,
                        url);
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
-                                         emsg);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
+        emsg);
     }
     GNUNET_assert (NULL == args[i - 1]);
 
@@ -1257,12 +1254,14 @@ handle_mhd_request (void *cls,
           allowed = tmp;
         }
       }
-      reply = TALER_MHD_make_error (TALER_EC_GENERIC_METHOD_INVALID,
-                                    method);
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (reply,
-                                             MHD_HTTP_HEADER_ALLOW,
-                                             allowed));
+      reply = TALER_MHD_make_error (
+        TALER_EC_GENERIC_METHOD_INVALID,
+        method);
+      GNUNET_break (
+        MHD_YES ==
+        MHD_add_response_header (reply,
+                                 MHD_HTTP_HEADER_ALLOW,
+                                 allowed));
       GNUNET_free (allowed);
       ret = MHD_queue_response (connection,
                                 MHD_HTTP_METHOD_NOT_ALLOWED,
@@ -1613,11 +1612,11 @@ run (void *cls,
 
   if (NULL != rule)
   {
-    struct TALER_KYCLOGIC_ProviderDetails *pd;
+    struct TALER_KYCLOGIC_KycCheckContext kcc;
 
     if (NULL == measure)
     {
-      // FIXME: print rule!
+      // FIXME: print rule with possible measures!
 
       global_ret = EXIT_SUCCESS;
       GNUNET_SCHEDULER_shutdown ();
@@ -1625,12 +1624,10 @@ run (void *cls,
     }
 
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_requirements_to_logic (lrs,
+        TALER_KYCLOGIC_requirements_to_check (lrs,
                                               rule,
                                               measure,
-                                              &ih_logic,
-                                              &pd,
-                                              &provider_section_name))
+                                              &kcc))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not initiate KYC for measure `%s' (configuration error?)\n",
@@ -1639,16 +1636,43 @@ run (void *cls,
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Initiating KYC at provider `%s'\n",
-                provider_section_name);
-    ih = ih_logic->initiate (ih_logic->cls,
-                             pd,
-                             &cmd_line_h_payto,
-                             kyc_row_id,
-                             &initiate_cb,
-                             NULL);
-    GNUNET_break (NULL != ih);
+    switch (kcc.check->type)
+    {
+    case CT_INFO:
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  "KYC information is `%s'\n",
+                  kcc.check->description);
+      break;
+    case CT_FORM:
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  "Would initiate KYC check `%s' with form `%s'\n",
+                  kcc.check->check_name,
+                  kcc.check->details.form.name);
+      break;
+    case CT_LINK:
+      {
+        struct TALER_KYCLOGIC_ProviderDetails *pd;
+        const char *provider_name;
+
+        TALER_KYCLOGIC_provider_to_logic (
+          kcc.check->details.link.provider,
+          &ih_logic,
+          &pd,
+          &provider_name);
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Initiating KYC check `%s' at provider `%s'\n",
+                    kcc.check->check_name,
+                    provider_name);
+        ih = ih_logic->initiate (ih_logic->cls,
+                                 pd,
+                                 &cmd_line_h_payto,
+                                 kyc_row_id,
+                                 &initiate_cb,
+                                 NULL);
+        GNUNET_break (NULL != ih);
+        break;
+      }
+    }
   }
   if (run_webservice)
   {
@@ -1675,22 +1699,23 @@ run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Starting daemon on port %u\n",
                 (unsigned int) serve_port);
-    mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
-                            | MHD_USE_PIPE_FOR_SHUTDOWN
-                            | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                            | MHD_USE_TCP_FASTOPEN,
-                            (-1 == fh) ? serve_port : 0,
-                            NULL, NULL,
-                            &handle_mhd_request, NULL,
-                            MHD_OPTION_LISTEN_SOCKET,
-                            fh,
-                            MHD_OPTION_EXTERNAL_LOGGER,
-                            &TALER_MHD_handle_logs,
-                            NULL,
-                            MHD_OPTION_NOTIFY_COMPLETED,
-                            &handle_mhd_completion_callback,
-                            NULL,
-                            MHD_OPTION_END);
+    mhd = MHD_start_daemon (
+      MHD_USE_SUSPEND_RESUME
+      | MHD_USE_PIPE_FOR_SHUTDOWN
+      | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+      | MHD_USE_TCP_FASTOPEN,
+      (-1 == fh) ? serve_port : 0,
+      NULL, NULL,
+      &handle_mhd_request, NULL,
+      MHD_OPTION_LISTEN_SOCKET,
+      fh,
+      MHD_OPTION_EXTERNAL_LOGGER,
+      &TALER_MHD_handle_logs,
+      NULL,
+      MHD_OPTION_NOTIFY_COMPLETED,
+      &handle_mhd_completion_callback,
+      NULL,
+      MHD_OPTION_END);
     if (NULL == mhd)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

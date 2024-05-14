@@ -71,6 +71,142 @@ enum TALER_KYCLOGIC_KycTriggerEvent
 
 
 /**
+ * Types of KYC checks.
+ */
+enum CheckType
+{
+  /**
+   * Wait for staff or contact staff out-of-band.
+   */
+  CT_INFO,
+
+  /**
+   * SPA should show an inline form.
+   */
+  CT_FORM,
+
+  /**
+   * SPA may start external KYC process.
+   */
+  CT_LINK
+};
+
+
+/**
+ * Information about a KYC provider.
+ */
+struct TALER_KYCLOGIC_KycProvider;
+
+
+/**
+ * Abstract representation of a KYC check.
+ */
+struct TALER_KYCLOGIC_KycCheck
+{
+  /**
+   * Human-readable name given to the KYC check.
+   */
+  char *check_name;
+
+  /**
+   * Human-readable description of the check in English.
+   */
+  char *description;
+
+  /**
+   * Optional translations of @e description, can be
+   * NULL.
+   */
+  json_t *description_i18n;
+
+  /**
+   * Array of fields that the context must provide as
+   * inputs for this check.
+   */
+  char **requires;
+
+  /**
+   * Name of an original measure to take as a fallback
+   * in case the check fails.
+   */
+  char *fallback;
+
+  /**
+   * Array of outputs provided by the check. Names of the attributes provided
+   * by the check for the AML program.  Either from the configuration or
+   * obtained via the converter.
+   */
+  char **outputs;
+
+  /**
+   * Length of the @e requires array.
+   */
+  unsigned int num_requires;
+
+  /**
+   * Length of the @e outputs array.
+   */
+  unsigned int num_outputs;
+
+  /**
+   * True if clients can voluntarily trigger this check.
+   */
+  bool voluntary;
+
+  /**
+   * Type of the KYC check.
+   */
+  enum CheckType type;
+
+  /**
+   * Details depending on @e type.
+   */
+  union
+  {
+
+    /**
+     * Fields present only if @e type is #CT_FORM.
+     */
+    struct
+    {
+
+      /**
+       * Name of the form to render.
+       */
+      char *name;
+
+    } form;
+
+    /**
+     * Fields present only if @e type is CT_LINK.
+     */
+    struct
+    {
+
+      /**
+       * Provider used.
+       */
+      const struct TALER_KYCLOGIC_KycProvider *provider;
+
+    } link;
+
+  } details;
+
+};
+
+
+/**
+ * Rule that triggers some measure(s).
+ */
+struct TALER_KYCLOGIC_KycRule;
+
+/**
+ * Set of rules that applies to an account.
+ */
+struct TALER_KYCLOGIC_LegitimizationRuleSet;
+
+
+/**
  * Parse KYC trigger string value from a string
  * into enumeration value.
  *
@@ -162,17 +298,6 @@ typedef void
 
 
 /**
- * Rule that triggers some measure(s).
- */
-struct TALER_KYCLOGIC_KycRule;
-
-/**
- * Set of rules that applies to an account.
- */
-struct TALER_KYCLOGIC_LegitimizationRuleSet;
-
-
-/**
  * Parse set of legitimization rules that applies to an account.
  *
  * @param jlrs JSON representation to parse
@@ -261,29 +386,65 @@ TALER_KYCLOGIC_is_satisfiable (
 
 
 /**
+ * Extract logic data from a KYC @a provider.
+ *
+ * @param provider provider to get logic data from
+ * @param[out] plugin set to the KYC logic API
+ * @param[out] pd set to the specific operation context
+ * @param[out] provider_name set to the name
+ *    of the KYC provider
+ */
+void
+TALER_KYCLOGIC_provider_to_logic (
+  const struct TALER_KYCLOGIC_KycProvider *provider,
+  struct TALER_KYCLOGIC_Plugin **plugin,
+  struct TALER_KYCLOGIC_ProviderDetails **pd,
+  const char **provider_name);
+
+
+/**
+ * Tuple with information about a KYC check to perform.  Note that it will
+ * have references into the legitimization rule set provided to
+ * #TALER_KYCLOGIC_requirements_to_check() and thus has a lifetime that
+ * matches the legitimization rule set.
+ */
+struct TALER_KYCLOGIC_KycCheckContext
+{
+  /**
+   * KYC check to perform.
+   */
+  const struct TALER_KYCLOGIC_KycCheck *check;
+
+  /**
+   * Context for the check. Can be NULL.
+   */
+  const json_t *context;
+
+  /**
+   * Name of the AML program.
+   */
+  char *prog_name;
+};
+
+
+/**
  * Obtain the provider logic for a given set of @a lrs
  * and a specific @a kyc_rule from @a lrs that was
  * triggered and the choosen @a measure_name from the
  * list of measures of that @a kyc_rule.
  *
- * FIXME: we probably want to instead set up the logic
- * with the context instead of just returning it here!
- *
  * @param lrs rule set
  * @param kyc_rule rule that was triggered
  * @param measure_name selected measure
- * @param[out] plugin set to the KYC logic API
- * @param[out] pd set to the specific operation context
- * @param[out] configuration_section set to the name of the KYC logic configuration section * @return #GNUNET_OK on success
+ * @param[out] kcc set to check to run
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_requirements_to_logic (
+TALER_KYCLOGIC_requirements_to_check (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const struct TALER_KYCLOGIC_KycRule *kyc_rule,
   const char *measure_name,
-  struct TALER_KYCLOGIC_Plugin **plugin,
-  struct TALER_KYCLOGIC_ProviderDetails **pd,
-  const char **configuration_section);
+  struct TALER_KYCLOGIC_KycCheckContext *kcc);
 
 
 /**
@@ -301,26 +462,6 @@ TALER_KYCLOGIC_lookup_logic (
   struct TALER_KYCLOGIC_Plugin **plugin,
   struct TALER_KYCLOGIC_ProviderDetails **pd,
   const char **configuration_section);
-
-
-// FIXME: we probably want to instead have some
-// functionality that returns information that
-// is more directly applicable for /keys or /config
-// and not this:
-/**
- * Obtain array of KYC checks provided by the provider
- * configured in @a section_name.
- *
- * @param section_name configuration section name
- * @param[out] num_checks set to the length of the array
- * @param[out] provided_checks set to an array with the
- *   names of the checks provided by this KYC provider
- */
-void
-TALER_KYCLOGIC_lookup_checks (
-  const char *section_name,
-  unsigned int *num_checks,
-  char ***provided_checks);
 
 
 /**

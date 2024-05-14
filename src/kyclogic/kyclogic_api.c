@@ -64,124 +64,6 @@ struct TALER_KYCLOGIC_KycProvider
 
 
 /**
- * Types of KYC checks.
- */
-enum CheckType
-{
-  /**
-   * Wait for staff or contact staff out-of-band.
-   */
-  CT_INFO,
-
-  /**
-   * SPA should show an inline form.
-   */
-  CT_FORM,
-
-  /**
-   * SPA may start external KYC process.
-   */
-  CT_LINK
-};
-
-/**
- * Abstract representation of a KYC check.
- */
-struct TALER_KYCLOGIC_KycCheck
-{
-  /**
-   * Human-readable name given to the KYC check.
-   */
-  char *check_name;
-
-  /**
-   * Human-readable description of the check in English.
-   */
-  char *description;
-
-  /**
-   * Optional translations of @e description, can be
-   * NULL.
-   */
-  json_t *description_i18n;
-
-  /**
-   * Array of fields that the context must provide as
-   * inputs for this check.
-   */
-  char **requires;
-
-  /**
-   * Length of the @e requires array.
-   */
-  unsigned int num_requires;
-
-  /**
-   * Name of an original measure to take as a fallback
-   * in case the check fails.
-   */
-  char *fallback;
-
-  /**
-   * Array of outputs provided by the check. Names of the attributes provided
-   * by the check for the AML program.  Either from the configuration or
-   * obtained via the converter.
-   */
-  char **outputs;
-
-  /**
-   * Length of the @e outputs array.
-   */
-  unsigned int num_outputs;
-
-  /**
-   * True if clients can voluntarily trigger this check.
-   */
-  bool voluntary;
-
-  /**
-   * Type of the KYC check.
-   */
-  enum CheckType type;
-
-  /**
-   * Details depending on @e type.
-   */
-  union
-  {
-
-    /**
-     * Fields present only if @e type is #CT_FORM.
-     */
-    struct
-    {
-
-      /**
-       * Name of the form to render.
-       */
-      char *name;
-
-    } form;
-
-    /**
-     * Fields present only if @e type is CT_LINK.
-     */
-    struct
-    {
-
-      /**
-       * Provider used.
-       */
-      const struct TALER_KYCLOGIC_KycProvider *provider;
-
-    } link;
-
-  } details;
-
-};
-
-
-/**
  * Rule that triggers some measure(s).
  */
 struct TALER_KYCLOGIC_KycRule
@@ -1755,19 +1637,30 @@ TALER_KYCLOGIC_kyc_done (void)
 }
 
 
+void
+TALER_KYCLOGIC_provider_to_logic (
+  const struct TALER_KYCLOGIC_KycProvider *provider,
+  struct TALER_KYCLOGIC_Plugin **plugin,
+  struct TALER_KYCLOGIC_ProviderDetails **pd,
+  const char **provider_name)
+{
+  *plugin = provider->logic;
+  *pd = provider->pd;
+  *provider_name = provider->provider_name;
+}
+
+
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_requirements_to_logic (
+TALER_KYCLOGIC_requirements_to_check (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const struct TALER_KYCLOGIC_KycRule *kyc_rule,
   const char *measure_name,
-  struct TALER_KYCLOGIC_Plugin **plugin,
-  struct TALER_KYCLOGIC_ProviderDetails **pd,
-  const char **configuration_section)
+  struct TALER_KYCLOGIC_KycCheckContext *kcc)
 {
   bool found = false;
   const struct TALER_KYCLOGIC_Measure *measure = NULL;
 
-  for (unsigned int i=0; i<kyc_rule->num_measures; i++)
+  for (unsigned int i = 0; i<kyc_rule->num_measures; i++)
   {
     if (0 != strcmp (measure_name,
                      kyc_rule->next_measures[i]))
@@ -1791,7 +1684,7 @@ TALER_KYCLOGIC_requirements_to_logic (
   }
   if (NULL != lrs)
   {
-    for (unsigned int i=0; i<lrs->num_custom_measures; i++)
+    for (unsigned int i = 0; i<lrs->num_custom_measures; i++)
     {
       const struct TALER_KYCLOGIC_Measure *cm
         = &lrs->custom_measures[i];
@@ -1806,7 +1699,7 @@ TALER_KYCLOGIC_requirements_to_logic (
   if (NULL == measure)
   {
     /* Try measures from default rules */
-    for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
+    for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
     {
       const struct TALER_KYCLOGIC_Measure *cm
         = &default_rules.custom_measures[i];
@@ -1827,86 +1720,20 @@ TALER_KYCLOGIC_requirements_to_logic (
     return GNUNET_SYSERR;
   }
 
-#if FIXME
-  struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
-  unsigned int needed_cnt = 0;
-  unsigned long long min_cost = ULLONG_MAX;
-  unsigned int max_checks = 0;
-  const struct TALER_KYCLOGIC_KycProvider *kp_best = NULL;
-
-  if (NULL == requirements)
-    return GNUNET_NO;
-  {
-    char *req = GNUNET_strdup (requirements);
-
-    for (const char *tok = strtok (req, " ");
-         NULL != tok;
-         tok = strtok (NULL, " "))
-      needed[needed_cnt++] = add_check (tok);
-    GNUNET_free (req);
-  }
-
-  /* Count maximum number of remaining checks covered by any
-     provider */
-  for (unsigned int i = 0; i<num_kyc_providers; i++)
-  {
-    const struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
-    unsigned int matched = 0;
-
-    if (kp->user_type != ut)
-      continue;
-    for (unsigned int j = 0; j<kp->num_checks; j++)
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+    if (0 == strcmp (measure->check_name,
+                     kyc_checks[i]->check_name))
     {
-      const struct TALER_KYCLOGIC_KycCheck *kc = kp->provided_checks[j];
-
-      for (unsigned int k = 0; k<needed_cnt; k++)
-        if (kc == needed[k])
-        {
-          matched++;
-          break;
-        }
+      kcc->check = kyc_checks[i];
+      kcc->prog_name = measure->prog_name;
+      kcc->context = measure->context;
+      return GNUNET_OK;
     }
-    max_checks = GNUNET_MAX (max_checks,
-                             matched);
-  }
-  if (0 == max_checks)
-    return GNUNET_SYSERR;
-
-  /* Find min-cost provider covering max_checks. */
-  for (unsigned int i = 0; i<num_kyc_providers; i++)
-  {
-    const struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
-    unsigned int matched = 0;
-
-    if (kp->user_type != ut)
-      continue;
-    for (unsigned int j = 0; j<kp->num_checks; j++)
-    {
-      const struct TALER_KYCLOGIC_KycCheck *kc = kp->provided_checks[j];
-
-      for (unsigned int k = 0; k<needed_cnt; k++)
-        if (kc == needed[k])
-        {
-          matched++;
-          break;
-        }
-    }
-    if ( (max_checks == matched) &&
-         (kp->cost < min_cost) )
-    {
-      min_cost = kp->cost;
-      kp_best = kp;
-    }
-  }
-  GNUNET_assert (NULL != kp_best);
-  *plugin = kp_best->logic;
-  *pd = kp_best->pd;
-  *configuration_section = kp_best->provider_section_name;
-  return GNUNET_OK;
-#else
-  GNUNET_break (0);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Check `%s' unknown (but required by measure %s)\n",
+              measure->check_name,
+              measure_name);
   return GNUNET_SYSERR;
-#endif
 }
 
 
