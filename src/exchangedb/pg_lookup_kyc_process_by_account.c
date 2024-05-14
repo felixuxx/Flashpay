@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_process_by_account (
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const struct TALER_PaytoHashP *h_payto,
   uint64_t *process_row,
   struct GNUNET_TIME_Absolute *expiration,
@@ -39,7 +39,7 @@ TEH_PG_lookup_kyc_process_by_account (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -69,7 +69,7 @@ TEH_PG_lookup_kyc_process_by_account (
            ",provider_legitimization_id"
            " FROM legitimization_processes"
            " WHERE h_payto=$1"
-           "   AND provider_section=$2"
+           "   AND provider_name=$2"
            "   AND NOT finished"
            /* Note: there *should* only be one unfinished
               match, so this is just to be safe(r): */

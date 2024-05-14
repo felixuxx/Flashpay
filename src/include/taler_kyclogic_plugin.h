@@ -188,7 +188,7 @@ typedef void
  * @param cls closure
  * @param process_row legitimization process the webhook was about
  * @param account_id account the webhook was about
- * @param provider_section name of the configuration section of the logic that was run
+ * @param provider_name name of the provider that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
@@ -202,7 +202,7 @@ typedef void
   void *cls,
   uint64_t process_row,
   const struct TALER_PaytoHashP *account_id,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
@@ -218,7 +218,7 @@ typedef void
  * of the exchange's database plugin.
  *
  * @param cls closure
- * @param provider_section
+ * @param provider_name
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
  * @param[out] process_row where to write the row of the entry
@@ -227,7 +227,7 @@ typedef void
 typedef enum GNUNET_DB_QueryStatus
 (*TALER_KYCLOGIC_ProviderLookupCallback)(
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_legitimization_id,
   struct TALER_PaytoHashP *h_payto,
   uint64_t *process_row);

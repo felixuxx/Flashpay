@@ -411,7 +411,7 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp expiration_time;
       uint64_t legitimization_measure_serial_id;
       uint32_t measure_index;
-      char *provider_section;
+      char *provider_name;
       char *provider_user_id;
       char *provider_legitimization_id;
       char *redirect_url;
@@ -1117,7 +1117,7 @@ typedef void
  * (and that have not yet expired).
  *
  * @param cls closure
- * @param kyc_provider_section_name configuration section
+ * @param kyc_provider_name name of the provider
  *        of the respective KYC process
  * @param provider_user_id UID at a provider (can be NULL)
  * @param legi_id legitimization process ID (can be NULL)
@@ -1125,7 +1125,7 @@ typedef void
 typedef void
 (*TALER_EXCHANGEDB_LegitimizationProcessCallback)(
   void *cls,
-  const char *kyc_provider_section_name,
+  const char *kyc_provider_name,
   const char *provider_user_id,
   const char *legi_id);
 
@@ -2638,7 +2638,7 @@ typedef void
  *
  * @param cls closure
  * @param h_payto account for which the attribute data is stored
- * @param provider_section provider that must be checked
+ * @param provider_name provider that must be checked
  * @param collection_time when was the data collected
  * @param expiration_time when does the data expire
  * @param enc_attributes_size number of bytes in @a enc_attributes
@@ -2648,7 +2648,7 @@ typedef void
 (*TALER_EXCHANGEDB_AttributeCallback)(
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   struct GNUNET_TIME_Timestamp collection_time,
   struct GNUNET_TIME_Timestamp expiration_time,
   size_t enc_attributes_size,
@@ -6742,7 +6742,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param h_payto account that must be KYC'ed
-   * @param provider_section provider that must be checked
+   * @param provider_name provider that must be checked
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
    * @param[out] process_row row the process is stored under
@@ -6752,7 +6752,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*insert_kyc_requirement_process)(
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
-    const char *provider_section,
+    const char *provider_name,
     const char *provider_account_id,
     const char *provider_legitimization_id,
     uint64_t *process_row);
@@ -6763,7 +6763,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param h_payto account that must be KYC'ed
-   * @param provider_section provider that must be checked
+   * @param provider_name provider that must be checked
    * @param[out] redirect_url set to redirect URL for the process
    * @return database transaction status
    */
@@ -6771,7 +6771,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*get_pending_kyc_requirement_process)(
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
-    const char *provider_section,
+    const char *provider_name,
     char **redirect_url);
 
 
@@ -6781,7 +6781,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param process_row row to select by
-   * @param provider_section provider that must be checked (technically redundant)
+   * @param provider_name provider that must be checked (technically redundant)
    * @param h_payto account that must be KYC'ed (helps access by shard, otherwise also redundant)
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
@@ -6793,7 +6793,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*update_kyc_process_by_row)(
     void *cls,
     uint64_t process_row,
-    const char *provider_section,
+    const char *provider_name,
     const struct TALER_PaytoHashP *h_payto,
     const char *provider_account_id,
     const char *provider_legitimization_id,
@@ -6825,7 +6825,7 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup KYC process meta data.
    *
    * @param cls closure
-   * @param provider_section provider that must be checked
+   * @param provider_name provider that must be checked
    * @param h_payto account that must be KYC'ed
    * @param[out] process_row set to row with the legitimization data
    * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
@@ -6836,7 +6836,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*lookup_kyc_process_by_account)(
     void *cls,
-    const char *provider_section,
+    const char *provider_name,
     const struct TALER_PaytoHashP *h_payto,
     uint64_t *process_row,
     struct GNUNET_TIME_Absolute *expiration,
@@ -6849,7 +6849,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @a h_payto by @a provider_legitimization_id.
    *
    * @param cls closure
-   * @param provider_section
+   * @param provider_name
    * @param provider_legitimization_id legi to look up
    * @param[out] h_payto where to write the result
    * @param[out] process_row identifies the legitimization process on our end
@@ -6858,7 +6858,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*kyc_provider_account_lookup)(
     void *cls,
-    const char *provider_section,
+    const char *provider_name,
     const char *provider_legitimization_id,
     struct TALER_PaytoHashP *h_payto,
     uint64_t *process_row);
@@ -6965,6 +6965,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param process_row KYC process row to update
    * @param h_payto account for which the attribute data is stored
+   * @param provider_name name of the provider that collected the data
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
    * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
@@ -6982,6 +6983,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     uint32_t birthday,
     struct GNUNET_TIME_Timestamp collection_time,
+    const char *provider_name,
     const char *provider_account_id,
     const char *provider_legitimization_id,
     struct GNUNET_TIME_Absolute expiration_time,
@@ -7186,7 +7188,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param process_row KYC process row to update
    * @param h_payto account for which the attribute data is stored
-   * @param provider_section provider that must be checked
+   * @param provider_name provider that must be checked
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
    * @return database transaction status
@@ -7196,7 +7198,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t process_row,
     const struct TALER_PaytoHashP *h_payto,
-    const char *provider_section,
+    const char *provider_name,
     const char *provider_account_id,
     const char *provider_legitimization_id);
 

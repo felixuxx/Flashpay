@@ -30,7 +30,7 @@
  * Lookup KYC provider meta data.
  *
  * @param cls closure
- * @param provider_section provider that must be checked
+ * @param provider_name provider that must be checked
  * @param h_payto account that must be KYC'ed
  * @param[out] process_row row with the legitimization data
  * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
@@ -41,7 +41,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_process_by_account (
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const struct TALER_PaytoHashP *h_payto,
   uint64_t *process_row,
   struct GNUNET_TIME_Absolute *expiration,

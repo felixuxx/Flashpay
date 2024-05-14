@@ -30,7 +30,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_update_kyc_process_by_row (
   void *cls,
   uint64_t process_row,
-  const char *provider_section,
+  const char *provider_name,
   const struct TALER_PaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,
@@ -40,7 +40,7 @@ TEH_PG_update_kyc_process_by_row (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     (NULL != provider_account_id)
     ? GNUNET_PQ_query_param_string (provider_account_id)
@@ -59,7 +59,7 @@ TEH_PG_update_kyc_process_by_row (
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Updating KYC data for %llu (%s)\n",
               (unsigned long long) process_row,
-              provider_section);
+              provider_name);
   PREPARE (pg,
            "update_legitimization_process",
            "UPDATE legitimization_processes"
@@ -70,7 +70,7 @@ TEH_PG_update_kyc_process_by_row (
            " WHERE"
            "      h_payto=$3"
            "  AND legitimization_process_serial_id=$1"
-           "  AND provider_section=$2;");
+           "  AND provider_name=$2;");
   qs = GNUNET_PQ_eval_prepared_non_select (
     pg->conn,
     "update_legitimization_process",

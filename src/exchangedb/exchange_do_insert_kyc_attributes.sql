@@ -18,6 +18,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
   IN in_birthday INT4,
+  IN in_provider_name TEXT,
   IN in_provider_account_id TEXT,
   IN in_provider_legitimization_id TEXT,
   IN in_collection_time_ts INT8,
@@ -54,7 +55,7 @@ UPDATE legitimization_processes
      ,finished=TRUE
  WHERE h_payto=in_h_payto
    AND legitimization_process_serial_id=in_process_row
-   AND provider_section=in_provider_section;
+   AND provider_name=in_provider_name;
 out_ok = FOUND;
 
 
@@ -101,5 +102,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, INT4, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, INT4, TEXT, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
   IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';

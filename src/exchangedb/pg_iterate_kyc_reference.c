@@ -65,12 +65,12 @@ iterate_kyc_reference_cb (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    char *kyc_provider_section_name;
+    char *kyc_provider_name_name;
     char *provider_user_id;
     char *legitimization_id;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_string ("provider_section",
-                                    &kyc_provider_section_name),
+      GNUNET_PQ_result_spec_string ("provider_name",
+                                    &kyc_provider_name_name),
       GNUNET_PQ_result_spec_string ("provider_user_id",
                                     &provider_user_id),
       GNUNET_PQ_result_spec_string ("provider_legitimization_id",
@@ -87,7 +87,7 @@ iterate_kyc_reference_cb (void *cls,
       return;
     }
     ic->cb (ic->cb_cls,
-            kyc_provider_section_name,
+            kyc_provider_name_name,
             provider_user_id,
             legitimization_id);
     GNUNET_PQ_cleanup_result (rs);
@@ -116,7 +116,7 @@ TEH_PG_iterate_kyc_reference (
   PREPARE (pg,
            "iterate_kyc_reference",
            "SELECT "
-           " provider_section"
+           " provider_name"
            ",provider_user_id"
            ",provider_legitimization_id"
            " FROM legitimization_processes"

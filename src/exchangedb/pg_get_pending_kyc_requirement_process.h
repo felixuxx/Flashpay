@@ -31,7 +31,7 @@
  *
  * @param cls closure
  * @param h_payto account that must be KYC'ed
- * @param provider_section provider that must be checked
+ * @param provider_name provider that must be checked
  * @param[out] redirect_url set to redirect URL for the process
  * @return database transaction status
  */
@@ -39,7 +39,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_pending_kyc_requirement_process (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   char **redirect_url);
 
 #endif

@@ -30,7 +30,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id,
   uint64_t *process_row)
@@ -41,7 +41,7 @@ TEH_PG_insert_kyc_requirement_process (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     (NULL != provider_account_id)
     ? GNUNET_PQ_query_param_string (provider_account_id)
     : GNUNET_PQ_query_param_null (),
@@ -61,7 +61,7 @@ TEH_PG_insert_kyc_requirement_process (
            "INSERT INTO legitimization_processes"
            "  (h_payto"
            "  ,start_time"
-           "  ,provider_section"
+           "  ,provider_name"
            "  ,provider_user_id"
            "  ,provider_legitimization_id"
            "  ) VALUES "

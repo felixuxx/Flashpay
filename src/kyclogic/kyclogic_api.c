@@ -40,9 +40,14 @@ struct TALER_KYCLOGIC_KycProvider
   struct TALER_Amount cost;
 
   /**
-   * Name of the provider (configuration section name).
+   * Name of the provider.
    */
   char *provider_name;
+
+  /**
+   * Name of the configuration section of the provider.
+   */
+  char *provider_section_name;
 
   /**
    * Name of a program to run to convert output of the
@@ -781,6 +786,7 @@ add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
     kp->cost = cost;
     kp->provider_name
       = GNUNET_strdup (&section[strlen ("kyc-provider-")]);
+    kp->provider_section_name = GNUNET_strdup (section);
     kp->converter_name = converter;
     kp->logic = lp;
     kp->pd = pd;
@@ -1456,6 +1462,7 @@ TALER_KYCLOGIC_kyc_done (void)
 
     kp->logic->unload_configuration (kp->pd);
     GNUNET_free (kp->provider_name);
+    GNUNET_free (kp->provider_section_name);
     GNUNET_free (kp->converter_name);
     GNUNET_free (kp);
   }
@@ -1694,20 +1701,19 @@ TALER_KYCLOGIC_lookup_logic (
   const char *name,
   struct TALER_KYCLOGIC_Plugin **plugin,
   struct TALER_KYCLOGIC_ProviderDetails **pd,
-  const char **provider_section)
+  const char **provider_name)
 {
-#if FIXME
   for (unsigned int i = 0; i<num_kyc_providers; i++)
   {
     struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
 
     if (0 !=
         strcasecmp (name,
-                    kp->provider_section_name))
+                    kp->provider_name))
       continue;
     *plugin = kp->logic;
     *pd = kp->pd;
-    *provider_section = kp->provider_section_name;
+    *provider_section = kp->provider_name;
     return GNUNET_OK;
   }
   for (unsigned int i = 0; i<num_kyc_logics; i++)
@@ -1726,9 +1732,6 @@ TALER_KYCLOGIC_lookup_logic (
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Provider `%s' unknown\n",
               name);
-#else
-  GNUNET_break (0);
-#endif
   return GNUNET_SYSERR;
 }
 
@@ -1885,161 +1888,6 @@ TALER_KYCLOGIC_kyc_test_required (
 /* end of kyclogic_api.c */
 
 #if 0
-// FIXME from here...
-
-
-/**
- * Closure for the #eval_trigger().
- */
-struct ThresholdTestContext
-{
-  /**
-   * Total amount so far.
-   */
-  struct TALER_Amount total;
-
-  /**
-   * Trigger event to evaluate triggers of.
-   */
-  enum TALER_KYCLOGIC_KycTriggerEvent event;
-
-  /**
-   * Offset in the triggers array where we need to start
-   * checking for triggers. All trigges below this
-   * offset were already hit.
-   */
-  unsigned int start;
-
-  /**
-   * Array of checks needed so far.
-   */
-  struct TALER_KYCLOGIC_KycCheck **needed;
-
-  /**
-   * Pointer to number of entries used in @a needed.
-   */
-  unsigned int *needed_cnt;
-
-  /**
-   * Has @e total been initialized yet?
-   */
-  bool have_total;
-};
-
-
-/**
- * Function called on each @a amount that was found to
- * be relevant for a KYC check.
- *
- * @param cls closure to allow the KYC module to
- *        total up amounts and evaluate rules
- * @param amount encountered transaction amount
- * @param date when was the amount encountered
- * @return #GNUNET_OK to continue to iterate,
- *         #GNUNET_NO to abort iteration
- *         #GNUNET_SYSERR on internal error (also abort itaration)
- */
-static enum GNUNET_GenericReturnValue
-eval_trigger (void *cls,
-              const struct TALER_Amount *amount,
-              struct GNUNET_TIME_Absolute date)
-{
-  struct ThresholdTestContext *ttc = cls;
-  struct GNUNET_TIME_Relative duration;
-  bool bump = true;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC check with new amount %s\n",
-              TALER_amount2s (amount));
-  duration = GNUNET_TIME_absolute_get_duration (date);
-  if (ttc->have_total)
-  {
-    if (0 >
-        TALER_amount_add (&ttc->total,
-                          &ttc->total,
-                          amount))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-  }
-  else
-  {
-    ttc->total = *amount;
-    ttc->have_total = true;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC check: new total is %s\n",
-              TALER_amount2s (&ttc->total));
-  for (unsigned int i = ttc->start; i<num_kyc_triggers; i++)
-  {
-    const struct TALER_KYCLOGIC_KycTrigger *kt = kyc_triggers[i];
-
-    if (ttc->event != kt->trigger)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "KYC check #%u: trigger type does not match\n",
-                  i);
-      continue;
-    }
-    duration = GNUNET_TIME_relative_max (duration,
-                                         kt->timeframe);
-    if (GNUNET_TIME_relative_cmp (kt->timeframe,
-                                  >,
-                                  duration))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "KYC check #%u: amount is beyond time limit\n",
-                  i);
-      if (bump)
-        ttc->start = i;
-      return GNUNET_OK;
-    }
-    if (-1 ==
-        TALER_amount_cmp (&ttc->total,
-                          &kt->threshold))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "KYC check #%u: amount is below threshold\n",
-                  i);
-      if (bump)
-        ttc->start = i;
-      bump = false;
-      continue; /* amount too low to trigger */
-    }
-    /* add check to list of required checks, unless
-       already present... */
-    for (unsigned int j = 0; j<kt->num_checks; j++)
-    {
-      struct TALER_KYCLOGIC_KycCheck *rc = kt->required_checks[j];
-      bool found = false;
-
-      for (unsigned int k = 0; k<*ttc->needed_cnt; k++)
-        if (ttc->needed[k] == rc)
-        {
-          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                      "KYC rule #%u already listed\n",
-                      j);
-          found = true;
-          break;
-        }
-      if (! found)
-      {
-        ttc->needed[*ttc->needed_cnt] = rc;
-        (*ttc->needed_cnt)++;
-      }
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC check #%u (%s) is applicable, %u checks needed so far\n",
-                i,
-                ttc->needed[(*ttc->needed_cnt) - 1]->name,
-                *ttc->needed_cnt);
-  }
-  if (bump)
-    return GNUNET_NO; /* we hit all possible triggers! */
-  return GNUNET_OK;
-}
-
 
 void
 TALER_KYCLOGIC_lookup_checks (const char *section_name,

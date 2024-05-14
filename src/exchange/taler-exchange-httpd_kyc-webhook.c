@@ -65,10 +65,10 @@ struct KycWebhookContext
   struct TALER_KYCLOGIC_Plugin *plugin;
 
   /**
-   * Section in the configuration of the configured
-   * KYC provider.
+   * Name of the KYC provider (suffix of the
+   * section name in the configuration).
    */
-  const char *provider_section;
+  const char *provider_name;
 
   /**
    * Configuration for the specific action.
@@ -177,7 +177,7 @@ kyc_aml_webhook_finished (
  * @param cls closure
  * @param process_row legitimization process the webhook was about
  * @param account_id account the webhook was about
- * @param provider_section name of the configuration section of the logic that was run
+ * @param provider_name name of the KYC provider that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
@@ -191,7 +191,7 @@ webhook_finished_cb (
   void *cls,
   uint64_t process_row,
   const struct TALER_PaytoHashP *account_id,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
@@ -210,7 +210,7 @@ webhook_finished_cb (
       &kwh->rc->async_scope_id,
       process_row,
       account_id,
-      provider_section,
+      provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,
@@ -242,7 +242,7 @@ webhook_finished_cb (
                 status);
     if (! TEH_kyc_failed (process_row,
                           account_id,
-                          provider_section,
+                          provider_name,
                           provider_user_id,
                           provider_legitimization_id))
     {
@@ -330,7 +330,7 @@ handler_kyc_webhook_generic (
           TALER_KYCLOGIC_lookup_logic (args[0],
                                        &kwh->plugin,
                                        &kwh->pd,
-                                       &kwh->provider_section)) )
+                                       &kwh->provider_name)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",
@@ -343,7 +343,7 @@ handler_kyc_webhook_generic (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC logic `%s' mapped to section %s\n",
                 args[0],
-                kwh->provider_section);
+                kwh->provider_name);
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
                                     kwh->pd,
                                     TEH_plugin->kyc_provider_account_lookup,

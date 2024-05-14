@@ -31,7 +31,7 @@
  *
  * @param cls closure
  * @param process_row row to select by
- * @param provider_section provider that must be checked (technically redundant)
+ * @param provider_name provider that must be checked (technically redundant)
  * @param h_payto account that must be KYC'ed (helps access by shard, otherwise also redundant)
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
@@ -43,7 +43,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_update_kyc_process_by_row (
   void *cls,
   uint64_t process_row,
-  const char *provider_section,
+  const char *provider_name,
   const struct TALER_PaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,

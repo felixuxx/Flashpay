@@ -99,7 +99,7 @@ struct KycProofContext
   /**
    * Provider configuration section name of the logic we are running.
    */
-  const char *provider_section;
+  const char *provider_name;
 
   /**
    * Row in the database for this legitimization operation.
@@ -302,7 +302,7 @@ proof_cb (
     kpc->kat = TEH_kyc_finished (&rc->async_scope_id,
                                  kpc->process_row,
                                  &kpc->h_payto,
-                                 kpc->provider_section,
+                                 kpc->provider_name,
                                  provider_user_id,
                                  provider_legitimization_id,
                                  expiration,
@@ -356,7 +356,7 @@ proof_cb (
     {
       if (! TEH_kyc_failed (kpc->process_row,
                             &kpc->h_payto,
-                            kpc->provider_section,
+                            kpc->provider_name,
                             provider_user_id,
                             provider_legitimization_id))
       {
@@ -432,19 +432,19 @@ TEH_handler_kyc_proof (
   const char *const args[1])
 {
   struct KycProofContext *kpc = rc->rh_ctx;
-  const char *provider_section_or_logic = args[0];
+  const char *provider_name_or_logic = args[0];
 
   if (NULL == kpc)
   {
     /* first time */
-    if (NULL == provider_section_or_logic)
+    if (NULL == provider_name_or_logic)
     {
       GNUNET_break_op (0);
       return respond_html_ec (rc,
                               MHD_HTTP_NOT_FOUND,
                               "kyc-proof-endpoint-unknown",
                               TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                              "'/kyc-proof/$PROVIDER_SECTION?state=$H_PAYTO' required");
+                              "'/kyc-proof/$PROVIDER_NAME?state=$H_PAYTO' required");
     }
     kpc = GNUNET_new (struct KycProofContext);
     kpc->rc = rc;
@@ -454,37 +454,37 @@ TEH_handler_kyc_proof (
                                         "state",
                                         &kpc->h_payto);
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_lookup_logic (provider_section_or_logic,
+        TALER_KYCLOGIC_lookup_logic (provider_name_or_logic,
                                      &kpc->logic,
                                      &kpc->pd,
-                                     &kpc->provider_section))
+                                     &kpc->provider_name))
     {
       GNUNET_break_op (0);
       return respond_html_ec (rc,
                               MHD_HTTP_NOT_FOUND,
                               "kyc-proof-target-unknown",
                               TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                              provider_section_or_logic);
+                              provider_name_or_logic);
     }
-    if (NULL != kpc->provider_section)
+    if (NULL != kpc->provider_name)
     {
       enum GNUNET_DB_QueryStatus qs;
       struct GNUNET_TIME_Absolute expiration;
 
-      if (0 != strcmp (provider_section_or_logic,
-                       kpc->provider_section))
+      if (0 != strcmp (provider_name_or_logic,
+                       kpc->provider_name))
       {
         GNUNET_break_op (0);
         return respond_html_ec (rc,
                                 MHD_HTTP_BAD_REQUEST,
                                 "kyc-proof-bad-request",
                                 TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                "PROVIDER_SECTION");
+                                "PROVIDER_NAME");
       }
 
       qs = TEH_plugin->lookup_kyc_process_by_account (
         TEH_plugin->cls,
-        kpc->provider_section,
+        kpc->provider_name,
         &kpc->h_payto,
         &kpc->process_row,
         &expiration,
@@ -504,7 +504,7 @@ TEH_handler_kyc_proof (
                                 MHD_HTTP_NOT_FOUND,
                                 "kyc-proof-target-unknown",
                                 TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
-                                kpc->provider_section);
+                                kpc->provider_name);
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         break;
       }

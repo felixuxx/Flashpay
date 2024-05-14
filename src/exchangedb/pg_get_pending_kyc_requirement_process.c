@@ -30,12 +30,12 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_pending_kyc_requirement_process (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   char **redirect_url)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_end
   };
@@ -53,7 +53,7 @@ TEH_PG_get_pending_kyc_requirement_process (
            "SELECT"
            "  redirect_url"
            " FROM legitimization_processes"
-           " WHERE provider_section=$1"
+           " WHERE provider_name=$1"
            "  AND h_payto=$2"
            "  AND NOT finished"
            " ORDER BY start_time DESC"

@@ -28,7 +28,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_for_account (
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t *requirement_row)
@@ -39,7 +39,7 @@ TEH_PG_insert_kyc_requirement_for_account (
     (NULL ==  reserve_pub)
       ? GNUNET_PQ_query_param_null ()
       : GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {

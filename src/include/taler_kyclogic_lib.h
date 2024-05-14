@@ -289,7 +289,7 @@ TALER_KYCLOGIC_requirements_to_logic (
 /**
  * Obtain the provider logic for a given @a name.
  *
- * @param name name of the logic or provider section
+ * @param name name of the logic or provider
  * @param[out] plugin set to the KYC logic API
  * @param[out] pd set to the specific operation context
  * @param[out] configuration_section set to the name of the KYC logic configuration section

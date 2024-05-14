@@ -2788,8 +2788,8 @@ lrbt_cb_table_legitimization_processes (void *cls,
         "measure_index",
         &td.details.legitimization_processes.measure_index),
       GNUNET_PQ_result_spec_string (
-        "provider_section",
-        &td.details.legitimization_processes.provider_section),
+        "provider_name",
+        &td.details.legitimization_processes.provider_name),
       GNUNET_PQ_result_spec_string (
         "provider_user_id",
         &td.details.legitimization_processes.provider_user_id),
@@ -3660,7 +3660,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",expiration_time"
               ",legitimization_measure_serial_id"
               ",measure_index"
-              ",provider_section"
+              ",provider_name"
               ",provider_user_id"
               ",provider_legitimization_id"
               ",redirect_url"

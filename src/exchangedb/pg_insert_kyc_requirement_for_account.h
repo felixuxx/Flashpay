@@ -30,7 +30,7 @@
  * Insert KYC requirement for @a h_payto account into table.
  *
  * @param cls closure
- * @param provider_section provider that must be checked
+ * @param provider_name provider that must be checked
  * @param h_payto account that must be KYC'ed
  * @param reserve_pub if the account is a reserve, its public key.  Maybe NULL
  * @param[out] requirement_row set to legitimization requirement row for this check
@@ -39,7 +39,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_for_account (
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t *requirement_row);

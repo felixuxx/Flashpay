@@ -307,7 +307,7 @@ irbt_cb_table_legitimization_processes (
     GNUNET_PQ_query_param_uint32 (
       &td->details.legitimization_processes.measure_index),
     GNUNET_PQ_query_param_string (
-      td->details.legitimization_processes.provider_section),
+      td->details.legitimization_processes.provider_name),
     GNUNET_PQ_query_param_string (
       td->details.legitimization_processes.provider_user_id),
     GNUNET_PQ_query_param_string (
@@ -326,7 +326,7 @@ irbt_cb_table_legitimization_processes (
            ",expiration_time"
            ",legitimization_measure_serial_id"
            ",measure_index"
-           ",provider_section"
+           ",provider_name"
            ",provider_user_id"
            ",provider_legitimization_id"
            ",redirect_url"

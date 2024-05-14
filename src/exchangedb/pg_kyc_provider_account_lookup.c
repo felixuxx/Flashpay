@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_kyc_provider_account_lookup (
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_legitimization_id,
   struct TALER_PaytoHashP *h_payto,
   uint64_t *process_row)
@@ -37,7 +37,7 @@ TEH_PG_kyc_provider_account_lookup (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (provider_legitimization_id),
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -55,7 +55,7 @@ TEH_PG_kyc_provider_account_lookup (
            ",legitimization_process_serial_id"
            " FROM legitimization_processes"
            " WHERE provider_legitimization_id=$1"
-           "   AND provider_section=$2;");
+           "   AND provider_name=$2;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "get_wire_target_by_legitimization_id",

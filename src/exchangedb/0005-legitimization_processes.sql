@@ -24,6 +24,7 @@ BEGIN
   PERFORM create_partitioned_table(
     'ALTER TABLE %I'
     ' ADD COLUMN legitimization_measure_serial_id BIGINT'
+    ',RENAME COLUMN provider_section TO provider_name'
     ',ADD COLUMN measure_index INT4'
     ';'
     ,'legitimization_processes'

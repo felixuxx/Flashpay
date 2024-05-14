@@ -31,7 +31,7 @@
  * @a h_payto by @a provider_legitimization_id.
  *
  * @param cls closure
- * @param provider_section
+ * @param provider_name
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
  * @param[out] process_row where to write the row of the entry
@@ -40,7 +40,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_kyc_provider_account_lookup (
   void *cls,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_legitimization_id,
   struct TALER_PaytoHashP *h_payto,
   uint64_t *process_row);

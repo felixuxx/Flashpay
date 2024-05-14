@@ -31,7 +31,7 @@
  *
  * @param cls closure
  * @param h_payto account that must be KYC'ed
- * @param provider_section provider that must be checked
+ * @param provider_name provider that must be checked
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
  * @param[out] process_row row the process is stored under
@@ -41,7 +41,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id,
   uint64_t *process_row);

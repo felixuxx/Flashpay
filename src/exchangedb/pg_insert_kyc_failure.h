@@ -32,7 +32,7 @@
  * @param cls closure
  * @param process_row KYC process row to update
  * @param h_payto account for which the attribute data is stored
- * @param provider_section provider that must be checked
+ * @param provider_name provider that must be checked
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
  * @return database transaction status
@@ -42,7 +42,7 @@ TEH_PG_insert_kyc_failure (
   void *cls,
   uint64_t process_row,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id);
 

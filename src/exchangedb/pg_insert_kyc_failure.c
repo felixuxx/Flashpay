@@ -32,7 +32,7 @@ TEH_PG_insert_kyc_failure (
   void *cls,
   uint64_t process_row,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
+  const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id)
 {
@@ -40,7 +40,7 @@ TEH_PG_insert_kyc_failure (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_name),
     NULL != provider_account_id
     ? GNUNET_PQ_query_param_string (provider_account_id)
     : GNUNET_PQ_query_param_null (),
@@ -60,7 +60,7 @@ TEH_PG_insert_kyc_failure (
            " ,provider_legitimization_id=$5"
            " WHERE h_payto=$2"
            "   AND legitimization_process_serial_id=$1"
-           "   AND provider_section=$3;");
+           "   AND provider_name=$3;");
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_kyc_failure",
                                            params);
