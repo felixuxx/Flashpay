@@ -173,13 +173,13 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet;
 
 
 /**
- * Parse set of rules that applies to an account.
+ * Parse set of legitimization rules that applies to an account.
  *
- * @param jrules JSON representation to parse
+ * @param jlrs JSON representation to parse
  * @return rule set, NULL if JSON is invalid
  */
 struct TALER_KYCLOGIC_LegitimizationRuleSet *
-TALER_KYCLOGIC_rules_parse (const json_t *jrules);
+TALER_KYCLOGIC_rules_parse (const json_t *jlrs);
 
 
 /**
