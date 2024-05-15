@@ -1,3 +1,9 @@
+taler-exchange (0.11.0) unstable; urgency=low
+
+  * Releasing 0.11.0 with updated terms of service draft.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Wed, 15 May 2024 17:50:12 +0200
+
 taler-exchange (0.10.2) unstable; urgency=low
 
   * Updated man pages and other resources for release.
