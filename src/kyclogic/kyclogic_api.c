@@ -77,7 +77,7 @@ struct TALER_KYCLOGIC_KycRule
 
   /**
    * Rule set with custom measures that this KYC rule
-   * is part of. FIXME: not initialized yet!
+   * is part of.
    */
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
 
@@ -204,6 +204,103 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
 };
 
 
+/**
+ * AML programs.
+ */
+struct TALER_KYCLOGIC_AmlProgram
+{
+
+  /**
+   * Name of the AML program configuration section.
+   */
+  char *program_name;
+
+  /**
+   * Name of the AML program (binary) to run.
+   */
+  char *command;
+
+  /**
+   * Human-readable description of what this AML helper
+   * program will do.
+   */
+  char *description;
+
+  /**
+   * Name of an original measure to take in case the
+   * @e command fails.
+   */
+  char *fallback;
+
+  /**
+   * Output of @e command "--required-context".
+   */
+  char **required_contexts;
+
+  /**
+   * Length of the @e required_contexts array.
+   */
+  unsigned int num_required_contexts;
+
+  /**
+   * Output of @e command "--required-attributes".
+   */
+  char **required_attributes;
+
+  /**
+   * Length of the @e required_attributes array.
+   */
+  unsigned int num_required_attributes;
+};
+
+
+/**
+ * Array of @e num_kyc_logics KYC logic plugins we have loaded.
+ */
+static struct TALER_KYCLOGIC_Plugin **kyc_logics;
+
+/**
+ * Length of the #kyc_logics array.
+ */
+static unsigned int num_kyc_logics;
+
+/**
+ * Array of configured providers.
+ */
+static struct TALER_KYCLOGIC_KycProvider **kyc_providers;
+
+/**
+ * Length of the #kyc_providers array.
+ */
+static unsigned int num_kyc_providers;
+
+/**
+ * Array of @e num_kyc_checks known types of
+ * KYC checks.
+ */
+static struct TALER_KYCLOGIC_KycCheck **kyc_checks;
+
+/**
+ * Length of the #kyc_checks array.
+ */
+static unsigned int num_kyc_checks;
+
+/**
+ * Rules that apply if we do not have an AMLA record.
+ */
+static struct TALER_KYCLOGIC_LegitimizationRuleSet default_rules;
+
+/**
+ * Array of available AML programs.
+ */
+static struct TALER_KYCLOGIC_AmlProgram **aml_programs;
+
+/**
+ * Length of the #aml_programs array.
+ */
+static unsigned int num_aml_programs;
+
+
 struct TALER_KYCLOGIC_LegitimizationRuleSet *
 TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
 {
@@ -313,6 +410,7 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         GNUNET_break_op (0);
         goto cleanup;
       }
+      rule->lrs = lrs;
       rule->num_measures = json_array_size (jmeasures);
       if (((size_t) rule->num_measures) !=
           json_object_size (jmeasures))
@@ -441,15 +539,171 @@ TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r)
 json_t *
 TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
 {
+  json_t *limits;
+  json_t *limit;
+  json_t *rule;
+  size_t idx;
+
+  limits = json_array ();
+  GNUNET_assert (NULL != limits);
+  json_array_foreach ((json_t *) jrules, idx, rule)
+  {
+    const char *ots;
+    struct GNUNET_TIME_Relative timeframe;
+    struct TALER_Amount threshold;
+    bool exposed = false;
+    const json_t *jmeasures;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_string ("operation_type",
+                               &ots),
+      GNUNET_JSON_spec_relative_time ("timeframe",
+                                      &timeframe),
+      TALER_JSON_spec_amount_any ("threshold",
+                                  &threshold),
+      GNUNET_JSON_spec_array_const ("measures",
+                                    &jmeasures),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_bool ("exposed",
+                               &exposed),
+        NULL),
+      GNUNET_JSON_spec_end ()
+    };
+    bool forbidden = false;
+    size_t i;
+    json_t *jmeasure;
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (jrules,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      json_decref (limits);
+      return NULL;
+    }
+    if (! exposed)
+      continue;
+    json_array_foreach (jmeasures, i, jmeasure)
+    {
+      const char *val;
+
+      val = json_string_value (jmeasure);
+      if (NULL == val)
+      {
+        GNUNET_break_op (0);
+        json_decref (limits);
+        return NULL;
+      }
+      if (0 == strcmp (KYC_CHECK_IMPOSSIBLE,
+                       val))
+        forbidden = true;
+    }
+
+    limit = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("operation_type",
+                               ots),
+      GNUNET_JSON_pack_time_rel ("timeframe",
+                                 timeframe),
+      TALER_JSON_pack_amount ("threshold",
+                              &threshold),
+      GNUNET_JSON_pack_bool ("soft_limit",
+                             ! forbidden));
+  }
+  GNUNET_assert (0 ==
+                 json_array_append_new (limits,
+                                        limit));
+  return limits;
+}
+
+
+/**
+ * Find measure @a measure_name in @a lrs.
+ * If measure is not found in @a lrs, fall back to
+ * default measures.
+ *
+ * @param lrs rule set to search, can be NULL to only search default measures
+ * @param measure_name name of measure to find
+ * @return NULL if not found, otherwise the measure
+ */
+static const struct TALER_KYCLOGIC_Measure *
+find_measure (const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+              const char *measure_name)
+{
+  if (NULL != lrs)
+  {
+    for (unsigned int i = 0; i<lrs->num_custom_measures; i++)
+    {
+      const struct TALER_KYCLOGIC_Measure *cm
+        = &lrs->custom_measures[i];
+
+      if (0 == strcmp (measure_name,
+                       cm->measure_name))
+        return cm;
+    }
+  }
+  /* Try measures from default rules */
+  for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
+  {
+    const struct TALER_KYCLOGIC_Measure *cm
+      = &default_rules.custom_measures[i];
+
+    if (0 == strcmp (measure_name,
+                     cm->measure_name))
+      return cm;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Measure `%s' not found\n",
+              measure_name);
+  return NULL;
 }
 
 
 json_t *
 TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r)
 {
-  // FIXME!
-  GNUNET_break (0);
-  return NULL;
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs
+    = r->lrs;
+  json_t *jmeasures;
+
+  jmeasures = json_array ();
+  GNUNET_assert (NULL != jmeasures);
+  if (! r->verboten)
+  {
+    for (unsigned int i = 0; i<r->num_measures; i++)
+    {
+      const char *measure_name = r->next_measures[i];
+      const struct TALER_KYCLOGIC_Measure *ms;
+      json_t *mi;
+
+      ms = find_measure (lrs,
+                         measure_name);
+      if (NULL == ms)
+      {
+        GNUNET_break (0);
+        json_decref (jmeasures);
+        return NULL;
+      }
+      mi = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("check_name",
+                                 ms->check_name),
+        GNUNET_JSON_pack_string ("prog_name",
+                                 ms->prog_name),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_object_incref ("context",
+                                          ms->context)));
+      GNUNET_assert (0 ==
+                     json_array_append_new (jmeasures,
+                                            mi));
+    }
+  }
+
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("measures",
+                                  jmeasures),
+    GNUNET_JSON_pack_bool ("is_and_combinator",
+                           r->is_and_combinator),
+    GNUNET_JSON_pack_bool ("verboten",
+                           r->verboten));
 }
 
 
@@ -458,103 +712,6 @@ TALER_KYCLOGIC_rule2priority (const struct TALER_KYCLOGIC_KycRule *r)
 {
   return r->display_priority;
 }
-
-
-/**
- * AML programs.
- */
-struct TALER_KYCLOGIC_AmlProgram
-{
-
-  /**
-   * Name of the AML program configuration section.
-   */
-  char *program_name;
-
-  /**
-   * Name of the AML program (binary) to run.
-   */
-  char *command;
-
-  /**
-   * Human-readable description of what this AML helper
-   * program will do.
-   */
-  char *description;
-
-  /**
-   * Name of an original measure to take in case the
-   * @e command fails.
-   */
-  char *fallback;
-
-  /**
-   * Output of @e command "--required-context".
-   */
-  char **required_contexts;
-
-  /**
-   * Length of the @e required_contexts array.
-   */
-  unsigned int num_required_contexts;
-
-  /**
-   * Output of @e command "--required-attributes".
-   */
-  char **required_attributes;
-
-  /**
-   * Length of the @e required_attributes array.
-   */
-  unsigned int num_required_attributes;
-};
-
-
-/**
- * Array of @e num_kyc_logics KYC logic plugins we have loaded.
- */
-static struct TALER_KYCLOGIC_Plugin **kyc_logics;
-
-/**
- * Length of the #kyc_logics array.
- */
-static unsigned int num_kyc_logics;
-
-/**
- * Array of configured providers.
- */
-static struct TALER_KYCLOGIC_KycProvider **kyc_providers;
-
-/**
- * Length of the #kyc_providers array.
- */
-static unsigned int num_kyc_providers;
-
-/**
- * Array of @e num_kyc_checks known types of
- * KYC checks.
- */
-static struct TALER_KYCLOGIC_KycCheck **kyc_checks;
-
-/**
- * Length of the #kyc_checks array.
- */
-static unsigned int num_kyc_checks;
-
-/**
- * Rules that apply if we do not have an AMLA record.
- */
-static struct TALER_KYCLOGIC_LegitimizationRuleSet default_rules;
-
-/**
- * Array of available AML programs.
- */
-static struct TALER_KYCLOGIC_AmlProgram **aml_programs;
-
-/**
- * Length of the #aml_programs array.
- */
-static unsigned int num_aml_programs;
 
 
 /**
@@ -1304,6 +1461,7 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
   {
     struct TALER_KYCLOGIC_KycRule kt;
 
+    kt.lrs = &default_rules;
     kt.rule_name = GNUNET_strdup (&section[strlen ("kyc-rule-")]);
     kt.timeframe = timeframe;
     kt.threshold = threshold;
@@ -1707,35 +1865,8 @@ TALER_KYCLOGIC_requirements_to_check (
                 "Rule says operation is categorically is verboten, cannot take measures\n");
     return GNUNET_SYSERR;
   }
-  if (NULL != lrs)
-  {
-    for (unsigned int i = 0; i<lrs->num_custom_measures; i++)
-    {
-      const struct TALER_KYCLOGIC_Measure *cm
-        = &lrs->custom_measures[i];
-
-      if (0 != strcmp (measure_name,
-                       cm->measure_name))
-        continue;
-      measure = cm;
-      break;
-    }
-  }
-  if (NULL == measure)
-  {
-    /* Try measures from default rules */
-    for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
-    {
-      const struct TALER_KYCLOGIC_Measure *cm
-        = &default_rules.custom_measures[i];
-
-      if (0 != strcmp (measure_name,
-                       cm->measure_name))
-        continue;
-      measure = cm;
-      break;
-    }
-  }
+  measure = find_measure (lrs,
+                          measure_name);
   if (NULL == measure)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
