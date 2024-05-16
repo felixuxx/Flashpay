@@ -350,10 +350,6 @@ const char *
 TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r);
 
 
-json_t *
-TALER_KYCLOGIC_rule2j (const struct TALER_KYCLOGIC_KycRule *r);
-
-
 uint32_t
 TALER_KYCLOGIC_rule2priority (const struct TALER_KYCLOGIC_KycRule *r);
 
@@ -383,6 +379,43 @@ TALER_KYCLOGIC_kyc_iterate_thresholds (
 bool
 TALER_KYCLOGIC_is_satisfiable (
   const struct TALER_KYCLOGIC_KycRule *rule);
+
+
+/**
+ * Check if any KYC checks are enabled.
+ *
+ * @return true if KYC is enabled
+ *         false if no KYC checks are possible
+ */
+bool
+TALER_KYCLOGIC_is_enabled (void);
+
+
+/**
+ * A KYC rule @a r has been triggered. Convert the resulting requirements in
+ * to JSON of type ``LegitimizationMeasures`` for the legitimization measures table.
+ *
+ * FIXME: not implemented!
+ * @param r a rule that was triggered
+ * @return JSON serialization of the corresponding
+ *   ``LegitimizationMeasures``, NULL on error
+ */
+json_t *
+TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r);
+
+
+/**
+ * Convert (internal) @a jrules to (public) @a jlimits.
+ *
+ * @param jrules a ``LegitimizationRuleSet`` with KYC rules;
+ *     NULL to use default rules
+ * @return set to JSON array with public limits
+ *   of type ``AccountLimit``
+ *
+ * FIXME: not implemented!
+ */
+json_t *
+TALER_KYCLOGIC_rules_to_limits (const json_t *jrules);
 
 
 /**

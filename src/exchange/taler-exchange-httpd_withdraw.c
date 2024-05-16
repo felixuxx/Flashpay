@@ -42,7 +42,6 @@ TEH_legitimization_check (
   MHD_RESULT *mhd_ret,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
   const struct TALER_PaytoHashP *h_payto,
-  const union TALER_AccountPublicKeyP *account_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls)
 {
@@ -107,18 +106,18 @@ TEH_legitimization_check (
               TALER_KYCLOGIC_rule2s (requirement));
   kyc->ok = false;
   {
-    json_t *jrule;
+    json_t *jmeasures;
 
-    jrule = TALER_KYCLOGIC_rule2j (requirement);
+    jmeasures = TALER_KYCLOGIC_rule_to_measures (requirement);
     qs = TEH_plugin->trigger_kyc_rule_for_account (
       TEH_plugin->cls,
       h_payto,
-      account_pub,
-      jrule,
+      jmeasures,
       TALER_KYCLOGIC_rule2priority (requirement),
       &kyc->requirement_row);
-    json_decref (jrule);
+    json_decref (jmeasures);
   }
+  GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -217,9 +216,6 @@ TEH_withdraw_kyc_check (
     .withdraw_total = withdraw_total,
     .now = now
   };
-  union TALER_AccountPublicKeyP account_pub = {
-    .reserve_pub = *reserve_pub
-  };
 
   /* Check if the money came from a wire transfer */
   qs = TEH_plugin->reserves_get_origin (
@@ -246,7 +242,6 @@ TEH_withdraw_kyc_check (
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW,
     &wc.h_payto,
-    &account_pub,
     &withdraw_amount_cb,
     &wc);
 }

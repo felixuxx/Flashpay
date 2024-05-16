@@ -52,6 +52,11 @@
 
 
 /**
+ * Account owner signature for KYC.
+ */
+#define TALER_HTTP_HEADER_ACCOUNT_OWNER_SIGNATURE "Account-Owner-Signature"
+
+/**
  * Possible algorithms for confirmation code generation.
  */
 enum TALER_MerchantConfirmationAlgorithm
@@ -232,6 +237,37 @@ union TALER_AccountPublicKeyP
 
 
 /**
+ * @brief Type of signatures made by merchants.
+ */
+struct TALER_MerchantSignatureP
+{
+  /**
+   * Taler uses EdDSA for merchants.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_sig;
+};
+
+
+/**
+ * @brief Type of signatures for KYC authorizations.
+ * Either a merchant's signature or a reserve signature
+ * will do.
+ */
+union TALER_AccountSignatureP
+{
+  /**
+   * Signature of merchants.
+   */
+  struct TALER_MerchantSignatureP merchant_sig;
+
+  /**
+   * Signature of reserves.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+};
+
+
+/**
  * @brief Type of private keys for merchant authorizations.
  * Merchants can issue refunds using the corresponding
  * private key.
@@ -261,18 +297,6 @@ union TALER_AccountPrivateKeyP
    * Private key of reserves.
    */
   struct TALER_ReservePrivateKeyP reserve_priv;
-};
-
-
-/**
- * @brief Type of signatures made by merchants.
- */
-struct TALER_MerchantSignatureP
-{
-  /**
-   * Taler uses EdDSA for merchants.
-   */
-  struct GNUNET_CRYPTO_EddsaSignature eddsa_sig;
 };
 
 

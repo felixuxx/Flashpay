@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021, 2022 Taler Systems SA
+  Copyright (C) 2021, 2022, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -113,9 +113,6 @@ wallet_kyc_check (void *cls,
                   MHD_RESULT *mhd_ret)
 {
   struct KycRequestContext *krc = cls;
-  union TALER_AccountPublicKeyP account_pub = {
-    .reserve_pub = krc->reserve_pub
-  };
 
   return TEH_legitimization_check (
     &krc->kyc,
@@ -123,7 +120,6 @@ wallet_kyc_check (void *cls,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
     &krc->h_payto,
-    &account_pub,
     &balance_iterator,
     krc);
 }

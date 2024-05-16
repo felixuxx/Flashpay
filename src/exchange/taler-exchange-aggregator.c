@@ -550,11 +550,10 @@ legitimization_satisfied (struct AggregationUnit *au_active)
               "KYC requirement for %s is %s\n",
               TALER_amount2s (&au_active->total_amount),
               TALER_KYCLOGIC_rule2s (requirement));
-  jrule = TALER_KYCLOGIC_rule2j (requirement);
+  jrule = TALER_KYCLOGIC_rule_to_measures (requirement);
   qs = db_plugin->trigger_kyc_rule_for_account (
     db_plugin->cls,
     &au_active->h_payto,
-    NULL, /* FIXME: get account pub? Or is NULL fine? */
     jrule,
     TALER_KYCLOGIC_rule2priority (requirement),
     &au_active->requirement_row);

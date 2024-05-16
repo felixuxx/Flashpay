@@ -42,6 +42,12 @@ extern struct GNUNET_TIME_Relative TEH_max_keys_caching;
 extern struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
 
 /**
+ * Name of the KYC-AML-trigger evaluation binary.
+ * FIXME: do we keep this?
+ */
+extern char *TEH_kyc_aml_trigger;
+
+/**
  * The exchange's configuration.
  */
 extern const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
@@ -121,18 +127,6 @@ extern const struct TALER_CurrencySpecification *TEH_cspec;
  * Our currency.
  */
 extern char *TEH_currency;
-
-/**
- * Name of the KYC-AML-trigger evaluation binary.
- */
-extern char *TEH_kyc_aml_trigger;
-
-/**
- * What is the largest amount we allow a peer to
- * merge into a reserve before always triggering
- * an AML check?
- */
-extern struct TALER_Amount TEH_aml_threshold;
 
 /**
  * Our (externally visible) base URL.

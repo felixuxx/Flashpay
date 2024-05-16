@@ -231,11 +231,6 @@ reserve_close_transaction (void *cls,
     /* KYC check may be needed: we're not returning
        the money to the account that funded the reserve
        in the first place. */
-    union TALER_AccountPublicKeyP account_pub = {
-      /* FIXME: not the correct account pub, should extract
-         from inbound wire transfer! Or pass NULL here? */
-      .reserve_pub = *rcc->reserve_pub
-    };
 
     TALER_payto_hash (rcc->payto_uri,
                       &rcc->kyc_payto);
@@ -246,7 +241,6 @@ reserve_close_transaction (void *cls,
       mhd_ret,
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
       &rcc->kyc_payto,
-      &account_pub,
       &amount_it,
       rcc);
     if ( (qs < 0) ||

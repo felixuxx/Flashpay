@@ -286,9 +286,6 @@ merge_transaction (void *cls,
   bool in_conflict = true;
   bool no_balance = true;
   bool no_partner = true;
-  union TALER_AccountPublicKeyP account_pub = {
-    .reserve_pub = pcc->reserve_pub
-  };
 
   qs = TEH_legitimization_check (
     &pcc->kyc,
@@ -296,7 +293,6 @@ merge_transaction (void *cls,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     &pcc->h_payto,
-    &account_pub,
     &amount_iterator,
     pcc);
   if ( (qs < 0) ||

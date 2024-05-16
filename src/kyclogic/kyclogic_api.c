@@ -76,6 +76,12 @@ struct TALER_KYCLOGIC_KycRule
   char *rule_name;
 
   /**
+   * Rule set with custom measures that this KYC rule
+   * is part of. FIXME: not initialized yet!
+   */
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+
+  /**
    * Timeframe to consider for computing the amount
    * to compare against the @e limit.  Zero for the
    * wallet balance trigger (as not applicable).
@@ -433,7 +439,13 @@ TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r)
 
 
 json_t *
-TALER_KYCLOGIC_rule2j (const struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
+{
+}
+
+
+json_t *
+TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r)
 {
   // FIXME!
   GNUNET_break (0);
@@ -1532,6 +1544,19 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
            &sort_by_timeframe);
   // FIXME: add configuration sanity checking!
   return GNUNET_OK;
+}
+
+
+/**
+ * Check if any KYC checks are enabled.
+ *
+ * @return true if KYC is enabled
+ *         false if no KYC checks are possible
+ */
+bool
+TALER_KYCLOGIC_is_enabled (void)
+{
+  return 0 != num_kyc_providers;
 }
 
 

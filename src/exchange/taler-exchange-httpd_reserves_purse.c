@@ -196,9 +196,6 @@ purse_transaction (void *cls,
 {
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  union TALER_AccountPublicKeyP account_pub = {
-    .reserve_pub = *rpc->reserve_pub
-  };
 
   qs = TEH_legitimization_check (
     &rpc->kyc,
@@ -206,7 +203,6 @@ purse_transaction (void *cls,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     &rpc->h_payto,
-    &account_pub,
     &amount_iterator,
     rpc);
   if ( (qs < 0) ||

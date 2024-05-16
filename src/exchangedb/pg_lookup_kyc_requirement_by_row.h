@@ -31,17 +31,17 @@
  *
  * @param cls closure
  * @param requirement_row identifies requirement to look up
- * @param[out] requirements provider that must be checked
- * @param[out] aml_status set to the AML status of the account
- * @param[out] h_payto account that must be KYC'ed
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_requirement_by_row (
   void *cls,
   uint64_t requirement_row,
-  char **requirements,
-  enum TALER_AmlDecisionState *aml_status,
-  struct TALER_PaytoHashP *h_payto);
+  union TALER_AccountPublicKeyP *account_pub,
+  struct TALER_AccountAccessTokenP *access_token,
+  json_t **jrules,
+  bool *aml_review,
+  bool *kyc_required);
+
 
 #endif

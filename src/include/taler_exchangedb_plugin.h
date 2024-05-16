@@ -6721,8 +6721,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param h_payto account that must be KYC'ed
-   * @param account_pub public key authorizing access, NULL if not known
-   * @param jrule serialized KYC rule that was triggered
+   * @param jrule serialized MeasureSet to put in place
    * @param display_priority priority of the rule
    * @param[out] requirement_row set to legitimization requirement row for this check
    * @return database transaction status
@@ -6731,7 +6730,6 @@ struct TALER_EXCHANGEDB_Plugin
     (*trigger_kyc_rule_for_account)(
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
-    const union TALER_AccountPublicKeyP *account_pub,
     const json_t *jrule,
     uint32_t display_priority,
     uint64_t *requirement_row);
@@ -6801,25 +6799,23 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Absolute expiration);
 
 
-#if 0
   /**
    * Lookup KYC requirement.
    *
    * @param cls closure
    * @param legi_row identifies requirement to look up
-   * @param[out] requirements space-separated list of requirements
-   * @param[out] aml_status set to the AML status of the account
-   * @param[out] h_payto account that must be KYC'ed
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
     (*lookup_kyc_requirement_by_row)(
     void *cls,
     uint64_t requirement_row,
-    char **requirements,
-    enum TALER_AmlDecisionState *aml_status,
-    struct TALER_PaytoHashP *h_payto);
-#endif
+    union TALER_AccountPublicKeyP *account_pub,
+    struct TALER_AccountAccessTokenP *access_token,
+    json_t **jrules,
+    bool *aml_review,
+    bool *kyc_required);
+
 
   /**
    * Lookup KYC process meta data.

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -29,9 +29,11 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_requirement_by_row (
   void *cls,
   uint64_t requirement_row,
-  char **requirements,
-  enum TALER_AmlDecisionState *aml_status,
-  struct TALER_PaytoHashP *h_payto)
+  union TALER_AccountPublicKeyP *account_pub,
+  struct TALER_AccountAccessTokenP *access_token,
+  json_t **jrules,
+  bool *aml_review,
+  bool *kyc_required)
 {
   struct PostgresClosure *pg = cls;
   uint32_t status = TALER_AML_NORMAL;
@@ -55,17 +57,20 @@ TEH_PG_lookup_kyc_requirement_by_row (
   PREPARE (pg,
            "lookup_legitimization_requirement_by_row",
            "SELECT "
-           " lr.required_checks"
-           ",lr.h_payto"
-           ",aml.status"
-           " FROM legitimization_requirements lr"
-           " LEFT JOIN aml_status aml USING (h_payto)"
-           " WHERE legitimization_requirement_serial_id=$1;");
-  qs = GNUNET_PQ_eval_prepared_singleton_select (
+           " lm.access_token"
+           ",lo.to_investigate AS aml_review" // can be NULL => false!
+           ",lo.jnew_rules AS jrules" // can be NULL! => default rules!
+           ",lm.is_finished AS NOT kyc_required"
+           ",wt.target_pub AS account_pub" // can be NULL!
+           " FROM legitimization_measures lm"
+           " JOIN wire_targets wt"
+           "   USING (access_token)"
+           " LEFT JOIN legitimization_outcomes lo"
+           "   USING (h_payto)"
+           " WHERE legitimization_measure_serial_id=$1;");
+  return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_legitimization_requirement_by_row",
     params,
     rs);
-  *aml_status = (enum TALER_AmlDecisionState) status;
-  return qs;
 }
