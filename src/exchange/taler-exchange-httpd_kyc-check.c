@@ -290,7 +290,33 @@ TEH_handler_kyc_check (
     }
   }
 
-  // FIXME: check signature!
+  if (GNUNET_OK !=
+      TALER_account_kyc_auth_verify (&account_pub,
+                                     &kyp->account_sig))
+  {
+    char *diag;
+    MHD_RESULT mret;
+
+    json_decref (jrules);
+    jrules = NULL;
+    if (GNUNET_is_zero (&account_pub))
+    {
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_CONFLICT,
+        TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_KEY_UNKNOWN,
+        NULL);
+    }
+    diag = GNUNET_STRINGS_data_to_string_alloc (&account_pub,
+                                                sizeof (account_pub));
+    mret = TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
+      diag);
+    GNUNET_free (diag);
+    return mret;
+  }
 
   jlimits = TALER_KYCLOGIC_rules_to_limits (jrules);
   if (NULL == jlimits)
