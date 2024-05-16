@@ -2575,6 +2575,32 @@ TALER_token_issue_sig_unblind (
 /* **************** AML officer signatures **************** */
 
 /**
+ * Sign KYC authorization. Simple authentication, doesn't actually sign
+ * anything.
+ *
+ * @param account_priv private key of account owner
+ * @param[out] officer_sig where to write the signature
+ */
+void
+TALER_account_kyc_auth_sign (
+  const union TALER_AccountPrivateKeyP *account_priv,
+  union TALER_AccountSignatureP *account_sig);
+
+
+/**
+ * Verify KYC authorization authorization.
+ *
+ * @param account_pub public key of account owner
+ * @param account_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_account_kyc_auth_verify (
+  const union TALER_AccountPublicKeyP *account_pub,
+  const union TALER_AccountSignatureP *account_sig);
+
+
+/**
  * Sign AML query. Simple authentication, doesn't actually
  * sign anything.
  *

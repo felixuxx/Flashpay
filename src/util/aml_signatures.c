@@ -152,13 +152,6 @@ TALER_officer_aml_query_sign (
 }
 
 
-/**
- * Verify AML query authorization.
- *
- * @param officer_pub public key of AML officer
- * @param officer_sig signature to verify
- * @return #GNUNET_OK if the signature is valid
- */
 enum GNUNET_GenericReturnValue
 TALER_officer_aml_query_verify (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
