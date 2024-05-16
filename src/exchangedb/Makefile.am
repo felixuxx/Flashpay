@@ -199,6 +199,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_refreshes_above_serial_id.h pg_select_refreshes_above_serial_id.c \
   pg_select_refunds_above_serial_id.h pg_select_refunds_above_serial_id.c \
   pg_select_reserves_in_above_serial_id.h pg_select_reserves_in_above_serial_id.c \
+  pg_trigger_kyc_rule_for_account.h pg_trigger_kyc_rule_for_account.c \
   pg_select_reserves_in_above_serial_id_by_account.h pg_select_reserves_in_above_serial_id_by_account.c \
   pg_select_withdrawals_above_serial_id.h pg_select_withdrawals_above_serial_id.c \
   pg_select_wire_out_above_serial_id.h pg_select_wire_out_above_serial_id.c \

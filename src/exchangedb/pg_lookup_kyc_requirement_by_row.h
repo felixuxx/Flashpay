@@ -30,7 +30,17 @@
  * Lookup KYC requirement.
  *
  * @param cls closure
- * @param requirement_row identifies requirement to look up
+ * @param requirement_row identifies requirement to look up (in legitimization_measures table)
+ * @param[out] account_pub set to public key of the account
+ *    needed to authorize access, all zeros if not known
+ * @param[out] access_token set to the access token to begin
+ *    work on KYC processes for this account
+ * @param[out] jrules set to active ``LegitimizationRuleSet``
+ *    of the account impacted by the requirement
+ * @param[out] aml_review set to true if the account is under
+ *    active review by AML staff
+ * @param[out] kyc_required set to true if the user must pass
+ *    some KYC check before some previous operation may continue
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus

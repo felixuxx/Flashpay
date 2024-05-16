@@ -54,6 +54,7 @@
 #include "pg_select_account_merges_above_serial_id.h"
 #include "pg_select_all_purse_decisions_above_serial_id.h"
 #include "pg_select_purse.h"
+#include "pg_trigger_kyc_rule_for_account.h"
 #include "pg_select_purse_deposits_above_serial_id.h"
 #include "pg_select_purse_merges_above_serial_id.h"
 #include "pg_select_purse_requests_above_serial_id.h"
@@ -214,7 +215,7 @@
 #include "pg_lookup_aml_officer.h"
 #include "pg_trigger_aml_process.h"
 // #include "pg_select_justification_for_missing_wire.h"
-// #include "pg_lookup_kyc_requirement_by_row.h"
+#include "pg_lookup_kyc_requirement_by_row.h"
 // #include "pg_select_aml_history.h"
 // #include "pg_select_aml_process.h"
 // #include "pg_select_aml_threshold.h"
@@ -777,6 +778,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_trigger_aml_process;
   plugin->insert_aml_decision
     = &TEH_PG_insert_aml_decision;
+  plugin->lookup_kyc_requirement_by_row
+    = &TEH_PG_lookup_kyc_requirement_by_row;
+  plugin->trigger_kyc_rule_for_account
+    = &TEH_PG_trigger_kyc_rule_for_account;
 
   plugin->batch_ensure_coin_known
     = &TEH_PG_batch_ensure_coin_known;

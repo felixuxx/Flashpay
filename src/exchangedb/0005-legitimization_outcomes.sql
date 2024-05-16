@@ -30,7 +30,7 @@ BEGIN
       ',jproperties TEXT'
       ',to_investigate BOOL NOT NULL'
       ',is_active BOOL NOT NULL DEFAULT(TRUE)'
-      ',jnew_rules TEXT NOT NULL'
+      ',jnew_rules TEXT'
     ') %s ;'
     ,'legitimization_outcomes'
     ,'PARTITION BY HASH (h_payto)'
@@ -84,7 +84,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'JSON object of type LegitimizationRuleSet with rules to apply to the various operation types for this account; all KYC checks should first check if active new rules for a given account exist in this table (and apply specified measures); if not, it should check the default rules to decide if a measure is required'
+     'JSON object of type LegitimizationRuleSet with rules to apply to the various operation types for this account; all KYC checks should first check if active new rules for a given account exist in this table (and apply specified measures); if not, it should check the default rules to decide if a measure is required; NULL if the default rules apply'
     ,'jnew_rules'
     ,'legitimization_outcomes'
     ,partition_suffix

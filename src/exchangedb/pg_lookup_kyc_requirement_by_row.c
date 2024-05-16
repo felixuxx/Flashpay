@@ -25,6 +25,7 @@
 #include "pg_lookup_kyc_requirement_by_row.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_requirement_by_row (
   void *cls,
@@ -42,26 +43,36 @@ TEH_PG_lookup_kyc_requirement_by_row (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_string ("required_checks",
-                                  requirements),
-    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
-                                          h_payto),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_uint32 ("status",
-                                    &status),
+      GNUNET_PQ_result_spec_auto_from_type ("account_pub",
+                                            account_pub),
       NULL),
+    GNUNET_PQ_result_spec_auto_from_type ("access_token",
+                                          access_token),
+    GNUNET_PQ_result_spec_allow_null (
+      TALER_PQ_result_spec_json ("jrules",
+                                 jrules),
+      NULL),
+    GNUNET_PQ_result_spec_bool ("aml_review",
+                                aml_review),
+    GNUNET_PQ_result_spec_bool ("kyc_required",
+                                kyc_required),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  *jrules = NULL;
+  memset (account_pub,
+          0,
+          sizeof (*account_pub));
   PREPARE (pg,
-           "lookup_legitimization_requirement_by_row",
+           "lookup_kyc_requirement_by_row",
            "SELECT "
-           " lm.access_token"
-           ",lo.to_investigate AS aml_review" // can be NULL => false!
-           ",lo.jnew_rules AS jrules" // can be NULL! => default rules!
-           ",lm.is_finished AS NOT kyc_required"
-           ",wt.target_pub AS account_pub" // can be NULL!
+           " wt.target_pub AS account_pub"
+           ",lm.access_token"
+           ",lo.jnew_rules AS jrules"
+           ",lo.to_investigate AS aml_review"
+           ",NOT lm.is_finished AS kyc_required"
            " FROM legitimization_measures lm"
            " JOIN wire_targets wt"
            "   USING (access_token)"
@@ -70,7 +81,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
            " WHERE legitimization_measure_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
-    "lookup_legitimization_requirement_by_row",
+    "lookup_kyc_requirement_by_row",
     params,
     rs);
 }
