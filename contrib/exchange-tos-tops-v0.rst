@@ -15,7 +15,7 @@ bietet einen **Zahlungsdienst** auf Basis von GNU Taler für Nutzer in der
 Schweiz an. TOPS ist Mitglied im VQF, einer FINMA-akkreditierten
 Selbstregulierungsorganisation. TOPS wird daher nicht direkt von der FINMA
 beaufsichtigt, sondern betreibt eine Finanzdienstleistung nach Art. 6 Abs. 2
-BankV ohne gewerbsmäßige Bankeneigenschaft (Nichtbank) und somit ohne
+BankV ohne gewerbsmässige Bankeneigenschaft (Nichtbank) und somit ohne
 Kundeneinlagensicherung.
 
 **Nutzer** sind Eigentümer von durch TOPS signierten und in CHF denominierten
@@ -48,7 +48,7 @@ Taler-Backends und der darin gespeicherten Wertmarken bzw. Transaktionsdaten.
 Das Taler-Wallet wird von den Nutzern über die hierfür vorgesehenen
 Mechanismen aufgeladen. Zum Aufbuchen der gewünschten Geldmenge wählt man im
 Taler-Wallet den von TOPS betriebenen Zahlungsdienst, an den man diese
-Geldmenge vom Girokonto überweist und von dem schließlich das Taler-Wallet die
+Geldmenge vom Girokonto überweist und von dem schliesslich das Taler-Wallet die
 elektronischen Repräsentanten der Geldmenge abhebt. TOPS kann weitere
 Aufladeoptionen einführen oder auch bestehende Mechanismen nicht mehr anbieten.
 Allfällige mit der Aufladung verbundene Transaktions- oder sonstige Gebühren
