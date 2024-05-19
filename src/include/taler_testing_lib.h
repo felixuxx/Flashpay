@@ -99,7 +99,7 @@
           TALER_TESTING_interpreter_fail (is);                                \
         } while (0)
 
-
+l
 /**
  * Log an error message about a command not having
  * run to completion.
@@ -288,9 +288,9 @@ struct TALER_TESTING_Command
    * @param is interpreter state
    */
   void
-  (*run)(void *cls,
-         const struct TALER_TESTING_Command *cmd,
-         struct TALER_TESTING_Interpreter *is);
+    (*run)(void *cls,
+           const struct TALER_TESTING_Command *cmd,
+           struct TALER_TESTING_Interpreter *is);
 
 
   /**
@@ -301,8 +301,8 @@ struct TALER_TESTING_Command
    * @param cmd command being cleaned up
    */
   void
-  (*cleanup)(void *cls,
-             const struct TALER_TESTING_Command *cmd);
+    (*cleanup)(void *cls,
+               const struct TALER_TESTING_Command *cmd);
 
   /**
    * Extract information from a command that is useful for other
@@ -1941,7 +1941,7 @@ struct TALER_TESTING_Timer
 /**
  * Obtain performance data from the interpreter.
  *
- * @param timers what commands (by label) to obtain runtimes for
+ * @param[in,out] timers what commands (by label) to obtain runtimes for
  * @return the command
  */
 struct TALER_TESTING_Command

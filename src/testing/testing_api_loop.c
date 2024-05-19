@@ -284,9 +284,10 @@ interpreter_run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Running command `%s'\n",
               cmd->label);
-  cmd->start_time
-    = cmd->last_req_time
-      = GNUNET_TIME_absolute_get ();
+  cmd->last_req_time
+    = GNUNET_TIME_absolute_get ();
+  if (0 == cmd->num_tries)
+    cmd->start_time = cmd->last_req_time;
   cmd->num_tries = 1;
   if (NULL != cmd->name)
   {
