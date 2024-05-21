@@ -62,7 +62,6 @@ signal_run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Signaling '%d'..\n",
               ss->signal);
-  sleep (6);
   TALER_TESTING_interpreter_next (is);
 }
 
