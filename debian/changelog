@@ -1,3 +1,10 @@
+taler-exchange (0.11.1) unstable; urgency=low
+
+  * Fixed issues with restarts in service files.
+  * Fixed minor translation issues.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Tue, 21 May 2024 14:50:12 +0200
+
 taler-exchange (0.11.0) unstable; urgency=low
 
   * Releasing 0.11.0 with updated terms of service draft.
