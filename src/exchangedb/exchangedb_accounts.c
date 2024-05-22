@@ -216,7 +216,6 @@ add_account_cb (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
                                "WIRE_METHOD");
-    lc->res = GNUNET_SYSERR;
     return;
   }
   GNUNET_assert (NULL != method);
