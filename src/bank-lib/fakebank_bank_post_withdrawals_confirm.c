@@ -55,6 +55,15 @@ TALER_FAKEBANK_bank_withdrawals_confirm_ (
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
                                        withdrawal_id);
   }
+  if (NULL == wo->amount)
+  {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_BANK_POST_WITHDRAWAL_OPERATION_REQUIRED,
+                                       NULL);
+  }
   if (NULL == wo->exchange_account)
   {
     GNUNET_assert (0 ==
@@ -80,7 +89,7 @@ TALER_FAKEBANK_bank_withdrawals_confirm_ (
         h,
         wo->debit_account->account_name,
         wo->exchange_account->account_name,
-        &wo->amount,
+        wo->amount,
         &wo->reserve_pub,
         &wo->row_id,
         &wo->timestamp))

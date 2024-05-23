@@ -161,7 +161,7 @@ struct WithdrawalOperation
   /**
    * Amount transferred.
    */
-  struct TALER_Amount amount;
+  struct TALER_Amount *amount;
 
   /**
    * Public key of the reserve, wire transfer subject.

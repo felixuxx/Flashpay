@@ -48,7 +48,8 @@ do_post_withdrawal (
   struct MHD_Connection *connection,
   const char *wopid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const char *exchange_payto_uri)
+  const char *exchange_payto_uri,
+  const struct TALER_Amount *amount)
 {
   struct WithdrawalOperation *wo;
   char *credit_name;
@@ -134,6 +135,35 @@ do_post_withdrawal (
                                        TALER_EC_BANK_WITHDRAWAL_OPERATION_RESERVE_SELECTION_CONFLICT,
                                        "exchange account changed");
   }
+  if ( (NULL != wo->amount) && (NULL != amount) && (0 != TALER_amount_cmp (wo->
+                                                                           amount,
+                                                                           amount)) )
+  {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_WITHDRAWAL_OPERATION_RESERVE_SELECTION_CONFLICT,
+                                       "amount changed");
+  }
+  if (NULL == wo->amount)
+  {
+    if (NULL == amount)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_BANK_POST_WITHDRAWAL_OPERATION_REQUIRED,
+                                         "amount missing");
+    }
+    else
+    {
+      wo->amount = GNUNET_new (struct TALER_Amount);
+      *wo->amount = *amount;
+    }
+  }
+  GNUNET_assert (NULL != wo->amount);
   wo->exchange_account = credit_account;
   wo->reserve_pub = *reserve_pub;
   wo->selection_done = true;
@@ -203,11 +233,19 @@ TALER_FAKEBANK_tbi_post_withdrawal (
     struct TALER_ReservePublicKeyP reserve_pub;
     const char *exchange_payto_url;
     enum GNUNET_GenericReturnValue ret;
+    struct TALER_Amount amount;
+    bool amount_missing;
+    struct TALER_Amount *amount_ptr;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                    &reserve_pub),
       GNUNET_JSON_spec_string ("selected_exchange",
                                &exchange_payto_url),
+      GNUNET_JSON_spec_mark_optional (
+        TALER_JSON_spec_amount ("amount",
+                                h->currency,
+                                &amount),
+        &amount_missing),
       GNUNET_JSON_spec_end ()
     };
 
@@ -220,11 +258,15 @@ TALER_FAKEBANK_tbi_post_withdrawal (
       json_decref (json);
       return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
     }
+
+    amount_ptr = amount_missing ? NULL : &amount;
+
     res = do_post_withdrawal (h,
                               connection,
                               wopid,
                               &reserve_pub,
-                              exchange_payto_url);
+                              exchange_payto_url,
+                              amount_ptr);
   }
   json_decref (json);
   return res;
