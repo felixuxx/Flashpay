@@ -72,8 +72,6 @@ libtalerfakebank_la_SOURCES = \
   fakebank_bank_get_withdrawals.c fakebank_bank_get_withdrawals.h \
   fakebank_bank_get_root.c fakebank_bank_get_root.h \
   fakebank_bank_post_accounts_withdrawals.c fakebank_bank_post_accounts_withdrawals.h \
-  fakebank_bank_post_withdrawals_abort.c fakebank_bank_post_withdrawals_abort.h \
-  fakebank_bank_post_withdrawals_confirm.c fakebank_bank_post_withdrawals_confirm.h \
   fakebank_bank_post_withdrawals_id_op.c fakebank_bank_post_withdrawals_id_op.h \
   fakebank_bank_testing_register.c fakebank_bank_testing_register.h \
   fakebank_tbr.c fakebank_tbr.h \
