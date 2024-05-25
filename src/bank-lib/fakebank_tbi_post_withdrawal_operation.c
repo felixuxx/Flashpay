@@ -40,6 +40,8 @@
  * @param wopid the withdrawal operation identifier
  * @param reserve_pub public key of the reserve
  * @param exchange_payto_uri payto://-URI of the exchange
+ * @param amount chosen by the client, or NULL to use the
+ *        pre-determined amount
  * @return MHD result code
  */
 static MHD_RESULT
