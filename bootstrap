@@ -40,9 +40,26 @@ fi
 # Generate Makefile.am in contrib/
 cd contrib
 rm -f Makefile.am
-find wallet-core/aml-backoffice/ -type f | sort | awk '{print "  " $1 " \\" }' > Makefile.am.ext
+echo 'dist_amlspapkgdata_DATA = \' > Makefile.am.ext
+find wallet-core/aml-backoffice/ -type f | sort | awk '{print "  " $1 " \\" }' >> Makefile.am.ext
 # Remove extra '\' at the end of the file
 truncate -s -2 Makefile.am.ext
+
+echo "" >> Makefile.am.ext
+echo 'dist_kycspapkgdata_DATA = \' >> Makefile.am.ext
+# FIXME: replace aml-backoffice with kyc-ui once ready!
+find wallet-core/aml-backoffice/ -type f | sort | awk '{print "  " $1 " \\" }' >> Makefile.am.ext
+# Remove extra '\' at the end of the file
+truncate -s -2 Makefile.am.ext
+
+echo "" >> Makefile.am.ext
+echo 'dist_auditorspapkgdata_DATA = \' >> Makefile.am.ext
+# FIXME: replace aml-backoffice with auditor-backoffice once ready!
+find wallet-core/auditor-backoffice/ -type f | sort | awk '{print "  " $1 " \\" }' >> Makefile.am.ext
+# Remove extra '\' at the end of the file
+truncate -s -2 Makefile.am.ext
+
+
 cat Makefile.am.in Makefile.am.ext >> Makefile.am
 # Prevent accidental editing of the generated Makefile.am
 chmod -w Makefile.am

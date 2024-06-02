@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_spa.c
- * @brief logic to load the single page app (/)
+ * @brief logic to load single page apps (/)
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -60,12 +60,12 @@ struct WebuiFile
 
 
 /**
- * Resources of the WebuUI, kept in a DLL.
+ * Resources of the WebUI, kept in a DLL.
  */
 static struct WebuiFile *webui_head;
 
 /**
- * Resources of the WebuUI, kept in a DLL.
+ * Resources of the WebUI, kept in a DLL.
  */
 static struct WebuiFile *webui_tail;
 
@@ -312,7 +312,7 @@ TEH_spa_init ()
       return GNUNET_SYSERR;
     }
     GNUNET_asprintf (&dn,
-                     "%sexchange/spa/",
+                     "%sexchange/aml-spa/",
                      path);
     GNUNET_free (path);
   }

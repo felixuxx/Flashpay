@@ -34,7 +34,8 @@ usr/share/man/man1/taler-exchange-wirewatch*
 usr/share/info/taler-exchange*
 usr/share/taler/config.d/*
 usr/share/taler/exchange/templates/*.must
-usr/share/taler/exchange/spa/*
+usr/share/taler/exchange/aml-spa/*
+usr/share/taler/exchange/kyc-spa/*
 
 # configuration files in /etc/taler
 debian/etc-taler-exchange/* etc/
