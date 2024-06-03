@@ -100,7 +100,10 @@ BEGIN
           ,rec.name
         );
       END IF;
-
+      EXECUTE FORMAT(
+        'DROP FUNCTION exchange.create_table_%s'::text
+          ,rec.name
+        );
     -- "alter" actions apply to master and partitions
     WHEN 'alter'
     THEN
@@ -109,6 +112,10 @@ BEGIN
         'SELECT exchange.alter_table_%s ()'::text
         ,rec.name
       );
+      EXECUTE FORMAT(
+        'DROP FUNCTION exchange.alter_table_%s'::text
+          ,rec.name
+        );
     -- Constrain action apply to master OR each partition
     WHEN 'constrain'
     THEN
@@ -141,6 +148,10 @@ BEGIN
           END LOOP;
         END IF;
       END IF;
+      EXECUTE FORMAT(
+        'DROP FUNCTION exchange.constrain_table_%s'::text
+          ,rec.name
+        );
     -- Foreign actions only apply if partitioning is off
     WHEN 'foreign'
     THEN
@@ -153,12 +164,20 @@ BEGIN
           ,NULL
         );
       END IF;
+      EXECUTE FORMAT(
+        'DROP FUNCTION exchange.foreign_table_%s'::text
+          ,rec.name
+        );
     WHEN 'master'
     THEN
       EXECUTE FORMAT(
         'SELECT exchange.master_table_%s ()'::text
         ,rec.name
       );
+      EXECUTE FORMAT(
+        'DROP FUNCTION exchange.master_table_%s'::text
+          ,rec.name
+        );
     ELSE
       ASSERT FALSE, 'unsupported action type: ' || rec.action;
     END CASE;  -- END CASE (rec.action)
