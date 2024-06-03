@@ -14,7 +14,8 @@ libtalermhd_la_SOURCES = \
   mhd_legal.c \
   mhd_parsing.c \
   mhd_responses.c \
-  mhd_run.c
+  mhd_run.c \
+  mhd_spa.c
 libtalermhd_la_LDFLAGS = \
   -version-info 3:1:3 \
   -no-undefined

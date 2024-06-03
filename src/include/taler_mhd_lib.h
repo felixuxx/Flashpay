@@ -983,4 +983,17 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
 MHD_RESULT
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection);
 
+
+struct TALER_MHD_Spa *
+TALER_MHD_spa_load (const char *dir);
+
+void
+TALER_MHD_spa_free (struct TALER_MHD_Spa *spa);
+
+MHD_RESULT
+TALER_MHD_spa_handler (const struct TALER_MHD_Spa *spa,
+                       struct MHD_Connection *connection,
+                       const char *path);
+
+
 #endif
