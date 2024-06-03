@@ -1820,9 +1820,16 @@ handle_mhd_request (void *cls,
       .nargs = 2
     },
     {
-      .url = "webui",
+      .url = "aml-spa",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_handler_spa,
+      .handler.get = &TEH_handler_aml_spa,
+      .nargs = 1,
+      .nargs_is_upper_bound = true
+    },
+    {
+      .url = "kyc-spa",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_kyc_spa,
       .nargs = 1,
       .nargs_is_upper_bound = true
     },

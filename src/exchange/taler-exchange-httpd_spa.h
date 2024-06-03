@@ -26,15 +26,29 @@
 
 
 /**
- * Return our single-page-app user interface (see contrib/wallet-core/).
+ * Return our single-page-app user interface
+ * for AML staff (see contrib/wallet-core/).
  *
  * @param rc context of the handler
  * @param[in,out] args remaining arguments (ignored)
  * @return #MHD_YES on success (reply queued), #MHD_NO on error (close connection)
  */
 MHD_RESULT
-TEH_handler_spa (struct TEH_RequestContext *rc,
-                 const char *const args[]);
+TEH_handler_aml_spa (struct TEH_RequestContext *rc,
+                     const char *const args[]);
+
+
+/**
+ * Return our single-page-app user interface
+ * for the KYC process (see contrib/wallet-core/).
+ *
+ * @param rc context of the handler
+ * @param[in,out] args remaining arguments (ignored)
+ * @return #MHD_YES on success (reply queued), #MHD_NO on error (close connection)
+ */
+MHD_RESULT
+TEH_handler_kyc_spa (struct TEH_RequestContext *rc,
+                     const char *const args[]);
 
 
 /**

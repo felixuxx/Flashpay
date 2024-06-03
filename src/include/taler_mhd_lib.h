@@ -984,12 +984,34 @@ MHD_RESULT
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection);
 
 
+/**
+ * Load SPA files from @a dir
+ *
+ * @param dir directory suffix to append to our data directory with the location of the files of the SPA
+ * @return handle to serve static files from @a dir
+ */
 struct TALER_MHD_Spa *
 TALER_MHD_spa_load (const char *dir);
 
+
+/**
+ * Release resources used by SPA handler.
+ *
+ * @param[in] spa data structure to release
+ */
 void
 TALER_MHD_spa_free (struct TALER_MHD_Spa *spa);
 
+
+/**
+ * Handle HTTP request for files in a @a spa. Generates
+ * a 404 if no file at @a path does exists.
+ *
+ * @param spa the SPA to serve files from
+ * @param connection HTTP connection to return data on
+ * @param path request path to match against the @a spa
+ * @return MHD status code to give to MHD
+ */
 MHD_RESULT
 TALER_MHD_spa_handler (const struct TALER_MHD_Spa *spa,
                        struct MHD_Connection *connection,
