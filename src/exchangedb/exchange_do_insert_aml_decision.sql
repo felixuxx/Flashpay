@@ -82,7 +82,7 @@ INSERT INTO legitimization_outcomes
   (in_h_payto
   ,in_decision_time
   ,in_expiration_time
-  ,in_properties,
+  ,in_properties
   ,in_to_investigate
   ,in_new_rules
   )

@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION create_table_aml_status5(
+CREATE FUNCTION alter_table_aml_status5(
   IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
@@ -41,6 +41,6 @@ INSERT INTO exchange_tables
   VALUES
     ('aml_status5'
     ,'exchange-0005'
-    ,'create'
+    ,'alter'
     ,TRUE
     ,FALSE);

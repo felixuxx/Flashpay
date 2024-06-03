@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION create_table_legitimization_measures5(
+CREATE FUNCTION create_table_legitimization_measures(
   IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
@@ -31,7 +31,7 @@ BEGIN
       ',is_finished BOOL NOT NULL DEFAULT(FALSE)'
     ') %s ;'
     ,'legitimization_measures'
-    ,'PARTITION BY HASH (target_token)'
+    ,'PARTITION BY HASH (access_token)'
     ,partition_suffix
   );
   PERFORM comment_partitioned_table(
@@ -80,7 +80,7 @@ $$;
 
 
 
-CREATE FUNCTION constrain_table_legitimization_measures5(
+CREATE FUNCTION constrain_table_legitimization_measures(
   IN partition_suffix TEXT
 )
 RETURNS VOID
@@ -106,7 +106,7 @@ END
 $$;
 
 
-CREATE FUNCTION foreign_table_legitimization_measures5()
+CREATE FUNCTION foreign_table_legitimization_measures()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -130,17 +130,17 @@ INSERT INTO exchange_tables
     ,partitioned
     ,by_range)
   VALUES
-    ('legitimization_measures5'
+    ('legitimization_measures'
     ,'exchange-0005'
     ,'create'
     ,TRUE
     ,FALSE),
-    ('legitimization_measures5'
+    ('legitimization_measures'
     ,'exchange-0005'
     ,'constrain'
     ,TRUE
     ,FALSE),
-    ('legitimization_measures5'
+    ('legitimization_measures'
     ,'exchange-0005'
     ,'foreign'
     ,TRUE

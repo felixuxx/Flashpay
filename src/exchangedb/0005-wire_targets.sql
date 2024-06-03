@@ -25,36 +25,52 @@ RETURNS BYTEA
 LANGUAGE 'sql'
 VOLATILE;
 
-CREATE FUNCTION create_table_wire_targets5(
-  IN partition_suffix TEXT DEFAULT NULL
-)
+CREATE FUNCTION alter_table_wire_targets5()
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  PERFORM create_partitioned_table(
-    'ALTER TABLE %I'
-    ' ADD COLUMN access_token BYTEA UNIQUE CHECK(LENGTH(access_token)=32) DEFAULT random_bytea(32)'
-    ',ADD COLUMN target_pub BYTEA CHECK(LENGTH(target_pub)=32) DEFAULT NULL'
+  EXECUTE FORMAT (
+    'ALTER TABLE wire_targets'
+    ' ADD COLUMN access_token BYTEA CHECK(LENGTH(access_token)=32)'
+    '   DEFAULT random_bytea(32)'
+    ',ADD COLUMN target_pub BYTEA CHECK(LENGTH(target_pub)=32)'
+    '   DEFAULT NULL'
     ';'
-    ,'wire_targets'
-    ,partition_suffix
   );
 
   PERFORM comment_partitioned_column(
      'high-entropy random value that is used as a bearer token used to authenticate access to the KYC SPA and its state (without requiring a signature)'
     ,'access_token'
     ,'wire_targets'
-    ,partition_suffix
+    ,NULL
   );
   PERFORM comment_partitioned_column(
      'Public key of a merchant instance or reserve to authenticate access; NULL if KYC is not allowed for the account (if there was no incoming KYC wire transfer yet); updated, thus NOT available to the auditor'
     ,'target_pub'
     ,'wire_targets'
-    ,partition_suffix
+    ,NULL
   );
 END $$;
 
+
+CREATE FUNCTION constrain_table_wire_targets5(
+  IN partition_suffix TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT DEFAULT 'wire_targets';
+BEGIN
+  table_name = concat_ws('_', table_name, partition_suffix);
+  EXECUTE FORMAT (
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_wire_target_access_token_unique'
+    ' UNIQUE (access_token)'
+  );
+END
+$$;
 
 INSERT INTO exchange_tables
     (name
@@ -65,6 +81,11 @@ INSERT INTO exchange_tables
   VALUES
     ('wire_targets5'
     ,'exchange-0005'
-    ,'create'
+    ,'alter'
+    ,TRUE
+    ,FALSE),
+    ('wire_targets5'
+    ,'exchange-0005'
+    ,'constrain'
     ,TRUE
     ,FALSE);

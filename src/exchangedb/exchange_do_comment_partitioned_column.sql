@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2024 Taler Systems SA
+-- Copyright (C) 2014--2022 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -14,32 +14,29 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION alter_table_legitimization_requirements5(
-  IN partition_suffix TEXT DEFAULT NULL
+CREATE OR REPLACE FUNCTION comment_partitioned_column(
+   IN table_comment TEXT
+  ,IN column_name TEXT
+  ,IN table_name TEXT
+  ,IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  PERFORM create_partitioned_table(
-    'DROP TABLE %I;'
-    ,'legitimization_requirements'
-    ,''
-    ,partition_suffix
+  IF ( (partition_suffix IS NOT NULL) AND
+       (partition_suffix::int > 0) )
+  THEN
+    -- sharding, add shard name
+    table_name=table_name || '_' || partition_suffix;
+  END IF;
+  EXECUTE FORMAT(
+     'COMMENT ON COLUMN %s.%s IS %s'
+    ,table_name
+    ,column_name
+    ,quote_literal(table_comment)
   );
-END
-$$;
+END $$;
 
-
-INSERT INTO exchange_tables
-    (name
-    ,version
-    ,action
-    ,partitioned
-    ,by_range)
-  VALUES
-    ('legitimization_requirements5'
-    ,'exchange-0005'
-    ,'alter'
-    ,TRUE
-    ,FALSE);
+COMMENT ON FUNCTION comment_partitioned_column
+  IS 'Generic function to create a comment on column of a table that is partitioned.';

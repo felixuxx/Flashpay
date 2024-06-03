@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION create_table_kyc_attributes5(
+CREATE FUNCTION alter_table_kyc_attributes5(
   IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
@@ -50,7 +50,7 @@ BEGIN
 END $$;
 
 
-CREATE OR REPLACE FUNCTION foreign_table_kyc_attributes5()
+CREATE FUNCTION foreign_table_kyc_attributes5()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -75,7 +75,7 @@ INSERT INTO exchange_tables
   VALUES
     ('kyc_attributes5'
     ,'exchange-0005'
-    ,'create'
+    ,'alter'
     ,TRUE
     ,FALSE),
     ('kyc_attributes5'

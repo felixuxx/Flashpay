@@ -33,19 +33,12 @@ TEH_PG_create_tables (void *cls,
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
+  enum GNUNET_GenericReturnValue ret;
   struct GNUNET_PQ_QueryParam params[] = {
     support_partitions
     ? GNUNET_PQ_query_param_uint32 (&num_partitions)
     : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_PreparedStatement ps[] = {
-    GNUNET_PQ_make_prepare ("create_tables",
-                            "SELECT"
-                            " exchange.do_create_tables"
-                            " ($1);"),
-    GNUNET_PQ_PREPARED_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
@@ -56,17 +49,30 @@ TEH_PG_create_tables (void *cls,
                                      "exchangedb-postgres",
                                      "exchange-",
                                      es,
-                                     ps);
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  if (0 >
-      GNUNET_PQ_eval_prepared_non_select (conn,
-                                          "create_tables",
-                                          params))
-    ret = GNUNET_SYSERR;
+  ret = GNUNET_PQ_exec_sql (conn,
+                            "procedures");
+  GNUNET_break (GNUNET_OK == ret);
   if (GNUNET_OK == ret)
-    ret = GNUNET_PQ_exec_sql (conn,
-                              "procedures");
+  {
+    struct GNUNET_PQ_Context *tconn;
+
+    tconn = pg->conn;
+    pg->conn = conn;
+    PREPARE (pg,
+             "create_tables",
+             "SELECT"
+             " exchange.do_create_tables"
+             " ($1::INTEGER);");
+    pg->conn = tconn;
+    if (0 >
+        GNUNET_PQ_eval_prepared_non_select (conn,
+                                            "create_tables",
+                                            params))
+      ret = GNUNET_SYSERR;
+  }
   GNUNET_PQ_disconnect (conn);
   return ret;
 }

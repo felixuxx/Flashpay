@@ -93,7 +93,7 @@ BEGIN
   EXECUTE FORMAT (
     'COMMENT ON INDEX ' || table_name || '_by_exch_accnt_reserve_in_serial_id_idx '
     'IS ' || quote_literal ('for pg_select_reserves_in_above_serial_id_by_account') || ';'
-  ); 
+  );
 
 END
 $$;

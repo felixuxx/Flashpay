@@ -101,37 +101,37 @@ struct PostgresClosure
  * @param sql actual SQL text
  */
 #define PREPARE(pg,name,sql)                      \
-  do {                                            \
-    static struct {                               \
-      unsigned long long cnt;                     \
-      struct PostgresClosure *pg;                 \
-    } preps[2]; /* 2 ctrs for taler-auditor-sync*/ \
-    unsigned int off = 0;                         \
+        do {                                            \
+          static struct {                               \
+            unsigned long long cnt;                     \
+            struct PostgresClosure *pg;                 \
+          } preps[2]; /* 2 ctrs for taler-auditor-sync*/ \
+          unsigned int off = 0;                         \
                                                   \
-    while ( (NULL != preps[off].pg) &&            \
-            (pg != preps[off].pg) &&              \
-            (off < sizeof(preps) / sizeof(*preps)) ) \
-    off++;                                      \
-    GNUNET_assert (off <                          \
-                   sizeof(preps) / sizeof(*preps)); \
-    if (preps[off].cnt < pg->prep_gen)            \
-    {                                             \
-      struct GNUNET_PQ_PreparedStatement ps[] = { \
-        GNUNET_PQ_make_prepare (name, sql),       \
-        GNUNET_PQ_PREPARED_STATEMENT_END          \
-      };                                          \
+          while ( (NULL != preps[off].pg) &&            \
+                  (pg != preps[off].pg) &&              \
+                  (off < sizeof(preps) / sizeof(*preps)) ) \
+          off++;                                      \
+          GNUNET_assert (off <                          \
+                         sizeof(preps) / sizeof(*preps)); \
+          if (preps[off].cnt < pg->prep_gen)            \
+          {                                             \
+            struct GNUNET_PQ_PreparedStatement ps[] = { \
+              GNUNET_PQ_make_prepare (name, sql),       \
+              GNUNET_PQ_PREPARED_STATEMENT_END          \
+            };                                          \
                                                   \
-      if (GNUNET_OK !=                            \
-          GNUNET_PQ_prepare_statements (pg->conn, \
-                                        ps))      \
-      {                                           \
-        GNUNET_break (0);                         \
-        return GNUNET_DB_STATUS_HARD_ERROR;       \
-      }                                           \
-      preps[off].pg = pg;                         \
-      preps[off].cnt = pg->prep_gen;              \
-    }                                             \
-  } while (0)
+            if (GNUNET_OK !=                            \
+                GNUNET_PQ_prepare_statements (pg->conn, \
+                                              ps))      \
+            {                                           \
+              GNUNET_break (0);                         \
+              return GNUNET_DB_STATUS_HARD_ERROR;       \
+            }                                           \
+            preps[off].pg = pg;                         \
+            preps[off].cnt = pg->prep_gen;              \
+          }                                             \
+        } while (0)
 
 
 /**
@@ -143,7 +143,7 @@ struct PostgresClosure
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT(field, \
                                     amountp) TALER_PQ_result_spec_amount ( \
-    field,pg->currency,amountp)
+          field,pg->currency,amountp)
 
 
 #endif

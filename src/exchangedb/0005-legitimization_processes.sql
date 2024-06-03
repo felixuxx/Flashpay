@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION create_table_legitimization_processes5(
+CREATE FUNCTION alter_table_legitimization_processes5(
   IN shard_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
@@ -22,10 +22,17 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   PERFORM create_partitioned_table(
-    'ALTER TABLE %I'
+    'ALTER TABLE legitimization_processes'
     ' ADD COLUMN legitimization_measure_serial_id BIGINT'
-    ',RENAME COLUMN provider_section TO provider_name'
     ',ADD COLUMN measure_index INT4'
+    ';'
+    ,'legitimization_processes'
+    ,''
+    ,shard_suffix
+  );
+  PERFORM create_partitioned_table(
+    'ALTER TABLE %I'
+    ' RENAME provider_section TO provider_name'
     ';'
     ,'legitimization_processes'
     ,''
@@ -73,7 +80,7 @@ INSERT INTO exchange_tables
   VALUES
     ('legitimization_processes5'
     ,'exchange-0005'
-    ,'create'
+    ,'alter'
     ,TRUE
     ,FALSE),
     ('legitimization_processes5'

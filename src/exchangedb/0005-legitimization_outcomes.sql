@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION create_table_legitimization_outcomes5(
+CREATE FUNCTION create_table_legitimization_outcomes(
   IN partition_suffix TEXT DEFAULT NULL
 )
 RETURNS VOID
@@ -93,7 +93,7 @@ END
 $$;
 
 
-CREATE FUNCTION constrain_table_legitimization_outcomes5(
+CREATE FUNCTION constrain_table_legitimization_outcomes(
   IN partition_suffix TEXT
 )
 RETURNS VOID
@@ -115,7 +115,7 @@ END
 $$;
 
 
-CREATE FUNCTION foreign_table_legitimization_outcomes5()
+CREATE FUNCTION foreign_table_legitimization_outcomes()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -144,17 +144,17 @@ INSERT INTO exchange_tables
     ,partitioned
     ,by_range)
   VALUES
-    ('legitimization_outcomes5'
+    ('legitimization_outcomes'
     ,'exchange-0005'
     ,'create'
     ,TRUE
     ,FALSE),
-    ('legitimization_outcomes5'
+    ('legitimization_outcomes'
     ,'exchange-0005'
     ,'constrain'
     ,TRUE
     ,FALSE),
-    ('legitimization_outcomes5'
+    ('legitimization_outcomes'
     ,'exchange-0005'
     ,'foreign'
     ,TRUE
