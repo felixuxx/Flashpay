@@ -17,7 +17,7 @@ libtalermhd_la_SOURCES = \
   mhd_run.c \
   mhd_spa.c
 libtalermhd_la_LDFLAGS = \
-  -version-info 3:1:3 \
+  -version-info 4:0:4 \
   -no-undefined
 libtalermhd_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \

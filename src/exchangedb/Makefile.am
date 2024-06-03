@@ -280,9 +280,9 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_purse_deposits_above_serial_id.h pg_select_purse_deposits_above_serial_id.c \
   pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
+  pg_lookup_kyc_requirement_by_row.h pg_lookup_kyc_requirement_by_row.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
 
-#  pg_lookup_kyc_requirement_by_row.h pg_lookup_kyc_requirement_by_row.c
 #  pg_select_justification_for_missing_wire.h pg_select_justification_for_missing_wire.c
 #  pg_select_aml_process.h pg_select_aml_process.c
 #  pg_select_aml_history.h pg_select_aml_history.c

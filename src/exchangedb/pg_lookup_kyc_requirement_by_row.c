@@ -37,7 +37,6 @@ TEH_PG_lookup_kyc_requirement_by_row (
   bool *kyc_required)
 {
   struct PostgresClosure *pg = cls;
-  uint32_t status = TALER_AML_NORMAL;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&requirement_row),
     GNUNET_PQ_query_param_end
@@ -59,7 +58,6 @@ TEH_PG_lookup_kyc_requirement_by_row (
                                 kyc_required),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
   *jrules = NULL;
   memset (account_pub,
