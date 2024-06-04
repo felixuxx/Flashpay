@@ -35,7 +35,7 @@
  * checking the request timestamp?
  */
 #define TIMESTAMP_TOLERANCE \
-  GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
 
 
 /**

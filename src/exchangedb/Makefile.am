@@ -193,6 +193,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_start_deferred_wire_out.h pg_start_deferred_wire_out.c \
   pg_store_wire_transfer_out.h pg_store_wire_transfer_out.c \
   pg_gc.h pg_gc.c \
+  pg_lookup_kyc_status_by_token.h pg_lookup_kyc_status_by_token.c \
   pg_select_coin_deposits_above_serial_id.h pg_select_coin_deposits_above_serial_id.c \
   pg_select_purse_decisions_above_serial_id.h pg_select_purse_decisions_above_serial_id.c \
   pg_select_purse_deposits_by_purse.h pg_select_purse_deposits_by_purse.c \

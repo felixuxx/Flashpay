@@ -301,6 +301,31 @@ static struct TALER_KYCLOGIC_AmlProgram **aml_programs;
 static unsigned int num_aml_programs;
 
 
+/**
+ * Lookup a KYC check by @a check_name
+ *
+ * @param check_name name to search for
+ * @return NULL if not found
+ */
+static struct TALER_KYCLOGIC_KycCheck *
+find_check (const char *check_name)
+{
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+  {
+    struct TALER_KYCLOGIC_KycCheck *kyc_check
+      = kyc_checks[i];
+
+    if (0 == strcmp (check_name,
+                     kyc_check->check_name))
+      return kyc_check;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Check `%s' unknown\n",
+              check_name);
+  return NULL;
+}
+
+
 struct TALER_KYCLOGIC_LegitimizationRuleSet *
 TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
 {
@@ -823,16 +848,16 @@ command_output (const char *command,
 static enum GNUNET_GenericReturnValue
 check_type_from_string (
   const char *ctype_s,
-  enum CheckType *ctype)
+  enum TALER_KYCLOGIC_CheckType *ctype)
 {
   struct
   {
     const char *in;
-    enum CheckType out;
+    enum TALER_KYCLOGIC_CheckType out;
   } map [] = {
-    { "INFO", CT_INFO },
-    { "LINK", CT_LINK },
-    { "FORM", CT_FORM  },
+    { "INFO", TALER_KYCLOGIC_CT_INFO },
+    { "LINK", TALER_KYCLOGIC_CT_LINK },
+    { "FORM", TALER_KYCLOGIC_CT_FORM  },
     { NULL, 0 }
   };
 
@@ -1160,7 +1185,7 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
            const char *section)
 {
   bool voluntary;
-  enum CheckType ct;
+  enum TALER_KYCLOGIC_CheckType ct;
   char *form_name = NULL;
   char *description = NULL;
   json_t *description_i18n = NULL;
@@ -1781,12 +1806,12 @@ TALER_KYCLOGIC_kyc_done (void)
                        0);
     switch (kc->type)
     {
-    case CT_INFO:
+    case TALER_KYCLOGIC_CT_INFO:
       break;
-    case CT_FORM:
+    case TALER_KYCLOGIC_CT_FORM:
       GNUNET_free (kc->details.form.name);
       break;
-    case CT_LINK:
+    case TALER_KYCLOGIC_CT_LINK:
       break;
     }
     GNUNET_free (kc);
@@ -2079,6 +2104,101 @@ TALER_KYCLOGIC_kyc_test_required (
     *triggered_rule = ktc.triggered_rule;
   }
   return qs;
+}
+
+
+json_t *
+TALER_KYCLOGIC_measure_to_requirement (
+  const char *check_name,
+  const char *prog_name,
+  const struct TALER_AccountAccessTokenP *access_token,
+  size_t offset,
+  uint64_t row_id)
+{
+  struct TALER_KYCLOGIC_KycCheck *kc;
+  json_t *kri;
+  struct GNUNET_ShortHashCode shv;
+  uint64_t be = GNUNET_htonll (row_id);
+  uint32_t be32 = htonl ((uint32_t) offset);
+  char *ids;
+  char *xids;
+
+  GNUNET_assert (offset <= UINT_MAX);
+  GNUNET_assert (offset <= UINT32_MAX);
+  kc = find_check (check_name);
+  if (NULL == kc)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  /* FIXME: should be moved to someplace
+     in util/crypto as the $ID-handlers
+     need exactly the same computation! */
+  GNUNET_assert (
+    GNUNET_YES ==
+    GNUNET_CRYPTO_kdf (&shv,
+                       sizeof (shv),
+                       &be,
+                       sizeof (be),
+                       access_token,
+                       sizeof (*access_token),
+                       &be32,
+                       sizeof (be32),
+                       NULL,
+                       0));
+  switch (kc->type)
+  {
+  case TALER_KYCLOGIC_CT_INFO:
+    return GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("form",
+                               "INFO"),
+      GNUNET_JSON_pack_string ("description",
+                               kc->description),
+      GNUNET_JSON_pack_object_incref ("description_i18n",
+                                      (json_t *) kc->description_i18n));
+  case TALER_KYCLOGIC_CT_FORM:
+    ids = GNUNET_STRINGS_data_to_string_alloc (&shv,
+                                               sizeof (shv));
+    GNUNET_asprintf (&xids,
+                     "%llu/%u/%s",
+                     (unsigned long long) row_id,
+                     (unsigned int) offset,
+                     ids);
+    GNUNET_free (ids);
+    kri = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("form",
+                               kc->details.form.name),
+      GNUNET_JSON_pack_string ("id",
+                               xids),
+      GNUNET_JSON_pack_string ("description",
+                               kc->description),
+      GNUNET_JSON_pack_object_steal ("description_i18n",
+                                     (json_t *) kc->description_i18n));
+    GNUNET_free (xids);
+    return kri;
+  case TALER_KYCLOGIC_CT_LINK:
+    ids = GNUNET_STRINGS_data_to_string_alloc (&shv,
+                                               sizeof (shv));
+    GNUNET_asprintf (&xids,
+                     "%llu/%u/%s",
+                     (unsigned long long) row_id,
+                     (unsigned int) offset,
+                     ids);
+    GNUNET_free (ids);
+    kri = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("form",
+                               "LINK"),
+      GNUNET_JSON_pack_string ("id",
+                               xids),
+      GNUNET_JSON_pack_string ("description",
+                               kc->description),
+      GNUNET_JSON_pack_object_steal ("description_i18n",
+                                     (json_t *) kc->description_i18n));
+    GNUNET_free (xids);
+    return kri;
+  }
+  GNUNET_break (0); /* invalid type */
+  return NULL;
 }
 
 

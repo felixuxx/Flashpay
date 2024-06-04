@@ -73,22 +73,22 @@ enum TALER_KYCLOGIC_KycTriggerEvent
 /**
  * Types of KYC checks.
  */
-enum CheckType
+enum TALER_KYCLOGIC_CheckType
 {
   /**
    * Wait for staff or contact staff out-of-band.
    */
-  CT_INFO,
+  TALER_KYCLOGIC_CT_INFO,
 
   /**
    * SPA should show an inline form.
    */
-  CT_FORM,
+  TALER_KYCLOGIC_CT_FORM,
 
   /**
    * SPA may start external KYC process.
    */
-  CT_LINK
+  TALER_KYCLOGIC_CT_LINK
 };
 
 
@@ -156,7 +156,7 @@ struct TALER_KYCLOGIC_KycCheck
   /**
    * Type of the KYC check.
    */
-  enum CheckType type;
+  enum TALER_KYCLOGIC_CheckType type;
 
   /**
    * Details depending on @e type.
@@ -165,7 +165,7 @@ struct TALER_KYCLOGIC_KycCheck
   {
 
     /**
-     * Fields present only if @e type is #CT_FORM.
+     * Fields present only if @e type is #TALER_KYCLOGIC_CT_FORM.
      */
     struct
     {
@@ -178,7 +178,7 @@ struct TALER_KYCLOGIC_KycCheck
     } form;
 
     /**
-     * Fields present only if @e type is CT_LINK.
+     * Fields present only if @e type is TALER_KYCLOGIC_CT_LINK.
      */
     struct
     {
@@ -411,11 +411,29 @@ TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r);
  *     NULL to use default rules
  * @return set to JSON array with public limits
  *   of type ``AccountLimit``
- *
- * FIXME: not implemented!
  */
 json_t *
 TALER_KYCLOGIC_rules_to_limits (const json_t *jrules);
+
+
+/**
+ * Convert MeasureInformation into the
+ * KycRequirementInformation used by the client.
+ *
+ * @param check_name the prescribed check
+ * @param prog_name the program to run
+ * @param access_token access token for the measure
+ * @param offset offset of the measure
+ * @param row_id row in the legitimization_measures table
+ * @return JSON object with matching KycRequirementInformation
+ */
+json_t *
+TALER_KYCLOGIC_measure_to_requirement (
+  const char *check_name,
+  const char *prog_name,
+  const struct TALER_AccountAccessTokenP *access_token,
+  size_t offset,
+  uint64_t row_id);
 
 
 /**

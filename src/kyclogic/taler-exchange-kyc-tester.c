@@ -1638,18 +1638,18 @@ run (void *cls,
     }
     switch (kcc.check->type)
     {
-    case CT_INFO:
+    case TALER_KYCLOGIC_CT_INFO:
       GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                   "KYC information is `%s'\n",
                   kcc.check->description);
       break;
-    case CT_FORM:
+    case TALER_KYCLOGIC_CT_FORM:
       GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                   "Would initiate KYC check `%s' with form `%s'\n",
                   kcc.check->check_name,
                   kcc.check->details.form.name);
       break;
-    case CT_LINK:
+    case TALER_KYCLOGIC_CT_LINK:
       {
         struct TALER_KYCLOGIC_ProviderDetails *pd;
         const char *provider_name;

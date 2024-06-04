@@ -50,6 +50,7 @@
 #include "pg_iterate_kyc_reference.h"
 #include "pg_iterate_reserve_close_info.h"
 #include "pg_lookup_records_by_table.h"
+#include "pg_lookup_kyc_status_by_token.h"
 #include "pg_lookup_serial_by_table.h"
 #include "pg_select_account_merges_above_serial_id.h"
 #include "pg_select_all_purse_decisions_above_serial_id.h"
@@ -782,7 +783,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_lookup_kyc_requirement_by_row;
   plugin->trigger_kyc_rule_for_account
     = &TEH_PG_trigger_kyc_rule_for_account;
-
+  plugin->lookup_kyc_status_by_token
+    = &TEH_PG_lookup_kyc_status_by_token;
   plugin->batch_ensure_coin_known
     = &TEH_PG_batch_ensure_coin_known;
   plugin->inject_auditor_triggers

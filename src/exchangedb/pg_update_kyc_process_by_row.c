@@ -86,11 +86,13 @@ TEH_PG_update_kyc_process_by_row (
   if (GNUNET_TIME_absolute_is_future (expiration))
   {
     enum GNUNET_DB_QueryStatus qs2;
+#if FIXME
     struct TALER_KycCompletedEventP rep = {
       .header.size = htons (sizeof (rep)),
       .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
       .h_payto = *h_payto
     };
+#endif
     uint32_t trigger_type = 1;
     struct GNUNET_PQ_QueryParam params2[] = {
       GNUNET_PQ_query_param_auto_from_type (h_payto),
@@ -98,10 +100,14 @@ TEH_PG_update_kyc_process_by_row (
       GNUNET_PQ_query_param_end
     };
 
+#if FIXME
+    /* We used to do h_payto, now we need the
+       account access token! */
     GNUNET_PQ_event_notify (pg->conn,
                             &rep.header,
                             NULL,
                             0);
+#endif
     PREPARE (pg,
              "alert_kyc_status_change",
              "INSERT INTO kyc_alerts"

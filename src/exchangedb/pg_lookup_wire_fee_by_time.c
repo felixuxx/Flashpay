@@ -138,7 +138,7 @@ TEH_PG_lookup_wire_fee_by_time (
     .fees = fees,
     .pg = pg
   };
-  /* used in #postgres_lookup_wire_fee_by_time() */
+
   PREPARE (pg,
            "lookup_wire_fee_by_time",
            "SELECT"

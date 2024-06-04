@@ -238,9 +238,9 @@ struct TALER_KycCompletedEventP
   struct GNUNET_DB_EventHeaderP header;
 
   /**
-   * Public key of the reserve the event is about.
+   * Access token the KYC was completed for.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_AccountAccessTokenP access_token;
 };
 
 
@@ -6825,6 +6825,23 @@ struct TALER_EXCHANGEDB_Plugin
     json_t **jrules,
     bool *aml_review,
     bool *kyc_required);
+
+
+  /**
+   * Lookup KYC status by account access token.
+   *
+   * @param cls closure
+   * @param access_token key to look under
+   * @param[out] row set to requirement row that matches
+   * @param[out] jmeasures set to the LegitimizationMeasures for the @a access_token; must be freed by caller!
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_kyc_status_by_token)(
+    void *cls,
+    const struct TALER_AccountAccessTokenP *access_token,
+    uint64_t *row,
+    json_t **jmeasures);
 
 
   /**
