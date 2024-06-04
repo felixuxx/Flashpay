@@ -1273,6 +1273,20 @@ struct TALER_AgeCommitmentHash
 };
 
 /**
+ * @brief KYC measure authorization hash.
+ * Hashes over the AccountAccessToken, the
+ * row ID and the offset. Used in the
+ * ID of /kyc-upload/ and /kyc-start/.
+ */
+struct TALER_KycMeasureAuthorizationHash
+{
+  /**
+   * The hash is a SHA-256 hash code.
+   */
+  struct GNUNET_ShortHashCode shash;
+};
+
+/**
  * @brief Signature of an age with the private key for the corresponding age group of an age commitment.
  */
 struct TALER_AgeAttestation
@@ -1793,6 +1807,24 @@ void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const struct TALER_AgeCommitmentHash *age_commitment_hash,
                      struct TALER_CoinPubHashP *coin_h);
+
+
+/**
+ * Hashes the @a access_token, @a row and @a offset
+ * to compute an authorization hash used in the
+ * /kyc-upload/ and /kyc-start/ endpoints.
+ *
+ * @param access_token the access token
+ * @param row the database row
+ * @param offset the offset of the measure in the array
+ * @param[out] mah set to the hash
+ */
+void
+TALER_kyc_measure_authorization_hash (
+  const struct TALER_AccountAccessTokenP *access_token,
+  uint64_t row,
+  uint32_t offset,
+  struct TALER_KycMeasureAuthorizationHash *mah);
 
 
 /**

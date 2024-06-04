@@ -541,4 +541,29 @@ TALER_denomination_group_get_key (
 }
 
 
+void
+TALER_kyc_measure_authorization_hash (
+  const struct TALER_AccountAccessTokenP *access_token,
+  uint64_t row,
+  uint32_t offset,
+  struct TALER_KycMeasureAuthorizationHash *mah)
+{
+  uint64_t be64 = GNUNET_htonll (row);
+  uint32_t be32 = htonl ((uint32_t) offset);
+
+  GNUNET_assert (
+    GNUNET_YES ==
+    GNUNET_CRYPTO_kdf (mah,
+                       sizeof (*mah),
+                       &be64,
+                       sizeof (be64),
+                       access_token,
+                       sizeof (*access_token),
+                       &be32,
+                       sizeof (be32),
+                       NULL,
+                       0));
+}
+
+
 /* end of crypto.c */

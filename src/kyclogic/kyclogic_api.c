@@ -2117,35 +2117,21 @@ TALER_KYCLOGIC_measure_to_requirement (
 {
   struct TALER_KYCLOGIC_KycCheck *kc;
   json_t *kri;
-  struct GNUNET_ShortHashCode shv;
-  uint64_t be = GNUNET_htonll (row_id);
-  uint32_t be32 = htonl ((uint32_t) offset);
+  struct TALER_KycMeasureAuthorizationHash shv;
   char *ids;
   char *xids;
 
-  GNUNET_assert (offset <= UINT_MAX);
-  GNUNET_assert (offset <= UINT32_MAX);
   kc = find_check (check_name);
   if (NULL == kc)
   {
     GNUNET_break (0);
     return NULL;
   }
-  /* FIXME: should be moved to someplace
-     in util/crypto as the $ID-handlers
-     need exactly the same computation! */
-  GNUNET_assert (
-    GNUNET_YES ==
-    GNUNET_CRYPTO_kdf (&shv,
-                       sizeof (shv),
-                       &be,
-                       sizeof (be),
-                       access_token,
-                       sizeof (*access_token),
-                       &be32,
-                       sizeof (be32),
-                       NULL,
-                       0));
+  GNUNET_assert (offset <= UINT32_MAX);
+  TALER_kyc_measure_authorization_hash (access_token,
+                                        row_id,
+                                        (uint32_t) offset,
+                                        &shv);
   switch (kc->type)
   {
   case TALER_KYCLOGIC_CT_INFO:
@@ -2157,6 +2143,7 @@ TALER_KYCLOGIC_measure_to_requirement (
       GNUNET_JSON_pack_object_incref ("description_i18n",
                                       (json_t *) kc->description_i18n));
   case TALER_KYCLOGIC_CT_FORM:
+    GNUNET_assert (offset <= UINT_MAX);
     ids = GNUNET_STRINGS_data_to_string_alloc (&shv,
                                                sizeof (shv));
     GNUNET_asprintf (&xids,
@@ -2177,6 +2164,7 @@ TALER_KYCLOGIC_measure_to_requirement (
     GNUNET_free (xids);
     return kri;
   case TALER_KYCLOGIC_CT_LINK:
+    GNUNET_assert (offset <= UINT_MAX);
     ids = GNUNET_STRINGS_data_to_string_alloc (&shv,
                                                sizeof (shv));
     GNUNET_asprintf (&xids,
