@@ -308,8 +308,9 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
 
   /* try to compress the response */
   resp = NULL;
-  if (MHD_YES ==
-      TALER_MHD_can_compress (conn))
+  if ( (MHD_YES ==
+        TALER_MHD_can_compress (conn)) &&
+       (NULL != t->compressed_terms) )
   {
     resp = MHD_create_response_from_buffer (t->compressed_terms_size,
                                             t->compressed_terms,
