@@ -179,6 +179,13 @@ MHD_RESULT
 TALER_MHD_reply_legal (struct MHD_Connection *conn,
                        struct TALER_MHD_Legal *legal)
 {
+  /* Default terms of service if none are configured */
+  static struct Terms none = {
+    .mime_type = "text/plain",
+    .terms = "not configured",
+    .language = "en",
+    .terms_size = strlen ("not configured")
+  };
   struct MHD_Response *resp;
   struct Terms *t;
   struct GNUNET_TIME_Absolute a;
@@ -297,17 +304,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   }
 
   if (NULL == t)
-  {
-    /* Default terms of service if none are configured */
-    static struct Terms none = {
-      .mime_type = "text/plain",
-      .terms = "not configured",
-      .language = "en",
-      .terms_size = strlen ("not configured")
-    };
-
-    t = &none;
-  }
+    t = &none; /* 501 if not configured */
 
   /* try to compress the response */
   resp = NULL;
@@ -376,7 +373,9 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
     MHD_RESULT ret;
 
     ret = MHD_queue_response (conn,
-                              MHD_HTTP_OK,
+                              t == &none
+                              ? MHD_HTTP_NOT_IMPLEMENTED
+                              : MHD_HTTP_OK,
                               resp);
     MHD_destroy_response (resp);
     return ret;
