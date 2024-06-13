@@ -300,11 +300,11 @@ AS_CASE([$with_gnunet],
          CPPFLAGS="-I$with_gnunet/include ${CPPFLAGS}"])
 CPPFLAGS="${CPPFLAGS} ${POSTGRESQL_CPPFLAGS}"
 AC_CHECK_HEADERS([gnunet/gnunet_pq_lib.h],
- [AC_CHECK_LIB([gnunetpq], [GNUNET_PQ_query_param_int64], libgnunetpq=1)])
+ [AC_CHECK_LIB([gnunetpq], [GNUNET_PQ_query_param_blinded_sig], libgnunetpq=1)])
 AS_IF([test $libgnunetpq != 1],
   [AC_MSG_ERROR([[
 ***
-*** You need libgnunetpq version >= 6:0:1 to build this program.
+*** You need libgnunetpq version >= 8:0:3 to build this program.
 *** Make sure you have Postgres installed while
 *** building GNUnet (and that your GNUnet version is recent!)
 *** ]])])
