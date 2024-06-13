@@ -190,27 +190,35 @@ add_account_cb (void *cls,
           ( (credit) &&
             (lc->credit) ) ) )
     return; /* not enabled for us, skip */
-  if (GNUNET_OK !=
+  if (GNUNET_OK ==
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
                                              "PAYTO_URI",
                                              &payto_uri))
   {
+    method = TALER_payto_get_method (payto_uri);
+    GNUNET_free (payto_uri);
+    if (NULL == method)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "payto URI in config ([%s]/PAYTO_URI) malformed\n",
+                  section);
+      lc->res = GNUNET_SYSERR;
+      return;
+    }
+  }
+  else if (GNUNET_OK !=
+           GNUNET_CONFIGURATION_get_value_string (cfg,
+                                                  section,
+                                                  "WIRE_METHOD",
+                                                  &method))
+  {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
-                               "PAYTO_URI");
+                               "WIRE_METHOD");
     return;
   }
-  method = TALER_payto_get_method (payto_uri);
-  GNUNET_free (payto_uri);
-  if (NULL == method)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "payto URI in config ([%s]/PAYTO_URI) malformed\n",
-                section);
-    lc->res = GNUNET_SYSERR;
-    return;
-  }
+  GNUNET_assert (NULL != method);
   wa = GNUNET_new (struct WireAccount);
   wa->section_name = GNUNET_strdup (section);
   wa->method = method;

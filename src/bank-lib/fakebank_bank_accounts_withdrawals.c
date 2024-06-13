@@ -96,6 +96,7 @@ TALER_FAKEBANK_bank_account_withdrawals_ (
                                     &wo->reserve_pub)
       : GNUNET_JSON_pack_string ("selected_reserve_pub",
                                  NULL)),
-    TALER_JSON_pack_amount ("amount",
-                            &wo->amount));
+    GNUNET_JSON_pack_allow_null (
+      TALER_JSON_pack_amount ("amount",
+                              wo->amount)));
 }

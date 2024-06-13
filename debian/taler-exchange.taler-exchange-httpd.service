@@ -14,7 +14,7 @@ Type=simple
 Restart=always
 RestartMode=direct
 RestartSec=1ms
-RestartPreventExitStatus=2 3 4 5 6 9
+RestartPreventExitStatus=9
 
 # Disable the service if more than 5 restarts are encountered within 5s.
 # These are usually the systemd defaults, but can be overwritten, thus we set

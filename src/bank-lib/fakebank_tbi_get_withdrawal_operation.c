@@ -123,8 +123,9 @@ TALER_FAKEBANK_tbi_get_withdrawal_operation_ (
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string ("suggested_exchange",
                                  h->exchange_url)),
-      TALER_JSON_pack_amount ("amount",
-                              &wc->wo->amount),
+      GNUNET_JSON_pack_allow_null (
+        TALER_JSON_pack_amount ("amount",
+                                wc->wo->amount)),
       GNUNET_JSON_pack_array_steal ("wire_types",
                                     wt));
   }

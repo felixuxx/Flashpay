@@ -77,6 +77,7 @@ free_withdraw_op (void *cls,
 
   (void) cls;
   (void) key;
+  GNUNET_free (wo->amount);
   GNUNET_free (wo);
   return GNUNET_OK;
 }

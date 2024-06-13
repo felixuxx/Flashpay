@@ -29,6 +29,7 @@ termsdir=$(datadir)/taler/terms/
 terms_DATA = \
   exchange-tos-v0.rst \
   exchange-tos-bfh-v0.rst \
+  exchange-tos-tops-v0.rst \
   exchange-pp-v0.rst
 
 install-exec-local:

@@ -67,7 +67,11 @@ do_post_account_withdrawals (
   }
   wo = GNUNET_new (struct WithdrawalOperation);
   wo->debit_account = acc;
-  wo->amount = *amount;
+  if (NULL != amount)
+  {
+    wo->amount = GNUNET_new (struct TALER_Amount);
+    *wo->amount = *amount;
+  }
   if (NULL == h->wops)
   {
     h->wops = GNUNET_CONTAINER_multishortmap_create (32,
@@ -83,6 +87,8 @@ do_post_account_withdrawals (
                                             &wo->wopid,
                                             wo,
                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+
+
       break;
   }
   {
@@ -169,11 +175,15 @@ TALER_FAKEBANK_bank_post_account_withdrawals_ (
 
   {
     struct TALER_Amount amount;
+    bool amount_missing;
+    struct TALER_Amount *amount_ptr;
     enum GNUNET_GenericReturnValue ret;
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_amount ("amount",
-                              h->currency,
-                              &amount),
+      GNUNET_JSON_spec_mark_optional (
+        TALER_JSON_spec_amount ("amount",
+                                h->currency,
+                                &amount),
+        &amount_missing),
       GNUNET_JSON_spec_end ()
     };
 
@@ -186,10 +196,13 @@ TALER_FAKEBANK_bank_post_account_withdrawals_ (
       json_decref (json);
       return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
     }
+
+    amount_ptr = amount_missing ? NULL : &amount;
+
     res = do_post_account_withdrawals (h,
                                        connection,
                                        account_name,
-                                       &amount);
+                                       amount_ptr);
   }
   json_decref (json);
   return res;
