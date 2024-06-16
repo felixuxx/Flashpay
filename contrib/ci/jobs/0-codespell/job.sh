@@ -98,6 +98,7 @@ taler-terms-generator
 *.xcf
 *.xlsx
 *.zkey
+release-artifacts
 EOF
 );
 

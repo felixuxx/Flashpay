@@ -180,3 +180,4 @@ src/testing/*/master.priv
 /taler-exchange-build-deps_*.changes
 /debian/taler-terms-generator/**
 /debian/taler-terms-generator/*
+release-artifacts
