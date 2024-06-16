@@ -23,8 +23,8 @@ BUILD_FOR=(
 )
 
 declare -A DISTRO_IMAGES;
-DISTRO_IMAGES['debian']='docker.io/debian';
-DISTRO_IMAGES['archlinux']='docker.io/archlinux';
+DISTRO_IMAGES['debian']='docker.io/library/debian';
+DISTRO_IMAGES['archlinux']='docker.io/library/archlinux';
 
 chmod +w -R $CI_DIR/jobs;
 rm -rf $CI_DIR/jobs/*-generated;
@@ -52,7 +52,7 @@ for TARGET in "${BUILD_FOR[@]}"; do
   export DISTRO=$(awk '{print $1}' <<< "$TARGET");
   export CODENAME=$(awk '{print $2}' <<< "$TARGET");
   export ARCH=$(awk '{print $3}' <<< "$TARGET");
-  export OCI_IMAGE="${DISTRO_IMAGES[$DISTRO]}";
+  export OCI_IMAGE="${DISTRO_IMAGES[$DISTRO]}:$CODENAME";
   export DISTRO_TARGET="$CI_DIR/targets/$DISTRO";
   if [[ -d "$DISTRO_TARGET/$CODENAME-$ARCH" ]]; then
     DISTRO_TARGET="$DISTRO_TARGET/$CODENAME-$ARCH";
