@@ -54,11 +54,16 @@ for TARGET in "${BUILD_FOR[@]}"; do
   export ARCH=$(awk '{print $3}' <<< "$TARGET");
   export OCI_IMAGE="${DISTRO_IMAGES[$DISTRO]}";
   export DISTRO_TARGET="$CI_DIR/targets/$DISTRO";
-  if [[ -d "$DISTRO_TARGET/$CODENAME" ]]; then
-    DISTRO_TARGET="$DISTRO_TARGET/$CODENAME";
-  fi;
-  if [[ -d "$DISTRO_TARGET/$ARCH" ]]; then
+  if [[ -d "$DISTRO_TARGET/$CODENAME-$ARCH" ]]; then
+    DISTRO_TARGET="$DISTRO_TARGET/$CODENAME-$ARCH";
+  elif [[ -d "$DISTRO_TARGET/$CODENAME/$ARCH" ]]; then
+    DISTRO_TARGET="$DISTRO_TARGET/$CODENAME/$ARCH";
+  elif [[ -d "$DISTRO_TARGET/$ARCH/$CODENAME" ]]; then
+    DISTRO_TARGET="$DISTRO_TARGET/$ARCH/$CODENAME";
+  elif [[ -d "$DISTRO_TARGET/$ARCH" ]]; then
     DISTRO_TARGET="$DISTRO_TARGET/$ARCH";
+  elif [[ -d "$DISTRO_TARGET/$CODENAME" ]]; then
+    DISTRO_TARGET="$DISTRO_TARGET/$CODENAME";
   fi;
   export CONTAINERFILE="$DISTRO_TARGET/Containerfile";
   export IDX=$BASE_IDX;
