@@ -44,7 +44,7 @@ CONTAINER_ARCH = '"$ARCH"'
 ' > config.ini
 fi;
 
-# Generate the deploy-package target
-cd "${CI_DIR}/jobs/$(mktarget 2 deploy-package)"
-cp "$DISTRO_TARGET/deploy-package/config.ini" ./
-sed "s|bookworm|$CODENAME|g" "$DISTRO_TARGET/deploy-package/job.sh" > ./job.sh
+# Generate the upload target
+cd "${CI_DIR}/jobs/$(mktarget 2 upload)"
+cp "$DISTRO_TARGET/upload/config.ini" ./
+sed "s|bookworm|$CODENAME|g" "$DISTRO_TARGET/upload/job.sh" > ./job.sh

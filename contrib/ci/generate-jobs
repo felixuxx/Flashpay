@@ -3,7 +3,7 @@ set -e
 
 export CI_DIR="$(pwd)/$(dirname $0)";
 
-# the number to use as a base for generated ci job indexes
+# the number to use as a base for gen ci job indexes
 BASE_IDX=100;
 # the amount of indexes to increment - the room a script has to put scripts in.
 INCREMENT=5;
@@ -27,7 +27,7 @@ DISTRO_IMAGES['debian']='docker.io/library/debian';
 DISTRO_IMAGES['archlinux']='docker.io/library/archlinux';
 
 chmod +w -R $CI_DIR/jobs;
-rm -rf $CI_DIR/jobs/*-generated;
+rm -rf $CI_DIR/jobs/*-gen $CI_DIR/jobs/*-generated;
 
 TMPBINDIR="/tmp/ci-temp-bin-$RANDOM/"
 mkdir -p "$TMPBINDIR"
@@ -42,7 +42,7 @@ mkfn mktarget '#!/bin/bash
 RELATIVEIDX=$1
 JOBNAME="$2"
 OURIDX=$(($IDX + $RELATIVEIDX))
-JOB="${OURIDX}-${JOBNAME}-${DISTRO}-${CODENAME}-${ARCH}-generated"
+JOB="${OURIDX}-${JOBNAME}-${DISTRO}-${CODENAME}-${ARCH}-gen"
 cd "$CI_DIR/jobs"
 mkdir -p "${JOB}"
 echo -n "${JOB}"
@@ -77,5 +77,5 @@ for TARGET in "${BUILD_FOR[@]}"; do
 done;
 
 rm -rf "$TMPBINDIR"
-chmod +x -R $CI_DIR/jobs/*-generated
-chmod -w -R $CI_DIR/jobs/*-generated
+chmod +x -R $CI_DIR/jobs/*-gen
+chmod -w -R $CI_DIR/jobs/*-gen
