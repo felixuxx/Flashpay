@@ -1,1 +1,1 @@
-../../common/deb-package/job.sh
+../../common/debian/deb-package/job.sh

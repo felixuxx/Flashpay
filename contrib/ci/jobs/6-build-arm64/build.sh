@@ -1,1 +1,1 @@
-../../common/build/build.sh
+../../common/debian/build/build.sh

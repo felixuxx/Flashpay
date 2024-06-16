@@ -1,1 +1,1 @@
-../../common/build/job.sh
+../../common/debian/build/job.sh
