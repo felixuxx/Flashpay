@@ -173,3 +173,8 @@ src/auditordb/test_auditordb_checkpoints-postgres
 src/auditordb/test_auditordb_checkpoints_postgres
 /.cache
 /compile_commands.json
+master.priv
+src/testing/*/master.priv
+/taler-exchange-build-deps_*.deb
+/taler-exchange-build-deps_*.buildinfo
+/taler-exchange-build-deps_*.changes

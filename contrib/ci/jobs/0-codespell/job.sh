@@ -19,6 +19,7 @@ ABOUT-NLS
 configure*
 config.status
 config.guess
+./src/include/taler_dbevents.h
 */contrib/*
 */contrib/hellos/**
 *.dat
