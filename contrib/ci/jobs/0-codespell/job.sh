@@ -85,6 +85,8 @@ config.guess
 */debian/.debhelper/**
 */debian/autoreconf.before
 */debian/autoreconf.after
+debian/taler-terms-generator/**/*
+taler-terms-generator
 *.tgz
 *.ttf
 *.ttf

@@ -178,3 +178,5 @@ src/testing/*/master.priv
 /taler-exchange-build-deps_*.deb
 /taler-exchange-build-deps_*.buildinfo
 /taler-exchange-build-deps_*.changes
+/debian/taler-terms-generator/**
+/debian/taler-terms-generator/*
