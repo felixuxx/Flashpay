@@ -18,6 +18,7 @@ ABOUT-NLS
 *.cls
 configure*
 config.status
+config.guess
 */contrib/*
 */contrib/hellos/**
 *.dat
