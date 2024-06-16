@@ -1,3 +1,52 @@
+taler-exchange (0.11.3) UNRELEASED; urgency=medium
+
+  [ Christian Blättler ]
+  * bump gana
+  * rename keys
+  * add token issue sig helper
+  * bump gana
+  * bump gana
+  * insert dummy function signatures
+  * bump gana
+  * add token use signature functions
+  * add token issue signature methods
+  * add empty implementations for merchant token sign / verify
+  * add pack helper for token issue signature
+  * add json spec for token envelope
+  * json pack token envelope
+  * work on tokens
+  * fix typo
+  * use new gnunet json spec functions
+  * use gnunet json helper for blinded signature
+  * use gnunget query param helper
+  * bump gana
+  * bump gana
+  * use query param helper from gnunet
+
+  [ Christian Grothoff ]
+  * return 501 in /terms if not configured
+  * -bump revision
+  * only return compressed terms if we actually have those
+  * -bump revision
+  * -markify
+  * -markify
+  * -bump dep check
+  * -fix doxygen
+
+  [ Nullptrderef ]
+  * arm64 and riscv64 builds
+  * use good containerfile, fix apt indentation
+  * link to common/debian
+  * generate ci targets
+  * ignore config.guess
+  * allow overwriting dest
+  * gitignore privatekeys, deb files, etc
+  * allow ARCH/CODENAME overwrites, aswell as CODENAME-ARCH ones CODENAME-ARCH allows overwriting one pair without touching other ones in the same codename, or the same arch
+  * remove redundant/duplicate jobs
+  * fix: use codenames in from, oops
+
+ -- Nullptrderef <nullptrderef@proton.me>  Sun, 16 Jun 2024 12:29:17 +0000
+
 taler-exchange (0.11.2) unstable; urgency=low
 
   * Bump version.
