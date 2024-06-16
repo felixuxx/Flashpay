@@ -77,4 +77,5 @@ for TARGET in "${BUILD_FOR[@]}"; do
 done;
 
 rm -rf "$TMPBINDIR"
+chmod +x -R $CI_DIR/jobs/*-generated
 chmod -w -R $CI_DIR/jobs/*-generated
