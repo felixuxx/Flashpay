@@ -83,6 +83,8 @@ config.guess
 */debian/tmp/**
 */debian/taler-exchange/**
 */debian/.debhelper/**
+*/debian/autoreconf.before
+*/debian/autoreconf.after
 *.tgz
 *.ttf
 *.ttf
