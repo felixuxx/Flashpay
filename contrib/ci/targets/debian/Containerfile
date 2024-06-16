@@ -1,4 +1,3 @@
-# This containerfile is used when no job-specific one exists.
 FROM docker.io/library/debian:bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive

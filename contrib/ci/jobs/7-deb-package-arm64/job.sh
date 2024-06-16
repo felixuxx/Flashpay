@@ -1,1 +1,0 @@
-../../common/debian/deb-package/job.sh

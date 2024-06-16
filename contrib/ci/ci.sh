@@ -9,8 +9,11 @@ JOB_NAME="${1}"
 JOB_ARCH=$((grep CONTAINER_ARCH contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "${2:-amd64}")
 JOB_CONTAINER=$((grep CONTAINER_NAME contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "localhost/${REPO_NAME}:${JOB_ARCH}")
 CONTAINER_BUILD=$((grep CONTAINER_BUILD contrib/ci/jobs/${JOB_NAME}/config.ini | cut -d' ' -f 3) || echo "True")
-CONTAINERFILE="contrib/ci/$JOB_ARCH.Containerfile"
+CONTAINERFILE="contrib/ci/jobs/${JOB_NAME}/Containerfile"
 
+if ! [[ -f "$CONTAINERFILE" ]]; then
+	CONTAINERFILE="contrib/ci/$JOB_ARCH.Containerfile"
+fi;
 if ! [[ -f "$CONTAINERFILE" ]]; then
 	CONTAINERFILE="$(dirname "$CONTAINERFILE")/Containerfile"
 fi;

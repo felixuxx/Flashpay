@@ -1,0 +1,75 @@
+#!/bin/bash
+set -e
+
+export CI_DIR="$(pwd)/$(dirname $0)";
+
+# the number to use as a base for generated ci job indexes
+BASE_IDX=100;
+# the amount of indexes to increment - the room a script has to put scripts in.
+INCREMENT=5;
+
+# our build targets
+BUILD_FOR=(
+  # Format:
+  # distro codename arch
+  # The codename must also be a tag on the distro
+  "debian bookworm amd64"
+  "debian bookworm arm64"
+  "debian trixie amd64"
+  "debian trixie arm64"
+  "debian unstable amd64"
+  "debian unstable arm64"
+  "debian unstable riscv64"
+)
+
+declare -A DISTRO_IMAGES;
+DISTRO_IMAGES['debian']='docker.io/debian';
+DISTRO_IMAGES['archlinux']='docker.io/archlinux';
+
+chmod +w -R $CI_DIR/jobs;
+rm -rf $CI_DIR/jobs/*-generated;
+
+TMPBINDIR="/tmp/ci-temp-bin-$RANDOM/"
+mkdir -p "$TMPBINDIR"
+export PATH="$PATH:$TMPBINDIR"
+
+mkfn() {
+  echo "$2" > "$TMPBINDIR/$1";
+  chmod +x "$TMPBINDIR/$1";
+}
+
+mkfn mktarget '#!/bin/bash
+RELATIVEIDX=$1
+JOBNAME="$2"
+OURIDX=$(($IDX + $RELATIVEIDX))
+JOB="${OURIDX}-${JOBNAME}-${DISTRO}-${CODENAME}-${ARCH}-generated"
+cd "$CI_DIR/jobs"
+mkdir -p "${JOB}"
+echo -n "${JOB}"
+'
+
+for TARGET in "${BUILD_FOR[@]}"; do
+  export DISTRO=$(awk '{print $1}' <<< "$TARGET");
+  export CODENAME=$(awk '{print $2}' <<< "$TARGET");
+  export ARCH=$(awk '{print $3}' <<< "$TARGET");
+  export OCI_IMAGE="${DISTRO_IMAGES[$DISTRO]}";
+  export DISTRO_TARGET="$CI_DIR/targets/$DISTRO";
+  if [[ -d "$DISTRO_TARGET/$CODENAME" ]]; then
+    DISTRO_TARGET="$DISTRO_TARGET/$CODENAME";
+  fi;
+  if [[ -d "$DISTRO_TARGET/$ARCH" ]]; then
+    DISTRO_TARGET="$DISTRO_TARGET/$ARCH";
+  fi;
+  export CONTAINERFILE="$DISTRO_TARGET/Containerfile";
+  export IDX=$BASE_IDX;
+  echo "";
+  echo "> Generating scripts for $DISTRO ($CODENAME) on architecture $ARCH";
+  echo "| > Base Image: $OCI_IMAGE";
+  echo "| > Base Containerfile: $CONTAINERFILE";
+  echo "| > Index: $BASE_IDX";
+  "$DISTRO_TARGET/setup-job.sh";
+  BASE_IDX=$(($BASE_IDX + $INCREMENT));
+done;
+
+rm -rf "$TMPBINDIR"
+chmod -w -R $CI_DIR/jobs/*-generated

@@ -1,0 +1,13 @@
+diff --git a/debian/taler-exchange.install b/debian/taler-exchange.install
+index 631c270b..072c6231 100644
+--- a/debian/taler-exchange.install
++++ b/debian/taler-exchange.install
+@@ -36,6 +36,6 @@ usr/share/taler/exchange/templates/*.must
+ debian/etc-taler-exchange/* etc/
+ 
+ # Terms of service / privacy policy templates
+-usr/share/taler/exchange/*.rst
++#usr/share/taler/exchange/terms/*.rst
+ # Translations of ToS/PP
+-usr/share/taler/exchange/locale/*/LC_MESSAGES/*.po
++#usr/share/taler/exchange/terms/locale/*/LC_MESSAGES/*.po

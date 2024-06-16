@@ -1,1 +1,1 @@
-../../common/debian/deb-package/version.sh
+../../targets/debian/deb-package/version.sh
