@@ -44,8 +44,9 @@ taler-exchange (0.11.3) UNRELEASED; urgency=medium
   * allow ARCH/CODENAME overwrites, as well as CODENAME-ARCH ones CODENAME-ARCH allows overwriting one pair without touching other ones in the same codename, or the same arch
   * remove redundant/duplicate jobs
   * fix: use codenames in from, oops
+  * rm tmp file
 
- -- Nullptrderef <nullptrderef@proton.me>  Sun, 16 Jun 2024 12:37:57 +0000
+ -- Nullptrderef <nullptrderef@proton.me>  Sun, 16 Jun 2024 14:13:24 +0000
 
 taler-exchange (0.11.2) unstable; urgency=low
 
