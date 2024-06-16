@@ -1,1 +1,0 @@
-../../targets/debian/build/build.sh

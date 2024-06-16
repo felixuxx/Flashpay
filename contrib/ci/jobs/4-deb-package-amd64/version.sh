@@ -1,1 +1,0 @@
-../../targets/debian/deb-package/version.sh

@@ -1,1 +1,0 @@
-../../targets/debian/build/job.sh
