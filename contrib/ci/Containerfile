@@ -4,47 +4,47 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -yqq && \
     apt-get install -yqq \
-		   autoconf \
-		   autopoint \
-		   curl \
-           bash \
-           coreutils \
-           git \
-		   libcurl4-gnutls-dev \
-		   libgcrypt-dev \
-		   libidn11-dev \
-		   libjansson-dev \
-           libmicrohttpd-dev \
-		   libpq-dev \
-		   libqrencode-dev \
-           libsodium-dev \
-           libtool \
-		   libunistring-dev \
-		   make \
-		   pkg-config \
-		   python3-pip \
-		   python3-sphinx \
-		   python3-sphinx-rtd-theme \
-           recutils \
-           texinfo \
-		   zlib1g-dev \
-           # For mustach testing (optional) \
-           libjson-c-dev \
-           # Debian packaging tools \
-           po-debconf \
-           build-essential \
-           debhelper-compat \
-           devscripts \
-		   git-buildpackage \
-		   # Documentation dependencies \
-           doxygen \
-           graphviz \
-           pandoc \
-		   # Test suite dependencies \
-		   jq \
-           postgresql \
-           sudo \
-           wget
+        autoconf \
+        autopoint \
+        curl \
+        bash \
+        coreutils \
+        git \
+        libcurl4-gnutls-dev \
+        libgcrypt-dev \
+        libidn11-dev \
+        libjansson-dev \
+        libmicrohttpd-dev \
+        libpq-dev \
+        libqrencode-dev \
+        libsodium-dev \
+        libtool \
+        libunistring-dev \
+        make \
+        pkg-config \
+        python3-pip \
+        python3-sphinx \
+        python3-sphinx-rtd-theme \
+        recutils \
+        texinfo \
+        zlib1g-dev \
+        # For mustach testing (optional) \
+        libjson-c-dev \
+        # Debian packaging tools \
+        po-debconf \
+        build-essential \
+        debhelper-compat \
+        devscripts \
+        git-buildpackage \
+        # Documentation dependencies \
+        doxygen \
+        graphviz \
+        pandoc \
+        # Test suite dependencies \
+        jq \
+        postgresql \
+        sudo \
+        wget
 
 # Install Taler (and friends) packages
 RUN curl -sS https://deb.taler.net/apt-nightly/taler-bookworm-ci.sources \
@@ -58,10 +58,10 @@ Pin-Priority: 999' > /etc/apt/preferences.d/taler
 RUN cat /etc/apt/preferences.d/taler && \
     apt-get update -y && \
     apt-get install -y \
-       libgnunet-dev \
-       libgnunet \
-       gnunet \
-  && rm -rf /var/lib/apt/lists/*
+    libgnunet-dev \
+    libgnunet \
+    gnunet \
+&& rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workdir
 

@@ -4,43 +4,66 @@ FROM docker.io/library/debian:unstable
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -yqq && \
-  apt-get upgrade -yqq && \
-  apt-get install -yqq \
-    git \
-    autoconf \
-    libextractor-dev \
-    libjansson-dev \
-    libgcrypt-dev \
-    libqrencode-dev \
-    libpq-dev \
-    libmicrohttpd-dev \
-    pkg-config \
-    libtool \
-    recutils \
-    make \
-    python3-sphinx \
-    python3-sphinx-book-theme \
-    python3-sphinx-multiversion \
-    python3-sphinx-rtd-theme \
-    texinfo \
-    autopoint \
-    curl \
-    libcurl4-openssl-dev \
-    libsodium-dev \
-    libidn11-dev \
-    zlib1g-dev \
-    libunistring-dev \
-    iptables
+    apt-get install -yqq \
+        autoconf \
+        autopoint \
+        curl \
+        bash \
+        coreutils \
+        git \
+        libcurl4-gnutls-dev \
+        libgcrypt-dev \
+        libidn11-dev \
+        libjansson-dev \
+        libmicrohttpd-dev \
+        libpq-dev \
+        libqrencode-dev \
+        libsodium-dev \
+        libtool \
+        libunistring-dev \
+        make \
+        pkg-config \
+        python3-pip \
+        python3-sphinx \
+        python3-sphinx-rtd-theme \
+        recutils \
+        texinfo \
+        zlib1g-dev \
+        # For mustach testing (optional) \
+        libjson-c-dev \
+        # Debian packaging tools \
+        po-debconf \
+        build-essential \
+        debhelper-compat \
+        devscripts \
+        git-buildpackage \
+        # Documentation dependencies \
+        doxygen \
+        graphviz \
+        pandoc \
+        # Test suite dependencies \
+        jq \
+        postgresql \
+        sudo \
+        wget
 
-# Debian packaging tools
-RUN apt-get install -yqq \
-                  po-debconf \
-                  build-essential \
-                  debhelper-compat \
-                  devscripts \
-                  git-buildpackage \
-  && rm -rf /var/lib/apt/lists/*
+# Install Taler (and friends) packages
+RUN curl -sS https://deb.taler.net/apt-nightly/taler-bookworm-ci.sources \
+    | tee /etc/apt/sources.list.d/taler-bookworm-ci.sources
+
+RUN echo '\
+Package: * \n\
+Pin: origin "deb.taler.net" \n\
+Pin-Priority: 999' > /etc/apt/preferences.d/taler
+
+RUN cat /etc/apt/preferences.d/taler && \
+    apt-get update -y && \
+    apt-get install -y \
+    libgnunet-dev \
+    libgnunet \
+    gnunet \
+&& rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workdir
 
-CMD ["/bin/bash"]
+CMD ["bash", "/workdir/ci/ci.sh"]
