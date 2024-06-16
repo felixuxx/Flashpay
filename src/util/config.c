@@ -438,11 +438,17 @@ TALER_check_currency_scale_map (const json_t *map)
 
 enum GNUNET_GenericReturnValue
 TALER_CONFIG_parse_currencies (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                               const char *main_currency,
                                unsigned int *num_currencies,
                                struct TALER_CurrencySpecification **cspecs)
 {
   struct CurrencyParserContext cpc = {
     .cfg = cfg
+  };
+  static struct TALER_CurrencySpecification defspec = {
+    .num_fractional_input_digits = 2,
+    .num_fractional_normal_digits = 2,
+    .num_fractional_trailing_zero_digits = 2
   };
 
   GNUNET_CONFIGURATION_iterate_sections (cfg,
@@ -455,6 +461,47 @@ TALER_CONFIG_parse_currencies (const struct GNUNET_CONFIGURATION_Handle *cfg,
                        0);
     return GNUNET_SYSERR;
   }
+  /* Make sure that there is some sane fallback for the main currency */
+  if (NULL != main_currency)
+  {
+    struct TALER_CurrencySpecification *mspec = NULL;
+    for (unsigned int i = 0; i<cpc.num_currencies; i++)
+    {
+      struct TALER_CurrencySpecification *cspec;
+
+      cspec = &cpc.cspecs[i];
+      if (0 == strcmp (main_currency,
+                       cspec->currency))
+      {
+        mspec = cspec;
+        break;
+      }
+    }
+    if (NULL == mspec)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Lacking enabled currency specification for main currency %s, using fallback currency specification.\n",
+                  main_currency);
+      if (cpc.len_cspecs == cpc.num_currencies)
+      {
+        GNUNET_array_grow (cpc.cspecs,
+                           cpc.len_cspecs,
+                           cpc.len_cspecs + 1);
+      }
+      mspec = &cpc.cspecs[cpc.num_currencies++];
+      *mspec = defspec;
+      GNUNET_assert (strlen (main_currency) < TALER_CURRENCY_LEN);
+      strcpy (mspec->currency,
+              main_currency);
+      mspec->map_alt_unit_names
+        = GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_string ("0",
+                                     main_currency)
+            );
+      mspec->name = GNUNET_strdup (main_currency);
+    }
+  }
+  /* cspecs might've been overgrown, grow back to minimum size */
   GNUNET_array_grow (cpc.cspecs,
                      cpc.len_cspecs,
                      cpc.num_currencies);

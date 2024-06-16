@@ -90,7 +90,7 @@
  * Above what request latency do we start to log?
  */
 #define WARN_LATENCY GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 500)
+          GNUNET_TIME_UNIT_MILLISECONDS, 500)
 
 /**
  * Are clients allowed to request /keys for times other than the
@@ -2059,11 +2059,6 @@ handle_mhd_request (void *cls,
 static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
-  static struct TALER_CurrencySpecification defspec = {
-    .num_fractional_input_digits = 2,
-    .num_fractional_normal_digits = 2,
-    .num_fractional_trailing_zero_digits = 2
-  };
   if (GNUNET_OK !=
       TALER_KYCLOGIC_kyc_init (TEH_cfg))
   {
@@ -2135,6 +2130,7 @@ exchange_serve_process_config (void)
 
   if (GNUNET_OK !=
       TALER_CONFIG_parse_currencies (TEH_cfg,
+                                     TEH_currency,
                                      &num_cspecs,
                                      &cspecs))
     return GNUNET_SYSERR;
@@ -2150,24 +2146,8 @@ exchange_serve_process_config (void)
       break;
     }
   }
-  if (NULL == TEH_cspec)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_WARNING,
-                               "taler",
-                               "CURRENCY",
-                               "Lacking enabled currency specification for the given currency, using default");
-    defspec.map_alt_unit_names
-      = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_string ("0",
-                                   TEH_currency)
-          );
-    defspec.name = TEH_currency;
-    GNUNET_assert (strlen (TEH_currency) <
-                   sizeof (defspec.currency));
-    strcpy (defspec.currency,
-            TEH_currency);
-    TEH_cspec = &defspec;
-  }
+  /* currency parser must provide default spec for main currency */
+  GNUNET_assert (NULL != TEH_cspec);
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
                                "exchange",
@@ -2222,7 +2202,8 @@ exchange_serve_process_config (void)
   if (GNUNET_SYSERR == TEH_enable_rewards)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need YES or NO in section `exchange' under `ENABLE_REWARDS'\n");
+                "Need YES or NO in section `exchange' under `ENABLE_REWARDS'\n")
+    ;
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
