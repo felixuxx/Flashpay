@@ -19,7 +19,7 @@ cd -
 make -j$(( $nump / 2 ))
 make install
 
-sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl start -D /etc/postgresql/15/main -h localhost -p 5432
+sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl start -D /etc/postgresql/15/main -o '-h localhost -p 5432'
 sudo -u postgres createuser -p 5432 root
 sudo -u postgres createdb -p 5432 -O root talercheck
 
