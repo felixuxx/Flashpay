@@ -41,7 +41,7 @@ taler-exchange (0.11.3) UNRELEASED; urgency=medium
   * ignore config.guess
   * allow overwriting dest
   * gitignore privatekeys, deb files, etc
-  * allow ARCH/CODENAME overwrites, aswell as CODENAME-ARCH ones CODENAME-ARCH allows overwriting one pair without touching other ones in the same codename, or the same arch
+  * allow ARCH/CODENAME overwrites, as well as CODENAME-ARCH ones CODENAME-ARCH allows overwriting one pair without touching other ones in the same codename, or the same arch
   * remove redundant/duplicate jobs
   * fix: use codenames in from, oops
 
