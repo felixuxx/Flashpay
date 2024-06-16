@@ -47,4 +47,4 @@ fi;
 # Generate the deploy-package target
 cd "${CI_DIR}/jobs/$(mktarget 2 deploy-package)"
 cp "$DISTRO_TARGET/deploy-package/config.ini" ./
-sed "s|bookworm|$CODENAME|g" "$DISTRO_TARGET/deploy-package/job.sh" > ./
+sed "s|bookworm|$CODENAME|g" "$DISTRO_TARGET/deploy-package/job.sh" > ./job.sh
