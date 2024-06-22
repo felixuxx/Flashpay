@@ -478,6 +478,32 @@ TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
 
 
 /**
+ * Extract optional "yes/no/all" argument from request.
+ * Macro that *returns* #MHD_YES/#MHD_NO if the
+ * argument existed but failed to parse.
+ *
+ * @param connection the MHD connection
+ * @param name name of the query parameter to parse
+ * @param def default value to set if absent
+ * @param[out] res set to the yes/no/all value
+ */
+#define TALER_MHD_parse_request_yna(connection,name,def,ret) \
+        do {                                        \
+          if (! (TALER_arg_to_yna (connection,      \
+                                   name,            \
+                                   def,             \
+                                   ret)) )          \
+          {                                         \
+            GNUNET_break_op (0);                    \
+            return TALER_MHD_reply_with_error (     \
+              connection,                           \
+              MHD_HTTP_BAD_REQUEST,                 \
+              TALER_EC_GENERIC_PARAMETER_MALFORMED, \
+              name);                                \
+          }                                         \
+        } while (0)
+
+/**
  * Extract optional numeric limit argument from request.
  *
  * @param connection the MHD connection

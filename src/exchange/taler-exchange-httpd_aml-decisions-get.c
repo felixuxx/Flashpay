@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -31,6 +31,10 @@
 #include "taler-exchange-httpd_aml-decision.h"
 #include "taler-exchange-httpd_metrics.h"
 
+/**
+ * Maximum number of records we return in one request.
+ */
+#define MAX_RECORDS 1024
 
 /**
  * Return AML status.
@@ -53,7 +57,7 @@ record_cb (
   uint64_t row_id,
   const char *justification,
   const struct TALER_PaytoHashP *h_payto,
-  struct GNUNET_TIME_Absolute decision_time,
+  struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Absolute expiration_time,
   const json_t *jproperties,
   bool to_investigate,
@@ -69,11 +73,21 @@ record_cb (
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_payto",
                                     h_payto),
+        GNUNET_JSON_pack_int64 ("rowid",
+                                row_id),
         GNUNET_JSON_pack_string ("justification",
                                  justification),
-        // FIXME: pack other data!
-        GNUNET_JSON_pack_int64 ("rowid",
-                                row_id)
+        GNUNET_JSON_pack_timestamp ("decision_time",
+                                    decision_time),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_object_incref ("properties",
+                                          (json_t *) jproperties)),
+        GNUNET_JSON_pack_object_incref ("limits",
+                                        (json_t *) account_rules),
+        GNUNET_JSON_pack_bool ("to_investigate",
+                               to_investigate),
+        GNUNET_JSON_pack_bool ("is_active",
+                               is_active)
         )));
 }
 
@@ -84,76 +98,61 @@ TEH_handler_aml_decisions_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[])
 {
-  long long limit = -20;
-  unsigned long long offset;
+  int64_t limit = -20;
+  uint64_t offset;
+  struct TALER_PaytoHashP h_payto;
+  bool have_payto = false;
+  enum TALER_EXCHANGE_YesNoAll active_filter;
+  enum TALER_EXCHANGE_YesNoAll investigation_filter;
 
   if (NULL != args[0])
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                       args[0]);
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_NOT_FOUND,
+      TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+      args[0]);
   }
-
-  {
-    const char *p;
-
-    p = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "limit");
-    if (NULL != p)
-    {
-      char dummy;
-
-      if (1 != sscanf (p,
-                       "%lld%c",
-                       &limit,
-                       &dummy))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "limit");
-      }
-    }
-    if (limit > 0)
-      offset = 0;
-    else
-      offset = INT64_MAX;
-    p = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "offset");
-    if (NULL != p)
-    {
-      char dummy;
-
-      if (1 != sscanf (p,
-                       "%llu%c",
-                       &offset,
-                       &dummy))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "start");
-      }
-    }
-  }
-
+  TALER_MHD_parse_request_snumber (rc->connection,
+                                   "limit",
+                                   &limit);
+  if (limit > 0)
+    offset = 0;
+  else
+    offset = INT64_MAX;
+  TALER_MHD_parse_request_number (rc->connection,
+                                  "offset",
+                                  &offset);
+  TALER_MHD_parse_request_arg_auto (rc->connection,
+                                    "h_payto",
+                                    &h_payto,
+                                    have_payto);
+  TALER_MHD_parse_request_yna (rc->connection,
+                               "active",
+                               TALER_EXCHANGE_YNA_ALL,
+                               &active_filter);
+  TALER_MHD_parse_request_yna (rc->connection,
+                               "investigation",
+                               TALER_EXCHANGE_YNA_ALL,
+                               &investigation_filter);
   {
     json_t *records;
     enum GNUNET_DB_QueryStatus qs;
 
     records = json_array ();
     GNUNET_assert (NULL != records);
+    if (limit > MAX_RECORDS)
+      limit = MAX_RECORDS;
+    if (limit < -MAX_RECORDS)
+      limit = -MAX_RECORDS;
     qs = TEH_plugin->select_aml_decisions (
       TEH_plugin->cls,
-      NULL /* FIXME: h_payto */,
-      0, /* FIXME: investigation_only */
-      0, /* FIXME: active_only */
+      have_payto
+      ? &h_payto
+      : NULL,
+      investigation_filter,
+      active_filter,
       offset,
       limit,
       &record_cb,
@@ -164,10 +163,11 @@ TEH_handler_aml_decisions_get (
     case GNUNET_DB_STATUS_SOFT_ERROR:
       json_decref (records);
       GNUNET_break (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                         NULL);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "select_aml_decisions");
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       return TALER_MHD_reply_static (
         rc->connection,

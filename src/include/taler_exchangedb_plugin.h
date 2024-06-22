@@ -3530,7 +3530,7 @@ typedef void
   uint64_t row_id,
   const char *justification,
   const struct TALER_PaytoHashP *h_payto,
-  struct GNUNET_TIME_Absolute decision_time,
+  struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Absolute expiration_time,
   const json_t *jproperties,
   bool to_investigate,
