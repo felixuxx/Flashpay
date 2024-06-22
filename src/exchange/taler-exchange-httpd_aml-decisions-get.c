@@ -75,8 +75,9 @@ record_cb (
                                     h_payto),
         GNUNET_JSON_pack_int64 ("rowid",
                                 row_id),
-        GNUNET_JSON_pack_string ("justification",
-                                 justification),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string ("justification",
+                                   justification)),
         GNUNET_JSON_pack_timestamp ("decision_time",
                                     decision_time),
         GNUNET_JSON_pack_allow_null (

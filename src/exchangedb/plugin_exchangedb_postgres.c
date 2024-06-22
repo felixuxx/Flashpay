@@ -33,6 +33,7 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "pg_select_aml_decisions.h"
 #include "plugin_exchangedb_common.h"
 #include "pg_delete_aggregation_transient.h"
 #include "pg_get_link_data.h"
@@ -725,6 +726,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_wire_accounts;
   plugin->get_wire_fees
     = &TEH_PG_get_wire_fees;
+  plugin->select_aml_decisions
+    = &TEH_PG_select_aml_decisions;
   plugin->insert_signkey_revocation
     = &TEH_PG_insert_signkey_revocation;
   plugin->lookup_signkey_revocation

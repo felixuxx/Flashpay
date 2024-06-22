@@ -3514,7 +3514,7 @@ typedef void
  *
  * @param cls closure
  * @param row_id current row in legitimization outcomes table
- * @param justification human-readable reason for the decision
+ * @param justification human-readable reason for the decision, NULL if none is available
  * @param h_payto account for which the attribute data is stored
  * @param decision_time when was the decision taken
  * @param expiration_time when will the rules expire
