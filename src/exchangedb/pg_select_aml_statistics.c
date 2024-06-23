@@ -34,5 +34,29 @@ TEH_PG_select_aml_statistics (
   struct GNUNET_TIME_Timestamp end_date,
   uint64_t *cnt)
 {
-  // FIXME!
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (name),
+    GNUNET_PQ_query_param_timestamp (&start_date),
+    GNUNET_PQ_query_param_timestamp (&end_date),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("count",
+                                  cnt),
+    GNUNET_PQ_result_spec_end
+  };
+
+  PREPARE (pg,
+           "select_aml_statistics",
+           "SELECT "
+           " COUNT(*) AS count"
+           " FROM kyc_events"
+           " WHERE event_type=$1"
+           "   AND event_timestamp >= $1"
+           "   AND event_timestamp < $2;");
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "select_aml_statistics",
+                                                   params,
+                                                   rs);
 }

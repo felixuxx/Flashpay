@@ -46,7 +46,7 @@ TEH_PG_select_contract_by_purse (
                                          &econtract->econtract_size),
     GNUNET_PQ_result_spec_end
   };
-  /* Used in #postgres_select_contract_by_purse */
+
   PREPARE (pg,
            "select_contract_by_purse",
            "SELECT "
