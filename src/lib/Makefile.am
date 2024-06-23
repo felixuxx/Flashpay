@@ -41,6 +41,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_kyc_wallet.c \
   exchange_api_link.c \
   exchange_api_lookup_aml_decisions.c \
+  exchange_api_lookup_kyc_attributes.c \
   exchange_api_management_add_partner.c \
   exchange_api_management_auditor_disable.c \
   exchange_api_management_auditor_enable.c \
