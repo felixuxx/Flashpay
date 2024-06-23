@@ -227,6 +227,8 @@ TALER_EXCHANGE_add_aml_decision (
                                    decision_time,
                                    h_payto,
                                    new_rules,
+                                   properties,
+                                   keep_investigating,
                                    officer_priv,
                                    &officer_sig);
   wh = GNUNET_new (struct TALER_EXCHANGE_AddAmlDecision);
@@ -267,12 +269,14 @@ TALER_EXCHANGE_add_aml_decision (
                                 h_payto),
     GNUNET_JSON_pack_object_steal ("new_rules",
                                    new_rules),
+    GNUNET_JSON_pack_object_incref ("properties",
+                                    (json_t *) properties),
     GNUNET_JSON_pack_bool ("keep_investigating",
                            keep_investigating),
-    GNUNET_JSON_pack_timestamp ("decision_time",
-                                decision_time),
     GNUNET_JSON_pack_data_auto ("officer_sig",
-                                &officer_sig));
+                                &officer_sig),
+    GNUNET_JSON_pack_timestamp ("decision_time",
+                                decision_time));
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

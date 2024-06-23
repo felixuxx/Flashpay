@@ -170,6 +170,7 @@ TEH_handler_aml_decisions_get (
         TALER_EC_GENERIC_DB_FETCH_FAILED,
         "select_aml_decisions");
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      json_decref (records);
       return TALER_MHD_reply_static (
         rc->connection,
         MHD_HTTP_NO_CONTENT,

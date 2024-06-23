@@ -32,6 +32,7 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_age-withdraw.h"
 #include "taler-exchange-httpd_age-withdraw_reveal.h"
+#include "taler-exchange-httpd_aml-attributes-get.h"
 #include "taler-exchange-httpd_aml-decision.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
@@ -558,6 +559,10 @@ handle_get_aml (struct TEH_RequestContext *rc,
       .handler = &TEH_handler_aml_decisions_get
     },
     {
+      .op = "attributes",
+      .handler = &TEH_handler_aml_attributes_get
+    },
+    {
       .op = NULL,
       .handler = NULL
     },
@@ -566,10 +571,11 @@ handle_get_aml (struct TEH_RequestContext *rc,
   if (NULL == args[0])
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
-                                       "argument missing");
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
+      "argument missing");
   }
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
@@ -578,26 +584,29 @@ handle_get_aml (struct TEH_RequestContext *rc,
                                      sizeof (officer_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
-                                       args[0]);
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
+      args[0]);
   }
   if (NULL == args[1])
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
-                                       "AML GET operations must specify an operation identifier");
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_NOT_FOUND,
+      TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
+      "AML GET operations must specify an operation identifier");
   }
   {
     const char *sig_hdr;
     struct TALER_AmlOfficerSignatureP officer_sig;
 
-    sig_hdr = MHD_lookup_connection_value (rc->connection,
-                                           MHD_HEADER_KIND,
-                                           TALER_AML_OFFICER_SIGNATURE_HEADER);
+    sig_hdr = MHD_lookup_connection_value (
+      rc->connection,
+      MHD_HEADER_KIND,
+      TALER_AML_OFFICER_SIGNATURE_HEADER);
     if ( (NULL == sig_hdr) ||
          (GNUNET_OK !=
           GNUNET_STRINGS_string_to_data (sig_hdr,
@@ -609,10 +618,11 @@ handle_get_aml (struct TEH_RequestContext *rc,
                                           &officer_sig)) )
     {
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
-                                         sig_hdr);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
+        sig_hdr);
     }
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   }

@@ -3539,6 +3539,24 @@ typedef void
 
 
 /**
+ * Return AML attribute information.
+ *
+ * @param cls closure
+ * @param row_id current row in kyc_attributes table
+ * @param provider_name which provider collected the data, NULL for user upload
+ * @param collection_time when were the attributes collected
+ * @param attributes the collected attributes
+ */
+typedef void
+(*TALER_EXCHANGEDB_AmlAttributeCallback)(
+  void *cls,
+  uint64_t row_id,
+  const char *provider_name,
+  struct GNUNET_TIME_Timestamp collection_time,
+  const json_t *attributes);
+
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
@@ -7168,6 +7186,28 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t offset,
     int64_t limit,
     TALER_EXCHANGEDB_AmlDecisionCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Lookup AML attributes of a particular account.
+   *
+   * @param cls closure
+   * @param h_payto which account should we return attributes for
+   * @param offset row to start from
+   * @param limit how many records to return (negative
+   *        to go back in time, positive to go forward)
+   * @param cb callback to invoke on each match
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*select_aml_attributes)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    uint64_t offset,
+    int64_t limit,
+    TALER_EXCHANGEDB_AmlAttributeCallback cb,
     void *cb_cls);
 
 
