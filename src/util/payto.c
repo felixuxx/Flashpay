@@ -293,6 +293,7 @@ validate_payto_xtalerbank (const char *account_url)
       else
       {
         if (! ( ('-' == c) ||
+                ('_' == c) ||
                 ( ('0' <= c) && ('9' >= c) ) ||
                 ( ('a' <= c) && ('z' >= c) ) ||
                 ( ('A' <= c) && ('Z' >= c) ) ) )
@@ -342,7 +343,7 @@ TALER_payto_validate (const char *payto_uri)
     /* This is more strict than RFC 8905, alas we do not need to support messages/instructions/etc.,
        and it is generally better to start with a narrow whitelist; we can be more permissive later ...*/
 #define ALLOWED_CHARACTERS \
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:&?-_.,=+%~"
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:$&?!-_.,;=*+%~@()[]"
     if (NULL == strchr (ALLOWED_CHARACTERS,
                         (int) payto_uri[i]))
     {

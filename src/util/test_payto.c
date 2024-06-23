@@ -60,6 +60,9 @@ main (int argc,
     "payto://x-taler-bank/hostname/~path/username?receiver-name=fo/o");
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
+    "payto://x-taler-bank/host_name/~path/username?receiver-name=fo_o");
+  GNUNET_assert (NULL == r);
+  r = TALER_payto_validate (
     "payto://x-taler-bank/hostname/path/username?receiver-name=foo");
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
