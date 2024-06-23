@@ -536,7 +536,7 @@ handle_lookup_finished (void *cls,
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d for lookup AML decisions\n",
+                "Unexpected response code %u/%d for get AML measures\n",
                 (unsigned int) response_code,
                 (int) lr.hr.ec);
     break;

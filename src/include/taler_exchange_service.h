@@ -5522,7 +5522,7 @@ struct TALER_EXCHANGE_AvailableAmlMeasures
   /**
    * Context for the check. Can be NULL.
    */
-  const json_t*context;
+  const json_t *context;
 };
 
 /**
@@ -5642,17 +5642,17 @@ struct TALER_EXCHANGE_AmlGetMeasuresResponse
       /**
        * Information about the root measures available at the exchange
        */
-      struct TALER_EXCHANGE_AvailableAmlMeasures *roots;
+      const struct TALER_EXCHANGE_AvailableAmlMeasures *roots;
 
       /**
        * Information about the AML programs available at the exchange
        */
-      struct TALER_EXCHANGE_AvailableAmlPrograms *programs;
+      const struct TALER_EXCHANGE_AvailableAmlPrograms *programs;
 
       /**
        * Information about KYC checks available at the exchange
        */
-      struct TALER_EXCHANGE_AvailableKycChecks *checks;
+      const struct TALER_EXCHANGE_AvailableKycChecks *checks;
 
       /**
        * Length of the @e roots array.
@@ -5772,7 +5772,7 @@ typedef void
  * Inform client about available AML statistics.
  *
  * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange_url HTTP base URL for the exchange
  * @param name name of the statistic to get
  * @param start_date specifies the start date when to start looking
  * @param end_date specifies the end date when to stop looking (exclusive)
@@ -5784,7 +5784,7 @@ typedef void
 struct TALER_EXCHANGE_KycGetStatisticsHandle *
 TALER_EXCHANGE_kyc_get_statistics (
   struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  const char *exchange_url,
   const char *name,
   struct GNUNET_TIME_Timestamp start_date,
   struct GNUNET_TIME_Timestamp end_date,
