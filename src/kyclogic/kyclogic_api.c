@@ -2198,4 +2198,132 @@ TALER_KYCLOGIC_measure_to_requirement (
 }
 
 
+void
+TALER_KYCLOGIC_get_measure_configuration (
+  json_t **proots,
+  json_t **pprograms,
+  json_t **pchecks)
+{
+  json_t *roots;
+  json_t *programs;
+  json_t *checks;
+
+  roots = json_object ();
+  for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
+  {
+    const struct TALER_KYCLOGIC_Measure *m
+      = &default_rules.custom_measures[i];
+    json_t *jm;
+
+    jm = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("check_name",
+                               m->check_name),
+      GNUNET_JSON_pack_string ("prog_name",
+                               m->prog_name),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("context",
+                                        m->context)));
+    GNUNET_assert (0 ==
+                   json_object_set_new (roots,
+                                        m->measure_name,
+                                        jm));
+  }
+
+  programs = json_object ();
+  for (unsigned int i = 0; i<num_aml_programs; i++)
+  {
+    const struct TALER_KYCLOGIC_AmlProgram *ap
+      = aml_programs[i];
+    json_t *jp;
+    json_t *ctx;
+    json_t *inp;
+
+    ctx = json_array ();
+    GNUNET_assert (NULL != ctx);
+    for (unsigned int j = 0; j<ap->num_required_contexts; j++)
+    {
+      const char *rc = ap->required_contexts[j];
+
+      GNUNET_assert (0 ==
+                     json_array_append_new (ctx,
+                                            json_string (rc)));
+    }
+    inp = json_array ();
+    GNUNET_assert (NULL != inp);
+    for (unsigned int j = 0; j<ap->num_required_attributes; j++)
+    {
+      const char *ra = ap->required_attributes[j];
+
+      GNUNET_assert (0 ==
+                     json_array_append_new (inp,
+                                            json_string (ra)));
+    }
+
+    jp = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("description",
+                               ap->description),
+      GNUNET_JSON_pack_array_steal ("context",
+                                    ctx),
+      GNUNET_JSON_pack_array_steal ("inputs",
+                                    inp));
+    GNUNET_assert (0 ==
+                   json_object_set_new (programs,
+                                        ap->program_name,
+                                        jp));
+  }
+
+  checks = json_object ();
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+  {
+    const struct TALER_KYCLOGIC_KycCheck *ck
+      = kyc_checks[i];
+    json_t *jc;
+    json_t *requires;
+    json_t *outputs;
+
+    requires = json_array ();
+    GNUNET_assert (NULL != requires);
+    for (unsigned int j = 0; j<ck->num_requires; j++)
+    {
+      const char *ra = ck->requires[j];
+
+      GNUNET_assert (0 ==
+                     json_array_append_new (requires,
+                                            json_string (ra)));
+    }
+    outputs = json_array ();
+    GNUNET_assert (NULL != outputs);
+    for (unsigned int j = 0; j<ck->num_outputs; j++)
+    {
+      const char *out = ck->outputs[j];
+
+      GNUNET_assert (0 ==
+                     json_array_append_new (outputs,
+                                            json_string (out)));
+    }
+
+    jc = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("description",
+                               ck->description),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("description",
+                                        ck->description_i18n)),
+      GNUNET_JSON_pack_array_steal ("requires",
+                                    requires),
+      GNUNET_JSON_pack_array_steal ("outputs",
+                                    outputs),
+      GNUNET_JSON_pack_string ("fallback",
+                               ck->fallback));
+    GNUNET_assert (0 ==
+                   json_object_set_new (checks,
+                                        ck->check_name,
+                                        jc));
+  }
+
+  *proots = roots;
+  *pprograms = programs;
+  *pchecks = checks;
+}
+
+
 /* end of kyclogic_api.c */

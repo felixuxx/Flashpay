@@ -561,4 +561,18 @@ TALER_KYCLOGIC_kyc_get_details (
   void *cb_cls);
 
 
+/**
+ * Return configuration data useful for the
+ * /aml/$PUB/measures endpoint.
+ *
+ * @param[out] proots set to the root measures
+ * @param[out] pprograms set to available AML programs
+ * @param[out] pchecks set to available KYC checks
+ */
+void
+TALER_KYCLOGIC_get_measure_configuration (
+  json_t **proots,
+  json_t **pprograms,
+  json_t **pchecks);
+
 #endif

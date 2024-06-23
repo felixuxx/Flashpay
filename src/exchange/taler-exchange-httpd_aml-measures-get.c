@@ -25,11 +25,10 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd.h"
-#include "taler_exchangedb_plugin.h"
 #include "taler-exchange-httpd_aml-measures-get.h"
-#include "taler-exchange-httpd_metrics.h"
 
 
 MHD_RESULT
@@ -44,10 +43,9 @@ TEH_handler_aml_measures_get (
 
   if (NULL == roots)
   {
-    // FIXME: initialize these properly!
-    roots = json_object ();
-    programs = json_object ();
-    checks = json_object ();
+    TALER_KYCLOGIC_get_measure_configuration (&roots,
+                                              &programs,
+                                              &checks);
   }
   if (NULL != args[0])
   {
