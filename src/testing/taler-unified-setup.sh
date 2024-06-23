@@ -715,6 +715,9 @@ STAGE="auditor"
 if [ "1" = "$START_AUDITOR" ]
 then
     echo -n "Starting auditor ..."
+
+    export TALER_AUDITOR_SALT=$(taler-config -c "$CONF" -s AUDITOR -o TALER_AUDITOR_SALT)
+
     AUDITOR_URL=$(taler-config -c "$CONF" -s AUDITOR -o BASE_URL)
     AUDITOR_PRIV_FILE=$(taler-config -f -c "$CONF" -s AUDITOR -o AUDITOR_PRIV_FILE)
     AUDITOR_PRIV_DIR=$(dirname "$AUDITOR_PRIV_FILE")
@@ -735,6 +738,9 @@ then
 #    $USE_VALGRIND taler-helper-auditor-deposits \
 #                  -L "$LOGLEVEL" \
 #                  -c "$CONF" 2> taler-helper-auditor.log &
+
+
+
     echo " DONE"
 fi
 
@@ -908,6 +914,36 @@ then
       sign \
       upload &> taler-auditor-offline.log
     echo " OK"
+
+    echo -n "Starting helpers "
+
+    $USE_VALGRIND taler-helper-auditor-coins \
+                        -L "$LOGLEVEL" \
+                        -c "$CONF" 2> taler-helper-auditor.log &
+    echo -n "."
+
+    $USE_VALGRIND taler-helper-auditor-reserves \
+                        -L "$LOGLEVEL" \
+                        -c "$CONF" 2> taler-helper-auditor.log &
+    echo -n "."
+
+    $USE_VALGRIND taler-helper-auditor-purses \
+                        -L "$LOGLEVEL" \
+                        -c "$CONF" 2> taler-helper-auditor.log &
+    echo -n "."
+
+    $USE_VALGRIND taler-helper-auditor-aggregation \
+                        -L "$LOGLEVEL" \
+                        -c "$CONF" 2> taler-helper-auditor.log &
+    echo -n "."
+
+    $USE_VALGRIND taler-helper-auditor-deposits \
+                            -L "$LOGLEVEL" \
+                            -c "$CONF" 2> taler-helper-auditor.log &
+    echo -n "."
+
+    echo " OK"
+
 fi
 
 STAGE="ready"
@@ -926,6 +962,8 @@ else
     # shellcheck disable=SC2162
     read
 fi
+
+
 
 STAGE="exiting"
 

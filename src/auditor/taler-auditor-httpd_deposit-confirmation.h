@@ -21,7 +21,7 @@
 #ifndef TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_H
 #define TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_H
 
-#include <gnunet/gnunet_util_lib.h>
+
 #include <microhttpd.h>
 #include "taler-auditor-httpd.h"
 
@@ -54,7 +54,8 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   struct MHD_Connection *connection,
                                   void **connection_cls,
                                   const char *upload_data,
-                                  size_t *upload_data_size);
+                                  size_t *upload_data_size,
+                                  const char *const args[]);
 
 
 #endif

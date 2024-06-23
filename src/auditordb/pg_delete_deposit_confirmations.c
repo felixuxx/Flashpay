@@ -39,7 +39,7 @@ TAH_PG_delete_deposit_confirmation (
   PREPARE (pg,
            "auditor_delete_deposit_confirmation",
            "DELETE"
-           " FROM deposit_confirmations"
+           " FROM auditor_deposit_confirmations"
            " WHERE deposit_confirmation_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_delete_deposit_confirmation",

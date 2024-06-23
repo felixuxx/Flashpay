@@ -13,6 +13,7 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
+
 /**
  * @file pg_get_deposit_confirmations.c
  * @brief Low-level (statement-level) Postgres database access for the exchange
@@ -74,20 +75,22 @@ deposit_confirmation_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-    struct TALER_AUDITORDB_DepositConfirmation dc = { 0};
+    struct TALER_AUDITORDB_DepositConfirmation dc = { 0 };
     struct TALER_CoinSpendPublicKeyP *coin_pubs = NULL;
     struct TALER_CoinSpendSignatureP *coin_sigs = NULL;
     size_t num_pubs = 0;
     size_t num_sigs = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial_id",
+      GNUNET_PQ_result_spec_uint64 ("deposit_confirmation_serial_id",
                                     &serial_id),
+
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &dc.h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("h_policy",
                                             &dc.h_policy),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
+
       GNUNET_PQ_result_spec_timestamp ("exchange_timestamp",
                                        &dc.exchange_timestamp),
       GNUNET_PQ_result_spec_timestamp ("refund_deadline",
@@ -96,6 +99,7 @@ deposit_confirmation_cb (void *cls,
                                        &dc.wire_deadline),
       TALER_PQ_RESULT_SPEC_AMOUNT ("total_without_fee",
                                    &dc.total_without_fee),
+
       GNUNET_PQ_result_spec_auto_array_from_type (pg->conn,
                                                   "coin_pubs",
                                                   &num_pubs,
@@ -112,6 +116,7 @@ deposit_confirmation_cb (void *cls,
                                             &dc.exchange_pub),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &dc.master_sig),
+
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -149,15 +154,20 @@ deposit_confirmation_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_deposit_confirmations (
   void *cls,
-  uint64_t start_id,
+  int64_t limit,
+  uint64_t offset,
   bool return_suppressed,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls)
 {
+
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
+
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&start_id),
+    GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
+    GNUNET_PQ_query_param_uint64 (&plimit),
     GNUNET_PQ_query_param_end
   };
   struct DepositConfirmationContext dcc = {
@@ -168,7 +178,7 @@ TAH_PG_get_deposit_confirmations (
   enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
-           "auditor_deposit_confirmation_select",
+           "auditor_deposit_confirmation_select_desc",
            "SELECT"
            " deposit_confirmation_serial_id"
            ",h_contract_terms"
@@ -185,10 +195,39 @@ TAH_PG_get_deposit_confirmations (
            ",exchange_pub"
            ",master_sig"
            " FROM auditor_deposit_confirmations"
-           " WHERE deposit_confirmation_serial_id>$1"
-           " AND ($2 OR NOT suppressed);");
+           " WHERE (deposit_confirmation_serial_id < $1)"
+           " AND ($2 OR suppressed is false)"
+           " ORDER BY deposit_confirmation_serial_id DESC"
+           " LIMIT $3"
+           );
+  PREPARE (pg,
+           "auditor_deposit_confirmation_select_asc",
+           "SELECT"
+           " deposit_confirmation_serial_id"
+           ",h_contract_terms"
+           ",h_policy"
+           ",h_wire"
+           ",exchange_timestamp"
+           ",wire_deadline"
+           ",refund_deadline"
+           ",total_without_fee"
+           ",coin_pubs"
+           ",coin_sigs"
+           ",merchant_pub"
+           ",exchange_sig"
+           ",exchange_pub"
+           ",master_sig"
+           " FROM auditor_deposit_confirmations"
+           " WHERE (deposit_confirmation_serial_id > $1)"
+           " AND ($2 OR suppressed is false)"
+           " ORDER BY deposit_confirmation_serial_id ASC"
+           " LIMIT $3"
+           );
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "auditor_deposit_confirmation_select",
+                                             (limit > 0) ?
+                                             "auditor_deposit_confirmation_select_asc"
+                                                         :
+                                             "auditor_deposit_confirmation_select_desc",
                                              params,
                                              &deposit_confirmation_cb,
                                              &dcc);

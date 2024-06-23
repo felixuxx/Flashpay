@@ -16,7 +16,7 @@
 
 CREATE TABLE IF NOT EXISTS auditor_progress
   (progress_key TEXT PRIMARY KEY NOT NULL
-  ,progress_offset INT8 NOT NULL
+  ,progress_offset BIGINT NOT NULL
   );
 COMMENT ON TABLE auditor_progress
   IS 'Information about to the point until which the audit has progressed.  Used for SELECTing the statements to process.';

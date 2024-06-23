@@ -195,6 +195,409 @@ struct TALER_AUDITORDB_DepositConfirmation
 
 };
 
+// MARK: CRUD
+
+/**
+ * Information about a row inconsistency
+ */
+struct TALER_AUDITORDB_Generic_Update
+{
+  uint64_t row_id;
+  bool suppressed;
+  bool ancient;
+};
+
+/**
+ * Information about an arithmetic inconsistency
+ */
+struct TALER_AUDITORDB_AmountArithmeticInconsistency
+{
+  unsigned int row_id;
+  char *operation;
+  struct TALER_Amount exchange_amount;
+  struct TALER_Amount auditor_amount;
+  bool profitable;
+};
+
+/**
+ * Information about a coin inconsistency
+ */
+struct TALER_AUDITORDB_CoinInconsistency
+{
+  unsigned int row_id;
+  char *operation;
+  struct TALER_Amount exchange_amount;
+  struct TALER_Amount auditor_amount;
+  struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
+  bool profitable;
+};
+
+/**
+ * Information about a row inconsistency
+ */
+struct TALER_AUDITORDB_RowInconsistency
+{
+  unsigned int row_id;
+  char *row_table;
+  char *diagnostic;
+  bool suppressed;
+};
+
+/**
+ * Information about a bad sig loss
+ */
+struct TALER_AUDITORDB_BadSigLosses
+{
+  unsigned int row_id;
+  char *operation;
+  struct TALER_Amount loss;
+  struct GNUNET_CRYPTO_EddsaPublicKey operation_specific_pub;
+};
+
+/**
+ * Information about a closure lags
+ */
+struct TALER_AUDITORDB_ClosureLags
+{
+  unsigned int row_id;
+  struct TALER_Amount amount;
+  struct GNUNET_TIME_Absolute deadline;
+  struct GNUNET_HashCode wtid;
+  char *account;
+
+};
+
+/**
+ * Information about a emergency
+ */
+struct TALER_AUDITORDB_Emergency
+{
+  unsigned int row_id;
+  struct TALER_DenominationHashP denompub_h;
+  struct TALER_Amount denom_risk;
+  struct TALER_Amount denom_loss;
+  struct GNUNET_TIME_Absolute deposit_start;
+  struct GNUNET_TIME_Absolute deposit_end;
+  struct TALER_Amount value;
+};
+
+/**
+ * Information about an emergency by count
+ */
+struct TALER_AUDITORDB_EmergenciesByCount
+{
+  unsigned int row_id;
+  struct TALER_DenominationHashP denompub_h;
+  int64_t num_issued;
+  int64_t num_known;
+  struct TALER_Amount risk;
+  struct GNUNET_TIME_Absolute start;
+  struct GNUNET_TIME_Absolute deposit_end;
+  struct TALER_Amount value;
+};
+
+/**
+ * Information about a refreshes hanging
+ */
+struct TALER_AUDITORDB_Progress
+{
+  unsigned int row_id;
+  char *progress_key;
+  int64_t progress_offset;
+};
+
+/**
+ * Information about a refreshes hanging
+ */
+struct TALER_AUDITORDB_RefreshesHanging
+{
+  unsigned int row_id;
+  struct TALER_Amount amount;
+  struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
+};
+
+/**
+ * Information about a fee time inconsistency
+ */
+struct TALER_AUDITORDB_FeeTimeInconsistency
+{
+  unsigned int row_id;
+  char *type;
+  struct GNUNET_TIME_Absolute time;
+  char *diagnostic;
+};
+
+/**
+ * Information about a denom key validity withdraw inconsistency
+ */
+struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency
+{
+  unsigned int row_id;
+  struct GNUNET_TIME_Absolute execution_date;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_DenominationHashP denompub_h;
+};
+
+/**
+ * Information about a purse not closed inconsistencies
+ */
+struct TALER_AUDITORDB_PurseNotClosedInconsistencies
+{
+  unsigned int row_id;
+  struct GNUNET_CRYPTO_EddsaPublicKey purse_pub;
+  struct TALER_Amount amount;
+  struct GNUNET_TIME_Absolute expiration_date;
+};
+
+/**
+ * Information about a reserve balance insufficient inconsistency
+ */
+struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency
+{
+  unsigned int row_id;
+  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  bool inconsistency_gain;
+  struct TALER_Amount inconsistency_amount;
+};
+
+/**
+ * Information about a reserve in inconsistency
+ */
+struct TALER_AUDITORDB_ReserveInInconsistency
+{
+  unsigned int row_id;
+  struct TALER_Amount amount_exchange_expected;
+  struct TALER_Amount amount_wired;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct GNUNET_TIME_Absolute timestamp;
+  char *account;
+  char *diagnostic;
+  bool suppressed;
+
+};
+
+/**
+ * Information about a balance
+ */
+struct TALER_AUDITORDB_Balances
+{
+  unsigned int row_id;
+  char *balance_key;
+  struct TALER_Amount balance_value;
+  bool suppressed;
+
+};
+
+/**
+ * Function called with arithmetic inconsistencies stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_AmountArithmeticInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_AmountArithmeticInconsistency *dc);
+
+/**
+ * Function called with coin inconsistencies stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_CoinInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_CoinInconsistency *dc);
+
+/**
+ * Function called with row inconsistencies stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_RowInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_RowInconsistency *dc);
+
+/**
+ * Function called with bad signature losses stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_BadSigLossesCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_BadSigLosses *dc);
+
+/**
+ * Function called with closure lags stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ClosureLagsCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_ClosureLags *dc);
+
+/**
+ * Function called with emergencies stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_EmergencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_Emergency *dc);
+
+/**
+ * Function called with emergencies stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_EmergenciesByCountCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_EmergenciesByCount *dc);
+
+/**
+ * Function called with progress stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ProgressCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_Progress *dc);
+
+/**
+ * Function called with refreshes hanging stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_RefreshesHangingCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_RefreshesHanging *dc);
+
+/**
+ * Function called with fee time inconsistency stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_FeeTimeInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_FeeTimeInconsistency *dc);
+
+/**
+ * Function called with fee denomination key validity withdraw inconsistency stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct
+  TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency *dc);
+
+/**
+ * Function called with purse not closed inconsistencies stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_PurseNotClosedInconsistenciesCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_PurseNotClosedInconsistencies *dc);
+
+/**
+ * Function called with reserve balance insufficient inconsistency stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the structure itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ReserveBalanceInsufficientInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency *dc);
+
+/**
+ * Function called with reserve balance insufficient inconsistency stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the balance itself
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_BalancesCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_Balances *dc);
 
 /**
  * Balance values for a reserve (or all reserves).
@@ -273,6 +676,152 @@ struct TALER_AUDITORDB_DenominationCirculationData
   uint64_t num_issued;
 };
 
+struct TALER_AUDITORDB_DenominationsWithoutSigs
+{
+  unsigned int row_id;
+  struct TALER_DenominationHashP denompub_h;
+  struct TALER_Amount value;
+  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Absolute end_time;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_MisattributionInInconsistency
+{
+  unsigned int row_id;
+  struct TALER_Amount amount;
+  int64_t bank_row;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_Reserves
+{
+  unsigned int row_id;
+  int64_t auditor_reserves_rowid;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_Amount reserve_balance;
+  struct TALER_Amount reserve_loss;
+  struct TALER_Amount withdraw_fee_balance;
+  struct TALER_Amount close_fee_balance;
+  struct TALER_Amount purse_fee_balance;
+  struct TALER_Amount open_fee_balance;
+  struct TALER_Amount history_fee_balance;
+  struct GNUNET_TIME_Absolute expiration_date;
+  char *origin_account;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_Purses
+{
+  unsigned int row_id;
+  int64_t auditor_purses_rowid;
+  struct TALER_PurseContractPublicKeyP purse_pub;
+  struct TALER_Amount balance;
+  struct TALER_Amount target;
+  struct GNUNET_TIME_Absolute expiration_date;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_HistoricDenominationRevenue
+{
+  unsigned int row_id;
+  struct TALER_DenominationHashP denom_pub_hash;
+  struct GNUNET_TIME_Absolute revenue_timestamp;
+  struct TALER_Amount revenue_balance;
+  struct TALER_Amount loss_balance;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_DenominationPending
+{
+  unsigned int row_id;
+  struct TALER_DenominationHashP denom_pub_hash;
+  struct TALER_Amount denom_balance;
+  struct TALER_Amount denom_loss;
+  int64_t num_issued;
+  struct TALER_Amount denom_risk;
+  struct TALER_Amount recoup_loss;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_HistoricReserveSummary
+{
+  unsigned int row_id;
+  struct GNUNET_TIME_Absolute start_date;
+  struct GNUNET_TIME_Absolute end_date;
+  struct TALER_Amount reserve_profits;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_ExchangeSignkeys
+{
+  unsigned int row_id;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_MasterSignatureP master_sig;
+  struct GNUNET_TIME_Absolute ep_valid_from;
+  struct GNUNET_TIME_Absolute ep_expire_sign;
+  struct GNUNET_TIME_Absolute ep_expire_legal;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_WireFormatInconsistency
+{
+  unsigned int row_id;
+  struct TALER_Amount amount;
+  int64_t wire_offset;
+  char *diagnostic;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_WireOutInconsistency
+{
+  unsigned int row_id;
+  char *destination_account;
+  struct TALER_Amount expected;
+  struct TALER_Amount claimed;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_RowMinorInconsistencies
+{
+  unsigned int row_id;
+  char *row_table;
+  char *diagnostic;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency
+{
+  unsigned int row_id;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_Amount exchange_amount;
+  struct TALER_Amount auditor_amount;
+  bool suppressed;
+
+};
+
+struct TALER_AUDITORDB_ReserveNotClosedInconsistency
+{
+  unsigned int row_id;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_Amount balance;
+  struct GNUNET_TIME_Absolute expiration_time;
+  char *diagnostic;
+  bool suppressed;
+
+};
 
 /**
  * Function called with deposit confirmations stored in
@@ -301,7 +850,7 @@ typedef enum GNUNET_GenericReturnValue
  * @param deadline what was the earliest requested wire transfer deadline
  */
 typedef void
-(*TALER_AUDITORDB_WireMissingCallback)(
+(*TALER_AUDITORDB_WireMissingCallback) (
   void *cls,
   uint64_t batch_deposit_serial_id,
   const struct TALER_Amount *total_amount,
@@ -325,6 +874,99 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_Amount *balance,
   struct GNUNET_TIME_Timestamp expiration_date);
 
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ReserveInInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_ReserveInInconsistency *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ReserveNotClosedInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_ReserveNotClosedInconsistency *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_DenominationsWithoutSigsCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_DenominationsWithoutSigs *dc);
+
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_MisattributionInInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_MisattributionInInconsistency *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ReservesCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_Reserves *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_PursesCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_Purses *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_HistoricDenominationRevenueCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_HistoricDenominationRevenue *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_DenominationPendingCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_DenominationPending *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_HistoricReserveSummaryCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_HistoricReserveSummary *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ExchangeSignkeysCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_ExchangeSignkeys *dc);
+
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_WireFormatInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_WireFormatInconsistency *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_WireOutInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_WireOutInconsistency *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_RowMinorInconsistenciesCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_RowMinorInconsistencies *dc);
+
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_FeeTimeInconsistencyCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_FeeTimeInconsistency *dc);
 
 /**
  * @brief The plugin API, returned from the plugin's "init" function.
@@ -372,11 +1014,11 @@ struct TALER_AUDITORDB_Plugin
    * @return handle useful to cancel the listener
    */
   struct GNUNET_DB_EventHandler *
-  (*event_listen)(void *cls,
-                  const struct GNUNET_DB_EventHeaderP *es,
-                  struct GNUNET_TIME_Relative timeout,
-                  GNUNET_DB_EventCallback cb,
-                  void *cb_cls);
+  (*event_listen) (void *cls,
+                   const struct GNUNET_DB_EventHeaderP *es,
+                   struct GNUNET_TIME_Relative timeout,
+                   GNUNET_DB_EventCallback cb,
+                   void *cb_cls);
 
   /**
    * Stop notifications.
@@ -384,7 +1026,7 @@ struct TALER_AUDITORDB_Plugin
    * @param eh handle to unregister.
    */
   void
-  (*event_listen_cancel)(struct GNUNET_DB_EventHandler *eh);
+  (*event_listen_cancel) (struct GNUNET_DB_EventHandler *eh);
 
 
   /**
@@ -396,10 +1038,10 @@ struct TALER_AUDITORDB_Plugin
    * @param extra_size number of bytes in @a extra
    */
   void
-  (*event_notify)(void *cls,
-                  const struct GNUNET_DB_EventHeaderP *es,
-                  const void *extra,
-                  size_t extra_size);
+  (*event_notify) (void *cls,
+                   const struct GNUNET_DB_EventHeaderP *es,
+                   const void *extra,
+                   size_t extra_size);
 
 
   /**
@@ -615,7 +1257,8 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_deposit_confirmations)(
     void *cls,
-    uint64_t start_id,
+    int64_t limit,
+    uint64_t offset,
     bool return_suppressed,
     TALER_AUDITORDB_DepositConfirmationCallback cb,
     void *cb_cls);
@@ -633,18 +1276,802 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     uint64_t row_id);
 
+  // MARK: CRUD
 
   /**
-   * Insert information about a reserve.  There must not be an
-   * existing record for the reserve.
+   * Get information about arithmetic inconsistencies from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserve_pub public key of the reserve
-   * @param rfb balance amounts for the reserve
-   * @param expiration_date expiration date of the reserve
-   * @param origin_account where did the money in the reserve originally come from
-   * @return transaction status code
+   * @param start_id row/serial ID where to start the iteration (0 from
+   *                  the start, exclusive, i.e. serial_ids must start from 1)
+   * @param return_suppressed should suppressed rows be returned anyway?
+   * @param cb function to call with results
+   * @param cb_cls closure for @a cb
+   * @return query result status
    */
+  enum GNUNET_DB_QueryStatus
+  (*get_amount_arithmetic_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_AmountArithmeticInconsistencyCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_coin_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_CoinInconsistencyCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_row_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_RowInconsistencyCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_emergency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_EmergencyCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_emergency_by_count)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_EmergenciesByCountCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_denomination_key_validity_withdraw_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistencyCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_purse_not_closed_inconsistencies)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_PurseNotClosedInconsistenciesCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_reserve_balance_insufficient_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ReserveBalanceInsufficientInconsistencyCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_bad_sig_losses)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    bool filter_spec_pub,
+    struct GNUNET_CRYPTO_EddsaPublicKey op_spec_pub,
+    const char *op,
+    TALER_AUDITORDB_BadSigLossesCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_auditor_closure_lags)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ClosureLagsCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_progress)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ProgressCallback cb,
+    void *cb_cls);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_refreshes_hanging)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_RefreshesHangingCallback cb,
+    void *cb_cls);
+
+  /**
+   * Delete information about a deposit confirmation from the database.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param row_id row to delete
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*delete_amount_arithmetic_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_coin_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_row_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_emergency)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_emergency_by_count)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_denomination_key_validity_withdraw_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_purse_not_closed_inconsistencies)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_reserve_balance_insufficient_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_bad_sig_losses)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_auditor_closure_lags)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_progress)(
+    void *cls,
+    uint64_t row_id);
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_refreshes_hanging)(
+    void *cls,
+    uint64_t row_id);
+
+
+  /**
+* Insert information about a deposit confirmation into the database.
+*
+* @param cls the @e cls of this struct with the plugin-specific state
+* @param dc deposit confirmation information to store
+* @return query result status
+*/
+  enum GNUNET_DB_QueryStatus
+  (*insert_amount_arithmetic_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_AmountArithmeticInconsistency *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_coin_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_CoinInconsistency *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_row_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_RowInconsistency *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_emergency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Emergency *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_emergency_by_count)(
+    void *cls,
+    const struct TALER_AUDITORDB_EmergenciesByCount *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_denomination_key_validity_withdraw_inconsistency)(
+    void *cls,
+    const struct
+    TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_purse_not_closed_inconsistencies)(
+    void *cls,
+    const struct TALER_AUDITORDB_PurseNotClosedInconsistencies *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_reserve_balance_insufficient_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_bad_sig_losses)(
+    void *cls,
+    const struct TALER_AUDITORDB_BadSigLosses *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor_closure_lags)(
+    void *cls,
+    const struct TALER_AUDITORDB_ClosureLags *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_progress)(
+    void *cls,
+    const struct TALER_AUDITORDB_Progress *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_refreshes_hanging)(
+    void *cls,
+    const struct TALER_AUDITORDB_RefreshesHanging *dc);
+
+  enum GNUNET_DB_QueryStatus
+  (*update_bad_sig_losses)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_emergency_by_count)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_row_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_purse_not_closed_inconsistencies)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_reserve_balance_insufficient_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_coin_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_progress)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_denomination_key_validity_withdraw_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_refreshes_hanging)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_emergency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_closure_lags)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+  enum GNUNET_DB_QueryStatus
+  (*update_amount_arithmetic_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+  enum GNUNET_DB_QueryStatus
+  (*update_deposit_confirmations)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_reserve_in_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ReserveInInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_reserve_in_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_reserve_in_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_ReserveInInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_reserve_in_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_reserve_not_closed_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ReserveNotClosedInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_reserve_not_closed_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_reserve_not_closed_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_ReserveNotClosedInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_reserve_not_closed_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_denominations_without_sigs)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_DenominationsWithoutSigsCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_denominations_without_sigs)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_denominations_without_sigs)(
+    void *cls,
+    const struct TALER_AUDITORDB_DenominationsWithoutSigs *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_denominations_without_sigs)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_misattribution_in_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_MisattributionInInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_misattribution_in_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_misattribution_in_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_MisattributionInInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_misattribution_in_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_reserves)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ReservesCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_reserves)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_reserves)(
+    void *cls,
+    const struct TALER_AUDITORDB_Reserves *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_reserves)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_purses)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_PursesCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_purses)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_purses)(
+    void *cls,
+    const struct TALER_AUDITORDB_Purses *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_purses)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_historic_denomination_revenue)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_HistoricDenominationRevenueCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_historic_denomination_revenue)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_historic_denomination_revenue)(
+    void *cls,
+    const struct TALER_AUDITORDB_HistoricDenominationRevenue *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_historic_denomination_revenue)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_denomination_pending)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_DenominationPendingCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_denomination_pending)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_denomination_pending)(
+    void *cls,
+    const struct TALER_AUDITORDB_DenominationPending *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_denomination_pending)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_historic_reserve_summary)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_HistoricReserveSummaryCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_historic_reserve_summary)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_historic_reserve_summary)(
+    void *cls,
+    const struct TALER_AUDITORDB_HistoricReserveSummary *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_historic_reserve_summary)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_exchange_signkeys)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ExchangeSignkeysCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_exchange_signkeys)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_exchange_signkeys)(
+    void *cls,
+    const struct TALER_AUDITORDB_ExchangeSignkeys *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_exchange_signkeys)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_wire_format_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_WireFormatInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_wire_format_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_wire_format_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_WireFormatInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_wire_format_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_wire_out_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_WireOutInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_wire_out_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_wire_out_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_WireOutInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_wire_out_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_reserve_balance_summary_wrong_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_reserve_balance_summary_wrong_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_reserve_balance_summary_wrong_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_reserve_balance_summary_wrong_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_row_minor_inconsistencies)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_RowMinorInconsistenciesCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_row_minor_inconsistencies)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_row_minor_inconsistencies)(
+    void *cls,
+    const struct TALER_AUDITORDB_RowMinorInconsistencies *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_row_minor_inconsistencies)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*get_fee_time_inconsistency)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    TALER_AUDITORDB_FeeTimeInconsistencyCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_fee_time_inconsistency)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_fee_time_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_FeeTimeInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_fee_time_inconsistency)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+  enum GNUNET_DB_QueryStatus
+  (*get_balances)(
+    void *cls,
+    int64_t limit,
+    uint64_t offset,
+    bool return_suppressed,
+    const char *balance_key,
+    TALER_AUDITORDB_BalancesCallback cb,
+    void *cb_cls);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*delete_balances)(
+    void *cls,
+    uint64_t row_id);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_balances)(
+    void *cls,
+    const struct TALER_AUDITORDB_Balances *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*update_balances)(
+    void *cls,
+    const struct TALER_AUDITORDB_Generic_Update *gu);
+
+
+  /**
+ * Insert information about a reserve.  There must not be an
+ * existing record for the reserve.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param reserve_pub public key of the reserve
+ * @param rfb balance amounts for the reserve
+ * @param expiration_date expiration date of the reserve
+ * @param origin_account where did the money in the reserve originally come from
+ * @return transaction status code
+ */
   enum GNUNET_DB_QueryStatus
   (*insert_reserve_info)(
     void *cls,

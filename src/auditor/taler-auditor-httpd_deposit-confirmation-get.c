@@ -32,50 +32,6 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
 
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * @brief Information about a signing key of the exchange.  Signing keys are used
- * to sign exchange messages other than coins, i.e. to confirm that a
- * deposit was successful or that a refresh was accepted.
- */
-struct ExchangeSigningKeyDataP
-{
-
-  /**
-   * When does this signing key begin to be valid?
-   */
-  struct GNUNET_TIME_TimestampNBO start;
-
-  /**
-   * When does this signing key expire? Note: This is currently when
-   * the Exchange will definitively stop using it.  Signatures made with
-   * the key remain valid until @e end.  When checking validity periods,
-   * clients should allow for some overlap between keys and tolerate
-   * the use of either key during the overlap time (due to the
-   * possibility of clock skew).
-   */
-  struct GNUNET_TIME_TimestampNBO expire;
-
-  /**
-   * When do signatures with this signing key become invalid?  After
-   * this point, these signatures cannot be used in (legal) disputes
-   * anymore, as the Exchange is then allowed to destroy its side of the
-   * evidence.  @e end is expected to be significantly larger than @e
-   * expire (by a year or more).
-   */
-  struct GNUNET_TIME_TimestampNBO end;
-
-  /**
-   * The public online signing key that the exchange will use
-   * between @e start and @e expire.
-   */
-  struct TALER_ExchangePublicKeyP signkey_pub;
-};
-
-GNUNET_NETWORK_STRUCT_END
-
-
 /**
  * Add deposit confirmation to the list.
  *
@@ -92,9 +48,52 @@ add_deposit_confirmation (void *cls,
   json_t *list = cls;
   json_t *obj;
 
+  json_t *coin_pubs_json = json_array ();
+  json_t *coin_sigs_json = json_array ();
+
+  for (int i = 0; dc->num_coins > i; i++)
+  {
+
+    int sz_pub = sizeof(dc->coin_pubs[0]) * 9;
+    char *o_pub = malloc (sz_pub);
+    GNUNET_STRINGS_data_to_string (&dc->coin_pubs[i], sizeof(dc->coin_pubs[0]),
+                                   o_pub, sz_pub);
+    json_t *pub = json_string (o_pub);
+    json_array_append_new (coin_pubs_json, pub);
+    free (o_pub);
+
+
+    int sz_sig = sizeof(dc->coin_sigs[0]) * 9;
+    char *o_sig = malloc (sz_sig);
+    GNUNET_STRINGS_data_to_string (&dc->coin_sigs[i], sizeof(dc->coin_sigs[0]),
+                                   o_sig, sz_sig);
+    json_t *sig = json_string (o_sig);
+    json_array_append_new (coin_sigs_json, sig);
+    free (o_sig);
+
+  }
+
   obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_data_auto ("dc",
-                                dc));
+
+    GNUNET_JSON_pack_int64 ("deposit_confirmation_serial_id", serial_id),
+    GNUNET_JSON_pack_data_auto ("h_contract_terms", &dc->h_contract_terms),
+    GNUNET_JSON_pack_data_auto ("h_policy", &dc->h_policy),
+    GNUNET_JSON_pack_data_auto ("h_wire", &dc->h_wire),
+    GNUNET_JSON_pack_timestamp ("exchange_timestamp", dc->exchange_timestamp),
+    GNUNET_JSON_pack_timestamp ("refund_deadline", dc->refund_deadline),
+    GNUNET_JSON_pack_timestamp ("wire_deadline", dc->wire_deadline),
+    TALER_JSON_pack_amount ("total_without_fee", &dc->total_without_fee),
+
+    GNUNET_JSON_pack_array_steal ("coin_pubs", coin_pubs_json),
+    GNUNET_JSON_pack_array_steal ("coin_sigs", coin_sigs_json),
+
+    GNUNET_JSON_pack_data_auto ("merchant_pub", &dc->merchant),
+    GNUNET_JSON_pack_data_auto ("exchange_sig", &dc->exchange_sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub", &dc->exchange_pub),
+    GNUNET_JSON_pack_data_auto ("master_sig", &dc->master_sig)
+
+    );
+
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
@@ -116,7 +115,8 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
                                       void **connection_cls,
                                       const char *upload_data,
-                                      size_t *upload_data_size)
+                                      size_t *upload_data_size,
+                                      const char *const args[])
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
@@ -136,11 +136,39 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
   }
   ja = json_array ();
   GNUNET_break (NULL != ja);
-  // TODO correct below
+
+  bool return_suppressed = false;
+
+  int64_t limit = -20;   // unused here
+  uint64_t offset;
+
+  TALER_MHD_parse_request_snumber (connection,
+                                   "limit",
+                                   &limit);
+
+  if (limit < 0)
+    offset = INT64_MAX;
+  else
+    offset = 0;
+
+  TALER_MHD_parse_request_number (connection,
+                                  "offset",
+                                  &offset);
+
+
+  const char *ret_s = MHD_lookup_connection_value (connection,
+                                                   MHD_GET_ARGUMENT_KIND,
+                                                   "return_suppressed");
+  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
+  {
+    return_suppressed = true;
+  }
+
   qs = TAH_plugin->get_deposit_confirmations (
     TAH_plugin->cls,
-    0, /* FIXME: get from query parameters! */
-    false, /* FIXME: get from query parameters! */
+    limit,
+    offset,
+    return_suppressed,
     &add_deposit_confirmation,
     ja);
 
@@ -158,7 +186,7 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("deposit-confirmation",
+    GNUNET_JSON_pack_array_steal ("deposit_confirmation",
                                   ja));
 }
 

@@ -19,7 +19,7 @@ CREATE TABLE auditor_purses
   ,purse_pub BYTEA PRIMARY KEY CHECK(LENGTH(purse_pub)=32)
   ,balance taler_amount NOT NULL DEFAULT(0,0)
   ,target taler_amount NOT NULL
-  ,expiration_date INT8 NOT NULL
+  ,expiration_date BIGINT NOT NULL
   );
 COMMENT ON TABLE auditor_purses
   IS 'all of the purses and their respective balances that the auditor is aware of';

@@ -56,7 +56,7 @@ TAH_PG_insert_deposit_confirmation (
 
   PREPARE (pg,
            "auditor_deposit_confirmation_insert",
-           "INSERT INTO deposit_confirmations "
+           "INSERT INTO auditor_deposit_confirmations "
            "(h_contract_terms"
            ",h_policy"
            ",h_wire"

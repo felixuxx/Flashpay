@@ -508,12 +508,13 @@ TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
 /**
  * Signal handler called for signals that should cause us to shutdown.
  */
+/*
 static void
 handle_sigint (void)
 {
   abort_flag = true;
 }
-
+*/
 
 enum GNUNET_GenericReturnValue
 TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
@@ -669,6 +670,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
       return GNUNET_SYSERR;
     }
   }
+/*
   sig_int = GNUNET_SIGNAL_handler_install (SIGINT,
                                            &handle_sigint);
   if (NULL == sig_int)
@@ -678,6 +680,8 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     TALER_ARL_done (NULL);
     return GNUNET_SYSERR;
   }
+
+
   sig_term = GNUNET_SIGNAL_handler_install (SIGTERM,
                                             &handle_sigint);
   if (NULL == sig_term)
@@ -686,7 +690,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
                          "signal");
     TALER_ARL_done (NULL);
     return GNUNET_SYSERR;
-  }
+  }*/
   if (NULL ==
       (TALER_ARL_edb = TALER_EXCHANGEDB_plugin_load (TALER_ARL_cfg)))
   {

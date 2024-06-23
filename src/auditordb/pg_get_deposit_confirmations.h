@@ -40,7 +40,8 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_deposit_confirmations (
   void *cls,
-  uint64_t start_id,
+  int64_t limit,
+  uint64_t offset,
   bool return_suppressed,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls);

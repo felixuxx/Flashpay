@@ -45,5 +45,6 @@ SET search_path TO exchange;
 #include "exchange_do_batch_reserves_update.sql"
 #include "exchange_do_get_link_data.sql"
 #include "exchange_do_batch_coin_known.sql"
+#include "auditor-triggers-0001.sql"
 
 COMMIT;

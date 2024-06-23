@@ -832,7 +832,7 @@ TEH_PG_get_coin_transactions (
   };
 
   *tlp = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Getting transactions for coin %s\n",
               TALER_B2S (coin_pub));
   PREPARE (pg,
@@ -1046,7 +1046,8 @@ TEH_PG_get_coin_transactions (
            " FROM reserves_open_deposits"
            " WHERE coin_pub=$1"
            "   AND reserve_open_deposit_uuid=$2;");
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "  --- landed here 1\n");
   for (unsigned int i = 0; i<RETRIES; i++)
   {
     enum GNUNET_DB_QueryStatus qs;
@@ -1140,5 +1141,7 @@ TEH_PG_get_coin_transactions (
       return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "  --- landed here 2\n");
   return GNUNET_DB_STATUS_SOFT_ERROR;
 }

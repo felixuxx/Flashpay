@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS auditor_reserve_in_inconsistency
     reserve_pub BYTEA,
     timestamp BIGINT,
     account BYTEA,
-    diagnostic BYTEA
+    diagnostic BYTEA,
+    suppressed BOOLEAN NOT NULL DEFAULT FALSE
 );
 COMMENT ON TABLE auditor_reserve_in_inconsistency
     IS 'Report an incoming wire transfer claimed by exchange not found.';

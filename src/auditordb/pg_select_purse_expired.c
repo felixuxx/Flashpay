@@ -133,7 +133,7 @@ TAH_PG_select_purse_expired (
            ",expiration_date"
            ",balance"
            " FROM auditor_purses"
-           " AND expiration_date<$1;");
+           " WHERE expiration_date<$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_select_expired_purses",
                                              params,

@@ -19,9 +19,9 @@ CREATE TABLE auditor_deposit_confirmations
     ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
     ,h_policy BYTEA NOT NULL CHECK (LENGTH(h_policy)=64)
     ,h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)
-    ,exchange_timestamp INT8 NOT NULL
-    ,refund_deadline INT8 NOT NULL
-    ,wire_deadline INT8 NOT NULL
+    ,exchange_timestamp BIGINT NOT NULL
+    ,refund_deadline BIGINT NOT NULL
+    ,wire_deadline BIGINT NOT NULL
     ,total_without_fee taler_amount NOT NULL
     ,coin_pubs BYTEA[] NOT NULL CHECK (CARDINALITY(coin_pubs)>0)
     ,coin_sigs BYTEA[] NOT NULL CHECK (CARDINALITY(coin_sigs)=CARDINALITY(coin_pubs))

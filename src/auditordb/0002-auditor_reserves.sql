@@ -24,7 +24,7 @@ CREATE TABLE auditor_reserves
   ,purse_fee_balance taler_amount NOT NULL
   ,open_fee_balance taler_amount NOT NULL
   ,history_fee_balance taler_amount NOT NULL
-  ,expiration_date INT8 NOT NULL
+  ,expiration_date BIGINT NOT NULL
   ,origin_account TEXT
   );
 COMMENT ON TABLE auditor_reserves

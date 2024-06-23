@@ -275,7 +275,8 @@ TAH_DEPOSIT_CONFIRMATION_handler (
   struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
-  size_t *upload_data_size)
+  size_t *upload_data_size,
+  const char *const args[])
 {
   struct TALER_AUDITORDB_DepositConfirmation dc = {
     .refund_deadline = GNUNET_TIME_UNIT_ZERO_TS
@@ -298,9 +299,11 @@ TAH_DEPOSIT_CONFIRMATION_handler (
       NULL),
     GNUNET_JSON_spec_timestamp ("wire_deadline",
                                 &dc.wire_deadline),
+
     TALER_JSON_spec_amount ("total_without_fee",
                             TAH_currency,
                             &dc.total_without_fee),
+
     GNUNET_JSON_spec_array_const ("coin_pubs",
                                   &jcoin_pubs),
     GNUNET_JSON_spec_array_const ("coin_sigs",

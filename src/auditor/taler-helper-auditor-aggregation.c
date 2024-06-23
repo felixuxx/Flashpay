@@ -25,8 +25,8 @@
 #include "taler_json_lib.h"
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
+#include "taler_dbevents.h"
 #include "report-lib.h"
-
 
 /**
  * Return value from main().
@@ -50,7 +50,6 @@ static TALER_ARL_DEF_PP (aggregation_last_wire_out_serial_id);
  * Total aggregation fees (wire fees) earned.
  */
 static TALER_ARL_DEF_AB (aggregation_total_wire_fee_revenue);
-
 
 /**
  * Array of reports about row inconsistencies.
@@ -125,6 +124,17 @@ static struct TALER_Amount total_bad_sig_loss;
  */
 static int internal_checks;
 
+static struct GNUNET_DB_EventHandler *eh;
+
+/**
+ * Our database plugin.
+ */
+static struct TALER_AUDITORDB_Plugin *db_plugin;
+
+/**
+ * The auditors's configuration.
+ */
+static const struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Report a (serious) inconsistency in the exchange's database with
@@ -149,6 +159,8 @@ report_amount_arithmetic_inconsistency (
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AUDITORDB_AmountArithmeticInconsistency aai;
 
   if (0 < TALER_amount_cmp (exchange,
                             auditor))
@@ -166,6 +178,21 @@ report_amount_arithmetic_inconsistency (
                                auditor,
                                exchange);
   }
+  aai.profitable = profitable;
+  aai.operation = (char *) operation;
+  aai.exchange_amount = *exchange;
+  aai.auditor_amount = *auditor;
+
+  qs = TALER_ARL_adb->insert_amount_arithmetic_inconsistency (
+    TALER_ARL_adb->cls,
+    &aai);
+
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+  }
+
+
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("operation",
@@ -213,6 +240,8 @@ report_coin_arithmetic_inconsistency (
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AUDITORDB_CoinInconsistency ci;
 
   if (0 < TALER_amount_cmp (exchange,
                             auditor))
@@ -230,6 +259,22 @@ report_coin_arithmetic_inconsistency (
                                auditor,
                                exchange);
   }
+
+  ci.operation = (char *) operation;
+  ci.auditor_amount = *auditor;
+  ci.exchange_amount = *exchange;
+  ci.profitable = profitable;
+  ci.coin_pub = coin_pub->eddsa_pub;
+
+  qs = TALER_ARL_adb->insert_coin_inconsistency (
+    TALER_ARL_adb->cls,
+    &ci);
+
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+  }
+
   TALER_ARL_report (report_coin_inconsistencies,
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("operation",
@@ -266,6 +311,22 @@ report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
 {
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AUDITORDB_RowInconsistency ri;
+
+  ri.diagnostic = (char *) diagnostic;
+  ri.row_table = (char *) table;
+  ri.row_id = rowid;
+
+  qs = TALER_ARL_adb->insert_row_inconsistency (
+    TALER_ARL_adb->cls,
+    &ri);
+
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+  }
+
   TALER_ARL_report (report_row_inconsistencies,
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("table",
@@ -405,6 +466,8 @@ check_transaction_history_for_deposit (
   struct TALER_Amount *deposited = NULL;
   struct TALER_Amount merchant_loss;
   const struct TALER_Amount *deposit_fee;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AUDITORDB_RowInconsistency ri;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
@@ -439,6 +502,21 @@ check_transaction_history_for_deposit (
       /* check wire and h_wire are consistent */
       if (NULL != deposited)
       {
+        ri.row_id = tl->serial_id;
+        char *diagnostic =
+          "multiple deposits of the same coin into the same contract detected";
+        ri.diagnostic = diagnostic;
+        ri.row_table = "deposits";
+
+        qs = TALER_ARL_adb->insert_row_inconsistency (
+          TALER_ARL_adb->cls,
+          &ri);
+
+        if (qs < 0)
+        {
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        }
+
         TALER_ARL_report (report_row_inconsistencies,
                           GNUNET_JSON_PACK (
                             GNUNET_JSON_pack_string ("table",
@@ -446,19 +524,19 @@ check_transaction_history_for_deposit (
                             GNUNET_JSON_pack_uint64 ("row",
                                                      tl->serial_id),
                             GNUNET_JSON_pack_string ("diagnostic",
-                                                     "multiple deposits of the same coin into the same contract detected")));
+                                                     diagnostic)));
       }
-      deposited = &tl->details.deposit->amount_with_fee; /* according to exchange*/
-      fee_claimed = &tl->details.deposit->deposit_fee; /* Fee according to exchange DB */
+      deposited = &tl->details.deposit->amount_with_fee;       /* according to exchange*/
+      fee_claimed = &tl->details.deposit->deposit_fee;       /* Fee according to exchange DB */
       TALER_ARL_amount_add (&expenditures,
                             &expenditures,
                             deposited);
       /* Check if this deposit is within the remit of the aggregation
          we are investigating, if so, include it in the totals. */
-      if ( (0 == GNUNET_memcmp (merchant_pub,
-                                &tl->details.deposit->merchant_pub)) &&
-           (0 == GNUNET_memcmp (h_contract_terms,
-                                &tl->details.deposit->h_contract_terms)) )
+      if ((0 == GNUNET_memcmp (merchant_pub,
+                               &tl->details.deposit->merchant_pub)) &&
+          (0 == GNUNET_memcmp (h_contract_terms,
+                               &tl->details.deposit->h_contract_terms)))
       {
         struct TALER_Amount amount_without_fee;
 
@@ -471,7 +549,7 @@ check_transaction_history_for_deposit (
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Detected applicable deposit of %s\n",
                     TALER_amount2s (&amount_without_fee));
-        deposit_fee = fee_claimed; /* We had a deposit, remember the fee, we may need it */
+        deposit_fee = fee_claimed;       /* We had a deposit, remember the fee, we may need it */
       }
       /* Check that the fees given in the transaction list and in dki match */
       if (0 !=
@@ -523,10 +601,10 @@ check_transaction_history_for_deposit (
                               fee_claimed);
         /* Check if this refund is within the remit of the aggregation
            we are investigating, if so, include it in the totals. */
-        if ( (0 == GNUNET_memcmp (merchant_pub,
-                                  &tl->details.refund->merchant_pub)) &&
-             (0 == GNUNET_memcmp (h_contract_terms,
-                                  &tl->details.refund->h_contract_terms)) )
+        if ((0 == GNUNET_memcmp (merchant_pub,
+                                 &tl->details.refund->merchant_pub)) &&
+            (0 == GNUNET_memcmp (h_contract_terms,
+                                 &tl->details.refund->h_contract_terms)))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                       "Detected applicable refund of %s\n",
@@ -645,10 +723,10 @@ check_transaction_history_for_deposit (
               "Aggregation loss due to refunds is %s\n",
               TALER_amount2s (&merchant_loss));
   *deposit_gain = *merchant_gain;
-  if ( (NULL != deposited) &&
-       (NULL != deposit_fee) &&
-       (0 == TALER_amount_cmp (&refunds,
-                               deposited)) )
+  if ((NULL != deposited) &&
+      (NULL != deposit_fee) &&
+      (0 == TALER_amount_cmp (&refunds,
+                              deposited)))
   {
     /* We had a /deposit operation AND /refund operations adding up to the
        total deposited value including deposit fee. Thus, we should not
@@ -772,6 +850,7 @@ wire_transfer_information_cb (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP hpt;
   uint64_t etag_out;
+  struct TALER_AUDITORDB_BadSigLosses bsl;
 
   TALER_payto_hash (account_pay_uri,
                     &hpt);
@@ -791,7 +870,6 @@ wire_transfer_information_cb (
   {
     struct TALER_Amount balance;
     struct TALER_DenominationHashP h_denom_pub;
-
     qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                                coin_pub,
                                                0,
@@ -801,8 +879,8 @@ wire_transfer_information_cb (
                                                &h_denom_pub,
                                                &tl);
   }
-  if ( (qs < 0) ||
-       (NULL == tl) )
+  if ((qs < 0) ||
+      (NULL == tl))
   {
     wcc->qs = qs;
     report_row_inconsistency ("aggregation",
@@ -825,7 +903,6 @@ wire_transfer_information_cb (
                                                tl);
     return;
   }
-
   qs = TALER_ARL_get_denomination_info_by_hash (&coin.denom_pub_hash,
                                                 &issue);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -848,6 +925,20 @@ wire_transfer_information_cb (
       TALER_test_coin_valid (&coin,
                              denom_pub))
   {
+    bsl.row_id = rowid;
+    bsl.operation = "wire";
+    bsl.loss = *coin_value;
+    bsl.operation_specific_pub = coin.coin_pub.eddsa_pub;
+
+    qs = TALER_ARL_adb->insert_bad_sig_losses (
+      TALER_ARL_adb->cls,
+      &bsl);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    }
+
     TALER_ARL_report (report_bad_sig_losses,
                       GNUNET_JSON_PACK (
                         GNUNET_JSON_pack_string ("operation",
@@ -934,7 +1025,7 @@ wire_transfer_information_cb (
   }
   if (GNUNET_TIME_timestamp_cmp (exec_time,
                                  !=,
-                                 wcc->date) )
+                                 wcc->date))
   {
     /* This should be impossible from database constraints */
     GNUNET_break (0);
@@ -971,6 +1062,7 @@ get_wire_fee (struct AggregationContext *ac,
   struct WireFeeInfo *wfi;
   struct WireFeeInfo *pos;
   struct TALER_MasterSignatureP master_sig;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* Check if fee is already loaded in cache */
   for (pos = ac->fee_head; NULL != pos; pos = pos->next)
@@ -980,7 +1072,7 @@ get_wire_fee (struct AggregationContext *ac,
                                    timestamp) &&
         GNUNET_TIME_timestamp_cmp (pos->end_date,
                                    >,
-                                   timestamp) )
+                                   timestamp))
       return &pos->fees.wire;
     if (GNUNET_TIME_timestamp_cmp (pos->start_date,
                                    >,
@@ -1028,8 +1120,8 @@ get_wire_fee (struct AggregationContext *ac,
               "Wire fee is %s starting at %s\n",
               TALER_amount2s (&wfi->fees.wire),
               GNUNET_TIME_timestamp2s (wfi->start_date));
-  if ( (NULL == pos) ||
-       (NULL == pos->prev) )
+  if ((NULL == pos) ||
+      (NULL == pos->prev))
     GNUNET_CONTAINER_DLL_insert (ac->fee_head,
                                  ac->fee_tail,
                                  wfi);
@@ -1039,31 +1131,62 @@ get_wire_fee (struct AggregationContext *ac,
                                        pos->prev,
                                        wfi);
   /* Check non-overlaping fee invariant */
-  if ( (NULL != wfi->prev) &&
-       GNUNET_TIME_timestamp_cmp (wfi->prev->end_date,
-                                  >,
-                                  wfi->start_date) )
+  if ((NULL != wfi->prev) &&
+      GNUNET_TIME_timestamp_cmp (wfi->prev->end_date,
+                                 >,
+                                 wfi->start_date))
   {
+    struct TALER_AUDITORDB_FeeTimeInconsistency ftib;
+    char *diagnosticb = "start date before previous end date";
+    ftib.diagnostic = diagnosticb;
+    ftib.time = wfi->start_date.abs_time;
+    ftib.type = (char *) method;
+
+
+    qs = TALER_ARL_adb->insert_fee_time_inconsistency (
+      TALER_ARL_adb->cls,
+      &ftib);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    }
+
     TALER_ARL_report (report_fee_time_inconsistencies,
                       GNUNET_JSON_PACK (
                         GNUNET_JSON_pack_string ("type",
                                                  method),
                         GNUNET_JSON_pack_string ("diagnostic",
-                                                 "start date before previous end date"),
+                                                 diagnosticb),
                         TALER_JSON_pack_time_abs_human ("time",
                                                         wfi->start_date.abs_time)));
   }
-  if ( (NULL != wfi->next) &&
-       GNUNET_TIME_timestamp_cmp (wfi->next->start_date,
-                                  >=,
-                                  wfi->end_date) )
+  if ((NULL != wfi->next) &&
+      GNUNET_TIME_timestamp_cmp (wfi->next->start_date,
+                                 >=,
+                                 wfi->end_date))
   {
+    struct TALER_AUDITORDB_FeeTimeInconsistency ftia;
+    char *diagnostica = "end date date after next start date";
+    ftia.diagnostic = diagnostica;
+    ftia.time = wfi->end_date.abs_time;
+    ftia.type = (char *) method;
+
+    qs = TALER_ARL_adb->insert_fee_time_inconsistency (
+      TALER_ARL_adb->cls,
+      &ftia);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    }
+
     TALER_ARL_report (report_fee_time_inconsistencies,
                       GNUNET_JSON_PACK (
                         GNUNET_JSON_pack_string ("type",
                                                  method),
                         GNUNET_JSON_pack_string ("diagnostic",
-                                                 "end date date after next start date"),
+                                                 diagnostica),
                         TALER_JSON_pack_time_abs_human ("time",
                                                         wfi->end_date.abs_time)));
   }
@@ -1097,13 +1220,14 @@ check_wire_out_cb (void *cls,
   struct TALER_Amount exchange_gain;
   enum GNUNET_DB_QueryStatus qs;
   char *method;
+  struct TALER_AUDITORDB_WireOutInconsistency woi;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >=
                  TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id));
   TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id) = rowid + 1;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking wire transfer %s over %s performed on %s\n",
               TALER_B2S (wtid),
               TALER_amount2s (amount),
@@ -1187,9 +1311,10 @@ check_wire_out_cb (void *cls,
   TALER_ARL_amount_subtract (&exchange_gain,
                              &wcc.total_deposits,
                              &final_amount);
+
   /* Sum up aggregation fees (we simply include the rounding gains) */
-  TALER_ARL_amount_add (&TALER_ARL_USE_AB (aggregation_total_wire_fee_revenue),
-                        &TALER_ARL_USE_AB (aggregation_total_wire_fee_revenue),
+  TALER_ARL_amount_add (&TAC_aggregation_total_wire_fee_revenue,
+                        &TAC_aggregation_total_wire_fee_revenue,
                         &exchange_gain);
 
   /* Check that calculated amount matches actual amount */
@@ -1218,6 +1343,19 @@ check_wire_out_cb (void *cls,
       TALER_ARL_amount_add (&total_wire_out_delta_minus,
                             &total_wire_out_delta_minus,
                             &delta);
+    }
+    woi.row_id = rowid;
+    woi.destination_account = (char *) payto_uri;
+    woi.expected = final_amount;
+    woi.claimed = *amount;
+
+    qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+      TALER_ARL_adb->cls,
+      &woi);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     }
 
     TALER_ARL_report (report_wire_out_inconsistencies,
@@ -1257,6 +1395,8 @@ analyze_aggregations (void *cls)
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsp;
+  char progress_exists = 1;
+  char balance_exists = 1;
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1277,6 +1417,10 @@ analyze_aggregations (void *cls)
   }
   else
   {
+    if (TALER_ARL_USE_PP (aggregation_last_wire_out_serial_id) == 0)
+    {
+      progress_exists = 0;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming aggregation audit at %llu\n",
                 (unsigned long long) TALER_ARL_USE_PP (
@@ -1295,6 +1439,17 @@ analyze_aggregations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
+
+  if (GNUNET_NO == TALER_amount_is_valid (&TALER_ARL_USE_AB (
+                                            aggregation_total_wire_fee_revenue)))
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            aggregation_total_wire_fee_revenue)));
+    balance_exists = 0;
+  }
+
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = TALER_ARL_edb->select_wire_out_above_serial_id (
     TALER_ARL_edb->cls,
@@ -1323,31 +1478,121 @@ analyze_aggregations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
     return ac.qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
+  struct TALER_AUDITORDB_Balances b;
+  b.balance_key = "aggregator_total_arithmetic_delta_plus";
+  b.balance_value = total_arithmetic_delta_plus;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  b.balance_key = "aggregator_total_arithmetic_delta_minus";
+  b.balance_value = total_arithmetic_delta_minus;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  b.balance_key = "aggregator_total_bad_sig_loss";
+  b.balance_value = total_bad_sig_loss;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  b.balance_key = "aggregator_total_wire_out_delta_plus";
+  b.balance_value = total_wire_out_delta_plus;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  b.balance_key = "aggregator_total_wire_out_delta_minus";
+  b.balance_value = total_wire_out_delta_minus;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  b.balance_key = "aggregator_total_coin_delta_minus";
+  b.balance_value = total_coin_delta_minus;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  b.balance_key = "aggregator_total_coin_delta_plus";
+  b.balance_value = total_coin_delta_plus;
+  ac.qs = TALER_ARL_adb->insert_balances (
+    TALER_ARL_adb->cls,
+    &b
+    );
+  if (0 >= ac.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx && balance_exists == 0)
+  {
     ac.qs = TALER_ARL_adb->insert_balance (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
       NULL);
-  else
+  }
+  else if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx && balance_exists == 1)
+  {
     ac.qs = TALER_ARL_adb->update_balance (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
       NULL);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
-    return ac.qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == ac.qs)
+
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
+      return ac.qs;
+    }
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp && progress_exists == 1)
+  {
     qs = TALER_ARL_adb->update_auditor_progress (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
       NULL);
+  }
   else
+  {
     qs = TALER_ARL_adb->insert_auditor_progress (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
       NULL);
+  }
+
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1361,6 +1606,103 @@ analyze_aggregations (void *cls)
                 aggregation_last_wire_out_serial_id));
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+/**
+ * Function called on events received from Postgres.
+ *
+ * @param cls closure, NULL
+ * @param extra additional event data provided
+ * @param extra_size number of bytes in @a extra
+ */
+static void
+db_notify (void *cls,
+           const void *extra,
+           size_t extra_size)
+{
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received notification to wake aggregation helper\n");
+
+  (void) cls;
+  (void) extra;
+  (void) extra_size;
+
+
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &TALER_ARL_USE_AB (
+                                          aggregation_total_wire_fee_revenue)));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_wire_out_delta_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_wire_out_delta_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_arithmetic_delta_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_arithmetic_delta_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_coin_delta_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_coin_delta_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_bad_sig_loss));
+  GNUNET_assert (NULL !=
+                 (report_row_inconsistencies
+                    = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_wire_out_inconsistencies
+                    = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_coin_inconsistencies
+                    = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_amount_arithmetic_inconsistencies
+                    = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_bad_sig_losses
+                    = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_fee_time_inconsistencies
+                    = json_array ()));
+  if (GNUNET_OK !=
+      TALER_ARL_setup_sessions_and_run (&analyze_aggregations,
+                                        NULL))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Audit failed\n");
+    TALER_ARL_done (NULL);
+    global_ret = EXIT_FAILURE;
+
+  }
+
+}
+
+
+/**
+ * Function called on shutdown.
+ */
+static void
+do_shutdown (void *cls)
+{
+  (void) cls;
+
+  if (test_mode != 1)
+  {
+    db_plugin->event_listen_cancel (eh);
+    eh = NULL;
+    TALER_AUDITORDB_plugin_unload (db_plugin);
+    db_plugin = NULL;
+    TALER_ARL_done (NULL);
+  }
 }
 
 
@@ -1381,14 +1723,55 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
+
+  cfg = c;
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, NULL);
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Launching auditor\n");
+              "Launching aggregation auditor\n");
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
     global_ret = EXIT_FAILURE;
     return;
   }
+
+  if (NULL ==
+      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      db_plugin->preflight (db_plugin->cls))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to connect to database\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+
+  if (test_mode != 1)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper indefinitely\n");
+
+    struct GNUNET_DB_EventHeaderP es = {
+      .size = htons (sizeof (es)),
+      .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_WAKE_HELPER_AGGREGATION)
+    };
+    eh = db_plugin->event_listen (db_plugin->cls,
+                                  &es,
+                                  GNUNET_TIME_UNIT_FOREVER_REL,
+                                  &db_notify,
+                                  NULL);
+
+    return;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper in test mode\n");
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
@@ -1444,7 +1827,7 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Audit complete\n");
   TALER_ARL_done (GNUNET_JSON_PACK (
                     /* blocks #1 */

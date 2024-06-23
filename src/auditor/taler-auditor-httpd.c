@@ -31,9 +31,167 @@
 #include "taler_auditordb_lib.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
+#include "taler-auditor-httpd_deposit-confirmation-del.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
+#include "taler-auditor-httpd_amount-arithmetic-inconsistency-get.h"
+#include "taler-auditor-httpd_amount-arithmetic-inconsistency-put.h"
+#include "taler-auditor-httpd_amount-arithmetic-inconsistency-del.h"
+#include "taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h"
+#include "taler-auditor-httpd_coin-inconsistency-get.h"
+#include "taler-auditor-httpd_coin-inconsistency-put.h"
+#include "taler-auditor-httpd_coin-inconsistency-del.h"
+#include "taler-auditor-httpd_row-inconsistency-get.h"
+#include "taler-auditor-httpd_row-inconsistency-put.h"
+#include "taler-auditor-httpd_row-inconsistency-del.h"
+
+#include "taler-auditor-httpd_emergency-get.h"
+#include "taler-auditor-httpd_emergency-put.h"
+#include "taler-auditor-httpd_emergency-del.h"
+
+#include "taler-auditor-httpd_emergency-by-count-get.h"
+#include "taler-auditor-httpd_emergency-by-count-put.h"
+#include "taler-auditor-httpd_emergency-by-count-del.h"
+
+#include \
+  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-get.h"
+#include \
+  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-put.h"
+#include \
+  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-del.h"
+
+#include "taler-auditor-httpd_purse-not-closed-inconsistencies-get.h"
+#include "taler-auditor-httpd_purse-not-closed-inconsistencies-put.h"
+#include "taler-auditor-httpd_purse-not-closed-inconsistencies-del.h"
+
+#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h"
+#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-put.h"
+#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h"
+
+#include "taler-auditor-httpd_bad-sig-losses-get.h"
+#include "taler-auditor-httpd_bad-sig-losses-put.h"
+#include "taler-auditor-httpd_bad-sig-losses-del.h"
+#include "taler-auditor-httpd_bad-sig-losses-upd.h"
+
+#include "taler-auditor-httpd_closure-lags-get.h"
+#include "taler-auditor-httpd_closure-lags-put.h"
+#include "taler-auditor-httpd_closure-lags-del.h"
+
+#include "taler-auditor-httpd_progress-get.h"
+#include "taler-auditor-httpd_progress-put.h"
+#include "taler-auditor-httpd_progress-del.h"
+
+#include "taler-auditor-httpd_refreshes-hanging-get.h"
+#include "taler-auditor-httpd_refreshes-hanging-put.h"
+#include "taler-auditor-httpd_refreshes-hanging-del.h"
+
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
+
+#include "taler-auditor-httpd_emergency-by-count-upd.h"
+#include "taler-auditor-httpd_row-inconsistency-upd.h"
+#include "taler-auditor-httpd_purse-not-closed-inconsistencies-upd.h"
+#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-upd.h"
+#include "taler-auditor-httpd_coin-inconsistency-upd.h"
+#include "taler-auditor-httpd_progress-upd.h"
+#include \
+  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-upd.h"
+#include "taler-auditor-httpd_refreshes-hanging-upd.h"
+#include "taler-auditor-httpd_emergency-upd.h"
+#include "taler-auditor-httpd_closure-lags-upd.h"
+#include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
+
+#include "taler-auditor-httpd_reserve-in-inconsistency-del.h"
+#include "taler-auditor-httpd_reserve-in-inconsistency-put.h"
+#include "taler-auditor-httpd_reserve-in-inconsistency-get.h"
+#include "taler-auditor-httpd_reserve-in-inconsistency-upd.h"
+
+
+#include "taler-auditor-httpd_reserve-not-closed-inconsistency-del.h"
+#include "taler-auditor-httpd_reserve-not-closed-inconsistency-put.h"
+#include "taler-auditor-httpd_reserve-not-closed-inconsistency-get.h"
+#include "taler-auditor-httpd_reserve-not-closed-inconsistency-upd.h"
+
+
+#include "taler-auditor-httpd_denominations-without-sigs-del.h"
+#include "taler-auditor-httpd_denominations-without-sigs-put.h"
+#include "taler-auditor-httpd_denominations-without-sigs-get.h"
+#include "taler-auditor-httpd_denominations-without-sigs-upd.h"
+
+
+#include "taler-auditor-httpd_misattribution-in-inconsistency-del.h"
+#include "taler-auditor-httpd_misattribution-in-inconsistency-put.h"
+#include "taler-auditor-httpd_misattribution-in-inconsistency-get.h"
+#include "taler-auditor-httpd_misattribution-in-inconsistency-upd.h"
+
+
+#include "taler-auditor-httpd_reserves-del.h"
+#include "taler-auditor-httpd_reserves-put.h"
+#include "taler-auditor-httpd_reserves-get.h"
+#include "taler-auditor-httpd_reserves-upd.h"
+
+
+#include "taler-auditor-httpd_purses-del.h"
+#include "taler-auditor-httpd_purses-put.h"
+#include "taler-auditor-httpd_purses-get.h"
+#include "taler-auditor-httpd_purses-upd.h"
+
+
+#include "taler-auditor-httpd_historic-denomination-revenue-del.h"
+#include "taler-auditor-httpd_historic-denomination-revenue-put.h"
+#include "taler-auditor-httpd_historic-denomination-revenue-get.h"
+#include "taler-auditor-httpd_historic-denomination-revenue-upd.h"
+
+
+#include "taler-auditor-httpd_denomination-pending-del.h"
+#include "taler-auditor-httpd_denomination-pending-put.h"
+#include "taler-auditor-httpd_denomination-pending-get.h"
+#include "taler-auditor-httpd_denomination-pending-upd.h"
+
+
+#include "taler-auditor-httpd_historic-reserve-summary-del.h"
+#include "taler-auditor-httpd_historic-reserve-summary-put.h"
+#include "taler-auditor-httpd_historic-reserve-summary-get.h"
+#include "taler-auditor-httpd_historic-reserve-summary-upd.h"
+
+
+#include "taler-auditor-httpd_exchange-signkeys-del.h"
+#include "taler-auditor-httpd_exchange-signkeys-put.h"
+#include "taler-auditor-httpd_exchange-signkeys-get.h"
+#include "taler-auditor-httpd_exchange-signkeys-upd.h"
+
+
+#include "taler-auditor-httpd_wire-format-inconsistency-del.h"
+#include "taler-auditor-httpd_wire-format-inconsistency-put.h"
+#include "taler-auditor-httpd_wire-format-inconsistency-get.h"
+#include "taler-auditor-httpd_wire-format-inconsistency-upd.h"
+
+
+#include "taler-auditor-httpd_wire-out-inconsistency-del.h"
+#include "taler-auditor-httpd_wire-out-inconsistency-put.h"
+#include "taler-auditor-httpd_wire-out-inconsistency-get.h"
+#include "taler-auditor-httpd_wire-out-inconsistency-upd.h"
+
+
+#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-del.h"
+#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-put.h"
+#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-get.h"
+#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-upd.h"
+
+
+#include "taler-auditor-httpd_row-minor-inconsistencies-del.h"
+#include "taler-auditor-httpd_row-minor-inconsistencies-put.h"
+#include "taler-auditor-httpd_row-minor-inconsistencies-get.h"
+#include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
+
+#include "taler-auditor-httpd_fee-time-inconsistency-del.h"
+#include "taler-auditor-httpd_fee-time-inconsistency-put.h"
+#include "taler-auditor-httpd_fee-time-inconsistency-get.h"
+#include "taler-auditor-httpd_fee-time-inconsistency-upd.h"
+
+#include "taler-auditor-httpd_balances-del.h"
+#include "taler-auditor-httpd_balances-put.h"
+#include "taler-auditor-httpd_balances-get.h"
+#include "taler-auditor-httpd_balances-upd.h"
 
 /**
  * Auditor protocol version string.
@@ -108,6 +266,11 @@ static uint16_t serve_port;
 char *TAH_currency;
 
 
+char *TMA_auth;
+
+#define RFC_8959_PREFIX "secret-token:"
+
+
 /**
  * Function called whenever MHD is done with a request.  If the
  * request was a POST, we may have stored a `struct Buffer *` in the
@@ -153,7 +316,8 @@ handle_config (struct TAH_RequestHandler *rh,
                struct MHD_Connection *connection,
                void **connection_cls,
                const char *upload_data,
-               size_t *upload_data_size)
+               size_t *upload_data_size,
+               const char *const args[])
 {
   static json_t *ver; /* we build the response only once, keep around for next query! */
 
@@ -189,6 +353,82 @@ handle_config (struct TAH_RequestHandler *rh,
 
 
 /**
+ * Extract the token from authorization header value @a auth.
+ *
+ * @param auth pointer to authorization header value,
+ *        will be updated to point to the start of the token
+ *        or set to NULL if header value is invalid
+ */
+static void
+extract_token (const char **auth)
+{
+  const char *bearer = "Bearer ";
+  const char *tok = *auth;
+
+  if (0 != strncmp (tok,
+                    bearer,
+                    strlen (bearer)))
+  {
+    *auth = NULL;
+    return;
+  }
+  tok += strlen (bearer);
+  while (' ' == *tok)
+    tok++;
+  if (0 != strncasecmp (tok,
+                        RFC_8959_PREFIX,
+                        strlen (RFC_8959_PREFIX)))
+  {
+    *auth = NULL;
+    return;
+  }
+  *auth = tok;
+}
+
+
+enum GNUNET_GenericReturnValue
+TMH_check_auth (const char *token)
+{
+  struct GNUNET_HashCode val;
+  struct GNUNET_HashCode salt;
+  struct GNUNET_HashCode tok;
+
+  char *dec = "auditor-standard-auth";
+  size_t dec_len = strlen ("auditor-standard-auth");
+
+  if (NULL == token)
+    return GNUNET_SYSERR;
+
+  token += strlen (RFC_8959_PREFIX);
+
+  GNUNET_STRINGS_string_to_data (token,
+                                 strlen (token),
+                                 &tok,
+                                 sizeof (tok));
+
+
+  GNUNET_STRINGS_string_to_data (TMA_auth,
+                                 strlen (TMA_auth),
+                                 &salt,
+                                 sizeof (salt));
+
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (&val,
+                                    sizeof (val),
+                                    &salt,
+                                    sizeof (salt),
+                                    dec,
+                                    dec_len,
+                                    NULL,
+                                    0));
+
+  return (0 == GNUNET_memcmp (&val, &tok))
+           ? GNUNET_OK
+           : GNUNET_SYSERR;
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
@@ -211,38 +451,652 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
+
   static struct TAH_RequestHandler handlers[] = {
     /* Our most popular handler (thus first!), used by merchants to
        probabilistically report us their deposit confirmations. */
-    { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "application/json",
+    { "/deposit-confirmation", MHD_HTTP_METHOD_PUT,
+      "application/json",
       NULL, 0,
-      &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK },
-    { "/deposit-confirmation", MHD_HTTP_METHOD_GET, "application/json",
+      &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK, true },
+
+
+    { "/monitoring/deposit-confirmation", MHD_HTTP_METHOD_GET,
+      "application/json",
       NULL, 0,
-      &TAH_DEPOSIT_CONFIRMATION_handler_get, MHD_HTTP_OK },
-//    { "/deposit-confirmation", MHD_HTTP_METHOD_DELETE, "application/json",
-//      NULL, 0,
-//      &TAH_DEPOSIT_CONFIRMATION_delete, MHD_HTTP_OK },
+      &TAH_DEPOSIT_CONFIRMATION_handler_get, MHD_HTTP_OK, true },
+
+    { "/monitoring/deposit-confirmation", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_DEPOSIT_CONFIRMATION_handler_delete, MHD_HTTP_OK, true },
+
+    { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get, MHD_HTTP_OK, true },
+    { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_PUT_handler, MHD_HTTP_OK, true },
+    { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_delete, MHD_HTTP_OK, true },
+    { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_update, MHD_HTTP_OK, true },
+
+    { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_COIN_INCONSISTENCY_handler_get, MHD_HTTP_OK, true },
+    { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_COIN_INCONSISTENCY_PUT_handler, MHD_HTTP_OK, true },
+    { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_COIN_INCONSISTENCY_handler_delete, MHD_HTTP_OK, true },
+    { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_COIN_INCONSISTENCY_handler_update, MHD_HTTP_OK, true },
+
+    { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_INCONSISTENCY_handler_get, MHD_HTTP_OK, true },
+    { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_INCONSISTENCY_PUT_handler, MHD_HTTP_OK, true },
+    { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_INCONSISTENCY_handler_delete, MHD_HTTP_OK, true },
+    { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_INCONSISTENCY_handler_update, MHD_HTTP_OK, true },
+
+
+    { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_BAD_SIG_LOSSES_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_BAD_SIG_LOSSES_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_BAD_SIG_LOSSES_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_BAD_SIG_LOSSES_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/closure-lags", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_CLOSURE_LAGS_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/closure-lags", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_CLOSURE_LAGS_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/closure-lags", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_CLOSURE_LAGS_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/closure-lags", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_CLOSURE_LAGS_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/emergency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/emergency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/emergency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/emergency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_REFRESHES_HANGING_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_REFRESHES_HANGING_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_REFRESHES_HANGING_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_REFRESHES_HANGING_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/denomination-key-validity-withdraw-inconsistency",
+      MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denomination-key-validity-withdraw-inconsistency",
+      MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denomination-key-validity-withdraw-inconsistency",
+      MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denomination-key-validity-withdraw-inconsistency",
+      MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/progress", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_PROGRESS_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/progress", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_PROGRESS_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/progress", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_PROGRESS_handler_delete,
+      MHD_HTTP_OK, true },
+    /*{ "/monitoring/progress", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_PROGRESS_handler_update,
+      MHD_HTTP_OK, true },*/
+
+    { "/monitoring/reserve-balance-insufficient-inconsistency",
+      MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-balance-insufficient-inconsistency",
+      MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-balance-insufficient-inconsistency",
+      MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-balance-insufficient-inconsistency",
+      MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_BY_COUNT_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_BY_COUNT_PUT_handler,
+      MHD_HTTP_OK, true },
+    { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_BY_COUNT_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_EMERGENCY_BY_COUNT_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_IN_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_IN_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_IN_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_IN_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/reserves", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVES_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserves", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVES_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserves", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVES_handler_delete,
+      MHD_HTTP_OK, true },
+    /*{ "/monitoring/reserves", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVES_handler_update,
+      MHD_HTTP_OK, true },*/
+
+
+    { "/monitoring/purses", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSES_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/purses", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSES_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/purses", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_PURSES_handler_delete,
+      MHD_HTTP_OK, true },
+    /*
+  { "/monitoring/purses", MHD_HTTP_METHOD_PATCH,
+    "application/json",
+    NULL, 0,
+    &TAH_PURSES_handler_update,
+    MHD_HTTP_OK, true },
+*/
+
+    { "/monitoring/historic-denomination-revenue", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_HISTORIC_DENOMINATION_REVENUE_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/historic-denomination-revenue", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_HISTORIC_DENOMINATION_REVENUE_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/historic-denomination-revenue", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_HISTORIC_DENOMINATION_REVENUE_handler_delete,
+      MHD_HTTP_OK, true },
+    /*
+  { "/monitoring/historic-denomination-revenue", MHD_HTTP_METHOD_PATCH,
+    "application/json",
+    NULL, 0,
+    &TAH_HISTORIC_DENOMINATION_REVENUE_handler_update,
+    MHD_HTTP_OK, true },
+*/
+
+    { "/monitoring/denomination-pending", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_PENDING_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denomination-pending", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_PENDING_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/denomination-pending", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_DENOMINATION_PENDING_handler_delete,
+      MHD_HTTP_OK, true },
+    /*
+  { "/monitoring/denomination-pending", MHD_HTTP_METHOD_PATCH,
+    "application/json",
+    NULL, 0,
+    &TAH_DENOMINATION_PENDING_handler_update,
+    MHD_HTTP_OK, true },
+*/
+
+    { "/monitoring/historic-reserve-summary", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_HISTORIC_RESERVE_SUMMARY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/historic-reserve-summary", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_HISTORIC_RESERVE_SUMMARY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/historic-reserve-summary", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_HISTORIC_RESERVE_SUMMARY_handler_delete,
+      MHD_HTTP_OK, true },
+    /*
+  { "/monitoring/historic-reserve-summary", MHD_HTTP_METHOD_PATCH,
+    "application/json",
+    NULL, 0,
+    &TAH_HISTORIC_RESERVE_SUMMARY_handler_update,
+    MHD_HTTP_OK, true },
+*/
+/*
+    { "/monitoring/exchange-signkeys", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_EXCHANGE_SIGNKEYS_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/exchange-signkeys", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_EXCHANGE_SIGNKEYS_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/exchange-signkeys", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_EXCHANGE_SIGNKEYS_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/exchange-signkeys", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_EXCHANGE_SIGNKEYS_handler_update,
+      MHD_HTTP_OK, true },
+*/
+
+    { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_FORMAT_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_FORMAT_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_FORMAT_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_FORMAT_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_OUT_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_OUT_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_OUT_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_WIRE_OUT_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/reserve-balance-summary-wrong-inconsistency",
+      MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-balance-summary-wrong-inconsistency",
+      MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-balance-summary-wrong-inconsistency",
+      MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/reserve-balance-summary-wrong-inconsistency",
+      MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+
+    { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_MINOR_INCONSISTENCIES_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_MINOR_INCONSISTENCIES_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_MINOR_INCONSISTENCIES_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_ROW_MINOR_INCONSISTENCIES_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_FEE_TIME_INCONSISTENCY_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_FEE_TIME_INCONSISTENCY_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_FEE_TIME_INCONSISTENCY_handler_delete,
+      MHD_HTTP_OK, true },
+    { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_FEE_TIME_INCONSISTENCY_handler_update,
+      MHD_HTTP_OK, true },
+
+    { "/monitoring/balances", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_BALANCES_handler_get,
+      MHD_HTTP_OK, true },
+    { "/monitoring/balances", MHD_HTTP_METHOD_PUT,
+      "application/json",
+      NULL, 0,
+      &TAH_BALANCES_handler_put,
+      MHD_HTTP_OK, true },
+    { "/monitoring/balances", MHD_HTTP_METHOD_DELETE,
+      "application/json",
+      NULL, 0,
+      &TAH_BALANCES_handler_delete,
+      MHD_HTTP_OK, true },
+    /*{ "/monitoring/balances", MHD_HTTP_METHOD_PATCH,
+      "application/json",
+      NULL, 0,
+      &TAH_BALANCES_handler_update,
+      MHD_HTTP_OK, true },*/
+
     { "/config", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
-      &handle_config, MHD_HTTP_OK },
+      &handle_config, MHD_HTTP_OK, false },
     /* Landing page, for now tells humans to go away
      * (NOTE: ideally, the reverse proxy will respond with a nicer page) */
     { "/", MHD_HTTP_METHOD_GET, "text/plain",
       "Hello, I'm the Taler auditor. This HTTP server is not for humans.\n", 0,
-      &TAH_MHD_handler_static_response, MHD_HTTP_OK },
+      &TAH_MHD_handler_static_response, MHD_HTTP_OK, false },
     /* /robots.txt: disallow everything */
     { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
       "User-agent: *\nDisallow: /\n", 0,
-      &TAH_MHD_handler_static_response, MHD_HTTP_OK },
+      &TAH_MHD_handler_static_response, MHD_HTTP_OK, false },
     /* AGPL licensing page, redirect to source. As per the AGPL-license,
        every deployment is required to offer the user a download of the
        source. We make this easy by including a redirect t the source
        here. */
     { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
       NULL, 0,
-      &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
-    { NULL, NULL, NULL, NULL, 0, NULL, 0 }
+      &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND, false },
+    { NULL, NULL, NULL, NULL, 0, NULL, 0, 0 }
   };
 
   (void) cls;
@@ -257,18 +1111,149 @@ handle_mhd_request (void *cls,
   {
     struct TAH_RequestHandler *rh = &handlers[i];
 
-    if ( (0 == strcasecmp (url,
-                           rh->url)) &&
-         ( (NULL == rh->method) ||
-           (0 == strcasecmp (method,
-                             rh->method)) ) )
+    if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS) )
+      return TALER_MHD_reply_cors_preflight (connection);
+
+    unsigned int argsnr = 3;
+
+    // arguments, and the url itself, and a terminator that is always null
+    const char *args[argsnr + 1];
+    memset (&args,0,sizeof (args));
+    size_t ulen = strlen (url) + 1;
+    char d[ulen];
+    unsigned int i = 0;
+    char *sp;
+
+    bool found = false;
+    bool requiresAuth = true;
+
+    GNUNET_memcpy (d,
+                   url,
+                   ulen);
+
+    args[i++] = strtok_r (d, "/", &sp);
+
+    while ( (NULL != args[i - 1]) && (i < argsnr) )
+    {
+      args[i++] = strtok_r (NULL, "/", &sp);
+    }
+
+    // max length url could be
+    char argurl[ulen + 1 + strlen ("/monitoring")];
+    memset (argurl, 0, ulen + 1 + strlen ("/monitoring"));
+    strcpy (argurl,"/");
+
+
+    if (args[0] != NULL)
+    {
+
+      strcat (argurl,args[0]);
+
+      if ( (0 == strcasecmp (argurl,
+                             rh->url)) && ( (NULL == rh->method) ||
+                                            (0 == strcasecmp (method,
+                                                              rh->method)) ) )
+      {
+
+        found = true;
+        requiresAuth = rh->requiresAuth;
+
+      }
+
+    }
+
+
+    if (i >= 2 && args[1] != NULL)
+    {
+
+      strcat (argurl,"/");
+      strcat (argurl,args[1]);
+
+      if ( (0 == strcasecmp (argurl,
+                             rh->url)) &&
+           ( (NULL == rh->method) ||
+             (0 == strcasecmp (method,
+                               rh->method)) ) )
+      {
+
+        if ((0 == strcasecmp (method, MHD_HTTP_METHOD_DELETE)) ||
+            (0 == strcasecmp (method, MHD_HTTP_METHOD_PUT)) )
+        {
+
+          return TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_METHOD_NOT_ALLOWED,
+                                             TALER_EC_AUDITOR_GENERIC_METHOD_NOT_ALLOWED,
+                                             "This method is currently disabled.");
+
+        }
+
+        found = true;
+        requiresAuth = true;
+
+      }
+    }
+
+
+    const char *auth;
+
+    auth = MHD_lookup_connection_value (connection,
+                                        MHD_HEADER_KIND,
+                                        MHD_HTTP_HEADER_AUTHORIZATION);
+
+
+    if (found)
+    {
+
+      if (requiresAuth)
+      {
+
+
+        if (NULL != auth)
+        {
+
+          extract_token (&auth);
+
+          if (NULL == auth)
+            return TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_UNAUTHORIZED,
+                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                               "'" RFC_8959_PREFIX
+                                               "' prefix or 'Bearer' missing in 'Authorization' header");
+
+          if (TMH_check_auth (auth) != 1)
+          {
+
+            return TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_UNAUTHORIZED,
+                                               TALER_EC_AUDITOR_GENERIC_UNAUTHORIZED,
+                                               "Check 'Authorization' header");
+          }
+
+
+        }
+        else
+        {
+          return TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_UNAUTHORIZED,
+                                             TALER_EC_AUDITOR_GENERIC_UNAUTHORIZED,
+                                             "Check 'Authorization' header");
+        }
+
+      }
+
       return rh->handler (rh,
                           connection,
                           con_cls,
                           upload_data,
-                          upload_data_size);
+                          upload_data_size,
+                          args);
+
+    }
+
+
   }
-#define NOT_FOUND "<html><title>404: not found</title></html>"
+#define NOT_FOUND \
+  "<html><title>404: not found</title><body>auditor endpoints have been moved to /monitoring/...</body></html>"
   return TALER_MHD_reply_static (connection,
                                  MHD_HTTP_NOT_FOUND,
                                  "text/html",
@@ -460,6 +1445,25 @@ run (void *cls,
   enum TALER_MHD_GlobalOptions go;
   int fh;
 
+  {
+    const char *tok;
+
+    tok = getenv ("TALER_AUDITOR_SALT");
+
+    if ( (NULL != tok) &&
+         (NULL == TMA_auth) )
+      TMA_auth = GNUNET_strdup (tok);
+    if ( (NULL == TMA_auth) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "No salt defined\n");
+      global_ret = EXIT_NOTCONFIGURED;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+
+
+  }
+
   (void) cls;
   (void) args;
   (void) cfgfile;
@@ -520,6 +1524,8 @@ run (void *cls,
     }
     global_ret = EXIT_SUCCESS;
     TALER_MHD_daemon_start (mhd);
+
+
   }
 }
 

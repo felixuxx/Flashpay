@@ -49,7 +49,14 @@ TAH_PG_insert_exchange_signkey (
            ",ep_end"
            ",exchange_pub"
            ",master_sig"
-           ") VALUES ($1,$2,$3,$4,$5);");
+           ") VALUES ($1,$2,$3,$4,$5)"
+           " ON CONFLICT (exchange_pub) DO UPDATE"
+           " SET ep_start = exclude.ep_start,"
+           " ep_expire = exclude.ep_expire,"
+           " ep_end = exclude.ep_end,"
+           " master_sig = exclude.master_sig,"
+           " suppressed = false;"
+           );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_insert_exchange_signkey",
                                              params);

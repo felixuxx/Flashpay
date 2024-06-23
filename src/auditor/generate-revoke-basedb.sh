@@ -32,7 +32,7 @@ EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
 MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
 MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
 BANK_PORT=$(taler-config -c "$CONF" -s BANK -o HTTP_PORT)
-BANK_URL="http://localhost:${BANK_PORT}"
+BANK_URL="http://localhost:${BANK_PORT}/"
 
 
 # Setup merchant

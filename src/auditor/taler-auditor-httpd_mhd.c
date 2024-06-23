@@ -48,7 +48,8 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
                                  struct MHD_Connection *connection,
                                  void **connection_cls,
                                  const char *upload_data,
-                                 size_t *upload_data_size)
+                                 size_t *upload_data_size,
+                                 const char *const args[])
 {
   size_t dlen;
 
@@ -82,7 +83,8 @@ TAH_MHD_handler_agpl_redirect (struct TAH_RequestHandler *rh,
                                struct MHD_Connection *connection,
                                void **connection_cls,
                                const char *upload_data,
-                               size_t *upload_data_size)
+                               size_t *upload_data_size,
+                               const char *const args[])
 {
   (void) rh;
   (void) connection_cls;
