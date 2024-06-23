@@ -516,6 +516,17 @@ TALER_KYCLOGIC_lookup_logic (
 
 
 /**
+ * Return expiration time for the given @a lrs
+ *
+ * @param lrs legitimization rules to inspect
+ * @return expiration time
+ */
+struct GNUNET_TIME_Timestamp
+TALER_KYCLOGIC_rules_get_expiration (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
+
+
+/**
  * Function called with the provider details and
  * associated plugin closures for matching logics.
  *

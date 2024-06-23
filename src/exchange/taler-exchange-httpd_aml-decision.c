@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_aml-decision.c
- * @brief Handle request about an AML decision.
+ * @brief Handle POST request about an AML decision.
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -31,205 +31,6 @@
 #include "taler-exchange-httpd_responses.h"
 
 
-/**
- * Closure for #make_aml_decision()
- */
-struct DecisionContext
-{
-  /**
-   * Justification given for the decision.
-   */
-  const char *justification;
-
-  /**
-   * When was the decision taken.
-   */
-  struct GNUNET_TIME_Timestamp decision_time;
-
-  /**
-   * New rules after the decision.
-   */
-  const json_t *new_rules;
-
-  /**
-   * Hash of payto://-URI of affected account.
-   */
-  struct TALER_PaytoHashP h_payto;
-
-  /**
-   * Signature affirming the decision.
-   */
-  struct TALER_AmlOfficerSignatureP officer_sig;
-
-  /**
-   * Public key of the AML officer.
-   */
-  const struct TALER_AmlOfficerPublicKeyP *officer_pub;
-
-};
-
-
-/**
- * Function implementing AML decision database transaction.
- *
- * Runs the transaction logic; IF it returns a non-error code, the
- * transaction logic MUST NOT queue a MHD response.  IF it returns an hard
- * error, the transaction logic MUST queue a MHD response and set @a mhd_ret.
- * IF it returns the soft error code, the function MAY be called again to
- * retry and MUST not queue a MHD response.
- *
- * @param cls closure with a `struct DecisionContext`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-make_aml_decision (void *cls,
-                   struct MHD_Connection *connection,
-                   MHD_RESULT *mhd_ret)
-{
-  struct DecisionContext *dc = cls;
-  struct GNUNET_TIME_Timestamp last_date;
-  bool invalid_officer = -1;
-
-#if FIXME
-  enum GNUNET_DB_QueryStatus qs;
-  uint64_t requirement_row = 0;
-
-  if ( (NULL != dc->kyc_requirements) &&
-       (0 != json_array_size (dc->kyc_requirements)) )
-  {
-    char *res = NULL;
-    size_t idx;
-    json_t *req;
-    bool satisfied;
-
-    json_array_foreach (dc->kyc_requirements, idx, req)
-    {
-      const char *r = json_string_value (req);
-
-      if (NULL == res)
-      {
-        res = GNUNET_strdup (r);
-      }
-      else
-      {
-        char *tmp;
-
-        GNUNET_asprintf (&tmp,
-                         "%s %s",
-                         res,
-                         r);
-        GNUNET_free (res);
-        res = tmp;
-      }
-    }
-
-    {
-      json_t *kyc_details = NULL;
-
-      qs = TALER_KYCLOGIC_check_satisfied (
-        &res,
-        &dc->h_payto,
-        &kyc_details,
-        TEH_plugin->select_satisfied_kyc_processes,
-        TEH_plugin->cls,
-        &satisfied);
-      json_decref (kyc_details);
-    }
-    if (qs < 0)
-    {
-      if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
-      {
-        GNUNET_break (0);
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "select_satisfied_kyc_processes")
-        ;
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      }
-      return qs;
-    }
-    if (! satisfied)
-    {
-      qs = TEH_plugin->insert_kyc_requirement_for_account (
-        TEH_plugin->cls,
-        res,
-        &dc->h_payto,
-        NULL, /* not a reserve */
-        &requirement_row);
-      if (qs < 0)
-      {
-        if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
-        {
-          GNUNET_break (0);
-          *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                                 TALER_EC_GENERIC_DB_STORE_FAILED,
-                                                 "insert_kyc_requirement_for_account");
-          return GNUNET_DB_STATUS_HARD_ERROR;
-        }
-        return qs;
-      }
-    }
-    GNUNET_free (res);
-  }
-
-  qs = TEH_plugin->insert_aml_decision (TEH_plugin->cls,
-                                        &dc->h_payto,
-                                        &dc->new_threshold,
-                                        dc->new_state,
-                                        dc->decision_time,
-                                        dc->justification,
-                                        dc->kyc_requirements,
-                                        requirement_row,
-                                        dc->officer_pub,
-                                        &dc->officer_sig,
-                                        &invalid_officer,
-                                        &last_date);
-  if (qs <= 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_STORE_FAILED,
-                                             "insert_aml_decision");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    return qs;
-  }
-#endif
-  if (invalid_officer)
-  {
-    GNUNET_break_op (0);
-    *mhd_ret = TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_AML_DECISION_INVALID_OFFICER,
-      NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (GNUNET_TIME_timestamp_cmp (last_date,
-                                 >=,
-                                 dc->decision_time))
-  {
-    GNUNET_break_op (0);
-    *mhd_ret = TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_CONFLICT,
-      TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
-      NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-}
-
-
 MHD_RESULT
 TEH_handler_post_aml_decision (
   struct TEH_RequestContext *rc,
@@ -237,22 +38,33 @@ TEH_handler_post_aml_decision (
   const json_t *root)
 {
   struct MHD_Connection *connection = rc->connection;
-  struct DecisionContext dc = {
-    .officer_pub = officer_pub
-  };
+  const char *justification;
+  bool to_investigate;
+  struct GNUNET_TIME_Timestamp decision_time;
+  const json_t *new_rules;
+  const json_t *properties = NULL;
+  struct TALER_PaytoHashP h_payto;
+  struct TALER_AmlOfficerSignatureP officer_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("officer_sig",
-                                 &dc.officer_sig),
-    GNUNET_JSON_spec_fixed_auto ("h_payto",
-                                 &dc.h_payto),
-    GNUNET_JSON_spec_object_const ("new_rules",
-                                   &dc.new_rules),
     GNUNET_JSON_spec_string ("justification",
-                             &dc.justification),
+                             &justification),
+    GNUNET_JSON_spec_fixed_auto ("h_payto",
+                                 &h_payto),
+    GNUNET_JSON_spec_object_const ("new_rules",
+                                   &new_rules),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_object_const ("properties",
+                                     &properties),
+      NULL),
+    GNUNET_JSON_spec_bool ("keep_investigating",
+                           &to_investigate),
+    GNUNET_JSON_spec_fixed_auto ("officer_sig",
+                                 &officer_sig),
     GNUNET_JSON_spec_timestamp ("decision_time",
-                                &dc.decision_time),
+                                &decision_time),
     GNUNET_JSON_spec_end ()
   };
+  struct GNUNET_TIME_Timestamp expiration_time;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -271,12 +83,14 @@ TEH_handler_post_aml_decision (
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_officer_aml_decision_verify (
-        dc.justification,
-        dc.decision_time,
-        &dc.h_payto,
-        dc.new_rules,
-        dc.officer_pub,
-        &dc.officer_sig))
+        justification,
+        decision_time,
+        &h_payto,
+        new_rules,
+        properties,
+        to_investigate,
+        officer_pub,
+        &officer_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
@@ -286,52 +100,70 @@ TEH_handler_post_aml_decision (
       NULL);
   }
 
-#if 0
-  if (NULL != dc.kyc_requirements)
   {
-    size_t index;
-    json_t *elem;
+    struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
 
-    json_array_foreach (dc.kyc_requirements, index, elem)
+    lrs = TALER_KYCLOGIC_rules_parse (new_rules);
+    if (NULL == lrs)
     {
-      const char *val;
-
-      if (! json_is_string (elem))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "kyc_requirements array members must be strings");
-      }
-      val = json_string_value (elem);
-      if (GNUNET_SYSERR ==
-          TALER_KYCLOGIC_check_satisfiable (val))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_EXCHANGE_AML_DECISION_UNKNOWN_CHECK,
-          val);
-      }
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "legitimization rule malformed");
     }
+    expiration_time = TALER_KYCLOGIC_rules_get_expiration (lrs);
+
+    TALER_KYCLOGIC_rules_free (lrs);
   }
-#endif
 
   {
-    MHD_RESULT mhd_ret;
+    enum GNUNET_DB_QueryStatus qs;
+    struct GNUNET_TIME_Timestamp last_date;
+    bool invalid_officer = true;
 
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "make-aml-decision",
-                                TEH_MT_REQUEST_OTHER,
-                                &mhd_ret,
-                                &make_aml_decision,
-                                &dc))
+    qs = TEH_plugin->insert_aml_decision (TEH_plugin->cls,
+                                          &h_payto,
+                                          decision_time,
+                                          expiration_time,
+                                          properties,
+                                          new_rules,
+                                          to_investigate,
+                                          justification,
+                                          officer_pub,
+                                          &officer_sig,
+                                          &invalid_officer,
+                                          &last_date);
+    if (qs <= 0)
     {
-      return mhd_ret;
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "insert_aml_decision");
+    }
+    if (invalid_officer)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_AML_DECISION_INVALID_OFFICER,
+        NULL);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (GNUNET_TIME_timestamp_cmp (last_date,
+                                   >=,
+                                   decision_time))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_CONFLICT,
+        TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
+        NULL);
     }
   }
   return TALER_MHD_reply_static (

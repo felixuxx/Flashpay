@@ -301,6 +301,14 @@ static struct TALER_KYCLOGIC_AmlProgram **aml_programs;
 static unsigned int num_aml_programs;
 
 
+struct GNUNET_TIME_Timestamp
+TALER_KYCLOGIC_rules_get_expiration (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
+{
+  return lrs->expiration_time;
+}
+
+
 /**
  * Lookup a KYC check by @a check_name
  *
@@ -334,20 +342,20 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
   const json_t *jrules;
   const json_t *jcustom_measures = NULL;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_object_const ("custom_measures",
-                                     &jcustom_measures),
-      NULL),
-    GNUNET_JSON_spec_array_const ("rules",
-                                  &jrules),
+    GNUNET_JSON_spec_timestamp (
+      "expiration_time",
+      &expiration_time),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_string (
         "successor_measure",
         &successor_measure),
       NULL),
-    GNUNET_JSON_spec_timestamp (
-      "expiration_time",
-      &expiration_time),
+    GNUNET_JSON_spec_array_const ("rules",
+                                  &jrules),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_object_const ("custom_measures",
+                                     &jcustom_measures),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;

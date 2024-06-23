@@ -2667,6 +2667,8 @@ TALER_officer_aml_query_verify (
  *                      decision is about
  * @param new_rules new KYC rules to apply to the account
  *         Must be a "LegitimizationRuleSet".
+ * @param properties properties of the account, can be NULL
+ * @param to_investigate true if the account should be investigated by AML staff
  * @param officer_priv private key of AML officer
  * @param[out] officer_sig where to write the signature
  */
@@ -2676,6 +2678,8 @@ TALER_officer_aml_decision_sign (
   struct GNUNET_TIME_Timestamp decision_time,
   const struct TALER_PaytoHashP *h_payto,
   const json_t *new_rules,
+  const json_t *properties,
+  bool to_investigate,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig);
 
@@ -2688,6 +2692,8 @@ TALER_officer_aml_decision_sign (
  * @param h_payto payto URI hash of the account the
  *                      decision is about
  * @param new_rules new KYC rules to apply to the account
+ * @param properties properties of the account, can be NULL
+ * @param to_investigate true if the account should be investigated by AML staff
  * @param officer_pub public key of AML officer
  * @param officer_sig signature to verify
  * @return #GNUNET_OK if the signature is valid
@@ -2698,6 +2704,8 @@ TALER_officer_aml_decision_verify (
   struct GNUNET_TIME_Timestamp decision_time,
   const struct TALER_PaytoHashP *h_payto,
   const json_t *new_rules,
+  const json_t *properties,
+  bool to_investigate,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig);
 

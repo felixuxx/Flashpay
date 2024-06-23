@@ -52,10 +52,19 @@ struct TALER_AmlDecisionPS
   struct GNUNET_HashCode h_justification GNUNET_PACKED;
 
   /**
+   * Hash over the justification text.
+   */
+  struct GNUNET_HashCode h_properties GNUNET_PACKED;
+
+  /**
    * Hash over JSON object with new KYC rules.
    */
   struct GNUNET_HashCode h_new_rules;
 
+  /**
+   * 0: no investigation, 1: yes investigation.
+   */
+  uint64_t flags;
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -66,6 +75,8 @@ TALER_officer_aml_decision_sign (
   struct GNUNET_TIME_Timestamp decision_time,
   const struct TALER_PaytoHashP *h_payto,
   const json_t *new_rules,
+  const json_t *properties,
+  bool to_investigate,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig)
 {
@@ -73,15 +84,18 @@ TALER_officer_aml_decision_sign (
     .purpose.purpose = htonl (TALER_SIGNATURE_AML_DECISION),
     .purpose.size = htonl (sizeof (ad)),
     .decision_time = GNUNET_TIME_timestamp_hton (decision_time),
-    .h_payto = *h_payto
+    .h_payto = *h_payto,
+    .flags = GNUNET_htonll (to_investigate ? 1 : 0)
   };
 
   GNUNET_CRYPTO_hash (justification,
                       strlen (justification),
                       &ad.h_justification);
-  if (NULL != new_rules)
-    TALER_json_hash (new_rules,
-                     &ad.h_new_rules);
+  if (NULL != properties)
+    TALER_json_hash (properties,
+                     &ad.h_properties);
+  TALER_json_hash (new_rules,
+                   &ad.h_new_rules);
   GNUNET_CRYPTO_eddsa_sign (&officer_priv->eddsa_priv,
                             &ad,
                             &officer_sig->eddsa_signature);
@@ -94,6 +108,8 @@ TALER_officer_aml_decision_verify (
   struct GNUNET_TIME_Timestamp decision_time,
   const struct TALER_PaytoHashP *h_payto,
   const json_t *new_rules,
+  const json_t *properties,
+  bool to_investigate,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig)
 {
@@ -101,15 +117,18 @@ TALER_officer_aml_decision_verify (
     .purpose.purpose = htonl (TALER_SIGNATURE_AML_DECISION),
     .purpose.size = htonl (sizeof (ad)),
     .decision_time = GNUNET_TIME_timestamp_hton (decision_time),
-    .h_payto = *h_payto
+    .h_payto = *h_payto,
+    .flags = GNUNET_htonll (to_investigate ? 1 : 0)
   };
 
   GNUNET_CRYPTO_hash (justification,
                       strlen (justification),
                       &ad.h_justification);
-  if (NULL != new_rules)
-    TALER_json_hash (new_rules,
-                     &ad.h_new_rules);
+  if (NULL != properties)
+    TALER_json_hash (properties,
+                     &ad.h_properties);
+  TALER_json_hash (new_rules,
+                   &ad.h_new_rules);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_AML_DECISION,
     &ad,
