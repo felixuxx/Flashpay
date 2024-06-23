@@ -14,29 +14,29 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_aml-attributes-get.h
- * @brief Handle /aml/$OFFICER_PUB/attributes/$H_PAYTO requests
+ * @file taler-exchange-httpd_aml-statistics-get.h
+ * @brief Handle /aml/$OFFICER_PUB/kyc-statistics/$NAME requests
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_AML_ATTRIBUTES_GET_H
-#define TALER_EXCHANGE_HTTPD_AML_ATTRIBUTES_GET_H
+#ifndef TALER_EXCHANGE_HTTPD_AML_STATISTICS_GET_H
+#define TALER_EXCHANGE_HTTPD_AML_STATISTICS_GET_H
 
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"
 
 
 /**
- * Handle a GET "/aml/$OFFICER_PUB/attributes/$H_PAYTO" request.  Parses the request
+ * Handle a GET "/aml/$OFFICER_PUB/kyc-statistics/$NAME" request.  Parses the request
  * details, checks the signatures and if appropriately authorized returns
  * the matching decisions.
  *
  * @param rc request context
  * @param officer_pub public key of the AML officer who made the request
- * @param args GET arguments (should be the state)
+ * @param args GET arguments (name of the statistic)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_aml_attributes_get (
+TEH_handler_aml_kyc_statistics_get (
   struct TEH_RequestContext *rc,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[]);

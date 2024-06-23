@@ -7149,6 +7149,27 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_Amount *threshold);
 #endif
 
+
+  /**
+   * Obtain the AML statistics for a given key and
+   * timeframe.
+   *
+   * @param cls closure
+   * @param name name of the statistic
+   * @param start_date start of time range
+   * @param end_date end of time range
+   * @param[out] cnt number of events in this time range
+   * @return database transaction status, 0 if no threshold was set
+   */
+  enum GNUNET_DB_QueryStatus
+    (*select_aml_statistics)(
+    void *cls,
+    const char *name,
+    struct GNUNET_TIME_Timestamp start_date,
+    struct GNUNET_TIME_Timestamp end_date,
+    uint64_t *cnt);
+
+
   /**
    * Trigger AML process, an account has crossed the threshold. Inserts or
    * updates the AML status.

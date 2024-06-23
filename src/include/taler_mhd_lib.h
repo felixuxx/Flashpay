@@ -478,6 +478,48 @@ TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
 
 
 /**
+ * Extract optional timestamp argument from request.
+ *
+ * @param connection the MHD connection
+ * @param fname name of the argument to parse
+ * @param[out] ts set to #GNUNET_TIME_UNIT_ZERO_TS if there was no timestamp
+ * @return #GNUNET_OK on success, #GNUNET_NO if an
+ *     error was returned on @a connection (caller should return #MHD_YES) and
+ *     #GNUNET_SYSERR if we failed to return an error (caller should return #MHD_NO)
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_timestamp (struct MHD_Connection *connection,
+                                       const char *fname,
+                                       struct GNUNET_TIME_Timestamp *ts);
+
+
+/**
+ * Extract optional timestamp argument from request.
+ * Macro that *returns* #MHD_YES/#MHD_NO if the timestamp
+ * argument existed but failed to parse.
+ *
+ * @param connection the MHD connection
+ * @param fname name of the argument
+ * @param[out] ts set to #GNUNET_TIME_UNIT_ZERO_TS if there was no timestamp
+ */
+#define TALER_MHD_parse_request_timestamp(connection,fname,ts)  \
+        do {                                                         \
+          switch (TALER_MHD_parse_request_arg_timestamp (connection,   \
+                                                         fname, \
+                                                         ts))   \
+          {                      \
+          case GNUNET_SYSERR:    \
+            GNUNET_break (0);    \
+            return MHD_NO;       \
+          case GNUNET_NO:        \
+            GNUNET_break_op (0); \
+          case GNUNET_OK:        \
+            break;               \
+          }                      \
+        } while (0)
+
+
+/**
  * Extract optional "yes/no/all" argument from request.
  * Macro that *returns* #MHD_YES/#MHD_NO if the
  * argument existed but failed to parse.

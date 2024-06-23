@@ -67,6 +67,7 @@
 #include "pg_insert_purse_request.h"
 #include "pg_iterate_active_signkeys.h"
 #include "pg_preflight.h"
+#include "pg_select_aml_statistics.h"
 #include "pg_commit.h"
 #include "pg_drop_tables.h"
 #include "pg_get_kyc_rules.h"
@@ -733,6 +734,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_signkey_revocation;
   plugin->select_aml_attributes
     = &TEH_PG_select_aml_attributes;
+  plugin->select_aml_statistics
+    = &TEH_PG_select_aml_statistics;
   plugin->lookup_signkey_revocation
     = &TEH_PG_lookup_signkey_revocation;
   plugin->lookup_denomination_key

@@ -34,6 +34,8 @@
 #include "taler-exchange-httpd_age-withdraw_reveal.h"
 #include "taler-exchange-httpd_aml-attributes-get.h"
 #include "taler-exchange-httpd_aml-decision.h"
+#include "taler-exchange-httpd_aml-statistics-get.h"
+#include "taler-exchange-httpd_aml-measures-get.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
@@ -561,6 +563,14 @@ handle_get_aml (struct TEH_RequestContext *rc,
     {
       .op = "attributes",
       .handler = &TEH_handler_aml_attributes_get
+    },
+    {
+      .op = "kyc-statistics",
+      .handler = &TEH_handler_aml_kyc_statistics_get
+    },
+    {
+      .op = "measures",
+      .handler = &TEH_handler_aml_measures_get
     },
     {
       .op = NULL,

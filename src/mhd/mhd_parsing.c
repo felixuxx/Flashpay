@@ -104,12 +104,13 @@ TALER_MHD_parse_post_cleanup_callback (void *con_cls)
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 static enum GNUNET_GenericReturnValue
-parse_request_data (struct MHD_Connection *connection,
-                    const char *param_name,
-                    enum MHD_ValueKind kind,
-                    void *out_data,
-                    size_t out_size,
-                    bool *present)
+parse_request_data (
+  struct MHD_Connection *connection,
+  const char *param_name,
+  enum MHD_ValueKind kind,
+  void *out_data,
+  size_t out_size,
+  bool *present)
 {
   const char *str;
 
@@ -138,11 +139,12 @@ parse_request_data (struct MHD_Connection *connection,
 
 
 enum GNUNET_GenericReturnValue
-TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
-                                  const char *param_name,
-                                  void *out_data,
-                                  size_t out_size,
-                                  bool *present)
+TALER_MHD_parse_request_arg_data (
+  struct MHD_Connection *connection,
+  const char *param_name,
+  void *out_data,
+  size_t out_size,
+  bool *present)
 {
   return parse_request_data (connection,
                              param_name,
@@ -154,11 +156,12 @@ TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
 
 
 enum GNUNET_GenericReturnValue
-TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
-                                     const char *header_name,
-                                     void *out_data,
-                                     size_t out_size,
-                                     bool *present)
+TALER_MHD_parse_request_header_data (
+  struct MHD_Connection *connection,
+  const char *header_name,
+  void *out_data,
+  size_t out_size,
+  bool *present)
 {
   return parse_request_data (connection,
                              header_name,
@@ -170,8 +173,9 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
 
 
 enum GNUNET_GenericReturnValue
-TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
-                                     struct GNUNET_TIME_Absolute *expiration)
+TALER_MHD_parse_request_arg_timeout (
+  struct MHD_Connection *connection,
+  struct GNUNET_TIME_Absolute *expiration)
 {
   const char *ts;
   char dummy;
@@ -205,6 +209,47 @@ TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
   *expiration = GNUNET_TIME_relative_to_absolute (
     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
                                    tms));
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_timestamp (
+  struct MHD_Connection *connection,
+  const char *fname,
+  struct GNUNET_TIME_Timestamp *ts)
+{
+  const char *s;
+  char dummy;
+  unsigned long long t;
+
+  s = MHD_lookup_connection_value (connection,
+                                   MHD_GET_ARGUMENT_KIND,
+                                   fname);
+  if (NULL == s)
+  {
+    *ts = GNUNET_TIME_UNIT_ZERO_TS;
+    return GNUNET_OK;
+  }
+  if (1 !=
+      sscanf (s,
+              "%llu%c",
+              &t,
+              &dummy))
+  {
+    MHD_RESULT mret;
+
+    GNUNET_break_op (0);
+    mret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      fname);
+    return (MHD_YES == mret)
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
+  }
+  *ts = GNUNET_TIME_timestamp_from_s (t);
   return GNUNET_OK;
 }
 
