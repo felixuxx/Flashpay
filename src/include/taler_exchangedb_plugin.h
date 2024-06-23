@@ -3545,7 +3545,8 @@ typedef void
  * @param row_id current row in kyc_attributes table
  * @param provider_name which provider collected the data, NULL for user upload
  * @param collection_time when were the attributes collected
- * @param attributes the collected attributes
+ * @param enc_attributes_size size of @a enc_attributes
+ * @param enc_attributes the encrypted collected attributes
  */
 typedef void
 (*TALER_EXCHANGEDB_AmlAttributeCallback)(
@@ -3553,7 +3554,8 @@ typedef void
   uint64_t row_id,
   const char *provider_name,
   struct GNUNET_TIME_Timestamp collection_time,
-  const json_t *attributes);
+  size_t enc_attributes_size,
+  const void *enc_attributes);
 
 
 /**

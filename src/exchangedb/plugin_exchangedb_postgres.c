@@ -56,6 +56,7 @@
 #include "pg_select_account_merges_above_serial_id.h"
 #include "pg_select_all_purse_decisions_above_serial_id.h"
 #include "pg_select_purse.h"
+#include "pg_select_aml_attributes.h"
 #include "pg_trigger_kyc_rule_for_account.h"
 #include "pg_select_purse_deposits_above_serial_id.h"
 #include "pg_select_purse_merges_above_serial_id.h"
@@ -730,6 +731,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_aml_decisions;
   plugin->insert_signkey_revocation
     = &TEH_PG_insert_signkey_revocation;
+  plugin->select_aml_attributes
+    = &TEH_PG_select_aml_attributes;
   plugin->lookup_signkey_revocation
     = &TEH_PG_lookup_signkey_revocation;
   plugin->lookup_denomination_key

@@ -153,6 +153,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_do_recoup.h pg_do_recoup.c \
   pg_do_recoup_refresh.h pg_do_recoup_refresh.c \
   pg_get_reserve_balance.h pg_get_reserve_balance.c \
+  pg_select_aml_attributes.h pg_select_aml_attributes.c \
   pg_count_known_coins.h pg_count_known_coins.c \
   pg_ensure_coin_known.h pg_ensure_coin_known.c \
   pg_get_known_coin.h pg_get_known_coin.c \

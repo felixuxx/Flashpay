@@ -183,6 +183,11 @@ kyc_process_cb (void *cls,
   attrs = TALER_CRYPTO_kyc_attributes_decrypt (&TEH_attribute_key,
                                                enc_attributes,
                                                enc_attributes_size);
+  if (NULL == attrs)
+  {
+    GNUNET_break (0);
+    return;
+  }
   json_object_foreach (attrs, name, val)
   {
     bool requested = false;
