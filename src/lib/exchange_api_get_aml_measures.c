@@ -31,6 +31,28 @@
 
 
 /**
+ * Scrap buffer of temporary arrays.
+ */
+struct Scrap
+{
+  /**
+   * Kept in DLL.
+   */
+  struct Scrap *next;
+
+  /**
+   * Kept in DLL.
+   */
+  struct Scrap *prev;
+
+  /**
+   * Pointer to our allocation.
+   */
+  const char **ptr;
+};
+
+
+/**
  * @brief A GET /aml/$OFFICER_PUB/measures Handle
  */
 struct TALER_EXCHANGE_AmlGetMeasuresHandle
@@ -61,6 +83,15 @@ struct TALER_EXCHANGE_AmlGetMeasuresHandle
    */
   struct curl_slist *job_headers;
 
+  /**
+   * Head of scrap list.
+   */
+  struct Scrap *scrap_head;
+
+  /**
+   * Tail of scrap list.
+   */
+  struct Scrap *scrap_tail;
 };
 
 
@@ -112,6 +143,73 @@ parse_aml_roots (
 
 
 /**
+ * Create array of length @a len in scrap book.
+ *
+ * @param[in,out] lh context for allocations
+ * @param len length of array
+ * @return scrap array
+ */
+static const char **
+make_scrap (
+  struct TALER_EXCHANGE_AmlGetMeasuresHandle *lh,
+  unsigned int len)
+{
+  struct Scrap *s = GNUNET_new (struct Scrap);
+
+  s->ptr = GNUNET_new_array (len,
+                             const char *);
+  GNUNET_CONTAINER_DLL_insert (lh->scrap_head,
+                               lh->scrap_tail,
+                               s);
+  return s->ptr;
+}
+
+
+/**
+ * Free all scrap space.
+ *
+ * @param[in,out] lh scrap context
+ */
+static void
+free_scrap (struct TALER_EXCHANGE_AmlGetMeasuresHandle *lh)
+{
+  struct Scrap *s;
+
+  while (NULL != (s = lh->scrap_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (lh->scrap_head,
+                                 lh->scrap_tail,
+                                 s);
+    GNUNET_free (s->ptr);
+    GNUNET_free (s);
+  }
+}
+
+
+/**
+ * Convert JSON array of strings to string array.
+ *
+ * @param j JSON array to convert
+ * @param[out] a array to initialize
+ * @return true on success
+ */
+static bool
+j_to_a (const json_t *j,
+        const char **a)
+{
+  const json_t *e;
+  size_t idx;
+
+  json_array_foreach ((json_t *) j, idx, e)
+  {
+    if (NULL == (a[idx] = json_string_value (e)))
+      return false;
+  }
+  return true;
+}
+
+
+/**
  * Parse AML programs.
  *
  * @param[in,out] lh context for allocations
@@ -144,6 +242,8 @@ parse_aml_programs (
                                     &jinputs),
       GNUNET_JSON_spec_end ()
     };
+    unsigned int len;
+    const char **ptr;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (obj,
@@ -155,7 +255,34 @@ parse_aml_programs (
       return GNUNET_SYSERR;
     }
     prog->prog_name = name;
-    // FIXME: do something with jcontext + jinputs!
+    prog->contexts_length
+      = (unsigned int) json_array_size (jcontext);
+    prog->inputs_length
+      = (unsigned int) json_array_size (jinputs);
+    len = prog->contexts_length + prog->inputs_length;
+    if ( ((unsigned long long) len) !=
+         (unsigned long long) json_array_size (jcontext)
+         + (unsigned long long) json_array_size (jinputs) )
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    ptr = make_scrap (lh,
+                      len);
+    prog->contexts = ptr;
+    if (! j_to_a (jcontext,
+                  prog->contexts))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    prog->inputs = &ptr[prog->contexts_length];
+    if (! j_to_a (jinputs,
+                  prog->inputs))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -200,6 +327,8 @@ parse_aml_checks (
                                &check->fallback),
       GNUNET_JSON_spec_end ()
     };
+    unsigned int len;
+    const char **ptr;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (obj,
@@ -211,7 +340,35 @@ parse_aml_checks (
       return GNUNET_SYSERR;
     }
     check->check_name = name;
-    // FIXME: do somethign with jrequires / joutputs!
+
+    check->requires_length
+      = (unsigned int) json_array_size (jrequires);
+    check->outputs_length
+      = (unsigned int) json_array_size (joutputs);
+    len = check->requires_length + check->outputs_length;
+    if ( ((unsigned long long) len) !=
+         (unsigned long long) json_array_size (jrequires)
+         + (unsigned long long) json_array_size (joutputs) )
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    ptr = make_scrap (lh,
+                      len);
+    check->requires = ptr;
+    if (! j_to_a (jrequires,
+                  check->requires))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    check->outputs = &ptr[check->requires_length];
+    if (! j_to_a (joutputs,
+                  check->outputs))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -308,6 +465,7 @@ parse_measures_ok (struct TALER_EXCHANGE_AmlGetMeasuresHandle *lh,
                        &lr);
       lh->measures_cb = NULL;
     }
+    free_scrap (lh);
     return ret;
   }
 }
