@@ -32,6 +32,10 @@
  */
 #define MAX_TERMS_CACHING GNUNET_TIME_UNIT_DAYS
 
+/**
+ * HTTP header with the version of the terms of service.
+ */
+#define TALER_TERMS_VERSION "Taler-Terms-Version"
 
 /**
  * Entry in the terms-of-service array.
@@ -71,6 +75,11 @@ struct Terms
   void *compressed_terms;
 
   /**
+   * Etag we use for this response.
+   */
+  char *terms_etag;
+
+  /**
    * Number of bytes in @e terms.
    */
   size_t terms_size;
@@ -108,7 +117,7 @@ struct TALER_MHD_Legal
   /**
    * Etag to use for the terms of service (= version).
    */
-  char *terms_etag;
+  char *terms_version;
 };
 
 
@@ -207,40 +216,10 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
               "Setting '%s' header to '%s'\n",
               MHD_HTTP_HEADER_EXPIRES,
               dat);
-  if (NULL != legal)
+  if (NULL == legal)
   {
-    const char *etag;
-
-    etag = MHD_lookup_connection_value (conn,
-                                        MHD_HEADER_KIND,
-                                        MHD_HTTP_HEADER_IF_NONE_MATCH);
-    if ( (NULL != etag) &&
-         (NULL != legal->terms_etag) &&
-         (0 == strcasecmp (etag,
-                           legal->terms_etag)) )
-    {
-      MHD_RESULT ret;
-
-      resp = MHD_create_response_from_buffer (0,
-                                              NULL,
-                                              MHD_RESPMEM_PERSISTENT);
-      TALER_MHD_add_global_headers (resp);
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (resp,
-                                             MHD_HTTP_HEADER_EXPIRES,
-                                             dat));
-
-      GNUNET_break (MHD_YES ==
-                    MHD_add_response_header (resp,
-                                             MHD_HTTP_HEADER_ETAG,
-                                             legal->terms_etag));
-      ret = MHD_queue_response (conn,
-                                MHD_HTTP_NOT_MODIFIED,
-                                resp);
-      GNUNET_break (MHD_YES == ret);
-      MHD_destroy_response (resp);
-      return ret;
-    }
+    t = &none;
+    goto return_t;
   }
 
   t = NULL;
@@ -303,9 +282,50 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                 (NULL != t) ? t->language : "<none>");
   }
 
+  if (NULL != t)
+  {
+    const char *etag;
+
+    etag = MHD_lookup_connection_value (conn,
+                                        MHD_HEADER_KIND,
+                                        MHD_HTTP_HEADER_IF_NONE_MATCH);
+    if ( (NULL != etag) &&
+         (NULL != t->terms_etag) &&
+         (0 == strcasecmp (etag,
+                           t->terms_etag)) )
+    {
+      MHD_RESULT ret;
+
+      resp = MHD_create_response_from_buffer (0,
+                                              NULL,
+                                              MHD_RESPMEM_PERSISTENT);
+      TALER_MHD_add_global_headers (resp);
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_EXPIRES,
+                                             dat));
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_ETAG,
+                                             t->terms_etag));
+      if (NULL != legal)
+        GNUNET_break (MHD_YES ==
+                      MHD_add_response_header (resp,
+                                               TALER_TERMS_VERSION,
+                                               legal->terms_version));
+      ret = MHD_queue_response (conn,
+                                MHD_HTTP_NOT_MODIFIED,
+                                resp);
+      GNUNET_break (MHD_YES == ret);
+      MHD_destroy_response (resp);
+      return ret;
+    }
+  }
+
   if (NULL == t)
     t = &none; /* 501 if not configured */
 
+return_t:
   /* try to compress the response */
   resp = NULL;
   if ( (MHD_YES ==
@@ -357,11 +377,16 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
                                          "public,max-age=864000"));
-  if (NULL != legal)
+  if (NULL != t->terms_etag)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,
                                            MHD_HTTP_HEADER_ETAG,
-                                           legal->terms_etag));
+                                           t->terms_etag));
+  if (NULL != legal)
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (resp,
+                                           TALER_TERMS_VERSION,
+                                           legal->terms_version));
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -431,15 +456,15 @@ load_terms (struct TALER_MHD_Legal *legal,
                 lang);
     return;
   }
-  if ( (NULL == legal->terms_etag) ||
-       (0 != strncmp (legal->terms_etag,
+  if ( (NULL == legal->terms_version) ||
+       (0 != strncmp (legal->terms_version,
                       name,
                       ext - name - 1)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Filename `%s' does not match Etag `%s' in directory `%s/%s'. Ignoring it.\n",
                 name,
-                legal->terms_etag,
+                legal->terms_version,
                 path,
                 lang);
     return;
@@ -530,13 +555,20 @@ load_terms (struct TALER_MHD_Legal *legal,
       /* insert into global list of terms of service */
       {
         struct Terms *t;
+        struct GNUNET_HashCode hc;
 
+        GNUNET_CRYPTO_hash (buf,
+                            bsize,
+                            &hc);
         t = GNUNET_new (struct Terms);
         t->mime_type = mime;
         t->terms = buf;
         t->language = GNUNET_strdup (lang);
         t->terms_size = bsize;
         t->priority = priority;
+        t->terms_etag
+          = GNUNET_STRINGS_data_to_string_alloc (&hc,
+                                                 sizeof (hc) / 2);
         buf = GNUNET_memdup (t->terms,
                              t->terms_size);
         if (TALER_MHD_body_compress (&buf,
@@ -629,7 +661,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
                                              tagoption,
-                                             &legal->terms_etag))
+                                             &legal->terms_version))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
@@ -646,7 +678,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
                                diroption);
-    GNUNET_free (legal->terms_etag);
+    GNUNET_free (legal->terms_version);
     GNUNET_free (legal);
     return NULL;
   }
@@ -657,7 +689,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                section,
                                diroption,
                                "Could not open directory");
-    GNUNET_free (legal->terms_etag);
+    GNUNET_free (legal->terms_version);
     GNUNET_free (legal);
     GNUNET_free (path);
     return NULL;
@@ -699,8 +731,9 @@ TALER_MHD_legal_free (struct TALER_MHD_Legal *legal)
     GNUNET_CONTAINER_DLL_remove (legal->terms_head,
                                  legal->terms_tail,
                                  t);
+    GNUNET_free (t->terms_etag);
     GNUNET_free (t);
   }
-  GNUNET_free (legal->terms_etag);
+  GNUNET_free (legal->terms_version);
   GNUNET_free (legal);
 }
