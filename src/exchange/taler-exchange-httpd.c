@@ -2394,9 +2394,12 @@ run_fake_client (void)
                    serve_port);
   if (0 == (cld = fork ()))
   {
-    GNUNET_break (0 == close (0));
-    GNUNET_break (0 == dup2 (fd, 0));
-    GNUNET_break (0 == close (fd));
+    if (STDIN_FILENO != fd)
+    {
+      GNUNET_break (0 == close (0));
+      GNUNET_break (0 == dup2 (fd, 0));
+      GNUNET_break (0 == close (fd));
+    }
     if ( (0 != execlp ("nc",
                        "nc",
                        "localhost",
