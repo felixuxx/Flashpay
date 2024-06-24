@@ -300,7 +300,7 @@ TALER_EXCHANGE_get_kyc_statistics (
 
 
 void
-TALER_EXCHANGE_get_kyc_statistics_cancel (
+TALER_EXCHANGE_kyc_get_statistics_cancel (
   struct TALER_EXCHANGE_KycGetStatisticsHandle *lh)
 {
   if (NULL != lh->job)

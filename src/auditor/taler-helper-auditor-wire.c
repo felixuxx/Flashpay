@@ -868,20 +868,15 @@ struct ReasonDetail
   char *payto_uri;
 
   /**
-   * Reasons due to pending KYC requests.
+   * Account properties, possibly NULL.
    */
-  char *kyc_pending;
+  json_t *properties;
 
   /**
-   * AML decision state for the target account.
+   * Account KYC rules.
    */
-  enum TALER_AmlDecisionState status;
+  json_t *jrules;
 
-  /**
-   * Current AML threshold for the account, may be an invalid account if the
-   * default threshold applies.
-   */
-  struct TALER_Amount aml_limit;
 };
 
 /**
@@ -935,7 +930,8 @@ free_report_entry (void *cls,
 {
   struct ReasonDetail *rd = value;
 
-  GNUNET_free (rd->kyc_pending);
+  json_decref (rd->properties);
+  json_decref (rd->jrules);
   GNUNET_free (rd->payto_uri);
   GNUNET_free (rd);
   return GNUNET_YES;
@@ -971,13 +967,14 @@ generate_report (void *cls,
     return free_report_entry (cls,
                               key,
                               value); /* acceptable, amount was tiny */
+
+#if FIXME
   // TODO: maybe split total_amount_lag up by category below?
   TALER_ARL_amount_add (&total_amount_lag,
                         &total_amount_lag,
                         &rd->total_amount);
   if (NULL != rd->kyc_pending)
   {
-#if FIXME_CG
     json_t *rep;
 
     rep = GNUNET_JSON_PACK (
@@ -985,8 +982,11 @@ generate_report (void *cls,
                               &rd->total_amount),
       TALER_JSON_pack_time_abs_human ("deadline",
                                       rd->deadline.abs_time),
-      GNUNET_JSON_pack_string ("kyc_pending",
-                               rd->kyc_pending),
+      GNUNET_JSON_pack_object_incref ("kyc_rules",
+                                      rd->rules),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("properties",
+                                        rd->properties)),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string ("account",
                                  rd->payto_uri)));
@@ -1006,11 +1006,9 @@ generate_report (void *cls,
 
     TALER_ARL_report (report_kyc_lags,
                       rep);
-#endif
   }
   else if (TALER_AML_NORMAL != rd->status)
   {
-#if FIXME_CG
     const char *sstatus = "<undefined>";
     json_t *rep;
 
@@ -1056,11 +1054,9 @@ generate_report (void *cls,
     }*/
     TALER_ARL_report (report_aml_lags,
                       rep);
-#endif
   }
   else
   {
-#if FIXME
     json_t *rep;
 
     rep = GNUNET_JSON_PACK (
@@ -1086,8 +1082,8 @@ generate_report (void *cls,
     }*/
     TALER_ARL_report (report_lags,
                       rep);
-#endif
   }
+#endif
 
   return free_report_entry (cls,
                             key,
@@ -1130,9 +1126,8 @@ report_wire_missing_cb (void *cls,
       TALER_ARL_edb->cls,
       wire_target_h_payto,
       &rd->payto_uri,
-      &rd->kyc_pending,
-      &rd->status,
-      &rd->aml_limit);
+      &rd->properties,
+      &rd->jrules);
     rd->total_amount = *total_amount;
     rd->deadline = deadline;
   }

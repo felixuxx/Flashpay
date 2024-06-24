@@ -5655,7 +5655,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cb_cls);
 
 
-#if 0
   /**
    * Return any applicable justification as to why a wire transfer might have
    * been held.  Used by the auditor to determine if a wire transfer is
@@ -5664,9 +5663,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param wire_target_h_payto effected target account
    * @param[out] payto_uri target account URI, set to NULL if unknown
-   * @param[out] kyc_pending set to string describing missing KYC data
-   * @param[out] status set to AML status
-   * @param[out] aml_limit set to AML limit, or invalid amount for none
+   * @param[out] jproperties account properties
+   * @param[out] jrules applicable KYC rules
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -5674,10 +5672,9 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_PaytoHashP *wire_target_h_payto,
     char **payto_uri,
-    char **kyc_pending,
-    enum TALER_AmlDecisionState *status,
-    struct TALER_Amount *aml_limit);
-#endif
+    json_t **jproperties,
+    json_t **jrules);
+
 
   /**
    * Check the last date an auditor was modified.
