@@ -1892,8 +1892,10 @@ handle_mhd_request (void *cls,
     }
 
     /* Check if upload is in bounds */
-    if (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_POST))
+    if ( (0 == strcasecmp (method,
+                           MHD_HTTP_METHOD_POST)) ||
+         (0 == strcasecmp (method,
+                           MHD_HTTP_METHOD_PATCH)) )
     {
       TALER_MHD_check_content_length (connection,
                                       TALER_MHD_REQUEST_BUFFER_MAX);
