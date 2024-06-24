@@ -35,6 +35,17 @@
  */
 struct UploadContext
 {
+
+  /**
+   * Access token for the KYC data of the account.
+   */
+  struct TALER_AccountAccessTokenP access_token;
+
+  /**
+   * Index of the measure this upload is for.
+   */
+  unsigned long long measure_index;
+
   /**
    * Our post processor.
    */
@@ -252,8 +263,13 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
 {
   struct UploadContext *uc = rc->rh_ctx;
 
+  // FIXME: decode ID to access token + measure index!
+
   if (NULL == uc)
   {
+    const char *slash;
+    char dummy;
+
     uc = GNUNET_new (struct UploadContext);
     uc->pp = MHD_create_post_processor (rc->connection,
                                         UPLOAD_BUFFER_SIZE,
@@ -273,6 +289,42 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     GNUNET_assert (NULL != uc->result);
     rc->rh_ctx = uc;
     rc->rh_cleaner = &upload_cleaner;
+
+    slash = strchr (id, '/');
+    if (NULL == slash)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+        rc->url);
+    }
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (id,
+                                       slash - id,
+                                       &uc->access_token,
+                                       sizeof (uc->access_token)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "Access token in ID is malformed");
+    }
+    if (1 != sscanf (slash + 1,
+                     "%llu%c",
+                     &uc->measure_index,
+                     &dummy))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "Measure index in ID is malformed");
+    }
     return MHD_YES;
   }
   if (0 != *upload_data_size)
@@ -286,7 +338,11 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     return mres;
   }
   finish_key (uc);
-  // FIXME: handle collected upload data!
+  // FIXME: convert access token + measure index
+  // somehow into h_payto and process_row +
+  // figure out where we store the measure index!
+  // (is that the process_row???)
+  // => review spec!
   {
     uint64_t process_row;
     struct TALER_PaytoHashP h_payto;
@@ -329,7 +385,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     }
     if (0 == qs)
     {
-      // FIXME: check for idempotency?
+      // FIXME: should check for idempotency!
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_CONFLICT,
