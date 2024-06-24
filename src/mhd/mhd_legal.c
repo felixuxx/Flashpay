@@ -202,6 +202,9 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   char dat[128];
   char *langs;
 
+  t = NULL;
+  langs = NULL;
+
   a = GNUNET_TIME_relative_to_absolute (MAX_TERMS_CACHING);
   m = GNUNET_TIME_absolute_to_timestamp (a);
   /* Round up to next full day to ensure the expiration
@@ -222,8 +225,6 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
     goto return_t;
   }
 
-  t = NULL;
-  langs = NULL;
   if (NULL != legal)
   {
     const char *mime;
