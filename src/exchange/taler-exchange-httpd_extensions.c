@@ -326,7 +326,7 @@ TEH_extensions_post_handler (
                             struct GNUNET_HashCode);
     policy_details = GNUNET_new_array (len,
                                        struct TALER_PolicyDetails);
-
+    ret = GNUNET_OK;
     json_array_foreach (jhash_codes, idx, val)
     {
       struct GNUNET_JSON_Specification spec[] = {
