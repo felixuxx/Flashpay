@@ -265,11 +265,10 @@ check_request_idempotent (const struct BatchWithdrawContext *wc,
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        *mret = TALER_MHD_reply_with_error (rc->connection,
-                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                            "get_withdraw_info");
+      *mret = TALER_MHD_reply_with_error (rc->connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                          "get_withdraw_info");
       return true; /* well, kind-of */
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -689,7 +688,6 @@ parse_planchets (const struct TEH_RequestContext *rc,
                  const json_t *planchets)
 {
   struct TEH_KeyStateHandle *ksh;
-  MHD_RESULT mret;
 
   for (unsigned int i = 0; i<wc->planchets_length; i++)
   {
@@ -735,6 +733,8 @@ parse_planchets (const struct TEH_RequestContext *rc,
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
+    MHD_RESULT mret;
+
     if (! check_request_idempotent (wc,
                                     &mret))
     {
@@ -758,6 +758,8 @@ parse_planchets (const struct TEH_RequestContext *rc,
 
     if (NULL == dk)
     {
+      MHD_RESULT mret;
+
       if (! check_request_idempotent (wc,
                                       &mret))
       {
@@ -769,6 +771,8 @@ parse_planchets (const struct TEH_RequestContext *rc,
     }
     if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
     {
+      MHD_RESULT mret;
+
       /* This denomination is past the expiration time for withdraws */
       if (! check_request_idempotent (wc,
                                       &mret))
@@ -793,6 +797,8 @@ parse_planchets (const struct TEH_RequestContext *rc,
     }
     if (dk->recoup_possible)
     {
+      MHD_RESULT mret;
+
       /* This denomination has been revoked */
       if (! check_request_idempotent (wc,
                                       &mret))

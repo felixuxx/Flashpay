@@ -2371,9 +2371,17 @@ run_fake_client (void)
   pid_t cld;
   char ports[6];
   int fd;
+  bool use_stdin;
 
-  if (0 == strcmp (input_filename,
-                   "-"))
+  /* Duping to STDIN and fork() mess up gcc's analysis
+     badly, disable diagnostics. */
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-use-without-check"
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-double-close"
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-use-after-close"
+  use_stdin = (0 == strcmp (input_filename,
+                            "-"));
+  if (use_stdin)
     fd = STDIN_FILENO;
   else
     fd = open (input_filename,
@@ -2394,10 +2402,12 @@ run_fake_client (void)
                    serve_port);
   if (0 == (cld = fork ()))
   {
-    if (STDIN_FILENO != fd)
+    if (! use_stdin)
     {
-      GNUNET_break (0 == close (0));
-      GNUNET_break (0 == dup2 (fd, 0));
+      GNUNET_break (0 == close (STDIN_FILENO));
+      GNUNET_break (STDIN_FILENO ==
+                    dup2 (fd,
+                          STDIN_FILENO));
       GNUNET_break (0 == close (fd));
     }
     if ( (0 != execlp ("nc",
@@ -2420,10 +2430,13 @@ run_fake_client (void)
     _exit (1);
   }
   /* parent process */
-  if (0 != strcmp (input_filename,
-                   "-"))
+  if (! use_stdin)
     GNUNET_break (0 == close (fd));
   return cld;
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 }
 
 
