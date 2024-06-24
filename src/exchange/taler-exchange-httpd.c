@@ -48,6 +48,7 @@
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_kyc-check.h"
 #include "taler-exchange-httpd_kyc-proof.h"
+#include "taler-exchange-httpd_kyc-upload.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_kyc-webhook.h"
 #include "taler-exchange-httpd_link.h"
@@ -2058,6 +2059,34 @@ handle_mhd_request (void *cls,
       return ret;
     }
   }
+  if (0 == strncmp (url,
+                    "/kyc-upload/",
+                    strlen ("/kyc-upload/")))
+  {
+    if (0 != strcasecmp (method,
+                         MHD_HTTP_METHOD_POST))
+    {
+      MHD_RESULT ret;
+      struct MHD_Response *reply;
+
+      reply = TALER_MHD_make_error (TALER_EC_GENERIC_METHOD_INVALID,
+                                    method);
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (reply,
+                                             MHD_HTTP_HEADER_ALLOW,
+                                             MHD_HTTP_METHOD_POST));
+      ret = MHD_queue_response (connection,
+                                MHD_HTTP_METHOD_NOT_ALLOWED,
+                                reply);
+      MHD_destroy_response (reply);
+      return ret;
+    }
+    return TEH_handler_kyc_upload (rc,
+                                   url + strlen ("/kyc-upload/"),
+                                   upload_data_size,
+                                   upload_data);
+  }
+
 
   /* No handler matches, generate not found */
   {
