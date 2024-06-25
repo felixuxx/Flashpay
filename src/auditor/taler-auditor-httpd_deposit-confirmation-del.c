@@ -17,7 +17,7 @@
 /**
  * @file taler-auditor-httpd_deposit-confirmation-delete.c
  * @brief Handle /deposit-confirmation delete request;
- * Remove the specifed entry from the database
+ * Remove the specified entry from the database
  * @author Cedric Zwahlen
  */
 

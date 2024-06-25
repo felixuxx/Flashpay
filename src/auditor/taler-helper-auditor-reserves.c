@@ -387,7 +387,8 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
                                           &rs->prev_balance.reserve_loss));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (rs->total_in.currency,
-                                          &rs->prev_balance.withdraw_fee_balance));
+                                          &rs->prev_balance.withdraw_fee_balance
+                                          ));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (rs->total_in.currency,
                                           &rs->prev_balance.close_fee_balance));
@@ -399,7 +400,8 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
                                           &rs->prev_balance.open_fee_balance));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (rs->total_in.currency,
-                                          &rs->prev_balance.history_fee_balance));
+                                          &rs->prev_balance.history_fee_balance)
+                   );
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Creating fresh reserve `%s'\n",
                 TALER_B2S (&rs->reserve_pub));
@@ -478,7 +480,8 @@ setup_reserve (struct ReserveContext *rc,
                                         &rs->curr_balance.reserve_loss));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &rs->curr_balance.withdraw_fee_balance));
+                                        &rs->curr_balance.withdraw_fee_balance))
+  ;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &rs->curr_balance.close_fee_balance));
@@ -659,7 +662,8 @@ handle_reserve_out (void *cls,
                         GNUNET_JSON_pack_uint64 ("row",
                                                  rowid),
                         TALER_JSON_pack_time_abs_human ("execution_date",
-                                                        execution_date.abs_time),
+                                                        execution_date.abs_time)
+                        ,
                         GNUNET_JSON_pack_data_auto ("reserve_pub",
                                                     reserve_pub),
                         GNUNET_JSON_pack_data_auto ("denompub_h",
@@ -1679,7 +1683,7 @@ verify_reserve_balance (void *cls,
     {
       /* We failed to determine the closing fee, complain! */
       // TODO: fix correctly and not just comment out
-      // nbalance get's set to invalid and there is never a check happening when working further with nbalance,
+      // nbalance is set to invalid and there is never a check happening when working further with nbalance,
       // why so and why adding those balances here? or what's the usecase of setting nbalance to zero?
       /*TALER_ARL_amount_add (&total_balance_reserve_not_closed,
                             &total_balance_reserve_not_closed,
@@ -1756,7 +1760,8 @@ verify_reserve_balance (void *cls,
                                               &TALER_ARL_USE_AB (
                                                 reserves_reserve_total_balance),                   /* what we had */
                                               &rs->total_out,   /* what we needed */
-                                              0 /* specific profit/loss does not apply to the total summary */);
+                                              0 /* specific profit/loss does not apply to the total summary */
+                                              );
       /* We unexpectedly went negative, so a sane value to continue from
          would be zero. */
       GNUNET_assert (GNUNET_OK ==
