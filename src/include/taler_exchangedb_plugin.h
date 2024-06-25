@@ -7005,11 +7005,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param process_row KYC process row to update
    * @param h_payto account for which the attribute data is stored
+   * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
+   * @param collection_time when was the data collected
    * @param provider_name name of the provider that collected the data
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
-   * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
-   * @param collection_time when was the data collected
    * @param expiration_time when does the data expire
    * @param enc_attributes_size number of bytes in @a enc_attributes
    * @param enc_attributes encrypted attribute data
