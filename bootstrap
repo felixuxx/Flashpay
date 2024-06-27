@@ -9,7 +9,9 @@ if ! git --version >/dev/null; then
 fi
 
 echo "$0: Updating submodules"
-echo | git submodule update --init --force --remote
+# Caution: We do NOT want to fetch the latest version with --remote,
+# but instead always the one that's recorded in the repository.
+echo | git submodule update --init --force
 
 # Generate based on pinned submodule
 ./contrib/gana-generate.sh
