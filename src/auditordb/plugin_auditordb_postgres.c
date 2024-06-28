@@ -687,10 +687,10 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_del_denomination_balance;
   plugin->get_denomination_balance
     = &TAH_PG_get_denomination_balance;
-/*
+
   plugin->insert_historic_denom_revenue
     = &TAH_PG_insert_historic_denom_revenue;
-    */
+
   plugin->select_historic_denom_revenue
     = &TAH_PG_select_historic_denom_revenue;
 

@@ -160,6 +160,7 @@ pg_insert_purses.c pg_insert_purses.h \
 pg_update_purses.c pg_update_purses.h \
 pg_get_historic_denomination_revenue.c pg_get_historic_denomination_revenue.h \
 pg_del_historic_denomination_revenue.c pg_del_historic_denomination_revenue.h \
+pg_insert_historic_denom_revenue.c pg_insert_historic_denom_revenue.h \
 pg_insert_historic_denomination_revenue.c pg_insert_historic_denomination_revenue.h \
 pg_update_historic_denomination_revenue.c pg_update_historic_denomination_revenue.h \
 pg_get_denomination_pending.c pg_get_denomination_pending.h \

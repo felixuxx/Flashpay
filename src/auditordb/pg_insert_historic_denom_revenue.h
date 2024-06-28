@@ -18,7 +18,6 @@
  * @brief implementation of the insert_historic_denom_revenue function
  * @author Christian Grothoff
  */
-/*
 #ifndef PG_INSERT_HISTORIC_DENOM_REVENUE_H
 #define PG_INSERT_HISTORIC_DENOM_REVENUE_H
 
@@ -26,7 +25,7 @@
 #include "taler_json_lib.h"
 #include "taler_auditordb_plugin.h"
 
-*/
+
 /**
  * Insert information about an exchange's historic
  * revenue about a denomination key.
@@ -40,7 +39,6 @@
  * @param loss_balance total losses suffered by the exchange at the time
  * @return transaction status code
  */
-/*
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_historic_denom_revenue (
   void *cls,
@@ -50,4 +48,3 @@ TAH_PG_insert_historic_denom_revenue (
   const struct TALER_Amount *loss_balance);
 
 #endif
-*/
