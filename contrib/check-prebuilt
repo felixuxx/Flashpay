@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+
+contrib = os.path.abspath(os.path.dirname(__file__))
+
+spa_ver_lock = open(contrib + "/" + "aml-spa.lock").read().strip()
+spa_ver_prebuilt = open(contrib + "/" + "wallet-core/aml-backoffice/version.txt").read().strip()
+
+if spa_ver_lock != spa_ver_prebuilt:
+    print("SPA version mismatch")
+    print("lockfile has version", spa_ver_lock)
+    print("prebuilt has version", spa_ver_prebuilt)
+    sys.exit(1)

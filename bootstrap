@@ -13,6 +13,8 @@ echo "$0: Updating submodules"
 # but instead always the one that's recorded in the repository.
 echo | git submodule update --init --force
 
+./contrib/check-prebuilt
+
 # Generate based on pinned submodule
 ./contrib/gana-generate.sh
 
