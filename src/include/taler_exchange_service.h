@@ -4301,14 +4301,9 @@ struct TALER_EXCHANGE_AccountKycStatus
 struct TALER_EXCHANGE_KycStatus
 {
   /**
-   * HTTP status code returned by the exchange.
+   * HTTP response data
    */
-  unsigned int http_status;
-
-  /**
-   * Taler error code, if any.
-   */
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on @e http_status.
@@ -4565,14 +4560,9 @@ struct TALER_EXCHANGE_KycStartHandle;
 struct TALER_EXCHANGE_KycStartResponse
 {
   /**
-   * HTTP status code returned by the exchange.
+   * HTTP response data
    */
-  unsigned int http_status;
-
-  /**
-   * Taler error code, if any.
-   */
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on @e http_status.
@@ -4610,9 +4600,8 @@ typedef void
 
 
 /**
- * Run interaction with exchange to check KYC
- * information for a merchant or wallet account
- * identified via a @a token.
+ * Run interaction with exchange to check KYC information for a merchant or
+ * wallet account identified via a @a id.
  *
  * @param ctx CURL context
  * @param url exchange base URL
@@ -4645,9 +4634,9 @@ TALER_EXCHANGE_kyc_start_cancel (struct TALER_EXCHANGE_KycStartHandle *ksh);
 struct TALER_EXCHANGE_KycProofResponse
 {
   /**
-   * HTTP status code returned by the exchange.
+   * HTTP response data
    */
-  unsigned int http_status;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   union
   {
@@ -4733,14 +4722,9 @@ struct TALER_EXCHANGE_WalletKycResponse
 {
 
   /**
-   * HTTP status code returned by the exchange.
+   * HTTP response data
    */
-  unsigned int http_status;
-
-  /**
-   * Taler error code, if any.
-   */
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Variants depending on @e http_status.

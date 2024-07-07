@@ -40,6 +40,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_get_kyc_statistics.c \
   exchange_api_kyc_check.c \
   exchange_api_kyc_info.c \
+  exchange_api_kyc_start.c \
   exchange_api_kyc_proof.c \
   exchange_api_kyc_wallet.c \
   exchange_api_link.c \

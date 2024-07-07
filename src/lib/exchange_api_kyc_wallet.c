@@ -81,27 +81,28 @@ handle_kyc_wallet_finished (void *cls,
   struct TALER_EXCHANGE_KycWalletHandle *kwh = cls;
   const json_t *j = response;
   struct TALER_EXCHANGE_WalletKycResponse ks = {
-    .http_status = (unsigned int) response_code
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   kwh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_BAD_REQUEST:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     {
@@ -121,25 +122,25 @@ handle_kyc_wallet_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        ks.http_status = 0;
-        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        ks.hr.http_status = 0;
+        ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
       break;
     }
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange /kyc-wallet\n",
                 (unsigned int) response_code,
-                (int) ks.ec);
+                (int) ks.hr.ec);
     break;
   }
   kwh->cb (kwh->cb_cls,

@@ -106,14 +106,14 @@ wallet_kyc_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = kwg->is;
 
   kwg->kwh = NULL;
-  if (kwg->expected_response_code != wkr->http_status)
+  if (kwg->expected_response_code != wkr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     wkr->http_status,
+                                     wkr->hr.http_status,
                                      kwg->expected_response_code);
     return;
   }
-  switch (wkr->http_status)
+  switch (wkr->hr.http_status)
   {
   case MHD_HTTP_NO_CONTENT:
     break;

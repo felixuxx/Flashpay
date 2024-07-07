@@ -75,14 +75,14 @@ check_kyc_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = kcg->is;
 
   kcg->kwh = NULL;
-  if (kcg->expected_response_code != ks->http_status)
+  if (kcg->expected_response_code != ks->hr.http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     ks->http_status,
+                                     ks->hr.http_status,
                                      kcg->expected_response_code);
     return;
   }
-  switch (ks->http_status)
+  switch (ks->hr.http_status)
   {
   case MHD_HTTP_OK:
     kcg->access_token = ks->details.ok.access_token;

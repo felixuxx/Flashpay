@@ -85,14 +85,14 @@ proof_kyc_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = kcg->is;
 
   kcg->kph = NULL;
-  if (kcg->expected_response_code != kpr->http_status)
+  if (kcg->expected_response_code != kpr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     kpr->http_status,
+                                     kpr->hr.http_status,
                                      kcg->expected_response_code);
     return;
   }
-  switch (kpr->http_status)
+  switch (kpr->hr.http_status)
   {
   case MHD_HTTP_SEE_OTHER:
     kcg->redirect_url = GNUNET_strdup (kpr->details.found.redirect_url);
@@ -105,7 +105,7 @@ proof_kyc_cb (void *cls,
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u to /kyc-proof\n",
-                kpr->http_status);
+                kpr->hr.http_status);
     break;
   }
   TALER_TESTING_interpreter_next (kcg->is);

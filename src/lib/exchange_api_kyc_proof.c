@@ -81,7 +81,7 @@ handle_kyc_proof_finished (void *cls,
 {
   struct TALER_EXCHANGE_KycProofHandle *kph = cls;
   struct TALER_EXCHANGE_KycProofResponse kpr = {
-    .http_status = (unsigned int) response_code
+    .hr.http_status = (unsigned int) response_code
   };
 
   (void) body;

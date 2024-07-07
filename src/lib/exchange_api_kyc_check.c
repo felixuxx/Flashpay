@@ -149,14 +149,15 @@ handle_kyc_check_finished (void *cls,
   struct TALER_EXCHANGE_KycCheckHandle *kch = cls;
   const json_t *j = response;
   struct TALER_EXCHANGE_KycStatus ks = {
-    .http_status = (unsigned int) response_code
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   kch->job = NULL;
   switch (response_code)
   {
   case 0:
-    ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -167,8 +168,8 @@ handle_kyc_check_finished (void *cls,
                                 &ks.details.ok))
       {
         GNUNET_break_op (0);
-        ks.http_status = 0;
-        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        ks.hr.http_status = 0;
+        ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
       TALER_EXCHANGE_kyc_check_cancel (kch);
@@ -183,8 +184,8 @@ handle_kyc_check_finished (void *cls,
                                 &ks.details.accepted))
       {
         GNUNET_break_op (0);
-        ks.http_status = 0;
-        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        ks.hr.http_status = 0;
+        ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
       TALER_EXCHANGE_kyc_check_cancel (kch);
@@ -193,29 +194,29 @@ handle_kyc_check_finished (void *cls,
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_BAD_REQUEST:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    ks.ec = TALER_JSON_get_error_code (j);
+    ks.hr.ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange kyc_check\n",
                 (unsigned int) response_code,
-                (int) ks.ec);
+                (int) ks.hr.ec);
     break;
   }
   kch->cb (kch->cb_cls,
