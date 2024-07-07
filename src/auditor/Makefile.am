@@ -316,7 +316,6 @@ check_SCRIPTS = \
   test-revocation.sh \
   test-sync.sh
 
-.NOTPARALLEL:
 # TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \

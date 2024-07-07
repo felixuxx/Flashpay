@@ -1,0 +1,52 @@
+/*
+   This file is part of TALER
+   Copyright (C) 2024 Taler Systems SA
+
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
+
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
+/**
+ * @file exchangedb/pg_lookup_pending_legitimization.h
+ * @brief implementation of the lookup_pending_legitimization function for Postgres
+ * @author Christian Grothoff
+ */
+#ifndef PG_LOOKUP_PENDING_LEGITIMIZATION_H
+#define PG_LOOKUP_PENDING_LEGITIMIZATION_H
+
+#include "taler_util.h"
+#include "taler_json_lib.h"
+#include "taler_exchangedb_plugin.h"
+
+
+/**
+ * Lookup measure data for a legitimization process.
+ *
+ * @param cls closure
+ * @param legitimization_measure_serial_id
+ *    row in legitimization_measures table to access
+ * @param access_token
+ *    token for access control that must match
+ * @param[out] h_payto set to the the hash of the
+ *    payto URI of the account undergoing legitimization
+ * @param[out] jmeasures set to the legitimization
+ *    measures that were put on the account
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_lookup_pending_legitimization (
+  void *cls,
+  uint64_t legitimization_measure_serial_id,
+  const struct TALER_AccountAccessTokenP *access_token,
+  struct TALER_PaytoHashP *h_payto,
+  json_t **jmeasures);
+
+
+#endif

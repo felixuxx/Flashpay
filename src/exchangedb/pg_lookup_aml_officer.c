@@ -64,8 +64,9 @@ TEH_PG_lookup_aml_officer (
            ",last_change"
            " FROM aml_staff"
            " WHERE decider_pub=$1;");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "lookup_aml_officer",
-                                                   params,
-                                                   rs);
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "lookup_aml_officer",
+    params,
+    rs);
 }

@@ -624,11 +624,12 @@ TEH_handler_kyc_start (
         GNUNET_JSON_pack_array_steal ("limits",
                                       kyp->limits)));
   }
-
+  l
   /* KYC not required */
   GNUNET_log (GNUNET_ERROR_TYPE_START,
               "KYC not required %llu\n",
               (unsigned long long) kyp->requirement_row);
+
   return TALER_MHD_reply_static (
     rc->connection,
     MHD_HTTP_NO_CONTENT,

@@ -31,6 +31,11 @@
  *
  * @param cls closure
  * @param h_payto account that must be KYC'ed
+ * @param measure_index which of the measures in
+ *    jmeasures does this KYC process relate to
+ * @param legitimization_measure_serial_id which
+ *    legitimization measure set does this KYC process
+ *    relate to (uniquely identifies jmeasures)
  * @param provider_name provider that must be checked
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
@@ -41,6 +46,8 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
+  uint32_t measure_index,
+  uint64_t legitimization_measure_serial_id,
   const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id,

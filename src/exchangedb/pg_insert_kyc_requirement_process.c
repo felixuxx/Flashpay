@@ -30,6 +30,8 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
+  uint32_t measure_index,
+  uint64_t legitimization_measure_serial_id,
   const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id,
@@ -48,6 +50,8 @@ TEH_PG_insert_kyc_requirement_process (
     (NULL != provider_legitimization_id)
     ? GNUNET_PQ_query_param_string (provider_legitimization_id)
     : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_uint64 (&legitimization_measure_serial_id),
+    GNUNET_PQ_query_param_uint32 (&measure_index),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -64,8 +68,10 @@ TEH_PG_insert_kyc_requirement_process (
            "  ,provider_name"
            "  ,provider_user_id"
            "  ,provider_legitimization_id"
+           "  ,legitimization_measure_serial_id"
+           "  ,measure_index"
            "  ) VALUES "
-           "  ($1, $2, $3, $4, $5)"
+           "  ($1, $2, $3, $4, $5, $6, $7)"
            " RETURNING legitimization_process_serial_id");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

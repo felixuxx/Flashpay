@@ -47,6 +47,12 @@ struct UploadContext
   unsigned long long measure_index;
 
   /**
+   * Index in the legitimization measures table this ID
+   * refers to.
+   */
+  unsigned long long legitimization_measure_serial_id;
+
+  /**
    * Our post processor.
    */
   struct MHD_PostProcessor *pp;
@@ -263,8 +269,6 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
 {
   struct UploadContext *uc = rc->rh_ctx;
 
-  // FIXME: decode ID to access token + measure index!
-
   if (NULL == uc)
   {
     const char *slash;
@@ -313,9 +317,10 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         "Access token in ID is malformed");
     }
-    if (1 != sscanf (slash + 1,
-                     "%llu%c",
+    if (2 != sscanf (slash + 1,
+                     "%llu/%llu%c",
                      &uc->measure_index,
+                     &uc->legitimization_measure_serial_id,
                      &dummy))
     {
       GNUNET_break_op (0);
@@ -323,7 +328,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
         rc->connection,
         MHD_HTTP_NOT_FOUND,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        "Measure index in ID is malformed");
+        "ID is malformed");
     }
     return MHD_YES;
   }
@@ -338,61 +343,123 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     return mres;
   }
   finish_key (uc);
-  // FIXME: convert access token + measure index
-  // somehow into h_payto and process_row +
-  // figure out where we store the measure index!
-  // (is that the process_row???)
-  // => review spec!
+
   {
-    uint64_t process_row;
+    uint64_t legi_process_row;
     struct TALER_PaytoHashP h_payto;
-    struct GNUNET_TIME_Timestamp now;
-    struct GNUNET_TIME_Absolute expiration_time;
-    void *enc_attributes;
-    size_t enc_attributes_size;
     enum GNUNET_DB_QueryStatus qs;
+    json_t *jmeasures;
 
-    now = GNUNET_TIME_timestamp_get ();
-
-    TALER_CRYPTO_kyc_attributes_encrypt (
-      &TEH_attribute_key,
-      uc->result,
-      &enc_attributes,
-      &enc_attributes_size);
-    qs = TEH_plugin->insert_kyc_attributes (
+    qs = TEH_plugin->lookup_pending_legitimization (
       TEH_plugin->cls,
-      process_row,
+      uc->legitimization_measure_serial_id,
+      &uc->access_token,
       &h_payto,
-      0 /* birthday unknown */,
-      now,
-      NULL /* provider name */,
-      NULL /* provider account */,
-      NULL /* provider legi ID */,
-      expiration_time,
-      enc_attributes_size,
-      enc_attributes,
-      false /* require aml??? Pass do not know? */
-      );
-    GNUNET_free (enc_attributes);
+      &jmeasures);
     if (qs < 0)
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
-        TALER_EC_GENERIC_DB_STORE_FAILED,
-        "insert_kyc_attributes");
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "lookup_pending_legitimization");
     }
-    if (0 == qs)
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       // FIXME: should check for idempotency!
+
+      /* Note: we do not distinguish between row ID unknown and
+         access token wrong here; this is on purpose to
+         minimize information leakage (but we could distinguish
+         the two in the future to help diagnose issues) */
+      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
-        MHD_HTTP_CONFLICT,
-        TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
-        "insert_kyc_attributes");
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_KYC_CHECK_REQUEST_UNKNOWN,
+        NULL);
+    }
+    // FIXME: Do sanity checks on jmeasures vs. POSTed data:
+    //
+    // assert ! jmeasures.verboten
+    // MeasureInformation mi = jmeasures.measures[measure_index]
+    // Have: mi.{check_name,prog_name,context}
+    // assert kyc_checks[check_name].type == form
+    // assert input data matches form requirements...
+
+    json_decref (jmeasures);
+
+    /* Setup KYC process (which we will then immediately 'finish') */
+    qs = TEH_plugin->insert_kyc_requirement_process (
+      TEH_plugin->cls,
+      &h_payto,
+      uc->measure_index,
+      uc->legitimization_measure_serial_id,
+      "FORM",   // FIXME: correct??? or allow NULL?
+      NULL,     /* provider account ID */
+      NULL,     /* provider legi ID */
+      &legi_process_row);
+    if (qs <= 0)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "insert_kyc_requirement_process");
+    }
+
+    /* Now finally encrypt and store attribute data */
+    {
+      struct GNUNET_TIME_Timestamp now;
+      struct GNUNET_TIME_Absolute expiration_time;
+      void *enc_attributes;
+      size_t enc_attributes_size;
+
+      now = GNUNET_TIME_timestamp_get ();
+
+      TALER_CRYPTO_kyc_attributes_encrypt (
+        &TEH_attribute_key,
+        uc->result,
+        &enc_attributes,
+        &enc_attributes_size);
+      qs = TEH_plugin->insert_kyc_attributes (
+        TEH_plugin->cls,
+        legi_process_row,
+        &h_payto,
+        0 /* birthday unknown */,
+        now,
+        NULL /* provider name */,
+        NULL /* provider account */,
+        NULL /* provider legi ID */,
+        expiration_time,
+        enc_attributes_size,
+        enc_attributes,
+        false /* require aml??? Pass do not know? */
+        );
+      GNUNET_free (enc_attributes);
+      if (qs < 0)
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_STORE_FAILED,
+          "insert_kyc_attributes");
+      }
+      if (0 == qs)
+      {
+        // FIXME: should check for idempotency!
+        return TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_CONFLICT,
+          TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
+          "insert_kyc_attributes");
+      }
     }
   }
+
   return TALER_MHD_reply_static (
     rc->connection,
     MHD_HTTP_NO_CONTENT,
