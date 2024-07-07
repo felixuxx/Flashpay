@@ -1798,6 +1798,12 @@ handle_mhd_request (void *cls,
       .nargs_is_upper_bound = true
     },
     {
+      .url = "kyc-info",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_kyc_info,
+      .nargs = 1
+    },
+    {
       .url = "kyc-webhook",
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &TEH_handler_kyc_webhook_post,
