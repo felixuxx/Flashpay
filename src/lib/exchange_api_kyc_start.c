@@ -93,7 +93,25 @@ handle_kyc_start_finished (void *cls,
     adr.hr.hint = "server offline?";
     break;
   case MHD_HTTP_OK:
-    // FIXME!
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_string (
+          "redirect_url",
+          &adr.details.ok.redirect_url),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        adr.hr.http_status = 0;
+        adr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+    }
     break;
   case MHD_HTTP_NOT_FOUND:
     break;
