@@ -4387,6 +4387,11 @@ struct TALER_EXCHANGE_KycInfoHandle;
 struct TALER_EXCHANGE_RequirementInformation
 {
   /**
+   * Name of the requirement.
+   */
+  const char *name;
+
+  /**
    * Which form should be run. Special values are
    * "INFO" (only show information, no form) and
    * "LINK" (only link to "/kyc-start/$ID").
@@ -4447,14 +4452,9 @@ struct TALER_EXCHANGE_VoluntaryCheckInformation
 struct TALER_EXCHANGE_KycProcessClientInformation
 {
   /**
-   * HTTP status code returned by the exchange.
+   * HTTP response data
    */
-  unsigned int http_status;
-
-  /**
-   * Taler error code, if any.
-   */
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on @e http_status.
@@ -4537,7 +4537,7 @@ TALER_EXCHANGE_kyc_info (
   const struct TALER_AccountAccessTokenP *token,
   const char *if_none_match,
   struct GNUNET_TIME_Relative timeout,
-  TALER_EXCHANGE_KycStatusCallback cb,
+  TALER_EXCHANGE_KycInfoCallback cb,
   void *cb_cls);
 
 

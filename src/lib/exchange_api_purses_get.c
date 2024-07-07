@@ -238,23 +238,21 @@ TALER_EXCHANGE_purse_get (
                      sizeof (timeout_str),
                      "%u",
                      tms);
-    if (0 == tms)
-      GNUNET_snprintf (arg_str,
-                       sizeof (arg_str),
-                       "purses/%s/%s",
-                       cpub_str,
-                       wait_for_merge ? "merge" : "deposit");
-    else
-      GNUNET_snprintf (arg_str,
-                       sizeof (arg_str),
-                       "purses/%s/%s?timeout_ms=%s",
-                       cpub_str,
-                       wait_for_merge ? "merge" : "deposit",
-                       timeout_str);
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "purses/%s/%s",
+                     cpub_str,
+                     wait_for_merge
+                     ? "merge"
+                     : "deposit");
+    pgh->url = TALER_url_join (url,
+                               arg_str,
+                               "timeout_ms",
+                               (0 == tms)
+                               ? NULL
+                               : timeout_str,
+                               NULL);
   }
-  pgh->url = TALER_url_join (url,
-                             arg_str,
-                             NULL);
   if (NULL == pgh->url)
   {
     GNUNET_free (pgh);
