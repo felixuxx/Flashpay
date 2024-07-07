@@ -4545,9 +4545,6 @@ void
 TALER_EXCHANGE_kyc_info_cancel (struct TALER_EXCHANGE_KycInfoHandle *kih);
 
 
-// FIXME: /kyc-upload API?
-
-
 /**
  * Handle for an operation to start the KYC process.
  */

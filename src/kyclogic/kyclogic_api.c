@@ -2326,4 +2326,17 @@ TALER_KYCLOGIC_get_measure_configuration (
 }
 
 
+enum TALER_ErrorCode
+TALER_KYCLOGIC_select_measure (
+  const json_t *jmeasures,
+  size_t measure_index,
+  const char **check_name,
+  const char **prog_name,
+  const json_t **context)
+{
+  // parse jmeasures
+  // check measure_index is valid (in bounds and of right type)
+}
+
+
 /* end of kyclogic_api.c */

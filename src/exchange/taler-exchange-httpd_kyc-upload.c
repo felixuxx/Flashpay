@@ -44,7 +44,7 @@ struct UploadContext
   /**
    * Index of the measure this upload is for.
    */
-  unsigned long long measure_index;
+  unsigned int measure_index;
 
   /**
    * Index in the legitimization measures table this ID
@@ -294,7 +294,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     rc->rh_ctx = uc;
     rc->rh_cleaner = &upload_cleaner;
 
-    slash = strchr (id, '/');
+    slash = strchr (id, '-');
     if (NULL == slash)
     {
       GNUNET_break_op (0);
@@ -313,12 +313,12 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
-        MHD_HTTP_NOT_FOUND,
+        MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         "Access token in ID is malformed");
     }
     if (2 != sscanf (slash + 1,
-                     "%llu/%llu%c",
+                     "%u-%llu%c",
                      &uc->measure_index,
                      &uc->legitimization_measure_serial_id,
                      &dummy))
@@ -326,7 +326,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
-        MHD_HTTP_NOT_FOUND,
+        MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         "ID is malformed");
     }

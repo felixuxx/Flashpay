@@ -417,6 +417,27 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules);
 
 
 /**
+ * Parse the given @a jmeasures and return the measure
+ * at the @a measure_index.
+ *
+ * @param jmeasures a LegitimizationMeasures object
+ * @param measure_index an index into the measures
+ * @param[out] check_name set to the name of the check
+ * @param[out] prog_name set to the name of the program
+ * @param[out] context set to the measure context
+ *   (or NULL if there is no context)
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TALER_KYCLOGIC_select_measure (
+  const json_t *jmeasures,
+  size_t measure_index,
+  const char **check_name,
+  const char **prog_name,
+  const json_t **context);
+
+
+/**
  * Convert MeasureInformation into the
  * KycRequirementInformation used by the client.
  *
