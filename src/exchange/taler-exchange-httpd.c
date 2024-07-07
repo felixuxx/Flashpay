@@ -47,6 +47,7 @@
 #include "taler-exchange-httpd_extensions.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_kyc-check.h"
+#include "taler-exchange-httpd_kyc-info.h"
 #include "taler-exchange-httpd_kyc-proof.h"
 #include "taler-exchange-httpd_kyc-upload.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
@@ -2600,6 +2601,7 @@ do_shutdown (void *cls)
   TEH_reserves_get_cleanup ();
   TEH_purses_get_cleanup ();
   TEH_kyc_check_cleanup ();
+  TEH_kyc_info_cleanup ();
   TEH_kyc_proof_cleanup ();
   TALER_KYCLOGIC_kyc_done ();
   if (NULL != mhd)
