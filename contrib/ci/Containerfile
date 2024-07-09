@@ -65,5 +65,3 @@ RUN cat /etc/apt/preferences.d/taler && \
 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workdir
-
-CMD ["bash", "/workdir/ci/ci.sh"]
