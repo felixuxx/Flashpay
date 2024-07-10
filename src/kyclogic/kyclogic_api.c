@@ -2334,8 +2334,67 @@ TALER_KYCLOGIC_select_measure (
   const char **prog_name,
   const json_t **context)
 {
-  // parse jmeasures
-  // check measure_index is valid (in bounds and of right type)
+  const json_t *jmeasure;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_array_const ("measures",
+                                  &jmeasures),
+    GNUNET_JSON_spec_end ()
+  };
+  struct GNUNET_JSON_Specification ispec[] = {
+    GNUNET_JSON_spec_string ("check_name",
+                             check_name),
+    GNUNET_JSON_spec_string ("prog_name",
+                             prog_name),
+    GNUNET_JSON_spec_object_const ("context",
+                                   context),
+    GNUNET_JSON_spec_end ()
+  };
+
+  *check_name = NULL;
+  *prog_name = NULL;
+  *context = NULL;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (jmeasures,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break (0);
+    return TALER_EC_EXCHANGE_KYC_MEASURES_MALFORMED;
+  }
+  if (measure_index >= json_array_size (jmeasures))
+  {
+    GNUNET_break_op (0);
+    return TALER_EC_EXCHANGE_KYC_MEASURES_INDEX_INVALID;
+  }
+  jmeasure = json_array_get (jmeasures,
+                             measure_index);
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (jmeasure,
+                         ispec,
+                         NULL, NULL))
+  {
+    GNUNET_break (0);
+    return TALER_EC_EXCHANGE_KYC_MEASURES_MALFORMED;
+  }
+  return TALER_EC_NONE;
+}
+
+
+const struct TALER_KYCLOGIC_KycProvider *
+TALER_KYCLOGIC_check_to_provider (const char *check_name)
+{
+  struct TALER_KYCLOGIC_KycCheck *kc;
+
+  kc = find_check (check_name);
+  switch (kc->type)
+  {
+  case TALER_KYCLOGIC_CT_FORM:
+  case TALER_KYCLOGIC_CT_INFO:
+    return TALER_EC_EXCHANGE_KYC_INVALID_LOGIC_TO_CHECK;
+  case TALER_KYCLOGIC_CT_LINK:
+    break;
+  }
+  return kc->details.link.provider;
 }
 
 

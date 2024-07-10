@@ -458,6 +458,17 @@ TALER_KYCLOGIC_measure_to_requirement (
 
 
 /**
+ * Lookup the provider for the given @a check_name.
+ *
+ * @param check_name check to lookup provider for
+ * @return NULL on error (@a check_name unknown or
+ *    not a check that has a provider)
+ */
+const struct TALER_KYCLOGIC_KycProvider *
+TALER_KYCLOGIC_check_to_provider (const char *check_name);
+
+
+/**
  * Extract logic data from a KYC @a provider.
  *
  * @param provider provider to get logic data from
