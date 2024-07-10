@@ -49,6 +49,7 @@
 #include "taler-exchange-httpd_kyc-check.h"
 #include "taler-exchange-httpd_kyc-info.h"
 #include "taler-exchange-httpd_kyc-proof.h"
+#include "taler-exchange-httpd_kyc-start.h"
 #include "taler-exchange-httpd_kyc-upload.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_kyc-webhook.h"
@@ -1782,6 +1783,12 @@ handle_mhd_request (void *cls,
       .url = "kyc-proof",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_kyc_proof,
+      .nargs = 1
+    },
+    {
+      .url = "kyc-start",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_kyc_start,
       .nargs = 1
     },
     {

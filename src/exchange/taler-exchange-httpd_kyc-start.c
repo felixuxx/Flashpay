@@ -253,10 +253,12 @@ initiate_cb (
 MHD_RESULT
 TEH_handler_kyc_start (
   struct TEH_RequestContext *rc,
+  const json_t *root,
   const char *const args[1])
 {
   struct KycPoller *kyp = rc->rh_ctx;
 
+  (void) root;
   if (NULL == kyp)
   {
     const char *id = args[0];
