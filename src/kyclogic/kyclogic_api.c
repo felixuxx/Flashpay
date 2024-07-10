@@ -2364,7 +2364,7 @@ TALER_KYCLOGIC_select_measure (
   if (measure_index >= json_array_size (jmeasures))
   {
     GNUNET_break_op (0);
-    return TALER_EC_EXCHANGE_KYC_MEASURES_INDEX_INVALID;
+    return TALER_EC_EXCHANGE_KYC_MEASURE_INDEX_INVALID;
   }
   jmeasure = json_array_get (jmeasures,
                              measure_index);
@@ -2390,7 +2390,7 @@ TALER_KYCLOGIC_check_to_provider (const char *check_name)
   {
   case TALER_KYCLOGIC_CT_FORM:
   case TALER_KYCLOGIC_CT_INFO:
-    return TALER_EC_EXCHANGE_KYC_INVALID_LOGIC_TO_CHECK;
+    return NULL;
   case TALER_KYCLOGIC_CT_LINK:
     break;
   }

@@ -89,7 +89,7 @@ struct KycPoller
   /**
    * Set to the name of the KYC provider.
    */
-  char *provider_name;
+  const char *provider_name;
 
   /**
    * Set to error details, on error (@ec not TALER_EC_NONE).
@@ -177,7 +177,6 @@ kyp_cleanup (struct TEH_RequestContext *rc)
     kyp->ih = NULL;
   }
   GNUNET_free (kyp->redirect_url);
-  GNUNET_free (kyp->provider_name);
   GNUNET_free (kyp->hint);
   json_decref (kyp->jmeasures);
   GNUNET_free (kyp);
@@ -208,7 +207,7 @@ initiate_cb (
   enum GNUNET_DB_QueryStatus qs;
 
   kyp->ih = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_START,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC initiation `%s' completed with ec=%d (%s)\n",
               provider_legitimization_id,
               ec,
@@ -257,13 +256,13 @@ TEH_handler_kyc_start (
   const char *const args[1])
 {
   struct KycPoller *kyp = rc->rh_ctx;
-  MHD_RESULT res;
-  enum GNUNET_GenericReturnValue ret;
 
   if (NULL == kyp)
   {
+    const char *id = args[0];
     enum GNUNET_DB_QueryStatus qs;
     const struct TALER_KYCLOGIC_KycProvider *provider;
+    struct TALER_KYCLOGIC_ProviderDetails *pd;
 
     kyp = GNUNET_new (struct KycPoller);
     kyp->connection = rc->connection;
@@ -271,7 +270,6 @@ TEH_handler_kyc_start (
     rc->rh_cleaner = &kyp_cleanup;
 
     {
-      unsigned long long requirement_row;
       char dummy;
       const char *slash;
 
@@ -345,13 +343,13 @@ TEH_handler_kyc_start (
       const char *check_name;
       const char *prog_name;
       const json_t *context;
-      json_t *req;
 
       kyp->ec = TALER_KYCLOGIC_select_measure (
         kyp->jmeasures,
         kyp->measure_index,
         &check_name,
-        &prog_name);
+        &prog_name,
+        &context);
       if (TALER_EC_NONE != kyp->ec)
       {
         /* return EC in next call to this function */
@@ -369,35 +367,23 @@ TEH_handler_kyc_start (
         return TALER_MHD_reply_with_error (
           rc->connection,
           MHD_HTTP_CONFLICT,
-          42, // FIXME: TALER_EC_EXCHANGE_BAD_CHECK_FOR_KYC_START,
+          TALER_EC_EXCHANGE_KYC_INVALID_LOGIC_TO_CHECK,
           check_name);
       }
     }
 
-    ret = TALER_KYCLOGIC_provider_to_logic (
+    TALER_KYCLOGIC_provider_to_logic (
       provider,
       &kyp->ih_logic,
       &pd,
       &kyp->provider_name);
-    if (GNUNET_OK != ret)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "KYC requirements `%s' cannot be started, but are set as required in database!\n",
-                  requirements);
-      GNUNET_free (requirements);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_INTERNAL_SERVER_ERROR,
-        TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_GONE,
-        NULL);
-    }
 
     /* FIXME: the next two DB interactions should be ONE
        transaction */
     /* Check if we already initiated this process */
     qs = TEH_plugin->get_pending_kyc_requirement_process (
       TEH_plugin->cls,
-      &h_payto,
+      &kyp->h_payto,
       kyp->provider_name,
       &kyp->redirect_url);
     if (qs < 0)
@@ -406,7 +392,7 @@ TEH_handler_kyc_start (
         return qs;
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (
-        connection,
+        rc->connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
         "get_pending_kyc_requirement_process");
@@ -418,7 +404,7 @@ TEH_handler_kyc_start (
     /* set up new requirement process */
     qs = TEH_plugin->insert_kyc_requirement_process (
       TEH_plugin->cls,
-      &h_payto,
+      &kyp->h_payto,
       kyp->measure_index,
       kyp->legitimization_measure_serial_id,
       kyp->provider_name,
@@ -428,8 +414,8 @@ TEH_handler_kyc_start (
     if (qs < 0)
     {
       GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
+      return TALER_MHD_reply_with_error (
+        rc->connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_GENERIC_DB_STORE_FAILED,
         "insert_kyc_requirement_process");
@@ -438,7 +424,7 @@ TEH_handler_kyc_start (
     kyp->ih = kyp->ih_logic->initiate (
       kyp->ih_logic->cls,
       pd,
-      &h_payto,
+      &kyp->h_payto,
       kyp->process_row,
       &initiate_cb,
       kyp);
@@ -446,7 +432,7 @@ TEH_handler_kyc_start (
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (
-        connection,
+        rc->connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_BUG,
         "initiate KYC process");
