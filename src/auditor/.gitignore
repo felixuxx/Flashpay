@@ -26,3 +26,5 @@ libeufin-sandbox.pid
 taler-helper-auditor-purses
 generate-kyc-basedb.conf.edited
 generate-auditor-basedb.conf.edited
+wallet.wdb
+libeufin-bank.pid
