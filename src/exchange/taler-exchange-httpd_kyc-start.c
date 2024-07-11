@@ -314,9 +314,6 @@ TEH_handler_kyc_start (
       }
     }
 
-    // FIXME: bad check, cannot return jmeasures,
-    // we need a redirect_url AND an EC to see if
-    // we should restart 'initiate' anyway!
     qs = TEH_plugin->lookup_pending_legitimization (
       TEH_plugin->cls,
       kyp->legitimization_measure_serial_id,
