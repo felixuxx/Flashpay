@@ -72,11 +72,31 @@ TALER_FAKEBANK_bank_main_ (
       connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string ("version",
-                               "4:0:4"), /* not sure, API versions are not properly marked up! */
+                               "4:1:4"), /* not sure, API versions are not properly marked up! */
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
       GNUNET_JSON_pack_string ("implementation",
                                "urn:net:taler:specs:bank:fakebank"),
+      GNUNET_JSON_pack_object_steal (
+        "currency_specification",
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("name",
+                                   h->currency),
+          GNUNET_JSON_pack_string ("currency",
+                                   h->currency),
+          GNUNET_JSON_pack_uint64 ("num_fractional_input_digits",
+                                   2),
+          GNUNET_JSON_pack_uint64 ("num_fractional_normal_digits",
+                                   2),
+          GNUNET_JSON_pack_uint64 ("num_fractional_trailing_zero_digits",
+                                   2),
+          GNUNET_JSON_pack_object_steal (
+            "alt_unit_names",
+            GNUNET_JSON_PACK (
+              GNUNET_JSON_pack_string ("0",
+                                       h->currency))),
+          GNUNET_JSON_pack_string ("name",
+                                   h->currency))),
       GNUNET_JSON_pack_string ("name",
                                "taler-corebank"));
   }
