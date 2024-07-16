@@ -3918,6 +3918,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param wad_id WAD identifier
    * @param origin_exchange_url exchange base URL originating the transfer
+   * @param amount the amount that was transferred
    * @param execution_date when was the transfer made
    * @param debit_account_uri URI of the debit account
    * @param section_name section of the exchange bank account that received the transfer
@@ -3928,6 +3929,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_WadIdentifierP *wad_id,
     const char *origin_exchange_url,
+    const struct TALER_Amount *amount,
     struct GNUNET_TIME_Timestamp execution_date,
     const char *debit_account_uri,
     const char *section_name,

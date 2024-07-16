@@ -30,11 +30,33 @@ TEH_PG_wad_in_insert (
   void *cls,
   const struct TALER_WadIdentifierP *wad_id,
   const char *origin_exchange_url,
+  const struct TALER_Amount *amount,
   struct GNUNET_TIME_Timestamp execution_date,
   const char *debit_account_uri,
   const char *section_name,
   uint64_t serial_id)
 {
-  // FIXME: not implemented
-  return -1;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (wad_id),
+    GNUNET_PQ_query_param_string (origin_exchange_url),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 amount),
+    GNUNET_PQ_query_param_timestamp (&execution_date),
+    GNUNET_PQ_query_param_end
+  };
+
+  // FIXME: should we keep the account data + serial_id?
+  PREPARE (pg,
+           "wad_in_insert",
+           "INSERT INTO wads_in "
+           "(wad_id"
+           ",origin_exchange_url"
+           ",amount"
+           ",arrival_time"
+           ") VALUES "
+           "($1, $2, $3, $4);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "wad_in_insert",
+                                             params);
 }
