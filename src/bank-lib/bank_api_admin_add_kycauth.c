@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015--2023 Taler Systems SA
+  Copyright (C) 2015--2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/bank_api_admin.c
- * @brief Implementation of the /admin/add-incoming requests of the bank's HTTP API
+ * @file bank-lib/bank_api_admin_add_kycauth.c
+ * @brief Implementation of the /admin/add-kycauth requests of the bank's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -27,9 +27,9 @@
 
 
 /**
- * @brief An /admin/add-incoming Handle
+ * @brief An /admin/add-kycauth Handle
  */
-struct TALER_BANK_AdminAddIncomingHandle
+struct TALER_BANK_AdminAddKycauthHandle
 {
 
   /**
@@ -50,7 +50,7 @@ struct TALER_BANK_AdminAddIncomingHandle
   /**
    * Function to call with the result.
    */
-  TALER_BANK_AdminAddIncomingCallback cb;
+  TALER_BANK_AdminAddKycauthCallback cb;
 
   /**
    * Closure for @a cb.
@@ -62,20 +62,20 @@ struct TALER_BANK_AdminAddIncomingHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /admin/add-incoming request.
+ * HTTP /admin/add-kycauth request.
  *
- * @param cls the `struct TALER_BANK_AdminAddIncomingHandle`
+ * @param cls the `struct TALER_BANK_AdminAddKycauthHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_admin_add_incoming_finished (void *cls,
-                                    long response_code,
-                                    const void *response)
+handle_admin_add_kycauth_finished (void *cls,
+                                   long response_code,
+                                   const void *response)
 {
-  struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
+  struct TALER_BANK_AdminAddKycauthHandle *aai = cls;
   const json_t *j = response;
-  struct TALER_BANK_AdminAddIncomingResponse ir = {
+  struct TALER_BANK_AdminAddKycauthResponse ir = {
     .http_status = response_code,
     .response = response
   };
@@ -128,11 +128,6 @@ handle_admin_add_incoming_finished (void *cls,
        We should pass the JSON reply to the application */
     ir.ec = TALER_JSON_get_error_code (j);
     break;
-  case MHD_HTTP_CONFLICT:
-    /* Nothing to verify, we used the same wire subject
-       twice? */
-    ir.ec = TALER_JSON_get_error_code (j);
-    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
@@ -149,21 +144,21 @@ handle_admin_add_incoming_finished (void *cls,
   }
   aai->cb (aai->cb_cls,
            &ir);
-  TALER_BANK_admin_add_incoming_cancel (aai);
+  TALER_BANK_admin_add_kycauth_cancel (aai);
 }
 
 
-struct TALER_BANK_AdminAddIncomingHandle *
-TALER_BANK_admin_add_incoming (
+struct TALER_BANK_AdminAddKycauthHandle *
+TALER_BANK_admin_add_kycauth (
   struct GNUNET_CURL_Context *ctx,
   const struct TALER_BANK_AuthenticationData *auth,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const union TALER_AccountPublicKeyP *account_pub,
   const struct TALER_Amount *amount,
   const char *debit_account,
-  TALER_BANK_AdminAddIncomingCallback res_cb,
+  TALER_BANK_AdminAddKycauthCallback res_cb,
   void *res_cb_cls)
 {
-  struct TALER_BANK_AdminAddIncomingHandle *aai;
+  struct TALER_BANK_AdminAddKycauthHandle *aai;
   json_t *admin_obj;
   CURL *eh;
 
@@ -172,7 +167,7 @@ TALER_BANK_admin_add_incoming (
     GNUNET_break (0);
     return NULL;
   }
-  if (NULL == reserve_pub)
+  if (NULL == account_pub)
   {
     GNUNET_break (0);
     return NULL;
@@ -183,8 +178,8 @@ TALER_BANK_admin_add_incoming (
     return NULL;
   }
   admin_obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                reserve_pub),
+    GNUNET_JSON_pack_data_auto ("account_pub",
+                                account_pub),
     TALER_JSON_pack_amount ("amount",
                             amount),
     GNUNET_JSON_pack_string ("debit_account",
@@ -194,11 +189,11 @@ TALER_BANK_admin_add_incoming (
     GNUNET_break (0);
     return NULL;
   }
-  aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
+  aai = GNUNET_new (struct TALER_BANK_AdminAddKycauthHandle);
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
   aai->request_url = TALER_url_join (auth->wire_gateway_url,
-                                     "admin/add-incoming",
+                                     "admin/add-kycauth",
                                      NULL);
   if (NULL == aai->request_url)
   {
@@ -207,9 +202,9 @@ TALER_BANK_admin_add_incoming (
     return NULL;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Requesting administrative transaction at `%s' for reserve %s\n",
+              "Requesting administrative transaction at `%s' for account %s\n",
               aai->request_url,
-              TALER_B2S (reserve_pub));
+              TALER_B2S (account_pub));
   aai->post_ctx.headers
     = curl_slist_append (
         aai->post_ctx.headers,
@@ -230,7 +225,7 @@ TALER_BANK_admin_add_incoming (
                               admin_obj)) )
   {
     GNUNET_break (0);
-    TALER_BANK_admin_add_incoming_cancel (aai);
+    TALER_BANK_admin_add_kycauth_cancel (aai);
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (admin_obj);
@@ -241,15 +236,15 @@ TALER_BANK_admin_add_incoming (
   aai->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    aai->post_ctx.headers,
-                                   &handle_admin_add_incoming_finished,
+                                   &handle_admin_add_kycauth_finished,
                                    aai);
   return aai;
 }
 
 
 void
-TALER_BANK_admin_add_incoming_cancel (
-  struct TALER_BANK_AdminAddIncomingHandle *aai)
+TALER_BANK_admin_add_kycauth_cancel (
+  struct TALER_BANK_AdminAddKycauthHandle *aai)
 {
   if (NULL != aai->job)
   {
@@ -262,4 +257,4 @@ TALER_BANK_admin_add_incoming_cancel (
 }
 
 
-/* end of bank_api_admin.c */
+/* end of bank_api_admin_add_kycauth.c */

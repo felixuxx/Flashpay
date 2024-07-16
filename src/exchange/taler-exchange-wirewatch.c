@@ -563,6 +563,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
   {
     enum GNUNET_DB_QueryStatus qss[details_length];
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[details_length];
+    unsigned int j = 0;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Importing %u transactions\n",
@@ -570,39 +571,107 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
     for (unsigned int i = 0; i<details_length; i++)
     {
       const struct TALER_BANK_CreditDetails *cd = &details[i];
-      struct TALER_EXCHANGEDB_ReserveInInfo *res = &reserves[i];
 
-      res->reserve_pub = &cd->reserve_pub;
-      res->balance = &cd->amount;
-      res->execution_time = cd->execution_date;
-      res->sender_account_details = cd->debit_account_uri;
-      res->exchange_account_name = ai->section_name;
-      res->wire_reference = cd->serial_id;
+      switch (cd->type)
+      {
+      case TALER_BANK_CT_RESERVE:
+        {
+          struct TALER_EXCHANGEDB_ReserveInInfo *res = &reserves[j++];
+
+          /* add to batch, do later */
+          res->reserve_pub = &cd->details.reserve.reserve_pub;
+          res->balance = &cd->amount;
+          res->execution_time = cd->execution_date;
+          res->sender_account_details = cd->debit_account_uri;
+          res->exchange_account_name = ai->section_name;
+          res->wire_reference = cd->serial_id;
+        }
+        break;
+      case TALER_BANK_CT_KYCAUTH:
+        {
+          qs = db_plugin->kycauth_in_insert (
+            db_plugin->cls,
+            &cd->details.kycauth.account_pub,
+            cd->execution_date,
+            cd->debit_account_uri,
+            ai->section_name,
+            cd->serial_id);
+          switch (qs)
+          {
+          case GNUNET_DB_STATUS_HARD_ERROR:
+            GNUNET_break (0);
+            GNUNET_SCHEDULER_shutdown ();
+            return;
+          case GNUNET_DB_STATUS_SOFT_ERROR:
+            GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                        "Got DB soft error for kycauth_in_insert (%u). Rolling back.\n",
+                        i);
+            handle_soft_error ();
+            return;
+          default:
+            break;
+          }
+          break;
+        }
+      case TALER_BANK_CT_WAD:
+        {
+          qs = db_plugin->wad_in_insert (
+            db_plugin->cls,
+            &cd->details.wad.wad_id,
+            cd->details.wad.origin_exchange_url,
+            cd->execution_date,
+            cd->debit_account_uri,
+            ai->section_name,
+            cd->serial_id);
+          switch (qs)
+          {
+          case GNUNET_DB_STATUS_HARD_ERROR:
+            GNUNET_break (0);
+            GNUNET_SCHEDULER_shutdown ();
+            return;
+          case GNUNET_DB_STATUS_SOFT_ERROR:
+            GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                        "Got DB soft error for wad_in_insert (%u). Rolling back.\n",
+                        i);
+            handle_soft_error ();
+            return;
+          default:
+            break;
+          }
+
+        }
+      }
     }
-    qs = db_plugin->reserves_in_insert (db_plugin->cls,
-                                        reserves,
-                                        details_length,
-                                        qss);
-    switch (qs)
+    if (j > 0)
     {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-      GNUNET_break (0);
-      GNUNET_SCHEDULER_shutdown ();
-      return;
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Got DB soft error for reserves_in_insert (%u). Rolling back.\n",
-                  details_length);
-      handle_soft_error ();
-      return;
-    default:
-      break;
+      qs = db_plugin->reserves_in_insert (db_plugin->cls,
+                                          reserves,
+                                          j,
+                                          qss);
+      switch (qs)
+      {
+      case GNUNET_DB_STATUS_HARD_ERROR:
+        GNUNET_break (0);
+        GNUNET_SCHEDULER_shutdown ();
+        return;
+      case GNUNET_DB_STATUS_SOFT_ERROR:
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Got DB soft error for reserves_in_insert (%u). Rolling back.\n",
+                    details_length);
+        handle_soft_error ();
+        return;
+      default:
+        break;
+      }
     }
+    j = 0;
     for (unsigned int i = 0; i<details_length; i++)
     {
       const struct TALER_BANK_CreditDetails *cd = &details[i];
 
-      switch (qss[i])
+      if (TALER_BANK_CT_RESERVE != cd->type)
+        continue;
+      switch (qss[j++])
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2021 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -41,7 +41,7 @@ struct History
   /**
    * Wire details.
    */
-  struct TALER_BANK_CreditDetails details;
+  struct TALER_BANK_CreditDetails credit_details;
 
   /**
    * Serial ID of the wire transfer.
@@ -136,14 +136,42 @@ print_expected (struct History *h,
               "Expected history:\n");
   for (unsigned int i = 0; i<h_len; i++)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "H(%u): %s (serial: %llu, subject: %s,"
-                " counterpart: %s)\n",
-                i,
-                TALER_amount2s (&h[i].details.amount),
-                (unsigned long long) h[i].row_id,
-                TALER_B2S (&h[i].details.reserve_pub),
-                h[i].details.debit_account_uri);
+    const struct TALER_BANK_CreditDetails *cd = &h[i].credit_details;
+
+    switch (cd->type)
+    {
+    case TALER_BANK_CT_RESERVE:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "H(%u): %s (serial: %llu, RES: %s,"
+                  " counterpart: %s)\n",
+                  i,
+                  TALER_amount2s (&cd->amount),
+                  (unsigned long long) h[i].row_id,
+                  TALER_B2S (&cd->details.reserve.reserve_pub),
+                  cd->debit_account_uri);
+      break;
+    case TALER_BANK_CT_KYCAUTH:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "H(%u): %s (serial: %llu, KYC: %s,"
+                  " counterpart: %s)\n",
+                  i,
+                  TALER_amount2s (&cd->amount),
+                  (unsigned long long) h[i].row_id,
+                  TALER_B2S (&cd->details.kycauth.account_pub),
+                  cd->debit_account_uri);
+      break;
+    case TALER_BANK_CT_WAD:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "H(%u): %s (serial: %llu, WAD: %s-%s,"
+                  " counterpart: %s)\n",
+                  i,
+                  TALER_amount2s (&cd->amount),
+                  (unsigned long long) h[i].row_id,
+                  TALER_B2S (&cd->details.wad.wad_id),
+                  cd->details.wad.origin_exchange_url,
+                  cd->debit_account_uri);
+      break;
+    }
   }
 }
 
@@ -233,6 +261,8 @@ command_cb (void *cls,
           cmd,
           &exchange_credit_url)) )
     return;   // Not an interesting event
+  // FIXME: support KYCAUTH transfer events!
+  // FIXME: support WAD transfer events!
 
   /**
    * Is the interesting event a match with regard to
@@ -272,10 +302,11 @@ command_cb (void *cls,
                        ic->total,
                        ic->pos * 2);
   ic->h[ic->pos].url = GNUNET_strdup (debit_account);
-  ic->h[ic->pos].details.debit_account_uri = ic->h[ic->pos].url;
-  ic->h[ic->pos].details.amount = *amount;
   ic->h[ic->pos].row_id = *row_id;
-  ic->h[ic->pos].details.reserve_pub = *reserve_pub;
+  ic->h[ic->pos].credit_details.type = TALER_BANK_CT_RESERVE;
+  ic->h[ic->pos].credit_details.debit_account_uri = ic->h[ic->pos].url;
+  ic->h[ic->pos].credit_details.amount = *amount;
+  ic->h[ic->pos].credit_details.details.reserve.reserve_pub = *reserve_pub;
   ic->pos++;
 }
 
@@ -409,14 +440,14 @@ normalize (const char *in)
  * @param total length of @a h
  * @param off the offset (of the CMD list) where the command
  *        to check is.
- * @param details the expected transaction details.
+ * @param credit_details the expected transaction details.
  * @return #GNUNET_OK if the transaction is what we expect.
  */
 static enum GNUNET_GenericReturnValue
 check_result (struct History *h,
               unsigned int total,
               unsigned int off,
-              const struct TALER_BANK_CreditDetails *details)
+              const struct TALER_BANK_CreditDetails *credit_details)
 {
   char *u1;
   char *u2;
@@ -433,33 +464,31 @@ check_result (struct History *h,
                     off);
     return GNUNET_SYSERR;
   }
-  u1 = normalize (h[off].details.debit_account_uri);
+  u1 = normalize (h[off].credit_details.debit_account_uri);
   if (NULL == u1)
     return GNUNET_SYSERR;
-  u2 = normalize (details->debit_account_uri);
+  u2 = normalize (credit_details->debit_account_uri);
   if (NULL == u2)
   {
     GNUNET_free (u1);
     return GNUNET_SYSERR;
   }
-  if ( (0 != GNUNET_memcmp (&h[off].details.reserve_pub,
-                            &details->reserve_pub)) ||
-       (0 != TALER_amount_cmp (&h[off].details.amount,
-                               &details->amount)) ||
+  if ( (h[off].credit_details.type !=
+        credit_details->type) ||
+       (0 != TALER_amount_cmp (&h[off].credit_details.amount,
+                               &credit_details->amount)) ||
        (0 != strcasecmp (u1,
                          u2)) )
   {
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "expected debit_account_uri: %s with %s for %s\n",
+                "expected debit_account_uri: %s with %s\n",
                 u1,
-                TALER_amount2s (&h[off].details.amount),
-                TALER_B2S (&h[off].details.reserve_pub));
+                TALER_amount2s (&h[off].credit_details.amount));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "actual debit_account_uri: %s with %s for %s\n",
+                "actual debit_account_uri: %s with %s\n",
                 u2,
-                TALER_amount2s (&details->amount),
-                TALER_B2S (&details->reserve_pub));
+                TALER_amount2s (&credit_details->amount));
     print_expected (h,
                     total,
                     off);
@@ -467,6 +496,85 @@ check_result (struct History *h,
     GNUNET_free (u2);
     return GNUNET_SYSERR;
   }
+  switch (credit_details->type)
+  {
+  case TALER_BANK_CT_RESERVE:
+    if (0 != GNUNET_memcmp (&h[off].credit_details.details.reserve.reserve_pub,
+                            &credit_details->details.reserve.reserve_pub))
+    {
+      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "expected debit_account_uri: %s with %s for %s\n",
+                  u1,
+                  TALER_amount2s (&h[off].credit_details.amount),
+                  TALER_B2S (&h[off].credit_details.details.reserve.reserve_pub)
+                  );
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "actual debit_account_uri: %s with %s for %s\n",
+                  u2,
+                  TALER_amount2s (&credit_details->amount),
+                  TALER_B2S (&credit_details->details.reserve.reserve_pub));
+      print_expected (h,
+                      total,
+                      off);
+      GNUNET_free (u1);
+      GNUNET_free (u2);
+      return GNUNET_SYSERR;
+    }
+    break;
+  case TALER_BANK_CT_KYCAUTH:
+    if (0 != GNUNET_memcmp (&h[off].credit_details.details.kycauth.account_pub,
+                            &credit_details->details.kycauth.account_pub))
+    {
+      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "expected debit_account_uri: %s with %s for %s\n",
+                  u1,
+                  TALER_amount2s (&h[off].credit_details.amount),
+                  TALER_B2S (&h[off].credit_details.details.kycauth.account_pub)
+                  );
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "actual debit_account_uri: %s with %s for %s\n",
+                  u2,
+                  TALER_amount2s (&credit_details->amount),
+                  TALER_B2S (&credit_details->details.kycauth.account_pub));
+      print_expected (h,
+                      total,
+                      off);
+      GNUNET_free (u1);
+      GNUNET_free (u2);
+      return GNUNET_SYSERR;
+    }
+    break;
+  case TALER_BANK_CT_WAD:
+    if ( (0 != GNUNET_memcmp (&h[off].credit_details.details.wad.wad_id,
+                              &credit_details->details.wad.wad_id)) ||
+         (0 != strcmp (h[off].credit_details.details.wad.origin_exchange_url,
+                       credit_details->details.wad.origin_exchange_url)) )
+    {
+      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "expected debit_account_uri: %s with %s for %s-%s\n",
+                  u1,
+                  TALER_amount2s (&h[off].credit_details.amount),
+                  h[off].credit_details.details.wad.origin_exchange_url,
+                  TALER_B2S (&h[off].credit_details.details.wad.wad_id));
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "actual debit_account_uri: %s with %s for %s-%s\n",
+                  u2,
+                  TALER_amount2s (&credit_details->amount),
+                  credit_details->details.wad.origin_exchange_url,
+                  TALER_B2S (&credit_details->details.wad.wad_id));
+      print_expected (h,
+                      total,
+                      off);
+      GNUNET_free (u1);
+      GNUNET_free (u2);
+      return GNUNET_SYSERR;
+    }
+    break;
+  }
+
   GNUNET_free (u1);
   GNUNET_free (u2);
   return GNUNET_OK;

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017--2023 Taler Systems SA
+  Copyright (C) 2017--2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -108,15 +108,16 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
     for (size_t i = 0; i<len; i++)
     {
       struct TALER_BANK_CreditDetails *td = &cd[i];
+      const char *type;
       struct GNUNET_JSON_Specification hist_spec[] = {
+        GNUNET_JSON_spec_string ("type",
+                                 &type),
         TALER_JSON_spec_amount_any ("amount",
                                     &td->amount),
         GNUNET_JSON_spec_timestamp ("date",
                                     &td->execution_date),
         GNUNET_JSON_spec_uint64 ("row_id",
                                  &td->serial_id),
-        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                     &td->reserve_pub),
         GNUNET_JSON_spec_string ("debit_account",
                                  &td->debit_account_uri),
         GNUNET_JSON_spec_end ()
@@ -129,6 +130,70 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
                              hist_spec,
                              NULL,
                              NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (0 == strcasecmp ("RESERVE",
+                           type))
+      {
+        struct GNUNET_JSON_Specification reserve_spec[] = {
+          GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                       &td->details.reserve.reserve_pub),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (transaction,
+                               reserve_spec,
+                               NULL,
+                               NULL))
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
+      }
+      else if (0 == strcasecmp ("KYCAUTH",
+                                type))
+      {
+        struct GNUNET_JSON_Specification kycauth_spec[] = {
+          GNUNET_JSON_spec_fixed_auto ("account_pub",
+                                       &td->details.kycauth.account_pub),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (transaction,
+                               kycauth_spec,
+                               NULL,
+                               NULL))
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
+      }
+      else if (0 == strcasecmp ("WAD",
+                                type))
+      {
+        struct GNUNET_JSON_Specification wad_spec[] = {
+          GNUNET_JSON_spec_string ("origin_exchange_url",
+                                   &td->details.wad.origin_exchange_url),
+          GNUNET_JSON_spec_fixed_auto ("wad_id",
+                                       &td->details.wad.wad_id),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (transaction,
+                               wad_spec,
+                               NULL,
+                               NULL))
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
+      }
+      else
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;

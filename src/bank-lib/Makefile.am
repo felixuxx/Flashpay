@@ -34,10 +34,11 @@ lib_LTLIBRARIES = \
   libtalerfakebank.la
 
 libtalerbank_la_LDFLAGS = \
-  -version-info 1:0:0 \
+  -version-info 2:0:0 \
   -no-undefined
 libtalerbank_la_SOURCES = \
-  bank_api_admin.c \
+  bank_api_admin_add_incoming.c \
+  bank_api_admin_add_kycauth.c \
   bank_api_common.c bank_api_common.h \
   bank_api_credit.c \
   bank_api_debit.c \

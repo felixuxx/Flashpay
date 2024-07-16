@@ -193,14 +193,31 @@ credit_history_cb (void *cls,
            (0 != strcasecmp (debit_account,
                              cd->debit_account_uri) ) )
         continue;
-      fprintf (stdout,
-               "%llu: %s->%s (%s) over %s at %s\n",
-               (unsigned long long) cd->serial_id,
-               cd->debit_account_uri,
-               reply->details.ok.credit_account_uri,
-               TALER_B2S (&cd->reserve_pub),
-               TALER_amount2s (&cd->amount),
-               GNUNET_TIME_timestamp2s (cd->execution_date));
+      switch (cd->type)
+      {
+      case TALER_BANK_CT_RESERVE:
+        fprintf (stdout,
+                 "%llu: %s->%s (%s) over %s at %s\n",
+                 (unsigned long long) cd->serial_id,
+                 cd->debit_account_uri,
+                 reply->details.ok.credit_account_uri,
+                 TALER_B2S (&cd->details.reserve.reserve_pub),
+                 TALER_amount2s (&cd->amount),
+                 GNUNET_TIME_timestamp2s (cd->execution_date));
+        break;
+      case TALER_BANK_CT_KYCAUTH:
+        fprintf (stdout,
+                 "%llu: %s->%s (KYC:%s) over %s at %s\n",
+                 (unsigned long long) cd->serial_id,
+                 cd->debit_account_uri,
+                 reply->details.ok.credit_account_uri,
+                 TALER_B2S (&cd->details.kycauth.account_pub),
+                 TALER_amount2s (&cd->amount),
+                 GNUNET_TIME_timestamp2s (cd->execution_date));
+      case TALER_BANK_CT_WAD:
+        GNUNET_break (0); // FIXME
+        break;
+      }
     }
     global_ret = 0;
     break;

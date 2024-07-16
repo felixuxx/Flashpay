@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -27,6 +27,11 @@
 #include "taler_util.h"
 #include "taler_error_codes.h"
 
+/**
+ * Version of the Bank API, in hex.
+ * Thus 0.12.0-0 = 0x000C0000.
+ */
+#define TALER_BANK_SERVICE_API_VERSION 0x000C0000
 
 /**
  * Authentication method types.
@@ -163,8 +168,7 @@ typedef void
 /**
  * Perform a wire transfer from some account to the exchange to fill a
  * reserve.  Note that this API is usually only used for testing (with
- * fakebank and our Python bank) and thus may not be accessible in a
- * production setting.
+ * fakebank) and thus may not be accessible in a production setting.
  *
  * @param ctx curl context for the event loop
  * @param auth authentication data to send to the bank
@@ -192,11 +196,117 @@ TALER_BANK_admin_add_incoming (
  * Cancel an add incoming operation.  This function cannot be used on a
  * request handle if a response is already served for it.
  *
- * @param aai the admin add incoming request handle
+ * @param[in] aai the admin add incoming request handle
  */
 void
 TALER_BANK_admin_add_incoming_cancel (
   struct TALER_BANK_AdminAddIncomingHandle *aai);
+
+
+/**
+ * @brief A /admin/add-kycauth Handle
+ */
+struct TALER_BANK_AdminAddKycauthHandle;
+
+
+/**
+ * Response details for a history request.
+ */
+struct TALER_BANK_AdminAddKycauthResponse
+{
+
+  /**
+   * HTTP status.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, #TALER_EC_NONE on success.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Full response, NULL if body was not in JSON format.
+   */
+  const json_t *response;
+
+  /**
+   * Details returned depending on the @e http_status.
+   */
+  union
+  {
+
+    /**
+     * Details if status was #MHD_HTTP_OK
+     */
+    struct
+    {
+      /**
+       * unique ID of the wire transfer in the bank's records
+       */
+      uint64_t serial_id;
+
+      /**
+       * time when the transaction was made.
+       */
+      struct GNUNET_TIME_Timestamp timestamp;
+
+    } ok;
+
+  } details;
+
+};
+
+/**
+ * Callbacks of this type are used to return the result of submitting
+ * a request to transfer funds to the exchange.
+ *
+ * @param cls closure
+ * @param air response details
+ */
+typedef void
+(*TALER_BANK_AdminAddKycauthCallback) (
+  void *cls,
+  const struct TALER_BANK_AdminAddKycauthResponse *air);
+
+
+/**
+ * Perform a wire transfer from some account to the exchange to register a
+ * public key for KYC authentication of the origin account.  Note that this
+ * API is usually only used for testing (with fakebank) and thus may not be
+ * accessible in a production setting.
+ *
+ * @param ctx curl context for the event loop
+ * @param auth authentication data to send to the bank
+ * @param account_pub wire transfer subject for the transfer
+ * @param amount amount that is to be deposited
+ * @param debit_account account to deposit from (payto URI, but used as 'payfrom')
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return NULL
+ *         if the inputs are invalid (i.e. invalid amount) or internal errors.
+ *         In this case, the callback is not called.
+ */
+struct TALER_BANK_AdminAddKycauthHandle *
+TALER_BANK_admin_add_kycauth (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const union TALER_AccountPublicKeyP *account_pub,
+  const struct TALER_Amount *amount,
+  const char *debit_account,
+  TALER_BANK_AdminAddKycauthCallback res_cb,
+  void *res_cb_cls);
+
+
+/**
+ * Cancel an add kycauth operation.  This function cannot be used on a
+ * request handle if a response is already served for it.
+ *
+ * @param[in] aai the admin add kycauth request handle
+ */
+void
+TALER_BANK_admin_add_kycauth_cancel (
+  struct TALER_BANK_AdminAddKycauthHandle *aai);
 
 
 /* ********************* /transfer *********************** */
@@ -302,12 +412,13 @@ typedef void
  * @return NULL on error
  */
 struct TALER_BANK_TransferHandle *
-TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
-                     const struct TALER_BANK_AuthenticationData *auth,
-                     const void *buf,
-                     size_t buf_size,
-                     TALER_BANK_TransferCallback cc,
-                     void *cc_cls);
+TALER_BANK_transfer (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const void *buf,
+  size_t buf_size,
+  TALER_BANK_TransferCallback cc,
+  void *cc_cls);
 
 
 /**
@@ -323,13 +434,38 @@ TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
  * This function cannot be used on a request handle if a response is already
  * served for it.
  *
- * @param th handle of the wire transfer request to cancel
+ * @param[in] th handle of the wire transfer request to cancel
  */
 void
-TALER_BANK_transfer_cancel (struct TALER_BANK_TransferHandle *th);
+TALER_BANK_transfer_cancel (
+  struct TALER_BANK_TransferHandle *th);
 
 
 /* ********************* /history/incoming *********************** */
+
+/**
+ * Different types of wire transfers that might be
+ * credited to an exchange account.
+ */
+enum TALER_BANK_CreditType
+{
+  /**
+   * Common wire transfer into a reserve account.
+   */
+  TALER_BANK_CT_RESERVE,
+
+  /**
+   * KYC authentication wire transfer with an account
+   * public key.
+   */
+  TALER_BANK_CT_KYCAUTH,
+
+  /**
+   * WAD transfer between exchanges.
+   */
+  TALER_BANK_CT_WAD
+
+};
 
 /**
  * Handle for querying the bank for transactions
@@ -342,6 +478,12 @@ struct TALER_BANK_CreditHistoryHandle;
  */
 struct TALER_BANK_CreditDetails
 {
+
+  /**
+   * Type of the wire transfer.
+   */
+  enum TALER_BANK_CreditType type;
+
   /**
    * Serial ID of the wire transfer.
    */
@@ -358,14 +500,61 @@ struct TALER_BANK_CreditDetails
   struct GNUNET_TIME_Timestamp execution_date;
 
   /**
-   * Reserve public key encoded in the wire transfer subject.
-   */
-  struct TALER_ReservePublicKeyP reserve_pub;
-
-  /**
    * payto://-URL of the source account that send the funds.
    */
   const char *debit_account_uri;
+
+  /**
+   * Details that depend on the @e type.
+   */
+  union
+  {
+
+    /**
+     * Details for @e type #TALER_BANK_CT_RESERVE.
+     */
+    struct
+    {
+
+      /**
+       * Reserve public key encoded in the wire transfer subject.
+       */
+      struct TALER_ReservePublicKeyP reserve_pub;
+
+    } reserve;
+
+    /**
+     * Details for @e type #TALER_BANK_CT_KYCAUTH.
+     */
+    struct
+    {
+
+      /**
+       * Public key to associate with the owner of the
+       * origin bank account.
+       */
+      union TALER_AccountPublicKeyP account_pub;
+
+    } kycauth;
+
+    /**
+     * Details for @e type #TALER_BANK_CT_WAD.
+     */
+    struct
+    {
+
+      /**
+       * WAD identifier for the transfer.
+       */
+      struct TALER_WadIdentifierP wad_id;
+
+      /**
+       * Base URL of the exchange originating the transfer.
+       */
+      const char *origin_exchange_url;
+    } wad;
+
+  } details;
 
 };
 
@@ -473,10 +662,11 @@ TALER_BANK_credit_history (
  * handle if the last response (anything with a status code other than
  * 200) is already served for it.
  *
- * @param hh the history request handle
+ * @param[in] hh the history request handle
  */
 void
-TALER_BANK_credit_history_cancel (struct TALER_BANK_CreditHistoryHandle *hh);
+TALER_BANK_credit_history_cancel (
+  struct TALER_BANK_CreditHistoryHandle *hh);
 
 
 /* ********************* /history/outgoing *********************** */
@@ -614,13 +804,14 @@ typedef void
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_DebitHistoryHandle *
-TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
-                          const struct TALER_BANK_AuthenticationData *auth,
-                          uint64_t start_row,
-                          int64_t num_results,
-                          struct GNUNET_TIME_Relative timeout,
-                          TALER_BANK_DebitHistoryCallback hres_cb,
-                          void *hres_cb_cls);
+TALER_BANK_debit_history (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  uint64_t start_row,
+  int64_t num_results,
+  struct GNUNET_TIME_Relative timeout,
+  TALER_BANK_DebitHistoryCallback hres_cb,
+  void *hres_cb_cls);
 
 
 /**
@@ -628,10 +819,11 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
  * handle if the last response (anything with a status code other than
  * 200) is already served for it.
  *
- * @param hh the history request handle
+ * @param[in] hh the history request handle
  */
 void
-TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
+TALER_BANK_debit_history_cancel (
+  struct TALER_BANK_DebitHistoryHandle *hh);
 
 
 /* ******************** Convenience functions **************** */
@@ -647,19 +839,21 @@ TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                           const char *section,
-                           struct TALER_BANK_AuthenticationData *auth);
+TALER_BANK_auth_parse_cfg (
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *section,
+  struct TALER_BANK_AuthenticationData *auth);
 
 
 /**
  * Free memory inside of @a auth (but not @a auth itself).
  * Dual to #TALER_BANK_auth_parse_cfg().
  *
- * @param auth authentication data to free
+ * @param[in,out] auth authentication data to free
  */
 void
-TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth);
+TALER_BANK_auth_free (
+  struct TALER_BANK_AuthenticationData *auth);
 
 
 #endif  /* _TALER_BANK_SERVICE_H */

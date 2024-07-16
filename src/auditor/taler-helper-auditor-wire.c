@@ -361,7 +361,7 @@ struct ReserveInInfo
    * The member "account_url" is to be allocated
    * at the end of this struct!
    */
-  struct TALER_BANK_CreditDetails details;
+  struct TALER_BANK_CreditDetails credit_details;
 
   /**
    * RowID in reserves_in table.
@@ -2151,10 +2151,11 @@ reserve_in_cb (void *cls,
   slen = strlen (sender_account_details) + 1;
   rii = GNUNET_malloc (sizeof (struct ReserveInInfo) + slen);
   rii->rowid = rowid;
-  rii->details.amount = *credit;
-  rii->details.execution_date = execution_date;
-  rii->details.reserve_pub = *reserve_pub;
-  rii->details.debit_account_uri = (const char *) &rii[1];
+  rii->credit_details.type = TALER_BANK_CT_RESERVE;
+  rii->credit_details.amount = *credit;
+  rii->credit_details.execution_date = execution_date;
+  rii->credit_details.details.reserve.reserve_pub = *reserve_pub;
+  rii->credit_details.debit_account_uri = (const char *) &rii[1];
   GNUNET_memcpy (&rii[1],
                  sender_account_details,
                  slen);
@@ -2237,19 +2238,22 @@ complain_in_not_found (void *cls,
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
   }
+  GNUNET_assert (TALER_BANK_CT_RESERVE ==
+                 rii->credit_details.type);
   TALER_ARL_report (
     report_reserve_in_inconsistencies,
     GNUNET_JSON_PACK (
       GNUNET_JSON_pack_uint64 ("row",
                                rii->rowid),
       TALER_JSON_pack_amount ("amount_exchange_expected",
-                              &rii->details.amount),
+                              &rii->credit_details.amount),
       TALER_JSON_pack_amount ("amount_wired",
                               &zero),
       GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                  &rii->details.reserve_pub),
+                                  &rii->credit_details.reserve.reserve_pub),
       TALER_JSON_pack_time_abs_human ("timestamp",
-                                      rii->details.execution_date.abs_time),
+                                      rii->credit_details.execution_date.
+                                      abs_time),
       GNUNET_JSON_pack_string ("account",
                                wa->ai->section_name),
       GNUNET_JSON_pack_string ("diagnostic",
@@ -2257,7 +2261,7 @@ complain_in_not_found (void *cls,
 #endif
   TALER_ARL_amount_add (&total_bad_amount_in_minus,
                         &total_bad_amount_in_minus,
-                        &rii->details.amount);
+                        &rii->credit_details.amount);
   return GNUNET_OK;
 }
 
@@ -2306,8 +2310,9 @@ conclude_account (struct WireAccount *wa)
  * @return true on success, false to stop loop at this point
  */
 static bool
-analyze_credit (struct WireAccount *wa,
-                const struct TALER_BANK_CreditDetails *details)
+analyze_credit (
+  struct WireAccount *wa,
+  const struct TALER_BANK_CreditDetails *credit_details)
 {
   struct ReserveInInfo *rii;
   struct GNUNET_HashCode key;
@@ -2318,13 +2323,15 @@ analyze_credit (struct WireAccount *wa,
   // struct TALER_AUDITORDB_MisattributionInInconsistency mii;
   // struct TALER_AUDITORDB_RowMinorInconsistencies rmi;
 
+  GNUNET_assert (TALER_BANK_CT_RESERVE ==
+                 credit_details->type);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing bank CREDIT at %s of %s with Reserve-pub %s\n",
-              GNUNET_TIME_timestamp2s (details->execution_date),
-              TALER_amount2s (&details->amount),
-              TALER_B2S (&details->reserve_pub));
-  GNUNET_CRYPTO_hash (&details->serial_id,
-                      sizeof (details->serial_id),
+              GNUNET_TIME_timestamp2s (credit_details->execution_date),
+              TALER_amount2s (&credit_details->amount),
+              TALER_B2S (&credit_details->details.reserve.reserve_pub));
+  GNUNET_CRYPTO_hash (&credit_details->serial_id,
+                      sizeof (credit_details->serial_id),
                       &key);
   rii = GNUNET_CONTAINER_multihashmap_get (in_map,
                                            &key);
@@ -2332,24 +2339,24 @@ analyze_credit (struct WireAccount *wa,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
-                GNUNET_TIME_timestamp2s (details->execution_date));
+                GNUNET_TIME_timestamp2s (credit_details->execution_date));
     process_credits (wa->next);
     return false; /* not an error, just end of processing */
   }
 
   /* Update offset */
-  wa->wire_off_in = details->serial_id;
+  wa->wire_off_in = credit_details->serial_id;
   /* compare records with expected data */
-  if (0 != GNUNET_memcmp (&details->reserve_pub,
-                          &rii->details.reserve_pub))
+  if (0 != GNUNET_memcmp (&credit_details->details.reserve.reserve_pub,
+                          &rii->credit_details.details.reserve.reserve_pub))
   {
 #if FIXME
     riiDb.diagnostic = "wire subject does not match";
     riiDb.account = details->serial_id;
-    riiDb.amount_exchange_expected = &rii->details.amount;
+    riiDb.amount_exchange_expected = &rii->credit_details.amount;
     riiDb.amount_wired = &zero;
-    riiDb.reserve_pub = &rii->details.reserve_pub;
-    riiDb.timestamp = rii->details.execution_date.abs_time;
+    riiDb.reserve_pub = &rii->credit_details.detaisl.reserve.reserve_pub;
+    riiDb.timestamp = rii->credit_details.execution_date.abs_time;
 
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
@@ -2365,28 +2372,30 @@ analyze_credit (struct WireAccount *wa,
         GNUNET_JSON_pack_uint64 ("row",
                                  rii->rowid),
         GNUNET_JSON_pack_uint64 ("bank_row",
-                                 details->serial_id),
+                                 credit_details->serial_id),
         TALER_JSON_pack_amount ("amount_exchange_expected",
-                                &rii->details.amount),
+                                &rii->credit_details.amount),
         TALER_JSON_pack_amount ("amount_wired",
                                 &zero),
         GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &rii->details.reserve_pub),
+                                    &rii->credit_details.details.reserve.
+                                    reserve_pub),
         TALER_JSON_pack_time_abs_human ("timestamp",
-                                        rii->details.execution_date.abs_time),
+                                        rii->credit_details.execution_date.
+                                        abs_time),
         GNUNET_JSON_pack_string ("diagnostic",
                                  "wire subject does not match")));
 #endif
     TALER_ARL_amount_add (&total_bad_amount_in_minus,
                           &total_bad_amount_in_minus,
-                          &rii->details.amount);
+                          &rii->credit_details.amount);
 #if FIXME
     riiDb2.diagnostic = "wire subject does not match";
-    riiDb2.account = details->serial_id;
-    riiDb2.amount_exchange_expected = &rii->details.amount;
+    riiDb2.account = credit_details->serial_id;
+    riiDb2.amount_exchange_expected = &rii->credit_details.amount;
     riiDb2.amount_wired = &zero;
-    riiDb2.reserve_pub = &rii->details.reserve_pub;
-    riiDb2.timestamp = rii->details.execution_date.abs_time;
+    riiDb2.reserve_pub = &rii->credit_details.details.reserve.reserve_pub;
+    riiDb2.timestamp = rii->credit_details.execution_date.abs_time;
 
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
@@ -2402,33 +2411,35 @@ analyze_credit (struct WireAccount *wa,
         GNUNET_JSON_pack_uint64 ("row",
                                  rii->rowid),
         GNUNET_JSON_pack_uint64 ("bank_row",
-                                 details->serial_id),
+                                 credit_details->serial_id),
         TALER_JSON_pack_amount ("amount_exchange_expected",
                                 &zero),
         TALER_JSON_pack_amount ("amount_wired",
-                                &details->amount),
+                                &credit_details->amount),
         GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &details->reserve_pub),
+                                    &credit_details->details.reserve.reserve_pub
+                                    ),
         TALER_JSON_pack_time_abs_human ("timestamp",
-                                        details->execution_date.abs_time),
+                                        credit_details->execution_date.abs_time)
+        ,
         GNUNET_JSON_pack_string ("diagnostic",
                                  "wire subject does not match")));
 #endif
     TALER_ARL_amount_add (&total_bad_amount_in_plus,
                           &total_bad_amount_in_plus,
-                          &details->amount);
+                          &credit_details->amount);
     goto cleanup;
   }
-  if (0 != TALER_amount_cmp (&rii->details.amount,
-                             &details->amount))
+  if (0 != TALER_amount_cmp (&rii->credit_details.amount,
+                             &credit_details->amount))
   {
 #if FIXME
     riiDb3.diagnostic = "wire amount does not match";
-    riiDb3.account = details->serial_id;
-    riiDb3.amount_exchange_expected = &rii->details.amount;
-    riiDb3.amount_wired = &details->amount;
-    riiDb3.reserve_pub = &rii->details.reserve_pub;
-    riiDb3.timestamp = rii->details.execution_date.abs_time;
+    riiDb3.account = credit_details->serial_id;
+    riiDb3.amount_exchange_expected = &rii->credit_details.amount;
+    riiDb3.amount_wired = &credit_details->amount;
+    riiDb3.reserve_pub = &rii->credit_details.details.reserve.reserve_pub;
+    riiDb3.timestamp = rii->credit_details.execution_date.abs_time;
 
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
@@ -2444,27 +2455,29 @@ analyze_credit (struct WireAccount *wa,
         GNUNET_JSON_pack_uint64 ("row",
                                  rii->rowid),
         GNUNET_JSON_pack_uint64 ("bank_row",
-                                 details->serial_id),
+                                 credit_details->serial_id),
         TALER_JSON_pack_amount ("amount_exchange_expected",
-                                &rii->details.amount),
+                                &rii->credit_details.amount),
         TALER_JSON_pack_amount ("amount_wired",
-                                &details->amount),
+                                &credit_details->amount),
         GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &details->reserve_pub),
+                                    &credit_details->details.reserve.reserve_pub
+                                    ),
         TALER_JSON_pack_time_abs_human ("timestamp",
-                                        details->execution_date.abs_time),
+                                        credit_details->execution_date.abs_time)
+        ,
         GNUNET_JSON_pack_string ("diagnostic",
                                  "wire amount does not match")));
 #endif
-    if (0 < TALER_amount_cmp (&details->amount,
-                              &rii->details.amount))
+    if (0 < TALER_amount_cmp (&credit_details->amount,
+                              &rii->credit_details.amount))
     {
       /* details->amount > rii->details.amount: wire transfer was larger than it should have been */
       struct TALER_Amount delta;
 
       TALER_ARL_amount_subtract (&delta,
-                                 &details->amount,
-                                 &rii->details.amount);
+                                 &credit_details->amount,
+                                 &rii->credit_details.amount);
       TALER_ARL_amount_add (&total_bad_amount_in_plus,
                             &total_bad_amount_in_plus,
                             &delta);
@@ -2475,21 +2488,21 @@ analyze_credit (struct WireAccount *wa,
       struct TALER_Amount delta;
 
       TALER_ARL_amount_subtract (&delta,
-                                 &rii->details.amount,
-                                 &details->amount);
+                                 &rii->credit_details.amount,
+                                 &credit_details->amount);
       TALER_ARL_amount_add (&total_bad_amount_in_minus,
                             &total_bad_amount_in_minus,
                             &delta);
     }
     goto cleanup;
   }
-  if (0 != strcasecmp (details->debit_account_uri,
-                       rii->details.debit_account_uri))
+  if (0 != strcasecmp (credit_details->debit_account_uri,
+                       rii->credit_details.debit_account_uri))
   {
 #if FIXME
-    mii.reserve_pub = &rii->details.reserve_pub;
-    mii.amount = &rii->details.amount;
-    mii.bank_row = details->serial_id;
+    mii.reserve_pub = &rii->credit_details.details.reserve.reserve_pub;
+    mii.amount = &rii->credit_details.amount;
+    mii.bank_row = credit_details->serial_id;
 
     qs = TALER_ARL_adb->insert_misattribution_in_inconsistency (
       TALER_ARL_adb->cls,
@@ -2502,22 +2515,22 @@ analyze_credit (struct WireAccount *wa,
     TALER_ARL_report (report_misattribution_in_inconsistencies,
                       GNUNET_JSON_PACK (
                         TALER_JSON_pack_amount ("amount",
-                                                &rii->details.amount),
+                                                &rii->credit_details.amount),
                         GNUNET_JSON_pack_uint64 ("row",
                                                  rii->rowid),
                         GNUNET_JSON_pack_uint64 ("bank_row",
-                                                 details->serial_id),
+                                                 credit_details->serial_id),
                         GNUNET_JSON_pack_data_auto (
                           "reserve_pub",
-                          &rii->details.reserve_pub)));
+                          &rii->credit_details.details.reserve.reserve_pub)));
 #endif
     TALER_ARL_amount_add (&total_misattribution_in,
                           &total_misattribution_in,
-                          &rii->details.amount);
+                          &rii->credit_details.amount);
   }
-  if (GNUNET_TIME_timestamp_cmp (details->execution_date,
+  if (GNUNET_TIME_timestamp_cmp (credit_details->execution_date,
                                  !=,
-                                 rii->details.execution_date))
+                                 rii->credit_details.execution_date))
   {
 #if FIXME
     rmi.diagnostic = "execution date mismatch";
@@ -2538,7 +2551,7 @@ analyze_credit (struct WireAccount *wa,
                         GNUNET_JSON_pack_uint64 ("row",
                                                  rii->rowid),
                         GNUNET_JSON_pack_uint64 ("bank_row",
-                                                 details->serial_id),
+                                                 credit_details->serial_id),
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  "execution date mismatch")));
 #endif
