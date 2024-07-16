@@ -221,6 +221,8 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_lookup_auditor_status.h pg_lookup_auditor_status.c \
   pg_insert_auditor.h pg_insert_auditor.c \
   pg_lookup_wire_timestamp.h pg_lookup_wire_timestamp.c \
+  pg_wad_in_insert.h pg_wad_in_insert.c \
+  pg_kycauth_in_insert.h pg_kycauth_in_insert.c \
   pg_insert_wire.h pg_insert_wire.c \
   pg_update_wire.h pg_update_wire.c \
   pg_get_wire_accounts.h pg_get_wire_accounts.c \

@@ -70,6 +70,8 @@
 #include "pg_preflight.h"
 #include "pg_select_aml_statistics.h"
 #include "pg_commit.h"
+#include "pg_wad_in_insert.h"
+#include "pg_kycauth_in_insert.h"
 #include "pg_drop_tables.h"
 #include "pg_get_kyc_rules.h"
 #include "pg_select_aggregation_amounts_for_kyc_check.h"
@@ -593,6 +595,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_do_age_withdraw;
   plugin->get_age_withdraw
     = &TEH_PG_get_age_withdraw;
+  plugin->wad_in_insert
+    = &TEH_PG_wad_in_insert;
+  plugin->kycauth_in_insert
+    = &TEH_PG_kycauth_in_insert;
   plugin->get_policy_details
     = &TEH_PG_get_policy_details;
   plugin->persist_policy_details
