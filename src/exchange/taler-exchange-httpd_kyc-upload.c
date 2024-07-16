@@ -436,7 +436,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
         expiration_time,
         enc_attributes_size,
         enc_attributes,
-        false /* require aml??? Pass do not know? */
+        false /* FIXME: require aml!? Pass do not know? */
         );
       GNUNET_free (enc_attributes);
       if (qs < 0)

@@ -2155,10 +2155,10 @@ TALER_KYCLOGIC_measure_to_requirement (
     ids = GNUNET_STRINGS_data_to_string_alloc (&shv,
                                                sizeof (shv));
     GNUNET_asprintf (&xids,
-                     "%llu/%u/%s",
-                     (unsigned long long) row_id,
+                     "%s-%u-%llu",
+                     ids,
                      (unsigned int) offset,
-                     ids);
+                     (unsigned long long) row_id);
     GNUNET_free (ids);
     kri = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("form",
@@ -2176,10 +2176,10 @@ TALER_KYCLOGIC_measure_to_requirement (
     ids = GNUNET_STRINGS_data_to_string_alloc (&shv,
                                                sizeof (shv));
     GNUNET_asprintf (&xids,
-                     "%llu/%u/%s",
-                     (unsigned long long) row_id,
+                     "%s-%u-%llu",
+                     ids,
                      (unsigned int) offset,
-                     ids);
+                     (unsigned long long) row_id);
     GNUNET_free (ids);
     kri = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("form",

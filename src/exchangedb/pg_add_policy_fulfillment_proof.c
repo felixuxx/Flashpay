@@ -56,11 +56,11 @@ TEH_PG_add_policy_fulfillment_proof (
   struct PostgresClosure *pg = cls;
   size_t count = fulfillment->details_count;
   /* FIXME: this seems to be prone to VLA attacks */
-  struct GNUNET_HashCode hcs[count];
+  struct GNUNET_HashCode hcs[GNUNET_NZL (count)];
 
   /* Create the sorted policy_hash_codes */
   {
-    size_t idx[count];
+    size_t idx[GNUNET_NZL (count)];
     for (size_t i = 0; i < count; i++)
       idx[i] = i;
 

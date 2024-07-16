@@ -238,6 +238,7 @@ TALER_EXCHANGE_kyc_check (
   struct TALER_EXCHANGE_KycCheckHandle *kch;
   CURL *eh;
   char *arg_str;
+  struct curl_slist *job_headers = NULL;
 
   {
     unsigned long long timeout_ms;
@@ -269,11 +270,41 @@ TALER_EXCHANGE_kyc_check (
     GNUNET_free (kch);
     return NULL;
   }
-  // FIXME: use account_priv!!
-  kch->job = GNUNET_CURL_job_add_with_ct_json (ctx,
-                                               eh,
-                                               &handle_kyc_check_finished,
-                                               kch);
+
+  job_headers = curl_slist_append (job_headers,
+                                   "Content-Type: application/json");
+  {
+    union TALER_AccountSignatureP account_sig;
+    char *sig_hdr;
+    char *hdr;
+
+    TALER_account_kyc_auth_sign (account_priv,
+                                 &account_sig);
+
+    sig_hdr = GNUNET_STRINGS_data_to_string_alloc (
+      &account_sig,
+      sizeof (account_sig));
+    GNUNET_asprintf (&hdr,
+                     "%s: %s",
+                     TALER_HTTP_HEADER_ACCOUNT_OWNER_SIGNATURE,
+                     sig_hdr);
+    GNUNET_free (sig_hdr);
+    job_headers = curl_slist_append (NULL,
+                                     hdr);
+    GNUNET_free (hdr);
+    if (NULL == job_headers)
+    {
+      GNUNET_break (0);
+      curl_easy_cleanup (eh);
+      return NULL;
+    }
+  }
+  kch->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   job_headers,
+                                   &handle_kyc_check_finished,
+                                   kch);
+  curl_slist_free_all (job_headers);
   return kch;
 }
 

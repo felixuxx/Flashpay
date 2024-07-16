@@ -356,7 +356,8 @@ TEH_handler_kyc_info (
                          &dummy))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                      "Client send malformed `If-None-Match' header `%s'\n",
+                      "Client send malformed `%s' header `%s'\n",
+                      MHD_HTTP_HEADER_IF_NONE_MATCH,
                       etags);
         }
         else
