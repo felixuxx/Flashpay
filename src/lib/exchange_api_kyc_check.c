@@ -239,17 +239,14 @@ TALER_EXCHANGE_kyc_check (
   CURL *eh;
   char *arg_str;
   struct curl_slist *job_headers = NULL;
+  unsigned long long tms;
 
-  {
-    unsigned long long timeout_ms;
-
-    timeout_ms = timeout.rel_value_us
-                 / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
-    GNUNET_asprintf (&arg_str,
-                     "kyc-check/%llu?timeout_ms=%llu",
-                     (unsigned long long) requirement_row,
-                     timeout_ms);
-  }
+  tms = timeout.rel_value_us
+        / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
+  GNUNET_asprintf (&arg_str,
+                   "kyc-check/%llu?timeout_ms=%llu",
+                   (unsigned long long) requirement_row,
+                   tms);
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
   kch->cb = cb;
   kch->cb_cls = cb_cls;
@@ -269,6 +266,13 @@ TALER_EXCHANGE_kyc_check (
     GNUNET_free (kch->url);
     GNUNET_free (kch);
     return NULL;
+  }
+  if (0 != tms)
+  {
+    GNUNET_break (CURLE_OK ==
+                  curl_easy_setopt (eh,
+                                    CURLOPT_TIMEOUT_MS,
+                                    (long) (tms + 100L)));
   }
 
   job_headers = curl_slist_append (job_headers,
