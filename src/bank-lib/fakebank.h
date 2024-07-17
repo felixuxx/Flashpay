@@ -401,7 +401,7 @@ struct Transaction
       /**
        * Subject of the transfer.
        */
-      struct TALER_WadIdentifierP wad;
+      struct TALER_WadIdentifierP wad_id;
 
       /**
        * Base URL of the originating exchange.

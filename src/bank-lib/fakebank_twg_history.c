@@ -454,7 +454,8 @@ TALER_FAKEBANK_twg_get_credit_history_ (
   {
     json_t *trans;
 
-    if (T_CREDIT != pos->type)
+    if ( (T_CREDIT != pos->type) &&
+         (T_AUTH != pos->type) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Unexpected DEBIT transaction #%llu for account `%s'\n",
@@ -466,17 +467,59 @@ TALER_FAKEBANK_twg_get_credit_history_ (
         pos = pos->next_in;
       continue;
     }
-    trans = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("row_id",
-                               pos->row_id),
-      GNUNET_JSON_pack_timestamp ("date",
-                                  pos->date),
-      TALER_JSON_pack_amount ("amount",
-                              &pos->amount),
-      GNUNET_JSON_pack_string ("debit_account",
-                               pos->debit_account->payto_uri),
-      GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                  &pos->subject.credit.reserve_pub));
+    switch (pos->type)
+    {
+    case T_DEBIT:
+      GNUNET_assert (0);
+      break;
+    case T_WAD:
+      trans = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("type",
+                                 "WAD"),
+        GNUNET_JSON_pack_uint64 ("row_id",
+                                 pos->row_id),
+        GNUNET_JSON_pack_timestamp ("date",
+                                    pos->date),
+        TALER_JSON_pack_amount ("amount",
+                                &pos->amount),
+        GNUNET_JSON_pack_string ("debit_account",
+                                 pos->debit_account->payto_uri),
+        GNUNET_JSON_pack_string ("origin_exchange_url",
+                                 pos->subject.wad.origin_base_url),
+        GNUNET_JSON_pack_data_auto ("wad_id",
+                                    &pos->subject.wad.wad_id));
+      break;
+    case T_CREDIT:
+      trans = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("type",
+                                 "RESERVE"),
+        GNUNET_JSON_pack_uint64 ("row_id",
+                                 pos->row_id),
+        GNUNET_JSON_pack_timestamp ("date",
+                                    pos->date),
+        TALER_JSON_pack_amount ("amount",
+                                &pos->amount),
+        GNUNET_JSON_pack_string ("debit_account",
+                                 pos->debit_account->payto_uri),
+        GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                    &pos->subject.credit.reserve_pub));
+      break;
+    case T_AUTH:
+      trans = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("type",
+                                 "KYCAUTH"),
+        GNUNET_JSON_pack_uint64 ("row_id",
+                                 pos->row_id),
+        GNUNET_JSON_pack_timestamp ("date",
+                                    pos->date),
+        TALER_JSON_pack_amount ("amount",
+                                &pos->amount),
+        GNUNET_JSON_pack_string ("debit_account",
+                                 pos->debit_account->payto_uri),
+        GNUNET_JSON_pack_data_auto ("account_pub",
+                                    &pos->subject.auth.account_pub));
+      break;
+    }
     GNUNET_assert (NULL != trans);
     GNUNET_assert (0 ==
                    json_array_append_new (hc->history,
