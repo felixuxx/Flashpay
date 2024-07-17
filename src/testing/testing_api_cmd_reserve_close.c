@@ -99,15 +99,12 @@ reserve_close_cb (void *cls,
   ss->rsh = NULL;
   if (ss->expected_response_code != rs->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected HTTP response code: %d in %s:%u\n",
-                rs->hr.http_status,
-                __FILE__,
-                __LINE__);
+    TALER_TESTING_unexpected_status (ss->is,
+                                     rs->hr.http_status,
+                                     ss->expected_response_code);
     json_dumpf (rs->hr.reply,
                 stderr,
                 JSON_INDENT (2));
-    TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
   switch (rs->hr.http_status)

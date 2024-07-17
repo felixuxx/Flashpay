@@ -81,7 +81,7 @@ get_attributes_cb (void *cls,
     void *enc_attributes;
     char *provider;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_string ("provider",
+      GNUNET_PQ_result_spec_string ("provider_name",
                                     &provider),
       GNUNET_PQ_result_spec_timestamp ("collection_time",
                                        &collection_time),
@@ -138,12 +138,14 @@ TEH_PG_select_kyc_attributes (
   PREPARE (pg,
            "select_kyc_attributes",
            "SELECT "
-           " provider"
-           ",collection_time"
-           ",expiration_time"
-           ",encrypted_attributes"
-           " FROM kyc_attributes"
-           " WHERE h_payto=$1");
+           " lp.provider_name"
+           ",ka.collection_time"
+           ",ka.expiration_time"
+           ",ka.encrypted_attributes"
+           " FROM kyc_attributes ka"
+           " JOIN legitimization_processes lp"
+           "   USING (legitimization_process_serial_id)"
+           " WHERE ka.h_payto=$1");
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
     "select_kyc_attributes",

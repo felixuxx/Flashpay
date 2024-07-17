@@ -121,9 +121,10 @@ TEH_PG_iterate_kyc_reference (
            ",provider_legitimization_id"
            " FROM legitimization_processes"
            " WHERE h_payto=$1;");
-  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                               "iterate_kyc_reference",
-                                               params,
-                                               &iterate_kyc_reference_cb,
-                                               &ic);
+  return GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "iterate_kyc_reference",
+    params,
+    &iterate_kyc_reference_cb,
+    &ic);
 }
