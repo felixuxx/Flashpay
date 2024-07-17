@@ -66,6 +66,15 @@ check_log (struct TALER_FAKEBANK_Handle *h)
                   TALER_B2S (&t->subject.credit.reserve_pub),
                   "CREDIT");
       break;
+    case T_AUTH:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "%s -> %s (%s) %s (%s)\n",
+                  t->debit_account->account_name,
+                  t->credit_account->account_name,
+                  TALER_amount2s (&t->amount),
+                  TALER_B2S (&t->subject.auth.account_pub),
+                  "AUTH");
+      break;
     case T_WAD:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "%s -> %s (%s) %s[%s] (%s)\n",

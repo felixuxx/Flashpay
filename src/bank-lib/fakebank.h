@@ -332,6 +332,11 @@ struct Transaction
     T_DEBIT,
 
     /**
+     * Transfer TO the exchange for KYCAUTH.
+     */
+    T_AUTH,
+
+    /**
      * Exchange-to-exchange WAD transfer.
      */
     T_WAD,
@@ -373,6 +378,19 @@ struct Transaction
       struct TALER_ReservePublicKeyP reserve_pub;
 
     } credit;
+
+    /**
+     * Used if @e type is T_AUTH.
+     */
+    struct
+    {
+
+      /**
+       * Account public key of the credit operation.
+       */
+      union TALER_AccountPublicKeyP account_pub;
+
+    } auth;
 
     /**
      * Used if @e type is T_WAD.

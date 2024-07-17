@@ -29,6 +29,7 @@
 #include "fakebank.h"
 #include "fakebank_twg.h"
 #include "fakebank_twg_admin_add_incoming.h"
+#include "fakebank_twg_admin_add_kycauth.h"
 #include "fakebank_twg_get_root.h"
 #include "fakebank_twg_history.h"
 #include "fakebank_twg_transfer.h"
@@ -101,6 +102,15 @@ TALER_FAKEBANK_twg_main_ (
                                                      upload_data,
                                                      upload_data_size,
                                                      con_cls);
+    if ( (0 == strcmp (url,
+                       "/admin/add-kycauth")) &&
+         (NULL != account) )
+      return TALER_FAKEBANK_twg_admin_add_kycauth_ (h,
+                                                    connection,
+                                                    account,
+                                                    upload_data,
+                                                    upload_data_size,
+                                                    con_cls);
     if ( (0 == strcmp (url,
                        "/transfer")) &&
          (NULL != account) )

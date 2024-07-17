@@ -83,6 +83,7 @@ libtalerfakebank_la_SOURCES = \
   fakebank_tbi_post_withdrawal_operation.c fakebank_tbi_post_withdrawal_operation.h \
   fakebank_twg.c fakebank_twg.h \
   fakebank_twg_admin_add_incoming.c fakebank_twg_admin_add_incoming.h \
+  fakebank_twg_admin_add_kycauth.c fakebank_twg_admin_add_kycauth.h \
   fakebank_twg_get_root.c fakebank_twg_get_root.h \
   fakebank_twg_history.c fakebank_twg_history.h \
   fakebank_twg_transfer.c fakebank_twg_transfer.h
