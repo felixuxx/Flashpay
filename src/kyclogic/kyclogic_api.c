@@ -35,11 +35,6 @@ struct TALER_KYCLOGIC_KycProvider
 {
 
   /**
-   * Cost of running this provider's KYC process.
-   */
-  struct TALER_Amount cost;
-
-  /**
    * Name of the provider.
    */
   char *provider_name;
@@ -535,6 +530,8 @@ cleanup:
 void
 TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
 {
+  if (NULL == lrs)
+    return;
   for (unsigned int i = 0; i<lrs->num_kyc_rules; i++)
   {
     struct TALER_KYCLOGIC_KycRule *rule
@@ -1019,24 +1016,11 @@ static enum GNUNET_GenericReturnValue
 add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
               const char *section)
 {
-  struct TALER_Amount cost;
   char *logic;
   char *converter;
   struct TALER_KYCLOGIC_Plugin *lp;
   struct TALER_KYCLOGIC_ProviderDetails *pd;
 
-  if (GNUNET_OK !=
-      TALER_config_get_amount (cfg,
-                               section,
-                               "COST",
-                               &cost))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "COST",
-                               "amount required");
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
@@ -1085,7 +1069,6 @@ add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
     struct TALER_KYCLOGIC_KycProvider *kp;
 
     kp = GNUNET_new (struct TALER_KYCLOGIC_KycProvider);
-    kp->cost = cost;
     kp->provider_name
       = GNUNET_strdup (&section[strlen ("kyc-provider-")]);
     kp->converter_name = converter;

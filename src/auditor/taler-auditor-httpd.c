@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -265,7 +265,7 @@ static uint16_t serve_port;
  */
 char *TAH_currency;
 
-
+// FIXME: this is done in a very weird way, needs review!
 char *TMA_auth;
 
 #define RFC_8959_PREFIX "secret-token:"
@@ -400,18 +400,23 @@ TMH_check_auth (const char *token)
     return GNUNET_SYSERR;
 
   token += strlen (RFC_8959_PREFIX);
-
   GNUNET_STRINGS_string_to_data (token,
                                  strlen (token),
                                  &tok,
                                  sizeof (tok));
-
-
-  GNUNET_STRINGS_string_to_data (TMA_auth,
-                                 strlen (TMA_auth),
-                                 &salt,
-                                 sizeof (salt));
-
+  if (NULL != TMA_auth)
+  {
+    GNUNET_STRINGS_string_to_data (TMA_auth,
+                                   strlen (TMA_auth),
+                                   &salt,
+                                   sizeof (salt));
+  }
+  else
+  {
+    memset (&salt,
+            0,
+            sizeof (salt));
+  }
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (&val,
                                     sizeof (val),
@@ -451,21 +456,27 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-
   static struct TAH_RequestHandler handlers[] = {
     /* Our most popular handler (thus first!), used by merchants to
        probabilistically report us their deposit confirmations. */
-    { "/deposit-confirmation", MHD_HTTP_METHOD_PUT,
+    {
+      "/deposit-confirmation",
+      MHD_HTTP_METHOD_PUT,
       "application/json",
       NULL, 0,
-      &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK, true },
-
-
-    { "/monitoring/deposit-confirmation", MHD_HTTP_METHOD_GET,
+      &TAH_DEPOSIT_CONFIRMATION_handler,
+      MHD_HTTP_OK,
+      true
+    },
+    {
+      "/monitoring/deposit-confirmation",
+      MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
-      &TAH_DEPOSIT_CONFIRMATION_handler_get, MHD_HTTP_OK, true },
-
+      &TAH_DEPOSIT_CONFIRMATION_handler_get,
+      MHD_HTTP_OK,
+      true
+    },
     { "/monitoring/deposit-confirmation", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -1107,67 +1118,48 @@ handle_mhd_request (void *cls,
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
+  if (0 == strcasecmp (method,
+                       MHD_HTTP_METHOD_OPTIONS) )
+    return TALER_MHD_reply_cors_preflight (connection);
   for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
     struct TAH_RequestHandler *rh = &handlers[i];
-
-    if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS) )
-      return TALER_MHD_reply_cors_preflight (connection);
-
     unsigned int argsnr = 3;
 
     // arguments, and the url itself, and a terminator that is always null
     const char *args[argsnr + 1];
-    memset (&args,0,sizeof (args));
     size_t ulen = strlen (url) + 1;
     char d[ulen];
+    char argurl[ulen + 1 + strlen ("/monitoring")];
     unsigned int i = 0;
     char *sp;
 
     bool found = false;
     bool requiresAuth = true;
 
+    memset (&args,
+            0,
+            sizeof (args));
     GNUNET_memcpy (d,
                    url,
                    ulen);
-
     args[i++] = strtok_r (d, "/", &sp);
-
     while ( (NULL != args[i - 1]) && (i < argsnr) )
     {
-      args[i++] = strtok_r (NULL, "/", &sp);
+      args[i++] = strtok_r (NULL,
+                            "/",
+                            &sp);
     }
 
-    // max length url could be
-    char argurl[ulen + 1 + strlen ("/monitoring")];
-    memset (argurl, 0, ulen + 1 + strlen ("/monitoring"));
-    strcpy (argurl,"/");
-
-
+    memset (argurl,
+            0,
+            sizeof (argurl));
+    strcpy (argurl,
+            "/");
     if (args[0] != NULL)
     {
-
-      strcat (argurl,args[0]);
-
-      if ( (0 == strcasecmp (argurl,
-                             rh->url)) && ( (NULL == rh->method) ||
-                                            (0 == strcasecmp (method,
-                                                              rh->method)) ) )
-      {
-
-        found = true;
-        requiresAuth = rh->requiresAuth;
-
-      }
-
-    }
-
-
-    if (i >= 2 && args[1] != NULL)
-    {
-
-      strcat (argurl,"/");
-      strcat (argurl,args[1]);
+      strcat (argurl,
+              args[0]);
 
       if ( (0 == strcasecmp (argurl,
                              rh->url)) &&
@@ -1175,85 +1167,87 @@ handle_mhd_request (void *cls,
              (0 == strcasecmp (method,
                                rh->method)) ) )
       {
+        found = true;
+        requiresAuth = rh->requiresAuth;
+      }
+    }
 
-        if ((0 == strcasecmp (method, MHD_HTTP_METHOD_DELETE)) ||
-            (0 == strcasecmp (method, MHD_HTTP_METHOD_PUT)) )
+    if (i >= 2 && args[1] != NULL)
+    {
+      strcat (argurl,
+              "/");
+      strcat (argurl,
+              args[1]);
+      if ( (0 == strcasecmp (argurl,
+                             rh->url)) &&
+           ( (NULL == rh->method) ||
+             (0 == strcasecmp (method,
+                               rh->method)) ) )
+      {
+        if ((0 == strcasecmp (method,
+                              MHD_HTTP_METHOD_DELETE)) ||
+            (0 == strcasecmp (method,
+                              MHD_HTTP_METHOD_PUT)) )
         {
-
           return TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_METHOD_NOT_ALLOWED,
                                              TALER_EC_AUDITOR_GENERIC_METHOD_NOT_ALLOWED,
                                              "This method is currently disabled.");
 
         }
-
         found = true;
         requiresAuth = true;
-
       }
     }
 
-
-    const char *auth;
-
-    auth = MHD_lookup_connection_value (connection,
-                                        MHD_HEADER_KIND,
-                                        MHD_HTTP_HEADER_AUTHORIZATION);
-
-
-    if (found)
+    if (! found)
+      continue;
+    if (requiresAuth)
     {
+      const char *auth;
 
-      if (requiresAuth)
+      auth = MHD_lookup_connection_value (connection,
+                                          MHD_HEADER_KIND,
+                                          MHD_HTTP_HEADER_AUTHORIZATION);
+      if (NULL == auth)
       {
-
-
-        if (NULL != auth)
-        {
-
-          extract_token (&auth);
-
-          if (NULL == auth)
-            return TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_UNAUTHORIZED,
-                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                               "'" RFC_8959_PREFIX
-                                               "' prefix or 'Bearer' missing in 'Authorization' header");
-
-          if (TMH_check_auth (auth) != 1)
-          {
-
-            return TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_UNAUTHORIZED,
-                                               TALER_EC_AUDITOR_GENERIC_UNAUTHORIZED,
-                                               "Check 'Authorization' header");
-          }
-
-
-        }
-        else
-        {
-          return TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_UNAUTHORIZED,
-                                             TALER_EC_AUDITOR_GENERIC_UNAUTHORIZED,
-                                             "Check 'Authorization' header");
-        }
-
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_UNAUTHORIZED,
+                                           TALER_EC_AUDITOR_GENERIC_UNAUTHORIZED,
+                                           "Check 'Authorization' header");
       }
+      extract_token (&auth);
+      if (NULL == auth)
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_UNAUTHORIZED,
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "'" RFC_8959_PREFIX
+          "' prefix or 'Bearer' missing in 'Authorization' header");
 
-      return rh->handler (rh,
-                          connection,
-                          con_cls,
-                          upload_data,
-                          upload_data_size,
-                          args);
-
+      if (TMH_check_auth (auth) != 1)
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_UNAUTHORIZED,
+          TALER_EC_AUDITOR_GENERIC_UNAUTHORIZED,
+          "Check 'Authorization' header");
+      }
     }
 
+    return rh->handler (rh,
+                        connection,
+                        con_cls,
+                        upload_data,
+                        upload_data_size,
+                        args);
 
   }
+  GNUNET_break_op (0);
 #define NOT_FOUND \
-  "<html><title>404: not found</title><body>auditor endpoints have been moved to /monitoring/...</body></html>"
+        "<html><title>404: not found</title><body>auditor endpoints have been moved to /monitoring/...</body></html>"
   return TALER_MHD_reply_static (connection,
                                  MHD_HTTP_NOT_FOUND,
                                  "text/html",
@@ -1445,6 +1439,9 @@ run (void *cls,
   enum TALER_MHD_GlobalOptions go;
   int fh;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   {
     const char *tok;
 
@@ -1455,18 +1452,11 @@ run (void *cls,
       TMA_auth = GNUNET_strdup (tok);
     if ( (NULL == TMA_auth) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "No salt defined\n");
-      global_ret = EXIT_NOTCONFIGURED;
-      GNUNET_SCHEDULER_shutdown ();
-      return;
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "TALER_AUDITOR_SALT environment variable not set\n");
     }
-
-
   }
 
-  (void) cls;
-  (void) args;
-  (void) cfgfile;
   go = TALER_MHD_GO_NONE;
   if (auditor_connection_close)
     go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
@@ -1524,8 +1514,6 @@ run (void *cls,
     }
     global_ret = EXIT_SUCCESS;
     TALER_MHD_daemon_start (mhd);
-
-
   }
 }
 

@@ -152,6 +152,7 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
         }
+        td->type = TALER_BANK_CT_RESERVE;
       }
       else if (0 == strcasecmp ("KYCAUTH",
                                 type))
@@ -171,6 +172,7 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
         }
+        td->type = TALER_BANK_CT_KYCAUTH;
       }
       else if (0 == strcasecmp ("WAD",
                                 type))
@@ -192,6 +194,7 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
         }
+        td->type = TALER_BANK_CT_WAD;
       }
       else
       {

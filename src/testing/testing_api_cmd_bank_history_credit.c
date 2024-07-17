@@ -136,7 +136,8 @@ print_expected (struct History *h,
               "Expected history:\n");
   for (unsigned int i = 0; i<h_len; i++)
   {
-    const struct TALER_BANK_CreditDetails *cd = &h[i].credit_details;
+    const struct TALER_BANK_CreditDetails *cd
+      = &h[i].credit_details;
 
     switch (cd->type)
     {
@@ -301,12 +302,18 @@ command_cb (void *cls,
     GNUNET_array_grow (ic->h,
                        ic->total,
                        ic->pos * 2);
-  ic->h[ic->pos].url = GNUNET_strdup (debit_account);
-  ic->h[ic->pos].row_id = *row_id;
-  ic->h[ic->pos].credit_details.type = TALER_BANK_CT_RESERVE;
-  ic->h[ic->pos].credit_details.debit_account_uri = ic->h[ic->pos].url;
-  ic->h[ic->pos].credit_details.amount = *amount;
-  ic->h[ic->pos].credit_details.details.reserve.reserve_pub = *reserve_pub;
+  ic->h[ic->pos].url
+    = GNUNET_strdup (debit_account);
+  ic->h[ic->pos].row_id
+    = *row_id;
+  ic->h[ic->pos].credit_details.type
+    = TALER_BANK_CT_RESERVE;
+  ic->h[ic->pos].credit_details.debit_account_uri
+    = ic->h[ic->pos].url;
+  ic->h[ic->pos].credit_details.amount
+    = *amount;
+  ic->h[ic->pos].credit_details.details.reserve.reserve_pub
+    = *reserve_pub;
   ic->pos++;
 }
 

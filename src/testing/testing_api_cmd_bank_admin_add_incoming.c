@@ -35,7 +35,7 @@
  * How long do we wait AT MOST when retrying?
  */
 #define MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+          GNUNET_TIME_UNIT_MILLISECONDS, 100)
 
 
 /**
@@ -322,8 +322,9 @@ admin_add_incoming_run (void *cls,
     const struct TALER_ReservePrivateKeyP *reserve_priv;
     const struct TALER_ReservePublicKeyP *reserve_pub;
 
-    ref = TALER_TESTING_interpreter_lookup_command
-            (is, fts->reserve_reference);
+    ref = TALER_TESTING_interpreter_lookup_command (
+      is,
+      fts->reserve_reference);
     if (NULL == ref)
     {
       GNUNET_break (0);

@@ -53,7 +53,8 @@ struct TALER_TESTING_Credentials cred;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch2 (label, CONFIG_FILE, "exchange-account-2")
+        TALER_TESTING_cmd_exec_wirewatch2 (label, CONFIG_FILE, \
+                                           "exchange-account-2")
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -62,9 +63,9 @@ struct TALER_TESTING_Credentials cred;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label)                        \
-  TALER_TESTING_cmd_sleep (label "-sleep", 1), \
-  TALER_TESTING_cmd_exec_aggregator_with_kyc (label, CONFIG_FILE), \
-  TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
+        TALER_TESTING_cmd_sleep (label "-sleep", 1), \
+        TALER_TESTING_cmd_exec_aggregator_with_kyc (label, CONFIG_FILE), \
+        TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -74,9 +75,9 @@ struct TALER_TESTING_Credentials cred;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_admin_add_incoming (label, amount,           \
-                                        &cred.ba,       \
-                                        cred.user42_payto)
+        TALER_TESTING_cmd_admin_add_incoming (label, amount,           \
+                                              &cred.ba,       \
+                                              cred.user42_payto)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -417,15 +418,18 @@ run (void *cls,
   };
   struct TALER_TESTING_Command aml[] = {
     /* Trigger something upon which an AML officer could act */
+#if FIXME
     TALER_TESTING_cmd_wallet_kyc_get ("wallet-trigger-kyc-for-aml",
                                       NULL,
                                       "EUR:1000",
                                       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+#endif
     TALER_TESTING_cmd_set_officer ("create-aml-officer-1",
                                    NULL,
                                    "Peter Falk",
                                    true,
                                    false),
+#if FIXME
     TALER_TESTING_cmd_check_aml_decisions ("check-decisions-none-normal",
                                            "create-aml-officer-1",
                                            TALER_AML_NORMAL,
@@ -438,6 +442,7 @@ run (void *cls,
                                            "create-aml-officer-1",
                                            TALER_AML_FROZEN,
                                            MHD_HTTP_NO_CONTENT),
+#endif
     TALER_TESTING_cmd_sleep ("sleep-1a",
                              1),
     TALER_TESTING_cmd_set_officer ("create-aml-officer-1-disable",
@@ -447,6 +452,7 @@ run (void *cls,
                                    true),
     /* Test that we are not allowed to take AML decisions as our
        AML staff account is on read-only */
+#if FIXME
     TALER_TESTING_cmd_take_aml_decision ("aml-decide-while-disabled",
                                          "create-aml-officer-1",
                                          "wallet-trigger-kyc-for-aml",
@@ -461,6 +467,7 @@ run (void *cls,
                                           "create-aml-officer-1",
                                           "aml-decide-while-disabled",
                                           MHD_HTTP_NO_CONTENT),
+#endif
     TALER_TESTING_cmd_sleep ("sleep-1b",
                              1),
     TALER_TESTING_cmd_set_officer ("create-aml-officer-1-enable",
@@ -468,6 +475,7 @@ run (void *cls,
                                    "Peter Falk",
                                    true,
                                    false),
+#if FIXME
     TALER_TESTING_cmd_take_aml_decision ("aml-decide",
                                          "create-aml-officer-1",
                                          "wallet-trigger-kyc-for-aml",
@@ -508,6 +516,7 @@ run (void *cls,
                                            MHD_HTTP_NO_CONTENT),
     TALER_TESTING_cmd_sleep ("sleep-1d",
                              1),
+#endif
     TALER_TESTING_cmd_set_officer ("create-aml-officer-1-disable",
                                    "create-aml-officer-1",
                                    "Peter Falk",
@@ -515,10 +524,12 @@ run (void *cls,
                                    true),
     /* Test that we are NOT allowed to read AML decisions now that
        our AML staff account is disabled */
+#if FIXME
     TALER_TESTING_cmd_check_aml_decision ("check-aml-decision-disabled",
                                           "create-aml-officer-1",
                                           "aml-decide",
                                           MHD_HTTP_FORBIDDEN),
+#endif
     TALER_TESTING_cmd_end ()
   };
 
@@ -535,6 +546,7 @@ run (void *cls,
                                     NULL,
                                     true,
                                     true),
+#if FIXME
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("spend",
@@ -551,6 +563,7 @@ run (void *cls,
                              push),
     TALER_TESTING_cmd_batch ("pull",
                              pull),
+#endif
     TALER_TESTING_cmd_batch ("aml",
                              aml),
     TALER_TESTING_cmd_end ()

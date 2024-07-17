@@ -114,7 +114,7 @@ struct TALER_KYCLOGIC_ProviderDetails
 
   /**
    * Name of the program we use to convert outputs
-   * from Persona into our JSON inputs.
+   * from OAuth2 outputs into our JSON inputs.
    */
   char *conversion_binary;
 
