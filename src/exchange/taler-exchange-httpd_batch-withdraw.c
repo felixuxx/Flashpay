@@ -511,6 +511,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
     if (! check_request_idempotent (wc,
                                     &mret))
     {
+      GNUNET_break (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -528,7 +529,6 @@ parse_planchets (const struct TEH_RequestContext *rc,
       &pc->collectable.denom_pub_hash,
       NULL,
       NULL);
-
     if (NULL == dk)
     {
       MHD_RESULT mret;
@@ -536,6 +536,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
       if (! check_request_idempotent (wc,
                                       &mret))
       {
+        GNUNET_break_op (0);
         return TEH_RESPONSE_reply_unknown_denom_pub_hash (
           rc->connection,
           &pc->collectable.denom_pub_hash);
@@ -550,6 +551,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
       if (! check_request_idempotent (wc,
                                       &mret))
       {
+        GNUNET_break_op (0);
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
           &pc->collectable.denom_pub_hash,
@@ -562,6 +564,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
     {
       /* This denomination is not yet valid, no need to check
          for idempotency! */
+      GNUNET_break_op (0);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
         &pc->collectable.denom_pub_hash,
@@ -576,6 +579,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
       if (! check_request_idempotent (wc,
                                       &mret))
       {
+        GNUNET_break_op (0);
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
           &pc->collectable.denom_pub_hash,

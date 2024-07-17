@@ -17,8 +17,8 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_batch-withdraw.c
- * @brief Handle /reserves/$RESERVE_PUB/batch-withdraw requests
+ * @file taler-exchange-httpd_withdraw.c
+ * @brief Common logic for withdraw operations
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
