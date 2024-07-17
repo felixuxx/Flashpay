@@ -3897,6 +3897,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param account_pub public key of the account
+   * @param credit_amount amount we were credited
    * @param execution_date when was the transfer made
    * @param debit_account_uri URI of the debit account
    * @param section_name section of the exchange bank account that received the transfer
@@ -3906,6 +3907,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*kycauth_in_insert)(
     void *cls,
     const union TALER_AccountPublicKeyP *account_pub,
+    const struct TALER_Amount *credit_amount,
     struct GNUNET_TIME_Timestamp execution_date,
     const char *debit_account_uri,
     const char *section_name,

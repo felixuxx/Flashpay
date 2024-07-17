@@ -140,7 +140,8 @@ run (void *cls,
   }
   if (inject_auditor)
   {
-    if (GNUNET_SYSERR == plugin->inject_auditor_triggers (plugin->cls))
+    if (GNUNET_SYSERR ==
+        plugin->inject_auditor_triggers (plugin->cls))
     {
       fprintf (stderr,
                "Injecting auditor triggers failed!\n");

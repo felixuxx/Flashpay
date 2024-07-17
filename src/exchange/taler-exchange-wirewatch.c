@@ -592,6 +592,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
           qs = db_plugin->kycauth_in_insert (
             db_plugin->cls,
             &cd->details.kycauth.account_pub,
+            &cd->amount,
             cd->execution_date,
             cd->debit_account_uri,
             ai->section_name,

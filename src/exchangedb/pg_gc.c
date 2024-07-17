@@ -54,7 +54,6 @@ TEH_PG_gc (void *cls)
       GNUNET_PQ_EXECUTE_STATEMENT_END
     };
     struct GNUNET_PQ_PreparedStatement ps[] = {
-      /* Used in #postgres_gc() */
       GNUNET_PQ_make_prepare ("run_gc",
                               "CALL"
                               " exchange_do_gc"
