@@ -91,19 +91,23 @@ struct TAH_RequestHandler
    * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
    * @return MHD result code
    */
-  MHD_RESULT (*handler)(struct TAH_RequestHandler *rh,
-                        struct MHD_Connection *connection,
-                        void **connection_cls,
-                        const char *upload_data,
-                        size_t *upload_data_size,
-                        const char *const args[]);
+  MHD_RESULT (*handler)(
+    /* const */ struct TAH_RequestHandler *rh,
+    struct MHD_Connection *connection,
+    void **connection_cls,
+    const char *upload_data,
+    size_t *upload_data_size,
+    const char *const args[]);
 
   /**
    * Default response code.
    */
   unsigned int response_code;
 
-  bool requiresAuth;
+  /**
+   * Is client authentication required for this endpoint?
+   */
+  bool requires_auth;
 };
 
 

@@ -25,6 +25,7 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-get.h"
 
+
 /**
  * Add deposit confirmation to the list.
  *
@@ -34,30 +35,29 @@
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
-add_amount_arithmetic_inconsistency (void *cls,
-                                     uint64_t serial_id,
-                                     const struct
-                                     TALER_AUDITORDB_AmountArithmeticInconsistency
-                                     *dc)
+add_amount_arithmetic_inconsistency (
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_AmountArithmeticInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
-
   obj = GNUNET_JSON_PACK (
-
-    GNUNET_JSON_pack_int64 ("row_id", serial_id),
-    GNUNET_JSON_pack_data_auto ("operation", &dc->operation),
-    TALER_JSON_pack_amount ("exchange_amount", &dc->exchange_amount),
-    TALER_JSON_pack_amount ("auditor_amount", &dc->auditor_amount),
-    GNUNET_JSON_pack_bool ("profitable", dc->profitable)
-
+    GNUNET_JSON_pack_int64 ("row_id",
+                            serial_id),
+    GNUNET_JSON_pack_data_auto ("operation",
+                                &dc->operation),
+    TALER_JSON_pack_amount ("exchange_amount",
+                            &dc->exchange_amount),
+    TALER_JSON_pack_amount ("auditor_amount",
+                            &dc->auditor_amount),
+    GNUNET_JSON_pack_bool ("profitable",
+                           dc->profitable)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -72,16 +72,20 @@ add_amount_arithmetic_inconsistency (void *cls,
  * @return MHD result code
  */
 MHD_RESULT
-TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get (struct TAH_RequestHandler *rh,
-                                                 struct MHD_Connection *
-                                                 connection,
-                                                 void **connection_cls,
-                                                 const char *upload_data,
-                                                 size_t *upload_data_size,
-                                                 const char *const args[])
+TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *
+  connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[])
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
+  bool return_suppressed = false;
 
   (void) rh;
   (void) connection_cls;
@@ -98,32 +102,29 @@ TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get (struct TAH_RequestHandler *rh,
   }
   ja = json_array ();
   GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-  const char *ret_s = MHD_lookup_connection_value (connection,
-                                                   MHD_GET_ARGUMENT_KIND,
-                                                   "return_suppressed");
-  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
   {
-    return_suppressed = true;
-  }
+    const char *ret_s;
 
+    ret_s = MHD_lookup_connection_value (connection,
+                                         MHD_GET_ARGUMENT_KIND,
+                                         "return_suppressed");
+    if ( (ret_s != NULL) &&
+         (0 == strcmp (ret_s,
+                       "true")) )
+    {
+      return_suppressed = true;
+    }
+  }
 
   qs = TAH_plugin->get_amount_arithmetic_inconsistency (
     TAH_plugin->cls,
@@ -139,10 +140,11 @@ TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get (struct TAH_RequestHandler *rh,
     json_decref (ja);
     TALER_LOG_WARNING (
       "Failed to handle GET /amount-arithmetic-inconsistency in database\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                       "amount-arithmetic-inconsistency");
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "amount-arithmetic-inconsistency");
   }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
