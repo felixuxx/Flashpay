@@ -204,6 +204,7 @@ withdraw_amount_cb (
 enum GNUNET_DB_QueryStatus
 TEH_withdraw_kyc_check (
   struct TALER_EXCHANGEDB_KycStatus *kyc,
+  struct TALER_PaytoHashP *h_payto,
   struct MHD_Connection *connection,
   MHD_RESULT *mhd_ret,
   const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -236,6 +237,7 @@ TEH_withdraw_kyc_check (
      merge already did that. */
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     return qs;
+  *h_payto = wc.h_payto;
   return TEH_legitimization_check (
     kyc,
     connection,

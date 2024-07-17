@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -48,6 +48,12 @@ struct AgeWithdrawContext
    * KYC status for the operation.
    */
   struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
+   * Set to the hash of the payto account that established
+   * the reserve.
+   */
+  struct TALER_PaytoHashP h_payto;
 
   /**
    * Timestamp
@@ -643,6 +649,7 @@ age_withdraw_transaction (void *cls,
   struct TALER_Amount reserve_balance;
 
   qs = TEH_withdraw_kyc_check (&awc->kyc,
+                               &awc->h_payto,
                                connection,
                                mhd_ret,
                                &awc->commitment.reserve_pub,
@@ -903,20 +910,21 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
     /* Send back final response, depending on the outcome of
      * the DB-transaction */
     if (! awc.kyc.ok)
-      mhd_ret = TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                                 NULL, /* FIXME! */
-                                                 &awc.kyc);
+      mhd_ret = TEH_RESPONSE_reply_kyc_required (
+        rc->connection,
+        &awc.h_payto,
+        &awc.kyc);
     else
-      mhd_ret = reply_age_withdraw_success (rc->connection,
-                                            &awc.commitment.h_commitment,
-                                            awc.commitment.noreveal_index);
+      mhd_ret = reply_age_withdraw_success (
+        rc->connection,
+        &awc.commitment.h_commitment,
+        awc.commitment.noreveal_index);
 
   } while (0);
 
   GNUNET_JSON_parse_free (spec);
   free_age_withdraw_context_resources (&awc);
   return mhd_ret;
-
 }
 
 

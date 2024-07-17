@@ -54,6 +54,7 @@ TEH_legitimization_check (
  * from @a reserve_pub at time @a now.
  *
  * @param[out] kyc set to kyc status
+ * @param[out] h_payto set to payto hash of origin account
  * @param[in,out] connection used to return hard errors
  * @param[out] mhd_ret set if errors were returned
  *     (only on hard error)
@@ -66,6 +67,7 @@ TEH_legitimization_check (
 enum GNUNET_DB_QueryStatus
 TEH_withdraw_kyc_check (
   struct TALER_EXCHANGEDB_KycStatus *kyc,
+  struct TALER_PaytoHashP *h_payto,
   struct MHD_Connection *connection,
   MHD_RESULT *mhd_ret,
   const struct TALER_ReservePublicKeyP *reserve_pub,

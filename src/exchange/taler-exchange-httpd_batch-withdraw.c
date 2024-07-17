@@ -86,6 +86,13 @@ struct BatchWithdrawContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
+   * Hash of payto:// URI of the bank account that
+   * established the reserve, set during the @e kyc
+   * check (if any).
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
    * Array of @e planchets_length planchets we are processing.
    */
   struct PlanchetContext *planchets;
@@ -223,6 +230,7 @@ batch_withdraw_transaction (void *cls,
   struct TALER_Amount reserve_balance;
 
   qs = TEH_withdraw_kyc_check (&wc->kyc,
+                               &wc->h_payto,
                                connection,
                                mhd_ret,
                                wc->reserve_pub,
@@ -436,10 +444,16 @@ prepare_transaction (const struct TEH_RequestContext *rc,
   /* return final positive response */
   if (! wc->kyc.ok)
   {
+    MHD_RESULT mhd_ret;
+
+    if (check_request_idempotent (wc,
+                                  &mhd_ret))
+      return mhd_ret;
     /* KYC required */
-    return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                            NULL, /* FIXME! */
-                                            &wc->kyc);
+    return TEH_RESPONSE_reply_kyc_required (
+      rc->connection,
+      &wc->h_payto,
+      &wc->kyc);
   }
   return generate_reply_success (rc,
                                  wc);
