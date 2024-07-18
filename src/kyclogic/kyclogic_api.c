@@ -1617,7 +1617,7 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
     struct TALER_KYCLOGIC_AmlProgram *ap;
 
     ap = GNUNET_new (struct TALER_KYCLOGIC_AmlProgram);
-    ap->program_name = GNUNET_strdup (&section[strlen ("kyc-check-")]);
+    ap->program_name = GNUNET_strdup (&section[strlen ("aml-program-")]);
     ap->command = command;
     ap->description = description;
     ap->fallback = fallback;
@@ -1664,6 +1664,121 @@ handle_program_section (void *cls,
   {
     if (GNUNET_OK !=
         add_program (sc->cfg,
+                     section))
+      sc->result = false;
+    return;
+  }
+}
+
+
+/**
+ * Parse configuration @a cfg in section @a section for
+ * the specification of a KYC measure.
+ *
+ * @param cfg configuration to parse
+ * @param section configuration section to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
+             const char *section)
+{
+  char *check_name = NULL;
+  char *context_str = NULL;
+  char *program = NULL;
+  json_t *context;
+  json_error_t err;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Parsing KYC measure %s\n",
+              section);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "CHECK_NAME",
+                                             &check_name))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "CHECK_NAME",
+                               "check name required");
+    goto fail;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "PROGRAM",
+                                             &program))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "PROGRAM",
+                               "program name required");
+    goto fail;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "CONTEXT",
+                                             &context_str))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "CONTEXT",
+                               "context required");
+    goto fail;
+  }
+  context = json_loads (context_str,
+                        JSON_REJECT_DUPLICATES,
+                        &err);
+  GNUNET_free (context_str);
+  if (NULL == context)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "COMMAND",
+                               err.text);
+    goto fail;
+  }
+
+  {
+    struct TALER_KYCLOGIC_Measure m;
+
+    m.measure_name = GNUNET_strdup (&section[strlen ("kyc-measure-")]);
+    m.check_name = check_name;
+    m.prog_name = program;
+    m.context = context;
+    GNUNET_array_append (default_rules.custom_measures,
+                         default_rules.num_custom_measures,
+                         m);
+  }
+  return GNUNET_OK;
+fail:
+  GNUNET_free (check_name);
+  GNUNET_free (program);
+  GNUNET_free (context_str);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function to iterate over configuration sections.
+ *
+ * @param cls a `struct SectionContext *`
+ * @param section name of the section
+ */
+static void
+handle_measure_section (void *cls,
+                        const char *section)
+{
+  struct SectionContext *sc = cls;
+
+  if (0 == strncasecmp (section,
+                        "kyc-measure-",
+                        strlen ("kyc-measure-")))
+  {
+    if (GNUNET_OK !=
+        add_measure (sc->cfg,
                      section))
       sc->result = false;
     return;
@@ -1719,6 +1834,9 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                          &sc);
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &handle_program_section,
+                                         &sc);
+  GNUNET_CONFIGURATION_iterate_sections (cfg,
+                                         &handle_measure_section,
                                          &sc);
   if (! sc.result)
   {
