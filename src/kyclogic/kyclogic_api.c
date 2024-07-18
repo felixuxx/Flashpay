@@ -223,7 +223,7 @@ struct TALER_KYCLOGIC_AmlProgram
 
   /**
    * Name of an original measure to take in case the
-   * @e command fails.
+   * @e command fails, NULL to fallback to default rules.
    */
   char *fallback;
 
@@ -325,6 +325,56 @@ find_check (const char *check_name)
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "Check `%s' unknown\n",
               check_name);
+  return NULL;
+}
+
+
+/**
+ * Lookup AML program by @a program_name
+ *
+ * @param program_name name to search for
+ * @return NULL if not found
+ */
+static struct TALER_KYCLOGIC_AmlProgram *
+find_program (const char *program_name)
+{
+  for (unsigned int i = 0; i<num_aml_programs; i++)
+  {
+    struct TALER_KYCLOGIC_AmlProgram *program
+      = aml_programs[i];
+
+    if (0 == strcmp (program_name,
+                     program->program_name))
+      return program;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "AML program `%s' unknown\n",
+              program_name);
+  return NULL;
+}
+
+
+/**
+ * Lookup KYC provider by @a provider_name
+ *
+ * @param provider_name name to search for
+ * @return NULL if not found
+ */
+static struct TALER_KYCLOGIC_KycProvider *
+find_provider (const char *provider_name)
+{
+  for (unsigned int i = 0; i<num_kyc_providers; i++)
+  {
+    struct TALER_KYCLOGIC_KycProvider *provider
+      = kyc_providers[i];
+
+    if (0 == strcmp (provider_name,
+                     provider->provider_name))
+      return provider;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "KYC provider `%s' unknown\n",
+              provider_name);
   return NULL;
 }
 
@@ -1229,10 +1279,9 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "DESCRIPTION",
                                              &description))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "DESCRIPTION",
-                               "description required");
+                               "DESCRIPTION");
     goto fail;
   }
 
@@ -1296,10 +1345,9 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "FALLBACK",
                                              &fallback))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "FALLBACK",
-                               "fallback measure required");
+                               "FALLBACK");
     goto fail;
   }
 
@@ -1307,11 +1355,73 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
     struct TALER_KYCLOGIC_KycCheck *kc;
 
     kc = GNUNET_new (struct TALER_KYCLOGIC_KycCheck);
+    switch (ct)
+    {
+    case TALER_KYCLOGIC_CT_INFO:
+      /* nothing to do */
+      break;
+    case TALER_KYCLOGIC_CT_FORM:
+      {
+        char *form_name;
+
+        if (GNUNET_OK !=
+            GNUNET_CONFIGURATION_get_value_string (cfg,
+                                                   section,
+                                                   "FORM_NAME",
+                                                   &form_name))
+        {
+          GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                     section,
+                                     "FORM_NAME");
+          GNUNET_free (requires);
+          GNUNET_free (outputs);
+          GNUNET_free (kc);
+          return GNUNET_SYSERR;
+        }
+        kc->details.form.name = form_name;
+      }
+      break;
+    case TALER_KYCLOGIC_CT_LINK:
+      {
+        char *provider_id;
+
+        if (GNUNET_OK !=
+            GNUNET_CONFIGURATION_get_value_string (cfg,
+                                                   section,
+                                                   "PROVIDER_ID",
+                                                   &provider_id))
+        {
+          GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                     section,
+                                     "PROVIDER_ID");
+          GNUNET_free (requires);
+          GNUNET_free (outputs);
+          GNUNET_free (kc);
+          return GNUNET_SYSERR;
+        }
+        kc->details.link.provider = find_provider (provider_id);
+        if (NULL == kc->details.link.provider)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Unknown KYC provider `%s' used in check `%s'\n",
+                      provider_id,
+                      &section[strlen ("kyc-check-")]);
+          GNUNET_free (provider_id);
+          GNUNET_free (requires);
+          GNUNET_free (outputs);
+          GNUNET_free (kc);
+          return GNUNET_SYSERR;
+        }
+        GNUNET_free (provider_id);
+      }
+      break;
+    }
     kc->check_name = GNUNET_strdup (&section[strlen ("kyc-check-")]);
     kc->voluntary = voluntary;
     kc->description = description;
     kc->description_i18n = description_i18n;
     kc->fallback = fallback;
+    kc->type = ct;
     add_tokens (requires,
                 ";",
                 &kc->requires,
@@ -1326,6 +1436,7 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
                          num_kyc_checks,
                          kc);
   }
+
   return GNUNET_OK;
 fail:
   GNUNET_free (form_name);
@@ -1849,7 +1960,115 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
            default_rules.num_kyc_rules,
            sizeof (struct TALER_KYCLOGIC_KycRule *),
            &sort_by_timeframe);
-  // FIXME: add configuration sanity checking!
+  for (unsigned int i=0; i<default_rules.num_kyc_rules; i++)
+  {
+    const struct TALER_KYCLOGIC_KycRule *rule
+      = &default_rules.kyc_rules[i];
+
+    for (unsigned int j=0; j<rule->num_measures; j++)
+    {
+      const char *measure_name = rule->next_measures[j];
+      const struct TALER_KYCLOGIC_Measure *m;
+
+      m = find_measure (&default_rules,
+                        measure_name);
+      if (NULL == m)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Unknown measure `%s' used in rule `%s'\n",
+                    measure_name,
+                    rule->rule_name);
+        return GNUNET_SYSERR;
+      }
+    }
+  }
+
+  for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
+  {
+    const struct TALER_KYCLOGIC_Measure *measure
+      = &default_rules.custom_measures[i];
+    const struct TALER_KYCLOGIC_KycCheck *check;
+    const struct TALER_KYCLOGIC_AmlProgram *program;
+
+    check = find_check (measure->check_name);
+    if (NULL == check)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unknown check `%s' used in measure `%s'\n",
+                  measure->check_name,
+                  measure->measure_name);
+      return GNUNET_SYSERR;
+    }
+    program = find_program (measure->prog_name);
+    if (NULL == program)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unknown program `%s' used in measure `%s'\n",
+                  measure->prog_name,
+                  measure->measure_name);
+      return GNUNET_SYSERR;
+    }
+    for (unsigned int j=0; j<check->num_requires; j++)
+    {
+      const char *required_input = check->requires[j];
+
+      // FIXME: check these are provided by measure!?
+    }
+    for (unsigned int j=0; j<program->num_required_contexts; j++)
+    {
+      const char *required_context = program->required_contexts[j];
+
+      // FIXME: check these are provided by measure!?
+    }
+    for (unsigned int j=0; j<program->num_required_attributes; j++)
+    {
+      const char *required_attribute = program->required_attributes[j];
+
+      // FIXME: check these are provided by measure!?
+    }
+  }
+
+  for (unsigned int i=0; i<num_aml_programs; i++)
+  {
+    const struct TALER_KYCLOGIC_AmlProgram *program
+      = aml_programs[i];
+    const struct TALER_KYCLOGIC_Measure *m;
+
+    if (NULL == program->fallback)
+      continue; /* default */
+    m = find_measure (&default_rules,
+                      program->fallback);
+    if (NULL == m)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unknown fallback measure `%s' used in program `%s'\n",
+                  program->fallback,
+                  program->program_name);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+  {
+    struct TALER_KYCLOGIC_KycCheck *kyc_check
+      = kyc_checks[i];
+
+    if (NULL != kyc_check->fallback)
+    {
+      const struct TALER_KYCLOGIC_Measure *measure;
+
+      measure = find_measure (&default_rules,
+                              kyc_check->fallback);
+      if (NULL == measure)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Unknown fallback measure `%s' used in check `%s'\n",
+                    kyc_check->fallback,
+                    kyc_check->check_name);
+        return GNUNET_SYSERR;
+      }
+    }
+  }
   return GNUNET_OK;
 }
 
@@ -2090,7 +2309,8 @@ TALER_KYCLOGIC_kyc_get_details (
 {
   for (unsigned int i = 0; i<num_kyc_providers; i++)
   {
-    struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
+    struct TALER_KYCLOGIC_KycProvider *kp
+      = kyc_providers[i];
 
     if (0 !=
         strcmp (kp->logic->name,
