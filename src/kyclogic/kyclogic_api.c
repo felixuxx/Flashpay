@@ -1021,6 +1021,9 @@ add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
   struct TALER_KYCLOGIC_Plugin *lp;
   struct TALER_KYCLOGIC_ProviderDetails *pd;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Parsing KYC provider %s\n",
+              section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
@@ -1184,6 +1187,9 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *outputs = NULL;
   char *fallback = NULL;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Parsing KYC check %s\n",
+              section);
   voluntary = (GNUNET_YES ==
                GNUNET_CONFIGURATION_get_value_yesno (cfg,
                                                      section,
@@ -1376,6 +1382,9 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
   bool exposed;
   bool is_and;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Processing KYC rule from %s\n",
+              section);
   if (GNUNET_YES !=
       GNUNET_CONFIGURATION_get_value_yesno (cfg,
                                             section,
@@ -1474,6 +1483,9 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
     return GNUNET_SYSERR;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Adding KYC rule %s\n",
+              section);
   {
     struct TALER_KYCLOGIC_KycRule kt;
 
@@ -1540,6 +1552,9 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *required_contexts = NULL;
   char *required_attributes = NULL;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Parsing KYC program %s\n",
+              section);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
@@ -2021,6 +2036,11 @@ check_amount (
   struct KycTestContext *ktc = cls;
   struct GNUNET_TIME_Relative dur;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC checking transaction amount %s from %s against %u rules\n",
+              TALER_amount2s (amount),
+              GNUNET_TIME_absolute2s (date),
+              ktc->lrs->num_kyc_rules);
   dur = GNUNET_TIME_absolute_get_duration (date);
   if (GNUNET_OK !=
       TALER_amount_is_valid (&ktc->sum))
@@ -2036,18 +2056,41 @@ check_amount (
       = &ktc->lrs->kyc_rules[i];
 
     if (ktc->event != rule->trigger)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Wrong event type for rule %u\n",
+                  i);
       continue; /* wrong trigger event type */
+    }
     if (GNUNET_TIME_relative_cmp (dur,
                                   >,
                                   rule->timeframe))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Out of time range for rule %u\n",
+                  i);
       continue; /* out of time range for rule */
+    }
     if (-1 == TALER_amount_cmp (&ktc->sum,
                                 &rule->threshold))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Below threshold of %s for rule %u\n",
+                  TALER_amount2s (&rule->threshold),
+                  i);
       continue; /* sum < threshold */
+    }
     if ( (NULL != ktc->triggered_rule) &&
          (1 == TALER_amount_cmp (&ktc->triggered_rule->threshold,
                                  &rule->threshold)) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Higher than threshold of already triggered rule\n");
       continue; /* threshold of triggered_rule > rule */
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Remembering rule %s as triggered\n",
+                rule->rule_name);
     ktc->triggered_rule = rule;
   }
   return GNUNET_OK;
@@ -2068,6 +2111,10 @@ TALER_KYCLOGIC_kyc_test_required (
 
   if (NULL == lrs)
     lrs = &default_rules;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Testing %u KYC rules for trigger %d\n",
+              lrs->num_kyc_rules,
+              event);
   for (unsigned int i=0; i<lrs->num_kyc_rules; i++)
   {
     const struct TALER_KYCLOGIC_KycRule *rule
@@ -2075,6 +2122,11 @@ TALER_KYCLOGIC_kyc_test_required (
 
     if (event != rule->trigger)
       continue;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Matched rule %u with timeframe %s\n",
+                i,
+                GNUNET_TIME_relative2s (rule->timeframe,
+                                        true));
     range = GNUNET_TIME_relative_max (range,
                                       rule->timeframe);
   }
@@ -2092,6 +2144,11 @@ TALER_KYCLOGIC_kyc_test_required (
                                             range),
              &check_amount,
              &ktc);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Triggered rule is %s\n",
+                (NULL == ktc.triggered_rule)
+                ? "NONE"
+                : ktc.triggered_rule->rule_name);
     *triggered_rule = ktc.triggered_rule;
   }
   return qs;

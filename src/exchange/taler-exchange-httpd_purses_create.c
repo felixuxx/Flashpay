@@ -482,6 +482,7 @@ TEH_handler_purses_create (
                                  pcc.exchange_timestamp))
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_PURSE_CREATE_EXPIRATION_BEFORE_NOW,
@@ -490,6 +491,7 @@ TEH_handler_purses_create (
   if (GNUNET_TIME_absolute_is_never (pcc.pd.purse_expiration.abs_time))
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_PURSE_CREATE_EXPIRATION_IS_NEVER,
@@ -500,6 +502,7 @@ TEH_handler_purses_create (
        (pcc.num_coins > TALER_MAX_FRESH_COINS) )
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
@@ -512,6 +515,7 @@ TEH_handler_purses_create (
     if (NULL == keys)
     {
       GNUNET_break (0);
+      GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -524,6 +528,7 @@ TEH_handler_purses_create (
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Cannot create purse: global fees not configured!\n");
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
@@ -546,6 +551,7 @@ TEH_handler_purses_create (
       for (unsigned int i = 0; i<idx; i++)
         TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
+      GNUNET_JSON_parse_free (spec);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
   }
@@ -555,6 +561,7 @@ TEH_handler_purses_create (
   {
     GNUNET_break_op (0);
     GNUNET_free (pcc.coins);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_CREATE_PURSE_NEGATIVE_VALUE_AFTER_FEE,
@@ -576,6 +583,7 @@ TEH_handler_purses_create (
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
@@ -593,6 +601,7 @@ TEH_handler_purses_create (
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
@@ -607,6 +616,7 @@ TEH_handler_purses_create (
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_START_FAILED,
@@ -628,6 +638,7 @@ TEH_handler_purses_create (
       for (unsigned int i = 0; i<pcc.num_coins; i++)
         TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
+      GNUNET_JSON_parse_free (spec);
       return mhd_ret;
     }
   }
@@ -643,6 +654,7 @@ TEH_handler_purses_create (
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
+    GNUNET_JSON_parse_free (spec);
     return res;
   }
 }
