@@ -1345,6 +1345,7 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "FALLBACK",
                                              &fallback))
   {
+    /* FIXME: Allow NULL to fall back to default rules? */
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "FALLBACK");
@@ -1696,6 +1697,7 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "FALLBACK",
                                              &fallback))
   {
+    /* FIXME: Allow NULL to fall back to default rules? */
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "FALLBACK",
@@ -1809,10 +1811,9 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "CHECK_NAME",
                                              &check_name))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "CHECK_NAME",
-                               "check name required");
+                               "CHECK_NAME");
     goto fail;
   }
   if (GNUNET_OK !=
@@ -1821,10 +1822,9 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "PROGRAM",
                                              &program))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "PROGRAM",
-                               "program name required");
+                               "PROGRAM");
     goto fail;
   }
   if (GNUNET_OK !=
@@ -1833,10 +1833,9 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "CONTEXT",
                                              &context_str))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "CONTEXT",
-                               "context required");
+                               "CONTEXT");
     goto fail;
   }
   context = json_loads (context_str,
@@ -1847,7 +1846,7 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "COMMAND",
+                               "CONTEXT",
                                err.text);
     goto fail;
   }
