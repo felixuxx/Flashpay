@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+#  This file is part of TALER
+#  Copyright (C) 2014-2024 Taler Systems SA
+#
+#  TALER is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License as published by the Free Software
+#  Foundation; either version 3, or (at your option) any later version.
+#
+#  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along with
+#  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/license>
+#
+
+# This is a converter that takes the output of an
+# OAuth2 service which is expected to yield a full_name
+# and a birthdate.
+#
+# The converter doesn't actually do anything, it
+# just restricts the output to exactly these values.
+
+
+# Hard error reporting on.
+set -eu
+
+if [ "${1:-no}" = "--list-outputs" ]
+then
+    # This converter produces a full name and birthdate.
+    echo "full_name"
+    echo "birthdate"
+    exit 0
+fi
+
+# First, check everything we expect is in stdin.
+J=$(jq -r 'def get($k):
+             if has($k)
+               then .[$k]
+               else error("attribute missing")
+           end;
+           {"full_name":get("full_name"),
+            "birthdate":get("birthdate")}')
+
+# Return the restricted values.
+echo "$J"
+
+exit 0
