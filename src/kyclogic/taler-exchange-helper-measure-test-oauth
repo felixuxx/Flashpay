@@ -64,6 +64,7 @@ jq -n \
     --arg expiration "$EXPIRATION" \
     '{ "to_investigate": false,
        "new_rules" : {
+         "new_check" : "info-oauth-test-passed",
          "expiration_time" : { "t_s": $expiration },
          "rules" : [ {
            "operation_type": "CLOSE",

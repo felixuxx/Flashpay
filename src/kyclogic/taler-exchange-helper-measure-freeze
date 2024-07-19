@@ -48,6 +48,7 @@ jq -n \
     --arg expiration "$EXPIRATION" \
     '{ "to_investigate": true,
        "new_rules" : {
+         "new_check" : "info-frozen",
          "expiration_time" : { "t_s": $expiration },
          "rules" : [
            {

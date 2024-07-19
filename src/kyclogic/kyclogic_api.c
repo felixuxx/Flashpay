@@ -1237,6 +1237,13 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *outputs = NULL;
   char *fallback = NULL;
 
+  if (0 == strcasecmp (&section[strlen ("kyc-check-")],
+                       "SKIP"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "The kyc-check-skip section must not exist, 'skip' is reserved name for a build-in check\n");
+    return GNUNET_SYSERR;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Parsing KYC check %s\n",
               section);
@@ -1811,9 +1818,7 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "CHECK_NAME",
                                              &check_name))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "CHECK_NAME");
+    check_name = GNUNET_strdup ("SKIP");
     goto fail;
   }
   if (GNUNET_OK !=
@@ -1959,6 +1964,18 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
            default_rules.num_kyc_rules,
            sizeof (struct TALER_KYCLOGIC_KycRule *),
            &sort_by_timeframe);
+
+  {
+    const struct TALER_KYCLOGIC_KycCheck *check;
+
+    check = find_check ("default");
+    if (NULL == check)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "A 'default' check should be defined\n");
+    }
+  }
+
   for (unsigned int i=0; i<default_rules.num_kyc_rules; i++)
   {
     const struct TALER_KYCLOGIC_KycRule *rule
@@ -1989,6 +2006,9 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
     const struct TALER_KYCLOGIC_KycCheck *check;
     const struct TALER_KYCLOGIC_AmlProgram *program;
 
+    if (0 == strcasecmp (measure->check_name,
+                         "SKIP"))
+      continue;
     check = find_check (measure->check_name);
     if (NULL == check)
     {
