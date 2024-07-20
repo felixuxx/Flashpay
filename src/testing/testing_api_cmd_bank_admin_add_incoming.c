@@ -27,7 +27,6 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_bank_service.h"
-#include "taler_fakebank_lib.h"
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
@@ -45,7 +44,7 @@
 
 
 /**
- * State for a "fakebank transfer" CMD.
+ * State for a "bank transfer" CMD.
  */
 struct AdminAddIncomingState
 {
@@ -92,7 +91,7 @@ struct AdminAddIncomingState
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * Handle to the pending request at the fakebank.
+   * Handle to the pending request at the bank.
    */
   struct TALER_BANK_AdminAddIncomingHandle *aih;
 
@@ -120,19 +119,6 @@ struct AdminAddIncomingState
   struct GNUNET_TIME_Timestamp timestamp;
 
   /**
-   * Merchant instance.  Sometimes used to get the tip reserve
-   * private key by reading the appropriate config section.
-   */
-  const char *instance;
-
-  /**
-   * Configuration filename.  Used to get the tip reserve key
-   * filename (used to obtain a public key to write in the
-   * transfer subject).
-   */
-  const char *config_filename;
-
-  /**
    * Task scheduled to try later.
    */
   struct GNUNET_SCHEDULER_Task *retry_task;
@@ -157,7 +143,7 @@ struct AdminAddIncomingState
 
 
 /**
- * Run the "fakebank transfer" CMD.
+ * Run the "bank transfer" CMD.
  *
  * @param cls closure.
  * @param cmd CMD being run.
@@ -188,7 +174,7 @@ do_retry (void *cls)
 
 
 /**
- * This callback will process the fakebank response to the wire
+ * This callback will process the bank response to the wire
  * transfer.  It just checks whether the HTTP response code is
  * acceptable.
  *
@@ -205,10 +191,10 @@ confirmation_cb (void *cls,
   fts->aih = NULL;
   /**
    * Test case not caring about the HTTP status code.
-   * That helps when Fakebank and Libeufin diverge in
+   * That helps when fakebank and Libeufin diverge in
    * the response status code.  An example is the
    * /admin/add-incoming: libeufin return ALWAYS '200 OK'
-   * (see note below) whereas the Fakebank responds with
+   * (see note below) whereas the fakebank responds with
    * '409 Conflict' upon a duplicate reserve public key.
    *
    * Note: this decision aims at avoiding to put Taler
@@ -270,7 +256,7 @@ confirmation_cb (void *cls,
       {
         GNUNET_log (
           GNUNET_ERROR_TYPE_INFO,
-          "Retrying fakebank transfer failed with %u/%d\n",
+          "Retrying bank transfer failed with %u/%d\n",
           air->http_status,
           (int) air->ec);
         /* on DB conflicts, do not use backoff */
@@ -291,7 +277,7 @@ confirmation_cb (void *cls,
   }
   GNUNET_break (0);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Fakebank returned HTTP status %u/%d\n",
+              "Bank returned HTTP status %u/%d\n",
               air->http_status,
               (int) air->ec);
   TALER_TESTING_interpreter_fail (is);
@@ -299,7 +285,7 @@ confirmation_cb (void *cls,
 
 
 /**
- * Run the "fakebank transfer" CMD.
+ * Run the "bank transfer" CMD.
  *
  * @param cls closure.
  * @param cmd CMD being run.
@@ -354,7 +340,7 @@ admin_add_incoming_run (void *cls,
   }
   else
   {
-    /* No referenced reserve, no instance to take priv
+    /* No referenced reserve to take priv
      * from, no explicit subject given: create new key! */
     GNUNET_CRYPTO_eddsa_key_create (&fts->reserve_priv.eddsa_priv);
     fts->reserve_priv_known = true;
@@ -578,11 +564,11 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (
 
 
 /**
- * Modify a fakebank transfer command to enable retries when the
+ * Modify a bank transfer command to enable retries when the
  * reserve is not yet full or we get other transient errors from the
- * fakebank.
+ * bank.
  *
- * @param cmd a fakebank transfer command
+ * @param cmd a bank transfer command
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command

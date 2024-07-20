@@ -39,6 +39,11 @@ struct KycCheckGetState
   const char *payment_target_reference;
 
   /**
+   * Command to get an account private key from.
+   */
+  const char *account_reference;
+
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
@@ -114,6 +119,7 @@ check_kyc_run (void *cls,
 {
   struct KycCheckGetState *kcg = cls;
   const struct TALER_TESTING_Command *res_cmd;
+  const struct TALER_TESTING_Command *acc_cmd;
   const uint64_t *requirement_row;
   const union TALER_AccountPrivateKeyP *account_priv;
 
@@ -128,6 +134,15 @@ check_kyc_run (void *cls,
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
+  acc_cmd = TALER_TESTING_interpreter_lookup_command (
+    kcg->is,
+    kcg->account_reference);
+  if (NULL == acc_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (kcg->is);
+    return;
+  }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_legi_requirement_row (res_cmd,
                                                     &requirement_row))
@@ -137,7 +152,7 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_account_priv (res_cmd,
+      TALER_TESTING_get_trait_account_priv (acc_cmd,
                                             &account_priv))
   {
     GNUNET_break (0);
@@ -217,12 +232,14 @@ check_kyc_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_kyc_get (const char *label,
                                  const char *payment_target_reference,
+                                 const char *account_reference,
                                  unsigned int expected_response_code)
 {
   struct KycCheckGetState *kcg;
 
   kcg = GNUNET_new (struct KycCheckGetState);
   kcg->payment_target_reference = payment_target_reference;
+  kcg->account_reference = account_reference;
   kcg->expected_response_code = expected_response_code;
   {
     struct TALER_TESTING_Command cmd = {

@@ -2212,7 +2212,7 @@ TALER_KYCLOGIC_kyc_done (void)
     GNUNET_array_grow (ap->required_contexts,
                        ap->num_required_contexts,
                        0);
-    for (unsigned int j = 0; i<ap->num_required_attributes; j++)
+    for (unsigned int j = 0; j<ap->num_required_attributes; j++)
       GNUNET_free (ap->required_attributes[j]);
     GNUNET_array_grow (ap->required_attributes,
                        ap->num_required_attributes,

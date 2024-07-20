@@ -835,12 +835,13 @@ TALER_TESTING_cmd_deposit_confirmation_with_retry (
 
 
 /**
- * Create /admin/add-incoming command.
+ * Create command that does a wire transfer using
+ * /admin/add-incoming to establish a reserve.
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param payto_debit_account which account sends money.
  * @param auth authentication data
+ * @param payto_debit_account which account sends money.
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -849,6 +850,27 @@ TALER_TESTING_cmd_admin_add_incoming (
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account);
+
+
+/**
+ * Create command that does a wire transfer using
+ * /admin/add-kycauth to establish an account private key.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param auth authentication data
+ * @param payto_debit_account which account sends money.
+ * @param account_ref reference to command with account
+ *    private key to use; NULL to create a fresh key pair
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_kycauth (
+  const char *label,
+  const char *amount,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *payto_debit_account,
+  const char *account_ref);
 
 
 /**
@@ -2182,12 +2204,14 @@ TALER_TESTING_cmd_wallet_kyc_get (const char *label,
  *
  * @param label command label.
  * @param payment_target_reference command with a payment target to query
+ * @param account_reference command with account private key to query
  * @param expected_response_code expected HTTP status
  * @return the command
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_kyc_get (const char *label,
                                  const char *payment_target_reference,
+                                 const char *account_reference,
                                  unsigned int expected_response_code);
 
 
