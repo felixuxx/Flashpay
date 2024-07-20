@@ -514,12 +514,16 @@ struct TALER_KYCLOGIC_KycCheckContext
  * Obtain the provider logic for a given set of @a lrs
  * and a specific @a kyc_rule from @a lrs that was
  * triggered and the choosen @a measure_name from the
- * list of measures of that @a kyc_rule.
+ * list of measures of that @a kyc_rule.  Can also be
+ * used to obtain the "current" check of a @a lrs if
+ * no trigger has been hit.
  *
  * @param lrs rule set
  * @param kyc_rule rule that was triggered
- * @param measure_name selected measure
- * @param[out] kcc set to check to run
+ * @param measure_name selected measure,
+ *   NULL to return the "new_check" set by the @a lrs
+ * @param[out] kcc set to check to run;
+ *   kcc->check will be NULL if the "skip" check is used
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 enum GNUNET_GenericReturnValue

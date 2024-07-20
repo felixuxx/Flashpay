@@ -283,6 +283,11 @@ static int print_h_payto;
 static int run_webservice;
 
 /**
+ * -M command-line option.
+ */
+static int list_measures;
+
+/**
  * Value to return from main()
  */
 static int global_ret;
@@ -1614,10 +1619,10 @@ run (void *cls,
   {
     struct TALER_KYCLOGIC_KycCheckContext kcc;
 
-    if (NULL == measure)
+    if (0 != list_measures)
     {
       // FIXME: print rule with possible measures!
-
+      GNUNET_break (0);
       global_ret = EXIT_SUCCESS;
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -1633,6 +1638,14 @@ run (void *cls,
                   "Could not initiate KYC for measure `%s' (configuration error?)\n",
                   measure);
       global_ret = EXIT_NOTCONFIGURED;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    if (NULL == kcc.check)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  "SKIP check selected, nothing to do here\n");
+      global_ret = EXIT_SUCCESS;
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
@@ -1742,6 +1755,11 @@ main (int argc,
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_help (
       "tool to test KYC provider integrations"),
+    GNUNET_GETOPT_option_flag (
+      'M',
+      "list-measures",
+      "list available measures",
+      &list_measures),
     GNUNET_GETOPT_option_string (
       'm',
       "measure",
@@ -1754,6 +1772,11 @@ main (int argc,
       "OPERATION_TYPE",
       "name of the operation that triggers legitimization (WITHDRAW, DEPOSIT, etc.)",
       &operation_s),
+    GNUNET_GETOPT_option_flag (
+      'P',
+      "print-payto-hash",
+      "output the hash of the payto://-URI",
+      &print_h_payto),
     GNUNET_GETOPT_option_base32_fixed_size (
       'p',
       "payto-hash",
@@ -1761,23 +1784,18 @@ main (int argc,
       "base32 encoding of the hash of a payto://-URI to use for the account (otherwise a random value will be used)",
       &cmd_line_h_payto,
       sizeof (cmd_line_h_payto)),
-    GNUNET_GETOPT_option_flag (
-      'P',
-      "print-payto-hash",
-      "output the hash of the payto://-URI",
-      &print_h_payto),
-    GNUNET_GETOPT_option_uint (
-      'r',
-      "rowid",
-      "NUMBER",
-      "override row ID to use in simulation (default: 42)",
-      &kyc_row_id),
     GNUNET_GETOPT_option_string (
       'R',
       "ruleset",
       "JSON",
       "use the given legitimization rule set (otherwise defaults from configuration are used)",
       &lrs_s),
+    GNUNET_GETOPT_option_uint (
+      'r',
+      "rowid",
+      "NUMBER",
+      "override row ID to use in simulation (default: 42)",
+      &kyc_row_id),
     TALER_getopt_get_amount (
       't',
       "trigger",
@@ -1785,17 +1803,17 @@ main (int argc,
       "threshold crossed that would trigger some legitimization rule",
       &trigger_amount),
     GNUNET_GETOPT_option_string (
-      'u',
-      "user",
-      "ID",
-      "use the given provider user ID (overridden if -i is also used)",
-      &cmd_provider_user_id),
-    GNUNET_GETOPT_option_string (
       'U',
       "legitimization",
       "ID",
       "use the given provider legitimization ID (overridden if -i is also used)",
       &cmd_provider_legitimization_id),
+    GNUNET_GETOPT_option_string (
+      'u',
+      "user",
+      "ID",
+      "use the given provider user ID (overridden if -i is also used)",
+      &cmd_provider_user_id),
     GNUNET_GETOPT_option_flag (
       'w',
       "run-webservice",

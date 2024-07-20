@@ -176,6 +176,13 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
   char *successor_measure;
 
   /**
+   * Name of the check that becomes active when this
+   * measure is triggered.
+   * NULL for no check (allowed, but should be rare).
+   */
+  char *new_check;
+
+  /**
    * Array of the rules.
    */
   struct TALER_KYCLOGIC_KycRule *kyc_rules;
@@ -385,6 +392,7 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
   struct GNUNET_TIME_Timestamp expiration_time;
   const char *successor_measure = NULL;
   const json_t *jrules;
+  const char *new_check = NULL;
   const json_t *jcustom_measures = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp (
@@ -394,6 +402,11 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       GNUNET_JSON_spec_string (
         "successor_measure",
         &successor_measure),
+      NULL),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string (
+        "new_check",
+        &new_check),
       NULL),
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
@@ -419,6 +432,10 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
     = (NULL == successor_measure)
     ? NULL
     : GNUNET_strdup (successor_measure);
+  lrs->new_check
+    = (NULL == new_check)
+    ? NULL
+    : GNUNET_strdup (new_check);
   lrs->num_kyc_rules
     = (unsigned int) json_array_size (jrules);
   if (((size_t) lrs->num_kyc_rules) !=
@@ -605,6 +622,7 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
   GNUNET_free (lrs->kyc_rules);
   GNUNET_free (lrs->custom_measures);
   GNUNET_free (lrs->successor_measure);
+  GNUNET_free (lrs->new_check);
   GNUNET_free (lrs);
 }
 
@@ -2230,6 +2248,23 @@ TALER_KYCLOGIC_requirements_to_check (
   bool found = false;
   const struct TALER_KYCLOGIC_Measure *measure = NULL;
 
+  if (NULL == measure_name)
+  {
+    /* No measure selected, return the "new_check" */
+    if (0 != strcasecmp (lrs->new_check,
+                         "SKIP"))
+    {
+      kcc->check = find_check (lrs->new_check);
+      GNUNET_break (NULL != kcc->check);
+    }
+    else
+    {
+      kcc->check =NULL;
+    }
+    kcc->prog_name = measure->prog_name;
+    kcc->context = measure->context;
+    return GNUNET_OK;
+  }
   for (unsigned int i = 0; i<kyc_rule->num_measures; i++)
   {
     if (0 != strcmp (measure_name,
@@ -2261,6 +2296,15 @@ TALER_KYCLOGIC_requirements_to_check (
                 measure_name,
                 kyc_rule->rule_name);
     return GNUNET_SYSERR;
+  }
+
+  if (0 == strcasecmp (measure->check_name,
+                       "SKIP"))
+  {
+    kcc->check = NULL;
+    kcc->prog_name = measure->prog_name;
+    kcc->context = measure->context;
+    return GNUNET_OK;
   }
 
   for (unsigned int i = 0; i<num_kyc_checks; i++)
