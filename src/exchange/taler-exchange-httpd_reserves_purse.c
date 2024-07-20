@@ -108,6 +108,11 @@ struct ReservePurseContext
   struct TALER_PaytoHashP h_payto;
 
   /**
+   * Payto URI for the reserve.
+   */
+  char *payto_uri;
+
+  /**
    * KYC status of the operation.
    */
   struct TALER_EXCHANGEDB_KycStatus kyc;
@@ -202,6 +207,7 @@ purse_transaction (void *cls,
     connection,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+    rpc->payto_uri,
     &rpc->h_payto,
     &amount_iterator,
     rpc);
@@ -544,34 +550,30 @@ TEH_handler_reserves_purse (
       return MHD_YES; /* failure */
     }
   }
+  rpc.payto_uri
+    = TALER_reserve_make_payto (TEH_base_url,
+                                reserve_pub);
+  TALER_payto_hash (rpc.payto_uri,
+                    &rpc.h_payto);
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+  if (GNUNET_OK !=
+      TALER_wallet_purse_merge_verify (rpc.payto_uri,
+                                       rpc.merge_timestamp,
+                                       &rpc.pd.purse_pub,
+                                       &rpc.merge_pub,
+                                       &rpc.merge_sig))
   {
-    char *payto_uri;
+    MHD_RESULT ret;
 
-    payto_uri = TALER_reserve_make_payto (TEH_base_url,
-                                          reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &rpc.h_payto);
-    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-    if (GNUNET_OK !=
-        TALER_wallet_purse_merge_verify (payto_uri,
-                                         rpc.merge_timestamp,
-                                         &rpc.pd.purse_pub,
-                                         &rpc.merge_pub,
-                                         &rpc.merge_sig))
-    {
-      MHD_RESULT ret;
-
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
-        payto_uri);
-      GNUNET_free (payto_uri);
-      return ret;
-    }
-    GNUNET_free (payto_uri);
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
+      rpc.payto_uri);
+    GNUNET_free (rpc.payto_uri);
+    return ret;
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TEH_currency,
@@ -582,6 +584,7 @@ TEH_handler_reserves_purse (
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_BEFORE_NOW,
@@ -591,6 +594,7 @@ TEH_handler_reserves_purse (
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_IS_NEVER,
@@ -604,6 +608,7 @@ TEH_handler_reserves_purse (
     {
       GNUNET_break (0);
       GNUNET_JSON_parse_free (spec);
+      GNUNET_free (rpc.payto_uri);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -617,6 +622,7 @@ TEH_handler_reserves_purse (
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Cannot purse purse: global fees not configured!\n");
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
@@ -639,6 +645,7 @@ TEH_handler_reserves_purse (
       /* rpc.purse_fee is below gf.fees.purse! */
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
+      GNUNET_free (rpc.payto_uri);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_EXCHANGE_RESERVES_PURSE_FEE_TOO_LOW,
@@ -657,6 +664,7 @@ TEH_handler_reserves_purse (
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
@@ -677,6 +685,7 @@ TEH_handler_reserves_purse (
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
@@ -693,6 +702,7 @@ TEH_handler_reserves_purse (
   {
     TALER_LOG_WARNING ("Invalid signature on /reserves/$PID/purse request\n");
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
@@ -705,6 +715,7 @@ TEH_handler_reserves_purse (
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
+    GNUNET_free (rpc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_START_FAILED,
@@ -724,9 +735,11 @@ TEH_handler_reserves_purse (
                                 &rpc))
     {
       GNUNET_JSON_parse_free (spec);
+      GNUNET_free (rpc.payto_uri);
       return mhd_ret;
     }
   }
+  GNUNET_free (rpc.payto_uri);
 
   if (! rpc.kyc.ok)
     return TEH_RESPONSE_reply_kyc_required (connection,

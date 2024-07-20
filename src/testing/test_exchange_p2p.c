@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2023 Taler Systems SA
+  Copyright (C) 2014--2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -62,7 +62,8 @@ static bool uses_cs;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, "exchange-account-2")
+        TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, \
+                                           "exchange-account-2")
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -71,9 +72,9 @@ static bool uses_cs;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_sleep ("sleep-before-aggregator", 2), \
-  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
-  TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
+        TALER_TESTING_cmd_sleep ("sleep-before-aggregator", 2), \
+        TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
+        TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
 
 
 /**
@@ -83,10 +84,10 @@ static bool uses_cs;
  * @param label label to use for the command.
  * @param amount amount to transfer, i.e. "EUR:1"
  */
-#define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        &cred.ba,                \
-                                        cred.user42_payto)
+#define CMD_TRANSFER_TO_EXCHANGE(label,amount)                  \
+        TALER_TESTING_cmd_admin_add_incoming (label, amount,    \
+                                              &cred.ba,         \
+                                              cred.user42_payto)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -106,48 +107,56 @@ run (void *cls,
     /**
      * Move money to the exchange's bank account.
      */
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
-                              "EUR:5.04"),
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-2",
-                              "EUR:5.01"),
-    TALER_TESTING_cmd_reserve_poll ("poll-reserve-1",
-                                    "create-reserve-1",
-                                    "EUR:5.04",
-                                    GNUNET_TIME_UNIT_MINUTES,
-                                    MHD_HTTP_OK),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
-                                                 "EUR:5.04",
-                                                 cred.user42_payto,
-                                                 cred.exchange_payto,
-                                                 "create-reserve-1"),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-2",
-                                                 "EUR:5.01",
-                                                 cred.user42_payto,
-                                                 cred.exchange_payto,
-                                                 "create-reserve-2"),
+    CMD_TRANSFER_TO_EXCHANGE (
+      "create-reserve-1",
+      "EUR:5.04"),
+    CMD_TRANSFER_TO_EXCHANGE (
+      "create-reserve-2",
+      "EUR:5.01"),
+    TALER_TESTING_cmd_reserve_poll (
+      "poll-reserve-1",
+      "create-reserve-1",
+      "EUR:5.04",
+      GNUNET_TIME_UNIT_MINUTES,
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check-create-reserve-1",
+      "EUR:5.04",
+      cred.user42_payto,
+      cred.exchange_payto,
+      "create-reserve-1"),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check-create-reserve-2",
+      "EUR:5.01",
+      cred.user42_payto,
+      cred.exchange_payto,
+      "create-reserve-2"),
     /**
      * Make a reserve exist, according to the previous
      * transfer.
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
-    TALER_TESTING_cmd_reserve_poll_finish ("finish-poll-reserve-1",
-                                           GNUNET_TIME_UNIT_SECONDS,
-                                           "poll-reserve-1"),
+    TALER_TESTING_cmd_reserve_poll_finish (
+      "finish-poll-reserve-1",
+      GNUNET_TIME_UNIT_SECONDS,
+      "poll-reserve-1"),
     /**
      * Withdraw EUR:5.
      */
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
-                                       "create-reserve-1",
-                                       "EUR:5",
-                                       0, /* age restriction off */
-                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_withdraw_amount (
+      "withdraw-coin-1",
+      "create-reserve-1",
+      "EUR:5",
+      0,    /* age restriction off */
+      MHD_HTTP_OK),
     /**
      * Check the reserve is depleted.
      */
-    TALER_TESTING_cmd_status ("status-1",
-                              "create-reserve-1",
-                              "EUR:0.03",
-                              MHD_HTTP_OK),
+    TALER_TESTING_cmd_status (
+      "status-1",
+      "create-reserve-1",
+      "EUR:0.03",
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command push[] = {
@@ -338,10 +347,12 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:2.01",
       NULL),
-    TALER_TESTING_cmd_sleep ("sleep",
-                             2 /* seconds */),
-    TALER_TESTING_cmd_exec_expire ("exec-expire",
-                                   config_file),
+    TALER_TESTING_cmd_sleep (
+      "sleep",
+      2 /* seconds */),
+    TALER_TESTING_cmd_exec_expire (
+      "exec-expire",
+      config_file),
     TALER_TESTING_cmd_purse_poll_finish (
       "push-merge-purse-poll-finish-expire",
       GNUNET_TIME_relative_multiply (
@@ -371,56 +382,65 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command reserves[] = {
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-100",
-                              "EUR:1.04"),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-100",
-                                                 "EUR:1.04",
-                                                 cred.user42_payto,
-                                                 cred.exchange_payto,
-                                                 "create-reserve-100"),
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-101",
-                              "EUR:1.04"),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-101",
-                                                 "EUR:1.04",
-                                                 cred.user42_payto,
-                                                 cred.exchange_payto,
-                                                 "create-reserve-101"),
+    CMD_TRANSFER_TO_EXCHANGE (
+      "create-reserve-100",
+      "EUR:1.04"),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check-create-reserve-100",
+      "EUR:1.04",
+      cred.user42_payto,
+      cred.exchange_payto,
+      "create-reserve-100"),
+    CMD_TRANSFER_TO_EXCHANGE (
+      "create-reserve-101",
+      "EUR:1.04"),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check-create-reserve-101",
+      "EUR:1.04",
+      cred.user42_payto,
+      cred.exchange_payto,
+      "create-reserve-101"),
     CMD_EXEC_WIREWATCH ("wirewatch-100"),
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-100",
-                                       "create-reserve-100",
-                                       "EUR:1",
-                                       0, /* age restriction off */
-                                       MHD_HTTP_OK),
-    TALER_TESTING_cmd_reserve_open ("reserve-open-101-fail",
-                                    "create-reserve-101",
-                                    "EUR:0",
-                                    GNUNET_TIME_UNIT_YEARS,
-                                    5, /* min purses */
-                                    MHD_HTTP_PAYMENT_REQUIRED,
-                                    NULL,
-                                    NULL),
-    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok-a",
-                                    "create-reserve-101",
-                                    "EUR:0.01",
-                                    GNUNET_TIME_UNIT_MONTHS,
-                                    1, /* min purses */
-                                    MHD_HTTP_OK,
-                                    NULL,
-                                    NULL),
-    TALER_TESTING_cmd_status ("status-101-open-paid",
-                              "create-reserve-101",
-                              "EUR:1.03",
-                              MHD_HTTP_OK),
-    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok-b",
-                                    "create-reserve-101",
-                                    "EUR:0",
-                                    GNUNET_TIME_UNIT_MONTHS,
-                                    2, /* min purses */
-                                    MHD_HTTP_OK,
-                                    "withdraw-coin-100",
-                                    "EUR:0.03", /* 0.02 for the reserve open, 0.01 for deposit fee */
-                                    NULL,
-                                    NULL),
+    TALER_TESTING_cmd_withdraw_amount (
+      "withdraw-coin-100",
+      "create-reserve-100",
+      "EUR:1",
+      0,       /* age restriction off */
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_open (
+      "reserve-open-101-fail",
+      "create-reserve-101",
+      "EUR:0",
+      GNUNET_TIME_UNIT_YEARS,
+      5,     /* min purses */
+      MHD_HTTP_PAYMENT_REQUIRED,
+      NULL,
+      NULL),
+    TALER_TESTING_cmd_reserve_open (
+      "reserve-open-101-ok-a",
+      "create-reserve-101",
+      "EUR:0.01",
+      GNUNET_TIME_UNIT_MONTHS,
+      1,                               /* min purses */
+      MHD_HTTP_OK,
+      NULL,
+      NULL),
+    TALER_TESTING_cmd_status (
+      "status-101-open-paid",
+      "create-reserve-101",
+      "EUR:1.03",
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_open (
+      "reserve-open-101-ok-b",
+      "create-reserve-101",
+      "EUR:0",
+      GNUNET_TIME_UNIT_MONTHS,
+      2,            /* min purses */
+      MHD_HTTP_OK,
+      "withdraw-coin-100",
+      "EUR:0.03",  /* 0.02 for the reserve open, 0.01 for deposit fee */
+      NULL,
+      NULL),
     /* Use purse creation with purse quota here */
     TALER_TESTING_cmd_purse_create_with_reserve (
       "purse-create-with-reserve-101-a",
@@ -446,51 +466,71 @@ run (void *cls,
       false /* pay purse fee */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "create-reserve-101"),
-    TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attestable",
-                                              "create-reserve-101",
-                                              MHD_HTTP_NOT_FOUND,
-                                              NULL),
-    TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attest",
-                                              "create-reserve-101",
-                                              MHD_HTTP_NOT_FOUND,
-                                              "nx-attribute-name",
-                                              NULL),
-    TALER_TESTING_cmd_oauth ("start-oauth-service",
-                             6666),
-    TALER_TESTING_cmd_reserve_close ("reserve-101-close-kyc",
-                                     "create-reserve-101",
-                                     /* 42b => not to origin */
-                                     "payto://x-taler-bank/localhost/42?receiver-name=42b",
-                                     MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
-
-    TALER_TESTING_cmd_check_kyc_get ("check-kyc-close-pending",
-                                     "reserve-101-close-kyc",
-                                     MHD_HTTP_ACCEPTED),
-    TALER_TESTING_cmd_proof_kyc_oauth2 ("proof-close-kyc",
-                                        "reserve-101-close-kyc",
-                                        "kyc-provider-test-oauth2",
-                                        "pass",
-                                        MHD_HTTP_SEE_OTHER),
-    TALER_TESTING_cmd_check_kyc_get ("check-kyc-close-ok",
-                                     "reserve-101-close-kyc",
-                                     MHD_HTTP_NO_CONTENT),
+    TALER_TESTING_cmd_reserve_get_attestable (
+      "reserve-101-attestable",
+      "create-reserve-101",
+      MHD_HTTP_NOT_FOUND,
+      NULL),
+    TALER_TESTING_cmd_reserve_get_attestable (
+      "reserve-101-attest",
+      "create-reserve-101",
+      MHD_HTTP_NOT_FOUND,
+      "nx-attribute-name",
+      NULL),
+    TALER_TESTING_cmd_oauth (
+      "start-oauth-service",
+      6666),
+    TALER_TESTING_cmd_reserve_close (
+      "reserve-101-close-kyc",
+      "create-reserve-101",
+      /* 42b => not to origin */
+      "payto://x-taler-bank/localhost/42?receiver-name=42b",
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "setup-account-key",
+      "EUR:0.01",
+      &cred.ba,
+      "payto://x-taler-bank/localhost/42?receiver-name=42b",
+      NULL /* create new key */),
+    CMD_EXEC_WIREWATCH (
+      "import-kyc-account"),
+    TALER_TESTING_cmd_check_kyc_get (
+      "check-kyc-close-pending",
+      "reserve-101-close-kyc",
+      "setup-account-key",
+      MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_proof_kyc_oauth2 (
+      "proof-close-kyc",
+      "reserve-101-close-kyc",
+      "kyc-provider-test-oauth2",
+      "pass",
+      MHD_HTTP_SEE_OTHER),
+    TALER_TESTING_cmd_check_kyc_get (
+      "check-kyc-close-ok",
+      "reserve-101-close-kyc",
+      "setup-account-key",
+      MHD_HTTP_NO_CONTENT),
     /* Now it should pass */
-    TALER_TESTING_cmd_reserve_close ("reserve-101-close",
-                                     "create-reserve-101",
-                                     /* 42b => not to origin */
-                                     "payto://x-taler-bank/localhost/42?receiver-name=42b",
-                                     MHD_HTTP_OK),
-    TALER_TESTING_cmd_exec_closer ("close-reserves-101",
-                                   config_file,
-                                   "EUR:1.02",
-                                   "EUR:0.01",
-                                   "create-reserve-101"),
-    TALER_TESTING_cmd_exec_transfer ("close-reserves-101-transfer",
-                                     config_file),
-    TALER_TESTING_cmd_status ("reserve-101-closed-status",
-                              "create-reserve-101",
-                              "EUR:0",
-                              MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_close (
+      "reserve-101-close",
+      "create-reserve-101",
+      /* 42b => not to origin */
+      "payto://x-taler-bank/localhost/42?receiver-name=42b",
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_exec_closer (
+      "close-reserves-101",
+      config_file,
+      "EUR:1.02",
+      "EUR:0.01",
+      "create-reserve-101"),
+    TALER_TESTING_cmd_exec_transfer (
+      "close-reserves-101-transfer",
+      config_file),
+    TALER_TESTING_cmd_status (
+      "reserve-101-closed-status",
+      "create-reserve-101",
+      "EUR:0",
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 

@@ -41,6 +41,7 @@ TEH_legitimization_check (
   struct MHD_Connection *connection,
   MHD_RESULT *mhd_ret,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls)
@@ -111,13 +112,22 @@ TEH_legitimization_check (
     jmeasures = TALER_KYCLOGIC_rule_to_measures (requirement);
     qs = TEH_plugin->trigger_kyc_rule_for_account (
       TEH_plugin->cls,
+      payto_uri,
       h_payto,
       jmeasures,
       TALER_KYCLOGIC_rule2priority (requirement),
       &kyc->requirement_row);
     json_decref (jmeasures);
   }
-  GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+      "trigger_kyc_rule_for_account");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -217,12 +227,14 @@ TEH_withdraw_kyc_check (
     .withdraw_total = withdraw_total,
     .now = now
   };
+  char *payto_uri;
 
   /* Check if the money came from a wire transfer */
   qs = TEH_plugin->reserves_get_origin (
     TEH_plugin->cls,
     reserve_pub,
-    &wc.h_payto);
+    &wc.h_payto,
+    &payto_uri);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -238,12 +250,15 @@ TEH_withdraw_kyc_check (
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     return qs;
   *h_payto = wc.h_payto;
-  return TEH_legitimization_check (
+  qs = TEH_legitimization_check (
     kyc,
     connection,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW,
+    payto_uri,
     &wc.h_payto,
     &withdraw_amount_cb,
     &wc);
+  GNUNET_free (payto_uri);
+  return qs;
 }

@@ -30,7 +30,8 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_get_origin (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct TALER_PaytoHashP *h_payto)
+  struct TALER_PaytoHashP *h_payto,
+  char **payto_uri)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -38,20 +39,25 @@ TEH_PG_reserves_get_origin (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("wire_source_h_payto",
-                                          h_payto),
+    GNUNET_PQ_result_spec_auto_from_type (
+      "wire_source_h_payto",
+      h_payto),
+    GNUNET_PQ_result_spec_string (
+      "payto_uri",
+      payto_uri),
     GNUNET_PQ_result_spec_end
   };
-
 
   PREPARE (pg,
            "get_h_wire_source_of_reserve",
            "SELECT"
            " wire_source_h_payto"
+           ",payto_uri"
            " FROM reserves_in"
            " WHERE reserve_pub=$1");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_h_wire_source_of_reserve",
-                                                   params,
-                                                   rs);
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "get_h_wire_source_of_reserve",
+    params,
+    rs);
 }

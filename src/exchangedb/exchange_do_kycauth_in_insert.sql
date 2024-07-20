@@ -15,7 +15,7 @@
 --
 
 
-CREATE OR REPLACE PROCEDURE exchange_do_kycauth_insert(
+CREATE OR REPLACE PROCEDURE exchange_do_kycauth_in_insert(
   IN in_account_pub BYTEA,
   IN in_wire_reference INT8,
   IN in_credit taler_amount,

@@ -240,6 +240,7 @@ reserve_close_transaction (void *cls,
       connection,
       mhd_ret,
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
+      rcc->payto_uri,
       &rcc->kyc_payto,
       &amount_it,
       rcc);
@@ -398,10 +399,21 @@ TEH_handler_reserves_close (struct TEH_RequestContext *rc,
     return mhd_ret;
   }
   if (! rcc.kyc.ok)
-    return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                            &rcc.kyc_payto,
-                                            &rcc.kyc);
-
+  {
+    if (0 == rcc.kyc.requirement_row)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+        "requirement row not set");
+    }
+    return TEH_RESPONSE_reply_kyc_required (
+      rc->connection,
+      &rcc.kyc_payto,
+      &rcc.kyc);
+  }
   return reply_reserve_close_success (rc->connection,
                                       &rcc);
 }

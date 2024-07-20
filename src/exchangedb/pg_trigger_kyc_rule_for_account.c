@@ -29,8 +29,9 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_trigger_kyc_rule_for_account (
   void *cls,
+  const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
-  const json_t *jrule,
+  const json_t *jmeasures,
   uint32_t display_priority,
   uint64_t *requirement_row)
 {
@@ -39,29 +40,27 @@ TEH_PG_trigger_kyc_rule_for_account (
     = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_absolute_time (&now),
-    TALER_PQ_query_param_json (jrule),
+    TALER_PQ_query_param_json (jmeasures),
     GNUNET_PQ_query_param_uint32 (&display_priority),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("legitimization_measure_serial_id",
-                                  requirement_row),
+    GNUNET_PQ_result_spec_uint64 (
+      "legitimization_measure_serial_id",
+      requirement_row),
     GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
            "trigger_kyc_rule_for_account",
-           "INSERT INTO legitimization_measures"
-           "(access_token"
-           ",start_time"
-           ",jmeasures"
-           ",display_priority)"
-           " SELECT "
-           " access_token,$2,$3,$4"
-           " FROM wire_targets"
-           " WHERE wire_target_h_payto=$1"
-           " RETURNING legitimization_measure_serial_id;");
+           "SELECT"
+           "  out_legitimization_measure_serial_id"
+           "    AS legitimization_measure_serial_id"
+           " FROM exchange_do_trigger_kyc_rule_for_account"
+           "($1, $2, $3, $4, $5);");
+
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "trigger_kyc_rule_for_account",

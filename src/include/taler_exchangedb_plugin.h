@@ -3849,13 +3849,15 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the `struct PostgresClosure` with the plugin-specific state
    * @param reserve_pub public key of the reserve
    * @param[out] h_payto set to hash of the wire source payto://-URI
+   * @param[out] payto_uri set to the wire source payto://-URI
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
     (*reserves_get_origin)(
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
-    struct TALER_PaytoHashP *h_payto);
+    struct TALER_PaytoHashP *h_payto,
+    char **payto_uri);
 
 
   /**
@@ -6799,8 +6801,9 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert KYC requirement for @a h_payto account into table.
    *
    * @param cls closure
-   * @param h_payto account that must be KYC'ed
-   * @param jrule serialized MeasureSet to put in place
+   * @param payto_uri account that must be KYC'ed
+   * @param h_payto hash of @a payto_uri
+   * @param jmeasures serialized MeasureSet to put in place
    * @param display_priority priority of the rule
    * @param[out] requirement_row set to legitimization requirement row for this check
    * @return database transaction status
@@ -6808,8 +6811,9 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*trigger_kyc_rule_for_account)(
     void *cls,
+    const char *payto_uri,
     const struct TALER_PaytoHashP *h_payto,
-    const json_t *jrule,
+    const json_t *jmeasures,
     uint32_t display_priority,
     uint64_t *requirement_row);
 

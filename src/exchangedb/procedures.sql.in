@@ -50,5 +50,6 @@ SET search_path TO exchange;
 #include "exchange_do_get_link_data.sql"
 #include "exchange_do_batch_coin_known.sql"
 #include "exchange_do_kycauth_in_insert.sql"
+#include "exchange_do_trigger_kcy_rule_for_account.sql"
 
 COMMIT;

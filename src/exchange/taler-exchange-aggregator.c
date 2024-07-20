@@ -553,6 +553,7 @@ legitimization_satisfied (struct AggregationUnit *au_active)
   jrule = TALER_KYCLOGIC_rule_to_measures (requirement);
   qs = db_plugin->trigger_kyc_rule_for_account (
     db_plugin->cls,
+    au_active->payto_uri,
     &au_active->h_payto,
     jrule,
     TALER_KYCLOGIC_rule2priority (requirement),

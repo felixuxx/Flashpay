@@ -144,8 +144,9 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_legi_requirement_row (res_cmd,
-                                                    &requirement_row))
+      TALER_TESTING_get_trait_legi_requirement_row (
+        res_cmd,
+        &requirement_row))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
@@ -230,10 +231,11 @@ check_kyc_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_kyc_get (const char *label,
-                                 const char *payment_target_reference,
-                                 const char *account_reference,
-                                 unsigned int expected_response_code)
+TALER_TESTING_cmd_check_kyc_get (
+  const char *label,
+  const char *payment_target_reference,
+  const char *account_reference,
+  unsigned int expected_response_code)
 {
   struct KycCheckGetState *kcg;
 

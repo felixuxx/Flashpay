@@ -30,12 +30,14 @@
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve
  * @param[out] h_payto set to hash of the wire source payto://-URI
+ * @param[out] payto_uri set to the wire source payto://-URI
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_get_origin (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct TALER_PaytoHashP *h_payto);
+  struct TALER_PaytoHashP *h_payto,
+  char **payto_uri);
 
 #endif

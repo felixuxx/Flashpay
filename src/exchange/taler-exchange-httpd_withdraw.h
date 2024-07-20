@@ -33,6 +33,8 @@
  * @param[out] mhd_ret set if errors were returned
  *     (only on hard error)
  * @param et type of event we are checking
+ * @param payto_uri account we are checking for
+ * @param h_payto hash of @a payto_uri
  * @param ai callback to get amounts involved historically
  * @param ai_cls closure for @a ai
  * @return transaction status, error will have been
@@ -44,6 +46,7 @@ TEH_legitimization_check (
   struct MHD_Connection *connection,
   MHD_RESULT *mhd_ret,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls);

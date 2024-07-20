@@ -57,6 +57,11 @@ struct KycRequestContext
    */
   struct TALER_Amount balance;
 
+  /**
+   * Payto URI of the reserve.
+   */
+  char *payto_uri;
+
 };
 
 
@@ -119,6 +124,7 @@ wallet_kyc_check (void *cls,
     connection,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
+    krc->payto_uri,
     &krc->h_payto,
     &balance_iterator,
     krc);
@@ -168,25 +174,22 @@ TEH_handler_kyc_wallet (
       TALER_EC_EXCHANGE_KYC_WALLET_SIGNATURE_INVALID,
       NULL);
   }
-  {
-    char *payto_uri;
-
-    payto_uri = TALER_reserve_make_payto (TEH_base_url,
-                                          &krc.reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &krc.h_payto);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "h_payto of wallet %s is %s\n",
-                payto_uri,
-                TALER_B2S (&krc.h_payto));
-    GNUNET_free (payto_uri);
-  }
+  krc.payto_uri
+    = TALER_reserve_make_payto (TEH_base_url,
+                                &krc.reserve_pub);
+  TALER_payto_hash (krc.payto_uri,
+                    &krc.h_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "h_payto of wallet %s is %s\n",
+              krc.payto_uri,
+              TALER_B2S (&krc.h_payto));
   ret = TEH_DB_run_transaction (rc->connection,
                                 "check wallet kyc",
                                 TEH_MT_REQUEST_OTHER,
                                 &res,
                                 &wallet_kyc_check,
                                 &krc);
+  GNUNET_free (krc.payto_uri);
   if (GNUNET_SYSERR == ret)
     return res;
   if (krc.kyc.ok)

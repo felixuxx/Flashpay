@@ -292,6 +292,7 @@ merge_transaction (void *cls,
     connection,
     mhd_ret,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+    pcc->payto_uri,
     &pcc->h_payto,
     &amount_iterator,
     pcc);
