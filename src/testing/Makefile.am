@@ -74,6 +74,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_get_auditor.c \
   testing_api_cmd_get_exchange.c \
+  testing_api_cmd_get_kyc_info.c \
   testing_api_cmd_insert_deposit.c \
   testing_api_cmd_kyc_check_get.c \
   testing_api_cmd_kyc_proof.c \
@@ -83,6 +84,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_offline_sign_wire_fees.c \
   testing_api_cmd_offline_sign_keys.c \
   testing_api_cmd_offline_sign_extensions.c \
+  testing_api_cmd_post_kyc_start.c \
   testing_api_cmd_purse_create_deposit.c \
   testing_api_cmd_purse_delete.c \
   testing_api_cmd_purse_deposit.c \

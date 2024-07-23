@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018-2023 Taler Systems SA
+  (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -2193,10 +2193,11 @@ TALER_TESTING_cmd_revoke_sign_key (
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_wallet_kyc_get (const char *label,
-                                  const char *reserve_reference,
-                                  const char *threshold_balance,
-                                  unsigned int expected_response_code);
+TALER_TESTING_cmd_wallet_kyc_get (
+  const char *label,
+  const char *reserve_reference,
+  const char *threshold_balance,
+  unsigned int expected_response_code);
 
 
 /**
@@ -2209,10 +2210,44 @@ TALER_TESTING_cmd_wallet_kyc_get (const char *label,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_kyc_get (const char *label,
-                                 const char *payment_target_reference,
-                                 const char *account_reference,
-                                 unsigned int expected_response_code);
+TALER_TESTING_cmd_check_kyc_get (
+  const char *label,
+  const char *payment_target_reference,
+  const char *account_reference,
+  unsigned int expected_response_code);
+
+
+/**
+ * Create a request for detailed account KYC information.
+ *
+ * @param label command label.
+ * @param payment_target_reference command with a payment target to query
+ * @param kyc_check_reference command with account access token trait to use
+ * @param expected_response_code expected HTTP status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_get_kyc_info (
+  const char *label,
+  const char *kyc_check_reference,
+  unsigned int expected_response_code);
+
+
+/**
+ * Create a request for detailed account KYC information.
+ *
+ * @param label command label.
+ * @param kyc_info_reference command with requirement information to query
+ * @param requirement_index index of the KYC requirement to trigger the KYC start for
+ * @param expected_response_code expected HTTP status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_post_kyc_start (
+  const char *label,
+  const char *kyc_info_reference,
+  unsigned int requirement_index,
+  unsigned int expected_response_code);
 
 
 /**
@@ -2740,6 +2775,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         op (denom_sig, const struct TALER_DenominationSignature)              \
         op (amounts, const struct TALER_Amount)                               \
         op (deposit_amount, const struct TALER_Amount)                        \
+        op (kyc_id, const char)                                               \
         op (deposit_fee_amount, const struct TALER_Amount)                    \
         op (age_commitment, const struct TALER_AgeCommitment)                 \
         op (age_commitment_proof, const struct TALER_AgeCommitmentProof)      \
