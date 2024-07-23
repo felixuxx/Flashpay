@@ -240,23 +240,29 @@ TALER_EXCHANGE_kyc_check (
 {
   struct TALER_EXCHANGE_KycCheckHandle *kch;
   CURL *eh;
-  char *arg_str;
+  char arg_str[128];
   struct curl_slist *job_headers = NULL;
   unsigned long long tms;
 
   tms = timeout.rel_value_us
         / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
-  GNUNET_asprintf (&arg_str,
-                   "kyc-check/%llu?timeout_ms=%llu",
-                   (unsigned long long) requirement_row,
-                   tms);
+  if (0 != tms)
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "kyc-check/%llu?timeout_ms=%llu",
+                     (unsigned long long) requirement_row,
+                     tms);
+  else
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "kyc-check/%llu",
+                     (unsigned long long) requirement_row);
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
   kch->cb = cb;
   kch->cb_cls = cb_cls;
   kch->url = TALER_url_join (url,
                              arg_str,
                              NULL);
-  GNUNET_free (arg_str);
   if (NULL == kch->url)
   {
     GNUNET_free (kch);
@@ -275,8 +281,12 @@ TALER_EXCHANGE_kyc_check (
     GNUNET_break (CURLE_OK ==
                   curl_easy_setopt (eh,
                                     CURLOPT_TIMEOUT_MS,
-                                    (long) (tms + 100L)));
+                                    (long) (tms + 500L)));
   }
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_VERBOSE,
+                                  1L));
 
   job_headers = curl_slist_append (job_headers,
                                    "Content-Type: application/json");

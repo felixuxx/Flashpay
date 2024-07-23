@@ -171,7 +171,7 @@ check_kyc_run (void *cls,
     TALER_TESTING_get_exchange_url (is),
     *requirement_row,
     account_priv,
-    GNUNET_TIME_UNIT_SECONDS,
+    GNUNET_TIME_UNIT_ZERO,
     &check_kyc_cb,
     kcg);
   GNUNET_assert (NULL != kcg->kwh);
