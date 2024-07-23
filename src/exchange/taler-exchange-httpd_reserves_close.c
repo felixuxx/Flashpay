@@ -246,7 +246,10 @@ reserve_close_transaction (void *cls,
       rcc);
     if ( (qs < 0) ||
          (! rcc->kyc.ok) )
+    {
+      GNUNET_free (payto_uri);
       return qs;
+    }
   }
   else
   {
@@ -297,6 +300,7 @@ reserve_close_transaction (void *cls,
                                          &rcc->balance,
                                          &wf->closing);
   GNUNET_free (payto_uri);
+  rcc->payto_uri = NULL;
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);

@@ -296,7 +296,7 @@ TALER_EXCHANGE_kyc_check (
                      TALER_HTTP_HEADER_ACCOUNT_OWNER_SIGNATURE,
                      sig_hdr);
     GNUNET_free (sig_hdr);
-    job_headers = curl_slist_append (NULL,
+    job_headers = curl_slist_append (job_headers,
                                      hdr);
     GNUNET_free (hdr);
     if (NULL == job_headers)

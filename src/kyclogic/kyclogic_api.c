@@ -23,10 +23,10 @@
 #include "taler_kyclogic_lib.h"
 
 /**
- * Name of the KYC check that may never be passed. Useful if some
+ * Name of the KYC measure that may never be passed. Useful if some
  * operations/amounts are categorically forbidden.
  */
-#define KYC_CHECK_IMPOSSIBLE "verboten"
+#define KYC_MEASURE_IMPOSSIBLE "verboten"
 
 /**
  * Information about a KYC provider.
@@ -692,7 +692,7 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
         json_decref (limits);
         return NULL;
       }
-      if (0 == strcmp (KYC_CHECK_IMPOSSIBLE,
+      if (0 == strcmp (KYC_MEASURE_IMPOSSIBLE,
                        val))
         forbidden = true;
     }
@@ -706,10 +706,10 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
                               &threshold),
       GNUNET_JSON_pack_bool ("soft_limit",
                              ! forbidden));
+    GNUNET_assert (0 ==
+                   json_array_append_new (limits,
+                                          limit));
   }
-  GNUNET_assert (0 ==
-                 json_array_append_new (limits,
-                                        limit));
   return limits;
 }
 
@@ -1313,7 +1313,7 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
   {
     char *tmp;
 
-    if (GNUNET_OK !=
+    if (GNUNET_OK ==
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                section,
                                                "DESCRIPTION_I18N",
@@ -1633,10 +1633,15 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
     kt.trigger = ot;
     kt.is_and_combinator = is_and;
     kt.exposed = exposed;
+    kt.verboten = false;
     add_tokens (measures,
                 " ",
                 &kt.next_measures,
                 &kt.num_measures);
+    for (unsigned int i=0; i<kt.num_measures; i++)
+      if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
+                           kt.next_measures[i]))
+        kt.verboten = true;
     GNUNET_free (measures);
     GNUNET_array_append (default_rules.kyc_rules,
                          default_rules.num_kyc_rules,

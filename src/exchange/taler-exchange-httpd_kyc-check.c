@@ -356,6 +356,11 @@ TEH_handler_kyc_check (
     return MHD_YES;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Returning KYC %s for row %llu\n",
+              kyc_required ? "required" : "optional",
+              (unsigned long long) kyp->requirement_row);
+
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     kyc_required

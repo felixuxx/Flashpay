@@ -286,6 +286,7 @@ open_cleanup (void *cls,
     TALER_EXCHANGE_reserves_open_cancel (ss->rsh);
     ss->rsh = NULL;
   }
+  GNUNET_free (ss->cd);
   GNUNET_free (ss);
 }
 
