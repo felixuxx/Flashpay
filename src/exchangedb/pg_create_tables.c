@@ -64,7 +64,7 @@ TEH_PG_create_tables (void *cls,
     PREPARE (pg,
              "create_tables",
              "SELECT"
-             " exchange.do_create_tables"
+             " exchange_do_create_tables"
              " ($1::INTEGER);");
     pg->conn = tconn;
     if (0 >

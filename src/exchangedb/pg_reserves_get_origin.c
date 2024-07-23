@@ -53,7 +53,9 @@ TEH_PG_reserves_get_origin (
            "SELECT"
            " wire_source_h_payto"
            ",payto_uri"
-           " FROM reserves_in"
+           " FROM reserves_in rt"
+           " JOIN wire_targets wt"
+           "   ON (rt.wire_source_h_payto = wt.wire_target_h_payto)"
            " WHERE reserve_pub=$1");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

@@ -52,14 +52,18 @@ TEH_PG_lookup_kyc_requirement_by_row (
       TALER_PQ_result_spec_json ("jrules",
                                  jrules),
       NULL),
-    GNUNET_PQ_result_spec_bool ("aml_review",
-                                aml_review),
+    GNUNET_PQ_result_spec_allow_null (
+      /* can be NULL due to LEFT JOIN */
+      GNUNET_PQ_result_spec_bool ("aml_review",
+                                  aml_review),
+      NULL),
     GNUNET_PQ_result_spec_bool ("kyc_required",
                                 kyc_required),
     GNUNET_PQ_result_spec_end
   };
 
   *jrules = NULL;
+  *aml_review = false;
   memset (account_pub,
           0,
           sizeof (*account_pub));
@@ -75,7 +79,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
            " JOIN wire_targets wt"
            "   USING (access_token)"
            " LEFT JOIN legitimization_outcomes lo"
-           "   USING (h_payto)"
+           "   ON (wt.wire_target_h_payto = lo.h_payto)"
            " WHERE legitimization_measure_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

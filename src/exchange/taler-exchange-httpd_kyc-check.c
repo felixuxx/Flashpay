@@ -263,6 +263,9 @@ TEH_handler_kyc_check (
   {
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Looking up KYC requirements by row %llu\n",
+                (unsigned long long) kyp->requirement_row);
     qs = TEH_plugin->lookup_kyc_requirement_by_row (
       TEH_plugin->cls,
       kyp->requirement_row,
@@ -301,6 +304,7 @@ TEH_handler_kyc_check (
     jrules = NULL;
     if (GNUNET_is_zero (&account_pub))
     {
+      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_CONFLICT,

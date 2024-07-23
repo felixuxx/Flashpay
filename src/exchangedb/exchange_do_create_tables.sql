@@ -19,7 +19,7 @@
 ---------------------------------------------------------------------------
 
 
-CREATE OR REPLACE FUNCTION do_create_tables(
+CREATE OR REPLACE FUNCTION exchange_do_create_tables(
   num_partitions INTEGER
 -- NULL: no partitions, add foreign constraints
 -- 0: no partitions, no foreign constraints
@@ -188,5 +188,5 @@ BEGIN
   END LOOP; -- create/alter/drop actions
 END $$;
 
-COMMENT ON FUNCTION do_create_tables
+COMMENT ON FUNCTION exchange_do_create_tables
   IS 'Creates all tables for the given number of partitions that need creating. Does NOT support sharding.';

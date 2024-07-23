@@ -204,6 +204,9 @@ handle_kyc_check_finished (void *cls,
   case MHD_HTTP_NOT_FOUND:
     ks.hr.ec = TALER_JSON_get_error_code (j);
     break;
+  case MHD_HTTP_CONFLICT:
+    ks.hr.ec = TALER_JSON_get_error_code (j);
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     ks.hr.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
