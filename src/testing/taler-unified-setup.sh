@@ -518,7 +518,7 @@ then
                   -c "$CONF" \
                   -L "$LOGLEVEL" \
                   2> taler-exchange-secmod-cs.log &
-    $USE_VALGRIND valgrind taler-exchange-httpd \
+    $USE_VALGRIND taler-exchange-httpd \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
     echo " DONE"

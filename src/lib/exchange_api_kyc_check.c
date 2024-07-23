@@ -283,11 +283,6 @@ TALER_EXCHANGE_kyc_check (
                                     CURLOPT_TIMEOUT_MS,
                                     (long) (tms + 500L)));
   }
-  GNUNET_break (CURLE_OK ==
-                curl_easy_setopt (eh,
-                                  CURLOPT_VERBOSE,
-                                  1L));
-
   job_headers = curl_slist_append (job_headers,
                                    "Content-Type: application/json");
   {

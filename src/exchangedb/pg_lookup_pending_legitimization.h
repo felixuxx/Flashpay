@@ -32,8 +32,8 @@
  * @param cls closure
  * @param legitimization_measure_serial_id
  *    row in legitimization_measures table to access
- * @param access_token
- *    token for access control that must match
+ * @param[out] access_token
+ *    set to token for access control that must match
  * @param[out] h_payto set to the the hash of the
  *    payto URI of the account undergoing legitimization
  * @param[out] jmeasures set to the legitimization
@@ -44,7 +44,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_pending_legitimization (
   void *cls,
   uint64_t legitimization_measure_serial_id,
-  const struct TALER_AccountAccessTokenP *access_token,
+  struct TALER_AccountAccessTokenP *access_token,
   struct TALER_PaytoHashP *h_payto,
   json_t **jmeasures);
 

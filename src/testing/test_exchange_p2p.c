@@ -511,7 +511,7 @@ run (void *cls,
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-close-kyc",
       "reserve-101-close-kyc",
-      "kyc-provider-test-oauth2",
+      "test-oauth2",
       "pass",
       MHD_HTTP_SEE_OTHER),
     TALER_TESTING_cmd_check_kyc_get (

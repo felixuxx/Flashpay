@@ -2613,8 +2613,8 @@ TALER_KYCLOGIC_measure_to_requirement (
                                xids),
       GNUNET_JSON_pack_string ("description",
                                kc->description),
-      GNUNET_JSON_pack_object_steal ("description_i18n",
-                                     (json_t *) kc->description_i18n));
+      GNUNET_JSON_pack_object_incref ("description_i18n",
+                                      (json_t *) kc->description_i18n));
     GNUNET_free (xids);
     return kri;
   case TALER_KYCLOGIC_CT_LINK:
@@ -2634,8 +2634,8 @@ TALER_KYCLOGIC_measure_to_requirement (
                                xids),
       GNUNET_JSON_pack_string ("description",
                                kc->description),
-      GNUNET_JSON_pack_object_steal ("description_i18n",
-                                     (json_t *) kc->description_i18n));
+      GNUNET_JSON_pack_object_incref ("description_i18n",
+                                      (json_t *) kc->description_i18n));
     GNUNET_free (xids);
     return kri;
   }
@@ -2780,12 +2780,13 @@ TALER_KYCLOGIC_select_measure (
   const char **prog_name,
   const json_t **context)
 {
-  const json_t *jmeasure;
+  const json_t *jmeasure_arr;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("measures",
-                                  &jmeasures),
+                                  &jmeasure_arr),
     GNUNET_JSON_spec_end ()
   };
+  const json_t *jmeasure;
   struct GNUNET_JSON_Specification ispec[] = {
     GNUNET_JSON_spec_string ("check_name",
                              check_name),
@@ -2807,12 +2808,12 @@ TALER_KYCLOGIC_select_measure (
     GNUNET_break (0);
     return TALER_EC_EXCHANGE_KYC_MEASURES_MALFORMED;
   }
-  if (measure_index >= json_array_size (jmeasures))
+  if (measure_index >= json_array_size (jmeasure_arr))
   {
     GNUNET_break_op (0);
     return TALER_EC_EXCHANGE_KYC_MEASURE_INDEX_INVALID;
   }
-  jmeasure = json_array_get (jmeasures,
+  jmeasure = json_array_get (jmeasure_arr,
                              measure_index);
   if (GNUNET_OK !=
       GNUNET_JSON_parse (jmeasure,

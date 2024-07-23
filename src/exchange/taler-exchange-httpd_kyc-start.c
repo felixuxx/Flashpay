@@ -46,6 +46,11 @@ struct KycPoller
   struct TALER_AccountAccessTokenP access_token;
 
   /**
+   * Authorization hash for the selected measure.
+   */
+  struct TALER_KycMeasureAuthorizationHash shv;
+
+  /**
    * Hash of the payto:// URI we are starting to the KYC for.
    */
   struct TALER_PaytoHashP h_payto;
@@ -288,15 +293,15 @@ TEH_handler_kyc_start (
       if (GNUNET_OK !=
           GNUNET_STRINGS_string_to_data (id,
                                          slash - id,
-                                         &kyp->access_token,
-                                         sizeof (kyp->access_token)))
+                                         &kyp->shv,
+                                         sizeof (kyp->shv)))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (
           rc->connection,
           MHD_HTTP_BAD_REQUEST,
           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "Access token in ID is malformed");
+          "Authorization hash in ID is malformed");
       }
       if (2 !=
           sscanf (slash + 1,
@@ -313,7 +318,6 @@ TEH_handler_kyc_start (
           "ID is malformed");
       }
     }
-
     qs = TEH_plugin->lookup_pending_legitimization (
       TEH_plugin->cls,
       kyp->legitimization_measure_serial_id,
@@ -336,6 +340,27 @@ TEH_handler_kyc_start (
         MHD_HTTP_NOT_FOUND,
         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
         rc->url);
+    }
+
+    {
+      struct TALER_KycMeasureAuthorizationHash shv2;
+
+      TALER_kyc_measure_authorization_hash (
+        &kyp->access_token,
+        kyp->legitimization_measure_serial_id,
+        kyp->measure_index,
+        &shv2);
+      if (0 !=
+          GNUNET_memcmp (&kyp->shv,
+                         &shv2))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_NOT_FOUND,
+          TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+          rc->url);
+      }
     }
 
     {
