@@ -57,8 +57,8 @@ TEH_PG_lookup_pending_legitimization (
            " JOIN wire_targets wt"
            "   ON (lm.access_token = wt.access_token)"
            " WHERE legitimization_measure_serial_id=$1"
-           "   AND access_token=$1"
-           "   AND NOT is_finished;");
+           "   AND lm.access_token=$2"
+           "   AND NOT lm.is_finished;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_pending_legitimization",

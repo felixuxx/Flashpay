@@ -499,9 +499,15 @@ run (void *cls,
       "reserve-101-close-kyc",
       "setup-account-key",
       MHD_HTTP_ACCEPTED),
-    // FIXME: use GET kyc-info to GET status
-    // FIXME: use POST kyc-start to initiate KYC
-    // Then this can work:
+    TALER_TESTING_cmd_get_kyc_info (
+      "get-kyc-info",
+      "check-kyc-close-pending",
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_post_kyc_start (
+      "start-kyc-process",
+      "get-kyc-info",
+      0,
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-close-kyc",
       "reserve-101-close-kyc",

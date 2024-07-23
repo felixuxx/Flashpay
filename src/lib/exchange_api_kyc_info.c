@@ -78,10 +78,8 @@ parse_kyc_info_ok (struct TALER_EXCHANGE_KycInfoHandle *lh,
     .hr.http_status = MHD_HTTP_OK
   };
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_object_const ("requirements",
-                                     &jrequirements),
-      NULL),
+    GNUNET_JSON_spec_array_const ("requirements",
+                                  &jrequirements),
     GNUNET_JSON_spec_bool ("is_and_combinator",
                            &lr.details.ok.is_and_combinator),
     GNUNET_JSON_spec_mark_optional (
@@ -109,9 +107,9 @@ parse_kyc_info_ok (struct TALER_EXCHANGE_KycInfoHandle *lh,
     return GNUNET_SYSERR;
   }
   lr.details.ok.requirements_length
-    = json_object_size (jrequirements);
+    = json_array_size (jrequirements);
   if ( ((size_t) lr.details.ok.requirements_length)
-       != json_object_size (jrequirements))
+       != json_array_size (jrequirements))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -125,7 +123,7 @@ parse_kyc_info_ok (struct TALER_EXCHANGE_KycInfoHandle *lh,
     const char *name;
     const json_t *jreq;
     const json_t *jvc;
-    unsigned int off;
+    size_t off;
 
     memset (vci,
             0,
@@ -134,10 +132,9 @@ parse_kyc_info_ok (struct TALER_EXCHANGE_KycInfoHandle *lh,
             0,
             sizeof (requirements));
 
-    off = 0;
-    json_object_foreach ((json_t *) jrequirements, name, jreq)
+    json_array_foreach ((json_t *) jrequirements, off, jreq)
     {
-      struct TALER_EXCHANGE_RequirementInformation *req = &requirements[off++];
+      struct TALER_EXCHANGE_RequirementInformation *req = &requirements[off];
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_string ("form",
                                  &req->form),
@@ -154,7 +151,6 @@ parse_kyc_info_ok (struct TALER_EXCHANGE_KycInfoHandle *lh,
         GNUNET_JSON_spec_end ()
       };
 
-      req->name = name;
       if (GNUNET_OK !=
           GNUNET_JSON_parse (jreq,
                              ispec,

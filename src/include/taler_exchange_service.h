@@ -4381,10 +4381,6 @@ struct TALER_EXCHANGE_KycInfoHandle;
  */
 struct TALER_EXCHANGE_RequirementInformation
 {
-  /**
-   * Name of the requirement.
-   */
-  const char *name;
 
   /**
    * Which form should be run. Special values are
