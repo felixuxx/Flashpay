@@ -19,6 +19,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_kyc-upload.h"
 
 /**
@@ -37,6 +38,16 @@ struct UploadContext
 {
 
   /**
+   * Kept in a DLL.
+   */
+  struct UploadContext *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct UploadContext *prev;
+
+  /**
    * Access token for the KYC data of the account.
    */
   struct TALER_AccountAccessTokenP access_token;
@@ -47,15 +58,35 @@ struct UploadContext
   unsigned int measure_index;
 
   /**
+   * HTTP status code to use with @e response.
+   */
+  unsigned int response_code;
+
+  /**
    * Index in the legitimization measures table this ID
    * refers to.
    */
   unsigned long long legitimization_measure_serial_id;
 
   /**
+   * Response to return, NULL if none yet.
+   */
+  struct MHD_Response *response;
+
+  /**
    * Our post processor.
    */
   struct MHD_PostProcessor *pp;
+
+  /**
+   * Request we are processing.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
+   * Handle for async KYC processing.
+   */
+  struct TEH_KycAmlTrigger *kat;
 
   /**
    * Uploaded data, in JSON.
@@ -93,6 +124,32 @@ struct UploadContext
   size_t buf_pos;
 
 };
+
+
+/**
+ * Kept in a DLL.
+ */
+static struct UploadContext *uc_head;
+
+/**
+ * Kept in a DLL.
+ */
+static struct UploadContext *uc_tail;
+
+
+void
+TEH_kyc_upload_cleanup ()
+{
+  struct UploadContext *uc;
+
+  while (NULL != (uc = uc_head))
+  {
+    MHD_resume_connection (uc->rc->connection);
+    GNUNET_CONTAINER_DLL_remove (uc_head,
+                                 uc_tail,
+                                 uc);
+  }
+}
 
 
 /**
@@ -178,6 +235,11 @@ upload_cleaner (struct TEH_RequestContext *rc)
 {
   struct UploadContext *uc = rc->rh_ctx;
 
+  if (NULL != uc->kat)
+  {
+    TEH_kyc_finished_cancel (uc->kat);
+    uc->kat = NULL;
+  }
   MHD_destroy_post_processor (uc->pp);
   GNUNET_free (uc->filename);
   GNUNET_free (uc->content_type);
@@ -261,6 +323,31 @@ post_helper (void *cls,
 }
 
 
+/**
+ * Function called after the KYC-AML trigger is done.
+ *
+ * @param cls closure
+ * @param http_status final HTTP status to return
+ * @param[in] response final HTTP ro return
+ */
+static void
+aml_trigger_callback (
+  void *cls,
+  unsigned int http_status,
+  struct MHD_Response *response)
+{
+  struct UploadContext *uc = cls;
+
+  uc->response_code = http_status;
+  uc->response = response;
+  MHD_resume_connection (uc->rc->connection);
+  GNUNET_CONTAINER_DLL_remove (uc_head,
+                               uc_tail,
+                               uc);
+  TALER_MHD_daemon_trigger ();
+}
+
+
 MHD_RESULT
 TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
                         const char *id,
@@ -275,6 +362,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     char dummy;
 
     uc = GNUNET_new (struct UploadContext);
+    uc->rc = rc;
     uc->pp = MHD_create_post_processor (rc->connection,
                                         UPLOAD_BUFFER_SIZE,
                                         &post_helper,
@@ -332,6 +420,13 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     }
     return MHD_YES;
   }
+  if (NULL != uc->response)
+  {
+    return MHD_queue_response (rc->connection,
+                               uc->response_code,
+                               uc->response);
+
+  }
   if (0 != *upload_data_size)
   {
     MHD_RESULT mres;
@@ -349,6 +444,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     struct TALER_PaytoHashP h_payto;
     enum GNUNET_DB_QueryStatus qs;
     json_t *jmeasures;
+    struct MHD_Response *empty_response;
 
     qs = TEH_plugin->lookup_pending_legitimization (
       TEH_plugin->cls,
@@ -410,60 +506,41 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
         "insert_kyc_requirement_process");
     }
 
-    /* Now finally encrypt and store attribute data */
+    empty_response
+      = MHD_create_response_from_buffer (0,
+                                         "",
+                                         MHD_RESPMEM_PERSISTENT);
+    uc->kat = TEH_kyc_finished (
+      &rc->async_scope_id,
+      legi_process_row,
+      &h_payto,
+      NULL /* provider name */,
+      NULL /* provider account */,
+      NULL /* provider legi ID */,
+      GNUNET_TIME_UNIT_FOREVER_ABS, /* expiration time */
+      uc->result,
+      MHD_HTTP_NO_CONTENT,
+      empty_response,
+      &aml_trigger_callback,
+      uc);
+    if (NULL == uc->kat)
     {
-      struct GNUNET_TIME_Timestamp now;
-      struct GNUNET_TIME_Absolute expiration_time;
-      void *enc_attributes;
-      size_t enc_attributes_size;
-
-      now = GNUNET_TIME_timestamp_get ();
-
-      TALER_CRYPTO_kyc_attributes_encrypt (
-        &TEH_attribute_key,
-        uc->result,
-        &enc_attributes,
-        &enc_attributes_size);
-      qs = TEH_plugin->insert_kyc_attributes (
-        TEH_plugin->cls,
-        legi_process_row,
-        &h_payto,
-        0 /* birthday unknown */,
-        now,
-        NULL /* provider name */,
-        NULL /* provider account */,
-        NULL /* provider legi ID */,
-        expiration_time,
-        enc_attributes_size,
-        enc_attributes,
-        false /* FIXME: require aml!? Pass do not know? */
-        );
-      GNUNET_free (enc_attributes);
-      if (qs < 0)
-      {
-        GNUNET_break (0);
-        return TALER_MHD_reply_with_error (
-          rc->connection,
-          MHD_HTTP_INTERNAL_SERVER_ERROR,
-          TALER_EC_GENERIC_DB_STORE_FAILED,
-          "insert_kyc_attributes");
-      }
-      if (0 == qs)
-      {
-        // FIXME: should check for idempotency!
-        return TALER_MHD_reply_with_error (
-          rc->connection,
-          MHD_HTTP_CONFLICT,
-          TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
-          "insert_kyc_attributes");
-      }
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        -1, // FIXME
+        "TEH_kyc_finished");
     }
+    GNUNET_CONTAINER_DLL_insert (uc_head,
+                                 uc_tail,
+                                 uc);
+    return MHD_YES;
   }
-
-  return TALER_MHD_reply_static (
+  // FIXME: should check for idempotency above!
+  return TALER_MHD_reply_with_error (
     rc->connection,
-    MHD_HTTP_NO_CONTENT,
-    NULL,
-    NULL,
-    0);
+    MHD_HTTP_CONFLICT,
+    TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
+    "insert_kyc_attributes");
 }

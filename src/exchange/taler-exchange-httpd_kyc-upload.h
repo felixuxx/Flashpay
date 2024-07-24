@@ -30,6 +30,13 @@
 
 
 /**
+ * Resume suspended connections, called on shutdown.
+ */
+void
+TEH_kyc_upload_cleanup (void);
+
+
+/**
  * Handle a "/kyc-upload/$ID" request.
  *
  * @param rc request context
