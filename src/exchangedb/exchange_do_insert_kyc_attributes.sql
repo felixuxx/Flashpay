@@ -14,8 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-DELETE FUNCTION exchange_do_insert_kyc_attributes
-  IF EXISTS;
+DROP FUNCTION IF EXISTS exchange_do_insert_kyc_attributes;
 CREATE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
@@ -26,11 +25,11 @@ CREATE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_collection_time_ts INT8,
   IN in_expiration_time INT8,
   IN in_expiration_time_ts INT8,
-  IN in_account_properties TEXT, -- FIXME: use!
-  IN in_new_rules TEXT,  -- FIXME: use!
-  IN ina_events TEXT[],  -- FIXME: use!
+  IN in_account_properties TEXT,
+  IN in_new_rules TEXT,
+  IN ina_events TEXT[],
   IN in_enc_attributes BYTEA,
-  IN in_require_aml BOOLEAN,
+  IN in_to_investigate BOOLEAN,
   IN in_kyc_completed_notify_s TEXT,
   OUT out_ok BOOLEAN)
 LANGUAGE plpgsql
@@ -38,9 +37,31 @@ AS $$
 DECLARE
    orig_reserve_pub BYTEA;
    orig_reserve_found BOOLEAN;
+   my_trigger_outcome_serial INT8;
+   my_i INT4;
+   ini_event TEXT;
 BEGIN
 
-INSERT INTO exchange.kyc_attributes
+INSERT INTO legitimization_outcomes
+  (h_payto
+  ,decision_time
+  ,expiration_time
+  ,jproperties
+  ,to_investigate
+  ,jnew_rules)
+VALUES
+  (in_h_payto
+  ,in_collection_time_ts
+  ,in_expiration_time_ts
+  ,in_account_properties
+  ,in_to_investigate
+  ,in_new_rules)
+RETURNING
+  outcome_serial_id
+INTO
+  my_trigger_outcome_serial;
+
+INSERT INTO kyc_attributes
   (h_payto
   ,collection_time
   ,expiration_time
@@ -53,7 +74,7 @@ INSERT INTO exchange.kyc_attributes
   ,in_expiration_time_ts
   ,in_enc_attributes
   ,in_process_row
-  ,FIXME);
+  ,my_trigger_outcome_serial);
 
 UPDATE legitimization_processes
   SET provider_user_id=in_provider_account_id
@@ -82,7 +103,7 @@ THEN
    WHERE reserve_pub=orig_reserve_pub;
 END IF;
 
-IF in_require_aml
+IF in_to_investigate
 THEN
   INSERT INTO exchange.aml_status
     (h_payto
@@ -93,6 +114,17 @@ THEN
   ON CONFLICT (h_payto) DO
     UPDATE SET status=EXCLUDED.status | 1;
 END IF;
+
+FOR i IN 1..array_length(ina_events,1)
+LOOP
+  ini_event = ina_events[i];
+  INSERT INTO kyc_events
+    (event_timestamp
+    ,event_type)
+    VALUES
+    (in_collection_time_ts
+    ,ini_event);
+END LOOP;
 
 EXECUTE FORMAT (
  'NOTIFY %s'
