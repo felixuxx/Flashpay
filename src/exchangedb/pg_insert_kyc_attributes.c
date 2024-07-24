@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022, 2023 Taler Systems SA
+   Copyright (C) 2022, 2023, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -78,9 +78,9 @@ TEH_PG_insert_kyc_attributes (
     GNUNET_PQ_query_param_timestamp (&expiration),
     TALER_PQ_query_param_json (account_properties),
     TALER_PQ_query_param_json (new_rules),
-    GNUNET_PQ_query_param_array_string (pg,
-                                        num_events,
-                                        events),
+    GNUNET_PQ_query_param_array_ptrs_string (num_events,
+                                             events,
+                                             pg->conn),
     GNUNET_PQ_query_param_fixed_size (enc_attributes,
                                       enc_attributes_size),
     GNUNET_PQ_query_param_bool (to_investigate),
