@@ -2845,4 +2845,80 @@ TALER_KYCLOGIC_check_to_provider (const char *check_name)
 }
 
 
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle
+{
+  /**
+   * Function to call back with the result.
+   */
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc;
+
+  /**
+   * Closure for @e aprc.
+   */
+  void *aprc_cls;
+
+  /**
+   * Handle to an external process.
+   */
+  struct TALER_JSON_ExternalConversion *proc;
+
+};
+
+/**
+ * Function that that receives a JSON @a result from
+ * the AML program.
+ *
+ * @param cls closure of type `struct TALER_KYCLOGIC_AmlProgramRunnerHandle`
+ * @param status_type how did the process die
+ * @param code termination status code from the process,
+ *        non-zero if AML checks are required next
+ * @param result some JSON result, NULL if we failed to get an JSON output
+ */
+static void
+aml_prog_finished (void *cls,
+                   enum GNUNET_OS_ProcessStatusType status_type,
+                   unsigned long code,
+                   const json_t *result)
+{
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh = cls;
+
+  // FIXME
+}
+
+
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
+TALER_KYCLOGIC_run_aml_program (
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
+  const json_t *jmeasures,
+  unsigned int measure_index,
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc,
+  void *aprc_cls)
+{
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh;
+
+  aprh = GNUNET_new (struct TALER_KYCLOGIC_AmlProgramRunnerHandle);
+  aprh->aprc = aprc;
+  aprh->aprc_cls aprc_cls;
+
+  // FIXME ...
+  return arph;
+}
+
+
+void
+TALER_KYCLOGIC_run_aml_program_cancel (
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh)
+{
+
+  if (NULL != aprh->prog)
+  {
+    TALER_JSON_external_conversion_stop (aprh->prog);
+    aprh->prog = NULL;
+  }
+  GNUNET_free (aprh);
+}
+
+
 /* end of kyclogic_api.c */

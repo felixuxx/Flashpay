@@ -54,6 +54,7 @@
 #include "pg_lookup_kyc_status_by_token.h"
 #include "pg_lookup_serial_by_table.h"
 #include "pg_lookup_pending_legitimization.h"
+#include "pg_lookup_active_legitimization.h"
 #include "pg_select_account_merges_above_serial_id.h"
 #include "pg_select_all_purse_decisions_above_serial_id.h"
 #include "pg_select_purse.h"
@@ -749,6 +750,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_lookup_denomination_key;
   plugin->lookup_pending_legitimization
     = &TEH_PG_lookup_pending_legitimization;
+  plugin->lookup_active_legitimization
+    = &TEH_PG_lookup_active_legitimization;
   plugin->insert_auditor_denom_sig
     = &TEH_PG_insert_auditor_denom_sig;
   plugin->select_auditor_denom_sig

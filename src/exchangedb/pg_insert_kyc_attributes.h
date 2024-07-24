@@ -39,9 +39,13 @@
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
  * @param expiration_time when does the data expire
+ * @param account_properties new account properties
+ * @param new_rules new KYC rules to apply to the account
+ * @param to_investigate true to flag account for investigation
+ * @param num_events length of the @a events array
+ * @param events array of KYC events to trigger
  * @param enc_attributes_size number of bytes in @a enc_attributes
  * @param enc_attributes encrypted attribute data
- * @param require_aml true to trigger AML
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -55,9 +59,13 @@ TEH_PG_insert_kyc_attributes (
   const char *provider_account_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration_time,
+  const json_t *account_properties,
+  const json_t *new_rules,
+  bool to_investigate,
+  unsigned int num_events,
+  const char **events,
   size_t enc_attributes_size,
-  const void *enc_attributes,
-  bool require_aml);
+  const void *enc_attributes);
 
 
 #endif

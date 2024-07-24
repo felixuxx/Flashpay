@@ -42,12 +42,6 @@ extern struct GNUNET_TIME_Relative TEH_max_keys_caching;
 extern struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
 
 /**
- * Name of the KYC-AML-trigger evaluation binary.
- * FIXME: do we keep this?
- */
-extern char *TEH_kyc_aml_trigger;
-
-/**
  * The exchange's configuration.
  */
 extern const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;

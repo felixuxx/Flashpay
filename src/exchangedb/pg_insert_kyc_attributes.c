@@ -37,9 +37,13 @@ TEH_PG_insert_kyc_attributes (
   const char *provider_account_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration_time,
+  const json_t *account_properties,
+  const json_t *new_rules,
+  bool to_investigate,
+  unsigned int num_events,
+  const char **events,
   size_t enc_attributes_size,
-  const void *enc_attributes,
-  bool require_aml)
+  const void *enc_attributes)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp expiration
@@ -72,9 +76,14 @@ TEH_PG_insert_kyc_attributes (
     GNUNET_PQ_query_param_timestamp (&collection_time),
     GNUNET_PQ_query_param_absolute_time (&expiration_time),
     GNUNET_PQ_query_param_timestamp (&expiration),
+    TALER_PQ_query_param_json (account_properties),
+    TALER_PQ_query_param_json (new_rules),
+    GNUNET_PQ_query_param_array_string (pg,
+                                        num_events,
+                                        events),
     GNUNET_PQ_query_param_fixed_size (enc_attributes,
                                       enc_attributes_size),
-    GNUNET_PQ_query_param_bool (require_aml),
+    GNUNET_PQ_query_param_bool (to_investigate),
     GNUNET_PQ_query_param_string (kyc_completed_notify_s),
     GNUNET_PQ_query_param_end
   };
@@ -94,7 +103,7 @@ TEH_PG_insert_kyc_attributes (
            "SELECT "
            " out_ok"
            " FROM exchange_do_insert_kyc_attributes "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "insert_kyc_attributes",
                                                  params,

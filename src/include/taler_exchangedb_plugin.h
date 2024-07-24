@@ -7084,6 +7084,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
    * @param expiration_time when does the data expire
+   * @param account_properties new account properties
+   * @param new_rules new KYC rules to apply to the account
+   * @param to_investigate true to flag account for investigation
+   * @param num_events length of the @a events array
+   * @param events array of KYC events to trigger
    * @param enc_attributes_size number of bytes in @a enc_attributes
    * @param enc_attributes encrypted attribute data
    * @param require_aml true to trigger AML
@@ -7100,9 +7105,13 @@ struct TALER_EXCHANGEDB_Plugin
     const char *provider_account_id,
     const char *provider_legitimization_id,
     struct GNUNET_TIME_Absolute expiration_time,
+    const json_t *account_properties,
+    const json_t *new_rules,
+    bool to_investigate,
+    unsigned int num_events,
+    const char **events,
     size_t enc_attributes_size,
-    const void *enc_attributes,
-    bool require_aml);
+    const void *enc_attributes);
 
 
   /**
@@ -7324,6 +7333,26 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t legitimization_measure_serial_id,
     struct TALER_AccountAccessTokenP *access_token,
     struct TALER_PaytoHashP *h_payto,
+    json_t **jmeasures);
+
+
+  /**
+   * Lookup measure data for an active legitimization process.
+   *
+   * @param cls closure
+   * @param legitimization_process_serial_id
+   *    row in legitimization_processes table to access
+   * @param[out] measure_index set to the measure the
+   *    process is trying to satisfy
+   * @param[out] jmeasures set to the legitimization
+   *    measures that were put on the account
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_active_legitimization) (
+    void *cls,
+    uint64_t legitimization_process_serial_id,
+    uint32_t *measure_index,
     json_t **jmeasures);
 
 

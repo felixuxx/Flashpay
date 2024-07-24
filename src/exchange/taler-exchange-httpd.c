@@ -181,21 +181,9 @@ static char *toplevel_redirect_url;
 char *TEH_currency;
 
 /**
- * Name of the KYC-AML-trigger evaluation binary.
- */
-char *TEH_kyc_aml_trigger;
-
-/**
  * Option set to #GNUNET_YES if rewards are enabled.
  */
 int TEH_enable_rewards;
-
-/**
- * What is the largest amount we allow a peer to
- * merge into a reserve before always triggering
- * an AML check?
- */
-struct TALER_Amount TEH_aml_threshold;
 
 /**
  * Our base URL.
@@ -2170,17 +2158,6 @@ exchange_serve_process_config (void)
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
                                              "exchange",
-                                             "KYC_AML_TRIGGER",
-                                             &TEH_kyc_aml_trigger))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "KYC_AML_TRIGGER");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange",
                                              "TOPLEVEL_REDIRECT_URL",
                                              &toplevel_redirect_url))
   {
@@ -2216,16 +2193,6 @@ exchange_serve_process_config (void)
   }
   /* currency parser must provide default spec for main currency */
   GNUNET_assert (NULL != TEH_cspec);
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               "exchange",
-                               "AML_THRESHOLD",
-                               &TEH_aml_threshold))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need amount in section `exchange' under `AML_THRESHOLD'\n");
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
                                "exchange",

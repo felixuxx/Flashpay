@@ -81,6 +81,26 @@ struct TEH_KycAmlTrigger
   json_t *attributes;
 
   /**
+   * Measures this KYC process is responding to.
+   */
+  json_t *jmeasures;
+
+  /**
+   * KYC history of the account.
+   */
+  json_t *kyc_history;
+
+  /**
+   * AML history of the account.
+   */
+  json_t *aml_history;
+
+  /**
+   * KYC measure the client is (trying to) satisfy.
+   */
+  uint32_t measure_index;
+
+  /**
    * response to return to the HTTP client
    */
   struct MHD_Response *response;
@@ -89,7 +109,7 @@ struct TEH_KycAmlTrigger
    * Handle to an external process that evaluates the
    * need to run AML on the account.
    */
-  struct TALER_JSON_ExternalConversion *kyc_aml;
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *kyc_aml;
 
   /**
    * HTTP status code of @e response
@@ -103,51 +123,55 @@ struct TEH_KycAmlTrigger
  * Type of a callback that receives a JSON @a result.
  *
  * @param cls closure of type `struct TEH_KycAmlTrigger *`
- * @param status_type how did the process die
- * @param code termination status code from the process,
- *        non-zero if AML checks are required next
- * @param result some JSON result, NULL if we failed to get an JSON output
+ * @param apr AML program result
  */
 static void
 kyc_aml_finished (void *cls,
-                  enum GNUNET_OS_ProcessStatusType status_type,
-                  unsigned long code,
-                  const json_t *result)
+                  const struct TALER_KYCLOGIC_AmlProgramResult *apr)
 {
   struct TEH_KycAmlTrigger *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
   size_t eas;
   void *ea;
-  const char *birthdate;
   unsigned int birthday = 0;
   struct GNUNET_AsyncScopeSave old_scope;
 
   kat->kyc_aml = NULL;
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
-  birthdate = json_string_value (json_object_get (kat->attributes,
-                                                  TALER_ATTRIBUTE_BIRTHDATE));
-  if ( (TEH_age_restriction_enabled) &&
-       (NULL != birthdate) )
+  if (TALER_KYCLOGIC_AMLR_SUCCESS != apr->status)
   {
-    enum GNUNET_GenericReturnValue ret;
+    // FIXME ...
+    GNUNET_break (0); // not implemented!
+  }
+  {
+    const char *birthdate;
 
-    ret = TALER_parse_coarse_date (birthdate,
-                                   &TEH_age_restriction_config.mask,
-                                   &birthday);
-
-    if (GNUNET_OK != ret)
+    birthdate = json_string_value (
+      json_object_get (kat->attributes,
+                       TALER_ATTRIBUTE_BIRTHDATE));
+    if ( (TEH_age_restriction_enabled) &&
+         (NULL != birthdate) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Failed to parse birthdate `%s' from KYC attributes\n",
-                  birthdate);
-      if (NULL != kat->response)
-        MHD_destroy_response (kat->response);
-      kat->http_status = MHD_HTTP_BAD_REQUEST;
-      kat->response = TALER_MHD_make_error (
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        TALER_ATTRIBUTE_BIRTHDATE);
-      goto RETURN_RESULT;
+      enum GNUNET_GenericReturnValue ret;
+
+      ret = TALER_parse_coarse_date (birthdate,
+                                     &TEH_age_restriction_config.mask,
+                                     &birthday);
+
+      if (GNUNET_OK != ret)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Failed to parse birthdate `%s' from KYC attributes\n",
+                    birthdate);
+        if (NULL != kat->response)
+          MHD_destroy_response (kat->response);
+        kat->http_status = MHD_HTTP_BAD_REQUEST;
+        kat->response = TALER_MHD_make_error (
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          TALER_ATTRIBUTE_BIRTHDATE);
+        goto RETURN_RESULT;
+      }
     }
   }
 
@@ -165,6 +189,11 @@ kyc_aml_finished (void *cls,
     kat->provider_user_id,
     kat->provider_legitimization_id,
     kat->expiration,
+    apr->details.success.account_properties,
+    apr->details.success.new_rules,
+    apr->details.success.to_investigate,
+    apr->details.success.num_events,
+    apr->details.success.events,
     eas,
     ea,
     0 != code);
@@ -209,6 +238,7 @@ TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
                   void *cb_cls)
 {
   struct TEH_KycAmlTrigger *kat;
+  enum GNUNET_DB_QueryStatus qs;
 
   kat = GNUNET_new (struct TEH_KycAmlTrigger);
   kat->scope = *scope;
@@ -228,14 +258,43 @@ TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
   kat->response = response;
   kat->cb = cb;
   kat->cb_cls = cb_cls;
+  qs = TEH_plugin->lookup_active_legitimization (
+    TEH_plugin->cls,
+    process_row,
+    &kat->measure_index,
+    &kat->jmeasures);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    TEH_kyc_finished_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    TEH_kyc_finished_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+#if FIXME
+  qs = TEH_plugin->lookup_aml_history (
+    TEH_plugin->cls,
+    account_id,
+    &kat->aml_history,
+    &kat->kyc_history);
+#else
+  kat->aml_history = json_array ();
+  kat->kyc_history = json_array ();
+#endf
   kat->kyc_aml
-    = TALER_JSON_external_conversion_start (
-        attributes,
-        &kyc_aml_finished,
-        kat,
-        TEH_kyc_aml_trigger,
-        TEH_kyc_aml_trigger,
-        NULL);
+    = TALER_KYCLOGIC_run_aml_program (kat->attributes,
+                                      kat->aml_history,
+                                      kat->kyc_history,
+                                      kat->jmeasures,
+                                      kat->measure_index,
+                                      &kyc_aml_finished,
+                                      kat);
   if (NULL == kat->kyc_aml)
   {
     GNUNET_break (0);
@@ -251,13 +310,16 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
 {
   if (NULL != kat->kyc_aml)
   {
-    TALER_JSON_external_conversion_stop (kat->kyc_aml);
+    TALER_KYCLOGIC_run_aml_program_cancel (kat->kyc_aml);
     kat->kyc_aml = NULL;
   }
   GNUNET_free (kat->provider_name);
   GNUNET_free (kat->provider_user_id);
   GNUNET_free (kat->provider_legitimization_id);
+  json_decref (kat->jmeasures);
   json_decref (kat->attributes);
+  json_decref (kat->aml_history);
+  json_decref (kat->kyc_history);
   if (NULL != kat->response)
   {
     MHD_destroy_response (kat->response);

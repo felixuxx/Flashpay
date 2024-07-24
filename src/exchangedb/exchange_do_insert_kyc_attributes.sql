@@ -14,7 +14,9 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
+DELETE FUNCTION exchange_do_insert_kyc_attributes
+  IF EXISTS;
+CREATE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
   IN in_birthday INT4,
@@ -24,6 +26,9 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
   IN in_collection_time_ts INT8,
   IN in_expiration_time INT8,
   IN in_expiration_time_ts INT8,
+  IN in_account_properties TEXT, -- FIXME: use!
+  IN in_new_rules TEXT,  -- FIXME: use!
+  IN ina_events TEXT[],  -- FIXME: use!
   IN in_enc_attributes BYTEA,
   IN in_require_aml BOOLEAN,
   IN in_kyc_completed_notify_s TEXT,
@@ -41,12 +46,14 @@ INSERT INTO exchange.kyc_attributes
   ,expiration_time
   ,encrypted_attributes
   ,legitimization_serial
+  ,trigger_outcome_serial
  ) VALUES
   (in_h_payto
   ,in_collection_time_ts
   ,in_expiration_time_ts
   ,in_enc_attributes
-  ,in_process_row);
+  ,in_process_row
+  ,FIXME);
 
 UPDATE legitimization_processes
   SET provider_user_id=in_provider_account_id
@@ -102,5 +109,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, INT4, TEXT, TEXT, TEXT, INT8, INT8, INT8, BYTEA, BOOL, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, INT4, TEXT, TEXT, TEXT, INT8, INT8, INT8, TEXT, TEXT, TEXT[], BYTEA, BOOL, TEXT)
   IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';

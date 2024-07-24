@@ -59,7 +59,7 @@ struct TEH_KycAmlTrigger;
  * in the database. Then call @a cb.
  *
  * @param scope the HTTP request logging scope
- * @param process_row legitimization process the webhook was about
+ * @param process_row legitimization process the data provided is about
  * @param account_id account the webhook was about
  * @param provider_name name of the provider with the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown

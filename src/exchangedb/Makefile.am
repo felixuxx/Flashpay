@@ -171,6 +171,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_test_aml_officer.h pg_test_aml_officer.c \
   pg_lookup_aml_officer.h pg_lookup_aml_officer.c \
   pg_lookup_pending_legitimization.h pg_lookup_pending_legitimization.c \
+  pg_lookup_active_legitimization.h pg_lookup_active_legitimization.c \
   pg_trigger_aml_process.h pg_trigger_aml_process.c \
   pg_insert_aml_decision.h pg_insert_aml_decision.c \
   pg_select_aggregation_transient.h pg_select_aggregation_transient.c \

@@ -611,4 +611,141 @@ TALER_KYCLOGIC_get_measure_configuration (
   json_t **pprograms,
   json_t **pchecks);
 
+
+/**
+ * Handle to manage a running AML program.
+ */
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle;
+
+
+/**
+ * Result from running an AML program.
+ */
+struct TALER_KYCLOGIC_AmlProgramResult
+{
+  /**
+   * Possible outcomes from running the AML program.
+   */
+  enum
+  {
+    /**
+     * The AML program completed successfully.
+     */
+    TALER_KYCLOGIC_AMLR_SUCCESS,
+
+    /**
+     * The AML program failed.
+     */
+    TALER_KYCLOGIC_AMLR_FAILURE
+
+  } status;
+
+  /**
+   * Detailed results depending on @e status.
+   */
+  union
+  {
+    /**
+     * Results if @e status is #TALER_KYCLOGIC_AMLR_SUCCESS.
+     */
+    struct
+    {
+      /**
+       * New account properties to set for the account.
+       */
+      const json_t *account_properties;
+
+      /**
+       * Array of events to trigger.
+       */
+      const char **events;
+
+      /**
+       * New AML/KYC rules to apply to the account.
+       */
+      const json_t *new_rules;
+
+      /**
+       * Length of the @e events array.
+       */
+      unsigned int num_events;
+
+      /**
+       * True if AML staff should investigate the account.
+       */
+      bool to_investigate;
+    } success;
+
+    /**
+     * Results if @e status is #TALER_KYCLOGIC_AMLR_FAILURE.
+     */
+    struct
+    {
+      /**
+       * Human-readable error message describing the
+       * failure (for logging).
+       */
+      const char *error_message;
+
+      /**
+       * Error code for the failure.
+       */
+      enum TALER_ErrorCode ec;
+
+    } failure;
+
+  } details;
+
+};
+
+
+/**
+ * Type of function called after AML program was run.
+ *
+ * @param cls closure
+ * @param apr result of the AML program.
+ */
+typedef void
+(*TALER_KYCLOGIC_AmlProgramResultCallback) (
+  void *cls,
+  const struct TALER_KYCLOGIC_AmlProgramResult *apr);
+
+
+/**
+ * Run AML program based on @a jmeasures using
+ * the the given inputs.
+ *
+ * @param attributes KYC attributes newly obtained
+ * @param aml_history AML history of the account
+ * @param kyc_history KYC history of the account
+ * @param jmeasures current KYC/AML rules to apply;
+ *           they determine also the AML program and
+ *           provide the context
+ * @param measure_index which KYC measure yielded the
+ *       @a attributes
+ * @param aprc function to call with the result
+ * @param aprc_cls closure for @a aprc
+ * @return NULL if @a jmeasures is invalid for the
+ *   selected @a measure_index or @a attributes
+ */
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
+TALER_KYCLOGIC_run_aml_program (
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
+  const json_t *jmeasures,
+  unsigned int measure_index,
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc,
+  void *aprc_cls);
+
+
+/**
+ * Cancel running AML program.
+ *
+ * @param[in] aprh handle of program to cancel
+ */
+void
+TALER_KYCLOGIC_run_aml_program_cancel (
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh);
+
 #endif
