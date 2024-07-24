@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 
 /**
  * Return value from main().

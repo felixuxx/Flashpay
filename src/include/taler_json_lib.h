@@ -54,8 +54,9 @@
  * @return json pack specification
  */
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs_human (const char *name,
-                                struct GNUNET_TIME_Absolute at);
+TALER_JSON_pack_time_abs_human (
+  const char *name,
+  struct GNUNET_TIME_Absolute at);
 
 
 /**
@@ -176,8 +177,9 @@ TALER_JSON_pack_exchange_withdraw_values (
  * @return json pack specification
  */
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_amount (const char *name,
-                        const struct TALER_Amount *amount);
+TALER_JSON_pack_amount (
+  const char *name,
+  const struct TALER_Amount *amount);
 
 
 /**
@@ -478,8 +480,9 @@ struct TALER_JSON_ProtocolVersion
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_version (const char *field,
-                         struct TALER_JSON_ProtocolVersion *ver);
+TALER_JSON_spec_version (
+  const char *field,
+  struct TALER_JSON_ProtocolVersion *ver);
 
 
 /**
@@ -506,8 +509,9 @@ TALER_JSON_spec_denom_pub_cipher (
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_denom_sig (const char *field,
-                           struct TALER_DenominationSignature *sig);
+TALER_JSON_spec_denom_sig (
+  const char *field,
+  struct TALER_DenominationSignature *sig);
 
 
 /**
@@ -547,9 +551,9 @@ TALER_JSON_spec_exchange_withdraw_values (
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_blinded_planchet (const char *field,
-                                  struct TALER_BlindedPlanchet *blinded_planchet
-                                  );
+TALER_JSON_spec_blinded_planchet (
+  const char *field,
+  struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
@@ -570,9 +574,10 @@ TALER_JSON_spec_blinded_planchet (const char *field,
  * @param[out] strptr where to store a pointer to the field with the best variant
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_i18n_string (const char *name,
-                             const char *language_pattern,
-                             const char **strptr);
+TALER_JSON_spec_i18n_string (
+  const char *name,
+  const char *language_pattern,
+  const char **strptr);
 
 
 /**
@@ -587,8 +592,9 @@ TALER_JSON_spec_i18n_string (const char *name,
  * @param[out] strptr where to store a pointer to the field with the best variant
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_i18n_str (const char *name,
-                          const char **strptr);
+TALER_JSON_spec_i18n_str (
+  const char *name,
+  const char **strptr);
 
 
 /**
@@ -600,8 +606,9 @@ TALER_JSON_spec_i18n_str (const char *name,
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_token_issue_sig (const char *field,
-                                 struct TALER_TokenIssueSignatureP *sig);
+TALER_JSON_spec_token_issue_sig (
+  const char *field,
+  struct TALER_TokenIssueSignatureP *sig);
 
 
 /**
@@ -626,8 +633,9 @@ TALER_JSON_spec_blinded_token_issue_sig (
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_token_envelope (const char *field,
-                                struct TALER_TokenEnvelopeP *env);
+TALER_JSON_spec_token_envelope (
+  const char *field,
+  struct TALER_TokenEnvelopeP *env);
 
 
 /**
@@ -646,8 +654,9 @@ TALER_JSON_spec_token_envelope (const char *field,
  *         #GNUNET_SYSERR on internal error
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_contract_hash (const json_t *json,
-                          struct TALER_PrivateContractHashP *hc);
+TALER_JSON_contract_hash (
+  const json_t *json,
+  struct TALER_PrivateContractHashP *hc);
 
 
 /**
@@ -661,8 +670,9 @@ TALER_JSON_contract_hash (const json_t *json,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_contract_seed_forgettable (const json_t *spec,
-                                      json_t *contract);
+TALER_JSON_contract_seed_forgettable (
+  const json_t *spec,
+  json_t *contract);
 
 
 /**
@@ -673,8 +683,9 @@ TALER_JSON_contract_seed_forgettable (const json_t *spec,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_contract_mark_forgettable (json_t *json,
-                                      const char *field);
+TALER_JSON_contract_mark_forgettable (
+  json_t *json,
+  const char *field);
 
 
 /**
@@ -687,8 +698,9 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
  *         #GNUNET_SYSERR on error
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_contract_part_forget (json_t *json,
-                                 const char *field);
+TALER_JSON_contract_part_forget (
+  json_t *json,
+  const char *field);
 
 
 /**
@@ -717,10 +729,11 @@ typedef void
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @e path is invalid.
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_expand_path (json_t *json,
-                        const char *path,
-                        TALER_JSON_ExpandPathCallback cb,
-                        void *cb_cls);
+TALER_JSON_expand_path (
+  json_t *json,
+  const char *path,
+  TALER_JSON_ExpandPathCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -770,8 +783,9 @@ TALER_JSON_get_error_code2 (const void *data,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
-                                         struct TALER_MerchantWireHashP *hc);
+TALER_JSON_merchant_wire_signature_hash (
+  const json_t *wire_s,
+  struct TALER_MerchantWireHashP *hc);
 
 
 /**
@@ -800,9 +814,10 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
  *        NOT incremented.
  */
 const json_t *
-TALER_JSON_extract_i18n (const json_t *object,
-                         const char *language_pattern,
-                         const char *field);
+TALER_JSON_extract_i18n (
+  const json_t *object,
+  const char *language_pattern,
+  const char *field);
 
 
 /**
@@ -812,7 +827,8 @@ TALER_JSON_extract_i18n (const json_t *object,
  * @return true if @a i18n is well-formed
  */
 bool
-TALER_JSON_check_i18n (const json_t *i18n);
+TALER_JSON_check_i18n (
+  const json_t *i18n);
 
 
 /**
@@ -823,7 +839,8 @@ TALER_JSON_check_i18n (const json_t *i18n);
  * @return NULL on error
  */
 char *
-TALER_JSON_wire_to_method (const json_t *wire_s);
+TALER_JSON_wire_to_method (
+  const json_t *wire_s);
 
 
 /**
@@ -834,7 +851,8 @@ TALER_JSON_wire_to_method (const json_t *wire_s);
  * @return NULL on error
  */
 char *
-TALER_JSON_wire_to_payto (const json_t *wire_s);
+TALER_JSON_wire_to_payto (
+  const json_t *wire_s);
 
 
 /**
@@ -844,25 +862,85 @@ TALER_JSON_wire_to_payto (const json_t *wire_s);
  * @param[out] ech where to write the policy hash
  */
 void
-TALER_deposit_policy_hash (const json_t *policy,
-                           struct TALER_ExtensionPolicyHashP *ech);
+TALER_deposit_policy_hash (
+  const json_t *policy,
+  struct TALER_ExtensionPolicyHashP *ech);
+
 
 /**
  * Hash the @a manifests of extensions, given as JSON
  *
  * @param manifests Manifests of the extensions
  * @param[out] eh where to write the hash
- * @return GNUNET_OK on success, GNUNET_SYSERR on failure
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_extensions_manifests_hash (const json_t *manifests,
-                                      struct TALER_ExtensionManifestsHashP *eh);
+TALER_JSON_extensions_manifests_hash (
+  const json_t *manifests,
+  struct TALER_ExtensionManifestsHashP *eh);
+
 
 /**
  * Canonicalize a JSON input to a string according to RFC 8785.
  */
 char *
-TALER_JSON_canonicalize (const json_t *input);
+TALER_JSON_canonicalize (
+  const json_t *input);
+
+
+/**
+ * Handle to an external process that will assist
+ * with some JSON-to-JSON conversion.
+ */
+struct TALER_JSON_ExternalConversion;
+
+/**
+ * Type of a callback that receives a JSON @a result.
+ *
+ * @param cls closure
+ * @param status_type how did the process die
+ * @param code termination status code from the process
+ * @param result some JSON result, NULL if we failed to get an JSON output
+ */
+typedef void
+(*TALER_JSON_JsonCallback) (
+  void *cls,
+  enum GNUNET_OS_ProcessStatusType status_type,
+  unsigned long code,
+  const json_t *result);
+
+
+/**
+ * Launch some external helper @a binary to convert some @a input
+ * and eventually call @a cb with the result.
+ *
+ * @param input JSON to serialize and pass to the helper process
+ * @param cb function to call on the result
+ * @param cb_cls closure for @a cb
+ * @param binary name of the binary to execute
+ * @param ... NULL-terminated list of arguments for the @a binary,
+ *        usually starting with again the name of the binary
+ * @return handle to cancel the operation (and kill the helper)
+ */
+struct TALER_JSON_ExternalConversion *
+TALER_JSON_external_conversion_start (
+  const json_t *input,
+  TALER_JSON_JsonCallback cb,
+  void *cb_cls,
+  const char *binary,
+  ...);
+
+/**
+ * Abort external conversion, killing the process and preventing
+ * the callback from being called. Must not be called after the
+ * callback was invoked.
+ *
+ * @param[in] ec external conversion handle to cancel
+ */
+void
+TALER_JSON_external_conversion_stop (
+  struct TALER_JSON_ExternalConversion *ec);
+
 
 #endif /* TALER_JSON_LIB_H_ */
 

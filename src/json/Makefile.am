@@ -10,6 +10,7 @@ lib_LTLIBRARIES = \
   libtalerjson.la
 
 libtalerjson_la_SOURCES = \
+  conversion.c \
   i18n.c \
   json.c \
   json_helper.c \
@@ -28,16 +29,30 @@ libtalerjson_la_LIBADD = \
   $(XLIB)
 
 TESTS = \
+  test_conversion \
   test_json
 
 check_PROGRAMS= \
+  test_conversion \
   test_json
 
 test_json_SOURCES = \
   test_json.c
 test_json_LDADD = \
-  $(top_builddir)/src/json/libtalerjson.la \
+  libtalerjson.la \
   -lgnunetjson \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson
+
+test_conversion_SOURCES = \
+  test_conversion.c
+test_conversion_LDADD = \
+  libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson
+
+EXTRA_DIST = \
+  test_conversion.sh
