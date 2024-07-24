@@ -43,11 +43,6 @@ struct PlanchetContext
 {
 
   /**
-   * Hash of the (blinded) message to be signed by the Exchange.
-   */
-  struct TALER_BlindedCoinHashP h_coin_envelope;
-
-  /**
    * Value of the coin being exchanged (matching the denomination key)
    * plus the transaction fee.  We include this in what is being
    * signed so that we can verify a reserve's remaining total balance
@@ -258,10 +253,11 @@ check_request_idempotent (const struct BatchWithdrawContext *wc,
   {
     struct PlanchetContext *pc = &wc->planchets[i];
     enum GNUNET_DB_QueryStatus qs;
+    struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
 
     qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                        &pc->h_coin_envelope,
-                                        &pc->collectable);
+                                        &pc->collectable.h_coin_envelope,
+                                        &collectable);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -273,6 +269,7 @@ check_request_idempotent (const struct BatchWithdrawContext *wc,
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
       return false;
+    pc->collectable = collectable;
   }
   /* generate idempotent reply */
   TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW]++;
@@ -509,7 +506,6 @@ batch_withdraw_transaction (void *cls,
       &TEH_age_restriction_config.mask,
       allowed_maximum_age);
 
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret = TEH_RESPONSE_reply_reserve_age_restriction_required (
       connection,
       lowest_age);
@@ -518,7 +514,12 @@ batch_withdraw_transaction (void *cls,
 
   if (! balance_ok)
   {
-    TEH_plugin->rollback (TEH_plugin->cls);
+    if (check_request_idempotent (wc,
+                                  mhd_ret))
+    {
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+
     *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
       connection,
       TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
