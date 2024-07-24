@@ -195,8 +195,7 @@ kyc_aml_finished (void *cls,
     apr->details.success.num_events,
     apr->details.success.events,
     eas,
-    ea,
-    0 != code);
+    ea);
   GNUNET_free (ea);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Stored encrypted KYC process #%llu attributes: %d\n",
@@ -286,7 +285,7 @@ TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
 #else
   kat->aml_history = json_array ();
   kat->kyc_history = json_array ();
-#endf
+#endif
   kat->kyc_aml
     = TALER_KYCLOGIC_run_aml_program (kat->attributes,
                                       kat->aml_history,

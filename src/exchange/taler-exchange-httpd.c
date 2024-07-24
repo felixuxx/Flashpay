@@ -2222,13 +2222,6 @@ exchange_serve_process_config (void)
     TEH_stefan_lin = 0.0f;
   }
 
-  if (0 != strcmp (TEH_currency,
-                   TEH_aml_threshold.currency))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Amount in section `exchange' under `AML_THRESHOLD' uses the wrong currency!\n");
-    return GNUNET_SYSERR;
-  }
   TEH_enable_rewards
     = GNUNET_CONFIGURATION_get_value_yesno (
         TEH_cfg,

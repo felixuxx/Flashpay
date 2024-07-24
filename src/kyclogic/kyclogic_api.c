@@ -628,7 +628,8 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
 
 
 const char *
-TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rule2s (
+  const struct TALER_KYCLOGIC_KycRule *r)
 {
   return r->rule_name;
 }
@@ -2862,6 +2863,21 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle
    */
   struct TALER_JSON_ExternalConversion *proc;
 
+  /**
+   * AML program to turn.
+   */
+  const struct TALER_KYCLOGIC_AmlProgram *program;
+
+  /**
+   * Task to return @e apr result asynchronously.
+   */
+  struct GNUNET_SCHEDULER_Task *async_cb;
+
+  /**
+   * Result returned to the client.
+   */
+  struct TALER_KYCLOGIC_AmlProgramResult apr;
+
 };
 
 /**
@@ -2875,14 +2891,149 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle
  * @param result some JSON result, NULL if we failed to get an JSON output
  */
 static void
-aml_prog_finished (void *cls,
+handle_aml_output (void *cls,
                    enum GNUNET_OS_ProcessStatusType status_type,
                    unsigned long code,
                    const json_t *result)
 {
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh = cls;
+  const char *fallback_measure = aprh->program->fallback;
+  struct TALER_KYCLOGIC_AmlProgramResult *apr = &aprh->apr;
+  const char **evs = NULL;
 
-  // FIXME
+  aprh->proc = NULL;
+  memset (&apr,
+          0,
+          sizeof (apr));
+  if (0 != code)
+  {
+    apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+    apr->details.failure.fallback_measure
+      = fallback_measure;
+    apr->details.failure.error_message
+      = "AML program returned non-zero exit code";
+    apr->details.failure.ec
+      = -1; // FIXME!
+    goto ready;
+  }
+
+  {
+    const json_t *jevents = NULL;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_bool (
+          "to_investigate",
+          &apr->details.success.to_investigate),
+        NULL),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_array_const (
+          "properties",
+          &apr->details.success.account_properties),
+        NULL),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_array_const (
+          "events",
+          &jevents),
+        NULL),
+      GNUNET_JSON_spec_object_const (
+        "new_rules",
+        &apr->details.success.new_rules),
+      GNUNET_JSON_spec_end ()
+    };
+    const char *err;
+    unsigned int line;
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (result,
+                           spec,
+                           &err,
+                           &line))
+    {
+      apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+      apr->details.failure.fallback_measure
+        = fallback_measure;
+      apr->details.failure.error_message
+        = err;
+      apr->details.failure.ec
+        = -1; // FIXME!
+      goto ready;
+    }
+    else
+    {
+      apr->details.success.num_events
+        = json_array_size (jevents);
+
+      GNUNET_assert (((size_t) apr->details.success.num_events) ==
+                     json_array_size (jevents));
+      evs = GNUNET_new_array (
+        apr->details.success.num_events,
+        const char *);
+      for (unsigned int i = 0; i<apr->details.success.num_events; i++)
+      {
+        evs[i] = json_string_value (
+          json_array_get (jevents,
+                          i));
+        if (NULL == evs[i])
+        {
+          apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+          apr->details.failure.fallback_measure
+            = fallback_measure;
+          apr->details.failure.error_message
+            = "events";
+          apr->details.failure.ec
+            = -1; // FIXME!
+          goto ready;
+        }
+      }
+      apr->status = TALER_KYCLOGIC_AMLR_SUCCESS;
+      apr->details.success.events = evs;
+      {
+        /* check new_rules */
+        struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+
+        lrs = TALER_KYCLOGIC_rules_parse (
+          apr->details.success.new_rules);
+        if (NULL == lrs)
+        {
+          apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+          apr->details.failure.fallback_measure
+            = fallback_measure;
+          apr->details.failure.error_message
+            = "new_rules";
+          apr->details.failure.ec
+            = -1; // FIXME!
+          goto ready;
+        }
+        // FIXME: check 'lrs' is well-formed
+        // (check against configured checks + programs)!
+
+        TALER_KYCLOGIC_rules_free (lrs);
+      }
+    }
+  }
+ready:
+  aprh->aprc (aprh->aprc_cls,
+              &aprh->apr);
+  GNUNET_free (evs);
+  TALER_KYCLOGIC_run_aml_program_cancel (aprh);
+}
+
+
+/**
+ * Helper function to asynchronously return
+ * the result.
+ *
+ * @param[in] cls a `struct TALER_KYCLOGIC_AmlProgramRunnerHandle` to return results for
+ */
+static void
+async_return_task (void *cls)
+{
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh = cls;
+
+  aprh->async_cb = NULL;
+  aprh->aprc (aprh->aprc_cls,
+              &aprh->apr);
+  TALER_KYCLOGIC_run_aml_program_cancel (aprh);
 }
 
 
@@ -2897,13 +3048,108 @@ TALER_KYCLOGIC_run_aml_program (
   void *aprc_cls)
 {
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh;
+  const json_t *context;
+  struct TALER_KYCLOGIC_AmlProgram *prog;
+  const char *check_name;
+  const char *prog_name;
 
+  {
+    enum TALER_ErrorCode ec;
+
+    ec = TALER_KYCLOGIC_select_measure (jmeasures,
+                                        measure_index,
+                                        &check_name,
+                                        &prog_name,
+                                        &context);
+    if (TALER_EC_NONE != ec)
+    {
+      GNUNET_break (0);
+      return NULL;
+    }
+  }
+  prog = find_program (prog_name);
+  if (NULL == prog)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   aprh = GNUNET_new (struct TALER_KYCLOGIC_AmlProgramRunnerHandle);
   aprh->aprc = aprc;
-  aprh->aprc_cls aprc_cls;
+  aprh->aprc_cls = aprc_cls;
+  aprh->program = prog;
 
-  // FIXME ...
-  return arph;
+  for (unsigned int i = 0; i<prog->num_required_attributes; i++)
+  {
+    const char *rattr = prog->required_attributes[i];
+
+    if (NULL == json_object_get (attributes,
+                                 rattr))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "KYC attributes lack required attribute `%s' for AML program %s\n",
+                  rattr,
+                  prog->program_name);
+      aprh->apr.status = TALER_KYCLOGIC_AMLR_FAILURE;
+      aprh->apr.details.failure.fallback_measure
+        = prog->fallback;
+      aprh->apr.details.failure.error_message
+        = rattr;
+      aprh->apr.details.failure.ec
+        = -1; // FIXME
+      aprh->async_cb
+        = GNUNET_SCHEDULER_add_now (&async_return_task,
+                                    aprh);
+      return aprh;
+    }
+  }
+  for (unsigned int i = 0; i<prog->num_required_contexts; i++)
+  {
+    const char *rctx = prog->required_contexts[i];
+
+    if (NULL == json_object_get (context,
+                                 rctx))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Context lacks required field `%s' for AML program %s\n",
+                  rctx,
+                  prog->program_name);
+      aprh->apr.status = TALER_KYCLOGIC_AMLR_FAILURE;
+      aprh->apr.details.failure.fallback_measure
+        = prog->fallback;
+      aprh->apr.details.failure.error_message
+        = rctx;
+      aprh->apr.details.failure.ec
+        = -1; // FIXME
+      aprh->async_cb
+        = GNUNET_SCHEDULER_add_now (&async_return_task,
+                                    aprh);
+      return aprh;
+    }
+  }
+
+  {
+    json_t *input;
+
+    input = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_object_incref ("context",
+                                      (json_t *) context),
+      GNUNET_JSON_pack_object_incref ("attributes",
+                                      (json_t *) attributes),
+      GNUNET_JSON_pack_array_incref ("aml_history",
+                                     (json_t *) aml_history),
+      GNUNET_JSON_pack_array_incref ("kyc_history",
+                                     (json_t *) kyc_history)
+      );
+    aprh->proc = TALER_JSON_external_conversion_start (
+      input,
+      &handle_aml_output,
+      aprh,
+      prog->command,
+      prog->command,
+      NULL);
+    json_decref (input);
+  }
+  return aprh;
 }
 
 
@@ -2911,11 +3157,15 @@ void
 TALER_KYCLOGIC_run_aml_program_cancel (
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh)
 {
-
-  if (NULL != aprh->prog)
+  if (NULL != aprh->proc)
   {
-    TALER_JSON_external_conversion_stop (aprh->prog);
-    aprh->prog = NULL;
+    TALER_JSON_external_conversion_stop (aprh->proc);
+    aprh->proc = NULL;
+  }
+  if (NULL != aprh->async_cb)
+  {
+    GNUNET_SCHEDULER_cancel (aprh->async_cb);
+    aprh->async_cb = NULL;
   }
   GNUNET_free (aprh);
 }

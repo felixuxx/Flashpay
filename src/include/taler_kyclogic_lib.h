@@ -682,6 +682,11 @@ struct TALER_KYCLOGIC_AmlProgramResult
     struct
     {
       /**
+       * Fallback measure to trigger.
+       */
+      const char *fallback_measure;
+
+      /**
        * Human-readable error message describing the
        * failure (for logging).
        */
