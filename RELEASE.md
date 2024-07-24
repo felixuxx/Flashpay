@@ -5,6 +5,7 @@
 - [ ] bump version in configure.ac
 - [ ] add entry to ChangeLog
 - [ ] add entry to debian/changelog
+- [ ] check CI (contrib/ci, buildbot.taler.net)
 - [ ] tag with dev tag, test in staging environment
 - [ ] tag with release tag
 - [ ] upload to GNU mirrors
