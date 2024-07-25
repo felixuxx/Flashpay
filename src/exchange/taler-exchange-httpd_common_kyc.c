@@ -201,7 +201,7 @@ kyc_aml_finished (void *cls,
               "Stored encrypted KYC process #%llu attributes: %d\n",
               (unsigned long long) kat->process_row,
               qs);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  if (qs <= 0)
   {
     GNUNET_break (0);
     if (NULL != kat->response)

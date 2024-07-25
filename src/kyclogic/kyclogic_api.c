@@ -417,13 +417,27 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
     GNUNET_JSON_spec_end ()
   };
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+  const char *err;
+  unsigned int line;
 
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (jrules,
-                         spec,
-                         NULL, NULL))
+  if (NULL == jlrs)
   {
     GNUNET_break_op (0);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (jlrs,
+                         spec,
+                         &err,
+                         &line))
+  {
+    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Legitimization rules have incorrect input field `%s'\n",
+                err);
+    json_dumpf (jlrs,
+                stderr,
+                JSON_INDENT (2));
     return NULL;
   }
   lrs = GNUNET_new (struct TALER_KYCLOGIC_LegitimizationRuleSet);
@@ -506,16 +520,16 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         goto cleanup;
       }
       rule->lrs = lrs;
+      rule->next_measures
+        = GNUNET_new_array (rule->num_measures,
+                            char *);
       rule->num_measures = json_array_size (jmeasures);
       if (((size_t) rule->num_measures) !=
-          json_object_size (jmeasures))
+          json_array_size (jmeasures))
       {
         GNUNET_break (0);
         goto cleanup;
       }
-      rule->next_measures
-        = GNUNET_new_array (rule->num_measures,
-                            char *);
       {
         size_t j;
         json_t *jmeasure;
@@ -604,7 +618,7 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
     struct TALER_KYCLOGIC_KycRule *rule
       = &lrs->kyc_rules[i];
 
-    for (unsigned int j = 0; i<rule->num_measures; j++)
+    for (unsigned int j = 0; j<rule->num_measures; j++)
       GNUNET_free (rule->next_measures[j]);
     GNUNET_free (rule->next_measures);
     GNUNET_free (rule->rule_name);
@@ -2891,10 +2905,11 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle
  * @param result some JSON result, NULL if we failed to get an JSON output
  */
 static void
-handle_aml_output (void *cls,
-                   enum GNUNET_OS_ProcessStatusType status_type,
-                   unsigned long code,
-                   const json_t *result)
+handle_aml_output (
+  void *cls,
+  enum GNUNET_OS_ProcessStatusType status_type,
+  unsigned long code,
+  const json_t *result)
 {
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh = cls;
   const char *fallback_measure = aprh->program->fallback;
@@ -2902,10 +2917,16 @@ handle_aml_output (void *cls,
   const char **evs = NULL;
 
   aprh->proc = NULL;
-  memset (&apr,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "AML program output is:\n");
+  json_dumpf (result,
+              stderr,
+              JSON_INDENT (2));
+  memset (apr,
           0,
-          sizeof (apr));
-  if (0 != code)
+          sizeof (*apr));
+  if ( (GNUNET_OS_PROCESS_EXITED != status_type) ||
+       (0 != code) )
   {
     apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
     apr->details.failure.fallback_measure
@@ -2949,6 +2970,12 @@ handle_aml_output (void *cls,
                            &err,
                            &line))
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "AML program output is malformed at `%s'\n",
+                  err);
+      json_dumpf (result,
+                  stderr,
+                  JSON_INDENT (2));
       apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
       apr->details.failure.fallback_measure
         = fallback_measure;
@@ -2958,57 +2985,58 @@ handle_aml_output (void *cls,
         = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
       goto ready;
     }
-    else
+    apr->details.success.num_events
+      = json_array_size (jevents);
+
+    GNUNET_assert (((size_t) apr->details.success.num_events) ==
+                   json_array_size (jevents));
+    evs = GNUNET_new_array (
+      apr->details.success.num_events,
+      const char *);
+    for (unsigned int i = 0; i<apr->details.success.num_events; i++)
     {
-      apr->details.success.num_events
-        = json_array_size (jevents);
-
-      GNUNET_assert (((size_t) apr->details.success.num_events) ==
-                     json_array_size (jevents));
-      evs = GNUNET_new_array (
-        apr->details.success.num_events,
-        const char *);
-      for (unsigned int i = 0; i<apr->details.success.num_events; i++)
+      evs[i] = json_string_value (
+        json_array_get (jevents,
+                        i));
+      if (NULL == evs[i])
       {
-        evs[i] = json_string_value (
-          json_array_get (jevents,
-                          i));
-        if (NULL == evs[i])
-        {
-          apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
-          apr->details.failure.fallback_measure
-            = fallback_measure;
-          apr->details.failure.error_message
-            = "events";
-          apr->details.failure.ec
-            = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
-          goto ready;
-        }
+        apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+        apr->details.failure.fallback_measure
+          = fallback_measure;
+        apr->details.failure.error_message
+          = "events";
+        apr->details.failure.ec
+          = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
+        goto ready;
       }
-      apr->status = TALER_KYCLOGIC_AMLR_SUCCESS;
-      apr->details.success.events = evs;
+    }
+    apr->status = TALER_KYCLOGIC_AMLR_SUCCESS;
+    apr->details.success.events = evs;
+    {
+      /* check new_rules */
+      struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+
+      lrs = TALER_KYCLOGIC_rules_parse (
+        apr->details.success.new_rules);
+      if (NULL == lrs)
       {
-        /* check new_rules */
-        struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "AML program output is malformed at `%s'\n",
+                    "new_rules");
 
-        lrs = TALER_KYCLOGIC_rules_parse (
-          apr->details.success.new_rules);
-        if (NULL == lrs)
-        {
-          apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
-          apr->details.failure.fallback_measure
-            = fallback_measure;
-          apr->details.failure.error_message
-            = "new_rules";
-          apr->details.failure.ec
-            = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
-          goto ready;
-        }
-        // FIXME: check 'lrs' is well-formed
-        // (check against configured checks + programs)!
-
-        TALER_KYCLOGIC_rules_free (lrs);
+        apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+        apr->details.failure.fallback_measure
+          = fallback_measure;
+        apr->details.failure.error_message
+          = "new_rules";
+        apr->details.failure.ec
+          = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
+        goto ready;
       }
+      // FIXME: check 'lrs' is well-formed
+      // (check against configured checks + programs)!
+
+      TALER_KYCLOGIC_rules_free (lrs);
     }
   }
 ready:
@@ -3089,6 +3117,9 @@ TALER_KYCLOGIC_run_aml_program (
                   "KYC attributes lack required attribute `%s' for AML program %s\n",
                   rattr,
                   prog->program_name);
+      json_dumpf (attributes,
+                  stderr,
+                  JSON_INDENT (2));
       aprh->apr.status = TALER_KYCLOGIC_AMLR_FAILURE;
       aprh->apr.details.failure.fallback_measure
         = prog->fallback;
@@ -3113,6 +3144,9 @@ TALER_KYCLOGIC_run_aml_program (
                   "Context lacks required field `%s' for AML program %s\n",
                   rctx,
                   prog->program_name);
+      json_dumpf (context,
+                  stderr,
+                  JSON_INDENT (2));
       aprh->apr.status = TALER_KYCLOGIC_AMLR_FAILURE;
       aprh->apr.details.failure.fallback_measure
         = prog->fallback;

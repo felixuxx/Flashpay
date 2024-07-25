@@ -18,6 +18,8 @@
 # Hard error reporting on.
 set -eu
 
+echo "Running $0" 1>&2
+
 # This is a KYC measure program that checks the output
 # of an OAuth2 authentication, and if it passed,
 # increases the reserve CLOSE limit to EUR:1000.
@@ -39,13 +41,14 @@ then
 fi
 
 # First, check everything we expect is in stdin.
-J=$(jq -r 'def get($k):
+A=$(jq -r .attributes)
+J=$(echo $A | jq -r 'def get($k):
              if has($k)
                then .[$k]
                else error("attribute missing")
            end;
-           {"full_name":get("attributes.full_name"),
-            "birthdate":get("attributes.birthdate")}')
+           {"full_name":get("full_name"),
+            "birthdate":get("birthdate")}')
 
 # Here we could use those values...
 echo "$J" >> /dev/null
@@ -61,7 +64,7 @@ EXPIRATION=$((3600 * 30 + $(date +%s)))
 # for the required output format.
 
 jq -n \
-    --arg expiration "$EXPIRATION" \
+    --argjson expiration "$EXPIRATION" \
     '{ "to_investigate": false,
        "new_rules" : {
          "new_check" : "info-oauth-test-passed",
@@ -77,3 +80,5 @@ jq -n \
          } ]
        }
      }' < /dev/null
+
+exit 0

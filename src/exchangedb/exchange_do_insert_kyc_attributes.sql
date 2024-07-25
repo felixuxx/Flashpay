@@ -38,6 +38,7 @@ DECLARE
    orig_reserve_pub BYTEA;
    orig_reserve_found BOOLEAN;
    my_trigger_outcome_serial INT8;
+   my_lmsi INT8;
    my_i INT4;
    ini_event TEXT;
 BEGIN
@@ -83,9 +84,17 @@ UPDATE legitimization_processes
      ,finished=TRUE
  WHERE h_payto=in_h_payto
    AND legitimization_process_serial_id=in_process_row
-   AND provider_name=in_provider_name;
+   AND provider_name=in_provider_name
+ RETURNING legitimization_measure_serial_id
+  INTO my_lmsi;
 out_ok = FOUND;
 
+IF out_ok
+THEN
+  UPDATE legitimization_measures
+     SET is_finished=TRUE
+   WHERE legitimization_measure_serial_id=my_lmsi;
+END IF;
 
 -- If the h_payto refers to a reserve in the original requirements
 -- update the originating reserve's birthday.

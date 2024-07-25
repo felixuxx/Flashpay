@@ -9,6 +9,7 @@
 # Die if anything goes wrong.
 set -eu
 
+echo "Running $0" 1>&2
 
 # First, extract everything from stdin.
 J=$(jq '{"id":.data.id,"first":.data.first_name,"last":.data.last_name,"birthdate":.data.birthdate,"status":.status}')

@@ -26,6 +26,8 @@
 # Hard error reporting on.
 set -eu
 
+echo "Running $0" 1>&2
+
 if [ "${1:-no}" = "--list-outputs" ]
 then
     # This converter produces a full name and birthdate.

@@ -477,8 +477,9 @@ run (void *cls,
       MHD_HTTP_NOT_FOUND,
       "nx-attribute-name",
       NULL),
-    TALER_TESTING_cmd_oauth (
+    TALER_TESTING_cmd_oauth_with_birthdate (
       "start-oauth-service",
+      "2015-00-00",
       6666),
     TALER_TESTING_cmd_reserve_close (
       "reserve-101-close-kyc",
@@ -518,7 +519,7 @@ run (void *cls,
       "check-kyc-close-ok",
       "reserve-101-close-kyc",
       "setup-account-key",
-      MHD_HTTP_NO_CONTENT),
+      MHD_HTTP_OK),
     /* Now it should pass */
     TALER_TESTING_cmd_reserve_close (
       "reserve-101-close",

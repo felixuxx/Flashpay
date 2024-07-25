@@ -18,6 +18,8 @@
 # Hard error reporting on.
 set -eu
 
+echo "Running $0" 1>&2
+
 # This is a KYC measure program that freezes
 # the account and flags it for manual investigation.
 # This is the ultimate fallback measure.
