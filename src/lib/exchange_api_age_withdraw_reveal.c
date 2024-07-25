@@ -41,22 +41,34 @@
 struct TALER_EXCHANGE_AgeWithdrawRevealHandle
 {
 
-  /* The index not to be disclosed */
+  /**
+   * The index not to be disclosed
+   */
   uint8_t noreveal_index;
 
-  /* The age-withdraw commitment */
+  /**
+   * The age-withdraw commitment
+   */
   struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
-  /* The reserve's public key */
+  /**
+   * The reserve's public key
+   */
   const struct TALER_ReservePublicKeyP *reserve_pub;
 
-  /* Number of coins */
+  /**
+   * Number of coins
+   */
   size_t num_coins;
 
-  /* The @e num_coins * kappa coin secrets from the age-withdraw commitment */
+  /**
+   * The @e num_coins * kappa coin secrets from the age-withdraw commitment
+   */
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coins_input;
 
-  /* The url for the reveal request */
+  /**
+   * The url for the reveal request
+   */
   char *request_url;
 
   /**
@@ -69,10 +81,14 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
    */
   struct TALER_CURL_PostContext post_ctx;
 
-  /* Callback */
+  /**
+   * Callback
+   */
   TALER_EXCHANGE_AgeWithdrawRevealCallback callback;
 
-  /* Reveal */
+  /**
+   * Reveal
+   */
   void *callback_cls;
 };
 
@@ -101,9 +117,10 @@ age_withdraw_reveal_ok (
     GNUNET_JSON_spec_end ()
   };
 
-  if (GNUNET_OK != GNUNET_JSON_parse (j_response,
-                                      spec,
-                                      NULL, NULL))
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (j_response,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -130,9 +147,10 @@ age_withdraw_reveal_ok (
         GNUNET_JSON_spec_end ()
       };
 
-      if (GNUNET_OK != GNUNET_JSON_parse (j_sig,
-                                          spec,
-                                          NULL, NULL))
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j_sig,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
@@ -203,10 +221,13 @@ handle_age_withdraw_reveal_finished (
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* only validate reply is well-formed */
     {
-      uint64_t ptu;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("legitimization_uuid",
-                                 &ptu),
+        GNUNET_JSON_spec_fixed_auto (
+          "h_payto",
+          &awr.details.unavailable_for_legal_reasons.h_payto),
+        GNUNET_JSON_spec_uint64 (
+          "requirement_row",
+          &awr.details.unavailable_for_legal_reasons.requirement_row),
         GNUNET_JSON_spec_end ()
       };
 
@@ -300,10 +321,11 @@ prepare_url (
   char pub_str[sizeof (struct TALER_AgeWithdrawCommitmentHashP) * 2];
   char *end;
 
-  end = GNUNET_STRINGS_data_to_string (&awrh->h_commitment,
-                                       sizeof (awrh->h_commitment),
-                                       pub_str,
-                                       sizeof (pub_str));
+  end = GNUNET_STRINGS_data_to_string (
+    &awrh->h_commitment,
+    sizeof (awrh->h_commitment),
+    pub_str,
+    sizeof (pub_str));
   *end = '\0';
   GNUNET_snprintf (arg_str,
                    sizeof (arg_str),
@@ -330,8 +352,7 @@ prepare_url (
  * @param curl_ctx The context for CURL
  * @param awrh The handler
  */
-static
-void
+static void
 perform_protocol (
   struct GNUNET_CURL_Context *curl_ctx,
   struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh)
@@ -356,8 +377,8 @@ perform_protocol (
 
   for (size_t n = 0; n < awrh->num_coins; n++)
   {
-    const struct TALER_PlanchetMasterSecretP *secrets =
-      awrh->coins_input[n].secrets;
+    const struct TALER_PlanchetMasterSecretP *secrets
+      = awrh->coins_input[n].secrets;
 
     j_secrets = json_array ();
     FAIL_IF (NULL == j_secrets);
@@ -395,11 +416,12 @@ perform_protocol (
   json_decref (j_request_body);
   j_request_body = NULL;
 
-  awrh->job = GNUNET_CURL_job_add2 (curl_ctx,
-                                    curlh,
-                                    awrh->post_ctx.headers,
-                                    &handle_age_withdraw_reveal_finished,
-                                    awrh);
+  awrh->job = GNUNET_CURL_job_add2 (
+    curl_ctx,
+    curlh,
+    awrh->post_ctx.headers,
+    &handle_age_withdraw_reveal_finished,
+    awrh);
   FAIL_IF (NULL == awrh->job);
 
   /* No error, return */

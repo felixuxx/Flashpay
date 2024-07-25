@@ -238,10 +238,11 @@ TEH_withdraw_kyc_check (
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "reserves_get_origin");
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "reserves_get_origin");
     return qs;
   }
   /* If _no_ results, reserve was created by merge,
@@ -254,7 +255,7 @@ TEH_withdraw_kyc_check (
     kyc,
     connection,
     mhd_ret,
-    TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW,
+    TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
     payto_uri,
     &wc.h_payto,
     &withdraw_amount_cb,

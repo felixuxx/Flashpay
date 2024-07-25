@@ -449,10 +449,13 @@ handle_reserve_age_withdraw_blinded_finished (
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* only validate reply is well-formed */
     {
-      uint64_t ptu;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("requirement_row",
-                                 &ptu),
+        GNUNET_JSON_spec_fixed_auto (
+          "h_payto",
+          &awbr.details.unavailable_for_legal_reasons.h_payto),
+        GNUNET_JSON_spec_uint64 (
+          "requirement_row",
+          &awbr.details.unavailable_for_legal_reasons.requirement_row),
         GNUNET_JSON_spec_end ()
       };
 
@@ -500,13 +503,13 @@ perform_protocol (
   struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh)
 {
 #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto ERROR; \
-    } \
-  } while (0)
+        do { \
+          if ((cond)) \
+          { \
+            GNUNET_break (! (cond)); \
+            goto ERROR; \
+          } \
+        } while (0)
 
   struct GNUNET_HashContext *coins_hctx = NULL;
   json_t *j_denoms = NULL;
@@ -744,8 +747,7 @@ call_age_withdraw_blinded (
  * @param awbh The handler
  * @param exchange_url The base-URL to the exchange
  */
-static
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 prepare_url (
   struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh,
   const char *exchange_url)
@@ -827,14 +829,15 @@ csr_withdraw_done (
          can->planchet_detail.blinded_planchet! */
       do {
         if (GNUNET_OK !=
-            TALER_planchet_prepare (&csr->denom_pub->key,
-                                    &can->details.alg_values,
-                                    &can->details.blinding_key,
-                                    &csr->nonce,
-                                    &can->details.coin_priv,
-                                    &can->details.h_age_commitment,
-                                    &can->details.h_coin_pub,
-                                    planchet))
+            TALER_planchet_prepare (
+              &csr->denom_pub->key,
+              &can->details.alg_values,
+              &can->details.blinding_key,
+              &csr->nonce,
+              &can->details.coin_priv,
+              &can->details.h_age_commitment,
+              &can->details.h_coin_pub,
+              planchet))
         {
           GNUNET_break (0);
           break;
@@ -871,10 +874,9 @@ csr_withdraw_done (
  * @param awh The handler to the age-withdraw
  * @param num_coins The number of coins in @e coin_inputs
  * @param coin_inputs The input for the individual coin(-candidates)
- * @return GNUNET_OK on success, GNUNET_SYSERR on failure
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
-static
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 prepare_coins (
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh,
   size_t num_coins,
@@ -882,13 +884,13 @@ prepare_coins (
     static num_coins])
 {
 #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto ERROR; \
-    } \
-  } while (0)
+        do { \
+          if ((cond)) \
+          { \
+            GNUNET_break (! (cond)); \
+            goto ERROR; \
+          } \
+        } while (0)
 
   GNUNET_assert (0 < num_coins);
   awh->age_mask = coin_inputs[0].denom_pub->key.age_mask;
@@ -932,18 +934,20 @@ prepare_coins (
         TALER_planchet_setup_coin_priv (&can->secret,
                                         &can->details.alg_values,
                                         &can->details.coin_priv);
-        TALER_planchet_blinding_secret_create (&can->secret,
-                                               &can->details.alg_values,
-                                               &can->details.blinding_key);
+        TALER_planchet_blinding_secret_create (
+          &can->secret,
+          &can->details.alg_values,
+          &can->details.blinding_key);
         FAIL_IF (GNUNET_OK !=
-                 TALER_planchet_prepare (&cd->denom_pub.key,
-                                         &can->details.alg_values,
-                                         &can->details.blinding_key,
-                                         NULL,
-                                         &can->details.coin_priv,
-                                         &can->details.h_age_commitment,
-                                         &can->details.h_coin_pub,
-                                         planchet));
+                 TALER_planchet_prepare (
+                   &cd->denom_pub.key,
+                   &can->details.alg_values,
+                   &can->details.blinding_key,
+                   NULL,
+                   &can->details.coin_priv,
+                   &can->details.h_age_commitment,
+                   &can->details.h_coin_pub,
+                   planchet));
         TALER_coin_ev_hash (&planchet->blinded_planchet,
                             &planchet->denom_pub_hash,
                             &can->blinded_coin_h);
@@ -985,7 +989,8 @@ ERROR:
   TALER_EXCHANGE_age_withdraw_cancel (awh);
   return GNUNET_SYSERR;
 #undef FAIL_IF
-};
+}
+
 
 struct TALER_EXCHANGE_AgeWithdrawHandle *
 TALER_EXCHANGE_age_withdraw (
@@ -1011,11 +1016,10 @@ TALER_EXCHANGE_age_withdraw (
   awh->callback_cls = res_cb_cls;
   awh->num_coins = num_coins;
   awh->max_age = max_age;
-
-
-  if (GNUNET_OK != prepare_coins (awh,
-                                  num_coins,
-                                  coin_inputs))
+  if (GNUNET_OK !=
+      prepare_coins (awh,
+                     num_coins,
+                     coin_inputs))
   {
     GNUNET_free (awh);
     return NULL;
@@ -1090,12 +1094,12 @@ TALER_EXCHANGE_age_withdraw_blinded (
   awbh->callback = res_cb;
   awbh->callback_cls = res_cb_cls;
   awbh->max_age = max_age;
-
-  GNUNET_CRYPTO_eddsa_key_get_public (&awbh->reserve_priv->eddsa_priv,
-                                      &awbh->reserve_pub.eddsa_pub);
-
-  if (GNUNET_OK != prepare_url (awbh,
-                                exchange_url))
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &awbh->reserve_priv->eddsa_priv,
+    &awbh->reserve_pub.eddsa_pub);
+  if (GNUNET_OK !=
+      prepare_url (awbh,
+                   exchange_url))
     return NULL;
 
   perform_protocol (awbh);
@@ -1109,7 +1113,6 @@ TALER_EXCHANGE_age_withdraw_blinded_cancel (
 {
   if (NULL == awbh)
     return;
-
   if (NULL != awbh->job)
   {
     GNUNET_CURL_job_cancel (awbh->job);

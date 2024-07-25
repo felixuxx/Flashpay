@@ -3000,6 +3000,12 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
        */
       struct TALER_ExchangePublicKeyP exchange_pub;
     } ok;
+
+    /**
+ * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+ */
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
+
   } details;
 };
 
@@ -3112,6 +3118,13 @@ struct TALER_EXCHANGE_AgeWithdrawBlindedResponse
       struct TALER_ExchangePublicKeyP exchange_pub;
 
     } ok;
+
+
+    /**
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
+
   } details;
 
 };
@@ -3232,6 +3245,12 @@ struct TALER_EXCHANGE_AgeWithdrawRevealResponse
       const struct TALER_BlindedDenominationSignature *blinded_denom_sigs;
 
     } ok;
+
+    /**
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
+
   } details;
 
 };

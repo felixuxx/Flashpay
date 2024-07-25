@@ -531,6 +531,7 @@ TALER_JSON_spec_age_commitment (const char *name,
   return ret;
 }
 
+
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_issue_sig (const char *field,
                                  struct TALER_TokenIssueSignatureP *sig)
@@ -539,6 +540,7 @@ TALER_JSON_spec_token_issue_sig (const char *field,
   return GNUNET_JSON_spec_unblinded_signature (field,
                                                &sig->signature);
 }
+
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_token_issue_sig (
@@ -1471,8 +1473,6 @@ parse_kycte (void *cls,
       .val = TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
     { .name = "RESERVE-CLOSE",
       .val = TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
-    { .name = "AGE-WITHDRAW",
-      .val = TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW },
     { .name = NULL,
       .val = TALER_KYCLOGIC_KYC_TRIGGER_NONE },
   };

@@ -288,7 +288,7 @@ run (void *cls,
       "withdraw-coin-1-lacking-kyc",
       "create-reserve-kyc-1",
       "EUR:10",
-      0,                                  /* age restriction off */
+      0,    /* age restriction off */
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
     TALER_TESTING_cmd_admin_add_kycauth (
       "setup-account-key",
@@ -313,21 +313,21 @@ run (void *cls,
       0,
       MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
-      "proof-kyc",
+      "proof-withdraw-kyc",
       "withdraw-coin-1-lacking-kyc",
-      "kyc-provider-test-oauth2",
+      "test-oauth2",
       "pass",
       MHD_HTTP_SEE_OTHER),
     TALER_TESTING_cmd_withdraw_amount (
       "withdraw-coin-1-with-kyc",
       "create-reserve-kyc-1",
       "EUR:10",
-      0,                                  /* age restriction off */
+      0,   /* age restriction off */
       MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_age_withdraw (
       "age-withdraw-coin-1-too-low",
       "create-reserve-kyc-1",
-      18,                               /* Too high */
+      18,      /* Too high */
       MHD_HTTP_CONFLICT,
       "EUR:10",
       NULL),
