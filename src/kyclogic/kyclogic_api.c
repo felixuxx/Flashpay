@@ -2913,7 +2913,7 @@ handle_aml_output (void *cls,
     apr->details.failure.error_message
       = "AML program returned non-zero exit code";
     apr->details.failure.ec
-      = -1; // FIXME!
+      = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE;
     goto ready;
   }
 
@@ -2955,7 +2955,7 @@ handle_aml_output (void *cls,
       apr->details.failure.error_message
         = err;
       apr->details.failure.ec
-        = -1; // FIXME!
+        = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
       goto ready;
     }
     else
@@ -2981,7 +2981,7 @@ handle_aml_output (void *cls,
           apr->details.failure.error_message
             = "events";
           apr->details.failure.ec
-            = -1; // FIXME!
+            = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
           goto ready;
         }
       }
@@ -3001,7 +3001,7 @@ handle_aml_output (void *cls,
           apr->details.failure.error_message
             = "new_rules";
           apr->details.failure.ec
-            = -1; // FIXME!
+            = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
           goto ready;
         }
         // FIXME: check 'lrs' is well-formed
@@ -3095,7 +3095,7 @@ TALER_KYCLOGIC_run_aml_program (
       aprh->apr.details.failure.error_message
         = rattr;
       aprh->apr.details.failure.ec
-        = -1; // FIXME
+        = TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_INCOMPLETE_REPLY;
       aprh->async_cb
         = GNUNET_SCHEDULER_add_now (&async_return_task,
                                     aprh);
@@ -3119,7 +3119,7 @@ TALER_KYCLOGIC_run_aml_program (
       aprh->apr.details.failure.error_message
         = rctx;
       aprh->apr.details.failure.ec
-        = -1; // FIXME
+        = TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_INCOMPLETE_CONTEXT;
       aprh->async_cb
         = GNUNET_SCHEDULER_add_now (&async_return_task,
                                     aprh);

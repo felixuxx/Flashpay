@@ -529,7 +529,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
-        -1, // FIXME
+        TALER_EC_EXCHANGE_KYC_GENERIC_AML_LOGIC_BUG,
         "TEH_kyc_finished");
     }
     GNUNET_CONTAINER_DLL_insert (uc_head,
