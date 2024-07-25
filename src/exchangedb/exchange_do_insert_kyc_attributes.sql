@@ -35,8 +35,6 @@ CREATE FUNCTION exchange_do_insert_kyc_attributes(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-   orig_reserve_pub BYTEA;
-   orig_reserve_found BOOLEAN;
    my_trigger_outcome_serial INT8;
    my_lmsi INT8;
    my_i INT4;
@@ -87,7 +85,7 @@ UPDATE legitimization_processes
    AND provider_name=in_provider_name
  RETURNING legitimization_measure_serial_id
   INTO my_lmsi;
-out_ok = FOUND;
+out_ok=FOUND;
 
 IF out_ok
 THEN
@@ -96,25 +94,23 @@ THEN
    WHERE legitimization_measure_serial_id=my_lmsi;
 END IF;
 
--- If the h_payto refers to a reserve in the original requirements
--- update the originating reserve's birthday.
-SELECT reserve_pub
-  INTO orig_reserve_pub
-  FROM exchange.legitimization_requirements
- WHERE h_payto=in_h_payto
-   AND NOT reserve_pub IS NULL;
-orig_reserve_found = FOUND;
+UPDATE reserves
+   SET birthday=in_birthday
+ WHERE (reserve_pub IN
+    (SELECT reserve_pub
+       FROM reserves_in
+      WHERE wire_source_h_payto=in_h_payto) )
+-- The next 3 clauses primarily serve to limit
+-- unnecessary updates for reserves we do not
+-- care about anymore.
+  AND ( ((current_balance).frac > 0) OR
+        ((current_balance).val > 0 ) )
+  AND (expiration_date > in_collection_time_ts);
 
-IF orig_reserve_found
-THEN
-  UPDATE exchange.reserves
-     SET birthday=in_birthday
-   WHERE reserve_pub=orig_reserve_pub;
-END IF;
 
 IF in_to_investigate
 THEN
-  INSERT INTO exchange.aml_status
+  INSERT INTO aml_status
     (h_payto
     ,status)
    VALUES
@@ -124,7 +120,7 @@ THEN
     UPDATE SET status=EXCLUDED.status | 1;
 END IF;
 
-FOR i IN 1..array_length(ina_events,1)
+FOR i IN 1..COALESCE(array_length(ina_events,1),0)
 LOOP
   ini_event = ina_events[i];
   INSERT INTO kyc_events

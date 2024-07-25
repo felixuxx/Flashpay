@@ -76,7 +76,9 @@ TEH_PG_insert_kyc_attributes (
     GNUNET_PQ_query_param_timestamp (&collection_time),
     GNUNET_PQ_query_param_absolute_time (&expiration_time),
     GNUNET_PQ_query_param_timestamp (&expiration),
-    TALER_PQ_query_param_json (account_properties),
+    NULL == account_properties
+    ? GNUNET_PQ_query_param_null ()
+    : TALER_PQ_query_param_json (account_properties),
     TALER_PQ_query_param_json (new_rules),
     GNUNET_PQ_query_param_array_ptrs_string (num_events,
                                              events,
@@ -98,6 +100,9 @@ TEH_PG_insert_kyc_attributes (
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Inserting KYC attributes, wake up on %s\n",
               kyc_completed_notify_s);
+  GNUNET_break (NULL != new_rules);
+  GNUNET_break (NULL != h_payto);
+  GNUNET_break (NULL != enc_attributes);
   PREPARE (pg,
            "insert_kyc_attributes",
            "SELECT "
