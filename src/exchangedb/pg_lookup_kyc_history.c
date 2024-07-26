@@ -174,9 +174,9 @@ TEH_PG_lookup_kyc_history (
            ",ka.encrypted_attributes"
            " FROM kyc_attributes ka"
            "    JOIN legitimization_processes lp"
-           "      ON (ka.legitimization_serial = lp.legitimization_process_serial)"
+           "      ON (ka.legitimization_serial = lp.legitimization_process_serial_id)"
            " WHERE ka.h_payto=$1"
-           " ORDER BY collection_time DESC;");
+           " ORDER BY ka.collection_time DESC;");
 
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
