@@ -2322,13 +2322,13 @@ TALER_KYCLOGIC_kyc_done (void)
     GNUNET_free (kc->check_name);
     GNUNET_free (kc->description);
     json_decref (kc->description_i18n);
-    for (unsigned int j = 0; i<kc->num_requires; j++)
+    for (unsigned int j = 0; j<kc->num_requires; j++)
       GNUNET_free (kc->requires[j]);
     GNUNET_array_grow (kc->requires,
                        kc->num_requires,
                        0);
     GNUNET_free (kc->fallback);
-    for (unsigned int j = 0; i<kc->num_outputs; j++)
+    for (unsigned int j = 0; j<kc->num_outputs; j++)
       GNUNET_free (kc->outputs[j]);
     GNUNET_array_grow (kc->outputs,
                        kc->num_outputs,
@@ -2356,7 +2356,7 @@ TALER_KYCLOGIC_kyc_done (void)
     GNUNET_free (ap->command);
     GNUNET_free (ap->description);
     GNUNET_free (ap->fallback);
-    for (unsigned int j = 0; i<ap->num_required_contexts; j++)
+    for (unsigned int j = 0; j<ap->num_required_contexts; j++)
       GNUNET_free (ap->required_contexts[j]);
     GNUNET_array_grow (ap->required_contexts,
                        ap->num_required_contexts,
