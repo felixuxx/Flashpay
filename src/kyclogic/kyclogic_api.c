@@ -386,6 +386,101 @@ find_provider (const char *provider_name)
 }
 
 
+/**
+ * Check that @a measure is well-formed and internally
+ * consistent.
+ *
+ * @param measure measure to check
+ * @return true if measure is well-formed
+ */
+static bool
+check_measure (const struct TALER_KYCLOGIC_Measure *measure)
+{
+  const struct TALER_KYCLOGIC_KycCheck *check;
+  const struct TALER_KYCLOGIC_AmlProgram *program;
+
+  if (0 == strcasecmp (measure->check_name,
+                       "SKIP"))
+    return true;
+  check = find_check (measure->check_name);
+  if (NULL == check)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unknown check `%s' used in measure `%s'\n",
+                measure->check_name,
+                measure->measure_name);
+    return false;
+  }
+  program = find_program (measure->prog_name);
+  if (NULL == program)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unknown program `%s' used in measure `%s'\n",
+                measure->prog_name,
+                measure->measure_name);
+    return false;
+  }
+  for (unsigned int j = 0; j<check->num_requires; j++)
+  {
+    const char *required_input = check->requires[j];
+
+    if (NULL ==
+        json_object_get (measure->context,
+                         required_input))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Measure `%s' lacks required context `%s' for check `%s'\n",
+                  measure->measure_name,
+                  required_input,
+                  check->check_name);
+      return false;
+    }
+  }
+  for (unsigned int j = 0; j<program->num_required_contexts; j++)
+  {
+    const char *required_context = program->required_contexts[j];
+
+    if (NULL ==
+        json_object_get (measure->context,
+                         required_context))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Measure `%s' lacks required context `%s' for AML program `%s'\n",
+                  measure->measure_name,
+                  required_context,
+                  program->program_name);
+      return false;
+    }
+  }
+  for (unsigned int j = 0; j<program->num_required_attributes; j++)
+  {
+    const char *required_attribute = program->required_attributes[j];
+    bool found = false;
+
+    for (unsigned int i = 0; i<check->num_outputs; i++)
+    {
+      if (0 == strcasecmp (required_attribute,
+                           check->outputs[i]))
+      {
+        found = true;
+        break;
+      }
+    }
+    if (! found)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Check `%s' of measure `%s' does not provide required output `%s' for AML program `%s'\n",
+                  check->check_name,
+                  measure->measure_name,
+                  required_attribute,
+                  program->program_name);
+      return false;
+    }
+  }
+  return true;
+}
+
+
 struct TALER_KYCLOGIC_LegitimizationRuleSet *
 TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
 {
@@ -599,6 +694,11 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       if (NULL != context)
         measure->context
           = json_incref ((json_t*) context);
+      if (! check_measure (measure))
+      {
+        GNUNET_break_op (0);
+        goto cleanup;
+      }
     }
   }
   return lrs;
@@ -2034,54 +2134,6 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
     }
   }
 
-  for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
-  {
-    const struct TALER_KYCLOGIC_Measure *measure
-      = &default_rules.custom_measures[i];
-    const struct TALER_KYCLOGIC_KycCheck *check;
-    const struct TALER_KYCLOGIC_AmlProgram *program;
-
-    if (0 == strcasecmp (measure->check_name,
-                         "SKIP"))
-      continue;
-    check = find_check (measure->check_name);
-    if (NULL == check)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unknown check `%s' used in measure `%s'\n",
-                  measure->check_name,
-                  measure->measure_name);
-      return GNUNET_SYSERR;
-    }
-    program = find_program (measure->prog_name);
-    if (NULL == program)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unknown program `%s' used in measure `%s'\n",
-                  measure->prog_name,
-                  measure->measure_name);
-      return GNUNET_SYSERR;
-    }
-    for (unsigned int j=0; j<check->num_requires; j++)
-    {
-      const char *required_input = check->requires[j];
-
-      // FIXME: check these are provided by measure!?
-    }
-    for (unsigned int j=0; j<program->num_required_contexts; j++)
-    {
-      const char *required_context = program->required_contexts[j];
-
-      // FIXME: check these are provided by measure!?
-    }
-    for (unsigned int j=0; j<program->num_required_attributes; j++)
-    {
-      const char *required_attribute = program->required_attributes[j];
-
-      // FIXME: check these are provided by measure!?
-    }
-  }
-
   for (unsigned int i=0; i<num_aml_programs; i++)
   {
     const struct TALER_KYCLOGIC_AmlProgram *program
@@ -2123,6 +2175,20 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
       }
     }
   }
+
+  for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
+  {
+    const struct TALER_KYCLOGIC_Measure *measure
+      = &default_rules.custom_measures[i];
+
+    if (! check_measure (measure))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+
+
   return GNUNET_OK;
 }
 
@@ -3030,9 +3096,6 @@ handle_aml_output (
           = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
         goto ready;
       }
-      // FIXME: check 'lrs' is well-formed
-      // (check against configured checks + programs)!
-
       TALER_KYCLOGIC_rules_free (lrs);
     }
   }
