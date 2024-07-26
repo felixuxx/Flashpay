@@ -299,28 +299,29 @@ proof_cb (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC process #%llu succeeded with KYC provider\n",
                 (unsigned long long) kpc->process_row);
-    kpc->kat = TEH_kyc_finished (&rc->async_scope_id,
-                                 kpc->process_row,
-                                 &kpc->h_payto,
-                                 kpc->provider_name,
-                                 provider_user_id,
-                                 provider_legitimization_id,
-                                 expiration,
-                                 attributes,
-                                 http_status,
-                                 response,
-                                 &proof_finish,
-                                 kpc);
+    kpc->kat = TEH_kyc_finished (
+      &rc->async_scope_id,
+      kpc->process_row,
+      &kpc->h_payto,
+      kpc->provider_name,
+      provider_user_id,
+      provider_legitimization_id,
+      expiration,
+      attributes,
+      http_status,
+      response,
+      &proof_finish,
+      kpc);
+    response = NULL; /* taken over by TEH_kyc_finished */
     if (NULL == kpc->kat)
     {
       http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      if (NULL != response)
-        MHD_destroy_response (response);
-      response = make_html_error (kpc->rc->connection,
-                                  "kyc-proof-internal-error",
-                                  &http_status,
-                                  TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                  "[exchange] AML_KYC_TRIGGER");
+      response = make_html_error (
+        kpc->rc->connection,
+        "kyc-proof-internal-error",
+        &http_status,
+        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+        "[exchange] AML_KYC_TRIGGER");
     }
     break;
   case TALER_KYCLOGIC_STATUS_FAILED:
@@ -345,30 +346,35 @@ proof_cb (
                        "Failure by KYC provider (HTTP status %u)\n",
                        http_status);
       http_status = MHD_HTTP_BAD_GATEWAY;
-      response = make_html_error (kpc->rc->connection,
-                                  "kyc-proof-internal-error",
-                                  &http_status,
-                                  TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-                                  msg);
+      response = make_html_error (
+        kpc->rc->connection,
+        "kyc-proof-internal-error",
+        &http_status,
+        TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+        msg);
       GNUNET_free (msg);
     }
     else
     {
-      if (! TEH_kyc_failed (kpc->process_row,
-                            &kpc->h_payto,
-                            kpc->provider_name,
-                            provider_user_id,
-                            provider_legitimization_id))
+      if (! TEH_kyc_failed (
+            kpc->process_row,
+            &kpc->h_payto,
+            kpc->provider_name,
+            provider_user_id,
+            provider_legitimization_id,
+            TALER_KYCLOGIC_status2s (status),
+            TALER_EC_EXCHANGE_GENERIC_KYC_FAILED))
       {
         GNUNET_break (0);
         if (NULL != response)
           MHD_destroy_response (response);
         http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        response = make_html_error (kpc->rc->connection,
-                                    "kyc-proof-internal-error",
-                                    &http_status,
-                                    TALER_EC_GENERIC_DB_STORE_FAILED,
-                                    "insert_kyc_failure");
+        response = make_html_error (
+          kpc->rc->connection,
+          "kyc-proof-internal-error",
+          &http_status,
+          TALER_EC_GENERIC_DB_STORE_FAILED,
+          "insert_kyc_failure");
       }
     }
     break;
@@ -440,11 +446,12 @@ TEH_handler_kyc_proof (
     if (NULL == provider_name_or_logic)
     {
       GNUNET_break_op (0);
-      return respond_html_ec (rc,
-                              MHD_HTTP_NOT_FOUND,
-                              "kyc-proof-endpoint-unknown",
-                              TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                              "'/kyc-proof/$PROVIDER_NAME?state=$H_PAYTO' required");
+      return respond_html_ec (
+        rc,
+        MHD_HTTP_NOT_FOUND,
+        "kyc-proof-endpoint-unknown",
+        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+        "'/kyc-proof/$PROVIDER_NAME?state=$H_PAYTO' required");
     }
     kpc = GNUNET_new (struct KycProofContext);
     kpc->rc = rc;
@@ -454,17 +461,19 @@ TEH_handler_kyc_proof (
                                         "state",
                                         &kpc->h_payto);
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_lookup_logic (provider_name_or_logic,
-                                     &kpc->logic,
-                                     &kpc->pd,
-                                     &kpc->provider_name))
+        TALER_KYCLOGIC_lookup_logic (
+          provider_name_or_logic,
+          &kpc->logic,
+          &kpc->pd,
+          &kpc->provider_name))
     {
       GNUNET_break_op (0);
-      return respond_html_ec (rc,
-                              MHD_HTTP_NOT_FOUND,
-                              "kyc-proof-target-unknown",
-                              TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                              provider_name_or_logic);
+      return respond_html_ec (
+        rc,
+        MHD_HTTP_NOT_FOUND,
+        "kyc-proof-target-unknown",
+        TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
+        provider_name_or_logic);
     }
     if (NULL != kpc->provider_name)
     {
@@ -475,11 +484,12 @@ TEH_handler_kyc_proof (
                        kpc->provider_name))
       {
         GNUNET_break_op (0);
-        return respond_html_ec (rc,
-                                MHD_HTTP_BAD_REQUEST,
-                                "kyc-proof-bad-request",
-                                TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                "PROVIDER_NAME");
+        return respond_html_ec (
+          rc,
+          MHD_HTTP_BAD_REQUEST,
+          "kyc-proof-bad-request",
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "PROVIDER_NAME");
       }
 
       qs = TEH_plugin->lookup_kyc_process_by_account (
@@ -494,47 +504,52 @@ TEH_handler_kyc_proof (
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        return respond_html_ec (rc,
-                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                "kyc-proof-internal-error",
-                                TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                "lookup_kyc_process_by_account");
+        return respond_html_ec (
+          rc,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          "kyc-proof-internal-error",
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "lookup_kyc_process_by_account");
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        return respond_html_ec (rc,
-                                MHD_HTTP_NOT_FOUND,
-                                "kyc-proof-target-unknown",
-                                TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
-                                kpc->provider_name);
+        return respond_html_ec (
+          rc,
+          MHD_HTTP_NOT_FOUND,
+          "kyc-proof-target-unknown",
+          TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
+          kpc->provider_name);
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         break;
       }
       if (GNUNET_TIME_absolute_is_future (expiration))
       {
         /* KYC not required */
-        return respond_html_ec (rc,
-                                MHD_HTTP_OK,
-                                "kyc-proof-already-done",
-                                TALER_EC_NONE,
-                                NULL);
+        return respond_html_ec (
+          rc,
+          MHD_HTTP_OK,
+          "kyc-proof-already-done",
+          TALER_EC_NONE,
+          NULL);
       }
     }
-    kpc->ph = kpc->logic->proof (kpc->logic->cls,
-                                 kpc->pd,
-                                 rc->connection,
-                                 &kpc->h_payto,
-                                 kpc->process_row,
-                                 kpc->provider_user_id,
-                                 kpc->provider_legitimization_id,
-                                 &proof_cb,
-                                 kpc);
+    kpc->ph = kpc->logic->proof (
+      kpc->logic->cls,
+      kpc->pd,
+      rc->connection,
+      &kpc->h_payto,
+      kpc->process_row,
+      kpc->provider_user_id,
+      kpc->provider_legitimization_id,
+      &proof_cb,
+      kpc);
     if (NULL == kpc->ph)
     {
       GNUNET_break (0);
-      return respond_html_ec (rc,
-                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                              "kyc-proof-internal-error",
-                              TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                              "could not start proof with KYC logic");
+      return respond_html_ec (
+        rc,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        "kyc-proof-internal-error",
+        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+        "could not start proof with KYC logic");
     }
 
 
@@ -549,11 +564,12 @@ TEH_handler_kyc_proof (
   if (NULL == kpc->response)
   {
     GNUNET_break (0);
-    return respond_html_ec (rc,
-                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                            "kyc-proof-internal-error",
-                            TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                            "handler resumed without response");
+    return respond_html_ec (
+      rc,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      "kyc-proof-internal-error",
+      TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+      "handler resumed without response");
   }
 
   /* return response from KYC logic */

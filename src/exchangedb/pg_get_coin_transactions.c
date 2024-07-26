@@ -38,7 +38,7 @@
 #define RETRIES 3
 
 /**
- * Closure for callbacks called from #postgres_get_coin_transactions()
+ * Closure for callbacks called from #TEH_PG_get_coin_transactions()
  */
 struct CoinHistoryContext
 {

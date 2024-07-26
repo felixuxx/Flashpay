@@ -749,6 +749,40 @@ TALER_KYCLOGIC_rule2s (
 }
 
 
+const char *
+TALER_KYCLOGIC_status2s (enum TALER_KYCLOGIC_KycStatus status)
+{
+  switch (status)
+  {
+  case TALER_KYCLOGIC_STATUS_SUCCESS:
+    return "success";
+  case TALER_KYCLOGIC_STATUS_USER:
+    return "user";
+  case TALER_KYCLOGIC_STATUS_PROVIDER:
+    return "provider";
+  case TALER_KYCLOGIC_STATUS_FAILED:
+    return "failed";
+  case TALER_KYCLOGIC_STATUS_PENDING:
+    return "pending";
+  case TALER_KYCLOGIC_STATUS_ABORTED:
+    return "aborted";
+  case TALER_KYCLOGIC_STATUS_USER_PENDING:
+    return "pending with user";
+  case TALER_KYCLOGIC_STATUS_PROVIDER_PENDING:
+    return "pending at provider";
+  case TALER_KYCLOGIC_STATUS_USER_ABORTED:
+    return "aborted by user";
+  case TALER_KYCLOGIC_STATUS_PROVIDER_FAILED:
+    return "failed by provider";
+  case TALER_KYCLOGIC_STATUS_KEEP:
+    return "keep";
+  case TALER_KYCLOGIC_STATUS_INTERNAL_ERROR:
+    return "internal error";
+  }
+  return "unknown status";
+}
+
+
 json_t *
 TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
 {
@@ -917,6 +951,38 @@ TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r)
                            r->is_and_combinator),
     GNUNET_JSON_pack_bool ("verboten",
                            r->verboten));
+}
+
+
+json_t *
+TALER_KYCLOGIC_check_to_measures (
+  const struct TALER_KYCLOGIC_KycCheckContext *kcc)
+{
+  const struct TALER_KYCLOGIC_KycCheck *check
+    = kcc->check;
+  json_t *jmeasures;
+  json_t *mi;
+
+  jmeasures = json_array ();
+  GNUNET_assert (NULL != jmeasures);
+  mi = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("check_name",
+                             check->check_name),
+    GNUNET_JSON_pack_string ("prog_name",
+                             kcc->prog_name),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_object_incref ("context",
+                                      (json_t *) kcc->context)));
+  GNUNET_assert (0 ==
+                 json_array_append_new (jmeasures,
+                                        mi));
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("measures",
+                                  jmeasures),
+    GNUNET_JSON_pack_bool ("is_and_combinator",
+                           true),
+    GNUNET_JSON_pack_bool ("verboten",
+                           false));
 }
 
 
@@ -2322,6 +2388,49 @@ TALER_KYCLOGIC_provider_to_logic (
 
 
 enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_get_default_measure (
+  const char *measure_name,
+  struct TALER_KYCLOGIC_KycCheckContext *kcc)
+{
+  const struct TALER_KYCLOGIC_Measure *measure;
+
+  measure = find_measure (&default_rules,
+                          measure_name);
+  if (NULL == measure)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Default measure `%s' unknown\n",
+                measure_name);
+    return GNUNET_SYSERR;
+  }
+  if (0 == strcasecmp (measure->check_name,
+                       "SKIP"))
+  {
+    kcc->check = NULL;
+    kcc->prog_name = measure->prog_name;
+    kcc->context = measure->context;
+    return GNUNET_OK;
+  }
+
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+    if (0 == strcmp (measure->check_name,
+                     kyc_checks[i]->check_name))
+    {
+      kcc->check = kyc_checks[i];
+      kcc->prog_name = measure->prog_name;
+      kcc->context = measure->context;
+      return GNUNET_OK;
+    }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Check `%s' unknown (but required by measure %s)\n",
+              measure->check_name,
+              measure_name);
+  return GNUNET_SYSERR;
+}
+
+
+// FIXME: not used in 'main' exchange logic!
+enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_requirements_to_check (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const struct TALER_KYCLOGIC_KycRule *kyc_rule,
@@ -2331,6 +2440,8 @@ TALER_KYCLOGIC_requirements_to_check (
   bool found = false;
   const struct TALER_KYCLOGIC_Measure *measure = NULL;
 
+  if (NULL == lrs)
+    lrs = &default_rules;
   if (NULL == measure_name)
   {
     /* No measure selected, return the "new_check" */
@@ -2342,7 +2453,7 @@ TALER_KYCLOGIC_requirements_to_check (
     }
     else
     {
-      kcc->check =NULL;
+      kcc->check = NULL;
     }
     kcc->prog_name = measure->prog_name;
     kcc->context = measure->context;
@@ -3135,9 +3246,7 @@ TALER_KYCLOGIC_run_aml_program (
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls)
 {
-  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh;
   const json_t *context;
-  struct TALER_KYCLOGIC_AmlProgram *prog;
   const char *check_name;
   const char *prog_name;
 
@@ -3155,6 +3264,29 @@ TALER_KYCLOGIC_run_aml_program (
       return NULL;
     }
   }
+  return TALER_KYCLOGIC_run_aml_program2 (prog_name,
+                                          attributes,
+                                          aml_history,
+                                          kyc_history,
+                                          context,
+                                          aprc,
+                                          aprc_cls);
+}
+
+
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
+TALER_KYCLOGIC_run_aml_program2 (
+  const char *prog_name,
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
+  const json_t *context,
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc,
+  void *aprc_cls)
+{
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh;
+  struct TALER_KYCLOGIC_AmlProgram *prog;
+
   prog = find_program (prog_name);
   if (NULL == prog)
   {

@@ -30,7 +30,9 @@
  * Insert KYC requirement for @a h_payto account into table.
  *
  * @param cls closure
- * @param payto_uri account that must be KYC'ed
+   * @param payto_uri account that must be KYC'ed,
+   *    can be NULL if @a h_payto is already
+   *    guaranteed to be in wire_targets
  * @param h_payto hash of @a payto_uri
  * @param jmeasures serialized MeasureSet to put in place
  * @param display_priority priority of the rule

@@ -34,9 +34,12 @@ TEH_PG_insert_kyc_failure (
   const struct TALER_PaytoHashP *h_payto,
   const char *provider_name,
   const char *provider_account_id,
-  const char *provider_legitimization_id)
+  const char *provider_legitimization_id,
+  const char *error_message,
+  enum TALER_ErrorCode ec)
 {
   struct PostgresClosure *pg = cls;
+  uint32_t ec32 = (uint32_t) ec;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
@@ -47,6 +50,8 @@ TEH_PG_insert_kyc_failure (
     NULL != provider_legitimization_id
     ? GNUNET_PQ_query_param_string (provider_legitimization_id)
     : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_uint32 (&ec32),
+    GNUNET_PQ_query_param_string (error_message),
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -58,6 +63,8 @@ TEH_PG_insert_kyc_failure (
            "  finished=TRUE"
            " ,provider_user_id=$4"
            " ,provider_legitimization_id=$5"
+           " ,error_code=$6"
+           " ,error_message=$7"
            " WHERE h_payto=$2"
            "   AND legitimization_process_serial_id=$1"
            "   AND provider_name=$3;");

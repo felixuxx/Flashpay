@@ -40,7 +40,9 @@ TEH_PG_trigger_kyc_rule_for_account (
     = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (payto_uri),
+    NULL == payto_uri
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_absolute_time (&now),
     TALER_PQ_query_param_json (jmeasures),
     GNUNET_PQ_query_param_uint32 (&display_priority),

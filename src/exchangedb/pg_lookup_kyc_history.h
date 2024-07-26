@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_kyc_failure.h
- * @brief implementation of the insert_kyc_failure function for Postgres
+ * @file exchangedb/pg_lookup_kyc_history.h
+ * @brief implementation of the lookup_kyc_history function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_KYC_FAILURE_H
-#define PG_INSERT_KYC_FAILURE_H
+#ifndef PG_LOOKUP_KYC_HISTORY_H
+#define PG_LOOKUP_KYC_HISTORY_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
@@ -27,28 +27,20 @@
 
 
 /**
- * Update KYC process status to finished (and failed).
+ * Lookup KYC history for an account identified via
+ * @a h_payto.
  *
  * @param cls closure
- * @param process_row KYC process row to update
- * @param h_payto account for which the attribute data is stored
- * @param provider_name provider that must be checked
- * @param provider_account_id provider account ID
- * @param provider_legitimization_id provider legitimization ID
- * @param error_message details about what went wrong
- * @param ec error code about the failure
+ * @param h_payto hash of account to lookup history for
+ * @param cb function to call on results
+ * @param cb_cls closure for @a cb
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_kyc_failure (
+TEH_PG_lookup_kyc_history (
   void *cls,
-  uint64_t process_row,
   const struct TALER_PaytoHashP *h_payto,
-  const char *provider_name,
-  const char *provider_account_id,
-  const char *provider_legitimization_id,
-  const char *error_message,
-  enum TALER_ErrorCode ec);
-
+  TALER_EXCHANGEDB_KycHistoryCallback cb,
+  void *cb_cls);
 
 #endif

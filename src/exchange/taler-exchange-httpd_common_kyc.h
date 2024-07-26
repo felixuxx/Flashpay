@@ -50,7 +50,7 @@ typedef void
  */
 struct TEH_KycAmlTrigger;
 
-// FIXME: also pass async log context and set it!
+
 /**
  * We have finished a KYC process and obtained new
  * @a attributes for a given @a account_id.
@@ -73,18 +73,19 @@ struct TEH_KycAmlTrigger;
  * @return handle to cancel the operation
  */
 struct TEH_KycAmlTrigger *
-TEH_kyc_finished (const struct GNUNET_AsyncScopeId *scope,
-                  uint64_t process_row,
-                  const struct TALER_PaytoHashP *account_id,
-                  const char *provider_name,
-                  const char *provider_user_id,
-                  const char *provider_legitimization_id,
-                  struct GNUNET_TIME_Absolute expiration,
-                  const json_t *attributes,
-                  unsigned int http_status,
-                  struct MHD_Response *response,
-                  TEH_KycAmlTriggerCallback cb,
-                  void *cb_cls);
+TEH_kyc_finished (
+  const struct GNUNET_AsyncScopeId *scope,
+  uint64_t process_row,
+  const struct TALER_PaytoHashP *account_id,
+  const char *provider_name,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration,
+  const json_t *attributes,
+  unsigned int http_status,
+  struct MHD_Response *response,
+  TEH_KycAmlTriggerCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -97,6 +98,69 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat);
 
 
 /**
+ * Handle for an asynchronous operation to run some
+ * fallback measure.
+ */
+struct TEH_KycAmlFallback;
+
+
+/**
+ * Function called after the KYC-AML fallback
+ * processing is done.
+ *
+ * @param cls closure
+ * @param result true if fallback handling was OK
+ * @param requirement_row row of
+ *    new KYC requirement that was created, 0 for none
+ */
+typedef void
+(*TEH_KycAmlFallbackCallback) (
+  void *cls,
+  bool result,
+  uint64_t requirement_row);
+
+
+/**
+ * Activate fallback measure for the given account.
+ *
+ * @param scope the HTTP request logging scope
+ * @param account_id account to activate fallback for
+ * @param orig_requirement_row original requirement
+ *    row that now triggered the fallback
+ * @param attributes attributes to run with
+ * @param aml_history AML history of the account
+ * @param kyc_history KYC history of the account
+ * @param fallback_measure fallback to activate
+ * @param cb callback to call with result
+ * @param cb_cls closure for @a cb
+ * @return handle for fallback operation, NULL
+ *    if @a fallback_measure is unknown
+ */
+struct TEH_KycAmlFallback *
+TEH_kyc_fallback (
+  const struct GNUNET_AsyncScopeId *scope,
+  const struct TALER_PaytoHashP *
+  account_id,
+  uint64_t orig_requirement_row,
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
+  const char *fallback_measure,
+  TEH_KycAmlFallbackCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel fallback operation.
+ *
+ * @param[in] fb operation to cancel
+ */
+void
+TEH_kyc_fallback_cancel (
+  struct TEH_KycAmlFallback *fb);
+
+
+/**
  * Update state of a legitmization process to 'finished'
  * (and failed, no attributes were obtained).
  *
@@ -105,13 +169,18 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat);
  * @param provider_name name KYC provider with the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
- * @return true on success, false if updating the database failed
+ * @param error_message error message to log
+ * @param ec error code to log
+ * @return true if the error was handled successfully
  */
 bool
-TEH_kyc_failed (uint64_t process_row,
-                const struct TALER_PaytoHashP *account_id,
-                const char *provider_name,
-                const char *provider_user_id,
-                const char *provider_legitimization_id);
+TEH_kyc_failed (
+  uint64_t process_row,
+  const struct TALER_PaytoHashP *account_id,
+  const char *provider_name,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  const char *error_message,
+  enum TALER_ErrorCode ec);
 
 #endif

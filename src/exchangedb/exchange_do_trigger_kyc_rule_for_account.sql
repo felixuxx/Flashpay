@@ -26,7 +26,8 @@ AS $$
 DECLARE
   my_access_token BYTEA;
 BEGIN
-
+-- Note: in_payto_uri is allowed to be NULL *if*
+-- in_h_payto is already in wire_targets
 SELECT
   access_token
 INTO

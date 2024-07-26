@@ -342,10 +342,32 @@ TALER_KYCLOGIC_kyc_test_required (
   const struct TALER_KYCLOGIC_KycRule **triggered_rule);
 
 
+/**
+ * Get human-readable name of KYC rule.
+ *
+ * @param r rule to convert
+ * @return name of the rule
+ */
 const char *
 TALER_KYCLOGIC_rule2s (const struct TALER_KYCLOGIC_KycRule *r);
 
 
+/**
+ * Convert KYC status to human-readable string.
+ *
+ * @param status status to convert
+ * @return human-readable string
+ */
+const char *
+TALER_KYCLOGIC_status2s (enum TALER_KYCLOGIC_KycStatus status);
+
+
+/**
+ * Get priority of KYC rule.
+ *
+ * @param r rule to convert
+ * @return priority of the rule
+ */
 uint32_t
 TALER_KYCLOGIC_rule2priority (const struct TALER_KYCLOGIC_KycRule *r);
 
@@ -388,16 +410,56 @@ TALER_KYCLOGIC_is_enabled (void);
 
 
 /**
- * A KYC rule @a r has been triggered. Convert the resulting requirements in
- * to JSON of type ``LegitimizationMeasures`` for the legitimization measures table.
+ * A KYC rule @a r has been triggered. Convert the resulting requirements into
+ * JSON of type ``LegitimizationMeasures`` for the legitimization measures table.
  *
- * FIXME: not implemented!
  * @param r a rule that was triggered
  * @return JSON serialization of the corresponding
  *   ``LegitimizationMeasures``, NULL on error
  */
 json_t *
-TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r);
+TALER_KYCLOGIC_rule_to_measures (
+  const struct TALER_KYCLOGIC_KycRule *r);
+
+
+/**
+ * Tuple with information about a KYC check to perform.  Note that it will
+ * have references into the legitimization rule set provided to
+ * #TALER_KYCLOGIC_requirements_to_check() and thus has a lifetime that
+ * matches the legitimization rule set.
+ */
+struct TALER_KYCLOGIC_KycCheckContext
+{
+  /**
+   * KYC check to perform.
+   */
+  const struct TALER_KYCLOGIC_KycCheck *check;
+
+  /**
+   * Context for the check. Can be NULL.
+   */
+  const json_t *context;
+
+  /**
+   * Name of the AML program.
+   */
+  char *prog_name;
+};
+
+
+/**
+ * A KYC check @a kcc has been triggered. Convert the resulting singular
+ * requirement (only a single check is possible, not multiple alternatives)
+ * into JSON of type ``LegitimizationMeasures`` for the legitimization
+ * measures table.
+ *
+ * @param kcc check that was triggered
+ * @return JSON serialization of the corresponding
+ *   ``LegitimizationMeasures``
+ */
+json_t *
+TALER_KYCLOGIC_check_to_measures (
+  const struct TALER_KYCLOGIC_KycCheckContext *kcc);
 
 
 /**
@@ -482,28 +544,17 @@ TALER_KYCLOGIC_provider_to_logic (
 
 
 /**
- * Tuple with information about a KYC check to perform.  Note that it will
- * have references into the legitimization rule set provided to
- * #TALER_KYCLOGIC_requirements_to_check() and thus has a lifetime that
- * matches the legitimization rule set.
+ * Find default measure @a measure_name.
+ *
+ * @param measure_name name of measure to find
+ * @param[out] kcc initialized with KYC check data
+ *    for the default measure
+ * @return #GNUNET_OK on success
  */
-struct TALER_KYCLOGIC_KycCheckContext
-{
-  /**
-   * KYC check to perform.
-   */
-  const struct TALER_KYCLOGIC_KycCheck *check;
-
-  /**
-   * Context for the check. Can be NULL.
-   */
-  const json_t *context;
-
-  /**
-   * Name of the AML program.
-   */
-  char *prog_name;
-};
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_get_default_measure (
+  const char *measure_name,
+  struct TALER_KYCLOGIC_KycCheckContext *kcc);
 
 
 /**
@@ -736,6 +787,30 @@ TALER_KYCLOGIC_run_aml_program (
   const json_t *kyc_history,
   const json_t *jmeasures,
   unsigned int measure_index,
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc,
+  void *aprc_cls);
+
+
+/**
+ * Run AML program @a prog_name with the given @a context.
+ *
+ * @param prog_name name of AML program to run
+ * @param attributes attributes to run with
+ * @param aml_history AML history of the account
+ * @param kyc_history KYC history of the account
+ * @param context context to run with
+ * @param aprc function to call with the result
+ * @param aprc_cls closure for @a aprc
+ * @return NULL if @a jmeasures is invalid for the
+ *   selected @a measure_index or @a attributes
+ */
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
+TALER_KYCLOGIC_run_aml_program2 (
+  const char *prog_name,
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
+  const json_t *context,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 

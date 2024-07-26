@@ -115,6 +115,8 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_withdraw_amounts_for_kyc_check.h pg_select_withdraw_amounts_for_kyc_check.c \
   pg_select_merge_amounts_for_kyc_check.h pg_select_merge_amounts_for_kyc_check.c \
   pg_profit_drains_set_finished.h pg_profit_drains_set_finished.c \
+  pg_lookup_aml_history.h pg_lookup_aml_history.c \
+  pg_lookup_kyc_history.h pg_lookup_kyc_history.c \
   pg_profit_drains_get_pending.h pg_profit_drains_get_pending.c \
   pg_get_drain_profit.h pg_get_drain_profit.c \
   pg_get_purse_deposit.h pg_get_purse_deposit.c \

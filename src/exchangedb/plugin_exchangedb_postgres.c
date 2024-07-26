@@ -94,6 +94,8 @@
 #include "pg_select_contract_by_purse.h"
 #include "pg_insert_drain_profit.h"
 #include "pg_do_reserve_purse.h"
+#include "pg_lookup_aml_history.h"
+#include "pg_lookup_kyc_history.h"
 #include "pg_lookup_global_fee_by_time.h"
 #include "pg_do_purse_deposit.h"
 #include "pg_activate_signing_key.h"
@@ -686,6 +688,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_gc;
   plugin->select_coin_deposits_above_serial_id
     = &TEH_PG_select_coin_deposits_above_serial_id;
+  plugin->lookup_aml_history
+    = &TEH_PG_lookup_aml_history;
+  plugin->lookup_kyc_history
+    = &TEH_PG_lookup_kyc_history;
   plugin->select_purse_decisions_above_serial_id
     = &TEH_PG_select_purse_decisions_above_serial_id;
   plugin->select_purse_deposits_by_purse

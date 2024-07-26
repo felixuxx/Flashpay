@@ -3082,6 +3082,66 @@ typedef void
 
 
 /**
+ * Function called with historic AML events of an
+ * account.
+ *
+ * @param cls closure
+ * @param decision_time when was the decision taken
+ * @param justification what was the given justification
+ * @param decider_pub which key signed the decision
+ * @param jproperties what are the new account properties
+ * @param jnew_rules what are the new account rules
+ * @param to_investigate should AML staff investigate
+ *          after the decision
+ * @param is_active is this the active decision
+ */
+typedef void
+(*TALER_EXCHANGEDB_AmlHistoryCallback) (
+  void *cls,
+  struct GNUNET_TIME_Timestamp decision_time,
+  const char *justification,
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+  const json_t *jproperties,
+  const json_t *jnew_rules,
+  bool to_investigate,
+  bool is_active);
+
+
+/**
+ * Function called with historic KYC events of an
+ * account.
+ *
+ * @param cls closure
+ * @param provider_name name of the KYC provider
+ * @param finished did the KYC process finish
+ * @param error_code error code from the KYC process
+ * @param error_message error message from the KYC process,
+ *    or NULL for none
+ * @param provider_user_id user ID at the provider
+ *    or NULL for none
+ * @param provider_legitimization_id legitimization process ID at the provider
+ *    or NULL for none
+ * @param collection_time when was the data collected
+ * @param expiration_time when does the collected data expire
+ * @param encrypted_attributes_len number of bytes in @a encrypted_attributes
+ * @param encrypted_attributes encrypted KYC attributes
+ */
+typedef void
+(*TALER_EXCHANGEDB_KycHistoryCallback) (
+  void *cls,
+  const char *provider_name,
+  bool finished,
+  enum TALER_ErrorCode error_code,
+  const char *error_message,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Timestamp collection_time,
+  struct GNUNET_TIME_Absolute expiration_time,
+  size_t encrypted_attributes_len,
+  const void *encrypted_attributes);
+
+
+/**
  * Provide information about wire fees.
  *
  * @param cls closure
@@ -6801,7 +6861,9 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert KYC requirement for @a h_payto account into table.
    *
    * @param cls closure
-   * @param payto_uri account that must be KYC'ed
+   * @param payto_uri account that must be KYC'ed,
+   *    can be NULL if @a h_payto is already
+   *    guaranteed to be in wire_targets
    * @param h_payto hash of @a payto_uri
    * @param jmeasures serialized MeasureSet to put in place
    * @param display_priority priority of the rule
@@ -7337,6 +7399,42 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Lookup AML history for an account identified via
+   * @a h_payto.
+   *
+   * @param cls closure
+   * @param h_payto hash of account to lookup history for
+   * @param cb function to call on results
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_aml_history)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_AmlHistoryCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Lookup AML history for an account identified via
+   * @a h_payto.
+   *
+   * @param cls closure
+   * @param h_payto hash of account to lookup history for
+   * @param cb function to call on results
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_kyc_history)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_KycHistoryCallback cb,
+    void *cb_cls);
+
+
+  /**
    * Lookup measure data for an active legitimization process.
    *
    * @param cls closure
@@ -7399,6 +7497,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param provider_name provider that must be checked
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
+   * @param error_message details about what went wrong
+   * @param ec error code about the failure
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -7408,7 +7508,9 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     const char *provider_name,
     const char *provider_account_id,
-    const char *provider_legitimization_id);
+    const char *provider_legitimization_id,
+    const char *error_message,
+    enum TALER_ErrorCode ec);
 
   /**
    * Function called to inject auditor triggers into the

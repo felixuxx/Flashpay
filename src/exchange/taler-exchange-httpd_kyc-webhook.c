@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022-2023 Taler Systems SA
+  Copyright (C) 2022-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -240,11 +240,14 @@ webhook_finished_cb (
                 provider_legitimization_id,
                 (unsigned long long) process_row,
                 status);
-    if (! TEH_kyc_failed (process_row,
-                          account_id,
-                          provider_name,
-                          provider_user_id,
-                          provider_legitimization_id))
+    if (! TEH_kyc_failed (
+          process_row,
+          account_id,
+          provider_name,
+          provider_user_id,
+          provider_legitimization_id,
+          TALER_KYCLOGIC_status2s (status),
+          TALER_EC_EXCHANGE_GENERIC_KYC_FAILED))
     {
       GNUNET_break (0);
       if (NULL != response)
@@ -256,12 +259,13 @@ webhook_finished_cb (
     }
     break;
   default:
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC status of %s/%s (Row #%llu) is %d\n",
-                provider_user_id,
-                provider_legitimization_id,
-                (unsigned long long) process_row,
-                (int) status);
+    GNUNET_log (
+      GNUNET_ERROR_TYPE_INFO,
+      "KYC status of %s/%s (Row #%llu) is %d\n",
+      provider_user_id,
+      provider_legitimization_id,
+      (unsigned long long) process_row,
+      (int) status);
     break;
   }
   GNUNET_break (NULL == kwh->kat);
@@ -327,40 +331,44 @@ handler_kyc_webhook_generic (
 
     if ( (NULL == args[0]) ||
          (GNUNET_OK !=
-          TALER_KYCLOGIC_lookup_logic (args[0],
-                                       &kwh->plugin,
-                                       &kwh->pd,
-                                       &kwh->provider_name)) )
+          TALER_KYCLOGIC_lookup_logic (
+            args[0],
+            &kwh->plugin,
+            &kwh->pd,
+            &kwh->provider_name)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",
                   args[0]);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                         args[0]);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
+        args[0]);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC logic `%s' mapped to section %s\n",
                 args[0],
                 kwh->provider_name);
-    kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
-                                    kwh->pd,
-                                    TEH_plugin->kyc_provider_account_lookup,
-                                    TEH_plugin->cls,
-                                    method,
-                                    &args[1],
-                                    rc->connection,
-                                    root,
-                                    &webhook_finished_cb,
-                                    kwh);
+    kwh->wh = kwh->plugin->webhook (
+      kwh->plugin->cls,
+      kwh->pd,
+      TEH_plugin->kyc_provider_account_lookup,
+      TEH_plugin->cls,
+      method,
+      &args[1],
+      rc->connection,
+      root,
+      &webhook_finished_cb,
+      kwh);
     if (NULL == kwh->wh)
     {
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                         "failed to run webhook logic");
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+        "failed to run webhook logic");
     }
     kwh->suspended = GNUNET_YES;
     GNUNET_CONTAINER_DLL_insert (kwh_head,
@@ -385,10 +393,11 @@ handler_kyc_webhook_generic (
   /* We resumed, but got no response? This should
      not happen. */
   GNUNET_break (0);
-  return TALER_MHD_reply_with_error (rc->connection,
-                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                     TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                     "resumed without response");
+  return TALER_MHD_reply_with_error (
+    rc->connection,
+    MHD_HTTP_INTERNAL_SERVER_ERROR,
+    TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+    "resumed without response");
 }
 
 
@@ -397,10 +406,11 @@ TEH_handler_kyc_webhook_get (
   struct TEH_RequestContext *rc,
   const char *const args[])
 {
-  return handler_kyc_webhook_generic (rc,
-                                      MHD_HTTP_METHOD_GET,
-                                      NULL,
-                                      args);
+  return handler_kyc_webhook_generic (
+    rc,
+    MHD_HTTP_METHOD_GET,
+    NULL,
+    args);
 }
 
 
@@ -410,10 +420,11 @@ TEH_handler_kyc_webhook_post (
   const json_t *root,
   const char *const args[])
 {
-  return handler_kyc_webhook_generic (rc,
-                                      MHD_HTTP_METHOD_POST,
-                                      root,
-                                      args);
+  return handler_kyc_webhook_generic (
+    rc,
+    MHD_HTTP_METHOD_POST,
+    root,
+    args);
 }
 
 

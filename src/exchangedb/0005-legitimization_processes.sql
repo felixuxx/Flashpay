@@ -24,7 +24,9 @@ BEGIN
   PERFORM create_partitioned_table(
     'ALTER TABLE legitimization_processes'
     ' ADD COLUMN legitimization_measure_serial_id BIGINT'
-    ',ADD COLUMN measure_index INT4'
+    ',ADD COLUMN measure_index INT4 DEFAULT(0)'
+    ',ADD COLUMN error_code INT4 DEFAULT (0)'
+    ',ADD COLUMN error_message TEXT DEFAULT NULL'
     ';'
     ,'legitimization_processes'
     ,''
@@ -45,8 +47,20 @@ BEGIN
     ,shard_suffix
   );
   PERFORM comment_partitioned_column(
-     'index of the measure in legitimization_measures that was selected for this KYC setup; NULL if legitimization_measure_serial_id is NULL; enables determination of the context data provided to the external proces'
+     'index of the measure in legitimization_measures that was selected for this KYC setup; NULL if legitimization_measure_serial_id is NULL; enables determination of the context data provided to the external process'
     ,'measure_index'
+    ,'legitimization_processes'
+    ,shard_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'TALER_ErrorCode set if the process failed, otherwise NULL'
+    ,'error_code'
+    ,'legitimization_processes'
+    ,shard_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'human-readable error details set if the process failed, otherwise NULL'
+    ,'error_message'
     ,'legitimization_processes'
     ,shard_suffix
   );

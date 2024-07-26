@@ -523,6 +523,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
       empty_response,
       &aml_trigger_callback,
       uc);
+    empty_response = NULL; /* taken over by TEH_kyc_finished */
     if (NULL == uc->kat)
     {
       GNUNET_break (0);
