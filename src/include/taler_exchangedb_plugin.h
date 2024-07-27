@@ -6937,6 +6937,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param provider_legitimization_id provider legitimization ID
    * @param redirect_url where the user should be redirected to start the KYC process
    * @param expiration how long is this KYC check set to be valid (in the past if invalid)
+   * @param ec error code, #TALER_EC_NONE on success
+   * @param error_message_hint human-readable error message details (in addition to @a ec, NULL on success)
+   * @param finished true to mark the process as done
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -6948,7 +6951,10 @@ struct TALER_EXCHANGEDB_Plugin
     const char *provider_account_id,
     const char *provider_legitimization_id,
     const char *redirect_url,
-    struct GNUNET_TIME_Absolute expiration);
+    struct GNUNET_TIME_Absolute expiration,
+    enum TALER_ErrorCode ec,
+    const char *error_message_hint,
+    bool finished);
 
 
   /**
@@ -7387,6 +7393,13 @@ struct TALER_EXCHANGEDB_Plugin
    *    payto URI of the account undergoing legitimization
    * @param[out] jmeasures set to the legitimization
    *    measures that were put on the account
+   * @param[out] is_finished set to true if the legitimization was
+   *    already finished
+   * @param[out] encrypted_attributes_len set to length of
+   *    @a encrypted_attributes
+   * @param[out] encrypted_attributes set to the attributes
+   *    obtained for the legitimization process, if it
+   *    succeeded, otherwise set to NULL
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -7395,7 +7408,10 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t legitimization_measure_serial_id,
     struct TALER_AccountAccessTokenP *access_token,
     struct TALER_PaytoHashP *h_payto,
-    json_t **jmeasures);
+    json_t **jmeasures,
+    bool *is_finished,
+    size_t *encrypted_attributes_len,
+    void **encrypted_attributes);
 
 
   /**

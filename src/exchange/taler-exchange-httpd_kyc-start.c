@@ -228,7 +228,6 @@ initiate_cb (
   {
     kyp->hint = GNUNET_strdup (error_msg_hint);
   }
-  // FIXME: also store errors!
   qs = TEH_plugin->update_kyc_process_by_row (
     TEH_plugin->cls,
     kyp->process_row,
@@ -237,7 +236,10 @@ initiate_cb (
     provider_user_id,
     provider_legitimization_id,
     redirect_url,
-    GNUNET_TIME_UNIT_ZERO_ABS);
+    GNUNET_TIME_UNIT_ZERO_ABS,
+    ec,
+    error_msg_hint,
+    TALER_EC_NONE != ec);
   if (qs <= 0)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "KYC requirement update failed for %s with status %d at %s:%u\n",
@@ -270,6 +272,9 @@ TEH_handler_kyc_start (
     enum GNUNET_DB_QueryStatus qs;
     const struct TALER_KYCLOGIC_KycProvider *provider;
     struct TALER_KYCLOGIC_ProviderDetails *pd;
+    bool is_finished;
+    size_t enc_len;
+    void *enc = NULL;
 
     kyp = GNUNET_new (struct KycPoller);
     kyp->connection = rc->connection;
@@ -323,7 +328,10 @@ TEH_handler_kyc_start (
       kyp->legitimization_measure_serial_id,
       &kyp->access_token,
       &kyp->h_payto,
-      &kyp->jmeasures);
+      &kyp->jmeasures,
+      &is_finished,
+      &enc_len,
+      &enc);
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -339,6 +347,16 @@ TEH_handler_kyc_start (
         rc->connection,
         MHD_HTTP_NOT_FOUND,
         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+        rc->url);
+    }
+    GNUNET_free (enc);
+    if (is_finished)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_CONFLICT,
+        -1, // FIXME: TALER_EC_..._ALREADY_FINISHED
         rc->url);
     }
 

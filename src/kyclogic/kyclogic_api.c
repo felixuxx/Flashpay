@@ -3016,6 +3016,63 @@ TALER_KYCLOGIC_select_measure (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_check_form (
+  const json_t *jmeasures,
+  size_t measure_index,
+  const json_t *form_data)
+{
+  const char *check_name;
+  const char *prog_name;
+  const json_t *context;
+  struct TALER_KYCLOGIC_KycCheck *kc;
+  struct TALER_KYCLOGIC_AmlProgram *prog;
+
+  if (TALER_EC_NONE !=
+      TALER_KYCLOGIC_select_measure (jmeasures,
+                                     measure_index,
+                                     &check_name,
+                                     &prog_name,
+                                     &context))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  kc = find_check (check_name);
+  if (NULL == kc)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (TALER_KYCLOGIC_CT_FORM != kc->type)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  prog = find_program (prog_name);
+  if (NULL == prog)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  for (unsigned int i = 0; i<prog->num_required_attributes; i++)
+  {
+    const char *rattr = prog->required_attributes[i];
+
+    if (NULL == json_object_get (form_data,
+                                 rattr))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Form data lacks required attribute `%s' for AML program %s\n",
+                  rattr,
+                  prog_name);
+      return GNUNET_NO;
+    }
+  }
+  return GNUNET_OK;
+}
+
+
 const struct TALER_KYCLOGIC_KycProvider *
 TALER_KYCLOGIC_check_to_provider (const char *check_name)
 {

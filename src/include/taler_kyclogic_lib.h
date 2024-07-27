@@ -496,6 +496,22 @@ TALER_KYCLOGIC_select_measure (
 
 
 /**
+ * Check if the form data matches the requirements
+ * of the selected measure.
+ *
+ * @param jmeasures a LegitimizationMeasures object
+ * @param measure_index an index into the measures
+ * @param form_data form data submitted for the measure
+ * @return #GNUNET_OK if the form data matches the measure
+ */
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_check_form (
+  const json_t *jmeasures,
+  size_t measure_index,
+  const json_t *form_data);
+
+
+/**
  * Convert MeasureInformation into the
  * KycRequirementInformation used by the client.
  *

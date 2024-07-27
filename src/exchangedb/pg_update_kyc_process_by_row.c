@@ -35,9 +35,13 @@ TEH_PG_update_kyc_process_by_row (
   const char *provider_account_id,
   const char *provider_legitimization_id,
   const char *redirect_url,
-  struct GNUNET_TIME_Absolute expiration)
+  struct GNUNET_TIME_Absolute expiration,
+  enum TALER_ErrorCode ec,
+  const char *error_message_hint,
+  bool finished)
 {
   struct PostgresClosure *pg = cls;
+  uint32_t ec32 = (uint32_t) ec;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_string (provider_name),
@@ -52,6 +56,12 @@ TEH_PG_update_kyc_process_by_row (
     ? GNUNET_PQ_query_param_string (redirect_url)
     : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_absolute_time (&expiration),
+    GNUNET_PQ_query_param_string (provider_name),
+    GNUNET_PQ_query_param_uint32 (&ec32),
+    (NULL != error_message_hint)
+    ? GNUNET_PQ_query_param_string (error_message_hint)
+    : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_bool (finished),
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -67,6 +77,9 @@ TEH_PG_update_kyc_process_by_row (
            "    ,provider_legitimization_id=$5"
            "    ,redirect_url=$6"
            "    ,expiration_time=GREATEST(expiration_time,$7)"
+           "    ,error_code=$8"
+           "    ,error_message=$9"
+           "    ,finished=$10"
            " WHERE"
            "      h_payto=$3"
            "  AND legitimization_process_serial_id=$1"

@@ -37,6 +37,9 @@
  * @param provider_legitimization_id provider legitimization ID
  * @param redirect_url where the user should be redirected to start the KYC process
  * @param expiration how long is this KYC check set to be valid (in the past if invalid)
+ * @param ec error code, #TALER_EC_NONE on success
+ * @param error_message_hint human-readable error message details (in addition to @a ec, NULL on success)
+ * @param finished true to mark the process as done
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -48,6 +51,9 @@ TEH_PG_update_kyc_process_by_row (
   const char *provider_account_id,
   const char *provider_legitimization_id,
   const char *redirect_url,
-  struct GNUNET_TIME_Absolute expiration);
+  struct GNUNET_TIME_Absolute expiration,
+  enum TALER_ErrorCode ec,
+  const char *error_message_hint,
+  bool finished);
 
 #endif

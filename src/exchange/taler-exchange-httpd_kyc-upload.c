@@ -229,6 +229,8 @@ finish_key (struct UploadContext *uc)
 
 /**
  * Function called to clean up upload context.
+ *
+ * @param[in,out] rc context to clean up
  */
 static void
 upload_cleaner (struct TEH_RequestContext *rc)
@@ -445,13 +447,20 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     enum GNUNET_DB_QueryStatus qs;
     json_t *jmeasures;
     struct MHD_Response *empty_response;
+    bool is_finished = false;
+    size_t enc_attributes_len;
+    void *enc_attributes;
+    json_t *xattributes;
 
     qs = TEH_plugin->lookup_pending_legitimization (
       TEH_plugin->cls,
       uc->legitimization_measure_serial_id,
       &uc->access_token,
       &h_payto,
-      &jmeasures);
+      &jmeasures,
+      &is_finished,
+      &enc_attributes_len,
+      &enc_attributes);
     if (qs < 0)
     {
       GNUNET_break (0);
@@ -463,12 +472,6 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
-      // FIXME: should check for idempotency!
-
-      /* Note: we do not distinguish between row ID unknown and
-         access token wrong here; this is on purpose to
-         minimize information leakage (but we could distinguish
-         the two in the future to help diagnose issues) */
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
@@ -476,14 +479,42 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
         TALER_EC_EXCHANGE_KYC_CHECK_REQUEST_UNKNOWN,
         NULL);
     }
-    // FIXME: Do sanity checks on jmeasures vs. POSTed data:
-    //
-    // assert ! jmeasures.verboten
-    // MeasureInformation mi = jmeasures.measures[measure_index]
-    // Have: mi.{check_name,prog_name,context}
-    // assert kyc_checks[check_name].type == form
-    // assert input data matches form requirements...
 
+    if (is_finished)
+    {
+      // FIXME: should check for idempotency:
+      // enc_attributes -> xattributes
+      // json_equal (xattributes, attributes)?
+      // => return OK (idempotent)
+      // or fail (conflicting submission)
+
+      /* Note: we do not distinguish between row ID unknown and
+         access token wrong here; this is on purpose to
+         minimize information leakage (but we could distinguish
+         the two in the future to help diagnose issues) */
+
+      GNUNET_free (enc_attributes);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_CONFLICT,
+        -1, // FIXME: TALER_EC_EXCHANGE_KYC_FORM_ALREADY_SUBMITTED
+        NULL);
+
+    }
+    GNUNET_free (enc_attributes);
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_check_form (jmeasures,
+                                   uc->measure_index,
+                                   uc->result))
+    {
+      GNUNET_break_op (0);
+      json_decref (jmeasures);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_CONFLICT,
+        -1, // FIXME: TALER_EC_EXCHANGE_KYC_FORM_MEASURE_MISMATCH
+        NULL);
+    }
     json_decref (jmeasures);
 
     /* Setup KYC process (which we will then immediately 'finish') */
@@ -492,7 +523,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
       &h_payto,
       uc->measure_index,
       uc->legitimization_measure_serial_id,
-      "FORM",   // FIXME: correct??? or allow NULL?
+      "FORM",
       NULL,     /* provider account ID */
       NULL,     /* provider legi ID */
       &legi_process_row);
@@ -514,7 +545,7 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
       &rc->async_scope_id,
       legi_process_row,
       &h_payto,
-      NULL /* provider name */,
+      "FORM",
       NULL /* provider account */,
       NULL /* provider legi ID */,
       GNUNET_TIME_UNIT_FOREVER_ABS, /* expiration time */
