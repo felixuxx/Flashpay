@@ -43,17 +43,21 @@ TEH_PG_lookup_kyc_process_by_account (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("legitimization_process_serial_id",
-                                  process_row),
-    GNUNET_PQ_result_spec_absolute_time ("expiration_time",
-                                         expiration),
+    GNUNET_PQ_result_spec_uint64 (
+      "legitimization_process_serial_id",
+      process_row),
+    GNUNET_PQ_result_spec_absolute_time (
+      "expiration_time",
+      expiration),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("provider_user_id",
-                                    provider_account_id),
+      GNUNET_PQ_result_spec_string (
+        "provider_user_id",
+        provider_account_id),
       NULL),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("provider_legitimization_id",
-                                    provider_legitimization_id),
+      GNUNET_PQ_result_spec_string (
+        "provider_legitimization_id",
+        provider_legitimization_id),
       NULL),
     GNUNET_PQ_result_spec_end
   };

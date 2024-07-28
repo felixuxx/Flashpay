@@ -54,9 +54,10 @@ check_bank_empty_cleanup
  * @param is the interpreter state.
  */
 static void
-check_bank_empty_run (void *cls,
-                      const struct TALER_TESTING_Command *cmd,
-                      struct TALER_TESTING_Interpreter *is)
+check_bank_empty_run (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd,
+  struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_FAKEBANK_Handle *fakebank;
 
@@ -98,7 +99,7 @@ check_bank_empty_run (void *cls,
  * Some commands (notably "bank history") could randomly
  * look for traits; this way makes sure we don't segfault.
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_bank_empty_traits (void *cls,
                          const void **ret,
                          const char *trait,

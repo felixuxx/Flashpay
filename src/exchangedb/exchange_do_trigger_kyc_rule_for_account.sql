@@ -16,7 +16,8 @@
 
 CREATE OR REPLACE FUNCTION exchange_do_trigger_kyc_rule_for_account(
   IN in_h_payto BYTEA,
-  IN in_payto_uri TEXT,
+  IN in_account_pub BYTEA, -- can be NULL
+  IN in_payto_uri TEXT, -- can be NULL
   IN in_now INT8,
   IN in_jmeasures TEXT,
   IN in_display_priority INT4,
@@ -39,10 +40,12 @@ IF NOT FOUND
 THEN
   INSERT INTO wire_targets
     (payto_uri
-    ,wire_target_h_payto)
+    ,wire_target_h_payto
+    ,target_pub)
   VALUES
     (in_payto_uri
-    ,in_h_payto)
+    ,in_h_payto
+    ,in_account_pub)
   RETURNING
     access_token
   INTO my_access_token;

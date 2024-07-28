@@ -36,12 +36,12 @@ struct KycWalletGetState
   /**
    * Private key of the reserve (account).
    */
-  struct TALER_ReservePrivateKeyP reserve_priv;
+  union TALER_AccountPrivateKeyP account_priv;
 
   /**
    * Public key of the reserve (account).
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Payto URI of the reserve of the wallet.
@@ -163,38 +163,41 @@ wallet_kyc_run (void *cls,
     const struct TALER_TESTING_Command *res_cmd;
     const struct TALER_ReservePrivateKeyP *reserve_priv;
 
-    res_cmd = TALER_TESTING_interpreter_lookup_command (kwg->is,
-                                                        kwg->reserve_reference);
+    res_cmd
+      = TALER_TESTING_interpreter_lookup_command (kwg->is,
+                                                  kwg->reserve_reference);
     if (NULL == res_cmd)
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (kwg->is);
       return;
     }
-
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_reserve_priv (res_cmd,
-                                              &reserve_priv))
+        TALER_TESTING_get_trait_reserve_priv (
+          res_cmd,
+          &reserve_priv))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (kwg->is);
       return;
     }
-    kwg->reserve_priv = *reserve_priv;
+    kwg->account_priv.reserve_priv = *reserve_priv;
   }
   else
   {
-    GNUNET_CRYPTO_eddsa_key_create (&kwg->reserve_priv.eddsa_priv);
+    GNUNET_CRYPTO_eddsa_key_create (
+      &kwg->account_priv.reserve_priv.eddsa_priv);
   }
-  GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
-                                      &kwg->reserve_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &kwg->account_priv.reserve_priv.eddsa_priv,
+    &kwg->account_pub.reserve_pub.eddsa_pub);
   kwg->reserve_payto_uri
     = TALER_reserve_make_payto (exchange_url,
-                                &kwg->reserve_pub);
+                                &kwg->account_pub.reserve_pub);
   kwg->kwh = TALER_EXCHANGE_kyc_wallet (
     TALER_TESTING_interpreter_get_context (is),
     exchange_url,
-    &kwg->reserve_priv,
+    &kwg->account_priv.reserve_priv,
     &kwg->balance,
     &wallet_kyc_cb,
     kwg);
@@ -244,11 +247,20 @@ wallet_kyc_traits (void *cls,
 {
   struct KycWalletGetState *kwg = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_reserve_priv (&kwg->reserve_priv),
-    TALER_TESTING_make_trait_reserve_pub (&kwg->reserve_pub),
-    TALER_TESTING_make_trait_legi_requirement_row (&kwg->requirement_row),
-    TALER_TESTING_make_trait_h_payto (&kwg->h_payto),
-    TALER_TESTING_make_trait_payto_uri (kwg->reserve_payto_uri),
+    TALER_TESTING_make_trait_account_priv (
+      &kwg->account_priv),
+    TALER_TESTING_make_trait_account_pub (
+      &kwg->account_pub),
+    TALER_TESTING_make_trait_reserve_priv (
+      &kwg->account_priv.reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (
+      &kwg->account_pub.reserve_pub),
+    TALER_TESTING_make_trait_legi_requirement_row (
+      &kwg->requirement_row),
+    TALER_TESTING_make_trait_h_payto (
+      &kwg->h_payto),
+    TALER_TESTING_make_trait_payto_uri (
+      kwg->reserve_payto_uri),
     TALER_TESTING_trait_end ()
   };
 

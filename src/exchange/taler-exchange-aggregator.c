@@ -555,6 +555,7 @@ legitimization_satisfied (struct AggregationUnit *au_active)
     db_plugin->cls,
     au_active->payto_uri,
     &au_active->h_payto,
+    NULL,
     jrule,
     TALER_KYCLOGIC_rule2priority (requirement),
     &au_active->requirement_row);

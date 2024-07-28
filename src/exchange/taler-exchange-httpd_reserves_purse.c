@@ -43,9 +43,9 @@ struct ReservePurseContext
 {
 
   /**
-   * Public key of the reserve we are creating a purse for.
+   * Public key of the account (reserve) we are creating a purse for.
    */
-  const struct TALER_ReservePublicKeyP *reserve_pub;
+  const union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Fees for the operation.
@@ -209,6 +209,7 @@ purse_transaction (void *cls,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     rpc->payto_uri,
     &rpc->h_payto,
+    &rpc->account_pub,
     &amount_iterator,
     rpc);
   if ( (qs < 0) ||
@@ -319,7 +320,7 @@ purse_transaction (void *cls,
        == rpc->flags)
       ? NULL
       : &rpc->gf->fees.purse,
-      rpc->reserve_pub,
+      &rpc->account_pub.reserve_pub,
       &in_conflict,
       &no_reserve,
       &insufficient_funds);
@@ -495,7 +496,7 @@ TEH_handler_reserves_purse (
 {
   struct MHD_Connection *connection = rc->connection;
   struct ReservePurseContext rpc = {
-    .reserve_pub = reserve_pub,
+    .account_pub.reserve_pub = *reserve_pub,
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()
   };
   bool no_purse_fee = true;
@@ -552,7 +553,7 @@ TEH_handler_reserves_purse (
   }
   rpc.payto_uri
     = TALER_reserve_make_payto (TEH_base_url,
-                                reserve_pub);
+                                &rpc.account_pub.reserve_pub);
   TALER_payto_hash (rpc.payto_uri,
                     &rpc.h_payto);
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
@@ -672,16 +673,17 @@ TEH_handler_reserves_purse (
       NULL);
   }
   if (GNUNET_OK !=
-      TALER_wallet_account_merge_verify (rpc.merge_timestamp,
-                                         &rpc.pd.purse_pub,
-                                         rpc.pd.purse_expiration,
-                                         &rpc.pd.h_contract_terms,
-                                         &rpc.pd.target_amount,
-                                         &rpc.purse_fee,
-                                         rpc.min_age,
-                                         rpc.flags,
-                                         rpc.reserve_pub,
-                                         &rpc.reserve_sig))
+      TALER_wallet_account_merge_verify (
+        rpc.merge_timestamp,
+        &rpc.pd.purse_pub,
+        rpc.pd.purse_expiration,
+        &rpc.pd.h_contract_terms,
+        &rpc.pd.target_amount,
+        &rpc.purse_fee,
+        rpc.min_age,
+        rpc.flags,
+        &rpc.account_pub.reserve_pub,
+        &rpc.reserve_sig))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);

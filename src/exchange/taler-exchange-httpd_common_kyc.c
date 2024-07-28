@@ -841,6 +841,7 @@ TEH_kyc_fallback (
       TEH_plugin->cls,
       NULL, /* account_id is already in wire targets */
       account_id,
+      NULL,
       jmeasures,
       65536, /* high priority (does it matter?) */
       &fb->requirement_row);

@@ -43,6 +43,7 @@ TEH_legitimization_check (
   enum TALER_KYCLOGIC_KycTriggerEvent et,
   const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
+  const union TALER_AccountPublicKeyP *account_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls)
 {
@@ -114,6 +115,7 @@ TEH_legitimization_check (
       TEH_plugin->cls,
       payto_uri,
       h_payto,
+      account_pub,
       jmeasures,
       TALER_KYCLOGIC_rule2priority (requirement),
       &kyc->requirement_row);
@@ -258,6 +260,7 @@ TEH_withdraw_kyc_check (
     TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
     payto_uri,
     &wc.h_payto,
+    NULL,
     &withdraw_amount_cb,
     &wc);
   GNUNET_free (payto_uri);

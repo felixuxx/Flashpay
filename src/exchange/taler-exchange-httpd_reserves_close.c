@@ -242,6 +242,7 @@ reserve_close_transaction (void *cls,
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
       rcc->payto_uri,
       &rcc->kyc_payto,
+      NULL,
       &amount_it,
       rcc);
     if ( (qs < 0) ||

@@ -433,6 +433,7 @@ age_withdraw_traits (
     TALER_TESTING_make_trait_h_age_commitment (
       idx,
       &details->h_age_commitment),
+    TALER_TESTING_trait_end ()
   };
 
   if (idx >= aws->num_coins)
@@ -717,6 +718,7 @@ age_withdraw_reveal_traits (
                                         &awrs->denom_sigs[idx]),
     /* FIXME: shall we provide the traits from the previous
      * call to "age withdraw" as well? */
+    TALER_TESTING_trait_end ()
   };
 
   if (idx >= awrs->num_coins)

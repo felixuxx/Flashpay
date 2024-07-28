@@ -492,6 +492,9 @@ TEH_handler_kyc_proof (
           "PROVIDER_NAME");
       }
 
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Looking for KYC process at %s\n",
+                  kpc->provider_name);
       qs = TEH_plugin->lookup_kyc_process_by_account (
         TEH_plugin->cls,
         kpc->provider_name,
@@ -511,6 +514,7 @@ TEH_handler_kyc_proof (
           TALER_EC_GENERIC_DB_FETCH_FAILED,
           "lookup_kyc_process_by_account");
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+        GNUNET_break_op (0);
         return respond_html_ec (
           rc,
           MHD_HTTP_NOT_FOUND,

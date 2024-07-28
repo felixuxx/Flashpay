@@ -43,9 +43,9 @@ struct KycRequestContext
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * The reserve's public key
+   * The wallet's public key
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  union TALER_AccountPublicKeyP wallet_pub;
 
   /**
    * KYC status, with row with the legitimization requirement.
@@ -126,6 +126,7 @@ wallet_kyc_check (void *cls,
     TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
     krc->payto_uri,
     &krc->h_payto,
+    &krc->wallet_pub,
     &balance_iterator,
     krc);
 }
@@ -143,7 +144,7 @@ TEH_handler_kyc_wallet (
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                 &krc.reserve_pub),
+                                 &krc.wallet_pub.reserve_pub),
     TALER_JSON_spec_amount ("balance",
                             TEH_currency,
                             &krc.balance),
@@ -163,9 +164,10 @@ TEH_handler_kyc_wallet (
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      TALER_wallet_account_setup_verify (&krc.reserve_pub,
-                                         &krc.balance,
-                                         &reserve_sig))
+      TALER_wallet_account_setup_verify (
+        &krc.wallet_pub.reserve_pub,
+        &krc.balance,
+        &reserve_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
@@ -176,7 +178,7 @@ TEH_handler_kyc_wallet (
   }
   krc.payto_uri
     = TALER_reserve_make_payto (TEH_base_url,
-                                &krc.reserve_pub);
+                                &krc.wallet_pub.reserve_pub);
   TALER_payto_hash (krc.payto_uri,
                     &krc.h_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

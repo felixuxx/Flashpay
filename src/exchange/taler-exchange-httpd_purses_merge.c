@@ -88,9 +88,9 @@ struct PurseMergeContext
   struct TALER_PurseMergeSignatureP merge_sig;
 
   /**
-   * Public key of the reserve, as extracted from @e payto_uri.
+   * Public key of the reserve (account), as extracted from @e payto_uri.
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Hash of the contract terms of the purse.
@@ -191,7 +191,7 @@ reply_merge_success (struct MHD_Connection *connection,
          &merge_amount,
          pcc->purse_pub,
          &pcc->h_contract_terms,
-         &pcc->reserve_pub,
+         &pcc->account_pub.reserve_pub,
          (NULL != pcc->provider_url)
          ? pcc->provider_url
          : TEH_base_url,
@@ -294,6 +294,7 @@ merge_transaction (void *cls,
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     pcc->payto_uri,
     &pcc->h_payto,
+    &pcc->account_pub,
     &amount_iterator,
     pcc);
   if ( (qs < 0) ||
@@ -306,7 +307,7 @@ merge_transaction (void *cls,
     pcc->merge_timestamp,
     &pcc->reserve_sig,
     pcc->provider_url,
-    &pcc->reserve_pub,
+    &pcc->account_pub.reserve_pub,
     &no_partner,
     &no_balance,
     &in_conflict);
@@ -488,7 +489,7 @@ TEH_handler_purses_merge (
     /* continued below */
     break;
   }
-  /* parse 'payto_uri' into pcc.reserve_pub and provider_url */
+  /* parse 'payto_uri' into pcc.account_pub and provider_url */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received payto: `%s'\n",
               pcc.payto_uri);
@@ -533,10 +534,11 @@ TEH_handler_purses_merge (
                      host);
     slash++;
     if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (slash,
-                                       strlen (slash),
-                                       &pcc.reserve_pub,
-                                       sizeof (pcc.reserve_pub)))
+        GNUNET_STRINGS_string_to_data (
+          slash,
+          strlen (slash),
+          &pcc.account_pub.reserve_pub,
+          sizeof (pcc.account_pub.reserve_pub)))
     {
       GNUNET_break_op (0);
       GNUNET_free (pcc.provider_url);
@@ -611,7 +613,7 @@ TEH_handler_purses_merge (
           &zero_purse_fee,
           pcc.min_age,
           TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
-          &pcc.reserve_pub,
+          &pcc.account_pub.reserve_pub,
           &pcc.reserve_sig))
     {
       GNUNET_break_op (0);

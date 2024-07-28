@@ -1667,6 +1667,7 @@ oauth2_webhook (void *cls,
   (void) url_path;
   (void) connection;
   (void) body;
+  GNUNET_break_op (0);
   wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
   wh->cb = cb;
   wh->cb_cls = cb_cls;

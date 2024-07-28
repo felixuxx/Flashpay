@@ -1028,11 +1028,12 @@ TALER_TESTING_cmd_exec_aggregator_with_kyc (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_exec_closer (const char *label,
-                               const char *config_filename,
-                               const char *expected_amount,
-                               const char *expected_fee,
-                               const char *expected_reserve_ref);
+TALER_TESTING_cmd_exec_closer (
+  const char *label,
+  const char *config_filename,
+  const char *expected_amount,
+  const char *expected_fee,
+  const char *expected_reserve_ref);
 
 
 /**
@@ -1061,11 +1062,12 @@ TALER_TESTING_cmd_exec_transfer (const char *label,
  * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_amount (const char *label,
-                                   const char *reserve_reference,
-                                   const char *amount,
-                                   uint8_t age,
-                                   unsigned int expected_response_code);
+TALER_TESTING_cmd_withdraw_amount (
+  const char *label,
+  const char *reserve_reference,
+  const char *amount,
+  uint8_t age,
+  unsigned int expected_response_code);
 
 
 /**
@@ -1143,12 +1145,13 @@ TALER_TESTING_cmd_batch_withdraw_with_conflict (
  * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_age_withdraw (const char *label,
-                                const char *reserve_reference,
-                                uint8_t max_age,
-                                unsigned int expected_response_code,
-                                const char *amount,
-                                ...);
+TALER_TESTING_cmd_age_withdraw (
+  const char *label,
+  const char *reserve_reference,
+  uint8_t max_age,
+  unsigned int expected_response_code,
+  const char *amount,
+  ...);
 
 /**
  * Create a "age-withdraw reveal" command.

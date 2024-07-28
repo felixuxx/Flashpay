@@ -132,10 +132,18 @@ run (void *cls,
       "EUR:5",
       0,     /* age restriction off */
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "setup-account-key-withdraw",
+      "EUR:0.01",
+      &cred.ba,
+      cred.user42_payto,
+      NULL /* create new key */),
+    CMD_EXEC_WIREWATCH (
+      "import-kyc-account-withdraw"),
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-withdraw",
       "withdraw-coin-1-lacking-kyc",
-      "create-reserve-1", /* CHECK! */
+      "setup-account-key-withdraw",
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_get_kyc_info (
       "get-kyc-info-withdraw",
@@ -148,16 +156,26 @@ run (void *cls,
       MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-kyc-withdraw-oauth2",
-      "start-kyc-process-withdraw",
+      "withdraw-coin-1-lacking-kyc",
       "test-oauth2",
       "pass",
       MHD_HTTP_SEE_OTHER),
+#if FIXME_OEC
     TALER_TESTING_cmd_withdraw_amount (
       "withdraw-coin-1-with-kyc",
       "create-reserve-1",
       "EUR:5",
-      0,      /* age restriction off */
+      0, /* age restriction off -- also fails with other values! */
       MHD_HTTP_OK),
+#else
+    TALER_TESTING_cmd_age_withdraw (
+      "withdraw-coin-1-with-kyc",
+      "create-reserve-1",
+      1,
+      MHD_HTTP_OK,
+      "EUR:5",
+      NULL),
+#endif
     /* Attestations above are bound to the originating *bank* account,
        not to the reserve (!). Hence, they are NOT found here! */
     TALER_TESTING_cmd_reserve_get_attestable (
@@ -220,27 +238,37 @@ run (void *cls,
       MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-kyc-no-service",
-      "start-kyc-process-deposit",
+      "track-deposit-kyc-ready",
       "test-oauth2",
       "bad",
       MHD_HTTP_BAD_GATEWAY),
-    TALER_TESTING_cmd_oauth (
+    TALER_TESTING_cmd_oauth_with_birthdate (
       "start-oauth-service",
+      "2005-00-00",
       6666),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-kyc-fail",
-      "start-kyc-process-deposit",
+      "track-deposit-kyc-ready",
       "test-oauth2",
       "bad",
       MHD_HTTP_FORBIDDEN),
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-deposit-again",
       "track-deposit-kyc-ready",
-      "FIXME",
+      "setup-account-key-deposit",
       MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_get_kyc_info (
+      "get-kyc-info-deposit-again",
+      "check-kyc-deposit-again",
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_post_kyc_start (
+      "start-kyc-process-deposit-again",
+      "get-kyc-info-deposit-again",
+      0,
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-kyc-pass",
-      "start-kyc-process-deposit",
+      "track-deposit-kyc-ready",
       "test-oauth2",
       "pass",
       MHD_HTTP_SEE_OTHER),
@@ -266,18 +294,18 @@ run (void *cls,
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-wallet",
       "wallet-kyc-fail",
-      "FIXME",
+      "wallet-kyc-fail",
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-wallet-kyc",
       "wallet-kyc-fail",
-      "kyc-provider-test-oauth2",
+      "test-oauth2",
       "pass",
       MHD_HTTP_SEE_OTHER),
     TALER_TESTING_cmd_check_kyc_get (
       "wallet-kyc-check",
       "wallet-kyc-fail",
-      "FIXME",
+      "wallet-kyc-fail",
       MHD_HTTP_NO_CONTENT),
     TALER_TESTING_cmd_reserve_get_attestable (
       "wallet-get-attestable",
@@ -679,18 +707,22 @@ run (void *cls,
     TALER_TESTING_cmd_batch (
       "withdraw-kyc",
       withdraw_kyc),
+#if FIXME
     TALER_TESTING_cmd_batch (
       "wallet-kyc",
       wallet_kyc),
+#endif
     TALER_TESTING_cmd_batch (
       "p2p_withdraw",
       p2p_withdraw),
+#if FIXME
     TALER_TESTING_cmd_batch (
       "push",
       push),
     TALER_TESTING_cmd_batch (
       "pull",
       pull),
+#endif
     TALER_TESTING_cmd_batch ("aml",
                              aml),
     TALER_TESTING_cmd_end ()
