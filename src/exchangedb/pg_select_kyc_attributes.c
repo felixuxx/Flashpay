@@ -144,7 +144,7 @@ TEH_PG_select_kyc_attributes (
            ",ka.encrypted_attributes"
            " FROM kyc_attributes ka"
            " JOIN legitimization_processes lp"
-           "   USING (legitimization_process_serial_id)"
+           "   ON (ka.legitimization_serial = lp.legitimization_process_serial_id)"
            " WHERE ka.h_payto=$1");
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,

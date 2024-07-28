@@ -218,7 +218,6 @@
 #include "pg_setup_wire_target.h"
 #include "pg_compute_shard.h"
 #include "pg_insert_kyc_attributes.h"
-#include "pg_select_similar_kyc_attributes.h"
 #include "pg_select_kyc_attributes.h"
 #include "pg_insert_aml_officer.h"
 #include "pg_test_aml_officer.h"
@@ -792,8 +791,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_pending_kyc_requirement_process;
   plugin->insert_kyc_attributes
     = &TEH_PG_insert_kyc_attributes;
-  plugin->select_similar_kyc_attributes
-    = &TEH_PG_select_similar_kyc_attributes;
   plugin->select_kyc_attributes
     = &TEH_PG_select_kyc_attributes;
   plugin->insert_aml_officer

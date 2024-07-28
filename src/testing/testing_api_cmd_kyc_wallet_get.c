@@ -213,8 +213,9 @@ wallet_kyc_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-wallet_kyc_cleanup (void *cls,
-                    const struct TALER_TESTING_Command *cmd)
+wallet_kyc_cleanup (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd)
 {
   struct KycWalletGetState *kwg = cls;
 
@@ -272,10 +273,11 @@ wallet_kyc_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_wallet_kyc_get (const char *label,
-                                  const char *reserve_reference,
-                                  const char *threshold_balance,
-                                  unsigned int expected_response_code)
+TALER_TESTING_cmd_wallet_kyc_get (
+  const char *label,
+  const char *reserve_reference,
+  const char *threshold_balance,
+  unsigned int expected_response_code)
 {
   struct KycWalletGetState *kwg;
 

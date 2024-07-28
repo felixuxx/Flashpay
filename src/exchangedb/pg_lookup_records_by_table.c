@@ -2845,8 +2845,8 @@ lrbt_cb_table_kyc_attributes (void *cls,
         "h_payto",
         &td.details.kyc_attributes.h_payto),
       GNUNET_PQ_result_spec_uint64 (
-        "legitimization_process_serial_id",
-        &td.details.kyc_attributes.legitimization_process_serial_id),
+        "legitimization_serial",
+        &td.details.kyc_attributes.legitimization_serial),
       GNUNET_PQ_result_spec_timestamp (
         "collection_time",
         &td.details.kyc_attributes.collection_time),
@@ -3674,7 +3674,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               "SELECT"
               " kyc_attributes_serial_id"
               ",h_payto"
-              ",legitimization_process_serial_id"
+              ",legitimization_serial"
               ",collection_time"
               ",expiration_time"
               ",trigger_outcome_serial"

@@ -296,6 +296,15 @@ run (void *cls,
       "wallet-kyc-fail",
       "wallet-kyc-fail",
       MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_get_kyc_info (
+      "get-kyc-info-kyc-wallet",
+      "check-kyc-wallet",
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_post_kyc_start (
+      "start-kyc-wallet",
+      "get-kyc-info-kyc-wallet",
+      0,
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "proof-wallet-kyc",
       "wallet-kyc-fail",
@@ -306,7 +315,7 @@ run (void *cls,
       "wallet-kyc-check",
       "wallet-kyc-fail",
       "wallet-kyc-fail",
-      MHD_HTTP_NO_CONTENT),
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_reserve_get_attestable (
       "wallet-get-attestable",
       "wallet-kyc-fail",
@@ -707,11 +716,9 @@ run (void *cls,
     TALER_TESTING_cmd_batch (
       "withdraw-kyc",
       withdraw_kyc),
-#if FIXME
     TALER_TESTING_cmd_batch (
       "wallet-kyc",
       wallet_kyc),
-#endif
     TALER_TESTING_cmd_batch (
       "p2p_withdraw",
       p2p_withdraw),

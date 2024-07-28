@@ -50,10 +50,6 @@ struct ReserveAttestContext
    */
   json_t *attributes;
 
-  /**
-   * Set to true if we did not find the reserve.
-   */
-  bool not_found;
 };
 
 
@@ -114,114 +110,78 @@ kyc_process_cb (void *cls,
 }
 
 
-/**
- * Function implementing GET /reserves/$RID/attest transaction.
- * Execute a /reserves/ get attest.  Given the public key of a reserve,
- * return the associated transaction attest.  Runs the
- * transaction logic; IF it returns a non-error code, the transaction
- * logic MUST NOT queue a MHD response.  IF it returns an hard error,
- * the transaction logic MUST queue a MHD response and set @a mhd_ret.
- * IF it returns the soft error code, the function MAY be called again
- * to retry and MUST not queue a MHD response.
- *
- * @param cls a `struct ReserveAttestContext *`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-reserve_attest_transaction (void *cls,
-                            struct MHD_Connection *connection,
-                            MHD_RESULT *mhd_ret)
-{
-  struct ReserveAttestContext *rsc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  rsc->attributes = json_array ();
-  GNUNET_assert (NULL != rsc->attributes);
-  qs = TEH_plugin->select_kyc_attributes (TEH_plugin->cls,
-                                          &rsc->h_payto,
-                                          &kyc_process_cb,
-                                          rsc);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    *mhd_ret
-      = TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "iterate_kyc_reference");
-    return qs;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    return qs;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    rsc->not_found = true;
-    return qs;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    rsc->not_found = false;
-    break;
-  }
-  return qs;
-}
-
-
 MHD_RESULT
-TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
-                                 const char *const args[1])
+TEH_handler_reserves_get_attest (
+  struct TEH_RequestContext *rc,
+  const char *const args[1])
 {
   struct ReserveAttestContext rsc = {
     .attributes = NULL
   };
 
   if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (args[0],
-                                     strlen (args[0]),
-                                     &rsc.reserve_pub,
-                                     sizeof (rsc.reserve_pub)))
+      GNUNET_STRINGS_string_to_data (
+        args[0],
+        strlen (args[0]),
+        &rsc.reserve_pub,
+        sizeof (rsc.reserve_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
-                                       args[0]);
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
+      args[0]);
   }
   {
     char *payto_uri;
 
-    payto_uri = TALER_reserve_make_payto (TEH_base_url,
-                                          &rsc.reserve_pub);
+    payto_uri
+      = TALER_reserve_make_payto (TEH_base_url,
+                                  &rsc.reserve_pub);
     TALER_payto_hash (payto_uri,
                       &rsc.h_payto);
     GNUNET_free (payto_uri);
   }
   {
-    MHD_RESULT mhd_ret;
+    enum GNUNET_DB_QueryStatus qs;
 
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (rc->connection,
-                                "get-attestable",
-                                TEH_MT_REQUEST_OTHER,
-                                &mhd_ret,
-                                &reserve_attest_transaction,
-                                &rsc))
+    rsc.attributes = json_array ();
+    GNUNET_assert (NULL != rsc.attributes);
+    qs = TEH_plugin->select_kyc_attributes (TEH_plugin->cls,
+                                            &rsc.h_payto,
+                                            &kyc_process_cb,
+                                            &rsc);
+    switch (qs)
     {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
       json_decref (rsc.attributes);
       rsc.attributes = NULL;
-      return mhd_ret;
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "select_kyc_attributes");
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_break (0);
+      json_decref (rsc.attributes);
+      rsc.attributes = NULL;
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "select_kyc_attributes");
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      GNUNET_break_op (0);
+      json_decref (rsc.attributes);
+      rsc.attributes = NULL;
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+        NULL);
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      break;
     }
-  }
-  /* generate proper response */
-  if (rsc.not_found)
-  {
-    json_decref (rsc.attributes);
-    rsc.attributes = NULL;
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                       args[0]);
   }
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,

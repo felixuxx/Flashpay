@@ -420,7 +420,7 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_PaytoHashP h_payto;
-      uint64_t legitimization_process_serial_id;
+      uint64_t legitimization_serial;
       struct GNUNET_TIME_Timestamp collection_time;
       struct GNUNET_TIME_Timestamp expiration_time;
       uint64_t trigger_outcome_serial;
@@ -7183,23 +7183,6 @@ struct TALER_EXCHANGEDB_Plugin
     const char **events,
     size_t enc_attributes_size,
     const void *enc_attributes);
-
-
-  /**
-   * Lookup similar KYC attribute data.
-   *
-   * @param cls closure
-   * @param kyc_prox key for similarity search
-   * @param cb callback to invoke on each match
-   * @param cb_cls closure for @a cb
-   * @return database transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-    (*select_similar_kyc_attributes)(
-    void *cls,
-    const struct GNUNET_ShortHashCode *kyc_prox,
-    TALER_EXCHANGEDB_AttributeCallback cb,
-    void *cb_cls);
 
 
   /**

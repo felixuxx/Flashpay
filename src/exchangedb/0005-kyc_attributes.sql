@@ -28,17 +28,10 @@ BEGIN
     ' DROP COLUMN kyc_prox'
     ',DROP COLUMN provider'
     ',DROP COLUMN satisfied_checks'
-    ',ADD COLUMN legitimization_process_serial_id INT8 DEFAULT NULL'
     ',ADD COLUMN trigger_outcome_serial INT8 NOT NULL'
     ';'
     ,table_name
     ,''
-    ,partition_suffix
-  );
-  PERFORM comment_partitioned_column(
-     'serial ID of the legitimization process that resulted in these attributes, NULL if the attributes are from a form directly supplied by the account owner via a form'
-    ,'legitimization_process_serial_id'
-    ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(

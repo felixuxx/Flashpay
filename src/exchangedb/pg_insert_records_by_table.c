@@ -2059,7 +2059,7 @@ irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.kyc_attributes.h_payto),
     GNUNET_PQ_query_param_uint64 (
-      &td->details.kyc_attributes.legitimization_process_serial_id),
+      &td->details.kyc_attributes.legitimization_serial),
     GNUNET_PQ_query_param_timestamp (
       &td->details.kyc_attributes.collection_time),
     GNUNET_PQ_query_param_timestamp (
@@ -2077,7 +2077,7 @@ irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
            "INSERT INTO kyc_attributes"
            "(kyc_attributes_serial_id"
            ",h_payto"
-           ",legitimization_process_serial_id"
+           ",legitimization_serial"
            ",collection_time"
            ",expiration_time"
            ",trigger_outcome_serial"
