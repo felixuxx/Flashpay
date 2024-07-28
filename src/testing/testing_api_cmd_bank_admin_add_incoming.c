@@ -78,7 +78,7 @@ struct AdminAddIncomingState
    * Set (by the interpreter) to the reserve's private key
    * we used to make a wire transfer subject line with.
    */
-  struct TALER_ReservePrivateKeyP reserve_priv;
+  union TALER_AccountPrivateKeyP account_priv;
 
   /**
    * Whether we know the private key or not.
@@ -86,9 +86,9 @@ struct AdminAddIncomingState
   bool reserve_priv_known;
 
   /**
-   * Reserve public key matching @e reserve_priv.
+   * Account public key matching @e account_priv.
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Handle to the pending request at the bank.
@@ -321,20 +321,23 @@ admin_add_incoming_run (void *cls,
         TALER_TESTING_get_trait_reserve_priv (ref,
                                               &reserve_priv))
     {
-      if (GNUNET_OK != TALER_TESTING_get_trait_reserve_pub (ref,
-                                                            &reserve_pub))
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_reserve_pub (ref,
+                                               &reserve_pub))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
       have_public = true;
-      fts->reserve_pub.eddsa_pub = reserve_pub->eddsa_pub;
+      fts->account_pub.reserve_pub.eddsa_pub
+        = reserve_pub->eddsa_pub;
       fts->reserve_priv_known = false;
     }
     else
     {
-      fts->reserve_priv.eddsa_priv = reserve_priv->eddsa_priv;
+      fts->account_priv.reserve_priv.eddsa_priv
+        = reserve_priv->eddsa_priv;
       fts->reserve_priv_known = true;
     }
   }
@@ -342,12 +345,14 @@ admin_add_incoming_run (void *cls,
   {
     /* No referenced reserve to take priv
      * from, no explicit subject given: create new key! */
-    GNUNET_CRYPTO_eddsa_key_create (&fts->reserve_priv.eddsa_priv);
+    GNUNET_CRYPTO_eddsa_key_create (
+      &fts->account_priv.reserve_priv.eddsa_priv);
     fts->reserve_priv_known = true;
   }
   if (! have_public)
-    GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
-                                        &fts->reserve_pub.eddsa_pub);
+    GNUNET_CRYPTO_eddsa_key_get_public (
+      &fts->account_priv.reserve_priv.eddsa_priv,
+      &fts->account_pub.reserve_pub.eddsa_pub);
   fts->reserve_history.type = TALER_EXCHANGE_RTT_CREDIT;
   fts->reserve_history.amount = fts->amount;
   fts->reserve_history.details.in_details.sender_url
@@ -356,7 +361,7 @@ admin_add_incoming_run (void *cls,
     = TALER_BANK_admin_add_incoming (
         TALER_TESTING_interpreter_get_context (is),
         &fts->auth,
-        &fts->reserve_pub,
+        &fts->account_pub.reserve_pub,
         &fts->amount,
         fts->payto_debit_account,
         &confirmation_cb,
@@ -434,8 +439,14 @@ admin_add_incoming_traits (void *cls,
       TALER_TESTING_make_trait_amount (&fts->amount),
       TALER_TESTING_make_trait_timestamp (0,
                                           &fts->timestamp),
-      TALER_TESTING_make_trait_reserve_priv (&fts->reserve_priv),
-      TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
+      TALER_TESTING_make_trait_reserve_priv (
+        &fts->account_priv.reserve_priv),
+      TALER_TESTING_make_trait_reserve_pub (
+        &fts->account_pub.reserve_pub),
+      TALER_TESTING_make_trait_account_priv (
+        &fts->account_priv),
+      TALER_TESTING_make_trait_account_pub (
+        &fts->account_pub),
       TALER_TESTING_make_trait_reserve_history (0,
                                                 &fts->reserve_history),
       TALER_TESTING_trait_end ()
@@ -458,9 +469,13 @@ admin_add_incoming_traits (void *cls,
       TALER_TESTING_make_trait_amount (&fts->amount),
       TALER_TESTING_make_trait_timestamp (0,
                                           &fts->timestamp),
-      TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (0,
-                                                &fts->reserve_history),
+      TALER_TESTING_make_trait_reserve_pub (
+        &fts->account_pub.reserve_pub),
+      TALER_TESTING_make_trait_account_pub (
+        &fts->account_pub),
+      TALER_TESTING_make_trait_reserve_history (
+        0,
+        &fts->reserve_history),
       TALER_TESTING_trait_end ()
     };
 

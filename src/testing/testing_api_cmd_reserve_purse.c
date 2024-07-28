@@ -42,14 +42,14 @@ struct ReservePurseState
   struct GNUNET_TIME_Timestamp merge_timestamp;
 
   /**
-   * Reserve private key.
+   * Account (reserve) private key.
    */
-  struct TALER_ReservePrivateKeyP reserve_priv;
+  union TALER_AccountPrivateKeyP account_priv;
 
   /**
-   * Reserve public key.
+   * Account (reserve) public key.
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Reserve signature generated for the request
@@ -199,18 +199,26 @@ purse_run (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }
-  ds->reserve_priv = *reserve_priv;
-  GNUNET_CRYPTO_eddsa_key_create (&ds->purse_priv.eddsa_priv);
-  GNUNET_CRYPTO_eddsa_key_get_public (&ds->purse_priv.eddsa_priv,
-                                      &ds->purse_pub.eddsa_pub);
-  GNUNET_CRYPTO_eddsa_key_get_public (&ds->reserve_priv.eddsa_priv,
-                                      &ds->reserve_pub.eddsa_pub);
-  GNUNET_CRYPTO_eddsa_key_create (&ds->merge_priv.eddsa_priv);
-  GNUNET_CRYPTO_eddsa_key_get_public (&ds->merge_priv.eddsa_priv,
-                                      &ds->merge_pub.eddsa_pub);
-  GNUNET_CRYPTO_ecdhe_key_create (&ds->contract_priv.ecdhe_priv);
-  ds->purse_expiration = GNUNET_TIME_absolute_to_timestamp (
-    GNUNET_TIME_relative_to_absolute (ds->expiration_rel));
+  ds->account_priv.reserve_priv = *reserve_priv;
+  GNUNET_CRYPTO_eddsa_key_create (
+    &ds->purse_priv.eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &ds->purse_priv.eddsa_priv,
+    &ds->purse_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &ds->account_priv.reserve_priv.eddsa_priv,
+    &ds->account_pub.reserve_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_create (
+    &ds->merge_priv.eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &ds->merge_priv.eddsa_priv,
+    &ds->merge_pub.eddsa_pub);
+  GNUNET_CRYPTO_ecdhe_key_create (
+    &ds->contract_priv.ecdhe_priv);
+  ds->purse_expiration
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_relative_to_absolute (
+          ds->expiration_rel));
 
   {
     char *payto_uri;
@@ -225,11 +233,15 @@ purse_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_exchange_url (exchange_cmd,
-                                                         &exchange_url));
-    payto_uri = TALER_reserve_make_payto (exchange_url,
-                                          &ds->reserve_pub);
+    GNUNET_assert (
+      GNUNET_OK ==
+      TALER_TESTING_get_trait_exchange_url (
+        exchange_cmd,
+        &exchange_url));
+    payto_uri
+      = TALER_reserve_make_payto (
+          exchange_url,
+          &ds->account_pub.reserve_pub);
     TALER_payto_hash (payto_uri,
                       &ds->h_payto);
     GNUNET_free (payto_uri);
@@ -245,7 +257,7 @@ purse_run (void *cls,
     TALER_TESTING_interpreter_get_context (is),
     TALER_TESTING_get_exchange_url (is),
     TALER_TESTING_get_keys (is),
-    &ds->reserve_priv,
+    &ds->account_priv.reserve_priv,
     &ds->purse_priv,
     &ds->merge_priv,
     &ds->contract_priv,
@@ -308,19 +320,35 @@ purse_traits (void *cls,
 {
   struct ReservePurseState *ds = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_timestamp (0,
-                                        &ds->merge_timestamp),
-    TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
-    TALER_TESTING_make_trait_purse_priv (&ds->purse_priv),
-    TALER_TESTING_make_trait_purse_pub (&ds->purse_pub),
-    TALER_TESTING_make_trait_merge_priv (&ds->merge_priv),
-    TALER_TESTING_make_trait_merge_pub (&ds->merge_pub),
-    TALER_TESTING_make_trait_contract_priv (&ds->contract_priv),
-    TALER_TESTING_make_trait_reserve_priv (&ds->reserve_priv),
-    TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
-    TALER_TESTING_make_trait_reserve_sig (&ds->reserve_sig),
-    TALER_TESTING_make_trait_legi_requirement_row (&ds->requirement_row),
-    TALER_TESTING_make_trait_h_payto (&ds->h_payto),
+    TALER_TESTING_make_trait_timestamp (
+      0,
+      &ds->merge_timestamp),
+    TALER_TESTING_make_trait_contract_terms (
+      ds->contract_terms),
+    TALER_TESTING_make_trait_purse_priv (
+      &ds->purse_priv),
+    TALER_TESTING_make_trait_purse_pub (
+      &ds->purse_pub),
+    TALER_TESTING_make_trait_merge_priv (
+      &ds->merge_priv),
+    TALER_TESTING_make_trait_merge_pub (
+      &ds->merge_pub),
+    TALER_TESTING_make_trait_contract_priv (
+      &ds->contract_priv),
+    TALER_TESTING_make_trait_account_priv (
+      &ds->account_priv),
+    TALER_TESTING_make_trait_account_pub (
+      &ds->account_pub),
+    TALER_TESTING_make_trait_reserve_priv (
+      &ds->account_priv.reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (
+      &ds->account_pub.reserve_pub),
+    TALER_TESTING_make_trait_reserve_sig (
+      &ds->reserve_sig),
+    TALER_TESTING_make_trait_legi_requirement_row (
+      &ds->requirement_row),
+    TALER_TESTING_make_trait_h_payto (
+      &ds->h_payto),
     TALER_TESTING_trait_end ()
   };
 

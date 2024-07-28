@@ -715,14 +715,12 @@ run (void *cls,
     TALER_TESTING_cmd_batch (
       "p2p_withdraw",
       p2p_withdraw),
-#if FIXME
     TALER_TESTING_cmd_batch (
       "push",
       push),
     TALER_TESTING_cmd_batch (
       "pull",
       pull),
-#endif
     TALER_TESTING_cmd_batch ("aml",
                              aml),
     TALER_TESTING_cmd_end ()
