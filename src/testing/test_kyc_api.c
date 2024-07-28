@@ -551,13 +551,11 @@ run (void *cls,
   };
   struct TALER_TESTING_Command aml[] = {
     /* Trigger something upon which an AML officer could act */
-#if FIXME
     TALER_TESTING_cmd_wallet_kyc_get (
       "wallet-trigger-kyc-for-aml",
       NULL,
       "EUR:1000",
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
-#endif
     TALER_TESTING_cmd_set_officer (
       "create-aml-officer-1",
       NULL,
