@@ -81,7 +81,7 @@ TEH_PG_lookup_pending_legitimization (
            " LEFT JOIN legitimization_processes lp"
            "   ON (lm.legitimization_measure_serial_id = lp.legitimization_measure_serial_id)"
            " LEFT JOIN kyc_attributes ka"
-           "   ON (ka.legitimization_serial = lp.legitimization_process_serial)"
+           "   ON (ka.legitimization_serial = lp.legitimization_process_serial_id)"
            " WHERE lm.legitimization_measure_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
