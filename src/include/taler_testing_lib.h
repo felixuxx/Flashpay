@@ -2501,31 +2501,16 @@ TALER_TESTING_cmd_take_aml_decision (
 
 
 /**
- * Fetch AML decision.
+ * Fetch and check AML decision.
  *
  * @param label command label
  * @param ref_officer command that previously created an
  *       officer
  * @param ref_operation command that previously created an
- *       h_payto which to make an AML decision about
- * @param expected_http_status expected HTTP response status
- * @return the command
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_aml_decision (
-  const char *label,
-  const char *ref_officer,
-  const char *ref_operation,
-  unsigned int expected_http_status);
-
-
-/**
- * Fetch AML decisions.
- *
- * @param label command label
- * @param ref_officer command that previously created an
- *       officer
- * @param filter AML state to filter by
+ *       h_payto which to make an AML decision about;
+ *       If it has also a justification trait,
+ *       we check that this is the current justification
+ *       for the latest AML decision.
  * @param expected_http_status expected HTTP response status
  * @return the command
  */
@@ -2533,6 +2518,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_aml_decisions (
   const char *label,
   const char *ref_officer,
+  const char *ref_operation,
   unsigned int expected_http_status);
 
 

@@ -127,12 +127,15 @@ parse_request_data (
                                      strlen (str),
                                      out_data,
                                      out_size))
+  {
+    GNUNET_break_op (0);
     return (MHD_NO ==
             TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_BAD_REQUEST,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         param_name))
            ? GNUNET_SYSERR : GNUNET_NO;
+  }
   *present = true;
   return GNUNET_OK;
 }

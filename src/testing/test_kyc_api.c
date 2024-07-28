@@ -550,24 +550,35 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command aml[] = {
-    /* Trigger something upon which an AML officer could act */
-    TALER_TESTING_cmd_wallet_kyc_get (
-      "wallet-trigger-kyc-for-aml",
-      NULL,
-      "EUR:1000",
-      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
     TALER_TESTING_cmd_set_officer (
       "create-aml-officer-1",
       NULL,
       "Peter Falk",
       true,
       false),
-#if FIXME
     TALER_TESTING_cmd_check_aml_decisions (
       "check-decisions-none-normal",
       "create-aml-officer-1",
-      TALER_AML_NORMAL,
+      NULL,
       MHD_HTTP_NO_CONTENT),
+    /* Trigger something upon which an AML officer could act */
+    TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-trigger-kyc-for-aml",
+      NULL,
+      "EUR:1000",
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+    /* Note: the above created a legitimization_measure, but NOT
+       an actual *decision*, hence nothing shows up here!
+       Design question: is that OK? Don't we need _some_ way
+       to expose this to AML staff? */
+#if FIXME
+    TALER_TESTING_cmd_check_aml_decisions (
+      "check-decisions-wallet-pending",
+      "create-aml-officer-1",
+      "wallet-trigger-kyc-for-aml",
+      MHD_HTTP_OK),
+#endif
+#if FIXME
     TALER_TESTING_cmd_check_aml_decisions (
       "check-decisions-none-pending",
       "create-aml-officer-1",
@@ -702,6 +713,7 @@ run (void *cls,
       NULL,
       true,
       true),
+#if DISABLED || 1
     TALER_TESTING_cmd_batch (
       "withdraw",
       withdraw),
@@ -726,6 +738,7 @@ run (void *cls,
     TALER_TESTING_cmd_batch (
       "pull",
       pull),
+#endif
     TALER_TESTING_cmd_batch ("aml",
                              aml),
     TALER_TESTING_cmd_end ()

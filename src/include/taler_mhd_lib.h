@@ -764,21 +764,24 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
           bool p;                                                            \
           switch (TALER_MHD_parse_request_arg_data (connection, name,        \
                                                     val, sizeof (*val), &p)) \
-          {                      \
-          case GNUNET_SYSERR:    \
-            GNUNET_break (0);    \
-            return MHD_NO;       \
-          case GNUNET_NO:        \
-            GNUNET_break_op (0); \
-            return MHD_YES;      \
-          case GNUNET_OK:        \
-            if (required & (! p)) \
-            return TALER_MHD_reply_with_error (   \
-              connection,                         \
-              MHD_HTTP_BAD_REQUEST,               \
-              TALER_EC_GENERIC_PARAMETER_MISSING, \
-              name);                              \
-            required = p;                         \
+          {                        \
+          case GNUNET_SYSERR:      \
+            GNUNET_break (0);      \
+            return MHD_NO;         \
+          case GNUNET_NO:          \
+            GNUNET_break_op (0);   \
+            return MHD_YES;        \
+          case GNUNET_OK:          \
+            if (required & (! p))  \
+            {                      \
+              GNUNET_break_op (0); \
+              return TALER_MHD_reply_with_error (   \
+                connection,                         \
+                MHD_HTTP_BAD_REQUEST,               \
+                TALER_EC_GENERIC_PARAMETER_MISSING, \
+                name);                              \
+            }                                       \
+            required = p;                           \
             break;               \
           }                      \
         } while (0)

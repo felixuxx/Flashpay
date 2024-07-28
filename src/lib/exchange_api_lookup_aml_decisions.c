@@ -427,6 +427,9 @@ handle_lookup_finished (void *cls,
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_BAD_REQUEST:
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);
     /* This should never happen, either us or the exchange is buggy
@@ -513,14 +516,14 @@ TALER_EXCHANGE_lookup_aml_decisions (
   {
     char limit_s[24];
     char offset_s[24];
-    char payto_s[sizeof (h_payto) * 2];
+    char payto_s[sizeof (*h_payto) * 2];
     char *end;
 
     if (NULL != h_payto)
     {
       end = GNUNET_STRINGS_data_to_string (
         h_payto,
-        sizeof (h_payto),
+        sizeof (*h_payto),
         payto_s,
         sizeof (payto_s));
       *end = '\0';
