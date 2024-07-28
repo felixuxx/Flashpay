@@ -555,7 +555,7 @@ run (void *cls,
       NULL,
       "Peter Falk",
       true,
-      false),
+      true),
     TALER_TESTING_cmd_check_aml_decisions (
       "check-decisions-none-normal",
       "create-aml-officer-1",
@@ -567,38 +567,20 @@ run (void *cls,
       NULL,
       "EUR:1000",
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
-    /* Note: the above created a legitimization_measure, but NOT
-       an actual *decision*, hence nothing shows up here!
-       Design question: is that OK? Don't we need _some_ way
-       to expose this to AML staff? */
-#if FIXME
+#if FIXME_LATER
+    /* FIXME: the above created a legitimization_measure, but NOT
+       an actual *decision*, hence no decisions show up here!
+       Design issue: we may want _some_ way to expose _measures_ to AML staff!
+       What we have: wire_targets JOIN legitimization_measures
+         USING (account_token) WHERE wire_targets.wire_target_h_payto=$ACCT
+       will show that a _measure_ was triggered for the account.
+    */
     TALER_TESTING_cmd_check_aml_decisions (
       "check-decisions-wallet-pending",
       "create-aml-officer-1",
       "wallet-trigger-kyc-for-aml",
       MHD_HTTP_OK),
 #endif
-#if FIXME
-    TALER_TESTING_cmd_check_aml_decisions (
-      "check-decisions-none-pending",
-      "create-aml-officer-1",
-      TALER_AML_PENDING,
-      MHD_HTTP_NO_CONTENT),
-    TALER_TESTING_cmd_check_aml_decisions (
-      "check-decisions-none-frozen",
-      "create-aml-officer-1",
-      TALER_AML_FROZEN,
-      MHD_HTTP_NO_CONTENT),
-#endif
-    TALER_TESTING_cmd_sleep (
-      "sleep-1a",
-      1),
-    TALER_TESTING_cmd_set_officer (
-      "create-aml-officer-1-disable",
-      "create-aml-officer-1",
-      "Peter Falk",
-      true,
-      true),
     /* Test that we are not allowed to take AML decisions as our
        AML staff account is on read-only */
 #if FIXME
