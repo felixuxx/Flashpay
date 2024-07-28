@@ -315,10 +315,10 @@ struct TALER_TESTING_Command
    * @return #GNUNET_OK on success
    */
   enum GNUNET_GenericReturnValue
-  (*traits)(void *cls,
-            const void **ret,
-            const char *trait,
-            unsigned int index);
+    (*traits)(void *cls,
+              const void **ret,
+              const char *trait,
+              unsigned int index);
 
   /**
    * When did the execution of this command start?
@@ -1595,11 +1595,11 @@ TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd);
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transaction (const char *label,
-                                     const char *transaction_reference,
-                                     unsigned int coin_index,
-                                     unsigned int expected_response_code,
-                                     const char *bank_transfer_reference);
+TALER_TESTING_cmd_deposits_get (const char *label,
+                                const char *transaction_reference,
+                                unsigned int coin_index,
+                                unsigned int expected_response_code,
+                                const char *bank_transfer_reference);
 
 /**
  * Make a "track transfer" CMD where no "expected"-arguments,
@@ -2627,7 +2627,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         enum GNUNET_GenericReturnValue                          \
         TALER_TESTING_get_trait_ ## name (                    \
           const struct TALER_TESTING_Command *cmd,              \
-          type * *ret);                                          \
+          type **ret);                                          \
         struct TALER_TESTING_Trait                              \
         TALER_TESTING_make_trait_ ## name (                   \
           type * value);
@@ -2670,11 +2670,11 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         TALER_TESTING_get_trait_ ## name (                    \
           const struct TALER_TESTING_Command *cmd,              \
           unsigned int index,                                   \
-          type * *ret);                                          \
+          type **ret);                                          \
         struct TALER_TESTING_Trait                              \
         TALER_TESTING_make_trait_ ## name (                   \
           unsigned int index,                                   \
-          type * value);
+          type *value);
 
 
 /**

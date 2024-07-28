@@ -107,8 +107,9 @@ struct TrackTransactionState
  * @param dr GET deposit response details
  */
 static void
-deposit_wtid_cb (void *cls,
-                 const struct TALER_EXCHANGE_GetDepositResponse *dr)
+deposit_wtid_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_GetDepositResponse *dr)
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
@@ -133,7 +134,8 @@ deposit_wtid_cb (void *cls,
       /* _this_ wire transfer subject line.  */
       bank_transfer_cmd
         = TALER_TESTING_interpreter_lookup_command (is,
-                                                    tts->bank_transfer_reference);
+                                                    tts->bank_transfer_reference
+                                                    );
       if (NULL == bank_transfer_cmd)
       {
         GNUNET_break (0);
@@ -186,9 +188,10 @@ deposit_wtid_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
-track_transaction_run (void *cls,
-                       const struct TALER_TESTING_Command *cmd,
-                       struct TALER_TESTING_Interpreter *is)
+deposits_get_run (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd,
+  struct TALER_TESTING_Interpreter *is)
 {
   struct TrackTransactionState *tts = cls;
   const struct TALER_TESTING_Command *transaction_cmd;
@@ -295,8 +298,9 @@ track_transaction_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-track_transaction_cleanup (void *cls,
-                           const struct TALER_TESTING_Command *cmd)
+deposits_get_cleanup (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd)
 {
   struct TrackTransactionState *tts = cls;
 
@@ -322,10 +326,10 @@ track_transaction_cleanup (void *cls,
  * @return #GNUNET_OK on success.
  */
 static enum GNUNET_GenericReturnValue
-track_transaction_traits (void *cls,
-                          const void **ret,
-                          const char *trait,
-                          unsigned int index)
+deposits_get_traits (void *cls,
+                     const void **ret,
+                     const char *trait,
+                     unsigned int index)
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Trait traits[] = {
@@ -345,11 +349,12 @@ track_transaction_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transaction (const char *label,
-                                     const char *transaction_reference,
-                                     unsigned int coin_index,
-                                     unsigned int expected_response_code,
-                                     const char *bank_transfer_reference)
+TALER_TESTING_cmd_deposits_get (
+  const char *label,
+  const char *transaction_reference,
+  unsigned int coin_index,
+  unsigned int expected_response_code,
+  const char *bank_transfer_reference)
 {
   struct TrackTransactionState *tts;
 
@@ -362,9 +367,9 @@ TALER_TESTING_cmd_track_transaction (const char *label,
     struct TALER_TESTING_Command cmd = {
       .cls = tts,
       .label = label,
-      .run = &track_transaction_run,
-      .cleanup = &track_transaction_cleanup,
-      .traits = &track_transaction_traits
+      .run = &deposits_get_run,
+      .cleanup = &deposits_get_cleanup,
+      .traits = &deposits_get_traits
     };
 
     return cmd;

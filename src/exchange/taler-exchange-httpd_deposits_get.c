@@ -389,6 +389,9 @@ handle_track_transaction_request (
       MHD_suspend_connection (connection);
       return MHD_YES;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC required with row %llu\n",
+                (unsigned long long) ctx->kyc.requirement_row);
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_ACCEPTED,

@@ -95,8 +95,9 @@ struct TrackTransferState
  * @param cmd the command which is being cleaned up.
  */
 static void
-track_transfer_cleanup (void *cls,
-                        const struct TALER_TESTING_Command *cmd)
+track_transfer_cleanup (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd)
 {
 
   struct TrackTransferState *tts = cls;
@@ -121,8 +122,9 @@ track_transfer_cleanup (void *cls,
  * @param tgr response details
  */
 static void
-track_transfer_cb (void *cls,
-                   const struct TALER_EXCHANGE_TransfersGetResponse *tgr)
+track_transfer_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_TransfersGetResponse *tgr)
 {
   struct TrackTransferState *tts = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &tgr->hr;
@@ -302,9 +304,10 @@ track_transfer_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
-track_transfer_run (void *cls,
-                    const struct TALER_TESTING_Command *cmd,
-                    struct TALER_TESTING_Interpreter *is)
+track_transfer_run (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd,
+  struct TALER_TESTING_Interpreter *is)
 {
   /* looking for a wtid to track .. */
   struct TrackTransferState *tts = cls;
@@ -354,9 +357,10 @@ track_transfer_run (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transfer_empty (const char *label,
-                                        const char *wtid_reference,
-                                        unsigned int expected_response_code)
+TALER_TESTING_cmd_track_transfer_empty (
+  const char *label,
+  const char *wtid_reference,
+  unsigned int expected_response_code)
 {
   struct TrackTransferState *tts;
 
@@ -377,11 +381,12 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transfer (const char *label,
-                                  const char *wtid_reference,
-                                  unsigned int expected_response_code,
-                                  const char *expected_total_amount,
-                                  const char *expected_wire_fee)
+TALER_TESTING_cmd_track_transfer (
+  const char *label,
+  const char *wtid_reference,
+  unsigned int expected_response_code,
+  const char *expected_total_amount,
+  const char *expected_wire_fee)
 {
   struct TrackTransferState *tts;
 

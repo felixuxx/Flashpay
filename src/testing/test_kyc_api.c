@@ -111,13 +111,13 @@ run (void *cls,
       "withdraw-coin-1-no-kyc",
       "create-reserve-1",
       "EUR:10",
-      0,                                  /* age restriction off */
+      0,    /* age restriction off */
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
     TALER_TESTING_cmd_withdraw_amount (
       "withdraw-coin-1",
       "create-reserve-1",
       "EUR:5",
-      0,                                  /* age restriction off */
+      0,    /* age restriction off */
       MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
@@ -130,7 +130,7 @@ run (void *cls,
       "withdraw-coin-1-lacking-kyc",
       "create-reserve-1",
       "EUR:5",
-      0,                                  /* age restriction off */
+      0,     /* age restriction off */
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-withdraw",
@@ -156,7 +156,7 @@ run (void *cls,
       "withdraw-coin-1-with-kyc",
       "create-reserve-1",
       "EUR:5",
-      0,                                  /* age restriction off */
+      0,      /* age restriction off */
       MHD_HTTP_OK),
     /* Attestations above are bound to the originating *bank* account,
        not to the reserve (!). Hence, they are NOT found here! */
@@ -177,7 +177,7 @@ run (void *cls,
       GNUNET_TIME_UNIT_ZERO,
       "EUR:5",
       MHD_HTTP_OK),
-    TALER_TESTING_cmd_track_transaction (
+    TALER_TESTING_cmd_deposits_get (
       "track-deposit",
       "deposit-simple",
       0,
@@ -188,17 +188,26 @@ run (void *cls,
 
   struct TALER_TESTING_Command track[] = {
     CMD_EXEC_AGGREGATOR ("run-aggregator-before-kyc"),
-    TALER_TESTING_cmd_check_bank_empty ("check_bank_empty-no-kyc"),
-    TALER_TESTING_cmd_track_transaction (
+    TALER_TESTING_cmd_check_bank_empty (
+      "check_bank_empty-no-kyc"),
+    TALER_TESTING_cmd_deposits_get (
       "track-deposit-kyc-ready",
       "deposit-simple",
       0,
       MHD_HTTP_ACCEPTED,
       NULL),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "setup-account-key-deposit",
+      "EUR:0.01",
+      &cred.ba,
+      cred.user43_payto,
+      NULL /* create new key */),
+    CMD_EXEC_WIREWATCH (
+      "import-kyc-account-deposit"),
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-deposit",
       "track-deposit-kyc-ready",
-      "FIXME",
+      "setup-account-key-deposit",
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_get_kyc_info (
       "get-kyc-info-deposit",
@@ -658,7 +667,6 @@ run (void *cls,
       NULL,
       true,
       true),
-#if FIXME
     TALER_TESTING_cmd_batch (
       "withdraw",
       withdraw),
@@ -683,7 +691,6 @@ run (void *cls,
     TALER_TESTING_cmd_batch (
       "pull",
       pull),
-#endif
     TALER_TESTING_cmd_batch ("aml",
                              aml),
     TALER_TESTING_cmd_end ()

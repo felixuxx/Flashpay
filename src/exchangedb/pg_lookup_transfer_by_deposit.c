@@ -66,8 +66,10 @@ TEH_PG_lookup_transfer_by_deposit (
     GNUNET_PQ_result_spec_end
   };
 
+  memset (kyc,
+          0,
+          sizeof (*kyc));
   /* check if the aggregation record exists and get it */
-  // FIXME: KYC initialization logic REMOVED, needs to be added back!
   PREPARE (pg,
            "lookup_deposit_wtid",
            "SELECT"
@@ -111,6 +113,7 @@ TEH_PG_lookup_transfer_by_deposit (
                        h_wire))
     {
       *pending = false;
+      kyc->ok = true;
       GNUNET_PQ_cleanup_result (rs);
       return qs;
     }
@@ -141,6 +144,10 @@ TEH_PG_lookup_transfer_by_deposit (
                                    deposit_fee),
       GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                        exec_time),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint64 ("legitimization_requirement_serial_id",
+                                      &kyc->requirement_row),
+        NULL),
       GNUNET_PQ_result_spec_end
     };
 
@@ -152,6 +159,7 @@ TEH_PG_lookup_transfer_by_deposit (
              ",cdep.amount_with_fee"
              ",denom.fee_deposit"
              ",bdep.wire_deadline"
+             ",agt.legitimization_requirement_serial_id"
              " FROM coin_deposits cdep"
              " JOIN batch_deposits bdep"
              "   USING (batch_deposit_serial_id)"
@@ -161,6 +169,9 @@ TEH_PG_lookup_transfer_by_deposit (
              "   ON (kc.coin_pub = cdep.coin_pub)"
              " JOIN denominations denom"
              "   USING (denominations_serial)"
+             " LEFT JOIN aggregation_transient agt "
+             "   ON ( (bdep.wire_target_h_payto = agt.wire_target_h_payto) AND"
+             "        (bdep.merchant_pub = agt.merchant_pub) )"
              " WHERE cdep.coin_pub=$1"
              "   AND bdep.merchant_pub=$3"
              "   AND bdep.h_contract_terms=$2"
@@ -186,6 +197,8 @@ TEH_PG_lookup_transfer_by_deposit (
         return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
       }
       GNUNET_PQ_cleanup_result (rs2);
+      if (0 == kyc->requirement_row)
+        kyc->ok = true; /* technically: unknown */
     }
     return qs;
   }

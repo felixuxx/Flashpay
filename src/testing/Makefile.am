@@ -37,7 +37,7 @@ libtalertwistertesting_la_LDFLAGS = \
 endif
 
 libtalertesting_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:0 \
   -no-undefined
 libtalertesting_la_SOURCES = \
   testing_api_cmd_age_withdraw.c \

@@ -117,16 +117,21 @@ handle_deposit_wtid_finished (void *cls,
   case MHD_HTTP_OK:
     {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("wtid",
-                                     &dr.details.ok.wtid),
-        GNUNET_JSON_spec_timestamp ("execution_time",
-                                    &dr.details.ok.execution_time),
-        TALER_JSON_spec_amount_any ("coin_contribution",
-                                    &dr.details.ok.coin_contribution),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &dr.details.ok.exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &dr.details.ok.exchange_pub),
+        GNUNET_JSON_spec_fixed_auto (
+          "wtid",
+          &dr.details.ok.wtid),
+        GNUNET_JSON_spec_timestamp (
+          "execution_time",
+          &dr.details.ok.execution_time),
+        TALER_JSON_spec_amount_any (
+          "coin_contribution",
+          &dr.details.ok.coin_contribution),
+        GNUNET_JSON_spec_fixed_auto (
+          "exchange_sig",
+          &dr.details.ok.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto (
+          "exchange_pub",
+          &dr.details.ok.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -178,19 +183,22 @@ handle_deposit_wtid_finished (void *cls,
       /* Transaction known, but not executed yet */
       bool no_legi = false;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_timestamp ("execution_time",
-                                    &dr.details.accepted.execution_time),
+        GNUNET_JSON_spec_timestamp (
+          "execution_time",
+          &dr.details.accepted.execution_time),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_fixed_auto (
             "account_pub",
             &dr.details.accepted.account_pub),
           NULL),
         GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_uint64 ("requirement_row",
-                                   &dr.details.accepted.requirement_row),
+          GNUNET_JSON_spec_uint64 (
+            "requirement_row",
+            &dr.details.accepted.requirement_row),
           &no_legi),
-        GNUNET_JSON_spec_bool ("kyc_ok",
-                               &dr.details.accepted.kyc_ok),
+        GNUNET_JSON_spec_bool (
+          "kyc_ok",
+          &dr.details.accepted.kyc_ok),
         GNUNET_JSON_spec_end ()
       };
 

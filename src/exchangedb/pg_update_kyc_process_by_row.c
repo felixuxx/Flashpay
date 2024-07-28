@@ -45,23 +45,22 @@ TEH_PG_update_kyc_process_by_row (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_string (provider_name),
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_auto_from_type (h_payto), /*3*/
     (NULL != provider_account_id)
     ? GNUNET_PQ_query_param_string (provider_account_id)
-    : GNUNET_PQ_query_param_null (),
+    : GNUNET_PQ_query_param_null (), /*4*/
     (NULL != provider_legitimization_id)
     ? GNUNET_PQ_query_param_string (provider_legitimization_id)
-    : GNUNET_PQ_query_param_null (),
+    : GNUNET_PQ_query_param_null (), /*5*/
     (NULL != redirect_url)
     ? GNUNET_PQ_query_param_string (redirect_url)
-    : GNUNET_PQ_query_param_null (),
+    : GNUNET_PQ_query_param_null (), /*6*/
     GNUNET_PQ_query_param_absolute_time (&expiration),
-    GNUNET_PQ_query_param_string (provider_name),
-    GNUNET_PQ_query_param_uint32 (&ec32),
+    GNUNET_PQ_query_param_uint32 (&ec32), /* 8 */
     (NULL != error_message_hint)
     ? GNUNET_PQ_query_param_string (error_message_hint)
     : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_bool (finished),
+    GNUNET_PQ_query_param_bool (finished), /* 10 */
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;

@@ -69,7 +69,8 @@ static bool uses_cs;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, "exchange-account-2")
+        TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, \
+                                           "exchange-account-2")
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -78,9 +79,9 @@ static bool uses_cs;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_sleep ("sleep-before-aggregator", 2), \
-  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
-  TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
+        TALER_TESTING_cmd_sleep ("sleep-before-aggregator", 2), \
+        TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
+        TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
 
 
 /**
@@ -91,9 +92,9 @@ static bool uses_cs;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        &cred.ba,                \
-                                        cred.user42_payto)
+        TALER_TESTING_cmd_admin_add_incoming (label, amount, \
+                                              &cred.ba,                \
+                                              cred.user42_payto)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -426,20 +427,20 @@ run (void *cls,
      * execution of transactions, the answer should be that
      * the exchange knows about the deposit, but has no WTID yet.
      */
-    TALER_TESTING_cmd_track_transaction ("deposit-wtid-found",
-                                         "deposit-simple",
-                                         0,
-                                         MHD_HTTP_ACCEPTED,
-                                         NULL),
+    TALER_TESTING_cmd_deposits_get ("deposit-wtid-found",
+                                    "deposit-simple",
+                                    0,
+                                    MHD_HTTP_ACCEPTED,
+                                    NULL),
     /* Try resolving a deposit's WTID for a failed deposit.
      * As the deposit failed, the answer should be that the
      * exchange does NOT know about the deposit.
      */
-    TALER_TESTING_cmd_track_transaction ("deposit-wtid-failing",
-                                         "deposit-double-2",
-                                         0,
-                                         MHD_HTTP_NOT_FOUND,
-                                         NULL),
+    TALER_TESTING_cmd_deposits_get ("deposit-wtid-failing",
+                                    "deposit-double-2",
+                                    0,
+                                    MHD_HTTP_NOT_FOUND,
+                                    NULL),
     /* Try resolving an undefined (all zeros) WTID; this
      * should fail as obviously the exchange didn't use that
      * WTID value for any transaction.
@@ -507,11 +508,11 @@ run (void *cls,
     : TALER_TESTING_cmd_sleep ("dummy",
                                0),
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
-    TALER_TESTING_cmd_track_transaction ("deposit-wtid-ok",
-                                         "deposit-simple",
-                                         0,
-                                         MHD_HTTP_OK,
-                                         "check_bank_transfer-499c"),
+    TALER_TESTING_cmd_deposits_get ("deposit-wtid-ok",
+                                    "deposit-simple",
+                                    0,
+                                    MHD_HTTP_OK,
+                                    "check_bank_transfer-499c"),
     TALER_TESTING_cmd_track_transfer ("wire-deposit-success-bank",
                                       "check_bank_transfer-99c1",
                                       MHD_HTTP_OK,
