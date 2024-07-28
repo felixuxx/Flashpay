@@ -428,7 +428,7 @@ run (void *cls,
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-purse-merge",
       "purse-merge-into-reserve",
-      "p2p_create-reserve-1", /* CHECK! */
+      "p2p_create-reserve-1",
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_get_kyc_info (
       "get-kyc-info-purse-merge-into-reserve",
