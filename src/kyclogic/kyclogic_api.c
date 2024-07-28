@@ -2163,7 +2163,7 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
   if (0 != default_rules.num_kyc_rules)
     qsort (default_rules.kyc_rules,
            default_rules.num_kyc_rules,
-           sizeof (struct TALER_KYCLOGIC_KycRule *),
+           sizeof (struct TALER_KYCLOGIC_KycRule),
            &sort_by_timeframe);
 
   {
