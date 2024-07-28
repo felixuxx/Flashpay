@@ -432,7 +432,7 @@ run (void *cls,
       MHD_HTTP_OK),
     TALER_TESTING_cmd_proof_kyc_oauth2 (
       "p2p_proof-kyc",
-      "start-kyc-process-purse-merge-into-reserve",
+      "purse-merge-into-reserve",
       "test-oauth2",
       "pass",
       MHD_HTTP_SEE_OTHER),
