@@ -83,11 +83,13 @@ kyc_process_cb (void *cls,
   json_t *val;
   const char *name;
 
-  if (GNUNET_TIME_absolute_is_past (expiration_time.abs_time))
+  if (GNUNET_TIME_absolute_is_past (
+        expiration_time.abs_time))
     return;
-  attrs = TALER_CRYPTO_kyc_attributes_decrypt (&TEH_attribute_key,
-                                               enc_attributes,
-                                               enc_attributes_size);
+  attrs = TALER_CRYPTO_kyc_attributes_decrypt (
+    &TEH_attribute_key,
+    enc_attributes,
+    enc_attributes_size);
   json_object_foreach (attrs, name, val)
   {
     bool duplicate = false;

@@ -351,10 +351,11 @@ aml_trigger_callback (
 
 
 MHD_RESULT
-TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
-                        const char *id,
-                        size_t *upload_data_size,
-                        const char *upload_data)
+TEH_handler_kyc_upload (
+  struct TEH_RequestContext *rc,
+  const char *id,
+  size_t *upload_data_size,
+  const char *upload_data)
 {
   struct UploadContext *uc = rc->rh_ctx;
 
@@ -365,10 +366,11 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
 
     uc = GNUNET_new (struct UploadContext);
     uc->rc = rc;
-    uc->pp = MHD_create_post_processor (rc->connection,
-                                        UPLOAD_BUFFER_SIZE,
-                                        &post_helper,
-                                        uc);
+    uc->pp = MHD_create_post_processor (
+      rc->connection,
+      UPLOAD_BUFFER_SIZE,
+      &post_helper,
+      uc);
     if (NULL == uc->pp)
     {
       GNUNET_break (0);
@@ -407,11 +409,12 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         "Access token in ID is malformed");
     }
-    if (2 != sscanf (slash + 1,
-                     "%u-%llu%c",
-                     &uc->measure_index,
-                     &uc->legitimization_measure_serial_id,
-                     &dummy))
+    if (2 !=
+        sscanf (slash + 1,
+                "%u-%llu%c",
+                &uc->measure_index,
+                &uc->legitimization_measure_serial_id,
+                &dummy))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
@@ -450,7 +453,8 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
     bool is_finished = false;
     size_t enc_attributes_len;
     void *enc_attributes;
-    json_t *xattributes;
+    const char *error_message;
+    enum TALER_ErrorCode ec;
 
     qs = TEH_plugin->lookup_pending_legitimization (
       TEH_plugin->cls,
@@ -482,38 +486,54 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
 
     if (is_finished)
     {
-      // FIXME: should check for idempotency:
-      // enc_attributes -> xattributes
-      // json_equal (xattributes, attributes)?
-      // => return OK (idempotent)
-      // or fail (conflicting submission)
+      if (NULL != enc_attributes)
+      {
+        json_t *xattributes;
 
-      /* Note: we do not distinguish between row ID unknown and
-         access token wrong here; this is on purpose to
-         minimize information leakage (but we could distinguish
-         the two in the future to help diagnose issues) */
-
-      GNUNET_free (enc_attributes);
+        xattributes
+          = TALER_CRYPTO_kyc_attributes_decrypt (
+              &TEH_attribute_key,
+              enc_attributes,
+              enc_attributes_len);
+        if (json_equal (xattributes,
+                        uc->result))
+        {
+          /* Request is idempotent! */
+          json_decref (xattributes);
+          GNUNET_free (enc_attributes);
+          return TALER_MHD_reply_static (
+            rc->connection,
+            MHD_HTTP_NO_CONTENT,
+            NULL,
+            NULL,
+            0);
+        }
+        json_decref (xattributes);
+        GNUNET_free (enc_attributes);
+      }
+      /* Finished, and with no or different attributes, conflict! */
+      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_CONFLICT,
-        -1, // FIXME: TALER_EC_EXCHANGE_KYC_FORM_ALREADY_SUBMITTED
+        TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
         NULL);
-
     }
+    /* This _should_ not be possible (! is_finished but non-null enc_attributes),
+       but also cannot exactly hurt... */
     GNUNET_free (enc_attributes);
-    if (GNUNET_OK !=
-        TALER_KYCLOGIC_check_form (jmeasures,
-                                   uc->measure_index,
-                                   uc->result))
+    ec = TALER_KYCLOGIC_check_form (jmeasures,
+                                    uc->measure_index,
+                                    uc->result,
+                                    &error_message);
+    if (TALER_EC_NONE != ec)
     {
       GNUNET_break_op (0);
       json_decref (jmeasures);
-      return TALER_MHD_reply_with_error (
+      return TALER_MHD_reply_with_ec (
         rc->connection,
-        MHD_HTTP_CONFLICT,
-        -1, // FIXME: TALER_EC_EXCHANGE_KYC_FORM_MEASURE_MISMATCH
-        NULL);
+        ec,
+        error_message);
     }
     json_decref (jmeasures);
 
@@ -569,10 +589,4 @@ TEH_handler_kyc_upload (struct TEH_RequestContext *rc,
                                  uc);
     return MHD_YES;
   }
-  // FIXME: should check for idempotency above!
-  return TALER_MHD_reply_with_error (
-    rc->connection,
-    MHD_HTTP_CONFLICT,
-    TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
-    "insert_kyc_attributes");
 }

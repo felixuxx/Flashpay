@@ -502,13 +502,15 @@ TALER_KYCLOGIC_select_measure (
  * @param jmeasures a LegitimizationMeasures object
  * @param measure_index an index into the measures
  * @param form_data form data submitted for the measure
- * @return #GNUNET_OK if the form data matches the measure
+ * @param[out] error_message set to error details
+ * @return #TALER_EC_NONE if the form data matches the measure
  */
-enum GNUNET_GenericReturnValue
+enum TALER_ErrorCode
 TALER_KYCLOGIC_check_form (
   const json_t *jmeasures,
   size_t measure_index,
-  const json_t *form_data);
+  const json_t *form_data,
+  const char **error_message);
 
 
 /**

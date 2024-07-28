@@ -3016,11 +3016,12 @@ TALER_KYCLOGIC_select_measure (
 }
 
 
-enum GNUNET_GenericReturnValue
+enum TALER_ErrorCode
 TALER_KYCLOGIC_check_form (
   const json_t *jmeasures,
   size_t measure_index,
-  const json_t *form_data)
+  const json_t *form_data,
+  const char **error_message)
 {
   const char *check_name;
   const char *prog_name;
@@ -3028,6 +3029,7 @@ TALER_KYCLOGIC_check_form (
   struct TALER_KYCLOGIC_KycCheck *kc;
   struct TALER_KYCLOGIC_AmlProgram *prog;
 
+  *error_message = NULL;
   if (TALER_EC_NONE !=
       TALER_KYCLOGIC_select_measure (jmeasures,
                                      measure_index,
@@ -3036,24 +3038,26 @@ TALER_KYCLOGIC_check_form (
                                      &context))
   {
     GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    return TALER_EC_EXCHANGE_KYC_MEASURE_INDEX_INVALID;
   }
   kc = find_check (check_name);
   if (NULL == kc)
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    GNUNET_break (0);
+    *error_message = check_name;
+    return TALER_EC_EXCHANGE_KYC_GENERIC_CHECK_GONE;
   }
   if (TALER_KYCLOGIC_CT_FORM != kc->type)
   {
     GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    return TALER_EC_EXCHANGE_KYC_NOT_A_FORM;
   }
   prog = find_program (prog_name);
   if (NULL == prog)
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    *error_message = prog_name;
+    return TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_GONE;
   }
   for (unsigned int i = 0; i<prog->num_required_attributes; i++)
   {
@@ -3066,10 +3070,11 @@ TALER_KYCLOGIC_check_form (
                   "Form data lacks required attribute `%s' for AML program %s\n",
                   rattr,
                   prog_name);
-      return GNUNET_NO;
+      *error_message = rattr;
+      return TALER_EC_EXCHANGE_KYC_AML_FORM_INCOMPLETE;
     }
   }
-  return GNUNET_OK;
+  return TALER_EC_NONE;
 }
 
 
