@@ -22,13 +22,12 @@
 #include "taler-auditor-httpd.h"
 
 MHD_RESULT
-TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_update (struct
-                                                    TAH_RequestHandler *rh,
-                                                    struct MHD_Connection *
-                                                    connection,
-                                                    void **connection_cls,
-                                                    const char *upload_data,
-                                                    size_t *upload_data_size,
-                                                    const char *const args[]);
+TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_update (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
-#endif // SRC_TALER_AUDITOR_HTTPD_AMOUNT_ARITHMETIC_INCONSISTENCY_UPD_H
+#endif

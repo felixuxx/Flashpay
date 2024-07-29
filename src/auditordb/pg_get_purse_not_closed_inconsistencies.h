@@ -24,8 +24,8 @@
  * Get information about purse not closed inconsistencies from the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param start_id row/serial ID where to start the iteration (0 from
- *                  the start, exclusive, i.e. serial_ids must start from 1)
+ * @param limit number of records to return, negative for descending
+ * @param offset table row to start from, exclusive, direction determined by @a limit
  * @param return_suppressed should suppressed rows be returned anyway?
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
@@ -40,4 +40,4 @@ TAH_PG_get_purse_not_closed_inconsistencies (
   TALER_AUDITORDB_PurseNotClosedInconsistenciesCallback cb,
   void *cb_cls);
 
-#endif // SRC_PG_GET_PURSE_NOT_CLOSED_INCONSISTENCIES_H
+#endif

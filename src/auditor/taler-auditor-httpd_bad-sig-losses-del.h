@@ -46,13 +46,13 @@ TEAH_BAD_SIG_LOSSES_DELETE_done (void);
  * @return MHD result code
  */
 MHD_RESULT
-TAH_BAD_SIG_LOSSES_handler_delete (struct TAH_RequestHandler *rh,
-                                   struct MHD_Connection *
-                                   connection,
-                                   void **connection_cls,
-                                   const char *upload_data,
-                                   size_t *upload_data_size,
-                                   const char *const args[]);
+TAH_BAD_SIG_LOSSES_handler_delete (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
 
 #endif

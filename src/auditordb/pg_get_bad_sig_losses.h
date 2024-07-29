@@ -25,9 +25,12 @@
  * Get information about bad signature losses from the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param start_id row/serial ID where to start the iteration (0 from
- *                  the start, exclusive, i.e. serial_ids must start from 1)
+ * @param limit number of records to return, negative for descending
+ * @param offset table row to start from, exclusive, direction determined by @a limit
  * @param return_suppressed should suppressed rows be returned anyway?
+ * @param filter_spec_pub filter by @a op_spec_pub
+ * @param op_spec_pub public key to filter by; FIXME: replace by pointer
+ * @param op operation to filter by
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
  * @return query result status
@@ -44,4 +47,4 @@ TAH_PG_get_bad_sig_losses (
   TALER_AUDITORDB_BadSigLossesCallback cb,
   void *cb_cls);
 
-#endif // SRC_PG_GET_BAD_SIG_LOSSES_H
+#endif

@@ -37,33 +37,25 @@
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-del.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h"
 #include "taler-auditor-httpd_coin-inconsistency-get.h"
-#include "taler-auditor-httpd_coin-inconsistency-put.h"
 #include "taler-auditor-httpd_coin-inconsistency-del.h"
 #include "taler-auditor-httpd_row-inconsistency-get.h"
-#include "taler-auditor-httpd_row-inconsistency-put.h"
 #include "taler-auditor-httpd_row-inconsistency-del.h"
 
 #include "taler-auditor-httpd_emergency-get.h"
-#include "taler-auditor-httpd_emergency-put.h"
 #include "taler-auditor-httpd_emergency-del.h"
 
 #include "taler-auditor-httpd_emergency-by-count-get.h"
-#include "taler-auditor-httpd_emergency-by-count-put.h"
 #include "taler-auditor-httpd_emergency-by-count-del.h"
 
 #include \
   "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-get.h"
 #include \
-  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-put.h"
-#include \
   "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-del.h"
 
 #include "taler-auditor-httpd_purse-not-closed-inconsistencies-get.h"
-#include "taler-auditor-httpd_purse-not-closed-inconsistencies-put.h"
 #include "taler-auditor-httpd_purse-not-closed-inconsistencies-del.h"
 
 #include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h"
-#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-put.h"
 #include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h"
 
 #include "taler-auditor-httpd_bad-sig-losses-get.h"
@@ -71,13 +63,11 @@
 #include "taler-auditor-httpd_bad-sig-losses-upd.h"
 
 #include "taler-auditor-httpd_closure-lags-get.h"
-#include "taler-auditor-httpd_closure-lags-put.h"
 #include "taler-auditor-httpd_closure-lags-del.h"
 
 #include "taler-auditor-httpd_progress-get.h"
 
 #include "taler-auditor-httpd_refreshes-hanging-get.h"
-#include "taler-auditor-httpd_refreshes-hanging-put.h"
 #include "taler-auditor-httpd_refreshes-hanging-del.h"
 
 #include "taler-auditor-httpd_mhd.h"
@@ -96,22 +86,18 @@
 #include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
 
 #include "taler-auditor-httpd_reserve-in-inconsistency-del.h"
-#include "taler-auditor-httpd_reserve-in-inconsistency-put.h"
 #include "taler-auditor-httpd_reserve-in-inconsistency-get.h"
 #include "taler-auditor-httpd_reserve-in-inconsistency-upd.h"
 
 #include "taler-auditor-httpd_reserve-not-closed-inconsistency-del.h"
-#include "taler-auditor-httpd_reserve-not-closed-inconsistency-put.h"
 #include "taler-auditor-httpd_reserve-not-closed-inconsistency-get.h"
 #include "taler-auditor-httpd_reserve-not-closed-inconsistency-upd.h"
 
 #include "taler-auditor-httpd_denominations-without-sigs-del.h"
-#include "taler-auditor-httpd_denominations-without-sigs-put.h"
 #include "taler-auditor-httpd_denominations-without-sigs-get.h"
 #include "taler-auditor-httpd_denominations-without-sigs-upd.h"
 
 #include "taler-auditor-httpd_misattribution-in-inconsistency-del.h"
-#include "taler-auditor-httpd_misattribution-in-inconsistency-put.h"
 #include "taler-auditor-httpd_misattribution-in-inconsistency-get.h"
 #include "taler-auditor-httpd_misattribution-in-inconsistency-upd.h"
 
@@ -122,32 +108,26 @@
 #include "taler-auditor-httpd_historic-reserve-summary-get.h"
 
 #include "taler-auditor-httpd_denomination-pending-del.h"
-#include "taler-auditor-httpd_denomination-pending-put.h"
 #include "taler-auditor-httpd_denomination-pending-get.h"
 #include "taler-auditor-httpd_denomination-pending-upd.h"
 
 #include "taler-auditor-httpd_wire-format-inconsistency-del.h"
-#include "taler-auditor-httpd_wire-format-inconsistency-put.h"
 #include "taler-auditor-httpd_wire-format-inconsistency-get.h"
 #include "taler-auditor-httpd_wire-format-inconsistency-upd.h"
 
 #include "taler-auditor-httpd_wire-out-inconsistency-del.h"
-#include "taler-auditor-httpd_wire-out-inconsistency-put.h"
 #include "taler-auditor-httpd_wire-out-inconsistency-get.h"
 #include "taler-auditor-httpd_wire-out-inconsistency-upd.h"
 
 #include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-del.h"
-#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-put.h"
 #include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-get.h"
 #include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-upd.h"
 
 #include "taler-auditor-httpd_row-minor-inconsistencies-del.h"
-#include "taler-auditor-httpd_row-minor-inconsistencies-put.h"
 #include "taler-auditor-httpd_row-minor-inconsistencies-get.h"
 #include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
 
 #include "taler-auditor-httpd_fee-time-inconsistency-del.h"
-#include "taler-auditor-httpd_fee-time-inconsistency-put.h"
 #include "taler-auditor-httpd_fee-time-inconsistency-get.h"
 #include "taler-auditor-httpd_fee-time-inconsistency-upd.h"
 
@@ -457,10 +437,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_COIN_INCONSISTENCY_handler_get, MHD_HTTP_OK, true },
-    { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_COIN_INCONSISTENCY_PUT_handler, MHD_HTTP_OK, true },
     { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -473,10 +449,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_ROW_INCONSISTENCY_handler_get, MHD_HTTP_OK, true },
-    { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_ROW_INCONSISTENCY_PUT_handler, MHD_HTTP_OK, true },
     { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -505,11 +477,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_CLOSURE_LAGS_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/closure-lags", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_CLOSURE_LAGS_PUT_handler,
-      MHD_HTTP_OK, true },
     { "/monitoring/closure-lags", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -524,11 +491,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_EMERGENCY_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/emergency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_EMERGENCY_PUT_handler,
       MHD_HTTP_OK, true },
     { "/monitoring/emergency", MHD_HTTP_METHOD_DELETE,
       "application/json",
@@ -545,11 +507,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_REFRESHES_HANGING_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_REFRESHES_HANGING_PUT_handler,
-      MHD_HTTP_OK, true },
     { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -565,12 +522,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/denomination-key-validity-withdraw-inconsistency",
-      MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_PUT_handler,
       MHD_HTTP_OK, true },
     { "/monitoring/denomination-key-validity-withdraw-inconsistency",
       MHD_HTTP_METHOD_DELETE,
@@ -596,12 +547,6 @@ handle_mhd_request (void *cls,
       &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_get,
       MHD_HTTP_OK, true },
     { "/monitoring/reserve-balance-insufficient-inconsistency",
-      MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_put,
-      MHD_HTTP_OK, true },
-    { "/monitoring/reserve-balance-insufficient-inconsistency",
       MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -618,11 +563,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_PUT_handler,
-      MHD_HTTP_OK, true },
     { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -637,11 +577,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_EMERGENCY_BY_COUNT_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_EMERGENCY_BY_COUNT_PUT_handler,
       MHD_HTTP_OK, true },
     { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_DELETE,
       "application/json",
@@ -658,11 +593,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_RESERVE_IN_INCONSISTENCY_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_RESERVE_IN_INCONSISTENCY_handler_put,
-      MHD_HTTP_OK, true },
     { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -677,11 +607,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_put,
       MHD_HTTP_OK, true },
     { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
@@ -698,11 +623,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_put,
-      MHD_HTTP_OK, true },
     { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -717,11 +637,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_put,
       MHD_HTTP_OK, true },
     { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
@@ -753,11 +668,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_DENOMINATION_PENDING_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/denomination-pending", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_DENOMINATION_PENDING_handler_put,
-      MHD_HTTP_OK, true },
     { "/monitoring/denomination-pending", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -773,11 +683,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_WIRE_FORMAT_INCONSISTENCY_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_WIRE_FORMAT_INCONSISTENCY_handler_put,
-      MHD_HTTP_OK, true },
     { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -792,11 +697,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_WIRE_OUT_INCONSISTENCY_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_WIRE_OUT_INCONSISTENCY_handler_put,
       MHD_HTTP_OK, true },
     { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
@@ -815,12 +715,6 @@ handle_mhd_request (void *cls,
       &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_get,
       MHD_HTTP_OK, true },
     { "/monitoring/reserve-balance-summary-wrong-inconsistency",
-      MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_put,
-      MHD_HTTP_OK, true },
-    { "/monitoring/reserve-balance-summary-wrong-inconsistency",
       MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -837,11 +731,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_ROW_MINOR_INCONSISTENCIES_handler_get,
       MHD_HTTP_OK, true },
-    { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_ROW_MINOR_INCONSISTENCIES_handler_put,
-      MHD_HTTP_OK, true },
     { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -856,11 +745,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_FEE_TIME_INCONSISTENCY_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_FEE_TIME_INCONSISTENCY_handler_put,
       MHD_HTTP_OK, true },
     { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",

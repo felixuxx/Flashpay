@@ -46,13 +46,13 @@ TEAH_BAD_DENOMINATIONS_WITHOUT_SIGS_GET_done (void);
  * @return MHD result code
  */
 MHD_RESULT
-TAH_DENOMINATIONS_WITHOUT_SIGS_handler_get (struct TAH_RequestHandler *rh,
-                                            struct MHD_Connection *
-                                            connection,
-                                            void **connection_cls,
-                                            const char *upload_data,
-                                            size_t *upload_data_size,
-                                            const char *const args[]);
+TAH_DENOMINATIONS_WITHOUT_SIGS_handler_get (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
 
-#endif // SRC_TALER_AUDITOR_HTTPD_DENOMINATIONS_WITHOUT_SIGS_GET_H
+#endif

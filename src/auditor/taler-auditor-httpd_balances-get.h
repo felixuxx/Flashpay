@@ -15,7 +15,7 @@
  */
 
 
-    #ifndef SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
+#ifndef SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
 #define SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
 
 #include <gnunet/gnunet_util_lib.h>
@@ -45,13 +45,13 @@ TEAH_BAD_BALANCES_GET_done (void);
 * @return MHD result code
 */
 MHD_RESULT
-TAH_BALANCES_handler_get (struct TAH_RequestHandler *rh,
-                          struct MHD_Connection *
-                          connection,
-                          void **connection_cls,
-                          const char *upload_data,
-                          size_t *upload_data_size,
-                          const char *const args[]);
+TAH_BALANCES_handler_get (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
 
-#endif // SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
+#endif

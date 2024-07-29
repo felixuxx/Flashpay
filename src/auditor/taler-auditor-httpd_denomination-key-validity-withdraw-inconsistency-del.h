@@ -17,7 +17,7 @@
 #ifndef \
   SRC_TALER_AUDITOR_HTTPD_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_DEL_H
 #define \
-  SRC_TALER_AUDITOR_HTTPD_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_DEL_H
+        SRC_TALER_AUDITOR_HTTPD_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_DEL_H
 
 
 #include <microhttpd.h>
@@ -44,26 +44,17 @@ TEAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_DELETE_done (void);
  * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
  * @return MHD result code
-  */
+ */
 MHD_RESULT
-TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_delete (struct
-                                                                     TAH_RequestHandler
-                                                                     *rh,
-                                                                     struct
-                                                                     MHD_Connection
-                                                                     *
-                                                                     connection,
-                                                                     void **
-                                                                     connection_cls,
-                                                                     const char
-                                                                     *
-                                                                     upload_data,
-                                                                     size_t *
-                                                                     upload_data_size,
-                                                                     const char
-                                                                     *const
-                                                                     args[]);
+TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_delete (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
 
-#endif // SRC_TALER_AUDITOR_HTTPD_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_DEL_H
+#endif
