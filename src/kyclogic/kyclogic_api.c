@@ -1338,7 +1338,7 @@ add_provider (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @param[in,out] input the input to tokenize; clobbered
  * @param sep separator between tokens to separate @a input on
  * @param[out] p_strs where to put array of tokens
- * @param[out] num_p_strs set to length of @a p_strs array
+ * @param[out] num_strs set to length of @a p_strs array
  */
 static void
 add_tokens (char *input,

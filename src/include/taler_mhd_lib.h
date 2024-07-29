@@ -527,7 +527,7 @@ TALER_MHD_parse_request_arg_timestamp (struct MHD_Connection *connection,
  * @param connection the MHD connection
  * @param name name of the query parameter to parse
  * @param def default value to set if absent
- * @param[out] res set to the yes/no/all value
+ * @param[out] ret set to the yes/no/all value
  */
 #define TALER_MHD_parse_request_yna(connection,name,def,ret) \
         do {                                        \

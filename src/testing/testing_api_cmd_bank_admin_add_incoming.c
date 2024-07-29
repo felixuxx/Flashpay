@@ -150,9 +150,10 @@ struct AdminAddIncomingState
  * @param is interpreter state.
  */
 static void
-admin_add_incoming_run (void *cls,
-                        const struct TALER_TESTING_Command *cmd,
-                        struct TALER_TESTING_Interpreter *is);
+admin_add_incoming_run (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd,
+  struct TALER_TESTING_Interpreter *is);
 
 
 /**
@@ -284,17 +285,11 @@ confirmation_cb (void *cls,
 }
 
 
-/**
- * Run the "bank transfer" CMD.
- *
- * @param cls closure.
- * @param cmd CMD being run.
- * @param is interpreter state.
- */
 static void
-admin_add_incoming_run (void *cls,
-                        const struct TALER_TESTING_Command *cmd,
-                        struct TALER_TESTING_Interpreter *is)
+admin_add_incoming_run (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd,
+  struct TALER_TESTING_Interpreter *is)
 {
   struct AdminAddIncomingState *fts = cls;
   bool have_public = false;
@@ -383,8 +378,9 @@ admin_add_incoming_run (void *cls,
  * @param cmd current CMD being cleaned up.
  */
 static void
-admin_add_incoming_cleanup (void *cls,
-                            const struct TALER_TESTING_Command *cmd)
+admin_add_incoming_cleanup (
+  void *cls,
+  const struct TALER_TESTING_Command *cmd)
 {
   struct AdminAddIncomingState *fts = cls;
 
@@ -578,14 +574,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (
 }
 
 
-/**
- * Modify a bank transfer command to enable retries when the
- * reserve is not yet full or we get other transient errors from the
- * bank.
- *
- * @param cmd a bank transfer command
- * @return the command with retries enabled
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd)
 {

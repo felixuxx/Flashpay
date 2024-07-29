@@ -68,8 +68,8 @@ struct TALER_EXCHANGE_LookupKycAttributes
  * Parse AML decision summary array.
  *
  * @param[in,out] lh handle to use for allocations
- * @param attributes JSON array with AML decision summaries
- * @param[out] decision_ar where to write the result
+ * @param jdetails JSON array with AML decision summaries
+ * @param[out] detail_ar where to write the result
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue

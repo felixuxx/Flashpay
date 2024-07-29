@@ -44,7 +44,6 @@ TEH_kyc_upload_cleanup (void);
  * @param[in,out] upload_data_size length of @a upload_data,
  *    to be update to reflect number of bytes remaining
  * @param upload_data upload data of the POST, if any
- * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 MHD_RESULT

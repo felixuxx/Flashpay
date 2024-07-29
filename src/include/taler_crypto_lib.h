@@ -2611,7 +2611,7 @@ TALER_token_issue_sig_unblind (
  * anything.
  *
  * @param account_priv private key of account owner
- * @param[out] officer_sig where to write the signature
+ * @param[out] account_sig where to write the signature
  */
 void
 TALER_account_kyc_auth_sign (

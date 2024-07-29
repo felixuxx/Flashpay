@@ -43,7 +43,8 @@
  * @param row_id current row in kyc_attributes table
  * @param provider_name which provider collected the data, NULL for user upload
  * @param collection_time when were the attributes collected
- * @param attributes the collected attributes
+ * @param enc_attributes_size length of @a enc_attributes
+ * @param enc_attributes the encrypted collected attributes
  */
 static void
 detail_cb (

@@ -83,7 +83,7 @@ struct TALER_EXCHANGE_LookupAmlDecisions
  *
  * @param[in,out] lh handle to use for allocations
  * @param jlimits JSON array with AML rules
- * @param[out] decision_ar where to write the result
+ * @param[out] ds where to write the result
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue

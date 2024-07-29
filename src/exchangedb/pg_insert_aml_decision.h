@@ -32,12 +32,12 @@
  *
  * @param cls closure
  * @param h_payto account for which the attribute data is stored
- * @param new_threshold new monthly threshold that would trigger an AML check
- * @param new_status AML decision status
  * @param decision_time when was the decision made
+ * @param expiration_time when does the decision expire
+ * @param properties JSON object with properties to set for the account
+ * @param new_rules JSON array with new AML/KYC rules
+ * @param to_investigate true if AML staff should look more into this account
  * @param justification human-readable text justifying the decision
- * @param kyc_requirements JSON array with KYC requirements
- * @param requirements_row row in the KYC table for this process, 0 for none
  * @param decider_pub public key of the staff member
  * @param decider_sig signature of the staff member
  * @param[out] invalid_officer set to TRUE if @a decider_pub is not allowed to make decisions right now

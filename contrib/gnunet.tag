@@ -52,6 +52,12 @@
       <anchorfile>gnunet_time_lib.h</anchorfile>
       <arglist></arglist>
     </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>GNUNET_TIME_UNIT_ZERO_TS</name>
+      <anchorfile>gnunet_time_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
   </compound>
 
   <compound kind="file">

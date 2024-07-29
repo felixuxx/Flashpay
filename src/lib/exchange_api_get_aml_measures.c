@@ -213,8 +213,8 @@ j_to_a (const json_t *j,
  * Parse AML programs.
  *
  * @param[in,out] lh context for allocations
- * @param jroots JSON object with program data
- * @param[out] roots where to write the result
+ * @param jprogs JSON object with program data
+ * @param[out] progs where to write the result
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue

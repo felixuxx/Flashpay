@@ -2224,7 +2224,6 @@ TALER_TESTING_cmd_check_kyc_get (
  * Create a request for detailed account KYC information.
  *
  * @param label command label.
- * @param payment_target_reference command with a payment target to query
  * @param kyc_check_reference command with account access token trait to use
  * @param expected_response_code expected HTTP status
  * @return the command
