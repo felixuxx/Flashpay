@@ -19,7 +19,7 @@ BUILD_FOR=(
   "debian trixie arm64"
   "debian unstable amd64"
   "debian unstable arm64"
-  "debian unstable riscv64"
+  # "debian unstable riscv64"
 )
 
 declare -A DISTRO_IMAGES;
