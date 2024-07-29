@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #ifndef SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
 #define SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
 
@@ -35,15 +33,16 @@ void
 TEAH_BAD_BALANCES_GET_done (void);
 
 /**
-* Handle a "/balances" request.
-*
-* @param rh context of the handler
-* @param connection the MHD connection to handle
-* @param[in,out] connection_cls the connection's closure (can be updated)
-* @param upload_data upload data
-* @param[in,out] upload_data_size number of bytes (left) in @a upload_data
-* @return MHD result code
-*/
+ * Handle a "/balances" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
+ * @return MHD result code
+ */
 MHD_RESULT
 TAH_BALANCES_handler_get (
   struct TAH_RequestHandler *rh,

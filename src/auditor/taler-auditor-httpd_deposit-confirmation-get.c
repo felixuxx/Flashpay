@@ -101,15 +101,6 @@ add_deposit_confirmation (void *cls,
 }
 
 
-/**
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
 MHD_RESULT
 TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
                                       struct MHD_Connection *connection,

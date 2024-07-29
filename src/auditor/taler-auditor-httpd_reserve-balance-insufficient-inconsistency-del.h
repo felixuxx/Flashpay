@@ -13,10 +13,8 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
-#ifndef SRC_TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DEL_H
-#define SRC_TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DEL_H
+#ifndef TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DEL_H
+#define TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DEL_H
 
 
 #include <microhttpd.h>
@@ -29,36 +27,30 @@ void
 TEAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DELETE_init (void);
 
 /**
-* Shut down subsystem.
-*/
+ * Shut down subsystem.
+ */
 void
 TEAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DELETE_done (void);
 
 /**
-* Handle a "/reserve-balance-insufficient-inconsistency" request.  Parses the JSON, and, if
-* successful, checks the signatures and stores the result in the DB.
-*
-* @param rh context of the handler
-* @param connection the MHD connection to handle
-* @param[in,out] connection_cls the connection's closure (can be updated)
-* @param upload_data upload data
-* @param[in,out] upload_data_size number of bytes (left) in @a upload_data
-* @return MHD result code
-*/
+ * Handle a "/reserve-balance-insufficient-inconsistency" request.  Parses the JSON, and, if
+ * successful, checks the signatures and stores the result in the DB.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
+ * @return MHD result code
+ */
 MHD_RESULT
-TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_delete (struct
-                                                               TAH_RequestHandler
-                                                               *rh,
-                                                               struct
-                                                               MHD_Connection *
-                                                               connection,
-                                                               void **
-                                                               connection_cls,
-                                                               const char *
-                                                               upload_data,
-                                                               size_t *
-                                                               upload_data_size,
-                                                               const char *const
-                                                               args[]);
+TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_delete (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
-#endif // SRC_TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_DEL_H
+#endif
