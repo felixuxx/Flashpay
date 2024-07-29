@@ -25,8 +25,9 @@ TEAH_AMOUNT_ARITHMETIC_INCONSISTENCY_DELETE_done (void);
  * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
  * @return MHD result code
-  */
+ */
 MHD_RESULT
 TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_delete (struct
                                                     TAH_RequestHandler *rh,

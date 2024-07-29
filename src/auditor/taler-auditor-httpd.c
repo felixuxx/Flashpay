@@ -34,7 +34,6 @@
 #include "taler-auditor-httpd_deposit-confirmation-del.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-get.h"
-#include "taler-auditor-httpd_amount-arithmetic-inconsistency-put.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-del.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h"
 #include "taler-auditor-httpd_coin-inconsistency-get.h"
@@ -68,7 +67,6 @@
 #include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h"
 
 #include "taler-auditor-httpd_bad-sig-losses-get.h"
-#include "taler-auditor-httpd_bad-sig-losses-put.h"
 #include "taler-auditor-httpd_bad-sig-losses-del.h"
 #include "taler-auditor-httpd_bad-sig-losses-upd.h"
 
@@ -271,8 +269,9 @@ handle_mhd_completion_callback (void *cls,
  * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
  * @return MHD result code
-  */
+ */
 static MHD_RESULT
 handle_config (struct TAH_RequestHandler *rh,
                struct MHD_Connection *connection,
@@ -446,10 +445,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get, MHD_HTTP_OK, true },
-    { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_PUT_handler, MHD_HTTP_OK, true },
     { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_DELETE,
       "application/json",
       NULL, 0,
@@ -494,11 +489,6 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_BAD_SIG_LOSSES_handler_get,
-      MHD_HTTP_OK, true },
-    { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_PUT,
-      "application/json",
-      NULL, 0,
-      &TAH_BAD_SIG_LOSSES_PUT_handler,
       MHD_HTTP_OK, true },
     { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_DELETE,
       "application/json",

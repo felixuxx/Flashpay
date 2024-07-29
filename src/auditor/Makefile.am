@@ -172,7 +172,6 @@ taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd_amount-arithmetic-inconsistency-del.c taler-auditor-httpd_amount-arithmetic-inconsistency-del.h \
   taler-auditor-httpd_coin-inconsistency-del.c taler-auditor-httpd_coin-inconsistency-del.h \
   taler-auditor-httpd_row-inconsistency-del.c taler-auditor-httpd_row-inconsistency-del.h \
-  taler-auditor-httpd_amount-arithmetic-inconsistency-put.c taler-auditor-httpd_amount-arithmetic-inconsistency-put.h \
   taler-auditor-httpd_amount-arithmetic-inconsistency-upd.c taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h \
   taler-auditor-httpd_coin-inconsistency-put.c taler-auditor-httpd_coin-inconsistency-put.h \
   taler-auditor-httpd_row-inconsistency-put.c taler-auditor-httpd_row-inconsistency-put.h \
@@ -191,7 +190,6 @@ taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-put.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-put.h \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h \
-  taler-auditor-httpd_bad-sig-losses-put.c taler-auditor-httpd_bad-sig-losses-put.h \
   taler-auditor-httpd_bad-sig-losses-get.c taler-auditor-httpd_bad-sig-losses-get.h \
   taler-auditor-httpd_bad-sig-losses-del.c taler-auditor-httpd_bad-sig-losses-del.h \
   taler-auditor-httpd_bad-sig-losses-upd.c taler-auditor-httpd_bad-sig-losses-upd.h \

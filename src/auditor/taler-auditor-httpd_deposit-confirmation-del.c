@@ -13,14 +13,12 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file taler-auditor-httpd_deposit-confirmation-delete.c
+ * @file taler-auditor-httpd_deposit-confirmation-del.c
  * @brief Handle /deposit-confirmation delete request;
  * Remove the specified entry from the database
  * @author Cedric Zwahlen
  */
-
 #include "taler-auditor-httpd_deposit-confirmation-del.h"
 
 

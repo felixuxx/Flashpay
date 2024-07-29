@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_TALER_AUDITOR_HTTPD_BAD_SIG_LOSSES_GET_H
-#define SRC_TALER_AUDITOR_HTTPD_BAD_SIG_LOSSES_GET_H
+#ifndef TALER_AUDITOR_HTTPD_BAD_SIG_LOSSES_GET_H
+#define TALER_AUDITOR_HTTPD_BAD_SIG_LOSSES_GET_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -35,15 +35,16 @@ void
 TEAH_BAD_SIG_LOSSES_GET_done (void);
 
 /**
-* Handle a "/bad-sig-losses" request.
-*
-* @param rh context of the handler
-* @param connection the MHD connection to handle
-* @param[in,out] connection_cls the connection's closure (can be updated)
-* @param upload_data upload data
-* @param[in,out] upload_data_size number of bytes (left) in @a upload_data
-* @return MHD result code
-*/
+ * Handle a "/bad-sig-losses" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
+ * @return MHD result code
+ */
 MHD_RESULT
 TAH_BAD_SIG_LOSSES_handler_get (struct TAH_RequestHandler *rh,
                                 struct MHD_Connection *
@@ -54,4 +55,4 @@ TAH_BAD_SIG_LOSSES_handler_get (struct TAH_RequestHandler *rh,
                                 const char *const args[]);
 
 
-#endif // SRC_TALER_AUDITOR_HTTPD_BAD_SIG_LOSSES_GET_H
+#endif

@@ -13,15 +13,13 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file taler-auditor-httpd_deposit-confirmation-delete.h
+ * @file taler-auditor-httpd_deposit-confirmation-del.h
  * @brief Handle DELETE /deposit-confirmation requests
  * @author Cedric Zwahlen
  */
-
-#ifndef SRC_TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_DEL_H
-#define SRC_TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_DEL_H
+#ifndef TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_DEL_H
+#define TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_DEL_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -48,8 +46,9 @@ TEAH_DEPOSIT_CONFIRMATION_DELETE_done (void);
  * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
  * @return MHD result code
-  */
+ */
 MHD_RESULT
 TAH_DEPOSIT_CONFIRMATION_handler_delete (struct TAH_RequestHandler *rh,
                                          struct MHD_Connection *connection,
@@ -59,4 +58,4 @@ TAH_DEPOSIT_CONFIRMATION_handler_delete (struct TAH_RequestHandler *rh,
                                          const char *const args[]);
 
 
-#endif // SRC_TALER_AUDITOR_HTTPD_DEPOSIT_CONFIRMATION_DEL_H
+#endif
