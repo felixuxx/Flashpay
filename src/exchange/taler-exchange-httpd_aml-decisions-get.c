@@ -138,6 +138,33 @@ TEH_handler_aml_decisions_get (
                                TALER_EXCHANGE_YNA_ALL,
                                &investigation_filter);
   {
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->test_aml_officer (TEH_plugin->cls,
+                                       officer_pub);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "test_aml_officer");
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_static (
+        rc->connection,
+        MHD_HTTP_FORBIDDEN,
+        NULL,
+        NULL,
+        0);
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      break;
+    }
+  }
+  {
     json_t *records;
     enum GNUNET_DB_QueryStatus qs;
 
