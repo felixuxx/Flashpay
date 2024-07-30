@@ -575,10 +575,9 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       struct TALER_KYCLOGIC_KycRule *rule
         = &lrs->kyc_rules[off];
       const json_t *jmeasures;
-      const char *operation_type;
       struct GNUNET_JSON_Specification ispec[] = {
-        GNUNET_JSON_spec_string ("operation_type",
-                                 &operation_type),
+        TALER_JSON_spec_kycte ("operation_type",
+                               &rule->trigger),
         TALER_JSON_spec_amount_any ("threshold",
                                     &rule->threshold),
         GNUNET_JSON_spec_relative_time ("timeframe",
@@ -602,14 +601,6 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
           GNUNET_JSON_parse (jrule,
                              ispec,
                              NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        goto cleanup;
-      }
-      if (GNUNET_OK !=
-          TALER_KYCLOGIC_kyc_trigger_from_string (
-            operation_type,
-            &rule->trigger))
       {
         GNUNET_break_op (0);
         goto cleanup;
@@ -795,14 +786,14 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
   GNUNET_assert (NULL != limits);
   json_array_foreach ((json_t *) jrules, idx, rule)
   {
-    const char *ots;
     struct GNUNET_TIME_Relative timeframe;
     struct TALER_Amount threshold;
     bool exposed = false;
     const json_t *jmeasures;
+    enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_string ("operation_type",
-                               &ots),
+      TALER_JSON_spec_kycte ("operation_type",
+                             &operation_type),
       GNUNET_JSON_spec_relative_time ("timeframe",
                                       &timeframe),
       TALER_JSON_spec_amount_any ("threshold",
@@ -847,14 +838,18 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
     }
 
     limit = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("operation_type",
-                               ots),
-      GNUNET_JSON_pack_time_rel ("timeframe",
-                                 timeframe),
-      TALER_JSON_pack_amount ("threshold",
-                              &threshold),
-      GNUNET_JSON_pack_bool ("soft_limit",
-                             ! forbidden));
+      GNUNET_JSON_pack_string (
+        "operation_type",
+        TALER_KYCLOGIC_kyc_trigger2s (operation_type)),
+      GNUNET_JSON_pack_time_rel (
+        "timeframe",
+        timeframe),
+      TALER_JSON_pack_amount (
+        "threshold",
+        &threshold),
+      GNUNET_JSON_pack_bool (
+        "soft_limit",
+        ! forbidden));
     GNUNET_assert (0 ==
                    json_array_append_new (limits,
                                           limit));
@@ -1139,11 +1134,11 @@ TALER_KYCLOGIC_kyc_trigger_from_string (
     const char *in;
     enum TALER_KYCLOGIC_KycTriggerEvent out;
   } map [] = {
-    { "withdraw", TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW },
-    { "deposit", TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT  },
-    { "merge", TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE },
-    { "balance", TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
-    { "close", TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
+    { "WITHDRAW", TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW },
+    { "DEPOSIT", TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT  },
+    { "MERGE", TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE },
+    { "BALANCE", TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
+    { "CLOSE", TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
     { NULL, 0 }
   };
 
@@ -1171,15 +1166,15 @@ TALER_KYCLOGIC_kyc_trigger2s (
     GNUNET_break (0);
     return NULL;
   case TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW:
-    return "withdraw";
+    return "WITHDRAW";
   case TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT:
-    return "deposit";
+    return "DEPOSIT";
   case TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE:
-    return "merge";
+    return "MERGE";
   case TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE:
-    return "balance";
+    return "BALANCE";
   case TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE:
-    return "close";
+    return "CLOSE";
   }
   GNUNET_break (0);
   return NULL;

@@ -542,7 +542,10 @@ TALER_EXCHANGE_lookup_aml_decisions (
       "limit",
       limit_s,
       "offset",
-      offset_s,
+      ( ( (limit < 0) && (UINT64_MAX == offset) ) ||
+        ( (limit > 0) && (0 == offset) ) )
+      ? NULL
+      : offset_s,
       "h_payto",
       NULL != h_payto
       ? payto_s

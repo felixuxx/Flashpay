@@ -633,23 +633,21 @@ run (void *cls,
       "{}" /* properties */,
       "party time",
       MHD_HTTP_NO_CONTENT),
-#if FIXME
     TALER_TESTING_cmd_check_aml_decisions (
       "check-decisions-one-normal",
       "create-aml-officer-1",
       "aml-decide",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-trigger-kyc-for-aml-allowed",
       "wallet-trigger-kyc-for-aml",
-      NULL,
       "EUR:1000",
       MHD_HTTP_NO_CONTENT),
     TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-trigger-kyc-for-aml-denied-high",
       "wallet-trigger-kyc-for-aml",
-      NULL,
       "EUR:20000",
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
-#endif
     TALER_TESTING_cmd_sleep (
       "sleep-1d",
       1),
@@ -685,7 +683,6 @@ run (void *cls,
       NULL,
       true,
       true),
-#if DISABLED || 0
     TALER_TESTING_cmd_batch (
       "withdraw",
       withdraw),
@@ -710,7 +707,6 @@ run (void *cls,
     TALER_TESTING_cmd_batch (
       "pull",
       pull),
-#endif
     TALER_TESTING_cmd_batch ("aml",
                              aml),
     TALER_TESTING_cmd_end ()

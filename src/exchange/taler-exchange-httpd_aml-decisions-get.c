@@ -125,6 +125,11 @@ TEH_handler_aml_decisions_get (
   TALER_MHD_parse_request_number (rc->connection,
                                   "offset",
                                   &offset);
+  if (offset > INT64_MAX)
+  {
+    GNUNET_break_op (0); /* broken client */
+    offset = INT64_MAX;
+  }
   TALER_MHD_parse_request_arg_auto (rc->connection,
                                     "h_payto",
                                     &h_payto,

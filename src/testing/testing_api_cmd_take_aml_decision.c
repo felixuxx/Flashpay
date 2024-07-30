@@ -246,7 +246,6 @@ take_aml_decision_run (void *cls,
     {
       struct TALER_EXCHANGE_AccountRule *rule = &rules[i];
       const json_t *jmeasures = NULL;
-      const char *ots;
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_relative_time ("timeframe",
                                         &rule->timeframe),
@@ -260,8 +259,8 @@ take_aml_decision_run (void *cls,
           GNUNET_JSON_spec_uint32 ("display_priority",
                                    &rule->display_priority),
           NULL),
-        GNUNET_JSON_spec_string ("operation_type",
-                                 &ots),
+        TALER_JSON_spec_kycte ("operation_type",
+                               &rule->operation_type),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_bool ("verboten",
                                  &rule->verboten),
@@ -290,18 +289,6 @@ take_aml_decision_run (void *cls,
                     "Malformed rule #%u in field %s\n",
                     (unsigned int) i,
                     err_name);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-      if (GNUNET_OK !=
-          TALER_KYCLOGIC_kyc_trigger_from_string (ots,
-                                                  &rule->operation_type))
-      {
-        GNUNET_break_op (0);
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Malformed operation type in rule #%u: %s unknown\n",
-                    (unsigned int) i,
-                    ots);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
