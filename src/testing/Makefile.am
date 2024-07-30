@@ -127,6 +127,7 @@ libtalertesting_la_LIBADD = \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \

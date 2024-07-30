@@ -221,8 +221,8 @@ take_aml_decision_run (void *cls,
   }
   ds->h_payto = *h_payto;
 
-  num_rules = json_array_size (jrules);
-  num_measures = json_object_size (jmeasures);
+  num_rules = (unsigned int) json_array_size (jrules);
+  num_measures = (unsigned int) json_object_size (jmeasures);
   {
     struct TALER_EXCHANGE_AccountRule rules[
       GNUNET_NZL (num_rules)];
@@ -234,16 +234,124 @@ take_aml_decision_run (void *cls,
     const char *mname;
     unsigned int off;
 
+    memset (rules,
+            0,
+            sizeof (rules));
+    memset (measures,
+            0,
+            sizeof (measures));
     json_array_foreach ((json_t *) jrules, i, jrule)
     {
       struct TALER_EXCHANGE_AccountRule *rule = &rules[i];
-      // FIXME: jrule -> rule
+      const json_t *jmeasures = NULL;
+      const char *ots;
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_relative_time ("timeframe",
+                                        &rule->timeframe),
+        TALER_JSON_spec_amount_any ("threshold",
+                                    &rule->threshold),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_array_const ("measures",
+                                        &jmeasures),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_uint32 ("display_priority",
+                                   &rule->display_priority),
+          NULL),
+        GNUNET_JSON_spec_string ("operation_type",
+                                 &ots),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("verboten",
+                                 &rule->verboten),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("exposed",
+                                 &rule->exposed),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("is_and_combinator",
+                                 &rule->is_and_combinator),
+          NULL),
+        GNUNET_JSON_spec_end ()
+      };
+      const char *err_name;
+      unsigned int err_line;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (jrule,
+                             ispec,
+                             &err_name,
+                             &err_line))
+      {
+        GNUNET_break_op (0);
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Malformed rule #%u in field %s\n",
+                    (unsigned int) i,
+                    err_name);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_KYCLOGIC_kyc_trigger_from_string (ots,
+                                                  &rule->operation_type))
+      {
+        GNUNET_break_op (0);
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Malformed operation type in rule #%u: %s unknown\n",
+                    (unsigned int) i,
+                    ots);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      if (NULL != jmeasures)
+      {
+        rule->num_measures
+          = (unsigned int) json_array_size (jmeasures);
+        rule->measures
+          = GNUNET_new_array (rule->num_measures,
+                              const char *);
+        for (unsigned int k = 0; k<rule->num_measures; k++)
+          rule->measures[k]
+            = json_string_value (
+                json_array_get (jmeasures,
+                                k));
+      }
     }
     off = 0;
     json_object_foreach ((json_t *) jrules, mname, jmeasure)
     {
       struct TALER_EXCHANGE_MeasureInformation *mi = &measures[off++];
-      // FIXME: jmeasure + mname -> mi
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("check_name",
+                                   &mi->check_name),
+          NULL),
+        GNUNET_JSON_spec_string ("prog_name",
+                                 &mi->prog_name),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_object_const ("context",
+                                         &mi->context),
+          NULL),
+        GNUNET_JSON_spec_end ()
+      };
+      const char *err_name;
+      unsigned int err_line;
+
+      mi->measure_name = mname;
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (jmeasure,
+                             ispec,
+                             &err_name,
+                             &err_line))
+      {
+        GNUNET_break_op (0);
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Malformed measure %s in field %s\n",
+                    mname,
+                    err_name);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
     }
     GNUNET_assert (off == num_measures);
 
@@ -264,7 +372,12 @@ take_aml_decision_run (void *cls,
       officer_priv,
       &take_aml_decision_cb,
       ds);
-    // FIXME: free rules/measures data!
+    for (unsigned int i = 0; i<num_rules; i++)
+    {
+      struct TALER_EXCHANGE_AccountRule *rule = &rules[i];
+
+      GNUNET_free (rule->measures);
+    }
   }
 
   if (NULL == ds->dh)
@@ -356,11 +469,26 @@ TALER_TESTING_cmd_take_aml_decision (
   ds->new_rules = json_loads (new_rules,
                               JSON_DECODE_ANY,
                               &err);
+  if (NULL == ds->new_rules)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid JSON in new rules of %s: %s\n",
+                label,
+                err.text);
+    GNUNET_assert (0);
+  }
   GNUNET_assert (NULL != ds->new_rules);
   ds->properties = json_loads (properties,
                                0,
                                &err);
-  GNUNET_assert (NULL != ds->properties);
+  if (NULL == ds->properties)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid JSON in properties of %s: %s\n",
+                label,
+                err.text);
+    GNUNET_assert (0);
+  }
   ds->justification = justification;
   ds->expected_response = expected_response;
   {
