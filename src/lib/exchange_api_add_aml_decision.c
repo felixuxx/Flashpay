@@ -217,8 +217,8 @@ TALER_EXCHANGE_add_aml_decision (
                                successor_measure)),
     GNUNET_JSON_pack_array_steal ("rules",
                                   jrules),
-    GNUNET_JSON_pack_array_steal ("custom_measures",
-                                  jmeasures)
+    GNUNET_JSON_pack_object_steal ("custom_measures",
+                                   jmeasures)
     );
 
   GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,

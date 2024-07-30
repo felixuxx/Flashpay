@@ -583,7 +583,6 @@ run (void *cls,
 #endif
     /* Test that we are not allowed to take AML decisions as our
        AML staff account is on read-only */
-#if FIXME
     TALER_TESTING_cmd_take_aml_decision (
       "aml-decide-while-disabled",
       "create-aml-officer-1",
@@ -591,18 +590,23 @@ run (void *cls,
       true /* keep investigating */,
       GNUNET_TIME_UNIT_HOURS /* expiration */,
       NULL /* successor measure: default */,
-      "{\"threshold\":\"EUR:10000\"}" /* new rules */,
+      "{\"rules\":["
+      "{\"timeframe\":{\"d_us\":3600000000},"
+      " \"threshold\":\"EUR:10000\","
+      " \"operation_type\":\"BALANCE\","
+      " \"verboten\":true"
+      "}"
+      "]}" /* new rules */,
       "{}" /* properties */,
       "party time",
       MHD_HTTP_FORBIDDEN),
     /* Check that no decision was taken, but that we are allowed
        to read this information */
-    TALER_TESTING_cmd_check_aml_decision (
+    TALER_TESTING_cmd_check_aml_decisions (
       "check-aml-decision-empty",
       "create-aml-officer-1",
       "aml-decide-while-disabled",
       MHD_HTTP_NO_CONTENT),
-#endif
     TALER_TESTING_cmd_sleep (
       "sleep-1b",
       1),
@@ -612,16 +616,24 @@ run (void *cls,
       "Peter Falk",
       true,
       false),
-#if FIXME
     TALER_TESTING_cmd_take_aml_decision (
       "aml-decide",
       "create-aml-officer-1",
       "wallet-trigger-kyc-for-aml",
-      "EUR:10000",
+      true /* keep investigating */,
+      GNUNET_TIME_UNIT_HOURS /* expiration */,
+      NULL /* successor measure: default */,
+      "{\"rules\":["
+      "{\"timeframe\":{\"d_us\":3600000000},"
+      " \"threshold\":\"EUR:10000\","
+      " \"operation_type\":\"BALANCE\","
+      " \"verboten\":true"
+      "}"
+      "]}" /* new rules */,
+      "{}" /* properties */,
       "party time",
-      TALER_AML_NORMAL,
-      NULL,
       MHD_HTTP_NO_CONTENT),
+#if FIXME
     TALER_TESTING_cmd_check_aml_decisions (
       "check-decisions-one-normal",
       "create-aml-officer-1",

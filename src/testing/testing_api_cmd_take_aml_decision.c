@@ -146,14 +146,16 @@ take_aml_decision_run (void *cls,
   const struct TALER_TESTING_Command *ref;
   const char *exchange_url;
   const json_t *jrules;
-  const json_t *jmeasures;
+  const json_t *jmeasures = NULL;
   struct GNUNET_TIME_Timestamp expiration_time
     = GNUNET_TIME_relative_to_timestamp (ds->expiration_delay);
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
-    GNUNET_JSON_spec_object_const ("custom_measures",
-                                   &jmeasures),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_object_const ("custom_measures",
+                                     &jmeasures),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
   unsigned int num_rules;
@@ -475,6 +477,9 @@ TALER_TESTING_cmd_take_aml_decision (
                 "Invalid JSON in new rules of %s: %s\n",
                 label,
                 err.text);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Input was: `%s'\n",
+                new_rules);
     GNUNET_assert (0);
   }
   GNUNET_assert (NULL != ds->new_rules);
@@ -487,6 +492,9 @@ TALER_TESTING_cmd_take_aml_decision (
                 "Invalid JSON in properties of %s: %s\n",
                 label,
                 err.text);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Input was: `%s'\n",
+                properties);
     GNUNET_assert (0);
   }
   ds->justification = justification;
