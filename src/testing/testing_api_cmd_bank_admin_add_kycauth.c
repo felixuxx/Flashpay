@@ -97,6 +97,11 @@ struct AdminAddKycauthState
    * Expected HTTP status code.
    */
   unsigned int expected_http_status;
+
+  /**
+   * Do we have @e account_priv?
+   */
+  bool have_priv;
 };
 
 
@@ -183,6 +188,7 @@ admin_add_kycauth_run (void *cls,
   {
     const struct TALER_TESTING_Command *ref;
     const union TALER_AccountPrivateKeyP *account_priv;
+    const union TALER_AccountPublicKeyP *account_pub;
 
     ref = TALER_TESTING_interpreter_lookup_command (
       is,
@@ -197,11 +203,23 @@ admin_add_kycauth_run (void *cls,
         TALER_TESTING_get_trait_account_priv (ref,
                                               &account_priv))
     {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_account_pub (ref,
+                                               &account_pub))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
     }
-    fts->account_priv = *account_priv;
+    else
+    {
+      fts->account_priv = *account_priv;
+      fts->have_priv = true;
+      GNUNET_CRYPTO_eddsa_key_get_public (
+        &fts->account_priv.merchant_priv.eddsa_priv,
+        &fts->account_pub.merchant_pub.eddsa_pub);
+    }
   }
   else
   {
@@ -209,10 +227,11 @@ admin_add_kycauth_run (void *cls,
      * from, no explicit subject given: create new key! */
     GNUNET_CRYPTO_eddsa_key_create (
       &fts->account_priv.merchant_priv.eddsa_priv);
+    fts->have_priv = true;
+    GNUNET_CRYPTO_eddsa_key_get_public (
+      &fts->account_priv.merchant_priv.eddsa_priv,
+      &fts->account_pub.merchant_pub.eddsa_pub);
   }
-  GNUNET_CRYPTO_eddsa_key_get_public (
-    &fts->account_priv.merchant_priv.eddsa_priv,
-    &fts->account_pub.merchant_pub.eddsa_pub);
   fts->aih
     = TALER_BANK_admin_add_kycauth (
         TALER_TESTING_interpreter_get_context (is),
@@ -273,8 +292,9 @@ admin_add_kycauth_traits (void *cls,
 {
   struct AdminAddKycauthState *fts = cls;
   static const char *void_uri = "payto://void/the-exchange";
-
   struct TALER_TESTING_Trait traits[] = {
+    /* must be first! */
+    TALER_TESTING_make_trait_account_priv (&fts->account_priv),
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_debit_payto_uri (fts->payto_debit_account),
     TALER_TESTING_make_trait_payto_uri (fts->payto_debit_account),
@@ -285,7 +305,6 @@ admin_add_kycauth_traits (void *cls,
     TALER_TESTING_make_trait_amount (&fts->amount),
     TALER_TESTING_make_trait_timestamp (0,
                                         &fts->timestamp),
-    TALER_TESTING_make_trait_account_priv (&fts->account_priv),
     TALER_TESTING_make_trait_account_pub (&fts->account_pub),
     TALER_TESTING_trait_end ()
   };
@@ -294,7 +313,7 @@ admin_add_kycauth_traits (void *cls,
       fts->expected_http_status)
     return GNUNET_NO; /* requests that failed generate no history */
 
-  return TALER_TESTING_get_trait (traits,
+  return TALER_TESTING_get_trait (traits + (fts->have_priv ? 0 : 1),
                                   ret,
                                   trait,
                                   index);
