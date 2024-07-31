@@ -150,12 +150,6 @@ struct Shard
 static struct TALER_Amount currency_round_unit;
 
 /**
- * What is the largest amount we transfer before triggering
- * an AML check?
- */
-static struct TALER_Amount aml_threshold;
-
-/**
  * What is the base URL of this exchange?  Used in the
  * wire transfer subjects so that merchants and governments
  * can ask for the list of aggregated deposits.
@@ -305,16 +299,6 @@ parse_aggregator_config (void)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Need non-zero amount in section `taler' under `CURRENCY_ROUND_UNIT'\n");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_config_get_amount (cfg,
-                               "exchange",
-                               "AML_THRESHOLD",
-                               &aml_threshold))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need amount in section `exchange' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
 
