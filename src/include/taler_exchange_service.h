@@ -4304,7 +4304,7 @@ struct TALER_EXCHANGE_AccountKycStatus
    * Array of length @e limits_array with (exposed) limits that apply to the
    * account.
    */
-  struct TALER_EXCHANGE_AccountLimit *limits;
+  const struct TALER_EXCHANGE_AccountLimit *limits;
 
   /**
    * Access token the user needs to start a KYC process.
@@ -4386,7 +4386,8 @@ TALER_EXCHANGE_kyc_check (
  * @param kyc handle for operation to cancel
  */
 void
-TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
+TALER_EXCHANGE_kyc_check_cancel (
+  struct TALER_EXCHANGE_KycCheckHandle *kyc);
 
 
 /**
