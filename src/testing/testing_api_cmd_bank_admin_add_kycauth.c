@@ -188,7 +188,6 @@ admin_add_kycauth_run (void *cls,
   {
     const struct TALER_TESTING_Command *ref;
     const union TALER_AccountPrivateKeyP *account_priv;
-    const union TALER_AccountPublicKeyP *account_pub;
 
     ref = TALER_TESTING_interpreter_lookup_command (
       is,
@@ -203,6 +202,8 @@ admin_add_kycauth_run (void *cls,
         TALER_TESTING_get_trait_account_priv (ref,
                                               &account_priv))
     {
+      const union TALER_AccountPublicKeyP *account_pub;
+
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_account_pub (ref,
                                                &account_pub))
@@ -211,6 +212,7 @@ admin_add_kycauth_run (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
+      fts->account_pub = *account_pub;
     }
     else
     {
