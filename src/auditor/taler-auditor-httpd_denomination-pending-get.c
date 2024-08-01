@@ -38,9 +38,7 @@ static enum GNUNET_GenericReturnValue
 process_denomination_pending (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_DenominationPending
-  *dc)
+  const struct TALER_AUDITORDB_DenominationPending *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -68,8 +66,7 @@ process_denomination_pending (
 MHD_RESULT
 TAH_DENOMINATION_PENDING_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

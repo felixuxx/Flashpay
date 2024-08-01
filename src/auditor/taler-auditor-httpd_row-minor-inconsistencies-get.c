@@ -38,9 +38,7 @@ static enum GNUNET_GenericReturnValue
 process_row_minor_inconsistencies (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_RowMinorInconsistencies
-  *dc)
+  const struct TALER_AUDITORDB_RowMinorInconsistencies *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -66,8 +64,7 @@ process_row_minor_inconsistencies (
 MHD_RESULT
 TAH_ROW_MINOR_INCONSISTENCIES_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

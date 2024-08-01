@@ -39,9 +39,7 @@ static enum GNUNET_GenericReturnValue
 process_denomination_key_validity_withdraw_inconsistency (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency
-  *dc)
+  const struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -64,21 +62,12 @@ process_denomination_key_validity_withdraw_inconsistency (
 
 MHD_RESULT
 TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_get (
-  struct
-  TAH_RequestHandler
-  *rh,
-  struct
-  MHD_Connection
-  *
-  connection,
-  void **
-  connection_cls,
-  const char *
-  upload_data,
-  size_t *
-  upload_data_size,
-  const char *
-  const args[])
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[])
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;

@@ -65,8 +65,7 @@ add_row_inconsistency (
 MHD_RESULT
 TAH_ROW_INCONSISTENCY_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

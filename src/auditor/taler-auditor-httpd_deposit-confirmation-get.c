@@ -41,9 +41,10 @@
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
-add_deposit_confirmation (void *cls,
-                          uint64_t serial_id,
-                          const struct TALER_AUDITORDB_DepositConfirmation *dc)
+add_deposit_confirmation (
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
   json_t *list = cls;
   json_t *obj;

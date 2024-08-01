@@ -64,8 +64,7 @@ add_coin_inconsistency (
 MHD_RESULT
 TAH_COIN_INCONSISTENCY_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

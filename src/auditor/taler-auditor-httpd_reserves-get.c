@@ -38,9 +38,7 @@ static enum GNUNET_GenericReturnValue
 process_reserves (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_Reserves
-  *dc)
+  const struct TALER_AUDITORDB_Reserves *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -74,8 +72,7 @@ process_reserves (
 MHD_RESULT
 TAH_RESERVES_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

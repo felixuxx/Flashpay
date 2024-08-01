@@ -39,9 +39,7 @@ static enum GNUNET_GenericReturnValue
 process_emergency (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_Emergency
-  *dc)
+  const struct TALER_AUDITORDB_Emergency *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -73,8 +71,7 @@ process_emergency (
 MHD_RESULT
 TAH_EMERGENCY_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

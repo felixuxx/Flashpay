@@ -38,9 +38,7 @@ static enum GNUNET_GenericReturnValue
 process_reserve_in_inconsistency (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_ReserveInInconsistency
-  *dc)
+  const struct TALER_AUDITORDB_ReserveInInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -71,8 +69,7 @@ process_reserve_in_inconsistency (
 MHD_RESULT
 TAH_RESERVE_IN_INCONSISTENCY_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

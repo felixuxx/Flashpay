@@ -35,11 +35,10 @@
 * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
 */
 static enum GNUNET_GenericReturnValue
-process_emergency_by_count (void *cls,
-                            uint64_t serial_id,
-                            const struct
-                            TALER_AUDITORDB_EmergenciesByCount
-                            *dc)
+process_emergency_by_count (
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_EmergenciesByCount *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -68,8 +67,7 @@ process_emergency_by_count (void *cls,
 MHD_RESULT
 TAH_EMERGENCY_BY_COUNT_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

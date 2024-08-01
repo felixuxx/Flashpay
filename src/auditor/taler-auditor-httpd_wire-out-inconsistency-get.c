@@ -38,9 +38,7 @@ static enum GNUNET_GenericReturnValue
 process_wire_out_inconsistency (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_WireOutInconsistency
-  *dc)
+  const struct TALER_AUDITORDB_WireOutInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -67,8 +65,7 @@ process_wire_out_inconsistency (
 MHD_RESULT
 TAH_WIRE_OUT_INCONSISTENCY_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,

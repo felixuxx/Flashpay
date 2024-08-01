@@ -38,9 +38,7 @@ static enum GNUNET_GenericReturnValue
 add_bad_sig_losses (
   void *cls,
   uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_BadSigLosses
-  *dc)
+  const struct TALER_AUDITORDB_BadSigLosses *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -65,8 +63,7 @@ add_bad_sig_losses (
 MHD_RESULT
 TAH_BAD_SIG_LOSSES_handler_get (
   struct TAH_RequestHandler *rh,
-  struct MHD_Connection *
-  connection,
+  struct MHD_Connection *connection,
   void **connection_cls,
   const char *upload_data,
   size_t *upload_data_size,
