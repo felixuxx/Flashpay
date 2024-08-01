@@ -578,7 +578,7 @@ TALER_KYCLOGIC_get_default_measure (
 /**
  * Obtain the provider logic for a given set of @a lrs
  * and a specific @a kyc_rule from @a lrs that was
- * triggered and the choosen @a measure_name from the
+ * triggered and the chosen @a measure_name from the
  * list of measures of that @a kyc_rule.  Can also be
  * used to obtain the "current" check of a @a lrs if
  * no trigger has been hit.
@@ -648,7 +648,7 @@ typedef enum GNUNET_GenericReturnValue
  * providing the plugin closure and the @a pd configurations.
  * Obtain the provider logic for a given set of @a lrs
  * and a specific @a kyc_rule from @a lrs that was
- * triggered and the choosen @a measure_name from the
+ * triggered and the chosen @a measure_name from the
  * list of measures of that @a kyc_rule.
   *
  * @param logic_name name of the logic to match

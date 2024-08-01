@@ -189,7 +189,7 @@ generate_reply (struct KycPoller *kyp,
                 uint64_t row_id,
                 const json_t *jmeasures)
 {
-  const json_t *mis;
+  const json_t *measures;
   bool is_and_combinator = false;
   bool verboten;
   struct GNUNET_JSON_Specification spec[] = {
@@ -200,7 +200,7 @@ generate_reply (struct KycPoller *kyp,
     GNUNET_JSON_spec_bool ("verboten",
                            &verboten),
     GNUNET_JSON_spec_array_const ("measures",
-                                  &mis),
+                                  &measures),
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_GenericReturnValue res;
@@ -224,7 +224,7 @@ generate_reply (struct KycPoller *kyp,
   }
   kris = json_array ();
   GNUNET_assert (NULL != kris);
-  json_array_foreach ((json_t *) mis, i, mi)
+  json_array_foreach ((json_t *) measures, i, mi)
   {
     const char *check_name;
     const char *prog_name;

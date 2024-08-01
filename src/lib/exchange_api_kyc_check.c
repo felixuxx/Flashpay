@@ -60,17 +60,18 @@ struct TALER_EXCHANGE_KycCheckHandle
 
 
 static enum GNUNET_GenericReturnValue
-parse_account_status (struct TALER_EXCHANGE_KycCheckHandle *kch,
-                      const json_t *j,
-                      struct TALER_EXCHANGE_KycStatus *ks,
-                      struct TALER_EXCHANGE_AccountKycStatus *aks)
+parse_account_status (
+  struct TALER_EXCHANGE_KycCheckHandle *kch,
+  const json_t *j,
+  struct TALER_EXCHANGE_KycStatus *ks,
+  struct TALER_EXCHANGE_AccountKycStatus *status)
 {
   const json_t *limits = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_bool ("aml_review",
-                           &aks->aml_review),
+                           &status->aml_review),
     GNUNET_JSON_spec_fixed_auto ("access_token",
-                                 &aks->access_token),
+                                 &status->access_token),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_array_const ("limits",
                                     &limits),
@@ -89,8 +90,8 @@ parse_account_status (struct TALER_EXCHANGE_KycCheckHandle *kch,
   if ( (NULL != limits) &&
        (0 != json_array_size (limits)) )
   {
-    size_t als = json_array_size (limits);
-    struct TALER_EXCHANGE_AccountLimit ala[GNUNET_NZL (als)];
+    size_t limit_length = json_array_size (limits);
+    struct TALER_EXCHANGE_AccountLimit ala[GNUNET_NZL (limit_length)];
     size_t i;
     json_t *limit;
 
@@ -118,8 +119,8 @@ parse_account_status (struct TALER_EXCHANGE_KycCheckHandle *kch,
         return GNUNET_SYSERR;
       }
     }
-    aks->limits = ala;
-    aks->limits_length = als;
+    status->limits = ala;
+    status->limits_length = limit_length;
     kch->cb (kch->cb_cls,
              ks);
   }

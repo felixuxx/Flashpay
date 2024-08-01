@@ -637,7 +637,7 @@ struct TEH_KycAmlFallback
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh;
 
   /**
-   * Task for asynchrnous returning of the result.
+   * Task for asynchronously returning of the result.
    */
   struct GNUNET_SCHEDULER_Task *task;
 

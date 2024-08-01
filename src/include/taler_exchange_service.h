@@ -4480,13 +4480,13 @@ struct TALER_EXCHANGE_KycProcessClientInformation
     {
 
       /**
-       * Array with information about availalbe voluntary
+       * Array with information about available voluntary
        * checks.
        */
       const struct TALER_EXCHANGE_RequirementInformation *requirements;
 
       /**
-       * Array with information about availalbe voluntary
+       * Array with information about available voluntary
        * checks.
        * FIXME: not implemented until **vATTEST**.
        */

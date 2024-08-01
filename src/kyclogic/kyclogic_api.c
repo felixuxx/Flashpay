@@ -1432,7 +1432,7 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
                        "SKIP"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "The kyc-check-skip section must not exist, 'skip' is reserved name for a build-in check\n");
+                "The kyc-check-skip section must not exist, 'skip' is reserved name for a built-in check\n");
     return GNUNET_SYSERR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
