@@ -1101,7 +1101,8 @@ handle_purse_expired (
                       TALER_JSON_pack_amount ("balance",
                                               balance),
                       TALER_JSON_pack_time_abs_human ("expired",
-                                                      expiration_date.abs_time)));
+                                                      expiration_date.abs_time))
+                    );
   TALER_ARL_amount_add (&total_delayed_decisions,
                         &total_delayed_decisions,
                         balance);

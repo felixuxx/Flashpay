@@ -1761,7 +1761,8 @@ deposit_cb (void *cls,
                           TALER_JSON_pack_amount ("loss",
                                                   &deposit->amount_with_fee),
                           GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                      &deposit->coin.coin_pub)));
+                                                      &deposit->coin.coin_pub)))
+      ;
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                             &TALER_ARL_USE_AB (coin_irregular_loss),
                             &deposit->amount_with_fee);

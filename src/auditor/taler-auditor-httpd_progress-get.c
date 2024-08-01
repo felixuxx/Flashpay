@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -27,17 +25,18 @@
 #include "taler-auditor-httpd_progress-get.h"
 
 /**
-* Add progress to the list.
-*
-* @param[in,out] cls a `json_t *` array to extend
-* @param serial_id location of the @a dc in the database
-* @param dc struct of inconsistencies
-* @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
-*/
+ * Add progress to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param serial_id location of the @a dc in the database
+ * @param dc struct of inconsistencies
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
 static enum GNUNET_GenericReturnValue
-process_progress (void *cls,
-                  uint64_t serial_id,
-                  const struct TALER_AUDITORDB_Progress *dc)
+process_progress (
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_Progress *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -57,23 +56,14 @@ process_progress (void *cls,
 }
 
 
-/**
-*
-* @param rh context of the handler
-* @param connection the MHD connection to handle
-* @param[in,out] connection_cls the connection's closure (can be updated)
-* @param upload_data upload data
-* @param[in,out] upload_data_size number of bytes (left) in @a upload_data
-* @return MHD result code
-*/
 MHD_RESULT
-TAH_PROGRESS_handler_get (struct TAH_RequestHandler *rh,
-                          struct MHD_Connection *
-                          connection,
-                          void **connection_cls,
-                          const char *upload_data,
-                          size_t *upload_data_size,
-                          const char *const args[])
+TAH_PROGRESS_handler_get (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[])
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;

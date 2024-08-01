@@ -32,17 +32,7 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_mhd.h"
 
-/**
- * Function to call to handle the request by sending
- * back static data from the @a rh.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
+
 MHD_RESULT
 TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
                                  struct MHD_Connection *connection,
@@ -67,17 +57,6 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
 }
 
 
-/**
- * Function to call to handle the request by sending
- * back a redirect to the AGPL source code.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
 MHD_RESULT
 TAH_MHD_handler_agpl_redirect (struct TAH_RequestHandler *rh,
                                struct MHD_Connection *connection,

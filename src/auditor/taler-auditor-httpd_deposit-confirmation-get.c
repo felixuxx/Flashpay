@@ -102,12 +102,13 @@ add_deposit_confirmation (void *cls,
 
 
 MHD_RESULT
-TAH_DEPOSIT_CONFIRMATION_handler_get (struct TAH_RequestHandler *rh,
-                                      struct MHD_Connection *connection,
-                                      void **connection_cls,
-                                      const char *upload_data,
-                                      size_t *upload_data_size,
-                                      const char *const args[])
+TAH_DEPOSIT_CONFIRMATION_handler_get (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[])
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;

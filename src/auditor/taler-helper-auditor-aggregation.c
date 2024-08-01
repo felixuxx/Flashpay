@@ -1159,7 +1159,8 @@ get_wire_fee (struct AggregationContext *ac,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  diagnosticb),
                         TALER_JSON_pack_time_abs_human ("time",
-                                                        wfi->start_date.abs_time)));
+                                                        wfi->start_date.abs_time
+                                                        )));
   }
   if ((NULL != wfi->next) &&
       GNUNET_TIME_timestamp_cmp (wfi->next->start_date,
@@ -1188,7 +1189,8 @@ get_wire_fee (struct AggregationContext *ac,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  diagnostica),
                         TALER_JSON_pack_time_abs_human ("time",
-                                                        wfi->end_date.abs_time)));
+                                                        wfi->end_date.abs_time))
+                      );
   }
   return &wfi->fees.wire;
 }
@@ -1441,12 +1443,14 @@ analyze_aggregations (void *cls)
   }
 
   if (GNUNET_NO == TALER_amount_is_valid (&TALER_ARL_USE_AB (
-                                            aggregation_total_wire_fee_revenue)))
+                                            aggregation_total_wire_fee_revenue))
+      )
   {
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TALER_ARL_currency,
                                           &TALER_ARL_USE_AB (
-                                            aggregation_total_wire_fee_revenue)));
+                                            aggregation_total_wire_fee_revenue))
+                   );
     balance_exists = 0;
   }
 

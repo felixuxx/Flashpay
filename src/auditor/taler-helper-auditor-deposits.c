@@ -475,7 +475,8 @@ run (void *cls,
   TALER_ARL_done (
     GNUNET_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("deposit_confirmation_inconsistencies",
-                                    report_deposit_confirmation_inconsistencies),
+                                    report_deposit_confirmation_inconsistencies)
+      ,
       GNUNET_JSON_pack_uint64 ("missing_deposit_confirmation_count",
                                number_missed_deposit_confirmations),
       TALER_JSON_pack_amount ("missing_deposit_confirmation_total",

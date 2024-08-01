@@ -73,6 +73,7 @@ TAH_CLOSURE_LAGS_handler_delete (struct TAH_RequestHandler *rh,
   return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_NO_CONTENT,
                                     GNUNET_JSON_pack_string ("status",
-                                                             "CLOSURE_LAGS_OK"));
+                                                             "CLOSURE_LAGS_OK"))
+  ;
 
 }

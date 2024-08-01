@@ -36,9 +36,10 @@
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
-add_coin_inconsistency (void *cls,
-                        uint64_t serial_id,
-                        const struct TALER_AUDITORDB_CoinInconsistency *dc)
+add_coin_inconsistency (
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_CoinInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
@@ -60,23 +61,15 @@ add_coin_inconsistency (void *cls,
 }
 
 
-/**
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
 MHD_RESULT
-TAH_COIN_INCONSISTENCY_handler_get (struct TAH_RequestHandler *rh,
-                                    struct MHD_Connection *
-                                    connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size,
-                                    const char *const args[])
+TAH_COIN_INCONSISTENCY_handler_get (
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *
+  connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[])
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
