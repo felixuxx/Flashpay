@@ -49,7 +49,7 @@ struct ClosureLagsContext
 
 
 /**
- * Helper function for #TAH_PG_get_closure_lags().
+ * Helper function for #TAH_PG_get_auditor_closure_lags().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *

@@ -2306,7 +2306,7 @@ conclude_account (struct WireAccount *wa)
  * Analyze credit transaction @a details into @a wa.
  *
  * @param[in,out] wa account that received the transfer
- * @param details transfer details
+ * @param credit_details transfer details
  * @return true on success, false to stop loop at this point
  */
 static bool

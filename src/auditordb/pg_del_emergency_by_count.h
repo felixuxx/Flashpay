@@ -32,4 +32,4 @@ TAH_PG_del_emergency_by_count (
   void *cls,
   uint64_t row_id);
 
-#endif // SRC_PG_DEL_EMERGENCY_BY_COUNT_H
+#endif

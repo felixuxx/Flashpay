@@ -23,7 +23,7 @@
 /**
  * Delete a row from the denom key validity withdraw inconsistency table.
  *
- * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cls the plugin-specific state
  * @param row_id row to delete
  * @return query transaction status
  */
@@ -32,4 +32,4 @@ TAH_PG_del_emergency (
   void *cls,
   uint64_t row_id);
 
-#endif // SRC_PG_DEL_EMERGENCY_H
+#endif

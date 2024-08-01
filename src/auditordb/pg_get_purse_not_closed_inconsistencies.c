@@ -54,7 +54,7 @@ struct PurseNotClosedInconsistenciesContext
 
 
 /**
- * Helper function for #TAH_PG_purse_not_closed_inconsistencies().
+ * Helper function for #TAH_PG_get_purse_not_closed_inconsistencies().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *

@@ -52,7 +52,7 @@ struct ReserveBalanceInsufficientInconsistencyContext
 
 
 /**
- * Helper function for #TAH_PG_reserve_balance_insufficient_inconsistency().
+ * Helper function for #TAH_PG_get_reserve_balance_insufficient_inconsistency().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
