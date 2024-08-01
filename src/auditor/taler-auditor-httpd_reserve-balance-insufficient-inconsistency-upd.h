@@ -38,4 +38,5 @@ TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_update (struct
                                                                const char *const
                                                                args[]);
 
-#endif // SRC_TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_UPD_H
+#endif \
+  // SRC_TALER_AUDITOR_HTTPD_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_UPD_H

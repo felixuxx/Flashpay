@@ -37,19 +37,19 @@
  * Macro to use to declare progress point value @a name.
  */
 #define TALER_ARL_DEF_PP(name)                  \
-  uint64_t TALER_ARL_USE_PP (name) = 0
+        uint64_t TALER_ARL_USE_PP (name) = 0
 
 /**
  * Macro to use to GET progress point value @a name from DB.
  */
 #define TALER_ARL_GET_PP(name)                  \
-  TALER_S (name), &TALER_ARL_USE_PP (name)
+        TALER_S (name), &TALER_ARL_USE_PP (name)
 
 /**
  * Macro to use to SET progress point value @a name in DB.
  */
 #define TALER_ARL_SET_PP(name)                  \
-  TALER_S (name), TALER_ARL_USE_PP (name)
+        TALER_S (name), TALER_ARL_USE_PP (name)
 
 /**
  * Macro to use to access amount balance @a name.
@@ -60,19 +60,19 @@
  * Macro to use to declare amount balance @a name.
  */
 #define TALER_ARL_DEF_AB(name)                  \
-  struct TALER_Amount TALER_ARL_USE_AB (name)
+        struct TALER_Amount TALER_ARL_USE_AB (name)
 
 /**
  * Macro to use to GET amount balance @a name from DB.
  */
 #define TALER_ARL_GET_AB(name)                  \
-  TALER_S (name), &TALER_ARL_USE_AB (name)
+        TALER_S (name), &TALER_ARL_USE_AB (name)
 
 /**
  * Macro to use to SET amount balance @a name in DB.
  */
 #define TALER_ARL_SET_AB(name)                  \
-  TALER_S (name), &TALER_ARL_USE_AB (name)
+        TALER_S (name), &TALER_ARL_USE_AB (name)
 
 
 /**
@@ -214,7 +214,7 @@ TALER_ARL_amount_add_ (struct TALER_Amount *sum,
  * @param a2 second amount to add
  */
 #define TALER_ARL_amount_add(sum,a1,a2) \
-  TALER_ARL_amount_add_ (sum, a1, a2, __FILE__, __FUNCTION__, __LINE__)
+        TALER_ARL_amount_add_ (sum, a1, a2, __FILE__, __FUNCTION__, __LINE__)
 
 
 /**
@@ -250,7 +250,8 @@ TALER_ARL_amount_subtract_ (struct TALER_Amount *diff,
  * @param a2 amount to subtract
  */
 #define TALER_ARL_amount_subtract(diff,a1,a2) \
-  TALER_ARL_amount_subtract_ (diff, a1, a2, __FILE__, __FUNCTION__, __LINE__)
+        TALER_ARL_amount_subtract_ (diff, a1, a2, __FILE__, __FUNCTION__, \
+                                    __LINE__)
 
 
 /**
@@ -316,8 +317,8 @@ TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
  *         #TALER_ARL_SR_POSITIVE if the result is positive
  */
 #define TALER_ARL_amount_subtract_neg(diff,a1,a2) \
-  TALER_ARL_amount_subtract_neg_ (diff, a1, a2, __FILE__, __FUNCTION__, \
-                                  __LINE__)
+        TALER_ARL_amount_subtract_neg_ (diff, a1, a2, __FILE__, __FUNCTION__, \
+                                        __LINE__)
 
 
 /**
