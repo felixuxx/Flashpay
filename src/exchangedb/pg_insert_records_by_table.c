@@ -416,6 +416,50 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
 
 
 /**
+ * Function called with kycauth_in records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_kycauths_in (struct PostgresClosure *pg,
+                           const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.kycauth_in.wire_reference),
+    TALER_PQ_query_param_amount (
+      pg->conn,
+      &td->details.reserves_in.credit),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_in.sender_account_h_payto),
+    GNUNET_PQ_query_param_string (
+      td->details.reserves_in.exchange_account_section),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.reserves_in.execution_date),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.kycauth_in.account_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_kycauth_in",
+           "INSERT INTO kycauths_in"
+           "(kycauth_in_serial_id"
+           ",wire_reference"
+           ",credit"
+           ",wire_source_h_payto"
+           ",exchange_account_section"
+           ",execution_date"
+           ",account_pub"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_kycauth_in",
+                                             params);
+}
+
+
+/**
  * Function called with reserves_open_requests records to insert into table.
  *
  * @param pg plugin context
@@ -2269,6 +2313,9 @@ TEH_PG_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_IN:
     rh = &irbt_cb_table_reserves_in;
+    break;
+  case TALER_EXCHANGEDB_RT_KYCAUTHS_IN:
+    rh = &irbt_cb_table_kycauths_in;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
     rh = &irbt_cb_table_reserves_close;

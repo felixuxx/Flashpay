@@ -332,6 +332,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES,
   TALER_EXCHANGEDB_RT_AML_HISTORY,
   TALER_EXCHANGEDB_RT_KYC_EVENTS,
+  TALER_EXCHANGEDB_RT_KYCAUTHS_IN,
 };
 
 
@@ -469,6 +470,16 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_ReservePublicKeyP reserve_pub;
     } reserves_in;
+
+    struct
+    {
+      uint64_t wire_reference;
+      struct TALER_Amount credit;
+      struct TALER_PaytoHashP sender_account_h_payto;
+      char *exchange_account_section;
+      struct GNUNET_TIME_Timestamp execution_date;
+      union TALER_AccountPublicKeyP account_pub;
+    } kycauth_in;
 
     struct
     {

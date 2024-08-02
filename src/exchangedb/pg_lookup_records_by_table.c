@@ -347,6 +347,67 @@ lrbt_cb_table_reserves_in (void *cls,
 
 
 /**
+ * Function called with kycauth_in table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_kycauth_in (void *cls,
+                          PGresult *result,
+                          unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_KYCAUTHS_IN
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "account_pub",
+        &td.details.kycauth_in.account_pub),
+      GNUNET_PQ_result_spec_uint64 (
+        "wire_reference",
+        &td.details.kycauth_in.wire_reference),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "credit",
+        &td.details.kycauth_in.credit),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wire_source_h_payto",
+        &td.details.kycauth_in.sender_account_h_payto),
+      GNUNET_PQ_result_spec_string (
+        "exchange_account_section",
+        &td.details.kycauth_in.exchange_account_section),
+      GNUNET_PQ_result_spec_timestamp (
+        "execution_date",
+        &td.details.kycauth_in.execution_date),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
  * Function called with reserves_close table entries.
  *
  * @param cls closure
@@ -3086,6 +3147,21 @@ TEH_PG_lookup_records_by_table (void *cls,
               " WHERE reserve_in_serial_id > $1"
               " ORDER BY reserve_in_serial_id ASC;");
     rh = &lrbt_cb_table_reserves_in;
+    break;
+  case TALER_EXCHANGEDB_RT_KYCAUTHS_IN:
+    XPREPARE ("select_above_serial_by_table_kycauth_in",
+              "SELECT"
+              " kycauth_in_serial_id AS serial"
+              ",account_pub"
+              ",wire_reference"
+              ",credit"
+              ",wire_source_h_payto"
+              ",exchange_account_section"
+              ",execution_date"
+              " FROM kycauths_in"
+              " WHERE kycauth_in_serial_id > $1"
+              " ORDER BY kycauth_in_serial_id ASC;");
+    rh = &lrbt_cb_table_kycauth_in;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
     XPREPARE ("select_above_serial_by_table_reserves_close",

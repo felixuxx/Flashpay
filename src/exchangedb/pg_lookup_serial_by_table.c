@@ -93,6 +93,14 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY reserve_in_serial_id DESC"
               " LIMIT 1;");
     break;
+  case TALER_EXCHANGEDB_RT_KYCAUTHS_IN:
+    XPREPARE ("select_serial_by_table_kycauths_in",
+              "SELECT"
+              " kycauth_in_serial_id AS serial"
+              " FROM kycauths_in"
+              " ORDER BY kycauths_in_serial_id DESC"
+              " LIMIT 1;");
+    break;
   case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
     XPREPARE ("select_serial_by_table_reserves_close",
               "SELECT"
