@@ -48,9 +48,6 @@ TEH_PG_insert_kyc_attributes (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp expiration
     = GNUNET_TIME_absolute_to_timestamp (expiration_time);
-#if FIXME
-  /* We used to do h_payto, now we need the
-     account access token! */
   struct TALER_KycCompletedEventP rep = {
     .header.size = htons (sizeof (rep)),
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
@@ -58,10 +55,6 @@ TEH_PG_insert_kyc_attributes (
   };
   char *kyc_completed_notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
-#else
-  char *kyc_completed_notify_s
-    = GNUNET_strdup ("FIXME");
-#endif
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),

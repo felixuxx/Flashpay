@@ -43,9 +43,6 @@ TEH_PG_insert_aml_decision (
   struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
-#if FIXME
-  /* We used to do h_payto, now we need the
-     account access token! */
   struct TALER_KycCompletedEventP rep = {
     .header.size = htons (sizeof (rep)),
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
@@ -53,10 +50,6 @@ TEH_PG_insert_aml_decision (
   };
   char *notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
-#else
-  char *notify_s
-    = GNUNET_strdup ("FIXME");
-#endif
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_timestamp (&decision_time),

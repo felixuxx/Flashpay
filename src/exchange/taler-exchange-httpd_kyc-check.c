@@ -229,25 +229,6 @@ TEH_handler_kyc_check (
                                      &kyp->timeout);
   }
 
-  if ( (NULL == kyp->eh) &&
-       GNUNET_TIME_absolute_is_future (kyp->timeout) )
-  {
-    struct TALER_KycCompletedEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
-      // .h_payto = kyp->h_payto // FIXME: h_payto not available here yet!
-    };
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Starting DB event listening\n");
-    kyp->eh = TEH_plugin->event_listen (
-      TEH_plugin->cls,
-      GNUNET_TIME_absolute_get_remaining (kyp->timeout),
-      &rep.header,
-      &db_event_cb,
-      rc);
-  }
-
   if (! TALER_KYCLOGIC_is_enabled ())
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -341,7 +322,43 @@ TEH_handler_kyc_check (
   if (kyc_required &&
       GNUNET_TIME_absolute_is_future (kyp->timeout))
   {
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_KycCompletedEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+    };
+
     json_decref (jlimits);
+    if (NULL == kyp->eh)
+    {
+      /* FIXME-Performance: consider modifying lookup_kyc_requirement_by_row
+         to immediately return h_payto as well... */
+      qs = TEH_plugin->lookup_h_payto_by_access_token (
+        TEH_plugin->cls,
+        &access_token,
+        &rep.h_payto);
+      if (qs < 0)
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_ec (
+          rc->connection,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "lookup_h_payto_by_access_token");
+      }
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Starting DB event listening\n");
+      kyp->eh = TEH_plugin->event_listen (
+        TEH_plugin->cls,
+        GNUNET_TIME_absolute_get_remaining (kyp->timeout),
+        &rep.header,
+        &db_event_cb,
+        rc);
+      /* goes again *immediately* (without suspending)
+         now that long-poller is in place; we will suspend
+         in the *next* iteration. */
+      return MHD_YES;
+    }
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Suspending HTTP request on timeout (%s) now...\n",
                 GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (

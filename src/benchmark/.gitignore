@@ -1,3 +1,4 @@
 taler-bank-benchmark
 taler-aggregator-benchmark
 *.edited
+libeufin-bank.pid

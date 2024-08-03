@@ -41,6 +41,7 @@
 #include "pg_do_reserve_open.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_get_expired_reserves.h"
+#include "pg_lookup_h_payto_by_access_token.h"
 #include "pg_get_purse_request.h"
 #include "pg_get_reserve_history.h"
 #include "pg_get_unfinished_close_requests.h"
@@ -765,6 +766,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_add_denomination_key;
   plugin->lookup_signing_key
     = &TEH_PG_lookup_signing_key;
+  plugin->lookup_h_payto_by_access_token
+    = &TEH_PG_lookup_h_payto_by_access_token;
   plugin->begin_shard
     = &TEH_PG_begin_shard;
   plugin->abort_shard

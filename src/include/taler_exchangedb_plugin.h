@@ -238,9 +238,9 @@ struct TALER_KycCompletedEventP
   struct GNUNET_DB_EventHeaderP header;
 
   /**
-   * Access token the KYC was completed for.
+   * Hash of payto://-URI for which the KYC state changed.
    */
-  struct TALER_AccountAccessTokenP access_token;
+  struct TALER_PaytoHashP h_payto;
 };
 
 
@@ -7376,6 +7376,23 @@ struct TALER_EXCHANGEDB_Plugin
     int64_t limit,
     TALER_EXCHANGEDB_AmlAttributeCallback cb,
     void *cb_cls);
+
+
+  /**
+   * Lookup @a h_payto based on an @a access_token.
+   *
+   * @param cls closure
+   * @param access_token
+   *    set to token for access control
+   * @param[out] h_payto set to the the hash of the
+   *    payto URI of the account (if found)
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_h_payto_by_access_token)(
+    void *cls,
+    const struct TALER_AccountAccessTokenP *access_token,
+    struct TALER_PaytoHashP *h_payto);
 
 
   /**

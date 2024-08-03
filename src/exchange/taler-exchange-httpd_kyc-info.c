@@ -373,9 +373,21 @@ TEH_handler_kyc_info (
   {
     struct TALER_KycCompletedEventP rep = {
       .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
-      .access_token = kyp->access_token
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED)
     };
+
+    qs = TEH_plugin->lookup_h_payto_by_access_token (
+      TEH_plugin->cls,
+      &kyp->access_token,
+      &rep.h_payto);
+    if (qs < 0)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_ec (
+        rc->connection,
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "lookup_h_payto_by_access_token");
+    }
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Starting DB event listening\n");

@@ -74,9 +74,6 @@ TEH_PG_insert_kyc_failure (
   if (qs > 0)
   {
     /* FIXME: might want to do this eventually in the same transaction... */
-#if FIXME
-    /* We used to do h_payto, now we need the
-       account access token! */
     struct TALER_KycCompletedEventP rep = {
       .header.size = htons (sizeof (rep)),
       .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
@@ -87,7 +84,6 @@ TEH_PG_insert_kyc_failure (
                          &rep.header,
                          NULL,
                          0);
-#endif
   }
   return qs;
 }
