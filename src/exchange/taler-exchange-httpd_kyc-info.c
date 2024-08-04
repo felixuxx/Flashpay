@@ -180,13 +180,13 @@ db_event_cb (void *cls,
  * the LegitimizationMeasures.
  *
  * @param[in,out] kyp request to reply on
- * @param row_id etag to set for the response
+ * @param legitimization_measure_row_id etag to set for the response
  * @param jmeasures measures to encode
  * @return MHD status code
  */
 static MHD_RESULT
 generate_reply (struct KycPoller *kyp,
-                uint64_t row_id,
+                uint64_t legitimization_measure_row_id,
                 const json_t *jmeasures)
 {
   const json_t *measures;
@@ -255,7 +255,7 @@ generate_reply (struct KycPoller *kyp,
       prog_name,
       &kyp->access_token,
       i,
-      row_id);
+      legitimization_measure_row_id);
     if (NULL == kri)
     {
       GNUNET_break (0);
@@ -278,7 +278,7 @@ generate_reply (struct KycPoller *kyp,
     GNUNET_snprintf (etags,
                      sizeof (etags),
                      "%llu",
-                     (unsigned long long) row_id);
+                     (unsigned long long) legitimization_measure_row_id);
     resp = TALER_MHD_MAKE_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("requirements",
                                     kris),
@@ -310,7 +310,7 @@ TEH_handler_kyc_info (
   struct KycPoller *kyp = rc->rh_ctx;
   MHD_RESULT res;
   enum GNUNET_DB_QueryStatus qs;
-  uint64_t last_row;
+  uint64_t legitimization_measure_last_row;
   json_t *jmeasures;
 
   if (NULL == kyp)
@@ -402,7 +402,7 @@ TEH_handler_kyc_info (
   qs = TEH_plugin->lookup_kyc_status_by_token (
     TEH_plugin->cls,
     &kyp->access_token,
-    &last_row,
+    &legitimization_measure_last_row,
     &jmeasures);
   if (qs < 0)
   {
@@ -443,7 +443,7 @@ TEH_handler_kyc_info (
   }
 
   res = generate_reply (kyp,
-                        last_row,
+                        legitimization_measure_last_row,
                         jmeasures);
   json_decref (jmeasures);
   return res;

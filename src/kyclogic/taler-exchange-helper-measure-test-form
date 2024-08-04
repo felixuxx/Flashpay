@@ -1,0 +1,122 @@
+#!/bin/bash
+#
+#  This file is part of TALER
+#  Copyright (C) 2014-2024 Taler Systems SA
+#
+#  TALER is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License as published by the Free Software
+#  Foundation; either version 3, or (at your option) any later version.
+#
+#  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along with
+#  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/license>
+#
+
+# Hard error reporting on.
+set -eu
+
+echo "Running $0" 1>&2
+
+# This is a KYC measure program that checks the output
+# of a simple FORM submission, and if it passed,
+# increases all limits to EUR:1000.
+# (and doesn't impose any other limits)
+
+if [ "${1:-no}" = "--required-context" ]
+then
+    # No context is required.
+    exit 0
+fi
+
+if [ "${1:-no}" = "--required-attributes" ]
+then
+    # This AML program expects as inputs a full_name
+    # and a birthdate.
+    echo "full_name"
+    echo "birthdate"
+    exit 0
+fi
+
+# First, check everything we expect is in stdin.
+A=$(jq -r .attributes)
+J=$(echo $A | jq -r 'def get($k):
+             if has($k)
+               then .[$k]
+               else error("attribute missing")
+           end;
+           {"full_name":get("full_name"),
+            "birthdate":get("birthdate")}')
+
+# Here we could use those values...
+echo "$J" >> /dev/null
+
+# See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlProgramInput
+# for the full JSON with possible inputs.
+
+# New rules apply for 30 days.
+EXPIRATION=$((3600 * 30 + $(date +%s)))
+
+# Finally, output the new rules.
+# See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlOutcome
+# for the required output format.
+
+jq -n \
+    --argjson expiration "$EXPIRATION" \
+    '{ "to_investigate": false,
+       "new_rules" : {
+         "new_check" : "info-oauth-test-passed",
+         "expiration_time" : { "t_s": $expiration },
+         "rules" : [
+         {
+           "operation_type": "WITHDRAW",
+           "threshold" : "EUR:1000",
+           "timeframe" : { "d_us" : 3600000000 },
+           "measures" : [ "verboten" ],
+           "display_priority" : 1,
+           "exposed" : true,
+           "is_and_combinator" : true
+         },
+         {
+           "operation_type": "DEPOSIT",
+           "threshold" : "EUR:1000",
+           "timeframe" : { "d_us" : 3600000000 },
+           "measures" : [ "verboten" ],
+           "display_priority" : 1,
+           "exposed" : true,
+           "is_and_combinator" : true
+         },
+         {
+           "operation_type": "MERGE",
+           "threshold" : "EUR:1000",
+           "timeframe" : { "d_us" : 3600000000 },
+           "measures" : [ "verboten" ],
+           "display_priority" : 1,
+           "exposed" : true,
+           "is_and_combinator" : true
+         },
+         {
+           "operation_type": "BALANCE",
+           "threshold" : "EUR:1000",
+           "timeframe" : { "d_us" : 3600000000 },
+           "measures" : [ "verboten" ],
+           "display_priority" : 1,
+           "exposed" : true,
+           "is_and_combinator" : true
+         },
+         {
+           "operation_type": "CLOSE",
+           "threshold" : "EUR:1000",
+           "timeframe" : { "d_us" : 3600000000 },
+           "measures" : [ "verboten" ],
+           "display_priority" : 1,
+           "exposed" : true,
+           "is_and_combinator" : true
+         }
+         ]
+       }
+     }' < /dev/null
+
+exit 0
