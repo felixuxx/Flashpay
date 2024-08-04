@@ -6313,6 +6313,8 @@ struct TALER_EXCHANGE_AccountRule
  *                      decision is about
  * @param decision_time when was the decision made
  * @param successor_measure measure to activate after @a expiration_time if no rule applied
+ * @param new_check new KYC check to provide to the user,
+ *          NULL for none
  * @param expiration_time when do the new rules expire
  * @param num_rules length of the @a rules array
  * @param rules new rules for the account
@@ -6333,6 +6335,7 @@ TALER_EXCHANGE_add_aml_decision (
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
+  const char *new_check,
   struct GNUNET_TIME_Timestamp expiration_time,
   unsigned int num_rules,
   const struct TALER_EXCHANGE_AccountRule *rules,

@@ -130,6 +130,7 @@ TALER_EXCHANGE_add_aml_decision (
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
+  const char *new_check,
   struct GNUNET_TIME_Timestamp expiration_time,
   unsigned int num_rules,
   const struct TALER_EXCHANGE_AccountRule *rules,
@@ -215,14 +216,18 @@ TALER_EXCHANGE_add_aml_decision (
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_string ("successor_measure",
                                successor_measure)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("new_check",
+                               new_check)),
     GNUNET_JSON_pack_array_steal ("rules",
                                   jrules),
     GNUNET_JSON_pack_object_steal ("custom_measures",
                                    jmeasures)
     );
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,
-                                      &officer_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &officer_priv->eddsa_priv,
+    &officer_pub.eddsa_pub);
   TALER_officer_aml_decision_sign (justification,
                                    decision_time,
                                    h_payto,
