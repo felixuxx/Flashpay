@@ -67,6 +67,12 @@ TEH_PG_lookup_kyc_requirement_by_row (
   memset (account_pub,
           0,
           sizeof (*account_pub));
+  // FIXME: likely better done as a stored procedure,
+  // this may get even more complex: *if* there is
+  // a more recent lm for the same account/access_token,
+  // we probably want to join with THAT lo and not
+  // the possibly dated lo for the given row.
+  // Or: don't join at all with lo and simplify?
   PREPARE (pg,
            "lookup_kyc_requirement_by_row",
            "SELECT "
