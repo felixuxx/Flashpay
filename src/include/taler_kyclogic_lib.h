@@ -534,6 +534,19 @@ TALER_KYCLOGIC_measure_to_requirement (
 
 
 /**
+ * Lookup @a measure_name in @a lrs and create JSON
+ * object with the corresponding LegitimizationMeasures.
+ *
+ * @param lrs set of legitimization rules
+ * @param measure_name name of a measure to trigger from @a lrs
+ * @return JSON object of type LegitimizationMeasures
+ */
+json_t *
+TALER_KYCLOGIC_get_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measure_name);
+
+/**
  * Lookup the provider for the given @a check_name.
  *
  * @param check_name check to lookup provider for

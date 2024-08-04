@@ -22,17 +22,25 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_properties TEXT,
   IN in_new_rules TEXT,
   IN in_to_investigate BOOLEAN,
+  IN in_jmeasures TEXT,
   IN in_justification TEXT,
   IN in_decider_pub BYTEA,
   IN in_decider_sig BYTEA,
   IN in_notify_s TEXT,
   OUT out_invalid_officer BOOLEAN,
+  OUT out_account_unknown BOOLEAN,
   OUT out_last_date INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
   my_outcome_serial_id INT8;
+  my_access_token BYTEA;
+  my_max_dp INT4;
 BEGIN
+
+out_account_unknown=FALSE;
+
+
 -- Check officer is eligible to make decisions.
 PERFORM
   FROM aml_staff
@@ -69,6 +77,56 @@ THEN
 ELSE
   out_last_date = 0;
 END IF;
+
+-- Only do this if we have in_jmeasures to trigger
+IF in_jmeasures IS NOT NULL
+THEN
+
+  -- Note: in_payto_uri is allowed to be NULL *if*
+  -- in_h_payto is already in wire_targets
+  SELECT
+    access_token
+  INTO
+    my_access_token
+  FROM wire_targets
+    WHERE wire_target_h_payto=in_h_payto;
+
+  -- Very strange, should never happen that we
+  -- take an AML decision on an unknown account!
+  IF NOT FOUND
+  THEN
+    out_account_unknown=TRUE;
+    RETURN;
+  END IF;
+
+  -- Find current maximum DP
+  SELECT COALESCE(MAX(display_priority),0)
+    INTO my_max_dp
+    FROM legitimization_measures
+   WHERE access_token=my_access_token
+     AND NOT is_finished;
+
+  -- Enable legitimization measure
+  INSERT INTO legitimization_measures
+    (access_token
+    ,start_time
+    ,jmeasures
+    ,display_priority)
+    VALUES
+    (my_access_token
+    ,in_decision_time
+    ,in_jmeasures
+    ,my_max_dp + 1);
+
+  -- end if for where we had non-NULL in_jmeasures
+END IF;
+
+UPDATE legitimization_outcomes
+   SET is_active=FALSE
+ WHERE h_payto=in_h_payto
+   -- this clause is a minor optimization to avoid
+   -- updating outcomes that have long expired.
+   AND expiration_time >= in_decision_time;
 
 INSERT INTO legitimization_outcomes
   (h_payto
@@ -120,5 +178,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, BYTEA, BYTEA, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, BYTEA, BYTEA, TEXT)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

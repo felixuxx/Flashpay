@@ -162,6 +162,7 @@ kyc_aml_webhook_finished (
   struct KycWebhookContext *kwh = cls;
 
   kwh->kat = NULL;
+  GNUNET_assert (NULL == kwh->response);
   kwh->response = response;
   kwh->response_code = http_status;
   kwh_resume (kwh);

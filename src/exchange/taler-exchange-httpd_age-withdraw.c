@@ -92,6 +92,13 @@ static void
 free_age_withdraw_context_resources (struct AgeWithdrawContext *awc)
 {
   GNUNET_free (awc->denom_hs);
+  for (unsigned int i = 0; i<awc->num_coins; i++)
+  {
+    for (unsigned int kappa = 0; kappa<TALER_CNC_KAPPA; kappa++)
+    {
+      TALER_blinded_planchet_free (&awc->coin_evs[i][kappa]);
+    }
+  }
   GNUNET_free (awc->coin_evs);
   GNUNET_free (awc->commitment.denom_serials);
   /*
@@ -204,6 +211,7 @@ parse_age_withdraw_json (
   /* Parse blinded envelopes. */
   json_array_foreach (j_blinded_coin_evs, idx, value) {
     const json_t *j_kappa_coin_evs = value;
+
     if (! json_is_array (j_kappa_coin_evs))
     {
       GNUNET_snprintf (buf,

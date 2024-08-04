@@ -176,13 +176,6 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
   char *successor_measure;
 
   /**
-   * Name of the check that becomes active when this
-   * measure is triggered.
-   * NULL for no check (allowed, but should be rare).
-   */
-  char *new_check;
-
-  /**
    * Array of the rules.
    */
   struct TALER_KYCLOGIC_KycRule *kyc_rules;
@@ -487,7 +480,6 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
   struct GNUNET_TIME_Timestamp expiration_time;
   const char *successor_measure = NULL;
   const json_t *jrules;
-  const char *new_check = NULL;
   const json_t *jcustom_measures = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp (
@@ -497,11 +489,6 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       GNUNET_JSON_spec_string (
         "successor_measure",
         &successor_measure),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string (
-        "new_check",
-        &new_check),
       NULL),
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
@@ -541,10 +528,6 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
     = (NULL == successor_measure)
     ? NULL
     : GNUNET_strdup (successor_measure);
-  lrs->new_check
-    = (NULL == new_check)
-    ? NULL
-    : GNUNET_strdup (new_check);
   lrs->num_kyc_rules
     = (unsigned int) json_array_size (jrules);
   if (((size_t) lrs->num_kyc_rules) !=
@@ -606,10 +589,10 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         goto cleanup;
       }
       rule->lrs = lrs;
+      rule->num_measures = json_array_size (jmeasures);
       rule->next_measures
         = GNUNET_new_array (rule->num_measures,
                             char *);
-      rule->num_measures = json_array_size (jmeasures);
       if (((size_t) rule->num_measures) !=
           json_array_size (jmeasures))
       {
@@ -727,7 +710,6 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
   GNUNET_free (lrs->kyc_rules);
   GNUNET_free (lrs->custom_measures);
   GNUNET_free (lrs->successor_measure);
-  GNUNET_free (lrs->new_check);
   GNUNET_free (lrs);
 }
 
@@ -883,15 +865,18 @@ find_measure (const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
         return cm;
     }
   }
-  /* Try measures from default rules */
-  for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
+  if (lrs != &default_rules)
   {
-    const struct TALER_KYCLOGIC_Measure *cm
-      = &default_rules.custom_measures[i];
+    /* Try measures from default rules */
+    for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
+    {
+      const struct TALER_KYCLOGIC_Measure *cm
+        = &default_rules.custom_measures[i];
 
-    if (0 == strcmp (measure_name,
-                     cm->measure_name))
-      return cm;
+      if (0 == strcmp (measure_name,
+                       cm->measure_name))
+        return cm;
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Measure `%s' not found\n",
@@ -946,6 +931,58 @@ TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r)
                            r->is_and_combinator),
     GNUNET_JSON_pack_bool ("verboten",
                            r->verboten));
+}
+
+
+json_t *
+TALER_KYCLOGIC_get_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measure_name)
+{
+  const struct TALER_KYCLOGIC_Measure *ms;
+  json_t *mi;
+  json_t *jmeasures;
+
+  if (0 == strcmp ("verboten",
+                   measure_name))
+  {
+    jmeasures = json_array ();
+    GNUNET_assert (NULL != jmeasures);
+    return GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("measures",
+                                    jmeasures),
+      GNUNET_JSON_pack_bool ("is_and_combinator",
+                             false),
+      GNUNET_JSON_pack_bool ("verboten",
+                             true));
+  }
+  ms = find_measure (lrs,
+                     measure_name);
+  if (NULL == ms)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  mi = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("check_name",
+                             ms->check_name),
+    GNUNET_JSON_pack_string ("prog_name",
+                             ms->prog_name),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_object_incref ("context",
+                                      ms->context)));
+  jmeasures = json_array ();
+  GNUNET_assert (NULL != jmeasures);
+  GNUNET_assert (0 ==
+                 json_array_append_new (jmeasures,
+                                        mi));
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("measures",
+                                  jmeasures),
+    GNUNET_JSON_pack_bool ("is_and_combinator",
+                           false),
+    GNUNET_JSON_pack_bool ("verboten",
+                           false));
 }
 
 
@@ -2109,18 +2146,18 @@ static int
 sort_by_timeframe (const void *p1,
                    const void *p2)
 {
-  struct TALER_KYCLOGIC_KycRule **r1
-    = (struct TALER_KYCLOGIC_KycRule **) p1;
-  struct TALER_KYCLOGIC_KycRule **r2
-    = (struct TALER_KYCLOGIC_KycRule **) p2;
+  struct TALER_KYCLOGIC_KycRule *r1
+    = (struct TALER_KYCLOGIC_KycRule *) p1;
+  struct TALER_KYCLOGIC_KycRule *r2
+    = (struct TALER_KYCLOGIC_KycRule *) p2;
 
-  if (GNUNET_TIME_relative_cmp ((*r1)->timeframe,
+  if (GNUNET_TIME_relative_cmp (r1->timeframe,
                                 <,
-                                (*r2)->timeframe))
+                                r2->timeframe))
     return -1;
-  if (GNUNET_TIME_relative_cmp ((*r1)->timeframe,
+  if (GNUNET_TIME_relative_cmp (r1->timeframe,
                                 >,
-                                (*r2)->timeframe))
+                                r2->timeframe))
     return 1;
   return 0;
 }
@@ -2439,20 +2476,8 @@ TALER_KYCLOGIC_requirements_to_check (
     lrs = &default_rules;
   if (NULL == measure_name)
   {
-    /* No measure selected, return the "new_check" */
-    if (0 != strcasecmp (lrs->new_check,
-                         "SKIP"))
-    {
-      kcc->check = find_check (lrs->new_check);
-      GNUNET_break (NULL != kcc->check);
-    }
-    else
-    {
-      kcc->check = NULL;
-    }
-    kcc->prog_name = measure->prog_name;
-    kcc->context = measure->context;
-    return GNUNET_OK;
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
   for (unsigned int i = 0; i<kyc_rule->num_measures; i++)
   {
@@ -2976,8 +3001,10 @@ TALER_KYCLOGIC_select_measure (
                              check_name),
     GNUNET_JSON_spec_string ("prog_name",
                              prog_name),
-    GNUNET_JSON_spec_object_const ("context",
-                                   context),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_object_const ("context",
+                                     context),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
 
@@ -3414,8 +3441,9 @@ TALER_KYCLOGIC_run_aml_program2 (
     json_t *input;
 
     input = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_object_incref ("context",
-                                      (json_t *) context),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("context",
+                                        (json_t *) context)),
       GNUNET_JSON_pack_object_incref ("attributes",
                                       (json_t *) attributes),
       GNUNET_JSON_pack_array_incref ("aml_history",

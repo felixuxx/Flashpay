@@ -37,10 +37,13 @@
  * @param properties JSON object with properties to set for the account
  * @param new_rules JSON array with new AML/KYC rules
  * @param to_investigate true if AML staff should look more into this account
+ * @param jmeasures a JSON with LegitimizationMeasures to apply to the
+ *    account, or NULL to not apply any measure right now
  * @param justification human-readable text justifying the decision
  * @param decider_pub public key of the staff member
  * @param decider_sig signature of the staff member
  * @param[out] invalid_officer set to TRUE if @a decider_pub is not allowed to make decisions right now
+ * @param[out] unknown_account set to TRUE if @a h_payto does not refer to a known account and @a jmeasures was given
  * @param[out] last_date set to the previous decision time;
  *   the INSERT is not performed if @a last_date is not before @a decision_time
  * @return database transaction status
@@ -54,10 +57,12 @@ TEH_PG_insert_aml_decision (
   const json_t *properties,
   const json_t *new_rules,
   bool to_investigate,
+  const json_t *jmeasures,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,
+  bool *unknown_account,
   struct GNUNET_TIME_Timestamp *last_date);
 
 

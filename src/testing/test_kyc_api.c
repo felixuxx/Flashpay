@@ -699,11 +699,12 @@ run (void *cls,
       "     \"timeframe\":{\"d_us\":3600000000}"
       "     ,\"threshold\":\"EUR:0\""
       "     ,\"operation_type\":\"BALANCE\""
+      "     ,\"display_priority\":65536"
       "     ,\"measures\":[\"form-measure\"]"
       "     ,\"verboten\":false"
       "   }"
       " ]" /* end new rules */
-      ",\"new_check\":\"form-check\"" // FIXME: do we need this?
+      ",\"new_measure\":\"form-measure\""
       ",\"custom_measures\":"
       "  {"
       "    \"form-measure\":"
@@ -726,7 +727,6 @@ run (void *cls,
       "get-kyc-info-form",
       "check-kyc-form",
       MHD_HTTP_OK),
-#if FIXME
     TALER_TESTING_cmd_post_kyc_form (
       "wallet-post-kyc-form",
       "get-kyc-info-form",
@@ -740,7 +740,6 @@ run (void *cls,
       "wallet-trigger-kyc-for-form-aml",
       "EUR:500",
       MHD_HTTP_NO_CONTENT),
-#endif
     TALER_TESTING_cmd_end ()
   };
 

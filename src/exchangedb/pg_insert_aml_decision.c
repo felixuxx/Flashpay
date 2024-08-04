@@ -36,10 +36,12 @@ TEH_PG_insert_aml_decision (
   const json_t *properties,
   const json_t *new_rules,
   bool to_investigate,
+  const json_t *jmeasures,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,
+  bool *unknown_account,
   struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
@@ -59,6 +61,9 @@ TEH_PG_insert_aml_decision (
     : GNUNET_PQ_query_param_null (),
     TALER_PQ_query_param_json (new_rules),
     GNUNET_PQ_query_param_bool (to_investigate),
+    NULL != jmeasures
+    ? TALER_PQ_query_param_json (jmeasures)
+    : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_string (justification),
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
     GNUNET_PQ_query_param_auto_from_type (decider_sig),
@@ -68,6 +73,8 @@ TEH_PG_insert_aml_decision (
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("out_invalid_officer",
                                 invalid_officer),
+    GNUNET_PQ_result_spec_bool ("out_account_unknown",
+                                unknown_account),
     GNUNET_PQ_result_spec_timestamp ("out_last_date",
                                      last_date),
     GNUNET_PQ_result_spec_end
@@ -78,9 +85,10 @@ TEH_PG_insert_aml_decision (
            "do_insert_aml_decision",
            "SELECT"
            " out_invalid_officer"
+           ",out_account_unknown"
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,

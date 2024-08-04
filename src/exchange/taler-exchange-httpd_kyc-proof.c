@@ -181,6 +181,7 @@ proof_finish (
   struct KycProofContext *kpc = cls;
 
   kpc->kat = NULL;
+  GNUNET_assert (NULL == kpc->response);
   kpc->response_code = http_status;
   kpc->response = response;
   kpc_resume (kpc);

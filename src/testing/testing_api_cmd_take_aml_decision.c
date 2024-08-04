@@ -149,7 +149,7 @@ take_aml_decision_run (void *cls,
   const json_t *jmeasures = NULL;
   struct GNUNET_TIME_Timestamp expiration_time
     = GNUNET_TIME_relative_to_timestamp (ds->expiration_delay);
-  const char *new_check = NULL;
+  const char *new_measure = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
@@ -158,8 +158,8 @@ take_aml_decision_run (void *cls,
                                      &jmeasures),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("new_check",
-                               &new_check),
+      GNUNET_JSON_spec_string ("new_measure",
+                               &new_measure),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -356,7 +356,7 @@ take_aml_decision_run (void *cls,
       h_payto,
       now,
       ds->successor_measure,
-      new_check,
+      new_measure,
       expiration_time,
       num_rules,
       rules,

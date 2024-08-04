@@ -41,6 +41,14 @@ DECLARE
    ini_event TEXT;
 BEGIN
 
+
+UPDATE legitimization_outcomes
+   SET is_active=FALSE
+ WHERE h_payto=in_h_payto
+   -- this clause is a minor optimization to avoid
+   -- updating outcomes that have long expired.
+   AND expiration_time >= in_collection_time_ts;
+
 INSERT INTO legitimization_outcomes
   (h_payto
   ,decision_time
@@ -107,7 +115,6 @@ UPDATE reserves
         ((current_balance).val > 0 ) )
   AND (expiration_date > in_collection_time_ts);
 
-
 IF in_to_investigate
 THEN
   INSERT INTO aml_status
@@ -135,13 +142,12 @@ EXECUTE FORMAT (
  'NOTIFY %s'
  ,in_kyc_completed_notify_s);
 
-
 INSERT INTO kyc_alerts
  (h_payto
  ,trigger_type)
  VALUES
- (in_h_payto,1);
-
+ (in_h_payto,1)
+ ON CONFLICT DO NOTHING;
 
 END $$;
 

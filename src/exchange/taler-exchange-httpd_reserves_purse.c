@@ -744,9 +744,12 @@ TEH_handler_reserves_purse (
   GNUNET_free (rpc.payto_uri);
 
   if (! rpc.kyc.ok)
+  {
+    GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_kyc_required (connection,
                                             &rpc.h_payto,
                                             &rpc.kyc);
+  }
   /* generate regular response */
   {
     MHD_RESULT res;

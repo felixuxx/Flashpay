@@ -68,7 +68,7 @@ record_cb (
 
   GNUNET_assert (
     0 ==
-    json_array_append (
+    json_array_append_new (
       records,
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_payto",

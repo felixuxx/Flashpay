@@ -424,7 +424,7 @@ TEH_handler_kyc_info (
         GNUNET_JSON_pack_object_steal ("voluntary_checks",
                                        NULL)));
   }
-  if ( (last_row == kyp->etag_in) &&
+  if ( (legitimization_measure_last_row == kyp->etag_in) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,

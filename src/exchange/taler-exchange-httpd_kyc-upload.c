@@ -242,6 +242,11 @@ upload_cleaner (struct TEH_RequestContext *rc)
     TEH_kyc_finished_cancel (uc->kat);
     uc->kat = NULL;
   }
+  if (NULL != uc->response)
+  {
+    MHD_destroy_response (uc->response);
+    uc->response = NULL;
+  }
   MHD_destroy_post_processor (uc->pp);
   GNUNET_free (uc->filename);
   GNUNET_free (uc->content_type);
@@ -340,6 +345,9 @@ aml_trigger_callback (
 {
   struct UploadContext *uc = cls;
 
+  uc->kat = NULL;
+  GNUNET_assert (NULL == uc->response);
+  GNUNET_assert (NULL != response);
   uc->response_code = http_status;
   uc->response = response;
   MHD_resume_connection (uc->rc->connection);
@@ -443,6 +451,7 @@ TEH_handler_kyc_upload (
     return mres;
   }
   finish_key (uc);
+  GNUNET_assert (NULL == uc->kat);
 
   {
     uint64_t legi_process_row;
@@ -584,6 +593,7 @@ TEH_handler_kyc_upload (
         TALER_EC_EXCHANGE_KYC_GENERIC_AML_LOGIC_BUG,
         "TEH_kyc_finished");
     }
+    MHD_suspend_connection (uc->rc->connection);
     GNUNET_CONTAINER_DLL_insert (uc_head,
                                  uc_tail,
                                  uc);

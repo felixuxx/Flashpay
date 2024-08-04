@@ -104,9 +104,10 @@ kyc_process_cb (void *cls,
     if (duplicate)
       continue;
     GNUNET_assert (0 ==
-                   json_array_append (rsc->attributes,
-                                      json_string (name)));
+                   json_array_append_new (rsc->attributes,
+                                          json_string (name)));
   }
+  json_decref (attrs);
 }
 
 

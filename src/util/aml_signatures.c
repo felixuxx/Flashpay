@@ -62,6 +62,11 @@ struct TALER_AmlDecisionPS
   struct GNUNET_HashCode h_new_rules;
 
   /**
+   * Hash over string with new check.
+   */
+  struct GNUNET_HashCode h_new_measure;
+
+  /**
    * 0: no investigation, 1: yes investigation.
    */
   uint64_t flags;
@@ -76,6 +81,7 @@ TALER_officer_aml_decision_sign (
   const struct TALER_PaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
+  const char *new_measure,
   bool to_investigate,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig)
@@ -96,6 +102,10 @@ TALER_officer_aml_decision_sign (
                      &ad.h_properties);
   TALER_json_hash (new_rules,
                    &ad.h_new_rules);
+  if (NULL != new_measure)
+    GNUNET_CRYPTO_hash (new_measure,
+                        strlen (new_measure),
+                        &ad.h_new_measure);
   GNUNET_CRYPTO_eddsa_sign (&officer_priv->eddsa_priv,
                             &ad,
                             &officer_sig->eddsa_signature);
@@ -109,6 +119,7 @@ TALER_officer_aml_decision_verify (
   const struct TALER_PaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
+  const char *new_measure,
   bool to_investigate,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig)
@@ -129,6 +140,10 @@ TALER_officer_aml_decision_verify (
                      &ad.h_properties);
   TALER_json_hash (new_rules,
                    &ad.h_new_rules);
+  if (NULL != new_measure)
+    GNUNET_CRYPTO_hash (new_measure,
+                        strlen (new_measure),
+                        &ad.h_new_measure);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_AML_DECISION,
     &ad,

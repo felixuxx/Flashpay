@@ -39,6 +39,7 @@ TEH_handler_post_aml_decision (
 {
   struct MHD_Connection *connection = rc->connection;
   const char *justification;
+  const char *new_measure = NULL;
   bool to_investigate;
   struct GNUNET_TIME_Timestamp decision_time;
   const json_t *new_rules;
@@ -46,6 +47,11 @@ TEH_handler_post_aml_decision (
   struct TALER_PaytoHashP h_payto;
   struct TALER_AmlOfficerSignatureP officer_sig;
   struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string (
+        "new_measure",
+        &new_measure),
+      NULL),
     GNUNET_JSON_spec_string ("justification",
                              &justification),
     GNUNET_JSON_spec_fixed_auto ("h_payto",
@@ -65,6 +71,7 @@ TEH_handler_post_aml_decision (
     GNUNET_JSON_spec_end ()
   };
   struct GNUNET_TIME_Timestamp expiration_time;
+  json_t *jmeasures = NULL;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -88,6 +95,7 @@ TEH_handler_post_aml_decision (
         &h_payto,
         new_rules,
         properties,
+        new_measure,
         to_investigate,
         officer_pub,
         &officer_sig))
@@ -114,7 +122,22 @@ TEH_handler_post_aml_decision (
         "legitimization rule malformed");
     }
     expiration_time = TALER_KYCLOGIC_rules_get_expiration (lrs);
-
+    if (NULL != new_measure)
+    {
+      jmeasures = TALER_KYCLOGIC_get_measure (lrs,
+                                              new_measure);
+      if (NULL == jmeasures)
+      {
+        GNUNET_break_op (0);
+        /* Request specified a new_measure for which the given
+           rule set does not work as it does not define the measure */
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_BAD_REQUEST,
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "new_measure/new_rules");
+      }
+    }
     TALER_KYCLOGIC_rules_free (lrs);
   }
 
@@ -122,6 +145,7 @@ TEH_handler_post_aml_decision (
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp last_date;
     bool invalid_officer = true;
+    bool unknown_account = false;
 
     qs = TEH_plugin->insert_aml_decision (TEH_plugin->cls,
                                           &h_payto,
@@ -130,11 +154,14 @@ TEH_handler_post_aml_decision (
                                           properties,
                                           new_rules,
                                           to_investigate,
+                                          jmeasures,
                                           justification,
                                           officer_pub,
                                           &officer_sig,
                                           &invalid_officer,
+                                          &unknown_account,
                                           &last_date);
+    json_decref (jmeasures);
     if (qs <= 0)
     {
       GNUNET_break (0);
@@ -152,7 +179,15 @@ TEH_handler_post_aml_decision (
         MHD_HTTP_FORBIDDEN,
         TALER_EC_EXCHANGE_AML_DECISION_INVALID_OFFICER,
         NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (unknown_account)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_GENERIC_BANK_ACCOUNT_UNKNOWN,
+        "h_payto");
     }
     if (GNUNET_TIME_timestamp_cmp (last_date,
                                    >=,
@@ -165,6 +200,8 @@ TEH_handler_post_aml_decision (
         TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
         NULL);
     }
+
+
   }
   return TALER_MHD_reply_static (
     connection,
