@@ -481,7 +481,7 @@ run (void *cls,
     TALER_TESTING_cmd_check_kyc_get (
       "check-kyc-purse-create",
       "purse-create-with-reserve",
-      "purse-create-with-reserve", /* correct!? */
+      "purse-create-with-reserve",
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_get_kyc_info (
       "get-kyc-info-purse-create",
@@ -667,6 +667,84 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  struct TALER_TESTING_Command aml_form[] = {
+    TALER_TESTING_cmd_set_officer (
+      "create-aml-form-officer-1",
+      NULL,
+      "Peter Falk",
+      true,
+      false),
+    /* Trigger something upon which an AML officer could act */
+    TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-trigger-kyc-for-form-aml",
+      NULL,
+      "EUR:1000",
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+    TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-trigger-kyc-for-form-aml-disallowed",
+      "wallet-trigger-kyc-for-form-aml",
+      "EUR:500",
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+    /* AML officer switches from Oauth2 to form */
+    TALER_TESTING_cmd_take_aml_decision (
+      "aml-decide-form",
+      "create-aml-form-officer-1",
+      "wallet-trigger-kyc-for-form-aml",
+      false /* just awaiting KYC, no investigation */,
+      GNUNET_TIME_UNIT_HOURS /* expiration */,
+      NULL /* successor measure: default */,
+      "{\"rules\":"
+      " ["
+      "   {"
+      "     \"timeframe\":{\"d_us\":3600000000}"
+      "     ,\"threshold\":\"EUR:0\""
+      "     ,\"operation_type\":\"BALANCE\""
+      "     ,\"measures\":[\"form-measure\"]"
+      "     ,\"verboten\":false"
+      "   }"
+      " ]" /* end new rules */
+      ",\"new_check\":\"form-check\"" // FIXME: do we need this?
+      ",\"custom_measures\":"
+      "  {"
+      "    \"form-measure\":"
+      "    {"
+      "       \"check_name\":\"test-form\""
+      "      ,\"prog_name\":\"test-form-check\""
+      "    }"
+      "  }" /* end custom measures */
+      "}",
+      "{}" /* properties */,
+      "form time",
+      MHD_HTTP_NO_CONTENT),
+    /* Wallet learns about form submission */
+    TALER_TESTING_cmd_check_kyc_get (
+      "check-kyc-form",
+      "wallet-trigger-kyc-for-form-aml",
+      "wallet-trigger-kyc-for-form-aml",
+      MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_get_kyc_info (
+      "get-kyc-info-form",
+      "check-kyc-form",
+      MHD_HTTP_OK),
+#if FIXME
+    TALER_TESTING_cmd_post_kyc_form (
+      "wallet-post-kyc-form",
+      "get-kyc-info-form",
+      0,  /* requirement index */
+      "application/x-www-form-urlencoded",
+      "full_name=Bob&birthdate=1990-00-00",
+      MHD_HTTP_NO_CONTENT),
+    /* now this should be allowed */
+    TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-trigger-kyc-for-form-aml-allowed",
+      "wallet-trigger-kyc-for-form-aml",
+      "EUR:500",
+      MHD_HTTP_NO_CONTENT),
+#endif
+    TALER_TESTING_cmd_end ()
+  };
+
+
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_run_fakebank (
       "run-fakebank",
@@ -709,6 +787,8 @@ run (void *cls,
       pull),
     TALER_TESTING_cmd_batch ("aml",
                              aml),
+    TALER_TESTING_cmd_batch ("aml-form",
+                             aml_form),
     TALER_TESTING_cmd_end ()
   };
 
