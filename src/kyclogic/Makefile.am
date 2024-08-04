@@ -16,6 +16,7 @@ pkgcfg_DATA = \
 
 bin_SCRIPTS = \
   taler-exchange-helper-converter-oauth2-test-full_name \
+  taler-exchange-helper-measure-test-form \
   taler-exchange-helper-measure-test-oauth \
   taler-exchange-kyc-kycaid-converter.sh \
   taler-exchange-kyc-persona-converter.sh \

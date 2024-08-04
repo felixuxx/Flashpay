@@ -2751,7 +2751,7 @@ TALER_KYCLOGIC_measure_to_requirement (
   const char *prog_name,
   const struct TALER_AccountAccessTokenP *access_token,
   size_t offset,
-  uint64_t row_id)
+  uint64_t legitimization_measure_row_id)
 {
   struct TALER_KYCLOGIC_KycCheck *kc;
   json_t *kri;
@@ -2767,7 +2767,7 @@ TALER_KYCLOGIC_measure_to_requirement (
   }
   GNUNET_assert (offset <= UINT32_MAX);
   TALER_kyc_measure_authorization_hash (access_token,
-                                        row_id,
+                                        legitimization_measure_row_id,
                                         (uint32_t) offset,
                                         &shv);
   switch (kc->type)
@@ -2788,7 +2788,7 @@ TALER_KYCLOGIC_measure_to_requirement (
                      "%s-%u-%llu",
                      ids,
                      (unsigned int) offset,
-                     (unsigned long long) row_id);
+                     (unsigned long long) legitimization_measure_row_id);
     GNUNET_free (ids);
     kri = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("form",
@@ -2809,7 +2809,7 @@ TALER_KYCLOGIC_measure_to_requirement (
                      "%s-%u-%llu",
                      ids,
                      (unsigned int) offset,
-                     (unsigned long long) row_id);
+                     (unsigned long long) legitimization_measure_row_id);
     GNUNET_free (ids);
     kri = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("form",

@@ -521,7 +521,7 @@ TALER_KYCLOGIC_check_form (
  * @param prog_name the program to run
  * @param access_token access token for the measure
  * @param offset offset of the measure
- * @param row_id row in the legitimization_measures table
+ * @param legitimization_measure_row_id row in the legitimization_measures table
  * @return JSON object with matching KycRequirementInformation
  */
 json_t *
@@ -530,7 +530,7 @@ TALER_KYCLOGIC_measure_to_requirement (
   const char *prog_name,
   const struct TALER_AccountAccessTokenP *access_token,
   size_t offset,
-  uint64_t row_id);
+  uint64_t legitimization_measure_row_id);
 
 
 /**
