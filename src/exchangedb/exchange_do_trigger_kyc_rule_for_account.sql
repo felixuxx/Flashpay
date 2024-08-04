@@ -51,19 +51,32 @@ THEN
   INTO my_access_token;
 END IF;
 
-INSERT INTO legitimization_measures
-  (access_token
-  ,start_time
-  ,jmeasures
-  ,display_priority)
-  VALUES
-  (my_access_token
-  ,in_now
-  ,in_jmeasures
-  ,in_display_priority)
-  RETURNING
-    legitimization_measure_serial_id
-  INTO
-    out_legitimization_measure_serial_id;
+-- First check if a perfectly equivalent legi measure
+-- already exists, to avoid creating tons of duplicates.
+SELECT legitimization_measure_serial_id
+  INTO out_legitimization_measure_serial_id
+  FROM legitimization_measures
+ WHERE access_token=my_access_token
+   AND jmeasures=in_jmeasures
+   AND display_priority=in_display_priority
+   AND NOT is_finished;
+
+IF NOT FOUND
+THEN
+  INSERT INTO legitimization_measures
+    (access_token
+    ,start_time
+    ,jmeasures
+    ,display_priority)
+    VALUES
+    (my_access_token
+    ,in_now
+    ,in_jmeasures
+    ,in_display_priority)
+    RETURNING
+      legitimization_measure_serial_id
+    INTO
+      out_legitimization_measure_serial_id;
+END IF;
 
 END $$;
