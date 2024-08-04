@@ -149,12 +149,17 @@ take_aml_decision_run (void *cls,
   const json_t *jmeasures = NULL;
   struct GNUNET_TIME_Timestamp expiration_time
     = GNUNET_TIME_relative_to_timestamp (ds->expiration_delay);
+  const char *new_check = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_object_const ("custom_measures",
                                      &jmeasures),
+      NULL),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("new_check",
+                               &new_check),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -245,7 +250,7 @@ take_aml_decision_run (void *cls,
     json_array_foreach ((json_t *) jrules, i, jrule)
     {
       struct TALER_EXCHANGE_AccountRule *rule = &rules[i];
-      const json_t *jmeasures = NULL;
+      const json_t *jameasures = NULL;
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_relative_time ("timeframe",
                                         &rule->timeframe),
@@ -253,7 +258,7 @@ take_aml_decision_run (void *cls,
                                     &rule->threshold),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_array_const ("measures",
-                                        &jmeasures),
+                                        &jameasures),
           NULL),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_uint32 ("display_priority",
@@ -292,22 +297,23 @@ take_aml_decision_run (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      if (NULL != jmeasures)
+      if (NULL != jameasures)
       {
         rule->num_measures
-          = (unsigned int) json_array_size (jmeasures);
+          = (unsigned int) json_array_size (jameasures);
         rule->measures
           = GNUNET_new_array (rule->num_measures,
                               const char *);
         for (unsigned int k = 0; k<rule->num_measures; k++)
           rule->measures[k]
             = json_string_value (
-                json_array_get (jmeasures,
+                json_array_get (jameasures,
                                 k));
       }
     }
+
     off = 0;
-    json_object_foreach ((json_t *) jrules, mname, jmeasure)
+    json_object_foreach ((json_t *) jmeasures, mname, jmeasure)
     {
       struct TALER_EXCHANGE_MeasureInformation *mi = &measures[off++];
       struct GNUNET_JSON_Specification ispec[] = {
@@ -350,6 +356,7 @@ take_aml_decision_run (void *cls,
       h_payto,
       now,
       ds->successor_measure,
+      new_check,
       expiration_time,
       num_rules,
       rules,
