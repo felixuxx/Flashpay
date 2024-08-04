@@ -2236,10 +2236,10 @@ TALER_TESTING_cmd_get_kyc_info (
 
 
 /**
- * Create a request for detailed account KYC information.
+ * Start external KYC process.
  *
  * @param label command label.
- * @param kyc_info_reference command with requirement information to query
+ * @param kyc_info_reference command with requirement information about the KYC process
  * @param requirement_index index of the KYC requirement to trigger the KYC start for
  * @param expected_response_code expected HTTP status
  * @return the command
@@ -2249,6 +2249,27 @@ TALER_TESTING_cmd_post_kyc_start (
   const char *label,
   const char *kyc_info_reference,
   unsigned int requirement_index,
+  unsigned int expected_response_code);
+
+
+/**
+ * Upload KYC data for a FORM requirement.
+ *
+ * @param label command label.
+ * @param kyc_info_reference command with requirement information about the KYC process
+ * @param requirement_index index of the KYC requirement to upload KYC data for
+ * @param form_data_content_type content type of @a form_data
+ * @param form_data form data to upload
+ * @param expected_response_code expected HTTP status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_post_kyc_form (
+  const char *label,
+  const char *kyc_info_reference,
+  unsigned int requirement_index,
+  const char *form_data_content_type,
+  const char *form_data,
   unsigned int expected_response_code);
 
 
