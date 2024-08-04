@@ -80,8 +80,9 @@ TEH_PG_lookup_kyc_requirement_by_row (
            "   USING (access_token)"
            " LEFT JOIN legitimization_outcomes lo"
            "   ON (wt.wire_target_h_payto = lo.h_payto)"
-           " WHERE legitimization_measure_serial_id=$1"
-           "   AND lo.is_active;");
+           " WHERE lm.legitimization_measure_serial_id=$1"
+           "   AND ( (lo.is_active IS NULL)"
+           "          OR lo.is_active);");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_kyc_requirement_by_row",
