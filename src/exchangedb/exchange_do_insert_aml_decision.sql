@@ -22,6 +22,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_properties TEXT,
   IN in_new_rules TEXT,
   IN in_to_investigate BOOLEAN,
+  IN in_new_measure_name TEXT,
   IN in_jmeasures TEXT,
   IN in_justification TEXT,
   IN in_decider_pub BYTEA,
@@ -133,6 +134,7 @@ INSERT INTO legitimization_outcomes
   ,decision_time
   ,expiration_time
   ,jproperties
+  ,new_measure_name
   ,to_investigate
   ,jnew_rules
   )
@@ -141,6 +143,7 @@ INSERT INTO legitimization_outcomes
   ,in_decision_time
   ,in_expiration_time
   ,in_properties
+  ,in_new_measure_name
   ,in_to_investigate
   ,in_new_rules
   )
@@ -178,5 +181,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, BYTEA, BYTEA, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, BYTEA, BYTEA, TEXT)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

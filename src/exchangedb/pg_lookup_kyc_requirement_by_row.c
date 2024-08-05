@@ -73,6 +73,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
   // we probably want to join with THAT lo and not
   // the possibly dated lo for the given row.
   // Or: don't join at all with lo and simplify?
+  // What do we _really_ want here?
   PREPARE (pg,
            "lookup_kyc_requirement_by_row",
            "SELECT "

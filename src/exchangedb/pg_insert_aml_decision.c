@@ -36,6 +36,7 @@ TEH_PG_insert_aml_decision (
   const json_t *properties,
   const json_t *new_rules,
   bool to_investigate,
+  const char *new_measure_name,
   const json_t *jmeasures,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
@@ -61,6 +62,9 @@ TEH_PG_insert_aml_decision (
     : GNUNET_PQ_query_param_null (),
     TALER_PQ_query_param_json (new_rules),
     GNUNET_PQ_query_param_bool (to_investigate),
+    NULL != new_measure_name
+    ? TALER_PQ_query_param_string (new_measure_name)
+    : GNUNET_PQ_query_param_null (),
     NULL != jmeasures
     ? TALER_PQ_query_param_json (jmeasures)
     : GNUNET_PQ_query_param_null (),
@@ -88,7 +92,7 @@ TEH_PG_insert_aml_decision (
            ",out_account_unknown"
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,

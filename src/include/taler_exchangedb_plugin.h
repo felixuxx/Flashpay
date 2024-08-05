@@ -7495,6 +7495,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param properties JSON object with properties to set for the account
    * @param new_rules JSON array with new AML/KYC rules
    * @param to_investigate true if AML staff should look more into this account
+   * @param new_measure_name name of the @a jmeasures measure that was triggered, or NULL for none
    * @param jmeasures a JSON with LegitimizationMeasures to apply to the
    *    account, or NULL to not apply any measure right now
    * @param justification human-readable text justifying the decision
@@ -7515,6 +7516,7 @@ struct TALER_EXCHANGEDB_Plugin
     const json_t *properties,
     const json_t *new_rules,
     bool to_investigate,
+    const char *new_measure_name,
     const json_t *jmeasures,
     const char *justification,
     const struct TALER_AmlOfficerPublicKeyP *decider_pub,

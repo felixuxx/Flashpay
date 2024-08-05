@@ -28,6 +28,7 @@ BEGIN
       ',decision_time INT8 NOT NULL'
       ',expiration_time INT8 NOT NULL'
       ',jproperties TEXT'
+      ',new_measure_name TEXT'
       ',to_investigate BOOL NOT NULL'
       ',is_active BOOL NOT NULL DEFAULT(TRUE)'
       ',jnew_rules TEXT'
@@ -56,6 +57,12 @@ BEGIN
   PERFORM comment_partitioned_column(
      'when was this outcome decided'
     ,'decision_time'
+    ,'legitimization_outcomes'
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'name of the measure to trigger immediately, NULL for none'
+    ,'new_measure_name'
     ,'legitimization_outcomes'
     ,partition_suffix
   );

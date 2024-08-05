@@ -154,6 +154,7 @@ TEH_handler_post_aml_decision (
                                           properties,
                                           new_rules,
                                           to_investigate,
+                                          new_measure,
                                           jmeasures,
                                           justification,
                                           officer_pub,
