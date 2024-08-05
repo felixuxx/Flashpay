@@ -31,6 +31,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
   void *cls,
   uint64_t requirement_row,
   union TALER_AccountPublicKeyP *account_pub,
+  struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_AccountAccessTokenP *access_token,
   json_t **jrules,
   bool *aml_review,
@@ -41,13 +42,20 @@ TEH_PG_lookup_kyc_requirement_by_row (
     GNUNET_PQ_query_param_uint64 (&requirement_row),
     GNUNET_PQ_query_param_end
   };
+  bool not_found;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("account_pub",
                                             account_pub),
       NULL),
-    GNUNET_PQ_result_spec_auto_from_type ("access_token",
-                                          access_token),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            reserve_pub),
+      NULL),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("access_token",
+                                            access_token),
+      NULL),
     GNUNET_PQ_result_spec_allow_null (
       /* can be NULL due to LEFT JOIN */
       TALER_PQ_result_spec_json ("jrules",
@@ -60,43 +68,43 @@ TEH_PG_lookup_kyc_requirement_by_row (
       NULL),
     GNUNET_PQ_result_spec_bool ("kyc_required",
                                 kyc_required),
+    GNUNET_PQ_result_spec_bool ("not_found",
+                                &not_found),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   *jrules = NULL;
   *aml_review = false;
   memset (account_pub,
           0,
           sizeof (*account_pub));
+  memset (reserve_pub,
+          0,
+          sizeof (*reserve_pub));
+  memset (access_token,
+          0,
+          sizeof (*access_token));
   PREPARE (pg,
            "lookup_kyc_requirement_by_row",
            "SELECT "
-           " wt.target_pub AS account_pub"
-           ",lm.access_token"
-           ",lo.jnew_rules AS jrules"
-           ",lo.to_investigate AS aml_review"
-           ",NOT COALESCE(lm2.is_finished,TRUE)"
-           "   AS kyc_required"
-           " FROM legitimization_measures lm"
-           " JOIN wire_targets wt"
-           "   ON (lm.access_token = wt.access_token)"
-           /* Select *unfinished* and more recent lm2
-              for the same account - if one exists */
-           " LEFT JOIN legitimization_measures lm2"
-           "   ON ( (lm.access_token = lm2.access_token)"
-           "    AND (lm2.start_time >= lm.start_time)"
-           "    AND NOT lm2.is_finished)"
-           " LEFT JOIN legitimization_outcomes lo"
-           "   ON (wt.wire_target_h_payto = lo.h_payto)"
-           " WHERE lm.legitimization_measure_serial_id=$1"
-           /* Select the *currently active* lo, if any */
-           "   AND ( (lo.is_active IS NULL)"
-           "          OR lo.is_active)"
-           " ORDER BY lo.is_active DESC NULLS LAST"
-           " LIMIT 1;");
-  return GNUNET_PQ_eval_prepared_singleton_select (
+           " out_account_pub AS account_pub"
+           ",out_reserve_pub AS reserve_pub"
+           ",out_access_token AS access_token"
+           ",out_jrules AS jrules"
+           ",out_not_found AS not_found"
+           ",out_aml_review AS aml_review"
+           ",out_kyc_required AS kyc_required"
+           " FROM exchange_do_lookup_kyc_requirement_by_row"
+           " ($1);");
+  qs = GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_kyc_requirement_by_row",
     params,
     rs);
+  if (qs <= 0)
+    return qs;
+  if (not_found)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return qs;
 }

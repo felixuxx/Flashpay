@@ -187,6 +187,7 @@ TEH_handler_kyc_check (
   json_t *jrules = NULL;
   json_t *jlimits = NULL;
   union TALER_AccountPublicKeyP account_pub;
+  union TALER_AccountPublicKeyP reserve_pub;
   struct TALER_AccountAccessTokenP access_token;
   bool aml_review;
   bool kyc_required;
@@ -251,6 +252,7 @@ TEH_handler_kyc_check (
       TEH_plugin->cls,
       kyp->requirement_row,
       &account_pub,
+      &reserve_pub.reserve_pub,
       &access_token,
       &jrules,
       &aml_review,
@@ -274,9 +276,14 @@ TEH_handler_kyc_check (
     }
   }
 
-  if (GNUNET_OK !=
-      TALER_account_kyc_auth_verify (&account_pub,
-                                     &kyp->account_sig))
+  if ( (GNUNET_is_zero (&account_pub) ||
+        (GNUNET_OK !=
+         TALER_account_kyc_auth_verify (&account_pub,
+                                        &kyp->account_sig)) ) &&
+       (GNUNET_is_zero (&reserve_pub) ||
+        (GNUNET_OK !=
+         TALER_account_kyc_auth_verify (&reserve_pub,
+                                        &kyp->account_sig)) ) )
   {
     char *diag;
     MHD_RESULT mret;

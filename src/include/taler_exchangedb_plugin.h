@@ -6978,6 +6978,10 @@ struct TALER_EXCHANGEDB_Plugin
    * @param requirement_row identifies requirement to look up (in legitimization_measures table)
  * @param[out] account_pub set to public key of the account
  *    needed to authorize access, all zeros if not known
+ * @param[out] reserve_pub set to last reserve public key
+ *    used for a wire transfer from the account to the
+ *    exchange; alternatively used to authorize access,
+ *    all zeros if not known
  * @param[out] access_token set to the access token to begin
  *    work on KYC processes for this account
  * @param[out] jrules set to active ``LegitimizationRuleSet``
@@ -6993,6 +6997,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t requirement_row,
     union TALER_AccountPublicKeyP *account_pub,
+    struct TALER_ReservePublicKeyP *reserve_pub,
     struct TALER_AccountAccessTokenP *access_token,
     json_t **jrules,
     bool *aml_review,
