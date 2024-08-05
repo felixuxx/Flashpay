@@ -17,6 +17,8 @@ endif
 
 @DX_RULES@
 
+TESTS = contrib/check-prebuilt
+
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = build-aux/config.rpath   \
   AUTHORS \
