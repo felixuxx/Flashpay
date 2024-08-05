@@ -60,9 +60,9 @@ out_invalid_officer=FALSE;
 SELECT decision_time
   INTO out_last_date
   FROM legitimization_outcomes
-  WHERE h_payto=in_h_payto
+ WHERE h_payto=in_h_payto
    AND is_active
-  ORDER BY decision_time DESC;
+ ORDER BY decision_time DESC;
 
 IF FOUND
 THEN
@@ -79,27 +79,32 @@ ELSE
   out_last_date = 0;
 END IF;
 
--- Only do this if we have in_jmeasures to trigger
-IF in_jmeasures IS NOT NULL
-THEN
-
-  -- Note: in_payto_uri is allowed to be NULL *if*
-  -- in_h_payto is already in wire_targets
-  SELECT
-    access_token
-  INTO
-    my_access_token
+-- Note: in_payto_uri is allowed to be NULL *if*
+-- in_h_payto is already in wire_targets
+SELECT access_token
+  INTO my_access_token
   FROM wire_targets
-    WHERE wire_target_h_payto=in_h_payto;
+ WHERE wire_target_h_payto=in_h_payto;
 
-  -- Very strange, should never happen that we
-  -- take an AML decision on an unknown account!
-  IF NOT FOUND
-  THEN
-    out_account_unknown=TRUE;
-    RETURN;
-  END IF;
+-- Very strange, should never happen that we
+-- take an AML decision on an unknown account!
+IF NOT FOUND
+THEN
+  out_account_unknown=TRUE;
+  RETURN;
+END IF;
 
+-- Did KYC measures get prescribed?
+IF in_jmeasures IS NULL
+THEN
+  -- AML decision without measure: mark all
+  -- active measures finished!
+  UPDATE legitimization_measures
+     SET is_finished=TRUE
+   WHERE access_token=my_access_token
+     AND NOT is_finished;
+
+ELSE
   -- Find current maximum DP
   SELECT COALESCE(MAX(display_priority),0)
     INTO my_max_dp
@@ -107,17 +112,28 @@ THEN
    WHERE access_token=my_access_token
      AND NOT is_finished;
 
-  -- Enable legitimization measure
-  INSERT INTO legitimization_measures
-    (access_token
-    ,start_time
-    ,jmeasures
-    ,display_priority)
-    VALUES
-    (my_access_token
-    ,in_decision_time
-    ,in_jmeasures
-    ,my_max_dp + 1);
+  -- First check if a perfectly equivalent legi measure
+  -- already exists, to avoid creating tons of duplicates.
+  UPDATE legitimization_measures
+     SET display_priority=GREATEST(my_max_dp,display_priority)
+   WHERE access_token=my_access_token
+     AND jmeasures=in_jmeasures
+     AND NOT is_finished;
+
+  IF NOT FOUND
+  THEN
+    -- Enable new legitimization measure
+    INSERT INTO legitimization_measures
+      (access_token
+      ,start_time
+      ,jmeasures
+      ,display_priority)
+      VALUES
+      (my_access_token
+      ,in_decision_time
+      ,in_jmeasures
+      ,my_max_dp + 1);
+  END IF;
 
   -- end if for where we had non-NULL in_jmeasures
 END IF;
@@ -177,6 +193,7 @@ INSERT INTO kyc_alerts
  EXECUTE FORMAT (
    'NOTIFY %s'
   ,in_notify_s);
+
 
 END $$;
 

@@ -75,10 +75,17 @@ TEH_PG_lookup_kyc_requirement_by_row (
            ",lm.access_token"
            ",lo.jnew_rules AS jrules"
            ",lo.to_investigate AS aml_review"
-           ",NOT lm.is_finished AS kyc_required"
+           ",NOT COALESCE(lm2.is_finished,TRUE)"
+           "   AS kyc_required"
            " FROM legitimization_measures lm"
            " JOIN wire_targets wt"
            "   ON (lm.access_token = wt.access_token)"
+           /* Select *unfinished* and more recent lm2
+              for the same account - if one exists */
+           " LEFT JOIN legitimization_measures lm2"
+           "   ON ( (lm.access_token = lm2.access_token)"
+           "    AND (lm2.start_time >= lm.start_time)"
+           "    AND NOT lm2.is_finished)"
            " LEFT JOIN legitimization_outcomes lo"
            "   ON (wt.wire_target_h_payto = lo.h_payto)"
            " WHERE lm.legitimization_measure_serial_id=$1"

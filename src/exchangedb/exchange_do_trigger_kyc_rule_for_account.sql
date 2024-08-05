@@ -53,13 +53,13 @@ END IF;
 
 -- First check if a perfectly equivalent legi measure
 -- already exists, to avoid creating tons of duplicates.
-SELECT legitimization_measure_serial_id
-  INTO out_legitimization_measure_serial_id
-  FROM legitimization_measures
+UPDATE legitimization_measures
+   SET display_priority=GREATEST(in_display_priority,display_priority)
  WHERE access_token=my_access_token
    AND jmeasures=in_jmeasures
-   AND display_priority=in_display_priority
-   AND NOT is_finished;
+   AND NOT is_finished
+ RETURNING legitimization_measure_serial_id
+  INTO out_legitimization_measure_serial_id;
 
 IF NOT FOUND
 THEN
