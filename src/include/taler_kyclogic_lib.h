@@ -583,7 +583,7 @@ TALER_KYCLOGIC_provider_to_logic (
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_get_default_measure (
+TALER_KYCLOGIC_get_original_measure (
   const char *measure_name,
   struct TALER_KYCLOGIC_KycCheckContext *kcc);
 

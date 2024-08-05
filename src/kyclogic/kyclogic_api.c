@@ -2052,7 +2052,6 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              &check_name))
   {
     check_name = GNUNET_strdup ("SKIP");
-    goto fail;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -2420,7 +2419,7 @@ TALER_KYCLOGIC_provider_to_logic (
 
 
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_get_default_measure (
+TALER_KYCLOGIC_get_original_measure (
   const char *measure_name,
   struct TALER_KYCLOGIC_KycCheckContext *kcc)
 {

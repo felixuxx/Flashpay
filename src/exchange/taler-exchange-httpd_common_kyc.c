@@ -797,7 +797,7 @@ TEH_kyc_fallback (
   struct TALER_KYCLOGIC_KycCheckContext kcc;
 
   if (GNUNET_OK !=
-      TALER_KYCLOGIC_get_default_measure (
+      TALER_KYCLOGIC_get_original_measure (
         fallback_measure,
         &kcc))
   {
@@ -813,6 +813,7 @@ TEH_kyc_fallback (
   fb->cb_cls = cb_cls;
   if (NULL == kcc.check)
   {
+    /* check was set to 'SKIP', run program immediately */
     fb->aprh
       = TALER_KYCLOGIC_run_aml_program2 (kcc.prog_name,
                                          attributes,
@@ -899,4 +900,112 @@ TEH_kyc_failed (
     return false;
   }
   return true;
+}
+
+
+enum GNUNET_DB_QueryStatus
+TEH_legitimization_check (
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  struct MHD_Connection *connection,
+  MHD_RESULT *mhd_ret,
+  enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const char *payto_uri,
+  const struct TALER_PaytoHashP *h_payto,
+  const union TALER_AccountPublicKeyP *account_pub,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls)
+{
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
+  const struct TALER_KYCLOGIC_KycRule *requirement;
+  enum GNUNET_DB_QueryStatus qs;
+
+  {
+    json_t *jrules;
+
+    qs = TEH_plugin->get_kyc_rules (TEH_plugin->cls,
+                                    h_payto,
+                                    &jrules);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                            "get_kyc_rules");
+      }
+      return qs;
+    }
+    if (qs > 0)
+    {
+      lrs = TALER_KYCLOGIC_rules_parse (jrules);
+      GNUNET_break (NULL != lrs);
+      /* Fall back to default rules on parse error! */
+      json_decref (jrules);
+    }
+  }
+
+  qs = TALER_KYCLOGIC_kyc_test_required (
+    et,
+    lrs,
+    ai,
+    ai_cls,
+    &requirement);
+  if (qs < 0)
+  {
+    TALER_KYCLOGIC_rules_free (lrs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_ec (
+        connection,
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "kyc_test_required");
+    }
+    return qs;
+  }
+
+  if (NULL == requirement)
+  {
+    TALER_KYCLOGIC_rules_free (lrs);
+    kyc->ok = true;
+    return qs;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC requirement is %s\n",
+              TALER_KYCLOGIC_rule2s (requirement));
+  kyc->ok = false;
+  {
+    json_t *jmeasures;
+
+    jmeasures = TALER_KYCLOGIC_rule_to_measures (requirement);
+    qs = TEH_plugin->trigger_kyc_rule_for_account (
+      TEH_plugin->cls,
+      payto_uri,
+      h_payto,
+      account_pub,
+      jmeasures,
+      TALER_KYCLOGIC_rule2priority (requirement),
+      &kyc->requirement_row);
+    json_decref (jmeasures);
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+      "trigger_kyc_rule_for_account");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "trigger_kyc_rule_for_account");
+  }
+  TALER_KYCLOGIC_rules_free (lrs);
+  return qs;
 }
