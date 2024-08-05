@@ -49,6 +49,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
     GNUNET_PQ_result_spec_auto_from_type ("access_token",
                                           access_token),
     GNUNET_PQ_result_spec_allow_null (
+      /* can be NULL due to LEFT JOIN */
       TALER_PQ_result_spec_json ("jrules",
                                  jrules),
       NULL),
@@ -67,13 +68,6 @@ TEH_PG_lookup_kyc_requirement_by_row (
   memset (account_pub,
           0,
           sizeof (*account_pub));
-  // FIXME: likely better done as a stored procedure,
-  // this may get even more complex: *if* there is
-  // a more recent lm for the same account/access_token,
-  // we probably want to join with THAT lo and not
-  // the possibly dated lo for the given row.
-  // Or: don't join at all with lo and simplify?
-  // What do we _really_ want here?
   PREPARE (pg,
            "lookup_kyc_requirement_by_row",
            "SELECT "
@@ -84,12 +78,15 @@ TEH_PG_lookup_kyc_requirement_by_row (
            ",NOT lm.is_finished AS kyc_required"
            " FROM legitimization_measures lm"
            " JOIN wire_targets wt"
-           "   USING (access_token)"
+           "   ON (lm.access_token = wt.access_token)"
            " LEFT JOIN legitimization_outcomes lo"
            "   ON (wt.wire_target_h_payto = lo.h_payto)"
            " WHERE lm.legitimization_measure_serial_id=$1"
+           /* Select the *currently active* lo, if any */
            "   AND ( (lo.is_active IS NULL)"
-           "          OR lo.is_active);");
+           "          OR lo.is_active)"
+           " ORDER BY lo.is_active DESC NULLS LAST"
+           " LIMIT 1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_kyc_requirement_by_row",
