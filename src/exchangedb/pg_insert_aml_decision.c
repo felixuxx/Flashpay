@@ -63,7 +63,7 @@ TEH_PG_insert_aml_decision (
     TALER_PQ_query_param_json (new_rules),
     GNUNET_PQ_query_param_bool (to_investigate),
     NULL != new_measure_name
-    ? TALER_PQ_query_param_string (new_measure_name)
+    ? GNUNET_PQ_query_param_string (new_measure_name)
     : GNUNET_PQ_query_param_null (),
     NULL != jmeasures
     ? TALER_PQ_query_param_json (jmeasures)
