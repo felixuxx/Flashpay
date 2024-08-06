@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_reserves_purse.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_withdraw.h"
@@ -43,14 +44,42 @@ struct ReservePurseContext
 {
 
   /**
-   * Public key of the account (reserve) we are creating a purse for.
+   * Kept in a DLL.
    */
-  const union TALER_AccountPublicKeyP account_pub;
+  struct ReservePurseContext *next;
 
   /**
-   * Fees for the operation.
+   * Kept in a DLL.
    */
-  const struct TEH_GlobalFee *gf;
+  struct ReservePurseContext *prev;
+
+  /**
+   * Our request context.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
+   * Handle for legitimization check.
+   */
+  struct TEH_LegitimizationCheckHandle *lch;
+
+  /**
+   * Response to return. Note that the response must
+   * be queued or destroyed by the callee.  NULL
+   * if the legitimization check was successful and the handler should return
+   * a handler-specific result.
+   */
+  struct MHD_Response *response;
+
+  /**
+   * Payto URI for the reserve.
+   */
+  char *payto_uri;
+
+  /**
+   * Public key of the account (reserve) we are creating a purse for.
+   */
+  union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Signature of the reserve affirming the merge.
@@ -108,11 +137,6 @@ struct ReservePurseContext
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * Payto URI for the reserve.
-   */
-  char *payto_uri;
-
-  /**
    * KYC status of the operation.
    */
   struct TALER_EXCHANGEDB_KycStatus kyc;
@@ -128,11 +152,46 @@ struct ReservePurseContext
   enum TALER_WalletAccountMergeFlags flags;
 
   /**
+   * HTTP status code for @a response, or 0
+   */
+  unsigned int http_status;
+
+  /**
    * Do we lack an @e econtract?
    */
   bool no_econtract;
 
+  /**
+   * Set to true if the purse_fee was not given in the REST request.
+   */
+  bool no_purse_fee;
+
 };
+
+/**
+ * Kept in a DLL.
+ */
+static struct ReservePurseContext *rpc_head;
+
+/**
+ * Kept in a DLL.
+ */
+static struct ReservePurseContext *rpc_tail;
+
+
+void
+TEH_reserves_purse_cleanup ()
+{
+  struct ReservePurseContext *rpc;
+
+  while (NULL != (rpc = rpc_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (rpc_head,
+                                 rpc_tail,
+                                 rpc);
+    MHD_resume_connection (rpc->rc->connection);
+  }
+}
 
 
 /**
@@ -182,6 +241,32 @@ amount_iterator (void *cls,
 
 
 /**
+ * Function called with the result of a legitimization
+ * check.
+ *
+ * @param cls closure
+ * @param lcr legitimization check result
+ */
+static void
+reserve_purse_legi_cb (
+  void *cls,
+  const struct TEH_LegitimizationCheckResult *lcr)
+{
+  struct ReservePurseContext *rpc = cls;
+
+  rpc->lch = NULL;
+  rpc->http_status = lcr->http_status;
+  rpc->response = lcr->response;
+  rpc->kyc = lcr->kyc;
+  GNUNET_CONTAINER_DLL_remove (rpc_head,
+                               rpc_tail,
+                               rpc);
+  MHD_resume_connection (rpc->rc->connection);
+  TALER_MHD_daemon_trigger ();
+}
+
+
+/**
  * Execute database transaction for /reserves/$PID/purse.  Runs the transaction
  * logic; IF it returns a non-error code, the transaction logic MUST NOT queue
  * a MHD response.  IF it returns an hard error, the transaction logic MUST
@@ -201,20 +286,6 @@ purse_transaction (void *cls,
 {
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
-
-  qs = TEH_legitimization_check (
-    &rpc->kyc,
-    connection,
-    mhd_ret,
-    TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
-    rpc->payto_uri,
-    &rpc->h_payto,
-    &rpc->account_pub,
-    &amount_iterator,
-    rpc);
-  if ( (qs < 0) ||
-       (! rpc->kyc.ok) )
-    return qs;
 
   {
     bool in_conflict = true;
@@ -238,10 +309,11 @@ purse_transaction (void *cls,
         return qs;
       GNUNET_break (0);
       *mhd_ret =
-        TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_GENERIC_DB_STORE_FAILED,
-                                    "insert purse request");
+        TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_STORE_FAILED,
+          "insert purse request");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -272,10 +344,11 @@ purse_transaction (void *cls,
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
         GNUNET_break (0 != qs);
         TALER_LOG_WARNING ("Failed to fetch purse information from database\n");
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "select purse request");
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "select purse request");
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
       *mhd_ret
@@ -319,7 +392,7 @@ purse_transaction (void *cls,
       (TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA
        == rpc->flags)
       ? NULL
-      : &rpc->gf->fees.purse,
+      : &rpc->purse_fee,
       &rpc->account_pub.reserve_pub,
       &in_conflict,
       &no_reserve,
@@ -331,10 +404,11 @@ purse_transaction (void *cls,
       TALER_LOG_WARNING (
         "Failed to store purse merge information in database\n");
       *mhd_ret =
-        TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_GENERIC_DB_STORE_FAILED,
-                                    "do reserve purse");
+        TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_STORE_FAILED,
+          "do reserve purse");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (in_conflict)
@@ -362,10 +436,11 @@ purse_transaction (void *cls,
         GNUNET_break (0 != qs);
         TALER_LOG_WARNING (
           "Failed to fetch purse merge information from database\n");
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "select purse merge");
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "select purse merge");
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
       if (refunded)
@@ -373,10 +448,11 @@ purse_transaction (void *cls,
         /* This is a bit of a strange case ... */
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Purse was already refunded\n");
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_GONE,
-                                               TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
-                                               NULL);
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_GONE,
+          TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+          NULL);
         GNUNET_free (partner_url);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
@@ -402,7 +478,7 @@ purse_transaction (void *cls,
     if ( (no_reserve) &&
          ( (TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA
             == rpc->flags) ||
-           (! TALER_amount_is_zero (&rpc->gf->fees.purse)) ) )
+           (! TALER_amount_is_zero (&rpc->purse_fee)) ) )
     {
       *mhd_ret
         = TALER_MHD_REPLY_JSON_PACK (
@@ -437,10 +513,11 @@ purse_transaction (void *cls,
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
       TALER_LOG_WARNING ("Failed to store purse information in database\n");
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_STORE_FAILED,
-                                             "purse purse contract");
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "purse purse contract");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (in_conflict)
@@ -459,10 +536,11 @@ purse_transaction (void *cls,
         GNUNET_break (0 != qs);
         TALER_LOG_WARNING (
           "Failed to store fetch contract information from database\n");
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "select contract");
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "select contract");
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
       GNUNET_CRYPTO_hash (econtract.econtract,
@@ -480,11 +558,31 @@ purse_transaction (void *cls,
                                         &econtract.econtract_sig),
             GNUNET_JSON_pack_data_auto ("contract_pub",
                                         &econtract.contract_pub));
-      GNUNET_free (econtract.econtract);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
   return qs;
+}
+
+
+/**
+ * Function to clean up our rh_ctx in @a rc
+ *
+ * @param[in,out] rc context to clean up
+ */
+static void
+rpc_cleaner (struct TEH_RequestContext *rc)
+{
+  struct ReservePurseContext *rpc = rc->rh_ctx;
+
+  if (NULL != rpc->lch)
+  {
+    TEH_legitimization_check_cancel (rpc->lch);
+    rpc->lch = NULL;
+  }
+  GNUNET_free (rpc->econtract.econtract);
+  GNUNET_free (rpc->payto_uri);
+  GNUNET_free (rpc);
 }
 
 
@@ -494,271 +592,293 @@ TEH_handler_reserves_purse (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const json_t *root)
 {
+  struct ReservePurseContext *rpc = rc->rh_ctx;
   struct MHD_Connection *connection = rc->connection;
-  struct ReservePurseContext rpc = {
-    .account_pub.reserve_pub = *reserve_pub,
-    .exchange_timestamp = GNUNET_TIME_timestamp_get ()
-  };
-  bool no_purse_fee = true;
-  struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("purse_value",
-                            TEH_currency,
-                            &rpc.pd.target_amount),
-    GNUNET_JSON_spec_uint32 ("min_age",
-                             &rpc.min_age),
-    GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_amount ("purse_fee",
-                              TEH_currency,
-                              &rpc.purse_fee),
-      &no_purse_fee),
-    GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_econtract ("econtract",
-                                 &rpc.econtract),
-      &rpc.no_econtract),
-    GNUNET_JSON_spec_fixed_auto ("merge_pub",
-                                 &rpc.merge_pub),
-    GNUNET_JSON_spec_fixed_auto ("merge_sig",
-                                 &rpc.merge_sig),
-    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &rpc.reserve_sig),
-    GNUNET_JSON_spec_fixed_auto ("purse_pub",
-                                 &rpc.pd.purse_pub),
-    GNUNET_JSON_spec_fixed_auto ("purse_sig",
-                                 &rpc.purse_sig),
-    GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                 &rpc.pd.h_contract_terms),
-    GNUNET_JSON_spec_timestamp ("merge_timestamp",
-                                &rpc.merge_timestamp),
-    GNUNET_JSON_spec_timestamp ("purse_expiration",
-                                &rpc.pd.purse_expiration),
-    GNUNET_JSON_spec_end ()
-  };
 
+  if (NULL == rpc)
   {
-    enum GNUNET_GenericReturnValue res;
+    rpc = GNUNET_new (struct ReservePurseContext);
+    rc->rh_ctx = rpc;
+    rc->rh_cleaner = &rpc_cleaner;
+    rpc->rc = rc;
+    rpc->account_pub.reserve_pub = *reserve_pub;
+    rpc->exchange_timestamp
+      = GNUNET_TIME_timestamp_get ();
+    rpc->no_purse_fee = true;
 
-    res = TALER_MHD_parse_json_data (connection,
-                                     root,
-                                     spec);
-    if (GNUNET_SYSERR == res)
+
     {
-      GNUNET_break (0);
-      return MHD_NO; /* hard failure */
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount ("purse_value",
+                                TEH_currency,
+                                &rpc->pd.target_amount),
+        GNUNET_JSON_spec_uint32 ("min_age",
+                                 &rpc->min_age),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_amount ("purse_fee",
+                                  TEH_currency,
+                                  &rpc->purse_fee),
+          &rpc->no_purse_fee),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_econtract ("econtract",
+                                     &rpc->econtract),
+          &rpc->no_econtract),
+        GNUNET_JSON_spec_fixed_auto ("merge_pub",
+                                     &rpc->merge_pub),
+        GNUNET_JSON_spec_fixed_auto ("merge_sig",
+                                     &rpc->merge_sig),
+        GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                     &rpc->reserve_sig),
+        GNUNET_JSON_spec_fixed_auto ("purse_pub",
+                                     &rpc->pd.purse_pub),
+        GNUNET_JSON_spec_fixed_auto ("purse_sig",
+                                     &rpc->purse_sig),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &rpc->pd.h_contract_terms),
+        GNUNET_JSON_spec_timestamp ("merge_timestamp",
+                                    &rpc->merge_timestamp),
+        GNUNET_JSON_spec_timestamp ("purse_expiration",
+                                    &rpc->pd.purse_expiration),
+        GNUNET_JSON_spec_end ()
+      };
+
+      {
+        enum GNUNET_GenericReturnValue res;
+
+        res = TALER_MHD_parse_json_data (connection,
+                                         root,
+                                         spec);
+        if (GNUNET_SYSERR == res)
+        {
+          GNUNET_break (0);
+          return MHD_NO; /* hard failure */
+        }
+        if (GNUNET_NO == res)
+        {
+          GNUNET_break_op (0);
+          return MHD_YES; /* failure */
+        }
+      }
     }
-    if (GNUNET_NO == res)
+
+    rpc->payto_uri
+      = TALER_reserve_make_payto (TEH_base_url,
+                                  &rpc->account_pub.reserve_pub);
+    TALER_payto_hash (rpc->payto_uri,
+                      &rpc->h_payto);
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+
+
+    if (GNUNET_OK !=
+        TALER_wallet_purse_merge_verify (rpc->payto_uri,
+                                         rpc->merge_timestamp,
+                                         &rpc->pd.purse_pub,
+                                         &rpc->merge_pub,
+                                         &rpc->merge_sig))
     {
+      MHD_RESULT ret;
+
       GNUNET_break_op (0);
-      return MHD_YES; /* failure */
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
+        rpc->payto_uri);
+      GNUNET_free (rpc->payto_uri);
+      return ret;
     }
-  }
-  rpc.payto_uri
-    = TALER_reserve_make_payto (TEH_base_url,
-                                &rpc.account_pub.reserve_pub);
-  TALER_payto_hash (rpc.payto_uri,
-                    &rpc.h_payto);
-  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-  if (GNUNET_OK !=
-      TALER_wallet_purse_merge_verify (rpc.payto_uri,
-                                       rpc.merge_timestamp,
-                                       &rpc.pd.purse_pub,
-                                       &rpc.merge_pub,
-                                       &rpc.merge_sig))
-  {
-    MHD_RESULT ret;
-
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    ret = TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
-      rpc.payto_uri);
-    GNUNET_free (rpc.payto_uri);
-    return ret;
-  }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TEH_currency,
-                                        &rpc.deposit_total));
-  if (GNUNET_TIME_timestamp_cmp (rpc.pd.purse_expiration,
-                                 <,
-                                 rpc.exchange_timestamp))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_BEFORE_NOW,
-                                       NULL);
-  }
-  if (GNUNET_TIME_absolute_is_never (rpc.pd.purse_expiration.abs_time))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_IS_NEVER,
-                                       NULL);
-  }
-  {
-    struct TEH_KeyStateHandle *keys;
-
-    keys = TEH_keys_get_state ();
-    if (NULL == keys)
-    {
-      GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
-      GNUNET_free (rpc.payto_uri);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                         NULL);
-    }
-    rpc.gf = TEH_keys_global_fee_by_time (keys,
-                                          rpc.exchange_timestamp);
-  }
-  if (NULL == rpc.gf)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Cannot purse purse: global fees not configured!\n");
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
-                                       NULL);
-  }
-  if (no_purse_fee)
-  {
-    rpc.flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TEH_currency,
-                                          &rpc.purse_fee));
-  }
-  else
-  {
-    rpc.flags = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
-    if (-1 ==
-        TALER_amount_cmp (&rpc.purse_fee,
-                          &rpc.gf->fees.purse))
+                                          &rpc->deposit_total));
+    if (GNUNET_TIME_timestamp_cmp (rpc->pd.purse_expiration,
+                                   <,
+                                   rpc->exchange_timestamp))
     {
-      /* rpc.purse_fee is below gf.fees.purse! */
       GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      GNUNET_free (rpc.payto_uri);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_RESERVES_PURSE_FEE_TOO_LOW,
-                                         TALER_amount2s (&rpc.gf->fees.purse));
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_BEFORE_NOW,
+        NULL);
     }
+    if (GNUNET_TIME_absolute_is_never (
+          rpc->pd.purse_expiration.abs_time))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_IS_NEVER,
+        NULL);
+    }
+
+    {
+      struct TEH_KeyStateHandle *keys;
+      const struct TEH_GlobalFee *gf;
+
+      keys = TEH_keys_get_state ();
+      if (NULL == keys)
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+          NULL);
+      }
+      gf = TEH_keys_global_fee_by_time (keys,
+                                        rpc->exchange_timestamp);
+      if (NULL == gf)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Cannot create purse: global fees not configured!\n");
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
+          NULL);
+      }
+      if (rpc->no_purse_fee)
+      {
+        rpc->flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_set_zero (TEH_currency,
+                                              &rpc->purse_fee));
+      }
+      else
+      {
+        rpc->flags = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
+        if (-1 ==
+            TALER_amount_cmp (&rpc->purse_fee,
+                              &gf->fees.purse))
+        {
+          /* rpc->purse_fee is below gf.fees.purse! */
+          GNUNET_break_op (0);
+          return TALER_MHD_reply_with_error (
+            connection,
+            MHD_HTTP_BAD_REQUEST,
+            TALER_EC_EXCHANGE_RESERVES_PURSE_FEE_TOO_LOW,
+            TALER_amount2s (&gf->fees.purse));
+        }
+      }
+    }
+
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+    if (GNUNET_OK !=
+        TALER_wallet_purse_create_verify (
+          rpc->pd.purse_expiration,
+          &rpc->pd.h_contract_terms,
+          &rpc->merge_pub,
+          rpc->min_age,
+          &rpc->pd.target_amount,
+          &rpc->pd.purse_pub,
+          &rpc->purse_sig))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
+        NULL);
+    }
+    if (GNUNET_OK !=
+        TALER_wallet_account_merge_verify (
+          rpc->merge_timestamp,
+          &rpc->pd.purse_pub,
+          rpc->pd.purse_expiration,
+          &rpc->pd.h_contract_terms,
+          &rpc->pd.target_amount,
+          &rpc->purse_fee,
+          rpc->min_age,
+          rpc->flags,
+          &rpc->account_pub.reserve_pub,
+          &rpc->reserve_sig))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_RESERVES_RESERVE_MERGE_SIGNATURE_INVALID,
+        NULL);
+    }
+    if ( (! rpc->no_econtract) &&
+         (GNUNET_OK !=
+          TALER_wallet_econtract_upload_verify (
+            rpc->econtract.econtract,
+            rpc->econtract.econtract_size,
+            &rpc->econtract.contract_pub,
+            &rpc->pd.purse_pub,
+            &rpc->econtract.econtract_sig))
+         )
+    {
+      TALER_LOG_WARNING ("Invalid signature on /reserves/$PID/purse request\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
+                                         NULL);
+    }
+
+    rpc->lch = TEH_legitimization_check (
+      &rpc->rc->async_scope_id,
+      TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+      rpc->payto_uri,
+      &rpc->h_payto,
+      &rpc->account_pub,
+      &amount_iterator,
+      rpc,
+      &reserve_purse_legi_cb,
+      rpc);
+    GNUNET_assert (NULL != rpc->lch);
+    MHD_suspend_connection (rc->connection);
+    GNUNET_CONTAINER_DLL_insert (rpc_head,
+                                 rpc_tail,
+                                 rpc);
+    return MHD_YES;
   }
-  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-  if (GNUNET_OK !=
-      TALER_wallet_purse_create_verify (rpc.pd.purse_expiration,
-                                        &rpc.pd.h_contract_terms,
-                                        &rpc.merge_pub,
-                                        rpc.min_age,
-                                        &rpc.pd.target_amount,
-                                        &rpc.pd.purse_pub,
-                                        &rpc.purse_sig))
+  if (NULL != rpc->response)
+    return MHD_queue_response (connection,
+                               rpc->http_status,
+                               rpc->response);
+  if (! rpc->kyc.ok)
   {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
-      NULL);
-  }
-  if (GNUNET_OK !=
-      TALER_wallet_account_merge_verify (
-        rpc.merge_timestamp,
-        &rpc.pd.purse_pub,
-        rpc.pd.purse_expiration,
-        &rpc.pd.h_contract_terms,
-        &rpc.pd.target_amount,
-        &rpc.purse_fee,
-        rpc.min_age,
-        rpc.flags,
-        &rpc.account_pub.reserve_pub,
-        &rpc.reserve_sig))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_RESERVES_RESERVE_MERGE_SIGNATURE_INVALID,
-      NULL);
-  }
-  if ( (! rpc.no_econtract) &&
-       (GNUNET_OK !=
-        TALER_wallet_econtract_upload_verify (rpc.econtract.econtract,
-                                              rpc.econtract.econtract_size,
-                                              &rpc.econtract.contract_pub,
-                                              &rpc.pd.purse_pub,
-                                              &rpc.econtract.econtract_sig)) )
-  {
-    TALER_LOG_WARNING ("Invalid signature on /reserves/$PID/purse request\n");
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
-                                       NULL);
+    if (0 == rpc->kyc.requirement_row)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+        "requirement row not set");
+    }
+    return TEH_RESPONSE_reply_kyc_required (connection,
+                                            &rpc->h_payto,
+                                            &rpc->kyc);
   }
 
-
-  if (GNUNET_SYSERR ==
-      TEH_plugin->preflight (TEH_plugin->cls))
-  {
-    GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (rpc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_START_FAILED,
-                                       "preflight failure");
-  }
-
-  /* execute transaction */
   {
     MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
-                                "execute purse purse",
+                                "execute reserve purse",
                                 TEH_MT_REQUEST_RESERVE_PURSE,
                                 &mhd_ret,
                                 &purse_transaction,
-                                &rpc))
+                                rpc))
     {
-      GNUNET_JSON_parse_free (spec);
-      GNUNET_free (rpc.payto_uri);
       return mhd_ret;
     }
   }
-  GNUNET_free (rpc.payto_uri);
 
-  if (! rpc.kyc.ok)
-  {
-    GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_kyc_required (connection,
-                                            &rpc.h_payto,
-                                            &rpc.kyc);
-  }
   /* generate regular response */
   {
     MHD_RESULT res;
 
-    res = TEH_RESPONSE_reply_purse_created (connection,
-                                            rpc.exchange_timestamp,
-                                            &rpc.deposit_total,
-                                            &rpc.pd);
-    GNUNET_JSON_parse_free (spec);
+    res = TEH_RESPONSE_reply_purse_created (
+      connection,
+      rpc->exchange_timestamp,
+      &rpc->deposit_total,
+      &rpc->pd);
     return res;
   }
 }

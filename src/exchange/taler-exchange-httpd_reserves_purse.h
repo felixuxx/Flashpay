@@ -27,6 +27,13 @@
 
 
 /**
+ * Resume suspended connections, we are shutting down.
+ */
+void
+TEH_reserves_purse_cleanup (void);
+
+
+/**
  * Handle a "/reserves/$RESERVE_PUB/purse" request.  Parses the JSON, and, if
  * successful, passes the JSON data to #create_transaction() to further check
  * the details of the operation specified.  If everything checks out, this

@@ -28,6 +28,12 @@
 
 
 /**
+ * Resume suspended connections, we are shutting down.
+ */
+void
+TEH_batch_withdraw_cleanup (void);
+
+/**
  * Handle a "/reserves/$RESERVE_PUB/batch-withdraw" request.  Parses the batch of
  * requested "denom_pub" which specifies the key/value of the coin to be
  * withdrawn, and checks that the signature "reserve_sig" makes this a valid

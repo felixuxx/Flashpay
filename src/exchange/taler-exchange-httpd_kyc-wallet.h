@@ -26,6 +26,13 @@
 
 
 /**
+ * Resume suspended connections, we are shutting down.
+ */
+void
+TEH_kyc_wallet_cleanup (void);
+
+
+/**
  * Handle a "/kyc-wallet" request.  Parses the "reserve_pub" EdDSA key of the
  * reserve and the signature "reserve_sig" which affirms the operation. If OK,
  * a KYC record is created (if missing) and the KYC status returned.

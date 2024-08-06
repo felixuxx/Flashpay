@@ -27,6 +27,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
+#include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_close.h"
 #include "taler-exchange-httpd_withdraw.h"
@@ -46,10 +47,44 @@
  */
 struct ReserveCloseContext
 {
+
+  /**
+   * Kept in a DLL.
+   */
+  struct ReserveCloseContext *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct ReserveCloseContext *prev;
+
+  /**
+   * Our request context.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
+   * Handle for legitimization check.
+   */
+  struct TEH_LegitimizationCheckHandle *lch;
+
+  /**
+   * Where to wire the funds, may be NULL.
+   */
+  const char *payto_uri;
+
+  /**
+   * Response to return. Note that the response must
+   * be queued or destroyed by the callee.  NULL
+   * if the legitimization check was successful and the handler should return
+   * a handler-specific result.
+   */
+  struct MHD_Response *response;
+
   /**
    * Public key of the reserve the inquiry is about.
    */
-  const struct TALER_ReservePublicKeyP *reserve_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Timestamp of the request.
@@ -72,11 +107,6 @@ struct ReserveCloseContext
   struct TALER_Amount balance;
 
   /**
-   * Where to wire the funds, may be NULL.
-   */
-  const char *payto_uri;
-
-  /**
    * Hash of the @e payto_uri, if given (otherwise zero).
    */
   struct TALER_PaytoHashP h_payto;
@@ -95,25 +125,94 @@ struct ReserveCloseContext
    * Query status from the amount_it() helper function.
    */
   enum GNUNET_DB_QueryStatus qs;
+
+  /**
+   * HTTP status code for @a response, or 0
+   */
+  unsigned int http_status;
+
+  /**
+   * Set to true if the request was suspended.
+   */
+  bool suspended;
+
+  /**
+   * Set to true if the request was suspended.
+   */
+  bool resumed;
 };
+
+
+/**
+ * Kept in a DLL.
+ */
+static struct ReserveCloseContext *rcc_head;
+
+/**
+ * Kept in a DLL.
+ */
+static struct ReserveCloseContext *rcc_tail;
+
+
+void
+TEH_reserves_close_cleanup ()
+{
+  struct ReserveCloseContext *rcc;
+
+  while (NULL != (rcc = rcc_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (rcc_head,
+                                 rcc_tail,
+                                 rcc);
+    MHD_resume_connection (rcc->rc->connection);
+  }
+}
 
 
 /**
  * Send reserve close to client.
  *
- * @param connection connection to the client
  * @param rhc reserve close to return
  * @return MHD result code
  */
 static MHD_RESULT
-reply_reserve_close_success (struct MHD_Connection *connection,
-                             const struct ReserveCloseContext *rhc)
+reply_reserve_close_success (
+  const struct ReserveCloseContext *rhc)
 {
+  struct MHD_Connection *connection = rhc->rc->connection;
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
     TALER_JSON_pack_amount ("wire_amount",
                             &rhc->wire_amount));
+}
+
+
+/**
+ * Function called with the result of a legitimization
+ * check.
+ *
+ * @param cls closure
+ * @param lcr legitimization check result
+ */
+static void
+reserve_close_legi_cb (
+  void *cls,
+  const struct TEH_LegitimizationCheckResult *lcr)
+{
+  struct ReserveCloseContext *rcc = cls;
+
+  rcc->lch = NULL;
+  rcc->http_status = lcr->http_status;
+  rcc->response = lcr->response;
+  rcc->kyc = lcr->kyc;
+  GNUNET_CONTAINER_DLL_remove (rcc_head,
+                               rcc_tail,
+                               rcc);
+  MHD_resume_connection (rcc->rc->connection);
+  rcc->resumed = true;
+  rcc->suspended = false;
+  TALER_MHD_daemon_trigger ();
 }
 
 
@@ -175,9 +274,10 @@ amount_it (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-reserve_close_transaction (void *cls,
-                           struct MHD_Connection *connection,
-                           MHD_RESULT *mhd_ret)
+reserve_close_transaction (
+  void *cls,
+  struct MHD_Connection *connection,
+  MHD_RESULT *mhd_ret)
 {
   struct ReserveCloseContext *rcc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -186,7 +286,7 @@ reserve_close_transaction (void *cls,
 
   qs = TEH_plugin->select_reserve_close_info (
     TEH_plugin->cls,
-    rcc->reserve_pub,
+    &rcc->reserve_pub,
     &rcc->balance,
     &payto_uri);
   switch (qs)
@@ -194,19 +294,21 @@ reserve_close_transaction (void *cls,
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     *mhd_ret
-      = TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "select_reserve_close_info");
+      = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "select_reserve_close_info");
     return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     *mhd_ret
-      = TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_NOT_FOUND,
-                                    TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                    NULL);
+      = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_NOT_FOUND,
+          TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+          NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
@@ -216,14 +318,16 @@ reserve_close_transaction (void *cls,
        (NULL == payto_uri) )
   {
     *mhd_ret
-      = TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_CONFLICT,
-                                    TALER_EC_EXCHANGE_RESERVES_CLOSE_NO_TARGET_ACCOUNT,
-                                    NULL);
+      = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_CONFLICT,
+          TALER_EC_EXCHANGE_RESERVES_CLOSE_NO_TARGET_ACCOUNT,
+          NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  if ( (NULL != rcc->payto_uri) &&
+  if ( (! rcc->resumed) &&
+       (NULL != rcc->payto_uri) &&
        ( (NULL == payto_uri) ||
          (0 != strcmp (payto_uri,
                        rcc->payto_uri)) ) )
@@ -234,28 +338,25 @@ reserve_close_transaction (void *cls,
 
     TALER_payto_hash (rcc->payto_uri,
                       &rcc->kyc_payto);
-    rcc->qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-    qs = TEH_legitimization_check (
-      &rcc->kyc,
-      connection,
-      mhd_ret,
+    rcc->lch = TEH_legitimization_check (
+      &rcc->rc->async_scope_id,
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
       rcc->payto_uri,
       &rcc->kyc_payto,
-      NULL,
+      NULL, /* no account_pub */
       &amount_it,
+      rcc,
+      &reserve_close_legi_cb,
       rcc);
-    if ( (qs < 0) ||
-         (! rcc->kyc.ok) )
-    {
-      GNUNET_free (payto_uri);
-      return qs;
-    }
+    GNUNET_assert (NULL != rcc->lch);
+    GNUNET_CONTAINER_DLL_insert (rcc_head,
+                                 rcc_tail,
+                                 rcc);
+    MHD_suspend_connection (rcc->rc->connection);
+    rcc->suspended = true;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
-  else
-  {
-    rcc->kyc.ok = true;
-  }
+  rcc->kyc.ok = true;
   if (NULL == rcc->payto_uri)
     rcc->payto_uri = payto_uri;
 
@@ -268,10 +369,11 @@ reserve_close_transaction (void *cls,
     if (NULL == wf)
     {
       GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
-                                             method);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
+        method);
       GNUNET_free (method);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
@@ -288,18 +390,18 @@ reserve_close_transaction (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TEH_currency,
                                           &rcc->wire_amount));
-    *mhd_ret = reply_reserve_close_success (connection,
-                                            rcc);
+    *mhd_ret = reply_reserve_close_success (rcc);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  qs = TEH_plugin->insert_close_request (TEH_plugin->cls,
-                                         rcc->reserve_pub,
-                                         payto_uri,
-                                         &rcc->reserve_sig,
-                                         rcc->timestamp,
-                                         &rcc->balance,
-                                         &wf->closing);
+  qs = TEH_plugin->insert_close_request (
+    TEH_plugin->cls,
+    &rcc->reserve_pub,
+    payto_uri,
+    &rcc->reserve_sig,
+    rcc->timestamp,
+    &rcc->balance,
+    &wf->closing);
   GNUNET_free (payto_uri);
   rcc->payto_uri = NULL;
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -321,76 +423,131 @@ reserve_close_transaction (void *cls,
 }
 
 
-MHD_RESULT
-TEH_handler_reserves_close (struct TEH_RequestContext *rc,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            const json_t *root)
+/**
+ * Cleanup routine. Function called
+ * upon completion of the request that should
+ * clean up @a rh_ctx. Can be NULL.
+ *
+ * @param rc request to clean up context for
+ */
+static void
+reserve_close_cleanup (struct TEH_RequestContext *rc)
 {
-  struct ReserveCloseContext rcc = {
-    .payto_uri = NULL,
-    .reserve_pub = reserve_pub
-  };
-  MHD_RESULT mhd_ret;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_timestamp ("request_timestamp",
-                                &rcc.timestamp),
-    GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_payto_uri ("payto_uri",
-                                 &rcc.payto_uri),
-      NULL),
-    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &rcc.reserve_sig),
-    GNUNET_JSON_spec_end ()
-  };
+  struct ReserveCloseContext *rcc = rc->rh_ctx;
 
+  if (NULL != rcc->lch)
   {
-    enum GNUNET_GenericReturnValue res;
+    TEH_legitimization_check_cancel (rcc->lch);
+    rcc->lch = NULL;
+  }
+  GNUNET_free (rcc);
+}
 
-    res = TALER_MHD_parse_json_data (rc->connection,
-                                     root,
-                                     spec);
-    if (GNUNET_SYSERR == res)
+
+MHD_RESULT
+TEH_handler_reserves_close (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *root)
+{
+  struct ReserveCloseContext *rcc = rc->rh_ctx;
+  MHD_RESULT mhd_ret;
+
+  if (NULL == rcc)
+  {
+    rcc = GNUNET_new (struct ReserveCloseContext);
+    rc->rh_ctx = rcc;
+    rc->rh_cleaner = &reserve_close_cleanup;
+    rcc->reserve_pub = *reserve_pub;
+
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_timestamp ("request_timestamp",
+                                    &rcc->timestamp),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_payto_uri ("payto_uri",
+                                     &rcc->payto_uri),
+          NULL),
+        GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                     &rcc->reserve_sig),
+        GNUNET_JSON_spec_end ()
+      };
+
+      {
+        enum GNUNET_GenericReturnValue res;
+
+        res = TALER_MHD_parse_json_data (rc->connection,
+                                         root,
+                                         spec);
+        if (GNUNET_SYSERR == res)
+        {
+          GNUNET_break (0);
+          return MHD_NO; /* hard failure */
+        }
+        if (GNUNET_NO == res)
+        {
+          GNUNET_break_op (0);
+          return MHD_YES; /* failure */
+        }
+      }
+    }
+
+    {
+      struct GNUNET_TIME_Timestamp now;
+
+      now = GNUNET_TIME_timestamp_get ();
+      if (! GNUNET_TIME_absolute_approx_eq (
+            now.abs_time,
+            rcc->timestamp.abs_time,
+            TIMESTAMP_TOLERANCE))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_BAD_REQUEST,
+          TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
+          NULL);
+      }
+    }
+
+    if (NULL != rcc->payto_uri)
+      TALER_payto_hash (rcc->payto_uri,
+                        &rcc->h_payto);
+    if (GNUNET_OK !=
+        TALER_wallet_reserve_close_verify (
+          rcc->timestamp,
+          &rcc->h_payto,
+          &rcc->reserve_pub,
+          &rcc->reserve_sig))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_RESERVES_CLOSE_BAD_SIGNATURE,
+        NULL);
+    }
+  }
+  if (NULL != rcc->response)
+    return MHD_queue_response (rc->connection,
+                               rcc->http_status,
+                               rcc->response);
+  if (rcc->resumed &&
+      (! rcc->kyc.ok) )
+  {
+    if (0 == rcc->kyc.requirement_row)
     {
       GNUNET_break (0);
-      return MHD_NO; /* hard failure */
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+        "requirement row not set");
     }
-    if (GNUNET_NO == res)
-    {
-      GNUNET_break_op (0);
-      return MHD_YES; /* failure */
-    }
-  }
-
-  {
-    struct GNUNET_TIME_Timestamp now;
-
-    now = GNUNET_TIME_timestamp_get ();
-    if (! GNUNET_TIME_absolute_approx_eq (now.abs_time,
-                                          rcc.timestamp.abs_time,
-                                          TIMESTAMP_TOLERANCE))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
-                                         NULL);
-    }
-  }
-
-  if (NULL != rcc.payto_uri)
-    TALER_payto_hash (rcc.payto_uri,
-                      &rcc.h_payto);
-  if (GNUNET_OK !=
-      TALER_wallet_reserve_close_verify (rcc.timestamp,
-                                         &rcc.h_payto,
-                                         reserve_pub,
-                                         &rcc.reserve_sig))
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_RESERVES_CLOSE_BAD_SIGNATURE,
-                                       NULL);
+    return TEH_RESPONSE_reply_kyc_required (
+      rc->connection,
+      &rcc->kyc_payto,
+      &rcc->kyc);
   }
 
   if (GNUNET_OK !=
@@ -403,24 +560,9 @@ TEH_handler_reserves_close (struct TEH_RequestContext *rc,
   {
     return mhd_ret;
   }
-  if (! rcc.kyc.ok)
-  {
-    if (0 == rcc.kyc.requirement_row)
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (
-        rc->connection,
-        MHD_HTTP_INTERNAL_SERVER_ERROR,
-        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-        "requirement row not set");
-    }
-    return TEH_RESPONSE_reply_kyc_required (
-      rc->connection,
-      &rcc.kyc_payto,
-      &rcc.kyc);
-  }
-  return reply_reserve_close_success (rc->connection,
-                                      &rcc);
+  if (rcc->suspended)
+    return MHD_YES;
+  return reply_reserve_close_success (rcc);
 }
 
 

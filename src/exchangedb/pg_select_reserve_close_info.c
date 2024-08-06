@@ -53,11 +53,14 @@ TEH_PG_select_reserve_close_info (
            " r.current_balance"
            ",wt.payto_uri"
            " FROM reserves r"
-           " LEFT JOIN reserves_in ri USING (reserve_pub)"
-           " LEFT JOIN wire_targets wt ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
+           " LEFT JOIN reserves_in ri"
+           "   USING (reserve_pub)"
+           " LEFT JOIN wire_targets wt"
+           "   ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
            " WHERE reserve_pub=$1;");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_reserve_close_info",
-                                                   params,
-                                                   rs);
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "select_reserve_close_info",
+    params,
+    rs);
 }

@@ -422,10 +422,11 @@ parse_coin (struct MHD_Connection *connection,
 
 MHD_RESULT
 TEH_handler_purses_create (
-  struct MHD_Connection *connection,
+  struct TEH_RequestContext *rc,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const json_t *root)
 {
+  struct MHD_Connection *connection = rc->connection;
   struct PurseCreateContext pcc = {
     .pd.purse_pub = *purse_pub,
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()

@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_kyclogic_lib.h"
+#include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_withdraw.h"
@@ -37,6 +38,40 @@
  */
 struct KycRequestContext
 {
+
+  /**
+   * Kept in a DLL.
+   */
+  struct KycRequestContext *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct KycRequestContext *prev;
+
+  /**
+   * Handle for legitimization check.
+   */
+  struct TEH_LegitimizationCheckHandle *lch;
+
+  /**
+   * Payto URI of the reserve.
+   */
+  char *payto_uri;
+
+  /**
+   * Request context.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
+   * Response to return. Note that the response must
+   * be queued or destroyed by the callee.  NULL
+   * if the legitimization check was successful and the handler should return
+   * a handler-specific result.
+   */
+  struct MHD_Response *response;
+
   /**
    * Public key of the reserve/wallet this is about.
    */
@@ -48,21 +83,47 @@ struct KycRequestContext
   union TALER_AccountPublicKeyP wallet_pub;
 
   /**
-   * KYC status, with row with the legitimization requirement.
-   */
-  struct TALER_EXCHANGEDB_KycStatus kyc;
-
-  /**
    * Balance threshold crossed by the wallet.
    */
   struct TALER_Amount balance;
 
   /**
-   * Payto URI of the reserve.
+   * KYC status, with row with the legitimization requirement.
    */
-  char *payto_uri;
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
+   * HTTP status code for @a response, or 0
+   */
+  unsigned int http_status;
 
 };
+
+
+/**
+ * Kept in a DLL.
+ */
+static struct KycRequestContext *krc_head;
+
+/**
+ * Kept in a DLL.
+ */
+static struct KycRequestContext *krc_tail;
+
+
+void
+TEH_kyc_wallet_cleanup ()
+{
+  struct KycRequestContext *krc;
+
+  while (NULL != (krc = krc_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (krc_head,
+                                 krc_tail,
+                                 krc);
+    MHD_resume_connection (krc->rc->connection);
+  }
+}
 
 
 /**
@@ -99,36 +160,48 @@ balance_iterator (void *cls,
 
 
 /**
- * Function implementing database transaction to check wallet's KYC status.
- * Runs the transaction logic; IF it returns a non-error code, the transaction
- * logic MUST NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF it
- * returns the soft error code, the function MAY be called again to retry and
- * MUST not queue a MHD response.
+ * Function called with the result of a legitimization
+ * check.
  *
- * @param cls closure with a `struct KycRequestContext *`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
+ * @param cls must be a `struct KycRequestContext *`
+ * @param lcr legitimization check result
  */
-static enum GNUNET_DB_QueryStatus
-wallet_kyc_check (void *cls,
-                  struct MHD_Connection *connection,
-                  MHD_RESULT *mhd_ret)
+static void
+legi_result_cb (
+  void *cls,
+  const struct TEH_LegitimizationCheckResult *lcr)
 {
   struct KycRequestContext *krc = cls;
 
-  return TEH_legitimization_check (
-    &krc->kyc,
-    connection,
-    mhd_ret,
-    TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
-    krc->payto_uri,
-    &krc->h_payto,
-    &krc->wallet_pub,
-    &balance_iterator,
-    krc);
+  krc->lch = NULL;
+  krc->http_status = lcr->http_status;
+  krc->response = lcr->response;
+  krc->kyc = lcr->kyc;
+  GNUNET_CONTAINER_DLL_remove (krc_head,
+                               krc_tail,
+                               krc);
+  MHD_resume_connection (krc->rc->connection);
+  TALER_MHD_daemon_trigger ();
+}
+
+
+/**
+ * Function to clean up our rh_ctx in @a rc
+ *
+ * @param[in,out] rc context to clean up
+ */
+static void
+krc_cleaner (struct TEH_RequestContext *rc)
+{
+  struct KycRequestContext *krc = rc->rh_ctx;
+
+  if (NULL != krc->lch)
+  {
+    TEH_legitimization_check_cancel (krc->lch);
+    krc->lch = NULL;
+  }
+  GNUNET_free (krc->payto_uri);
+  GNUNET_free (krc);
 }
 
 
@@ -138,63 +211,83 @@ TEH_handler_kyc_wallet (
   const json_t *root,
   const char *const args[])
 {
-  struct TALER_ReserveSignatureP reserve_sig;
-  struct KycRequestContext krc;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &reserve_sig),
-    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                 &krc.wallet_pub.reserve_pub),
-    TALER_JSON_spec_amount ("balance",
-                            TEH_currency,
-                            &krc.balance),
-    GNUNET_JSON_spec_end ()
-  };
-  MHD_RESULT res;
-  enum GNUNET_GenericReturnValue ret;
+  struct KycRequestContext *krc = rc->rh_ctx;
 
-  (void) args;
-  ret = TALER_MHD_parse_json_data (rc->connection,
-                                   root,
-                                   spec);
-  if (GNUNET_SYSERR == ret)
-    return MHD_NO;   /* hard failure */
-  if (GNUNET_NO == ret)
-    return MHD_YES;   /* failure */
-
-  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-  if (GNUNET_OK !=
-      TALER_wallet_account_setup_verify (
-        &krc.wallet_pub.reserve_pub,
-        &krc.balance,
-        &reserve_sig))
+  if (NULL == krc)
   {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (
-      rc->connection,
-      MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_KYC_WALLET_SIGNATURE_INVALID,
-      NULL);
+    krc = GNUNET_new (struct KycRequestContext);
+    krc->rc = rc;
+    rc->rh_ctx = krc;
+    rc->rh_cleaner = &krc_cleaner;
+    {
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                     &reserve_sig),
+        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                     &krc->wallet_pub.reserve_pub),
+        TALER_JSON_spec_amount ("balance",
+                                TEH_currency,
+                                &krc->balance),
+        GNUNET_JSON_spec_end ()
+      };
+      enum GNUNET_GenericReturnValue ret;
+
+      (void) args;
+      ret = TALER_MHD_parse_json_data (rc->connection,
+                                       root,
+                                       spec);
+      if (GNUNET_SYSERR == ret)
+        return MHD_NO; /* hard failure */
+      if (GNUNET_NO == ret)
+        return MHD_YES; /* failure */
+
+      TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+      if (GNUNET_OK !=
+          TALER_wallet_account_setup_verify (
+            &krc->wallet_pub.reserve_pub,
+            &krc->balance,
+            &reserve_sig))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_FORBIDDEN,
+          TALER_EC_EXCHANGE_KYC_WALLET_SIGNATURE_INVALID,
+          NULL);
+      }
+    }
+    krc->payto_uri
+      = TALER_reserve_make_payto (TEH_base_url,
+                                  &krc->wallet_pub.reserve_pub);
+    TALER_payto_hash (krc->payto_uri,
+                      &krc->h_payto);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "h_payto of wallet %s is %s\n",
+                krc->payto_uri,
+                TALER_B2S (&krc->h_payto));
+    krc->lch = TEH_legitimization_check (
+      &rc->async_scope_id,
+      TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
+      krc->payto_uri,
+      &krc->h_payto,
+      &krc->wallet_pub,
+      &balance_iterator,
+      krc,
+      &legi_result_cb,
+      krc);
+    GNUNET_assert (NULL != krc->lch);
+    MHD_suspend_connection (rc->connection);
+    GNUNET_CONTAINER_DLL_insert (krc_head,
+                                 krc_tail,
+                                 krc);
+    return MHD_YES;
   }
-  krc.payto_uri
-    = TALER_reserve_make_payto (TEH_base_url,
-                                &krc.wallet_pub.reserve_pub);
-  TALER_payto_hash (krc.payto_uri,
-                    &krc.h_payto);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "h_payto of wallet %s is %s\n",
-              krc.payto_uri,
-              TALER_B2S (&krc.h_payto));
-  ret = TEH_DB_run_transaction (rc->connection,
-                                "check wallet kyc",
-                                TEH_MT_REQUEST_OTHER,
-                                &res,
-                                &wallet_kyc_check,
-                                &krc);
-  GNUNET_free (krc.payto_uri);
-  if (GNUNET_SYSERR == ret)
-    return res;
-  if (krc.kyc.ok)
+  if (NULL != krc->response)
+    return MHD_queue_response (rc->connection,
+                               krc->http_status,
+                               krc->response);
+  if (krc->kyc.ok)
   {
     /* KYC not required or already satisfied */
     return TALER_MHD_reply_static (
@@ -205,8 +298,8 @@ TEH_handler_kyc_wallet (
       0);
   }
   return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                          &krc.h_payto,
-                                          &krc.kyc);
+                                          &krc->h_payto,
+                                          &krc->kyc);
 }
 
 

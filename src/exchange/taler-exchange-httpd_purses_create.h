@@ -32,14 +32,14 @@
  * the details of the operation specified.  If everything checks out, this
  * will ultimately lead to the "purses create" being executed, or rejected.
  *
- * @param connection the MHD connection to handle
+ * @param rc connection to handle
  * @param purse_pub public key of the purse
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_purses_create (
-  struct MHD_Connection *connection,
+  struct TEH_RequestContext *rc,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const json_t *root);
 

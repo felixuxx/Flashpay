@@ -885,6 +885,35 @@ find_measure (const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
 }
 
 
+const struct TALER_KYCLOGIC_Measure *
+TALER_KYCLOGIC_rule_get_instant_measure (
+  const struct TALER_KYCLOGIC_KycRule *r)
+{
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs
+    = r->lrs;
+
+  if (r->verboten)
+    return NULL;
+  for (unsigned int i = 0; i<r->num_measures; i++)
+  {
+    const char *measure_name = r->next_measures[i];
+    const struct TALER_KYCLOGIC_Measure *ms;
+
+    ms = find_measure (lrs,
+                       measure_name);
+    if (NULL == ms)
+    {
+      GNUNET_break (0);
+      return NULL;
+    }
+    if (0 == strcasecmp (ms->check_name,
+                         "SKIP"))
+      return ms;
+  }
+  return NULL;
+}
+
+
 json_t *
 TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r)
 {
@@ -3460,6 +3489,26 @@ TALER_KYCLOGIC_run_aml_program2 (
     json_decref (input);
   }
   return aprh;
+}
+
+
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
+TALER_KYCLOGIC_run_aml_program3 (
+  const struct TALER_KYCLOGIC_Measure *measure,
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc,
+  void *aprc_cls)
+{
+  return TALER_KYCLOGIC_run_aml_program2 (
+    measure->prog_name,
+    attributes,
+    aml_history,
+    kyc_history,
+    measure->context,
+    aprc,
+    aprc_cls);
 }
 
 

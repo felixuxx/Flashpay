@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -185,12 +185,52 @@ TEH_kyc_failed (
 
 
 /**
+ * Result from a legitimization check.
+ */
+struct TEH_LegitimizationCheckResult
+{
+  /**
+   * KYC status for the account
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
+   * HTTP status code for @a response, or 0
+   */
+  unsigned int http_status;
+
+  /**
+   * Response to return. Note that the response must
+   * be queued or destroyed by the callee.  NULL
+   * if the legitimization check was successful and the handler should return
+   * a handler-specific result.
+   */
+  struct MHD_Response *response;
+};
+
+
+/**
+ * Function called with the result of a legitimization
+ * check.
+ *
+ * @param cls closure
+ * @param lcr legitimization check result
+ */
+typedef void
+(*TEH_LegitimizationCheckCallback)(
+  void *cls,
+  const struct TEH_LegitimizationCheckResult *lcr);
+
+/**
+ * Handle for a legitimization check.
+ */
+struct TEH_LegitimizationCheckHandle;
+
+
+/**
  * Do legitimization check.
  *
- * @param[out] kyc set to kyc status
- * @param[in,out] connection used to return hard errors
- * @param[out] mhd_ret set if errors were returned
- *     (only on hard error)
+ * @param scope scope for logging
  * @param et type of event we are checking
  * @param payto_uri account we are checking for
  * @param h_payto hash of @a payto_uri
@@ -198,20 +238,30 @@ TEH_kyc_failed (
  *    KYC authorization, NULL if not known
  * @param ai callback to get amounts involved historically
  * @param ai_cls closure for @a ai
- * @return transaction status, error will have been
- *   queued if transaction status is set to hard error
+ * @param result_cb function to call with the result
+ * @param result_cb_cls closure for @a result_cb
+ * @return handle for the operation
  */
-enum GNUNET_DB_QueryStatus
+struct TEH_LegitimizationCheckHandle *
 TEH_legitimization_check (
-  struct TALER_EXCHANGEDB_KycStatus *kyc,
-  struct MHD_Connection *connection,
-  MHD_RESULT *mhd_ret,
+  const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
   const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *account_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
-  void *ai_cls);
+  void *ai_cls,
+  TEH_LegitimizationCheckCallback result_cb,
+  void *result_cb_cls);
 
+
+/**
+ * Cancel legitimization check.
+ *
+ * @param[in] lch handle of the check to cancel
+ */
+void
+TEH_legitimization_check_cancel (
+  struct TEH_LegitimizationCheckHandle *lch);
 
 #endif

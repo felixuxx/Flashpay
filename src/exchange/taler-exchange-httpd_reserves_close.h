@@ -26,6 +26,12 @@
 
 
 /**
+ * Resume suspended connections, we are shutting down.
+ */
+void
+TEH_reserves_close_cleanup (void);
+
+/**
  * Handle a POST "/reserves/$RID/close" request.
  *
  * @param rc request context
@@ -34,8 +40,9 @@
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_reserves_close (struct TEH_RequestContext *rc,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            const json_t *root);
+TEH_handler_reserves_close (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *root);
 
 #endif

@@ -691,6 +691,20 @@ TALER_KYCLOGIC_get_measure_configuration (
 
 
 /**
+ * Check if there is a measure triggered by the
+ * KYC rule @a r that has a check name of "SKIP" and
+ * thus should be immediately executed. If such a
+ * measure exists, return it.
+ *
+ * @param r rule to check for instant measures
+ * @return NULL if there is no instant measure
+ */
+const struct TALER_KYCLOGIC_Measure *
+TALER_KYCLOGIC_rule_get_instant_measure (
+  const struct TALER_KYCLOGIC_KycRule *r);
+
+
+/**
  * Handle to manage a running AML program.
  */
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle;
@@ -842,6 +856,30 @@ TALER_KYCLOGIC_run_aml_program2 (
   const json_t *aml_history,
   const json_t *kyc_history,
   const json_t *context,
+  TALER_KYCLOGIC_AmlProgramResultCallback aprc,
+  void *aprc_cls);
+
+
+/**
+ * Run AML program specified by the given
+ * measure.
+ *
+ * @param measure measure with program name and context
+ *         to run
+ * @param attributes attributes to run with
+ * @param aml_history AML history of the account
+ * @param kyc_history KYC history of the account
+ * @param aprc function to call with the result
+ * @param aprc_cls closure for @a aprc
+ * @return NULL if @a jmeasures is invalid for the
+ *   selected @a measure_index or @a attributes
+ */
+struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
+TALER_KYCLOGIC_run_aml_program3 (
+  const struct TALER_KYCLOGIC_Measure *measure,
+  const json_t *attributes,
+  const json_t *aml_history,
+  const json_t *kyc_history,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 

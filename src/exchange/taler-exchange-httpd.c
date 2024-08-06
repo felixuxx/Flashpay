@@ -877,13 +877,13 @@ handle_get_reserves (struct TEH_RequestContext *rc,
 /**
  * Signature of functions that handle operations on purses.
  *
- * @param connection HTTP request handle
+ * @param rc request handle
  * @param purse_pub the public key of the purse
  * @param root uploaded JSON data
  * @return MHD result code
  */
 typedef MHD_RESULT
-(*PurseOpHandler)(struct MHD_Connection *connection,
+(*PurseOpHandler)(struct TEH_RequestContext *rc,
                   const struct TALER_PurseContractPublicKeyP *purse_pub,
                   const json_t *root);
 
@@ -949,7 +949,7 @@ handle_post_purses (struct TEH_RequestContext *rc,
   for (unsigned int i = 0; NULL != h[i].op; i++)
     if (0 == strcmp (h[i].op,
                      args[1]))
-      return h[i].handler (rc->connection,
+      return h[i].handler (rc,
                            &purse_pub,
                            root);
   return r404 (rc->connection,
@@ -2570,6 +2570,12 @@ do_shutdown (void *cls)
 
   mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
+  TEH_age_withdraw_cleanup ();
+  TEH_batch_withdraw_cleanup ();
+  TEH_reserves_close_cleanup ();
+  TEH_reserves_purse_cleanup ();
+  TEH_purses_merge_cleanup ();
+  TEH_kyc_wallet_cleanup ();
   TEH_kyc_upload_cleanup ();
   TEH_deposits_get_cleanup ();
   TEH_reserves_get_cleanup ();

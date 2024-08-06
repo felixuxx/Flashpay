@@ -26,6 +26,13 @@
 
 
 /**
+ * Resume suspended connections, we are shutting down.
+ */
+void
+TEH_age_withdraw_cleanup (void);
+
+
+/**
  * Handle a "/reserves/$RESERVE_PUB/age-withdraw" request.
  *
  * Parses the batch of commitments to withdraw age restricted coins, and checks
@@ -40,8 +47,9 @@
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
-                          const struct TALER_ReservePublicKeyP *reserve_pub,
-                          const json_t *root);
+TEH_handler_age_withdraw (
+  struct TEH_RequestContext *rc,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *root);
 
 #endif

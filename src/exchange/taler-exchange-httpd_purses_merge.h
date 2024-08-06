@@ -27,20 +27,28 @@
 
 
 /**
+ * Resume suspended connections, we are shutting down.
+ */
+void
+TEH_purses_merge_cleanup (void);
+
+
+/**
  * Handle a "/purses/$PURSE_PUB/merge" request.  Parses the JSON, and, if
  * successful, passes the JSON data to #merge_transaction() to further check
  * the details of the operation specified.  If everything checks out, this
  * will ultimately lead to the "purses merge" being executed, or rejected.
  *
- * @param connection the MHD connection to handle
+ * @param rc request to handle
  * @param purse_pub public key of the purse
  * @param root uploaded JSON data
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_purses_merge (struct MHD_Connection *connection,
-                          const struct TALER_PurseContractPublicKeyP *purse_pub,
-                          const json_t *root);
+TEH_handler_purses_merge (
+  struct TEH_RequestContext *rc,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const json_t *root);
 
 
 #endif
