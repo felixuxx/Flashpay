@@ -597,7 +597,8 @@ TALER_KYCLOGIC_get_original_measure (
  * no trigger has been hit.
  *
  * @param lrs rule set
- * @param kyc_rule rule that was triggered
+ * @param kyc_rule rule that was triggered, NULL
+ *   to merely lookup the measure without any trigger
  * @param measure_name selected measure,
  *   NULL to return the "new_check" set by the @a lrs
  * @param[out] kcc set to check to run;

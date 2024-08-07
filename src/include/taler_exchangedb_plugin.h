@@ -7159,6 +7159,34 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Store automated legitimization outcome.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param decision_time when was the decision taken
+   * @param expiration_time when does the data expire
+   * @param account_properties new account properties
+   * @param to_investigate true to flag account for investigation
+   * @param new_rules new KYC rules to apply to the account
+   * @param num_events length of the @a events array
+   * @param events array of KYC events to trigger
+   * @param require_aml true to trigger AML
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*insert_programmatic_legitimization_outcome)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Timestamp decision_time,
+    struct GNUNET_TIME_Absolute expiration_time,
+    const json_t *account_properties,
+    bool to_investigate,
+    const json_t *new_rules,
+    unsigned int num_events,
+    const char **events);
+
+
+  /**
    * Store KYC attribute data, update KYC process status and
    * AML status for the given account.
    *
@@ -7178,7 +7206,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param events array of KYC events to trigger
    * @param enc_attributes_size number of bytes in @a enc_attributes
    * @param enc_attributes encrypted attribute data
-   * @param require_aml true to trigger AML
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus

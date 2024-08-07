@@ -857,9 +857,10 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
  * @param measure_name name of measure to find
  * @return NULL if not found, otherwise the measure
  */
-static const struct TALER_KYCLOGIC_Measure *
-find_measure (const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
-              const char *measure_name)
+const struct TALER_KYCLOGIC_Measure *
+find_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measure_name)
 {
   if (NULL != lrs)
   {
@@ -1033,8 +1034,6 @@ TALER_KYCLOGIC_check_to_measures (
   json_t *jmeasures;
   json_t *mi;
 
-  jmeasures = json_array ();
-  GNUNET_assert (NULL != jmeasures);
   mi = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("check_name",
                              check->check_name),
@@ -1043,6 +1042,8 @@ TALER_KYCLOGIC_check_to_measures (
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_object_incref ("context",
                                       (json_t *) kcc->context)));
+  jmeasures = json_array ();
+  GNUNET_assert (NULL != jmeasures);
   GNUNET_assert (0 ==
                  json_array_append_new (jmeasures,
                                         mi));
@@ -2500,7 +2501,6 @@ TALER_KYCLOGIC_get_original_measure (
 }
 
 
-// FIXME: not used in 'main' exchange logic!
 enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_requirements_to_check (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
@@ -2518,27 +2518,30 @@ TALER_KYCLOGIC_requirements_to_check (
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  for (unsigned int i = 0; i<kyc_rule->num_measures; i++)
+  if (NULL != kyc_rule)
   {
-    if (0 != strcmp (measure_name,
-                     kyc_rule->next_measures[i]))
-      continue;
-    found = true;
-    break;
-  }
-  if (! found)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Measure `%s' not allowed for rule `%s'\n",
-                measure_name,
-                kyc_rule->rule_name);
-    return GNUNET_SYSERR;
-  }
-  if (kyc_rule->verboten)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Rule says operation is categorically is verboten, cannot take measures\n");
-    return GNUNET_SYSERR;
+    for (unsigned int i = 0; i<kyc_rule->num_measures; i++)
+    {
+      if (0 != strcmp (measure_name,
+                       kyc_rule->next_measures[i]))
+        continue;
+      found = true;
+      break;
+    }
+    if (! found)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Measure `%s' not allowed for rule `%s'\n",
+                  measure_name,
+                  kyc_rule->rule_name);
+      return GNUNET_SYSERR;
+    }
+    if (kyc_rule->verboten)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Rule says operation is categorically is verboten, cannot take measures\n");
+      return GNUNET_SYSERR;
+    }
   }
   measure = find_measure (lrs,
                           measure_name);
@@ -2547,7 +2550,9 @@ TALER_KYCLOGIC_requirements_to_check (
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Measure `%s' unknown (but allowed by rule `%s')\n",
                 measure_name,
-                kyc_rule->rule_name);
+                NULL != kyc_rule
+                ? kyc_rule->rule_name
+                : "<NONE>");
     return GNUNET_SYSERR;
   }
 

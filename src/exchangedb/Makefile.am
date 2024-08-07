@@ -127,6 +127,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_insert_drain_profit.h pg_insert_drain_profit.c \
   pg_insert_kyc_failure.h pg_insert_kyc_failure.c \
   pg_inject_auditor_triggers.h pg_inject_auditor_triggers.c \
+  pg_insert_programmatic_legitimization_outcome.h pg_insert_programmatic_legitimization_outcome.c \
   pg_create_tables.h pg_create_tables.c \
   pg_event_listen.h pg_event_listen.c \
   pg_event_listen_cancel.h pg_event_listen_cancel.c \

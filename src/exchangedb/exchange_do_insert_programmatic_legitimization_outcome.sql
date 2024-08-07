@@ -14,70 +14,28 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-DROP FUNCTION IF EXISTS exchange_do_insert_aml_decision;
-CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
+DROP FUNCTION IF EXISTS exchange_do_insert_programmatic_legitimization_outcome;
+CREATE OR REPLACE FUNCTION exchange_do_insert_programmatic_legitimization_outcome(
   IN in_h_payto BYTEA,
   IN in_decision_time INT8,
   IN in_expiration_time INT8,
   IN in_properties TEXT,
   IN in_new_rules TEXT,
   IN in_to_investigate BOOLEAN,
-  IN in_new_measure_name TEXT,
-  IN in_jmeasures TEXT,
-  IN in_justification TEXT,
-  IN in_decider_pub BYTEA,
-  IN in_decider_sig BYTEA,
+  IN ina_events TEXT[],
   IN in_notify_s TEXT,
-  OUT out_invalid_officer BOOLEAN,
-  OUT out_account_unknown BOOLEAN,
-  OUT out_last_date INT8)
+  OUT out_account_unknown BOOLEAN)
 LANGUAGE plpgsql
 AS $$
 DECLARE
   my_outcome_serial_id INT8;
   my_access_token BYTEA;
   my_max_dp INT4;
+  my_i INT4;
+  ini_event TEXT;
 BEGIN
 
 out_account_unknown=FALSE;
-
-
--- Check officer is eligible to make decisions.
-PERFORM
-  FROM aml_staff
-  WHERE decider_pub=in_decider_pub
-    AND is_active
-    AND NOT read_only;
-IF NOT FOUND
-THEN
-  out_invalid_officer=TRUE;
-  out_last_date=0;
-  RETURN;
-END IF;
-out_invalid_officer=FALSE;
-
--- Check no more recent decision exists.
-SELECT decision_time
-  INTO out_last_date
-  FROM legitimization_outcomes
- WHERE h_payto=in_h_payto
-   AND is_active
- ORDER BY decision_time DESC;
-
-IF FOUND
-THEN
-  IF out_last_date >= in_decision_time
-  THEN
-    -- Refuse to insert older decision.
-    RETURN;
-  END IF;
-  UPDATE legitimization_outcomes
-     SET is_active=FALSE
-   WHERE h_payto=in_h_payto
-     AND is_active;
-ELSE
-  out_last_date = 0;
-END IF;
 
 -- Note: in_payto_uri is allowed to be NULL *if*
 -- in_h_payto is already in wire_targets
@@ -93,6 +51,7 @@ THEN
   out_account_unknown=TRUE;
   RETURN;
 END IF;
+out_account_unknown=FALSE;
 
 -- Did KYC measures get prescribed?
 IF in_jmeasures IS NULL
@@ -103,7 +62,6 @@ THEN
      SET is_finished=TRUE
    WHERE access_token=my_access_token
      AND NOT is_finished;
-
 ELSE
   -- Find current maximum DP
   SELECT COALESCE(MAX(display_priority),0)
@@ -168,20 +126,25 @@ INSERT INTO legitimization_outcomes
   INTO
     my_outcome_serial_id;
 
+-- FIXME: do we want/need programmatic
+-- decisions in the AML history? We
+-- have no justification or decider,
+-- so IF we would need to change the table
+-- significantly, which may break other things...
 
-INSERT INTO aml_history
-  (h_payto
-  ,outcome_serial_id
-  ,justification
-  ,decider_pub
-  ,decider_sig
-  ) VALUES
-  (in_h_payto
-  ,my_outcome_serial_id
-  ,in_justification
-  ,in_decider_pub
-  ,in_decider_sig
-  );
+--INSERT INTO aml_history
+--  (h_payto
+--  ,outcome_serial_id
+--  ,justification
+--  ,decider_pub
+--  ,decider_sig
+--  ) VALUES
+--  (in_h_payto
+--  ,my_outcome_serial_id
+--  ,in_justification
+--  ,in_decider_pub
+--  ,in_decider_sig
+--  );
 
 -- wake up taler-exchange-aggregator
 INSERT INTO kyc_alerts
@@ -189,15 +152,38 @@ INSERT INTO kyc_alerts
   ,trigger_type)
   VALUES
   (in_h_payto,1)
- ON CONFLICT DO NOTHING;
+   ON CONFLICT DO NOTHING;
+
+IF in_to_investigate
+THEN
+  INSERT INTO aml_status
+    (h_payto
+    ,status)
+   VALUES
+    (in_h_payto
+    ,1)
+  ON CONFLICT (h_payto) DO
+    UPDATE SET status=EXCLUDED.status | 1;
+END IF;
+
+
+FOR i IN 1..COALESCE(array_length(ina_events,1),0)
+LOOP
+  ini_event = ina_events[i];
+  INSERT INTO kyc_events
+    (event_timestamp
+    ,event_type)
+    VALUES
+    (in_collection_time_ts
+    ,ini_event);
+END LOOP;
 
 EXECUTE FORMAT (
    'NOTIFY %s'
   ,in_notify_s);
 
-
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, BYTEA, BYTEA, TEXT)
-  IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';
+COMMENT ON FUNCTION exchange_do_insert_programmatic_legitimization_outcome(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT[], TEXT)
+  IS 'Inserts an AML decision that was taken automatically by an AML program into the database';
