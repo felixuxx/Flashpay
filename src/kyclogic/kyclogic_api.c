@@ -171,7 +171,7 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
 
   /**
    * Name of the successor measure after expiration.
-   * NULL for default rules.
+   * NULL to revert to default rules.
    */
   char *successor_measure;
 
@@ -301,6 +301,14 @@ TALER_KYCLOGIC_rules_get_expiration (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
 {
   return lrs->expiration_time;
+}
+
+
+const char *
+TALER_KYCLOGIC_rules_get_successor (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
+{
+  return lrs->successor_measure;
 }
 
 
@@ -915,7 +923,8 @@ TALER_KYCLOGIC_rule_get_instant_measure (
 
 
 json_t *
-TALER_KYCLOGIC_rule_to_measures (const struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rule_to_measures (
+  const struct TALER_KYCLOGIC_KycRule *r)
 {
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs
     = r->lrs;
@@ -1048,7 +1057,8 @@ TALER_KYCLOGIC_check_to_measures (
 
 
 uint32_t
-TALER_KYCLOGIC_rule2priority (const struct TALER_KYCLOGIC_KycRule *r)
+TALER_KYCLOGIC_rule2priority (
+  const struct TALER_KYCLOGIC_KycRule *r)
 {
   return r->display_priority;
 }
@@ -2192,7 +2202,8 @@ sort_by_timeframe (const void *p1,
 
 
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
+TALER_KYCLOGIC_kyc_init (
+  const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct SectionContext sc = {
     .cfg = cfg,

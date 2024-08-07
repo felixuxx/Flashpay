@@ -641,6 +641,19 @@ TALER_KYCLOGIC_rules_get_expiration (
 
 
 /**
+ * Return successor measure for the given @a lrs
+ *
+ * @param lrs legitimization rules to inspect
+ * @return name of the successor measure;
+ *    NULL to fall back to default rules;
+ *    pointer will be valid as long as @a lrs is valid
+ */
+const char *
+TALER_KYCLOGIC_rules_get_successor (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
+
+
+/**
  * Function called with the provider details and
  * associated plugin closures for matching logics.
  *
