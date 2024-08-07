@@ -556,7 +556,7 @@ TEH_handler_reserves_close (
                               TEH_MT_REQUEST_OTHER,
                               &mhd_ret,
                               &reserve_close_transaction,
-                              &rcc))
+                              rcc))
   {
     return mhd_ret;
   }
