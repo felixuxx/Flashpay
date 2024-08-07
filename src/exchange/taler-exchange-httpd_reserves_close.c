@@ -459,6 +459,7 @@ TEH_handler_reserves_close (
     rc->rh_ctx = rcc;
     rc->rh_cleaner = &reserve_close_cleanup;
     rcc->reserve_pub = *reserve_pub;
+    rcc->rc = rc;
 
     {
       struct GNUNET_JSON_Specification spec[] = {
