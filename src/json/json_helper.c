@@ -1473,6 +1473,8 @@ parse_kycte (void *cls,
       .val = TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
     { .name = "CLOSE",
       .val = TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
+    { .name = "AGGREGATE",
+      .val = TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE },
     { .name = NULL,
       .val = TALER_KYCLOGIC_KYC_TRIGGER_NONE },
   };

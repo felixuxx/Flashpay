@@ -61,7 +61,13 @@ enum TALER_KYCLOGIC_KycTriggerEvent
   /**
    * Reserve is being closed by force.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 5
+  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 5,
+
+  /**
+   * Deposits have been aggregated, we are wiring a
+   * certain amount into a (merchant) bank account.
+   */
+  TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE = 6
 
 };
 

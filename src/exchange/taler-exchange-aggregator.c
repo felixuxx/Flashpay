@@ -532,7 +532,7 @@ legitimization_satisfied (struct AggregationUnit *au_active)
     struct TALER_Amount next_threshold;
 
     qs = TALER_KYCLOGIC_kyc_test_required (
-      TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
+      TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE,
       lrs,
       &return_relevant_amounts,
       (void *) au_active,
