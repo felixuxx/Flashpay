@@ -2703,8 +2703,10 @@ check_amount (
     if (ktc->event != rule->trigger)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Wrong event type for rule %u\n",
-                  i);
+                  "Wrong event type (%d) for rule %u (%d)\n",
+                  (int) ktc->event,
+                  i,
+                  (int) rule->trigger);
       continue; /* wrong trigger event type */
     }
     if (GNUNET_TIME_relative_cmp (dur,

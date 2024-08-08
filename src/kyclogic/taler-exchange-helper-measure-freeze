@@ -72,6 +72,15 @@ jq -n \
              "is_and_combinator" : true
            },
            {
+             "operation_type": "AGGREGATE",
+             "threshold" : "EUR:0",
+             "timeframe" : { "d_us" : 3600000000 },
+             "measures" : [ "verboten" ],
+             "display_priority" : 1,
+             "exposed" : false,
+             "is_and_combinator" : true
+           },
+           {
              "operation_type": "MERGE",
              "threshold" : "EUR:0",
              "timeframe" : { "d_us" : 3600000000 },
