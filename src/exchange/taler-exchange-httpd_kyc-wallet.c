@@ -185,9 +185,6 @@ legi_result_cb (
 {
   struct KycRequestContext *krc = cls;
 
-  GNUNET_assert (0 ==
-                 lcr->expiration_date.abs_time.abs_value_us
-                 % GNUNET_TIME_UNIT_SECONDS.rel_value_us);
   krc->lch = NULL;
   krc->http_status = lcr->http_status;
   krc->response = lcr->response;

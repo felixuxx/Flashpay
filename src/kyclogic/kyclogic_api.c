@@ -302,9 +302,6 @@ TALER_KYCLOGIC_rules_get_expiration (
 {
   if (NULL == lrs)
     return GNUNET_TIME_UNIT_FOREVER_TS;
-  GNUNET_assert (0 ==
-                 lrs->expiration_time.abs_time.abs_value_us
-                 % GNUNET_TIME_UNIT_SECONDS.rel_value_us);
   return lrs->expiration_time;
 }
 
@@ -535,9 +532,6 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
                 JSON_INDENT (2));
     return NULL;
   }
-  GNUNET_assert (0 ==
-                 expiration_time.abs_time.abs_value_us
-                 % GNUNET_TIME_UNIT_SECONDS.rel_value_us);
   lrs = GNUNET_new (struct TALER_KYCLOGIC_LegitimizationRuleSet);
   lrs->expiration_time = expiration_time;
   lrs->successor_measure
