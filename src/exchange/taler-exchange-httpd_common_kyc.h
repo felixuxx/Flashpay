@@ -195,6 +195,18 @@ struct TEH_LegitimizationCheckResult
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
+   * Smallest amount (over any timeframe) that may
+   * require additional KYC checks (if @a kyc.ok).
+   */
+  struct TALER_Amount next_threshold;
+
+  /**
+   * When do the current KYC rules possibly expire.
+   * Only valid if @a kyc.ok.
+   */
+  struct GNUNET_TIME_Timestamp expiration_date;
+
+  /**
    * HTTP status code for @a response, or 0
    */
   unsigned int http_status;

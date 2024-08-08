@@ -300,6 +300,11 @@ struct GNUNET_TIME_Timestamp
 TALER_KYCLOGIC_rules_get_expiration (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
 {
+  if (NULL == lrs)
+    return GNUNET_TIME_UNIT_FOREVER_TS;
+  GNUNET_assert (0 ==
+                 lrs->expiration_time.abs_time.abs_value_us
+                 % GNUNET_TIME_UNIT_SECONDS.rel_value_us);
   return lrs->expiration_time;
 }
 
@@ -530,6 +535,9 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
                 JSON_INDENT (2));
     return NULL;
   }
+  GNUNET_assert (0 ==
+                 expiration_time.abs_time.abs_value_us
+                 % GNUNET_TIME_UNIT_SECONDS.rel_value_us);
   lrs = GNUNET_new (struct TALER_KYCLOGIC_LegitimizationRuleSet);
   lrs->expiration_time = expiration_time;
   lrs->successor_measure
@@ -2644,6 +2652,7 @@ struct KycTestContext
    * Set to the triggered rule.
    */
   const struct TALER_KYCLOGIC_KycRule *triggered_rule;
+
 };
 
 
@@ -2736,12 +2745,17 @@ TALER_KYCLOGIC_kyc_test_required (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
-  const struct TALER_KYCLOGIC_KycRule **triggered_rule)
+  const struct TALER_KYCLOGIC_KycRule **triggered_rule,
+  struct TALER_Amount *next_threshold)
 {
   struct GNUNET_TIME_Relative range
     = GNUNET_TIME_UNIT_ZERO;
   enum GNUNET_DB_QueryStatus qs;
+  bool have_threshold = false;
 
+  memset (next_threshold,
+          0,
+          sizeof (struct TALER_Amount));
   if (NULL == lrs)
     lrs = &default_rules;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -2755,6 +2769,18 @@ TALER_KYCLOGIC_kyc_test_required (
 
     if (event != rule->trigger)
       continue;
+    if (have_threshold)
+    {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_max (next_threshold,
+                                       next_threshold,
+                                       &rule->threshold));
+    }
+    else
+    {
+      *next_threshold = rule->threshold;
+      have_threshold = true;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Matched rule %u with timeframe %s\n",
                 i,

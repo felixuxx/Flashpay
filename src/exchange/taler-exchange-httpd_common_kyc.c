@@ -1440,6 +1440,11 @@ legitimization_check_run (
     /* AML/KYC disabled, just immediately return success! */
     lch->lcr.kyc.requirement_row = 0;
     lch->lcr.kyc.ok = true;
+    lch->lcr.expiration_date
+      = GNUNET_TIME_UNIT_FOREVER_TS;
+    memset (&lch->lcr.next_threshold,
+            0,
+            sizeof (struct TALER_Amount));
     lch->lcr.http_status = 0;
     lch->lcr.response = NULL;
     lch->async_task
@@ -1509,7 +1514,8 @@ legitimization_check_run (
     lrs,
     lch->ai,
     lch->ai_cls,
-    &requirement);
+    &requirement,
+    &lch->lcr.next_threshold);
   if (qs < 0)
   {
     TALER_KYCLOGIC_rules_free (lrs);
@@ -1521,8 +1527,13 @@ legitimization_check_run (
 
   if (NULL == requirement)
   {
-    TALER_KYCLOGIC_rules_free (lrs);
     lch->lcr.kyc.ok = true;
+    lch->lcr.expiration_date
+      = TALER_KYCLOGIC_rules_get_expiration (lrs);
+    TALER_KYCLOGIC_rules_free (lrs);
+    memset (&lch->lcr.next_threshold,
+            0,
+            sizeof (struct TALER_Amount));
     /* return success! */
     lch->async_task
       = GNUNET_SCHEDULER_add_now (

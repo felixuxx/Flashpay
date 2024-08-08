@@ -331,6 +331,10 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
  *   is triggered, otherwise the rule with measures
  *   that must be satisfied (will be the highest
  *   applicable rule by display priority)
+ * @param[out] next_threshold set to the next amount
+ *   that may trigger a KYC check (note: only really
+ *   useful for the wallet balance right now, as we
+ *   cannot easily state the applicable timeframe)
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -339,7 +343,8 @@ TALER_KYCLOGIC_kyc_test_required (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
-  const struct TALER_KYCLOGIC_KycRule **triggered_rule);
+  const struct TALER_KYCLOGIC_KycRule **triggered_rule,
+  struct TALER_Amount *next_threshold);
 
 
 /**

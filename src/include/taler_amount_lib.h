@@ -251,6 +251,20 @@ TALER_amount_cmp (const struct TALER_Amount *a1,
 
 
 /**
+ * Compute maximum of two amounts.
+ *
+ * @param[out] ma set to maximum of @a a1 and @a a2
+ * @param a1 first amount
+ * @param a2 second amount
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_amount_max (struct TALER_Amount *ma,
+                  const struct TALER_Amount *a1,
+                  const struct TALER_Amount *a2);
+
+
+/**
  * Compare the value/fraction of two amounts.  Does not compare the currency.
  * Comparing amounts of different currencies will cause the program to abort().
  * If unsure, check with #TALER_amount_cmp_currency() first to be sure that

@@ -91,6 +91,32 @@ handle_kyc_wallet_finished (void *cls,
   case 0:
     ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
+  case MHD_HTTP_OK:
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_amount_any (
+            "next_threshold",
+            &ks.details.ok.next_threshold),
+          NULL),
+        GNUNET_JSON_spec_timestamp (
+          "expiration_time",
+          &ks.details.ok.expiration_time),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        ks.hr.http_status = 0;
+        ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        break;
+      }
+      break;
+    }
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_BAD_REQUEST:

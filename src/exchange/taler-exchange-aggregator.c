@@ -528,12 +528,17 @@ legitimization_satisfied (struct AggregationUnit *au_active)
       json_decref (jrules);
     }
   }
-  qs = TALER_KYCLOGIC_kyc_test_required (
-    TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
-    lrs,
-    &return_relevant_amounts,
-    (void *) au_active,
-    &requirement);
+  {
+    struct TALER_Amount next_threshold;
+
+    qs = TALER_KYCLOGIC_kyc_test_required (
+      TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
+      lrs,
+      &return_relevant_amounts,
+      (void *) au_active,
+      &requirement,
+      &next_threshold);
+  }
   if (qs < 0)
   {
     TALER_KYCLOGIC_rules_free (lrs);

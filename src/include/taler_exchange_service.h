@@ -4745,6 +4745,24 @@ struct TALER_EXCHANGE_WalletKycResponse
   union
   {
 
+    struct
+    {
+
+      /**
+       * Above which amount does the wallet need to check
+       * for KYC again?
+       */
+      struct TALER_Amount next_threshold;
+
+      /**
+       * When will the current set of AML/KYC rules
+       * expire (and the wallet should again check
+       * for new KYC requirements)?
+       */
+      struct GNUNET_TIME_Timestamp expiration_time;
+
+    } ok;
+
     /**
      * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */

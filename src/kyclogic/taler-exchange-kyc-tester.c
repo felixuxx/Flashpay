@@ -1586,12 +1586,17 @@ run (void *cls,
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
-    qs = TALER_KYCLOGIC_kyc_test_required (
-      event,
-      lrs,
-      &amount_iterator,
-      &trigger_amount,
-      &rule);
+    {
+      struct TALER_Amount next_threshold;
+
+      qs = TALER_KYCLOGIC_kyc_test_required (
+        event,
+        lrs,
+        &amount_iterator,
+        &trigger_amount,
+        &rule,
+        &next_threshold);
+    }
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:

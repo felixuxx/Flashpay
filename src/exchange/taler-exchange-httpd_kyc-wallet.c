@@ -93,6 +93,18 @@ struct KycRequestContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
+   * Smallest amount (over any timeframe) that may
+   * require additional KYC checks (if @a kyc.ok).
+   */
+  struct TALER_Amount next_threshold;
+
+  /**
+   * When do the current KYC rules possibly expire.
+   * Only valid if @a kyc.ok.
+   */
+  struct GNUNET_TIME_Timestamp expiration_date;
+
+  /**
    * HTTP status code for @a response, or 0
    */
   unsigned int http_status;
@@ -173,10 +185,15 @@ legi_result_cb (
 {
   struct KycRequestContext *krc = cls;
 
+  GNUNET_assert (0 ==
+                 lcr->expiration_date.abs_time.abs_value_us
+                 % GNUNET_TIME_UNIT_SECONDS.rel_value_us);
   krc->lch = NULL;
   krc->http_status = lcr->http_status;
   krc->response = lcr->response;
   krc->kyc = lcr->kyc;
+  krc->next_threshold = lcr->next_threshold;
+  krc->expiration_date = lcr->expiration_date;
   GNUNET_CONTAINER_DLL_remove (krc_head,
                                krc_tail,
                                krc);
@@ -289,13 +306,21 @@ TEH_handler_kyc_wallet (
                                krc->response);
   if (krc->kyc.ok)
   {
+    bool have_ts
+      = TALER_amount_is_valid (&krc->next_threshold);
+
+
     /* KYC not required or already satisfied */
-    return TALER_MHD_reply_static (
+    return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
-      MHD_HTTP_NO_CONTENT,
-      NULL,
-      NULL,
-      0);
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_timestamp ("expiration_time",
+                                  krc->expiration_date),
+      GNUNET_JSON_pack_allow_null (
+        TALER_JSON_pack_amount ("next_threshold",
+                                have_ts
+                              ? &krc->next_threshold
+                              : NULL)));
   }
   return TEH_RESPONSE_reply_kyc_required (rc->connection,
                                           &krc->h_payto,

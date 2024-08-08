@@ -642,7 +642,7 @@ run (void *cls,
       "wallet-trigger-kyc-for-aml-allowed",
       "wallet-trigger-kyc-for-aml",
       "EUR:1000",
-      MHD_HTTP_NO_CONTENT),
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_wallet_kyc_get (
       "wallet-trigger-kyc-for-aml-denied-high",
       "wallet-trigger-kyc-for-aml",
@@ -739,7 +739,7 @@ run (void *cls,
       "wallet-trigger-kyc-for-form-aml-allowed",
       "wallet-trigger-kyc-for-form-aml",
       "EUR:500",
-      MHD_HTTP_NO_CONTENT),
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 
