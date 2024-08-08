@@ -1781,7 +1781,7 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
   bool is_and;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Processing KYC rule from %s\n",
+              "Parsing KYC rule from %s\n",
               section);
   if (GNUNET_YES !=
       GNUNET_CONFIGURATION_get_value_yesno (cfg,
