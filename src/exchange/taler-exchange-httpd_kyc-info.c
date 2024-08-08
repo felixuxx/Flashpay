@@ -304,7 +304,7 @@ generate_reply (struct KycPoller *kyp,
       GNUNET_JSON_pack_bool ("is_and_combinator",
                              is_and_combinator),
       GNUNET_JSON_pack_allow_null (
-        /* TODO: support vATTEST */
+        /* TODO: support vATTEST-9048 */
         GNUNET_JSON_pack_object_steal ("voluntary_checks",
                                        NULL)));
     GNUNET_break (MHD_YES ==
@@ -441,7 +441,7 @@ TEH_handler_kyc_info (
       rc->connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_allow_null (
-        /* TODO: support vATTEST */
+        /* TODO: support vATTEST-9048 */
         GNUNET_JSON_pack_object_steal ("voluntary_checks",
                                        NULL)));
   }

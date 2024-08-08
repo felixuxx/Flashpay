@@ -2238,17 +2238,6 @@ TALER_KYCLOGIC_kyc_init (
            sizeof (struct TALER_KYCLOGIC_KycRule),
            &sort_by_timeframe);
 
-  {
-    const struct TALER_KYCLOGIC_KycCheck *check;
-
-    check = find_check ("default");
-    if (NULL == check)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "A 'default' check should be defined\n");
-    }
-  }
-
   for (unsigned int i=0; i<default_rules.num_kyc_rules; i++)
   {
     const struct TALER_KYCLOGIC_KycRule *rule
