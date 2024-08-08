@@ -65,9 +65,9 @@ extern int TEH_check_invariants_flag;
 extern int TEH_allow_keys_timetravel;
 
 /**
- * Option set to #GNUNET_YES if rewards are allowed.
+ * Option set to #GNUNET_YES if KYC/AML are enabled.
  */
-extern int TEH_enable_rewards;
+extern int TEH_enable_kyc;
 
 /**
  * Main directory with revocation data.

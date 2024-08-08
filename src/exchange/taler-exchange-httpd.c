@@ -181,11 +181,6 @@ static char *toplevel_redirect_url;
 char *TEH_currency;
 
 /**
- * Option set to #GNUNET_YES if rewards are enabled.
- */
-int TEH_enable_rewards;
-
-/**
  * Our base URL.
  */
 char *TEH_base_url;
@@ -199,6 +194,11 @@ static unsigned int connection_timeout = 30;
  * -C command-line flag given?
  */
 static int connection_close;
+
+/**
+ * Option set to #GNUNET_YES if KYC/AML are enabled.
+ */
+int TEH_enable_kyc;
 
 /**
  * -I command-line flag given?
@@ -2115,6 +2115,17 @@ handle_mhd_request (void *cls,
 static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
+  TEH_enable_kyc
+    = GNUNET_CONFIGURATION_get_value_yesno (
+        TEH_cfg,
+        "exchange",
+        "ENABLE_KYC");
+  if (GNUNET_SYSERR == TEH_enable_kyc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need YES or NO in section `exchange' under `ENABLE_KYC'\n");
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       TALER_KYCLOGIC_kyc_init (TEH_cfg))
   {
@@ -2222,18 +2233,6 @@ exchange_serve_process_config (void)
     TEH_stefan_lin = 0.0f;
   }
 
-  TEH_enable_rewards
-    = GNUNET_CONFIGURATION_get_value_yesno (
-        TEH_cfg,
-        "exchange",
-        "ENABLE_REWARDS");
-  if (GNUNET_SYSERR == TEH_enable_rewards)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need YES or NO in section `exchange' under `ENABLE_REWARDS'\n")
-    ;
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
                                              "exchange",

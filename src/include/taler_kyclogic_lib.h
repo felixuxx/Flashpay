@@ -400,16 +400,6 @@ TALER_KYCLOGIC_is_satisfiable (
 
 
 /**
- * Check if any KYC checks are enabled.
- *
- * @return true if KYC is enabled
- *         false if no KYC checks are possible
- */
-bool
-TALER_KYCLOGIC_is_enabled (void);
-
-
-/**
  * A KYC rule @a r has been triggered. Convert the resulting requirements into
  * JSON of type ``LegitimizationMeasures`` for the legitimization measures table.
  *

@@ -2325,22 +2325,7 @@ TALER_KYCLOGIC_kyc_init (
       return GNUNET_SYSERR;
     }
   }
-
-
   return GNUNET_OK;
-}
-
-
-/**
- * Check if any KYC checks are enabled.
- *
- * @return true if KYC is enabled
- *         false if no KYC checks are possible
- */
-bool
-TALER_KYCLOGIC_is_enabled (void)
-{
-  return 0 != num_kyc_providers;
 }
 
 

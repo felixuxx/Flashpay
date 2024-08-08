@@ -230,7 +230,7 @@ TEH_handler_kyc_check (
                                      &kyp->timeout);
   }
 
-  if (! TALER_KYCLOGIC_is_enabled ())
+  if (! TEH_enable_kyc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC not enabled\n");

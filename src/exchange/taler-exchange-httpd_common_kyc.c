@@ -1435,7 +1435,19 @@ legitimization_check_run (
   enum GNUNET_DB_QueryStatus qs;
   const struct TALER_KYCLOGIC_Measure *instant_ms;
 
-  // FIXME: add global flag to disable legitimizations!
+  if (! TEH_enable_kyc)
+  {
+    /* AML/KYC disabled, just immediately return success! */
+    lch->lcr.kyc.requirement_row = 0;
+    lch->lcr.kyc.ok = true;
+    lch->lcr.http_status = 0;
+    lch->lcr.response = NULL;
+    lch->async_task
+      = GNUNET_SCHEDULER_add_now (
+          &async_return_legi_result,
+          lch);
+    return;
+  }
   // FIXME: enter (+exit) lch->scope!
   {
     json_t *jrules;

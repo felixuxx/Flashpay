@@ -268,6 +268,21 @@ shutdown_task (void *cls)
 static enum GNUNET_GenericReturnValue
 parse_aggregator_config (void)
 {
+  enum GNUNET_GenericReturnValue enable_kyc;
+
+  enable_kyc
+    = GNUNET_CONFIGURATION_get_value_yesno (
+        cfg,
+        "exchange",
+        "ENABLE_KYC");
+  if (GNUNET_SYSERR == enable_kyc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need YES or NO in section `exchange' under `ENABLE_KYC'\n");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == enable_kyc)
+    kyc_off = true;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
