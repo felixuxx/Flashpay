@@ -176,6 +176,25 @@ db_event_cb (void *cls,
 
 
 /**
+ * Add the headers we want to set for every response.
+ *
+ * @param cls the key state to use
+ * @param[in,out] response the response to modify
+ */
+static void
+add_response_headers (void *cls,
+                      struct MHD_Response *response)
+{
+  (void) cls;
+  TALER_MHD_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "no-cache"));
+}
+
+
+/**
  * Generate a reply with the KycProcessClientInformation from
  * the LegitimizationMeasures.
  *
@@ -277,7 +296,7 @@ generate_reply (struct KycPoller *kyp,
 
     GNUNET_snprintf (etags,
                      sizeof (etags),
-                     "%llu",
+                     "\"%llu\"",
                      (unsigned long long) legitimization_measure_row_id);
     resp = TALER_MHD_MAKE_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("requirements",
@@ -292,6 +311,8 @@ generate_reply (struct KycPoller *kyp,
                   MHD_add_response_header (resp,
                                            MHD_HTTP_HEADER_ETAG,
                                            etags));
+    add_response_headers (NULL,
+                          resp);
     res = MHD_queue_response (kyp->connection,
                               MHD_HTTP_OK,
                               resp);
@@ -441,7 +462,21 @@ TEH_handler_kyc_info (
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
   }
+  if (legitimization_measure_last_row == kyp->etag_in)
+  {
+    char etags[64];
 
+    json_decref (jmeasures);
+    GNUNET_snprintf (etags,
+                     sizeof (etags),
+                     "\"%llu\"",
+                     (unsigned long long) legitimization_measure_last_row);
+    return TEH_RESPONSE_reply_not_modified (
+      rc->connection,
+      etags,
+      &add_response_headers,
+      NULL);
+  }
   res = generate_reply (kyp,
                         legitimization_measure_last_row,
                         jmeasures);
