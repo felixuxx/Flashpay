@@ -366,8 +366,9 @@ TEH_RESPONSE_reply_not_modified (
   resp = MHD_create_response_from_buffer (0,
                                           NULL,
                                           MHD_RESPMEM_PERSISTENT);
-  cb (cb_cls,
-      resp);
+  if (NULL != cb)
+    cb (cb_cls,
+        resp);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_ETAG,
