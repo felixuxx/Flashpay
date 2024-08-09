@@ -31,6 +31,7 @@
 #include "fakebank_twg_admin_add_incoming.h"
 #include "fakebank_twg_admin_add_kycauth.h"
 #include "fakebank_twg_get_root.h"
+#include "fakebank_twg_get_transfers.h"
 #include "fakebank_twg_history.h"
 #include "fakebank_twg_transfer.h"
 
@@ -89,6 +90,23 @@ TALER_FAKEBANK_twg_main_ (
                      "/"))
       return TALER_FAKEBANK_twg_get_root_ (h,
                                            connection);
+    if ( (0 == strcmp (url,
+                       "/transfers")) &&
+         (NULL != account) )
+      return TALER_FAKEBANK_twg_get_transfers_ (h,
+                                                connection,
+                                                account,
+                                                con_cls);
+    if ( (0 == strncmp (url,
+                        "/transfers/",
+                        strlen ("/transfers/"))) &&
+         (NULL != account) )
+      return TALER_FAKEBANK_twg_get_transfers_id_ (
+        h,
+        connection,
+        account,
+        &url[strlen ("/transfers/")],
+        con_cls);
   }
   else if (0 == strcasecmp (method,
                             MHD_HTTP_METHOD_POST))

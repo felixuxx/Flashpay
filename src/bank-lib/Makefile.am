@@ -85,6 +85,8 @@ libtalerfakebank_la_SOURCES = \
   fakebank_twg_admin_add_incoming.c fakebank_twg_admin_add_incoming.h \
   fakebank_twg_admin_add_kycauth.c fakebank_twg_admin_add_kycauth.h \
   fakebank_twg_get_root.c fakebank_twg_get_root.h \
+  fakebank_twg_get_transfers.c fakebank_twg_get_transfers.h \
+  fakebank_twg_get_transfers_id.c \
   fakebank_twg_history.c fakebank_twg_history.h \
   fakebank_twg_transfer.c fakebank_twg_transfer.h
 libtalerfakebank_la_LIBADD = \
