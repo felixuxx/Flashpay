@@ -118,6 +118,11 @@ static struct GNUNET_TIME_Relative shard_delay;
 static struct GNUNET_TIME_Relative longpoll_timeout;
 
 /**
+ * How long do we wait on 404.
+ */
+static struct GNUNET_TIME_Relative h404_backoff;
+
+/**
  * Name of our job in the shard table.
  */
 static char *job_name;
@@ -477,6 +482,10 @@ transaction_completed (void)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  fprintf (stderr,
+           "XXX: %d %d\n",
+           hh_returned_data,
+           hh_account_404);
   if (! (hh_returned_data || hh_account_404) )
   {
     /* Enforce long-polling delay even if the server ignored it
@@ -496,8 +505,15 @@ transaction_completed (void)
     delayed_until = GNUNET_TIME_relative_to_absolute (left);
   }
   if (hh_account_404)
+  {
+    h404_backoff = GNUNET_TIME_STD_BACKOFF (h404_backoff);
     delayed_until = GNUNET_TIME_relative_to_absolute (
-      GNUNET_TIME_UNIT_MILLISECONDS);
+      h404_backoff);
+  }
+  else
+  {
+    h404_backoff = GNUNET_TIME_UNIT_ZERO;
+  }
   if (test_mode)
     delayed_until = GNUNET_TIME_UNIT_ZERO_ABS;
   GNUNET_assert (NULL == task);
