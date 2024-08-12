@@ -190,9 +190,7 @@ finish_loop (struct AgeWithdrawContext *awc,
 /**
  * Send a response to a "age-withdraw" request.
  *
- * @param connection the connection to send the response to
- * @param ach value the client committed to
- * @param noreveal_index which index will the client not have to reveal
+ * @param[in,out] awc context for the operation
  */
 static void
 reply_age_withdraw_success (
@@ -683,7 +681,7 @@ check_reserve_signature (
  * Check if the given denomination is still or already valid, has not been
  * revoked and supports age restriction.
  *
- * @param connection HTTP-connection to the client
+ * @param[in,out] awc context for the operation
  * @param ksh The handle to the current state of (denomination) keys in the exchange
  * @param denom_h Hash of the denomination key to check
  * @return NULL on failure (denomination invalid)

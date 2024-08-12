@@ -38,7 +38,6 @@
  * @param new_rules new KYC rules to apply to the account
  * @param num_events length of the @a events array
  * @param events array of KYC events to trigger
- * @param require_aml true to trigger AML
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus

@@ -226,7 +226,7 @@ legi_result_cb (
 /**
  * Send confirmation of purse creation success to client.
  *
- * @param pcc details about the request that succeeded
+ * @param pmc details about the request that succeeded
  * @return MHD result code
  */
 static MHD_RESULT
