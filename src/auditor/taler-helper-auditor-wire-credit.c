@@ -18,12 +18,8 @@
  * @brief audits that wire transfers match those from an exchange database.
  * @author Christian Grothoff
  *
- * - First, this auditor verifies that 'reserves_in' actually matches
- *   the incoming wire transfers from the bank.
- * - Second, we check that the outgoing wire transfers match those
- *   given in the 'wire_out' and 'reserve_closures' tables
- * - Finally, we check that all wire transfers that should have been made,
- *   were actually made
+ * This auditor verifies that 'reserves_in' actually matches
+ * the incoming wire transfers from the bank.
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -61,12 +57,6 @@
  */
 static int test_mode;
 
-struct TALER_AUDITORDB_WireAccountProgressPoint
-{
-  uint64_t last_reserve_in_serial_id;
-  uint64_t last_wire_out_serial_id;
-};
-
 /**
  * Information we keep for each supported account.
  */
@@ -93,19 +83,14 @@ struct WireAccount
   struct TALER_BANK_CreditHistoryHandle *chh;
 
   /**
-   * Active wire request for the transaction history.
-   */
-  struct TALER_BANK_DebitHistoryHandle *dhh;
-
-  /**
    * Progress point for this account.
    */
-  struct TALER_AUDITORDB_WireAccountProgressPoint pp;
+  uint64_t last_reserve_in_serial_id;
 
   /**
    * Initial progress point for this account.
    */
-  struct TALER_AUDITORDB_WireAccountProgressPoint start_pp;
+  uint64_t start_reserve_in_serial_id;
 
   /**
    * Where we are in the inbound transaction history.
@@ -113,19 +98,9 @@ struct WireAccount
   uint64_t wire_off_in;
 
   /**
-   * Where we are in the outbound transaction history.
-   */
-  uint64_t wire_off_out;
-
-  /**
    * Label under which we store our pp's reserve_in_serial_id.
    */
   char *label_reserve_in_serial_id;
-
-  /**
-   * Label under which we store our pp's reserve_in_serial_id.
-   */
-  char *label_wire_out_serial_id;
 
   /**
    * Label under which we store our wire_off_in.
@@ -133,46 +108,9 @@ struct WireAccount
   char *label_wire_off_in;
 
   /**
-   * Label under which we store our wire_off_out.
-   */
-  char *label_wire_off_out;
-
-  /**
    * Return value when we got this account's progress point.
    */
   enum GNUNET_DB_QueryStatus qsx;
-};
-
-
-/**
- * Information we track for a reserve being closed.
- */
-struct ReserveClosure
-{
-  /**
-   * Row in the reserves_closed table for this action.
-   */
-  uint64_t rowid;
-
-  /**
-   * When was the reserve closed?
-   */
-  struct GNUNET_TIME_Timestamp execution_date;
-
-  /**
-   * Amount transferred (amount remaining minus fee).
-   */
-  struct TALER_Amount amount;
-
-  /**
-   * Target account where the money was sent.
-   */
-  char *receiver_account;
-
-  /**
-   * Wire transfer subject used.
-   */
-  struct TALER_WireTransferIdentifierRawP wtid;
 };
 
 
@@ -193,13 +131,6 @@ static int global_ret;
 static struct GNUNET_CONTAINER_MultiHashMap *in_map;
 
 /**
- * Map with information about outgoing wire transfers.
- * Maps hashes of the wire subjects (in binary encoding)
- * to `struct ReserveOutInfo`s.
- */
-static struct GNUNET_CONTAINER_MultiHashMap *out_map;
-
-/**
  * Head of list of wire accounts we still need to look at.
  */
 static struct WireAccount *wa_head;
@@ -216,26 +147,14 @@ static struct WireAccount *wa_tail;
 static enum GNUNET_DB_QueryStatus qsx_gwap;
 
 /**
- * Last reserve_in / wire_out serial IDs seen.
+ * Last reserve_in seen.
  */
-static TALER_ARL_DEF_PP (wire_reserve_close_id);
-static TALER_ARL_DEF_PP (wire_batch_deposit_id);
-static TALER_ARL_DEF_PP (wire_aggregation_id);
+static TALER_ARL_DEF_PP (wire_reserve_in_id); // FIXME: new!
 
 /**
  * Amount that is considered "tiny"
  */
 static struct TALER_Amount tiny_amount;
-
-/**
- * Total amount that was transferred too much from the exchange.
- */
-static struct TALER_Amount total_bad_amount_out_plus;
-
-/**
- * Total amount that was transferred too little from the exchange.
- */
-static struct TALER_Amount total_bad_amount_out_minus;
 
 /**
  * Total amount that was transferred too much to the exchange.
@@ -255,52 +174,22 @@ static struct TALER_Amount total_bad_amount_in_minus;
 static struct TALER_Amount total_misattribution_in;
 
 /**
- * Total amount which the exchange did not transfer in time.
+ * Total amount affected by wire format troubles.
  */
-static struct TALER_Amount total_amount_lag;
-
-/**
- * Total amount of reserve closures which the exchange did not transfer in time.
- */
-static struct TALER_Amount total_closure_amount_lag;
-
-/**
- * Total amount affected by wire format trouble.s
- */
-static struct TALER_Amount total_wire_format_amount;
+static struct TALER_Amount total_wire_format_amount; // FIXME
 
 /**
  * Total amount credited to exchange accounts.
  */
-static struct TALER_Amount total_wire_in;
+static TALER_ARL_DEF_AB (total_wire_in);
 
 /**
- * Total amount debited to exchange accounts.
- */
-static struct TALER_Amount total_wire_out;
-
-/**
- * Total amount of profits drained.
- */
-static TALER_ARL_DEF_AB (total_drained);
-
-/**
- * Final balance at the end of this iteration.
- */
-static TALER_ARL_DEF_AB (final_balance);
-
-/**
- * Starting balance at the beginning of this iteration.
- */
-static struct TALER_Amount start_balance;
-
-/**
- * True if #start_balance was initialized.
+ * True if #total_wire_in was initialized.
  */
 static bool had_start_balance;
 
 /**
- * True if #start_balance was initialized.
+ * True if #wire_reserve_in_id was initialized.
  */
 static bool had_start_progress;
 
@@ -330,6 +219,7 @@ static int internal_checks;
  */
 static int ignore_account_404;
 
+// FIXME: comment
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
@@ -372,26 +262,6 @@ struct ReserveInInfo
 
 
 /**
- * Entry in map with wire information we expect to obtain from the
- * #TALER_ARL_edb later.
- */
-struct ReserveOutInfo
-{
-
-  /**
-   * Hash of the wire transfer subject.
-   */
-  struct GNUNET_HashCode subject_hash;
-
-  /**
-   * Expected details about the wire transfer.
-   */
-  struct TALER_BANK_DebitDetails details;
-
-};
-
-
-/**
  * Free entry in #in_map.
  *
  * @param cls NULL
@@ -412,57 +282,6 @@ free_rii (void *cls,
                                                        key,
                                                        rii));
   GNUNET_free (rii);
-  return GNUNET_OK;
-}
-
-
-/**
- * Free entry in #out_map.
- *
- * @param cls NULL
- * @param key unused key
- * @param value the `struct ReserveOutInfo` to free
- * @return #GNUNET_OK
- */
-static enum GNUNET_GenericReturnValue
-free_roi (void *cls,
-          const struct GNUNET_HashCode *key,
-          void *value)
-{
-  struct ReserveOutInfo *roi = value;
-
-  (void) cls;
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_remove (out_map,
-                                                       key,
-                                                       roi));
-  GNUNET_free (roi);
-  return GNUNET_OK;
-}
-
-
-/**
- * Free entry in #reserve_closures.
- *
- * @param cls NULL
- * @param key unused key
- * @param value the `struct ReserveClosure` to free
- * @return #GNUNET_OK
- */
-static enum GNUNET_GenericReturnValue
-free_rc (void *cls,
-         const struct GNUNET_HashCode *key,
-         void *value)
-{
-  struct ReserveClosure *rc = value;
-
-  (void) cls;
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_remove (reserve_closures,
-                                                       key,
-                                                       rc));
-  GNUNET_free (rc->receiver_account);
-  GNUNET_free (rc);
   return GNUNET_OK;
 }
 
@@ -489,14 +308,6 @@ do_shutdown (void *cls)
     db_plugin = NULL;
   }
   TALER_ARL_done (NULL);
-  if (NULL != reserve_closures)
-  {
-    GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
-                                           &free_rc,
-                                           NULL);
-    GNUNET_CONTAINER_multihashmap_destroy (reserve_closures);
-    reserve_closures = NULL;
-  }
   if (NULL != in_map)
   {
     GNUNET_CONTAINER_multihashmap_iterate (in_map,
@@ -505,21 +316,8 @@ do_shutdown (void *cls)
     GNUNET_CONTAINER_multihashmap_destroy (in_map);
     in_map = NULL;
   }
-  if (NULL != out_map)
-  {
-    GNUNET_CONTAINER_multihashmap_iterate (out_map,
-                                           &free_roi,
-                                           NULL);
-    GNUNET_CONTAINER_multihashmap_destroy (out_map);
-    out_map = NULL;
-  }
   while (NULL != (wa = wa_head))
   {
-    if (NULL != wa->dhh)
-    {
-      TALER_BANK_debit_history_cancel (wa->dhh);
-      wa->dhh = NULL;
-    }
     if (NULL != wa->chh)
     {
       TALER_BANK_credit_history_cancel (wa->chh);
@@ -529,9 +327,7 @@ do_shutdown (void *cls)
                                  wa_tail,
                                  wa);
     GNUNET_free (wa->label_reserve_in_serial_id);
-    GNUNET_free (wa->label_wire_out_serial_id);
     GNUNET_free (wa->label_wire_off_in);
-    GNUNET_free (wa->label_wire_off_out);
     GNUNET_free (wa);
   }
   if (NULL != ctx)
@@ -550,133 +346,27 @@ do_shutdown (void *cls)
 
 
 /**
- * Detect any entries in #reserve_closures that were not yet
- * observed on the wire transfer side and update the progress
- * point accordingly.
- *
- * @param cls NULL
- * @param key unused key
- * @param value the `struct ReserveClosure` to free
- * @return #GNUNET_OK
- */
-static enum GNUNET_GenericReturnValue
-check_pending_rc (void *cls,
-                  const struct GNUNET_HashCode *key,
-                  void *value)
-{
-  struct ReserveClosure *rc = value;
-  /*enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_ClosureLags cl;*/
-
-  (void) cls;
-  (void) key;
-  TALER_ARL_amount_add (&total_closure_amount_lag,
-                        &total_closure_amount_lag,
-                        &rc->amount);
-  if (! TALER_amount_is_zero (&rc->amount))
-  {
-#if FIXME
-
-    cl.account = rc->receiver_account;
-    cl.amount = &rc->amount;
-    cl.deadline = rc->execution_date.abs_time;
-    cl.wtid = &rc->wtid;
-
-    qs = TALER_ARL_adb->insert_auditor_closure_lags (
-      TALER_ARL_adb->cls,
-      &cl);
-
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }
-
-    TALER_ARL_report (
-      report_closure_lags,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rc->rowid),
-        TALER_JSON_pack_amount ("amount",
-                                &rc->amount),
-        TALER_JSON_pack_time_abs_human ("deadline",
-                                        rc->execution_date.abs_time),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    &rc->wtid),
-        GNUNET_JSON_pack_string ("account",
-                                 rc->receiver_account)));
-#endif
-  }
-  TALER_ARL_USE_PP (wire_reserve_close_id)
-    = GNUNET_MIN (TALER_ARL_USE_PP (wire_reserve_close_id),
-                  rc->rowid);
-  return GNUNET_OK;
-}
-
-
-/**
- * Compute the key under which a reserve closure for a given
- * @a receiver_account and @a wtid would be stored.
- *
- * @param receiver_account payto://-URI of the account
- * @param wtid wire transfer identifier used
- * @param[out] key set to the key
- */
-static void
-hash_rc (const char *receiver_account,
-         const struct TALER_WireTransferIdentifierRawP *wtid,
-         struct GNUNET_HashCode *key)
-{
-  size_t slen = strlen (receiver_account);
-  char buf[sizeof (struct TALER_WireTransferIdentifierRawP) + slen];
-
-  GNUNET_memcpy (buf,
-                 wtid,
-                 sizeof (*wtid));
-  GNUNET_memcpy (&buf[sizeof (*wtid)],
-                 receiver_account,
-                 slen);
-  GNUNET_CRYPTO_hash (buf,
-                      sizeof (buf),
-                      key);
-}
-
-
-/**
  * Commit the transaction, checkpointing our progress in the auditor DB.
  *
  * @param qs transaction status so far
- * @return transaction status code
  */
-static enum GNUNET_DB_QueryStatus
+static void
 commit (enum GNUNET_DB_QueryStatus qs)
 {
   if (qs >= 0)
   {
     if (had_start_balance)
     {
-      struct TALER_Amount sum;
-
-      TALER_ARL_amount_add (&sum,
-                            &total_wire_in,
-                            &start_balance);
-      TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (final_balance),
-                                 &sum,
-                                 &total_wire_out);
       qs = TALER_ARL_adb->update_balance (
         TALER_ARL_adb->cls,
-        TALER_ARL_SET_AB (total_drained),
-        TALER_ARL_SET_AB (final_balance),
+        TALER_ARL_SET_AB (total_wire_in),
         NULL);
     }
     else
     {
-      TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (final_balance),
-                                 &total_wire_in,
-                                 &total_wire_out);
       qs = TALER_ARL_adb->insert_balance (
         TALER_ARL_adb->cls,
-        TALER_ARL_SET_AB (total_drained),
-        TALER_ARL_SET_AB (final_balance),
+        TALER_ARL_SET_AB (total_wire_in),
         NULL);
     }
   }
@@ -690,7 +380,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
                   "Hard error, not recording progress\n");
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
-    return qs;
+    return;
   }
   for (struct WireAccount *wa = wa_head;
        NULL != wa;
@@ -702,63 +392,25 @@ commit (enum GNUNET_DB_QueryStatus qs)
         TALER_ARL_adb->cls,
         wa->label_reserve_in_serial_id,
         wa->pp.last_reserve_in_serial_id,
-        wa->label_wire_out_serial_id,
-        wa->pp.last_wire_out_serial_id,
         wa->label_wire_off_in,
         wa->wire_off_in,
-        wa->label_wire_off_out,
-        wa->wire_off_out,
         NULL);
     else
       qs = TALER_ARL_adb->insert_auditor_progress (
         TALER_ARL_adb->cls,
         wa->label_reserve_in_serial_id,
         wa->pp.last_reserve_in_serial_id,
-        wa->label_wire_out_serial_id,
-        wa->pp.last_wire_out_serial_id,
         wa->label_wire_off_in,
         wa->wire_off_in,
-        wa->label_wire_off_out,
-        wa->wire_off_out,
         NULL);
     if (0 >= qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Failed to update auditor DB, not recording progress\n");
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
+      return;
     }
   }
-  GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
-                                         &check_pending_rc,
-                                         NULL);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx_gwap && had_start_progress ==
-      true)
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (wire_reserve_close_id),
-      TALER_ARL_SET_PP (wire_batch_deposit_id),
-      TALER_ARL_SET_PP (wire_aggregation_id),
-      NULL);
-  else
-    qs = TALER_ARL_adb->insert_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (wire_reserve_close_id),
-      TALER_ARL_SET_PP (wire_batch_deposit_id),
-      TALER_ARL_SET_PP (wire_aggregation_id),
-      NULL);
-  if (0 >= qs)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Failed to update auditor DB, not recording progress\n");
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Concluded audit step at %llu/%llu\n",
-              (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id),
-              (unsigned long long) TALER_ARL_USE_PP (wire_batch_deposit_id));
-
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
@@ -787,1311 +439,8 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }
-  return qs;
 }
 
-
-/* ***************************** Analyze required transfers ************************ */
-
-/**
- * Closure for import_wire_missing_cb().
- */
-struct ImportMissingWireContext
-{
-  /**
-   * Set to maximum row ID encountered.
-   */
-  uint64_t max_batch_deposit_uuid;
-
-  /**
-   * Set to database errors in callback.
-   */
-  enum GNUNET_DB_QueryStatus err;
-};
-
-
-/**
- * Function called on deposits that need to be checked for their
- * wire transfer.
- *
- * @param cls closure, points to a `struct ImportMissingWireContext`
- * @param batch_deposit_serial_id serial of the entry in the batch deposits table
- * @param total_amount value of the missing deposits, including fee
- * @param wire_target_h_payto where should the funds be wired
- * @param deadline what was the earliest requested wire transfer deadline
- */
-static void
-import_wire_missing_cb (void *cls,
-                        uint64_t batch_deposit_serial_id,
-                        const struct TALER_Amount *total_amount,
-                        const struct TALER_PaytoHashP *wire_target_h_payto,
-                        struct GNUNET_TIME_Timestamp deadline)
-{
-  struct ImportMissingWireContext *wc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  if (wc->err < 0)
-    return; /* already failed */
-  GNUNET_assert (batch_deposit_serial_id > wc->max_batch_deposit_uuid);
-  wc->max_batch_deposit_uuid = batch_deposit_serial_id;
-  qs = TALER_ARL_adb->insert_pending_deposit (
-    TALER_ARL_adb->cls,
-    batch_deposit_serial_id,
-    wire_target_h_payto,
-    total_amount,
-    deadline);
-  if (qs < 0)
-    wc->err = qs;
-}
-
-
-/**
- * Information about a delayed wire transfer and the possible
- * reasons for the delay.
- */
-struct ReasonDetail
-{
-  /**
-   * Total amount that should have been transferred.
-   */
-  struct TALER_Amount total_amount;
-
-  /**
-   * Earliest deadline for an expected transfer to the account.
-   */
-  struct GNUNET_TIME_Timestamp deadline;
-
-  /**
-   * Target account, NULL if even that is not known (due to
-   * exchange lacking required entry in wire_targets table).
-   */
-  char *payto_uri;
-
-  /**
-   * Account properties, possibly NULL.
-   */
-  json_t *properties;
-
-  /**
-   * Account KYC rules.
-   */
-  json_t *jrules;
-
-};
-
-/**
- * Closure for report_wire_missing_cb().
- */
-struct ReportMissingWireContext
-{
-  /**
-   * Map from wire_target_h_payto to `struct ReasonDetail`.
-   */
-  struct GNUNET_CONTAINER_MultiShortmap *map;
-
-  /**
-   * Set to database errors in callback.
-   */
-  enum GNUNET_DB_QueryStatus err;
-};
-
-
-/**
- * Closure for #clear_finished_transfer_cb().
- */
-struct AggregationContext
-{
-  /**
-   * Set to maximum row ID encountered.
-   */
-  uint64_t max_aggregation_serial;
-
-  /**
-   * Set to database errors in callback.
-   */
-  enum GNUNET_DB_QueryStatus err;
-};
-
-
-/**
- * Free memory allocated in @a value.
- *
- * @param cls unused
- * @param key unused
- * @param value must be a `struct ReasonDetail`
- * @return #GNUNET_YES if we should continue to
- *         iterate,
- *         #GNUNET_NO if not.
- */
-static enum GNUNET_GenericReturnValue
-free_report_entry (void *cls,
-                   const struct GNUNET_ShortHashCode *key,
-                   void *value)
-{
-  struct ReasonDetail *rd = value;
-
-  json_decref (rd->properties);
-  json_decref (rd->jrules);
-  GNUNET_free (rd->payto_uri);
-  GNUNET_free (rd);
-  return GNUNET_YES;
-}
-
-
-/**
- * We had an entry in our map of wire transfers that
- * should have been performed. Generate report.
- *
- * @param cls unused
- * @param key unused
- * @param value must be a `struct ReasonDetail`
- * @return #GNUNET_YES if we should continue to
- *         iterate,
- *         #GNUNET_NO if not.
- */
-static enum GNUNET_GenericReturnValue
-generate_report (void *cls,
-                 const struct GNUNET_ShortHashCode *key,
-                 void *value)
-{
-  struct ReasonDetail *rd = value;
-  // enum GNUNET_DB_QueryStatus qs;
-  // struct TALER_AUDITORDB_KycLag kycl;
-  // struct TALER_AUDITORDB_AmlLag amllag;
-  // struct TALER_AUDITORDB_Lag lag;
-
-  /* For now, we simplify and only check that the
-     amount was tiny */
-  if (0 > TALER_amount_cmp (&rd->total_amount,
-                            &tiny_amount))
-    return free_report_entry (cls,
-                              key,
-                              value); /* acceptable, amount was tiny */
-
-#if FIXME
-  // TODO: maybe split total_amount_lag up by category below?
-  TALER_ARL_amount_add (&total_amount_lag,
-                        &total_amount_lag,
-                        &rd->total_amount);
-  if (NULL != rd->kyc_pending)
-  {
-    json_t *rep;
-
-    rep = GNUNET_JSON_PACK (
-      TALER_JSON_pack_amount ("total_amount",
-                              &rd->total_amount),
-      TALER_JSON_pack_time_abs_human ("deadline",
-                                      rd->deadline.abs_time),
-      GNUNET_JSON_pack_object_incref ("kyc_rules",
-                                      rd->rules),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_object_incref ("properties",
-                                        rd->properties)),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string ("account",
-                                 rd->payto_uri)));
-    // TODO add kyc lag db entry
-    /*rbiil.reserve_pub = rs->reserve_pub.eddsa_pub;
-    rbiil.inconsistency_amount = loss;
-    rbiil.inconsistency_gain = false;
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-      TALER_ARL_adb->cls,
-      &rbiil);
-
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-
-    TALER_ARL_report (report_kyc_lags,
-                      rep);
-  }
-  else if (TALER_AML_NORMAL != rd->status)
-  {
-    const char *sstatus = "<undefined>";
-    json_t *rep;
-
-    switch (rd->status)
-    {
-    case TALER_AML_NORMAL:
-      GNUNET_assert (0);
-      break;
-    case TALER_AML_PENDING:
-      sstatus = "pending";
-      break;
-    case TALER_AML_FROZEN:
-      sstatus = "frozen";
-      break;
-    }
-    rep = GNUNET_JSON_PACK (
-      TALER_JSON_pack_amount ("total_amount",
-                              &rd->total_amount),
-      GNUNET_JSON_pack_allow_null (
-        TALER_JSON_pack_amount ("aml_limit",
-                                TALER_amount_is_valid (&rd->aml_limit)
-                                ? &rd->aml_limit
-                                : NULL)),
-      TALER_JSON_pack_time_abs_human ("deadline",
-                                      rd->deadline.abs_time),
-      GNUNET_JSON_pack_string ("aml_status",
-                               sstatus),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string ("account",
-                                 rd->payto_uri)));
-    // TODO add aml lag db entry
-    /*rbiil.reserve_pub = rs->reserve_pub.eddsa_pub;
-    rbiil.inconsistency_amount = loss;
-    rbiil.inconsistency_gain = false;
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-      TALER_ARL_adb->cls,
-      &rbiil);
-
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-    TALER_ARL_report (report_aml_lags,
-                      rep);
-  }
-  else
-  {
-    json_t *rep;
-
-    rep = GNUNET_JSON_PACK (
-      TALER_JSON_pack_amount ("total_amount",
-                              &rd->total_amount),
-      TALER_JSON_pack_time_abs_human ("deadline",
-                                      rd->deadline.abs_time),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string ("account",
-                                 rd->payto_uri)));
-    // TODO add lag
-    /*rbiil.reserve_pub = rs->reserve_pub.eddsa_pub;
-    rbiil.inconsistency_amount = loss;
-    rbiil.inconsistency_gain = false;
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-      TALER_ARL_adb->cls,
-      &rbiil);
-
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-    TALER_ARL_report (report_lags,
-                      rep);
-  }
-#endif
-
-  return free_report_entry (cls,
-                            key,
-                            value);
-}
-
-
-/**
- * Function called on deposits that are past their due date
- * and have not yet seen a wire transfer.
- *
- * @param cls closure, points to a `struct ReportMissingWireContext`
- * @param batch_deposit_serial_id row in the database for which the wire transfer is missing
- * @param total_amount value of the missing deposits, including fee
- * @param wire_target_h_payto hash of payto-URI where the funds should have been wired
- * @param deadline what was the earliest requested wire transfer deadline
- */
-static void
-report_wire_missing_cb (void *cls,
-                        uint64_t batch_deposit_serial_id,
-                        const struct TALER_Amount *total_amount,
-                        const struct TALER_PaytoHashP *wire_target_h_payto,
-                        struct GNUNET_TIME_Timestamp deadline)
-{
-  struct ReportMissingWireContext *rc = cls;
-  struct ReasonDetail *rd;
-
-  rd = GNUNET_CONTAINER_multishortmap_get (rc->map,
-                                           &wire_target_h_payto->hash);
-  if (NULL == rd)
-  {
-    rd = GNUNET_new (struct ReasonDetail);
-    GNUNET_assert (GNUNET_YES ==
-                   GNUNET_CONTAINER_multishortmap_put (
-                     rc->map,
-                     &wire_target_h_payto->hash,
-                     rd,
-                     GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-    rc->err = TALER_ARL_edb->select_justification_for_missing_wire (
-      TALER_ARL_edb->cls,
-      wire_target_h_payto,
-      &rd->payto_uri,
-      &rd->properties,
-      &rd->jrules);
-    rd->total_amount = *total_amount;
-    rd->deadline = deadline;
-  }
-  else
-  {
-    TALER_ARL_amount_add (&rd->total_amount,
-                          &rd->total_amount,
-                          total_amount);
-    rd->deadline = GNUNET_TIME_timestamp_min (rd->deadline,
-                                              deadline);
-  }
-}
-
-
-/**
- * Function called on aggregations that were done for
- * a (batch) deposit.
- *
- * @param cls closure
- * @param tracking_serial_id where in the table are we
- * @param batch_deposit_serial_id which batch deposit was aggregated
- */
-static void
-clear_finished_transfer_cb (
-  void *cls,
-  uint64_t tracking_serial_id,
-  uint64_t batch_deposit_serial_id)
-{
-  struct AggregationContext *ac = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  if (0 > ac->err)
-    return; /* already failed */
-  GNUNET_assert (ac->max_aggregation_serial < tracking_serial_id);
-  ac->max_aggregation_serial = tracking_serial_id;
-  qs = TALER_ARL_adb->delete_pending_deposit (
-    TALER_ARL_adb->cls,
-    batch_deposit_serial_id);
-  if (0 == qs)
-  {
-    /* Aggregated something twice or other error, report! */
-    GNUNET_break (0);
-    // FIXME: report more nicely!
-  }
-  if (0 > qs)
-    ac->err = qs;
-}
-
-
-/**
- * Checks that all wire transfers that should have happened
- * (based on deposits) have indeed happened.
- */
-static void
-check_for_required_transfers (void)
-{
-  struct ImportMissingWireContext wc = {
-    .max_batch_deposit_uuid = TALER_ARL_USE_PP (wire_batch_deposit_id),
-    .err = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
-  };
-  struct GNUNET_TIME_Absolute deadline;
-  enum GNUNET_DB_QueryStatus qs;
-  struct ReportMissingWireContext rc = {
-    .err = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
-  };
-  struct AggregationContext ac = {
-    .max_aggregation_serial = TALER_ARL_USE_PP (wire_aggregation_id),
-    .err = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
-  };
-
-  qs = TALER_ARL_edb->select_batch_deposits_missing_wire (
-    TALER_ARL_edb->cls,
-    TALER_ARL_USE_PP (wire_batch_deposit_id),
-    &import_wire_missing_cb,
-    &wc);
-  if ((0 > qs) || (0 > wc.err))
-  {
-    GNUNET_break (0);
-    GNUNET_break ((GNUNET_DB_STATUS_SOFT_ERROR == qs) ||
-                  (GNUNET_DB_STATUS_SOFT_ERROR == wc.err));
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  TALER_ARL_USE_PP (wire_batch_deposit_id) = wc.max_batch_deposit_uuid;
-  qs = TALER_ARL_edb->select_aggregations_above_serial (
-    TALER_ARL_edb->cls,
-    TALER_ARL_USE_PP (wire_aggregation_id),
-    &clear_finished_transfer_cb,
-    &ac);
-  if ((0 > qs) || (0 > ac.err))
-  {
-    GNUNET_break (0);
-    GNUNET_break ((GNUNET_DB_STATUS_SOFT_ERROR == qs) ||
-                  (GNUNET_DB_STATUS_SOFT_ERROR == ac.err));
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  TALER_ARL_USE_PP (wire_aggregation_id) = ac.max_aggregation_serial;
-  /* Subtract #GRACE_PERIOD, so we can be a bit behind in processing
-     without immediately raising undue concern */
-  deadline = GNUNET_TIME_absolute_subtract (GNUNET_TIME_absolute_get (),
-                                            GRACE_PERIOD);
-  rc.map = GNUNET_CONTAINER_multishortmap_create (1024,
-                                                  GNUNET_NO);
-  qs = TALER_ARL_adb->select_pending_deposits (
-    TALER_ARL_adb->cls,
-    deadline,
-    &report_wire_missing_cb,
-    &rc);
-  if ((0 > qs) || (0 > rc.err))
-  {
-    GNUNET_break (0);
-    GNUNET_break ((GNUNET_DB_STATUS_SOFT_ERROR == qs) ||
-                  (GNUNET_DB_STATUS_SOFT_ERROR == rc.err));
-    GNUNET_CONTAINER_multishortmap_iterate (rc.map,
-                                            &free_report_entry,
-                                            NULL);
-    GNUNET_CONTAINER_multishortmap_destroy (rc.map);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  GNUNET_CONTAINER_multishortmap_iterate (rc.map,
-                                          &generate_report,
-                                          NULL);
-  GNUNET_CONTAINER_multishortmap_destroy (rc.map);
-  /* conclude with success */
-  commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
-  GNUNET_SCHEDULER_shutdown ();
-}
-
-
-/* ***************************** Analyze reserves_out ************************ */
-
-/**
- * Clean up after processing wire out data.
- */
-static void
-conclude_wire_out (void)
-{
-  GNUNET_CONTAINER_multihashmap_destroy (out_map);
-  out_map = NULL;
-  check_for_required_transfers ();
-}
-
-
-/**
- * Check that @a want is within #TIME_TOLERANCE of @a have.
- * Otherwise report an inconsistency in row @a rowid of @a table.
- *
- * @param table where is the inconsistency (if any)
- * @param rowid what is the row
- * @param want what is the expected time
- * @param have what is the time we got
- */
-static void
-check_time_difference (const char *table,
-                       uint64_t rowid,
-                       struct GNUNET_TIME_Timestamp want,
-                       struct GNUNET_TIME_Timestamp have)
-{
-  struct GNUNET_TIME_Relative delta;
-  char *details;
-  // enum GNUNET_DB_QueryStatus qs;
-  // struct TALER_AUDITORDB_RowMinorInconsistencies rmi;
-
-  if (GNUNET_TIME_timestamp_cmp (have, >, want))
-    delta = GNUNET_TIME_absolute_get_difference (want.abs_time,
-                                                 have.abs_time);
-  else
-    delta = GNUNET_TIME_absolute_get_difference (have.abs_time,
-                                                 want.abs_time);
-  if (GNUNET_TIME_relative_cmp (delta,
-                                <=,
-                                TIME_TOLERANCE))
-    return;
-
-  GNUNET_asprintf (&details,
-                   "execution date mismatch (%s)",
-                   GNUNET_TIME_relative2s (delta,
-                                           true));
-#if FIXME
-
-  rmi.diagnostic = details;
-  rmi.row_table = (char *) table;
-
-  qs = TALER_ARL_adb->insert_row_minor_inconsistencies (
-    TALER_ARL_adb->cls,
-    &rmi);
-
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-  }
-  TALER_ARL_report (report_row_minor_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("table",
-                                               table),
-                      GNUNET_JSON_pack_uint64 ("row",
-                                               rowid),
-                      GNUNET_JSON_pack_string ("diagnostic",
-                                               details)));
-#endif
-  GNUNET_free (details);
-}
-
-
-/**
- * Function called with details about outgoing wire transfers
- * as claimed by the exchange DB.
- *
- * @param cls a `struct WireAccount`
- * @param rowid unique serial ID for the refresh session in our DB
- * @param date timestamp of the transfer (roughly)
- * @param wtid wire transfer subject
- * @param payto_uri wire transfer details of the receiver
- * @param amount amount that was wired
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
- */
-static enum GNUNET_GenericReturnValue
-wire_out_cb (void *cls,
-             uint64_t rowid,
-             struct GNUNET_TIME_Timestamp date,
-             const struct TALER_WireTransferIdentifierRawP *wtid,
-             const char *payto_uri,
-             const struct TALER_Amount *amount)
-{
-  struct WireAccount *wa = cls;
-  struct GNUNET_HashCode key;
-  struct ReserveOutInfo *roi;
-  /*struct TALER_AUDITORDB_WireOutInconsistency woi;
-  struct TALER_AUDITORDB_WireOutInconsistency woi2;
-  struct TALER_AUDITORDB_WireOutInconsistency woi3;
-  struct TALER_AUDITORDB_WireOutInconsistency woi4;
-  enum GNUNET_DB_QueryStatus qs;  */
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Exchange wire OUT at %s of %s with WTID %s\n",
-              GNUNET_TIME_timestamp2s (date),
-              TALER_amount2s (amount),
-              TALER_B2S (wtid));
-  TALER_ARL_amount_add (&total_wire_out,
-                        &total_wire_out,
-                        amount);
-  GNUNET_CRYPTO_hash (wtid,
-                      sizeof (struct TALER_WireTransferIdentifierRawP),
-                      &key);
-  roi = GNUNET_CONTAINER_multihashmap_get (out_map,
-                                           &key);
-  if (NULL == roi)
-  {
-    /* Wire transfer was not made (yet) at all (but would have been
-       justified), so the entire amount is missing / still to be done.
-       This is moderately harmless, it might just be that the aggregator
-       has not yet fully caught up with the transfers it should do. */
-#if FIXME
-// TODO fix woi implementation
-    /* woi.
-
-     qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-             TALER_ARL_adb->cls,
-             &rbiil);
-
-     if (qs < 0)
-     {
-         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-     }*/
-    TALER_ARL_report (
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &zero),
-        TALER_JSON_pack_amount ("amount_justified",
-                                amount),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire transfer not made (yet?)"),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
-    TALER_ARL_amount_add (&total_bad_amount_out_minus,
-                          &total_bad_amount_out_minus,
-                          amount);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
-    return GNUNET_OK;
-  }
-  if (0 != strcasecmp (payto_uri,
-                       roi->details.credit_account_uri))
-  {
-    /* Destination bank account is wrong in actual wire transfer, so
-       we should count the wire transfer as entirely spurious, and
-       additionally consider the justified wire transfer as missing. */
-#if FIXME
-    /* woi2.
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-            TALER_ARL_adb->cls,
-            &rbiil);
-
-    if (qs < 0)
-    {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-    TALER_ARL_report (
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &roi->details.amount),
-        TALER_JSON_pack_amount ("amount_justified",
-                                &zero),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "receiver account mismatch"),
-        GNUNET_JSON_pack_string ("target",
-                                 payto_uri),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
-    TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                          &total_bad_amount_out_plus,
-                          &roi->details.amount);
-#if FIXME
-    TALER_ARL_report (
-      /* woi3.
-
-qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-        TALER_ARL_adb->cls,
-        &rbiil);
-
-if (qs < 0)
-{
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-}*/
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &zero),
-        TALER_JSON_pack_amount ("amount_justified",
-                                amount),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "receiver account mismatch"),
-        GNUNET_JSON_pack_string ("target",
-                                 roi->details.
-                                 credit_account_uri),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
-    TALER_ARL_amount_add (&total_bad_amount_out_minus,
-                          &total_bad_amount_out_minus,
-                          amount);
-    goto cleanup;
-  }
-  if (0 != TALER_amount_cmp (&roi->details.amount,
-                             amount))
-  {
-#if FIXME
-    TALER_ARL_report (
-      /* woi4.
-
-qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-        TALER_ARL_adb->cls,
-        &rbiil);
-
-if (qs < 0)
-{
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-}*/
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_justified",
-                                amount),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &roi->details.amount),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire amount does not match"),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
-    if (0 < TALER_amount_cmp (amount,
-                              &roi->details.amount))
-    {
-      /* amount > roi->details.amount: wire transfer was smaller than it should have been */
-      struct TALER_Amount delta;
-
-      TALER_ARL_amount_subtract (&delta,
-                                 amount,
-                                 &roi->details.amount);
-      TALER_ARL_amount_add (&total_bad_amount_out_minus,
-                            &total_bad_amount_out_minus,
-                            &delta);
-    }
-    else
-    {
-      /* roi->details.amount < amount: wire transfer was larger than it should have been */
-      struct TALER_Amount delta;
-
-      TALER_ARL_amount_subtract (&delta,
-                                 &roi->details.amount,
-                                 amount);
-      TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                            &total_bad_amount_out_plus,
-                            &delta);
-    }
-    goto cleanup;
-  }
-
-  check_time_difference ("wire_out",
-                         rowid,
-                         date,
-                         roi->details.execution_date);
-cleanup:
-  GNUNET_assert (GNUNET_OK ==
-                 free_roi (NULL,
-                           &key,
-                           roi));
-  wa->pp.last_wire_out_serial_id = rowid + 1;
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
-/**
- * Closure for #check_rc_matches
- */
-struct CheckMatchContext
-{
-
-  /**
-   * Reserve operation looking for a match
-   */
-  const struct ReserveOutInfo *roi;
-
-  /**
-   * Set to true if we found a match.
-   */
-  bool found;
-};
-
-
-/**
- * Check if any of the reserve closures match the given wire transfer.
- *
- * @param[in,out] cls a `struct CheckMatchContext`
- * @param key key of @a value in #reserve_closures
- * @param value a `struct ReserveClosure`
- */
-static enum GNUNET_GenericReturnValue
-check_rc_matches (void *cls,
-                  const struct GNUNET_HashCode *key,
-                  void *value)
-{
-  struct CheckMatchContext *ctx = cls;
-  struct ReserveClosure *rc = value;
-
-  if ((0 == GNUNET_memcmp (&ctx->roi->details.wtid,
-                           &rc->wtid)) &&
-      (0 == strcasecmp (rc->receiver_account,
-                        ctx->roi->details.credit_account_uri)) &&
-      (0 == TALER_amount_cmp (&rc->amount,
-                              &ctx->roi->details.amount)))
-  {
-    check_time_difference ("reserves_closures",
-                           rc->rowid,
-                           rc->execution_date,
-                           ctx->roi->details.execution_date);
-    ctx->found = true;
-    free_rc (NULL,
-             key,
-             rc);
-    return GNUNET_NO;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Check whether the given transfer was justified by a reserve closure or
- * profit drain. If not, complain that we failed to match an entry from
- * #out_map.  This means a wire transfer was made without proper
- * justification.
- *
- * @param cls a `struct WireAccount`
- * @param key unused key
- * @param value the `struct ReserveOutInfo` to report
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-complain_out_not_found (void *cls,
-                        const struct GNUNET_HashCode *key,
-                        void *value)
-{
-  // struct WireAccount *wa = cls;
-  struct ReserveOutInfo *roi = value;
-  struct GNUNET_HashCode rkey;
-  struct CheckMatchContext ctx = {
-    .roi = roi,
-    .found = false
-  };
-
-  (void) key;
-  hash_rc (roi->details.credit_account_uri,
-           &roi->details.wtid,
-           &rkey);
-  GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
-                                              &rkey,
-                                              &check_rc_matches,
-                                              &ctx);
-  if (ctx.found)
-    return GNUNET_OK;
-  /* check for profit drain */
-  {
-    enum GNUNET_DB_QueryStatus qs;
-    uint64_t serial;
-    char *account_section;
-    char *payto_uri;
-    struct GNUNET_TIME_Timestamp request_timestamp;
-    struct TALER_Amount amount;
-    struct TALER_MasterSignatureP master_sig;
-    // struct TALER_AUDITORDB_RowInconsistency ri;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi2;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi3;
-
-    qs = TALER_ARL_edb->get_drain_profit (TALER_ARL_edb->cls,
-                                          &roi->details.wtid,
-                                          &serial,
-                                          &account_section,
-                                          &payto_uri,
-                                          &request_timestamp,
-                                          &amount,
-                                          &master_sig);
-    switch (qs)
-    {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-      GNUNET_break (0);
-      global_ret = EXIT_FAILURE;
-      GNUNET_SCHEDULER_shutdown ();
-      return GNUNET_SYSERR;
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      /* should fail on commit later ... */
-      GNUNET_break (0);
-      return GNUNET_NO;
-    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      /* not a profit drain */
-      break;
-    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Profit drain of %s to %s found!\n",
-                  TALER_amount2s (&amount),
-                  payto_uri);
-      if (GNUNET_OK !=
-          TALER_exchange_offline_profit_drain_verify (
-            &roi->details.wtid,
-            request_timestamp,
-            &amount,
-            account_section,
-            payto_uri,
-            &TALER_ARL_master_pub,
-            &master_sig))
-      {
-        GNUNET_break (0);
-#if FIXME
-        ri.row_table = "profit_drains";
-        ri.diagnostic = "invalid signature";
-
-        qs = TALER_ARL_adb->insert_row_inconsistency (
-          TALER_ARL_adb->cls,
-          &ri);
-
-        if (qs < 0)
-        {
-          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        }
-        TALER_ARL_report (report_row_inconsistencies,
-                          GNUNET_JSON_PACK (
-                            GNUNET_JSON_pack_string ("table",
-                                                     "profit_drains"),
-                            GNUNET_JSON_pack_uint64 ("row",
-                                                     serial),
-                            GNUNET_JSON_pack_data_auto ("id",
-                                                        &roi->details.wtid),
-                            GNUNET_JSON_pack_string ("diagnostic",
-                                                     "invalid signature")));
-#endif
-        TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                              &total_bad_amount_out_plus,
-                              &amount);
-      }
-      else if (0 !=
-               strcasecmp (payto_uri,
-                           roi->details.credit_account_uri))
-      {
-#if FIXME
-        // TODO fix woi
-        /* woi.
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-            TALER_ARL_adb->cls,
-            &rbiil);
-
-    if (qs < 0)
-    {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-        TALER_ARL_report (
-          report_wire_out_inconsistencies,
-          GNUNET_JSON_PACK (
-            GNUNET_JSON_pack_uint64 ("row",
-                                     serial),
-            TALER_JSON_pack_amount ("amount_wired",
-                                    &roi->details.amount),
-            TALER_JSON_pack_amount ("amount_wired",
-                                    &amount),
-            GNUNET_JSON_pack_data_auto ("wtid",
-                                        &roi->details.wtid),
-            TALER_JSON_pack_time_abs_human ("timestamp",
-                                            roi->details.execution_date.abs_time
-                                            ),
-            GNUNET_JSON_pack_string ("account",
-                                     wa->ai->section_name),
-            GNUNET_JSON_pack_string ("diagnostic",
-                                     "wrong target account")));
-#endif
-        TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                              &total_bad_amount_out_plus,
-                              &amount);
-      }
-      else if (0 !=
-               TALER_amount_cmp (&amount,
-                                 &roi->details.amount))
-      {
-#if FIXME
-        // TODO fix woi
-        /* woi.
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-            TALER_ARL_adb->cls,
-            &rbiil);
-
-    if (qs < 0)
-    {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-        TALER_ARL_report (
-          report_wire_out_inconsistencies,
-          GNUNET_JSON_PACK (
-            GNUNET_JSON_pack_uint64 ("row",
-                                     serial),
-            TALER_JSON_pack_amount ("amount_justified",
-                                    &roi->details.amount),
-            TALER_JSON_pack_amount ("amount_wired",
-                                    &amount),
-            GNUNET_JSON_pack_data_auto ("wtid",
-                                        &roi->details.wtid),
-            TALER_JSON_pack_time_abs_human ("timestamp",
-                                            roi->details.execution_date.abs_time
-                                            ),
-            GNUNET_JSON_pack_string ("account",
-                                     wa->ai->section_name),
-            GNUNET_JSON_pack_string ("diagnostic",
-                                     "profit drain amount incorrect")));
-#endif
-        TALER_ARL_amount_add (&total_bad_amount_out_minus,
-                              &total_bad_amount_out_minus,
-                              &roi->details.amount);
-        TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                              &total_bad_amount_out_plus,
-                              &amount);
-      }
-      GNUNET_free (account_section);
-      GNUNET_free (payto_uri);
-      /* profit drain was correct */
-      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_drained),
-                            &TALER_ARL_USE_AB (total_drained),
-                            &amount);
-      return GNUNET_OK;
-    }
-  }
-#if FIXME
-  // TODO fix woi
-  /* woi3.
-
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-            TALER_ARL_adb->cls,
-            &rbiil);
-
-    if (qs < 0)
-    {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }*/
-  TALER_ARL_report (
-    report_wire_out_inconsistencies,
-    GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("row",
-                               0),
-      TALER_JSON_pack_amount ("amount_wired",
-                              &roi->details.amount),
-      TALER_JSON_pack_amount ("amount_justified",
-                              &zero),
-      GNUNET_JSON_pack_data_auto ("wtid",
-                                  &roi->details.wtid),
-      TALER_JSON_pack_time_abs_human ("timestamp",
-                                      roi->details.execution_date.abs_time),
-      GNUNET_JSON_pack_string ("account_section",
-                               wa->ai->section_name),
-      GNUNET_JSON_pack_string ("diagnostic",
-                               "justification for wire transfer not found")));
-#endif
-  TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                        &total_bad_amount_out_plus,
-                        &roi->details.amount);
-  return GNUNET_OK;
-}
-
-
-/**
- * Main function for processing 'reserves_out' data.  We start by going over
- * the DEBIT transactions this time, and then verify that all of them are
- * justified by 'reserves_out'.
- *
- * @param cls `struct WireAccount` with a wire account list to process
- */
-static void
-process_debits (void *cls);
-
-
-/**
- * Go over the "wire_out" table of the exchange and
- * verify that all wire outs are in that table.
- *
- * @param wa wire account we are processing
- */
-static void
-check_exchange_wire_out (struct WireAccount *wa)
-{
-  enum GNUNET_DB_QueryStatus qs;
-
-  GNUNET_assert (NULL == wa->dhh);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Analyzing exchange's wire OUT table for account `%s'\n",
-              wa->ai->section_name);
-  qs = TALER_ARL_edb->select_wire_out_above_serial_id_by_account (
-    TALER_ARL_edb->cls,
-    wa->ai->section_name,
-    wa->pp.last_wire_out_serial_id,
-    &wire_out_cb,
-    wa);
-  if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  GNUNET_CONTAINER_multihashmap_iterate (out_map,
-                                         &complain_out_not_found,
-                                         wa);
-  /* clean up */
-  GNUNET_CONTAINER_multihashmap_iterate (out_map,
-                                         &free_roi,
-                                         NULL);
-  process_debits (wa->next);
-}
-
-
-/**
- * This function is called for all transactions that
- * are debited from the exchange's account (outgoing
- * transactions).
- *
- * @param cls `struct WireAccount` with current wire account to process
- * @param dhr HTTP response details
- */
-static void
-history_debit_cb (void *cls,
-                  const struct TALER_BANK_DebitHistoryResponse *dhr)
-{
-  struct WireAccount *wa = cls;
-  struct ReserveOutInfo *roi;
-  size_t slen;
-  // struct TALER_AUDITORDB_WireFormatInconsistency wfi;
-
-  wa->dhh = NULL;
-  switch (dhr->http_status)
-  {
-  case MHD_HTTP_OK:
-    for (unsigned int i = 0; i < dhr->details.ok.details_length; i++)
-    {
-      const struct TALER_BANK_DebitDetails *dd
-        = &dhr->details.ok.details[i];
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Analyzing bank DEBIT at %s of %s with WTID %s\n",
-                  GNUNET_TIME_timestamp2s (dd->execution_date),
-                  TALER_amount2s (&dd->amount),
-                  TALER_B2S (&dd->wtid));
-      /* Update offset */
-      wa->wire_off_out = dd->serial_id;
-      slen = strlen (dd->credit_account_uri) + 1;
-      roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
-                           + slen);
-      GNUNET_CRYPTO_hash (&dd->wtid,
-                          sizeof (dd->wtid),
-                          &roi->subject_hash);
-      roi->details.amount = dd->amount;
-      roi->details.execution_date = dd->execution_date;
-      roi->details.wtid = dd->wtid;
-      roi->details.credit_account_uri = (const char *) &roi[1];
-      GNUNET_memcpy (&roi[1],
-                     dd->credit_account_uri,
-                     slen);
-      if (GNUNET_OK !=
-          GNUNET_CONTAINER_multihashmap_put (out_map,
-                                             &roi->subject_hash,
-                                             roi,
-                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
-      {
-        char *diagnostic;
-
-        GNUNET_asprintf (&diagnostic,
-                         "duplicate subject hash `%s'",
-                         TALER_B2S (&roi->subject_hash));
-        TALER_ARL_amount_add (&total_wire_format_amount,
-                              &total_wire_format_amount,
-                              &dd->amount);
-#if FIXME
-        wfi.diagnostic = diagnostic;
-        wfi.amount = &dd->amount;
-        wfi.wire_offset = dd->serial_id;
-
-        qs = TALER_ARL_adb->insert_wire_format_inconsistency (
-          TALER_ARL_adb->cls,
-          &wfi);
-
-        if (qs < 0)
-        {
-          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        }
-        TALER_ARL_report (report_wire_format_inconsistencies,
-                          GNUNET_JSON_PACK (
-                            TALER_JSON_pack_amount ("amount",
-                                                    &dd->amount),
-                            GNUNET_JSON_pack_uint64 ("wire_offset",
-                                                     dd->serial_id),
-                            GNUNET_JSON_pack_string ("diagnostic",
-                                                     diagnostic)));
-#endif
-        GNUNET_free (diagnostic);
-      }
-    }
-    check_exchange_wire_out (wa);
-    return;
-  case MHD_HTTP_NO_CONTENT:
-    check_exchange_wire_out (wa);
-    return;
-  case MHD_HTTP_NOT_FOUND:
-    if (ignore_account_404)
-    {
-      check_exchange_wire_out (wa);
-      return;
-    }
-    break;
-  default:
-    break;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Error fetching debit history of account %s: %u/%u!\n",
-              wa->ai->section_name,
-              dhr->http_status,
-              (unsigned int) dhr->ec);
-  commit (GNUNET_DB_STATUS_HARD_ERROR);
-  global_ret = EXIT_FAILURE;
-  GNUNET_SCHEDULER_shutdown ();
-}
-
-
-/**
- * Main function for processing 'reserves_out' data.  We start by going over
- * the DEBIT transactions this time, and then verify that all of them are
- * justified by 'reserves_out'.
- *
- * @param cls `struct WireAccount` with a wire account list to process
- */
-static void
-process_debits (void *cls)
-{
-  struct WireAccount *wa = cls;
-
-  /* skip accounts where DEBIT is not enabled */
-  while ((NULL != wa) &&
-         (GNUNET_NO == wa->ai->debit_enabled))
-    wa = wa->next;
-  if (NULL == wa)
-  {
-    /* end of iteration, now check wire_out to see
-       if it matches #out_map */
-    conclude_wire_out ();
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Checking bank DEBIT records of account `%s'\n",
-              wa->ai->section_name);
-  GNUNET_assert (NULL == wa->dhh);
-  // FIXME: handle the case where more than INT32_MAX transactions exist.
-  // (CG: used to be INT64_MAX, changed by MS to INT32_MAX, why? To be discussed with him!)
-  wa->dhh = TALER_BANK_debit_history (ctx,
-                                      wa->ai->auth,
-                                      wa->wire_off_out,
-                                      INT32_MAX,
-                                      GNUNET_TIME_UNIT_ZERO,
-                                      &history_debit_cb,
-                                      wa);
-  if (NULL == wa->dhh)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to obtain bank transaction history for `%s'\n",
-                wa->ai->section_name);
-    commit (GNUNET_DB_STATUS_HARD_ERROR);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-}
-
-
-/**
- * Begin analyzing wire_out.
- */
-static void
-begin_debit_audit (void)
-{
-  GNUNET_assert (NULL == out_map);
-  out_map = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                  true);
-  process_debits (wa_head);
-}
-
-
-/* ***************************** Analyze reserves_in ************************ */
 
 /**
  * Conclude the credit history check by logging entries that
@@ -2106,8 +455,7 @@ conclude_credit_history (void)
     GNUNET_CONTAINER_multihashmap_destroy (in_map);
     in_map = NULL;
   }
-  /* credit done, now check debits */
-  begin_debit_audit ();
+  commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
 }
 
 
@@ -2705,98 +1053,6 @@ begin_credit_audit (void)
 
 
 /**
- * Function called about reserve closing operations the aggregator triggered.
- *
- * @param cls closure
- * @param rowid row identifier used to uniquely identify the reserve closing operation
- * @param execution_date when did we execute the close operation
- * @param amount_with_fee how much did we debit the reserve
- * @param closing_fee how much did we charge for closing the reserve
- * @param reserve_pub public key of the reserve
- * @param receiver_account where did we send the funds, in payto://-format
- * @param wtid identifier used for the wire transfer
- * @param close_request_row which close request triggered the operation?
- *         0 if it was a timeout (not used)
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
- */
-static enum GNUNET_GenericReturnValue
-reserve_closed_cb (void *cls,
-                   uint64_t rowid,
-                   struct GNUNET_TIME_Timestamp execution_date,
-                   const struct TALER_Amount *amount_with_fee,
-                   const struct TALER_Amount *closing_fee,
-                   const struct TALER_ReservePublicKeyP *reserve_pub,
-                   const char *receiver_account,
-                   const struct TALER_WireTransferIdentifierRawP *wtid,
-                   uint64_t close_request_row)
-{
-  struct ReserveClosure *rc;
-  struct GNUNET_HashCode key;
-  // enum GNUNET_DB_QueryStatus qs;
-  // struct TALER_AUDITORDB_RowInconsistency ri;
-
-  (void) cls;
-  (void) close_request_row;
-  rc = GNUNET_new (struct ReserveClosure);
-  if (TALER_ARL_SR_INVALID_NEGATIVE ==
-      TALER_ARL_amount_subtract_neg (&rc->amount,
-                                     amount_with_fee,
-                                     closing_fee))
-  {
-#if FIXME
-// TODO fix, something seems not right
-    ri.row_table = "reserves_closures";
-    ri.diagnostic = "closing fee above total amount";
-
-    qs = TALER_ARL_adb->insert_row_inconsistency (
-      TALER_ARL_adb->cls,
-      &ri);
-
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }
-    TALER_ARL_report (report_row_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("table",
-                                                 "reserves_closures"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        GNUNET_JSON_pack_data_auto ("id",
-                                                    reserve_pub),
-                        TALER_JSON_pack_amount ("amount_with_fee",
-                                                amount_with_fee),
-                        TALER_JSON_pack_amount ("closing_fee",
-                                                closing_fee),
-                        GNUNET_JSON_pack_string ("diagnostic",
-                                                 "closing fee above total amount")));
-#endif
-    GNUNET_free (rc);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
-    return GNUNET_OK;
-  }
-  TALER_ARL_USE_PP (wire_reserve_close_id)
-    = GNUNET_MAX (TALER_ARL_USE_PP (wire_reserve_close_id),
-                  rowid + 1);
-  rc->receiver_account = GNUNET_strdup (receiver_account);
-  rc->wtid = *wtid;
-  rc->execution_date = execution_date;
-  rc->rowid = rowid;
-  hash_rc (receiver_account,
-           wtid,
-           &key);
-  (void) GNUNET_CONTAINER_multihashmap_put (reserve_closures,
-                                            &key,
-                                            rc,
-                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_MULTIPLE);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
-/**
  * Start the database transactions and begin the audit.
  *
  * @return transaction status code
@@ -2836,12 +1092,6 @@ begin_transaction (void)
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_out_plus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_out_minus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_amount_in_plus));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
@@ -2851,12 +1101,6 @@ begin_transaction (void)
                                         &total_misattribution_in));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_amount_lag));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_closure_amount_lag));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_format_amount));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
@@ -2864,13 +1108,9 @@ begin_transaction (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_in));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_wire_out));
   qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
-    TALER_ARL_GET_AB (total_drained),
-    TALER_ARL_GET_AB (final_balance),
+    TALER_ARL_GET_AB (total_wire_in),
     NULL);
   switch (qs)
   {
@@ -2883,10 +1123,7 @@ begin_transaction (void)
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (total_drained)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (final_balance)));
+                                          &TALER_ARL_USE_AB (total_wire_in)));
     had_start_balance = false;
     break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -2901,78 +1138,23 @@ begin_transaction (void)
                      "wire-%s-%s",
                      wa->ai->section_name,
                      "reserve_in_serial_id");
-    GNUNET_asprintf (&wa->label_wire_out_serial_id,
-                     "wire-%s-%s",
-                     wa->ai->section_name,
-                     "wire_out_serial_id");
     GNUNET_asprintf (&wa->label_wire_off_in,
                      "wire-%s-%s",
                      wa->ai->section_name,
                      "wire_off_in");
-    GNUNET_asprintf (&wa->label_wire_off_out,
-                     "wire-%s-%s",
-                     wa->ai->section_name,
-                     "wire_off_out");
     wa->qsx = TALER_ARL_adb->get_auditor_progress (
       TALER_ARL_adb->cls,
       wa->label_reserve_in_serial_id,
-      &wa->pp.last_reserve_in_serial_id,
-      wa->label_wire_out_serial_id,
-      &wa->pp.last_wire_out_serial_id,
+      &wa->last_reserve_in_serial_id,
       wa->label_wire_off_in,
       &wa->wire_off_in,
-      wa->label_wire_off_out,
-      &wa->wire_off_out,
       NULL);
     if (0 > wa->qsx)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wa->qsx);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    wa->start_pp = wa->pp;
-  }
-  qsx_gwap = TALER_ARL_adb->get_auditor_progress (
-    TALER_ARL_adb->cls,
-    TALER_ARL_GET_PP (wire_reserve_close_id),
-    TALER_ARL_GET_PP (wire_batch_deposit_id),
-    TALER_ARL_GET_PP (wire_aggregation_id),
-    NULL);
-  if (0 > qsx_gwap)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx_gwap);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx_gwap)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "First analysis of with wire auditor, starting audit from scratch\n");
-  }
-  else
-  {
-    if (TALER_ARL_USE_PP (wire_reserve_close_id) == 0)
-      had_start_progress = false;
-    else
-      had_start_progress = true;
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Resuming wire audit at %llu / %llu / %llu\n",
-                (unsigned long long) TALER_ARL_USE_PP (wire_reserve_close_id),
-                (unsigned long long) TALER_ARL_USE_PP (wire_batch_deposit_id),
-                (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id));
-  }
-
-  {
-    enum GNUNET_DB_QueryStatus qs;
-
-    qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
-      TALER_ARL_edb->cls,
-      TALER_ARL_USE_PP (wire_reserve_close_id),
-      &reserve_closed_cb,
-      NULL);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
+    wa->start_reserve_in_serial_id = wa->last_reserve_in_serial_id;
   }
   begin_credit_audit ();
   return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
@@ -3035,8 +1217,6 @@ db_notify (void *cls,
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
   }
-
-
 }
 
 
@@ -3059,7 +1239,7 @@ run (void *cls,
   (void) cfgfile;
   cfg = c;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Launching wire auditor\n");
+              "Launching wire-credit auditor\n");
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
@@ -3067,9 +1247,6 @@ run (void *cls,
     return;
   }
 
-  reserve_closures
-    = GNUNET_CONTAINER_multihashmap_create (1024,
-                                            GNUNET_NO);
   if (NULL ==
       (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {
@@ -3107,14 +1284,6 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-  reserve_closures = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                           GNUNET_NO);
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_out_plus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_out_minus));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_amount_in_plus));
@@ -3126,20 +1295,13 @@ run (void *cls,
                                         &total_misattribution_in));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_amount_lag));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_closure_amount_lag));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_format_amount));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &zero));
   if (GNUNET_OK !=
       TALER_EXCHANGEDB_load_accounts (TALER_ARL_cfg,
-                                      TALER_EXCHANGEDB_ALO_DEBIT
-                                      | TALER_EXCHANGEDB_ALO_CREDIT
+                                      TALER_EXCHANGEDB_ALO_CREDIT
                                       | TALER_EXCHANGEDB_ALO_AUTHDATA))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -3218,7 +1380,7 @@ main (int argc,
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,
-    "taler-helper-auditor-wire",
+    "taler-helper-auditor-wire-credit",
     gettext_noop (
       "Audit exchange database for consistency with the bank's wire transfers"),
     options,
@@ -3233,4 +1395,4 @@ main (int argc,
 }
 
 
-/* end of taler-helper-auditor-wire.c */
+/* end of taler-helper-auditor-wire-credit.c */
