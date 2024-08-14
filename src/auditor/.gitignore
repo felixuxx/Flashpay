@@ -13,7 +13,8 @@ taler-helper-auditor-aggregation
 taler-helper-auditor-coins
 taler-helper-auditor-deposits
 taler-helper-auditor-reserves
-taler-helper-auditor-wire
+taler-helper-auditor-wire-credit
+taler-helper-auditor-wire-debit
 generate-auditor-basedb-prod.conf
 generate-auditor-basedb-revocation.conf
 revocation-tmp-*
