@@ -115,14 +115,15 @@ struct WireAccount
 
 
 /**
- * Map from H(wtid,receiver_account) to `struct ReserveClosure` entries.
- */
-static struct GNUNET_CONTAINER_MultiHashMap *reserve_closures;
-
-/**
  * Return value from main().
  */
 static int global_ret;
+
+/**
+ * State of the current database transaction with
+ * the auditor DB.
+ */
+static enum GNUNET_DB_QueryStatus global_qs;
 
 /**
  * Map with information about incoming wire transfers.
@@ -141,15 +142,9 @@ static struct WireAccount *wa_head;
 static struct WireAccount *wa_tail;
 
 /**
- * Query status for the incremental processing status in the auditordb.
- * Return value from our call to the "get_wire_auditor_progress" function.
- */
-static enum GNUNET_DB_QueryStatus qsx_gwap;
-
-/**
  * Last reserve_in seen.
  */
-static TALER_ARL_DEF_PP (wire_reserve_in_id); // FIXME: new!
+// static TALER_ARL_DEF_PP (wire_reserve_in_id); // FIXME: new!
 
 /**
  * Amount that is considered "tiny"
@@ -391,7 +386,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->update_auditor_progress (
         TALER_ARL_adb->cls,
         wa->label_reserve_in_serial_id,
-        wa->pp.last_reserve_in_serial_id,
+        wa->last_reserve_in_serial_id,
         wa->label_wire_off_in,
         wa->wire_off_in,
         NULL);
@@ -399,7 +394,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->insert_auditor_progress (
         TALER_ARL_adb->cls,
         wa->label_reserve_in_serial_id,
-        wa->pp.last_reserve_in_serial_id,
+        wa->last_reserve_in_serial_id,
         wa->label_wire_off_in,
         wa->wire_off_in,
         NULL);
@@ -455,7 +450,7 @@ conclude_credit_history (void)
     GNUNET_CONTAINER_multihashmap_destroy (in_map);
     in_map = NULL;
   }
-  commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
+  commit (global_qs);
 }
 
 
@@ -484,8 +479,6 @@ reserve_in_cb (void *cls,
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii;
   size_t slen;
-  // struct TALER_AUDITORDB_RowInconsistency ri;
-  // enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange wire IN (%llu) at %s of %s with reserve_pub %s\n",
@@ -493,8 +486,8 @@ reserve_in_cb (void *cls,
               GNUNET_TIME_timestamp2s (execution_date),
               TALER_amount2s (credit),
               TALER_B2S (reserve_pub));
-  TALER_ARL_amount_add (&total_wire_in,
-                        &total_wire_in,
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_in),
+                        &TALER_ARL_USE_AB (total_wire_in),
                         credit);
   slen = strlen (sender_account_details) + 1;
   rii = GNUNET_malloc (sizeof (struct ReserveInInfo) + slen);
@@ -516,18 +509,24 @@ reserve_in_cb (void *cls,
                                          rii,
                                          GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
-#if FIXME
-    ri.row_table = "reserves_in";
-    ri.diagnostic = "duplicate wire offset";
+    struct TALER_AUDITORDB_RowInconsistency ri = {
+      .row_id = rowid,
+      .row_table = "reserves_in",
+      .diagnostic = "duplicate wire offset"
+    };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_row_inconsistency (
       TALER_ARL_adb->cls,
       &ri);
-
+    GNUNET_free (rii);
     if (qs < 0)
     {
+      global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return GNUNET_SYSERR;
     }
+#if TO_BE_REMOVED_DEAD_CODE
     TALER_ARL_report (report_row_inconsistencies,
                       GNUNET_JSON_PACK (
                         GNUNET_JSON_pack_string ("table",
@@ -539,12 +538,11 @@ reserve_in_cb (void *cls,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  "duplicate wire offset")));
 #endif
-    GNUNET_free (rii);
     if (TALER_ARL_do_abort ())
       return GNUNET_SYSERR;
     return GNUNET_OK;
   }
-  wa->pp.last_reserve_in_serial_id = rowid + 1;
+  wa->last_reserve_in_serial_id = rowid + 1;
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -564,30 +562,32 @@ complain_in_not_found (void *cls,
                        const struct GNUNET_HashCode *key,
                        void *value)
 {
-  // struct WireAccount *wa = cls;
+  struct WireAccount *wa = cls;
   struct ReserveInInfo *rii = value;
-  // enum GNUNET_DB_QueryStatus qs;
-  // struct TALER_AUDITORDB_ReserveInInconsistency riiDb;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
+    .row_id = rii->rowid,
+    .diagnostic = "incoming wire transfer claimed by exchange not found",
+    .account = (char *) wa->ai->section_name,
+    .amount_exchange_expected = rii->credit_details.amount,
+    .amount_wired = zero,
+    .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
+    .timestamp = rii->credit_details.execution_date.abs_time
+  };
 
   (void) key;
-#if FIXME
-  riiDb.diagnostic = "incoming wire transfer claimed by exchange not found";
-  riiDb.account = (char *) wa->ai->section_name;
-  riiDb.amount_exchange_expected = &rii->details.amount;
-  riiDb.amount_wired = &zero;
-  riiDb.reserve_pub = &rii->details.reserve_pub;
-  riiDb.timestamp = rii->details.execution_date.abs_time;
-
+  GNUNET_assert (TALER_BANK_CT_RESERVE ==
+                 rii->credit_details.type);
   qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
     TALER_ARL_adb->cls,
     &riiDb);
-
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    global_qs = qs;
+    return GNUNET_SYSERR;
   }
-  GNUNET_assert (TALER_BANK_CT_RESERVE ==
-                 rii->credit_details.type);
+#if TO_BE_REMOVED_DEAD_CODE
   TALER_ARL_report (
     report_reserve_in_inconsistencies,
     GNUNET_JSON_PACK (
@@ -645,6 +645,11 @@ conclude_account (struct WireAccount *wa)
     GNUNET_CONTAINER_multihashmap_iterate (in_map,
                                            &free_rii,
                                            NULL);
+    if (global_qs < 0)
+    {
+      commit (global_qs);
+      return;
+    }
   }
   process_credits (wa->next);
 }
@@ -664,12 +669,6 @@ analyze_credit (
 {
   struct ReserveInInfo *rii;
   struct GNUNET_HashCode key;
-  // enum GNUNET_DB_QueryStatus qs;
-  /*struct TALER_AUDITORDB_ReserveInInconsistency riiDb;
-  struct TALER_AUDITORDB_ReserveInInconsistency riiDb2;
-  struct TALER_AUDITORDB_ReserveInInconsistency riiDb3;*/
-  // struct TALER_AUDITORDB_MisattributionInInconsistency mii;
-  // struct TALER_AUDITORDB_RowMinorInconsistencies rmi;
 
   GNUNET_assert (TALER_BANK_CT_RESERVE ==
                  credit_details->type);
@@ -698,22 +697,27 @@ analyze_credit (
   if (0 != GNUNET_memcmp (&credit_details->details.reserve.reserve_pub,
                           &rii->credit_details.details.reserve.reserve_pub))
   {
-#if FIXME
-    riiDb.diagnostic = "wire subject does not match";
-    riiDb.account = details->serial_id;
-    riiDb.amount_exchange_expected = &rii->credit_details.amount;
-    riiDb.amount_wired = &zero;
-    riiDb.reserve_pub = &rii->credit_details.detaisl.reserve.reserve_pub;
-    riiDb.timestamp = rii->credit_details.execution_date.abs_time;
+    struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
+      .diagnostic = "wire subject does not match",
+      .account = (char *) wa->ai->section_name,
+      .row_id = credit_details->serial_id, // FIXME: correct row?
+      .amount_exchange_expected = rii->credit_details.amount,
+      .amount_wired = zero,
+      .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
+      .timestamp = rii->credit_details.execution_date.abs_time
+    };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
       &riiDb);
-
-    if (qs < 0)
+    if (qs <= 0)
     {
+      global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
     }
+#if TO_BE_REMOVED_DEAD_CODE
     TALER_ARL_report (
       report_reserve_in_inconsistencies,
       GNUNET_JSON_PACK (
@@ -737,66 +741,39 @@ analyze_credit (
     TALER_ARL_amount_add (&total_bad_amount_in_minus,
                           &total_bad_amount_in_minus,
                           &rii->credit_details.amount);
-#if FIXME
-    riiDb2.diagnostic = "wire subject does not match";
-    riiDb2.account = credit_details->serial_id;
-    riiDb2.amount_exchange_expected = &rii->credit_details.amount;
-    riiDb2.amount_wired = &zero;
-    riiDb2.reserve_pub = &rii->credit_details.details.reserve.reserve_pub;
-    riiDb2.timestamp = rii->credit_details.execution_date.abs_time;
-
-    qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
-      TALER_ARL_adb->cls,
-      &riiDb2);
-
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }
-    TALER_ARL_report (
-      report_reserve_in_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rii->rowid),
-        GNUNET_JSON_pack_uint64 ("bank_row",
-                                 credit_details->serial_id),
-        TALER_JSON_pack_amount ("amount_exchange_expected",
-                                &zero),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &credit_details->amount),
-        GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &credit_details->details.reserve.reserve_pub
-                                    ),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        credit_details->execution_date.abs_time)
-        ,
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire subject does not match")));
-#endif
     TALER_ARL_amount_add (&total_bad_amount_in_plus,
                           &total_bad_amount_in_plus,
                           &credit_details->amount);
-    goto cleanup;
+    GNUNET_assert (GNUNET_OK ==
+                   free_rii (NULL,
+                             &key,
+                             rii));
+    return true;
   }
   if (0 != TALER_amount_cmp (&rii->credit_details.amount,
                              &credit_details->amount))
   {
-#if FIXME
-    riiDb3.diagnostic = "wire amount does not match";
-    riiDb3.account = credit_details->serial_id;
-    riiDb3.amount_exchange_expected = &rii->credit_details.amount;
-    riiDb3.amount_wired = &credit_details->amount;
-    riiDb3.reserve_pub = &rii->credit_details.details.reserve.reserve_pub;
-    riiDb3.timestamp = rii->credit_details.execution_date.abs_time;
+    struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
+      .diagnostic = "wire amount does not match",
+      .account = (char *) wa->ai->section_name,
+      .row_id = credit_details->serial_id, // FIXME: correct row?
+      .amount_exchange_expected = rii->credit_details.amount,
+      .amount_wired = credit_details->amount,
+      .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
+      .timestamp = rii->credit_details.execution_date.abs_time
+    };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
-      &riiDb3);
-
-    if (qs < 0)
+      &riiDb);
+    if (qs <= 0)
     {
+      global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
     }
+#if TO_BE_REMOVED_DEAD_CODE
     TALER_ARL_report (
       report_reserve_in_inconsistencies,
       GNUNET_JSON_PACK (
@@ -842,24 +819,28 @@ analyze_credit (
                             &total_bad_amount_in_minus,
                             &delta);
     }
-    goto cleanup;
   }
+
   if (0 != strcasecmp (credit_details->debit_account_uri,
                        rii->credit_details.debit_account_uri))
   {
-#if FIXME
-    mii.reserve_pub = &rii->credit_details.details.reserve.reserve_pub;
-    mii.amount = &rii->credit_details.amount;
-    mii.bank_row = credit_details->serial_id;
+    struct TALER_AUDITORDB_MisattributionInInconsistency mii = {
+      .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
+      .amount = rii->credit_details.amount,
+      .bank_row = credit_details->serial_id
+    };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_misattribution_in_inconsistency (
       TALER_ARL_adb->cls,
       &mii);
-
-    if (qs < 0)
+    if (qs <= 0)
     {
+      global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
     }
+#if TO_BE_REMOVED_DEAD_CODE
     TALER_ARL_report (report_misattribution_in_inconsistencies,
                       GNUNET_JSON_PACK (
                         TALER_JSON_pack_amount ("amount",
@@ -880,18 +861,24 @@ analyze_credit (
                                  !=,
                                  rii->credit_details.execution_date))
   {
-#if FIXME
-    rmi.diagnostic = "execution date mismatch";
-    rmi.row_table = "reserves_in";
+    struct TALER_AUDITORDB_RowMinorInconsistencies rmi = {
+      .row_id = rii->rowid,
+      .diagnostic = "execution date mismatch",
+      .row_table = "reserves_in"
+    };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_row_minor_inconsistencies (
       TALER_ARL_adb->cls,
       &rmi);
 
-    if (qs < 0)
+    if (qs <= 0)
     {
+      global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
     }
+#if TO_BE_REMOVED_DEAD_CODE
     TALER_ARL_report (report_row_minor_inconsistencies,
                       GNUNET_JSON_PACK (
                         GNUNET_JSON_pack_string ("table",
@@ -904,11 +891,6 @@ analyze_credit (
                                                  "execution date mismatch")));
 #endif
   }
-cleanup:
-  GNUNET_assert (GNUNET_OK ==
-                 free_rii (NULL,
-                           &key,
-                           rii));
   return true;
 }
 
@@ -997,7 +979,7 @@ process_credits (void *cls)
   qs = TALER_ARL_edb->select_reserves_in_above_serial_id_by_account (
     TALER_ARL_edb->cls,
     wa->ai->section_name,
-    wa->pp.last_reserve_in_serial_id,
+    wa->last_reserve_in_serial_id,
     &reserve_in_cb,
     wa);
   if (0 > qs)
@@ -1076,6 +1058,7 @@ begin_transaction (void)
                 "Failed to initialize auditor database session.\n");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  global_qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   if (GNUNET_OK !=
       TALER_ARL_adb->start (TALER_ARL_adb->cls))
   {
@@ -1107,7 +1090,7 @@ begin_transaction (void)
                                         &zero));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_wire_in));
+                                        &TALER_ARL_USE_AB (total_wire_in)));
   qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (total_wire_in),
