@@ -50,6 +50,7 @@
 #include "pg_select_historic_reserve_revenue.h"
 #include "pg_select_pending_deposits.h"
 #include "pg_select_purse_expired.h"
+#include "pg_update_generic_suppressed.h"
 #include "pg_update_auditor_progress.h"
 #include "pg_update_balance.h"
 #include "pg_update_denomination_balance.h"
@@ -613,6 +614,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_insert_auditor_progress;
   plugin->insert_balance
     = &TAH_PG_insert_balance;
+  plugin->update_generic_suppressed
+    = &TAH_PG_update_generic_suppressed;
+
   plugin->update_auditor_progress
     = &TAH_PG_update_auditor_progress;
   plugin->update_balance

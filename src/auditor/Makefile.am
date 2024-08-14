@@ -182,6 +182,7 @@ taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd_purse-not-closed-inconsistencies-get.c taler-auditor-httpd_purse-not-closed-inconsistencies-get.h \
   taler-auditor-httpd_purse-not-closed-inconsistencies-del.c taler-auditor-httpd_purse-not-closed-inconsistencies-del.h \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h \
+  taler-auditor-httpd_patch_generic_suppressed.c taler-auditor-httpd_patch_generic_suppressed.h \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h \
   taler-auditor-httpd_bad-sig-losses-get.c taler-auditor-httpd_bad-sig-losses-get.h \
   taler-auditor-httpd_bad-sig-losses-del.c taler-auditor-httpd_bad-sig-losses-del.h \

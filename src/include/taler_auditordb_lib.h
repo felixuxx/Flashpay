@@ -23,7 +23,23 @@
 #ifndef TALER_AUDITORDB_LIB_H
 #define TALER_AUDITORDB_LIB_H
 
-#include "taler_auditordb_plugin.h"
+
+enum TALER_AUDITORDB_SuppressableTables
+{
+  /**
+   * For auditor_amount_arithmetic_inconsistency table.
+   */
+  TALER_AUDITORDB_AMOUNT_ARITHMETIC_INCONSISTENCY,
+  /**
+   * Terminal.
+   */
+  TALER_AUDITORDB_SUPPRESSABLE_TABLES_MAX
+};
+
+
+// FIXME: comment
+const char *
+TALER_AUDITORDB_get_table_name (enum TALER_AUDITORDB_SuppressableTables table);
 
 /**
  * Initialize the plugin.

@@ -108,6 +108,8 @@ struct TAH_RequestHandler
    * Is client authentication required for this endpoint?
    */
   bool requires_auth;
+
+  enum TALER_AUDITORDB_SuppressableTables table;
 };
 
 
