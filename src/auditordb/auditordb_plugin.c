@@ -24,6 +24,23 @@
 #include <ltdl.h>
 
 
+const char *
+TALER_AUDITORDB_get_table_name (enum TALER_AUDITORDB_SuppressableTables table)
+{
+  const char *tables[] = {
+    "auditor_amount_arithmetic_inconsistency",
+  };
+
+  if ( (table < 0) ||
+       (table >= TALER_AUDITORDB_SUPPRESSABLE_TABLES_MAX))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  return tables[table];
+}
+
+
 struct TALER_AUDITORDB_Plugin *
 TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {

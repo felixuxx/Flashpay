@@ -73,6 +73,7 @@
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
 
+#include "taler-auditor-httpd_patch_generic_suppressed.h"
 #include "taler-auditor-httpd_emergency-by-count-upd.h"
 #include "taler-auditor-httpd_row-inconsistency-upd.h"
 #include "taler-auditor-httpd_purse-not-closed-inconsistencies-upd.h"
@@ -429,10 +430,17 @@ handle_mhd_request (void *cls,
       "application/json",
       NULL, 0,
       &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_delete, MHD_HTTP_OK, true },
-    { "/monitoring/amount-arithmetic-inconsistency", MHD_HTTP_METHOD_PATCH,
-      "application/json",
-      NULL, 0,
-      &TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_update, MHD_HTTP_OK, true },
+    {
+      "/monitoring/amount-arithmetic-inconsistency",
+      MHD_HTTP_METHOD_PATCH,
+      .mime_type = "application/json",
+      .data = NULL,
+      .data_size = 0,
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK,
+      true,
+      .table = TALER_AUDITORDB_AMOUNT_ARITHMETIC_INCONSISTENCY
+    },
     { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,

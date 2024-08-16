@@ -23,7 +23,8 @@ bin_PROGRAMS = \
   taler-helper-auditor-deposits \
   taler-helper-auditor-purses \
   taler-helper-auditor-reserves \
-  taler-helper-auditor-wire
+  taler-helper-auditor-wire-credit \
+  taler-helper-auditor-wire-debit
 
 bin_SCRIPTS = \
   taler-auditor \
@@ -142,9 +143,25 @@ taler_helper_auditor_reserves_LDADD = \
 
 
 
-taler_helper_auditor_wire_SOURCES = \
-  taler-helper-auditor-wire.c
-taler_helper_auditor_wire_LDADD = \
+taler_helper_auditor_wire_credit_SOURCES = \
+  taler-helper-auditor-wire-credit.c
+taler_helper_auditor_wire_credit_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  libauditorreport.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  $(XLIB)
+
+taler_helper_auditor_wire_debit_SOURCES = \
+  taler-helper-auditor-wire-debit.c
+taler_helper_auditor_wire_debit_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -182,6 +199,7 @@ taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd_purse-not-closed-inconsistencies-get.c taler-auditor-httpd_purse-not-closed-inconsistencies-get.h \
   taler-auditor-httpd_purse-not-closed-inconsistencies-del.c taler-auditor-httpd_purse-not-closed-inconsistencies-del.h \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h \
+  taler-auditor-httpd_patch_generic_suppressed.c taler-auditor-httpd_patch_generic_suppressed.h \
   taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.c taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h \
   taler-auditor-httpd_bad-sig-losses-get.c taler-auditor-httpd_bad-sig-losses-get.h \
   taler-auditor-httpd_bad-sig-losses-del.c taler-auditor-httpd_bad-sig-losses-del.h \

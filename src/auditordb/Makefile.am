@@ -84,6 +84,7 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_select_historic_reserve_revenue.c pg_select_historic_reserve_revenue.h \
   pg_select_pending_deposits.c pg_select_pending_deposits.h \
   pg_select_purse_expired.c pg_select_purse_expired.h \
+  pg_update_generic_suppressed.c pg_update_generic_suppressed.h \
   pg_update_auditor_progress.c pg_update_auditor_progress.h \
   pg_update_balance.c pg_update_balance.h \
   pg_update_denomination_balance.c pg_update_denomination_balance.h \

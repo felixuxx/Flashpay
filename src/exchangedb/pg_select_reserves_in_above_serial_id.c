@@ -158,6 +158,8 @@ TEH_PG_select_reserves_in_above_serial_id (
                                              params,
                                              &reserves_in_serial_helper_cb,
                                              &risc);
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    return qs;
   if (GNUNET_OK != risc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
