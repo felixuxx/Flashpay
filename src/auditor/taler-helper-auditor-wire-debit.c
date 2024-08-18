@@ -238,16 +238,6 @@ static TALER_ARL_DEF_AB (total_wire_out);
 static TALER_ARL_DEF_AB (total_drained);
 
 /**
- * Final balance at the end of this iteration.
- */
-// static TALER_ARL_DEF_AB (final_balance);  // KILL
-
-/**
- * Starting balance at the beginning of this iteration.
- */
-static struct TALER_Amount start_balance; // for total_wire_out
-
-/**
  * True if #start_balance was initialized.
  */
 static bool had_start_balance;
@@ -833,7 +823,6 @@ generate_report (void *cls,
                  void *value)
 {
   struct ReasonDetail *rd = value;
-  enum GNUNET_DB_QueryStatus qs;
   // struct TALER_AUDITORDB_KycLag kycl;
   // struct TALER_AUDITORDB_AmlLag amllag;
   // struct TALER_AUDITORDB_Lag lag;
@@ -851,17 +840,21 @@ generate_report (void *cls,
                         &TALER_ARL_USE_AB (total_amount_lag),
                         &rd->total_amount);
   // TODO add kyc lag db entry
-
-  qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
-    TALER_ARL_adb->cls,
-    &rbiil);
-
-  if (qs < 0)
+#if FIXME
   {
-    global_qs = qs;
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return GNUNET_SYSERR;
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
+      TALER_ARL_adb->cls,
+      &rbiil);
+    if (qs < 0)
+    {
+      global_qs = qs;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return GNUNET_SYSERR;
+    }
   }
+#endif
 #if TO_BE_REMOVED_DEAD_CODE
   TALER_ARL_report (report_kyc_lags,
                     GNUNET_JSON_PACK (
@@ -1187,11 +1180,12 @@ wire_out_cb (void *cls,
        has not yet fully caught up with the transfers it should do. */
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .row_id = rowid,
-      .destination_account = payto_uri,
+      .destination_account = (char *) payto_uri,
       .diagnostic = "expected wire transfer missing",
       .expected = *amount,
       .claimed = zero,
     };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
@@ -1241,6 +1235,7 @@ wire_out_cb (void *cls,
       .expected = *amount,
       .claimed = zero,
     };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
@@ -1285,11 +1280,12 @@ wire_out_cb (void *cls,
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .row_id = rowid,
-      .destination_account = payto_uri,
+      .destination_account = (char *) payto_uri,
       .diagnostic = "wire amount does not match",
       .expected = *amount,
       .claimed = zero,
     };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
@@ -1352,7 +1348,6 @@ wire_out_cb (void *cls,
                                date,
                                roi->details.execution_date))
     ret = GNUNET_SYSERR;
-  cleanup:
   GNUNET_assert (GNUNET_OK ==
                  free_roi (NULL,
                            &key,
@@ -1508,7 +1503,7 @@ complain_out_not_found (void *cls,
               &master_sig))
         {
           struct TALER_AUDITORDB_RowInconsistency ri = {
-            .rowid = serial,
+            .row_id = roi->details.serial_id,
             .row_table = "profit_drains",
             .diagnostic = "invalid signature"
           };
@@ -1551,10 +1546,9 @@ complain_out_not_found (void *cls,
             .claimed = zero,
           };
 
-          qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency
-               (
+          qs = TALER_ARL_adb->insert_wire_out_inconsistency (
             TALER_ARL_adb->cls,
-            &rbiil);
+            &woi);
           if (qs < 0)
           {
             global_qs = qs;
@@ -1591,17 +1585,16 @@ complain_out_not_found (void *cls,
                                    &roi->details.amount))
         {
           struct TALER_AUDITORDB_WireOutInconsistency woi = {
-            .row_id = serial,
+            .row_id = roi->details.serial_id,
             .destination_account = (char *) roi->details.credit_account_uri,
             .diagnostic = "incorrect amount to correct account",
             .expected = roi->details.amount,
-            .claimed = *amount,
+            .claimed = amount,
           };
 
-          qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency
-               (
+          qs = TALER_ARL_adb->insert_wire_out_inconsistency (
             TALER_ARL_adb->cls,
-            &rbiil);
+            &woi);
           if (qs < 0)
           {
             global_qs = qs;
@@ -1649,7 +1642,7 @@ complain_out_not_found (void *cls,
 
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .row_id = serial,
+      .row_id = roi->details.serial_id,
       .destination_account = (char *) roi->details.credit_account_uri,
       .diagnostic = "missing justification for outgoing wire transfer",
       .expected = zero,
@@ -1657,9 +1650,9 @@ complain_out_not_found (void *cls,
     };
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
+    qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
-      &rbiil);
+      &woi);
     if (qs < 0)
     {
       global_qs = qs;
@@ -1795,10 +1788,11 @@ history_debit_cb (void *cls,
         {
           struct TALER_AUDITORDB_WireFormatInconsistency wfi = {
             // fixme: rowid!
-            .diagnostic = "duplicate subject hash";
-            .amount = &dd->amount;
-            .wire_offset = dd->serial_id;
+            .diagnostic = "duplicate subject hash",
+            .amount = dd->amount,
+            .wire_offset = dd->serial_id
           };
+          enum GNUNET_DB_QueryStatus qs;
 
           qs = TALER_ARL_adb->insert_wire_format_inconsistency (
             TALER_ARL_adb->cls,
@@ -1808,7 +1802,8 @@ history_debit_cb (void *cls,
           {
             global_qs = qs;
             GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-            return GNUNET_SYSERR;
+            commit (qs);
+            return;
           }
           TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_format_amount),
                                 &TALER_ARL_USE_AB (total_wire_format_amount),
@@ -2091,8 +2086,8 @@ begin_transaction (void)
                                             &TALER_ARL_USE_AB (total_drained)));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_set_zero (TALER_ARL_currency,
-                                            &TALER_ARL_USE_AB (total_wire
-                                                               - out)));
+                                            &TALER_ARL_USE_AB (total_wire_out)))
+      ;
       had_start_balance = false;
       break;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -2168,7 +2163,7 @@ begin_transaction (void)
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
-  begin_credit_audit ();
+  begin_debit_audit ();
   return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
 
