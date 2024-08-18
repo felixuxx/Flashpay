@@ -21,7 +21,6 @@
 #include "platform.h"
 #include <gnunet/gnunet_common.h>
 #include <gnunet/gnunet_db_lib.h>
-#include "taler_auditordb_lib.h"
 #include "taler_auditordb_plugin.h"
 
 /**
@@ -33,24 +32,24 @@
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                              \
-  do {                                          \
-    if (! (cond)) { break;}                     \
-    GNUNET_break (0);                         \
-    goto drop;                                \
-  } while (0)
+        do {                                          \
+          if (! (cond)) { break;}                     \
+          GNUNET_break (0);                         \
+          goto drop;                                \
+        } while (0)
 
 /**
  * Initializes @a ptr with random data.
  */
 #define RND_BLK(ptr)                                                    \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, \
-                              sizeof (*ptr))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, \
+                                    sizeof (*ptr))
 
 /**
  * Initializes @a ptr with zeros.
  */
 #define ZR_BLK(ptr) \
-  memset (ptr, 0, sizeof (*ptr))
+        memset (ptr, 0, sizeof (*ptr))
 
 
 /**
