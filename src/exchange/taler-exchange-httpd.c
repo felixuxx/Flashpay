@@ -2110,10 +2110,11 @@ handle_mhd_request (void *cls,
  * Load configuration parameters for the exchange
  * server into the corresponding global variables.
  *
+ * @param cfg_fn name of our configuration file
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-exchange_serve_process_config (void)
+exchange_serve_process_config (const char *cfg_fn)
 {
   TEH_enable_kyc
     = GNUNET_CONFIGURATION_get_value_yesno (
@@ -2127,8 +2128,10 @@ exchange_serve_process_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_KYCLOGIC_kyc_init (TEH_cfg))
+      TALER_KYCLOGIC_kyc_init (TEH_cfg,
+                               cfg_fn))
   {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -2643,7 +2646,7 @@ run (void *cls,
   TEH_cfg = config;
 
   if (GNUNET_OK !=
-      exchange_serve_process_config ())
+      exchange_serve_process_config (cfgfile))
   {
     global_ret = EXIT_NOTCONFIGURED;
     GNUNET_SCHEDULER_shutdown ();

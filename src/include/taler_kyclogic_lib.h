@@ -238,10 +238,12 @@ TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger);
  * Initialize KYC subsystem. Loads the KYC configuration.
  *
  * @param cfg configuration to parse
+ * @param cfg_fn configuration filename for AML helpers
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                         const char *cfg_fn);
 
 
 /**

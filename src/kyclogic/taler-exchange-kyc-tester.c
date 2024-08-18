@@ -1559,7 +1559,8 @@ run (void *cls,
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   if (GNUNET_OK !=
-      TALER_KYCLOGIC_kyc_init (config))
+      TALER_KYCLOGIC_kyc_init (config,
+                               cfgfile))
   {
     global_ret = EXIT_NOTCONFIGURED;
     GNUNET_SCHEDULER_shutdown ();

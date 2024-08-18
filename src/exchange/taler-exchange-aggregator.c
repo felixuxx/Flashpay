@@ -1247,7 +1247,8 @@ run (void *cls,
   else
     shard_size = (uint32_t) ass;
   if (GNUNET_OK !=
-      TALER_KYCLOGIC_kyc_init (cfg))
+      TALER_KYCLOGIC_kyc_init (cfg,
+                               cfgfile))
   {
     cfg = NULL;
     global_ret = EXIT_NOTCONFIGURED;
