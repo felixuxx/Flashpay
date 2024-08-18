@@ -13,13 +13,9 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
-
 #include "pg_insert_emergency_by_count.h"
 
 enum GNUNET_DB_QueryStatus
@@ -29,15 +25,13 @@ TAH_PG_insert_emergency_by_count (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
     GNUNET_PQ_query_param_auto_from_type (&dc->denompub_h),
-    GNUNET_PQ_query_param_int64 (&dc->num_issued),
-    GNUNET_PQ_query_param_int64 (&dc->num_known),
+    GNUNET_PQ_query_param_uint64 (&dc->num_issued),
+    GNUNET_PQ_query_param_uint64 (&dc->num_known),
     TALER_PQ_query_param_amount (pg->conn, &dc->risk),
     GNUNET_PQ_query_param_absolute_time (&dc->start),
     GNUNET_PQ_query_param_absolute_time (&dc->deposit_end),
     TALER_PQ_query_param_amount (pg->conn, &dc->value),
-
     GNUNET_PQ_query_param_end
   };
 

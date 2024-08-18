@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_reserves.h"
 
 
@@ -68,13 +65,10 @@ reserves_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-
     struct TALER_AUDITORDB_Reserves dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_int64 ("auditor_reserves_rowid",
-                                   &dc.auditor_reserves_rowid),
+      GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid",
+                                    &dc.auditor_reserves_rowid),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",  &dc.reserve_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",  &dc.reserve_balance),
       TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_loss",  &dc.reserve_loss),
@@ -88,8 +82,6 @@ reserves_cb (void *cls,
       GNUNET_PQ_result_spec_absolute_time ("expiration_date",
                                            &dc.expiration_date),
       GNUNET_PQ_result_spec_string ("origin_account",  &dc.origin_account),
-
-
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -103,9 +95,7 @@ reserves_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     dc.auditor_reserves_rowid,
                     &dc);
@@ -125,9 +115,7 @@ TAH_PG_get_reserves (
   TALER_AUDITORDB_ReservesCallback cb,
   void *cb_cls)
 {
-
   uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
@@ -186,7 +174,6 @@ TAH_PG_get_reserves (
                                              params,
                                              &reserves_cb,
                                              &dcc);
-
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

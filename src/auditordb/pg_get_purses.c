@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_purses.h"
 
 
@@ -68,20 +65,18 @@ purses_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-
     struct TALER_AUDITORDB_Purses dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_int64 ("auditor_purses_rowid",
-                                   &dc.auditor_purses_rowid),
-      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",  &dc.purse_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("balance",  &dc.balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("target",  &dc.target),
+      GNUNET_PQ_result_spec_uint64 ("auditor_purses_rowid",
+                                    &dc.auditor_purses_rowid),
+      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                            &dc.purse_pub),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                   &dc.balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("target",
+                                   &dc.target),
       GNUNET_PQ_result_spec_absolute_time ("expiration_date",
                                            &dc.expiration_date),
-
-
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -95,9 +90,7 @@ purses_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     dc.auditor_purses_rowid,
                     &dc);
@@ -117,9 +110,7 @@ TAH_PG_get_purses (
   TALER_AUDITORDB_PursesCallback cb,
   void *cb_cls)
 {
-
   uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
