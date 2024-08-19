@@ -157,7 +157,6 @@ report_amount_arithmetic_inconsistency (
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
-  struct TALER_AUDITORDB_AmountArithmeticInconsistency aai;
   enum GNUNET_DB_QueryStatus qs;
 
   if (0 < TALER_amount_cmp (exchange,
@@ -176,32 +175,26 @@ report_amount_arithmetic_inconsistency (
                                auditor,
                                exchange);
   }
-  aai.profitable = profitable;
-  aai.operation = (char *) operation;
-  aai.exchange_amount = *exchange;
-  aai.auditor_amount = *auditor;
 
-  qs = TALER_ARL_adb->insert_amount_arithmetic_inconsistency (
-    TALER_ARL_adb->cls,
-    &aai);
-
-  if (qs < 0)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    struct TALER_AUDITORDB_AmountArithmeticInconsistency aai = {
+      .profitable = profitable,
+      .operation = (char *) operation,
+      .exchange_amount = *exchange,
+      .auditor_amount = *auditor
+    };
+
+    qs = TALER_ARL_adb->insert_amount_arithmetic_inconsistency (
+      TALER_ARL_adb->cls,
+      &aai);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling!
+    }
   }
 
-  TALER_ARL_report (report_amount_arithmetic_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("operation",
-                                               operation),
-                      GNUNET_JSON_pack_uint64 ("rowid",
-                                               rowid),
-                      TALER_JSON_pack_amount ("exchange",
-                                              exchange),
-                      TALER_JSON_pack_amount ("auditor",
-                                              auditor),
-                      GNUNET_JSON_pack_int64 ("profitable",
-                                              profitable)));
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -227,11 +220,11 @@ report_row_inconsistency (const char *table,
                           const char *diagnostic)
 {
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_RowInconsistency ri;
-
-  ri.diagnostic = (char *) diagnostic;
-  ri.row_table = (char *) table;
-  ri.row_id = rowid;
+  struct TALER_AUDITORDB_RowInconsistency ri = {
+    .diagnostic = (char *) diagnostic,
+    .row_table = (char *) table,
+    .row_id = rowid
+  };
 
   qs = TALER_ARL_adb->insert_row_inconsistency (
     TALER_ARL_adb->cls,
@@ -240,16 +233,8 @@ report_row_inconsistency (const char *table,
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    // FIXME: error handling!
   }
-
-  TALER_ARL_report (report_row_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("table",
-                                               table),
-                      GNUNET_JSON_pack_uint64 ("row",
-                                               rowid),
-                      GNUNET_JSON_pack_string ("diagnostic",
-                                               diagnostic)));
 }
 
 
@@ -523,7 +508,6 @@ handle_purse_requested (
   struct PurseContext *pc = cls;
   struct PurseSummary *ps;
   struct GNUNET_HashCode key;
-  struct TALER_AUDITORDB_BadSigLosses bsl;
   enum GNUNET_DB_QueryStatus qs;
 
   TALER_ARL_USE_PP (purse_request_serial_id) = rowid;
@@ -536,10 +520,12 @@ handle_purse_requested (
                                         purse_pub,
                                         purse_sig))
   {
-    bsl.row_id = rowid;
-    bsl.operation = "purse-request";
-    bsl.loss = *target_amount;
-    bsl.operation_specific_pub = purse_pub->eddsa_pub;
+    struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .row_id = rowid,
+      .operation = "purse-request",
+      .loss = *target_amount,
+      .operation_specific_pub = purse_pub->eddsa_pub
+    };
 
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
@@ -548,18 +534,8 @@ handle_purse_requested (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling!
     }
-
-    TALER_ARL_report (report_bad_sig_losses,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("operation",
-                                                 "purse-reqeust"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("loss",
-                                                target_amount),
-                        GNUNET_JSON_pack_data_auto ("key_pub",
-                                                    purse_pub)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           target_amount);
@@ -620,7 +596,6 @@ handle_purse_deposits (
       : deposit->exchange_base_url;
   struct TALER_DenominationHashP h_denom_pub;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_BadSigLosses bsl;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= TALER_ARL_USE_PP (purse_deposits_serial_id));
@@ -666,10 +641,12 @@ handle_purse_deposits (
                                          &deposit->coin_pub,
                                          &deposit->coin_sig))
   {
-    bsl.row_id = rowid;
-    bsl.operation = "purse-deposit";
-    bsl.loss = deposit->amount;
-    bsl.operation_specific_pub = deposit->coin_pub.eddsa_pub;
+    struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .row_id = rowid,
+      .operation = "purse-deposit",
+      .loss = deposit->amount,
+      .operation_specific_pub = deposit->coin_pub.eddsa_pub
+    };
 
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
@@ -678,18 +655,8 @@ handle_purse_deposits (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling!
     }
-
-    TALER_ARL_report (report_bad_sig_losses,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("operation",
-                                                 "purse-deposit"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("loss",
-                                                &deposit->amount),
-                        GNUNET_JSON_pack_data_auto ("key_pub",
-                                                    &deposit->coin_pub)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           &deposit->amount);
@@ -756,7 +723,6 @@ handle_purse_merged (
 {
   struct PurseContext *pc = cls;
   struct PurseSummary *ps;
-  struct TALER_AUDITORDB_BadSigLosses bsl;
   enum GNUNET_DB_QueryStatus qs;
 
   /* should be monotonically increasing */
@@ -778,12 +744,14 @@ handle_purse_merged (
                                          merge_pub,
                                          merge_sig))
     {
-      GNUNET_free (reserve_url);
-      bsl.row_id = rowid;
-      bsl.operation = "merge-purse";
-      bsl.loss = *amount;
-      bsl.operation_specific_pub = merge_pub->eddsa_pub;
+      struct TALER_AUDITORDB_BadSigLosses bsl = {
+        .row_id = rowid,
+        .operation = "merge-purse",
+        .loss = *amount,
+        .operation_specific_pub = merge_pub->eddsa_pub
+      };
 
+      GNUNET_free (reserve_url);
       qs = TALER_ARL_adb->insert_bad_sig_losses (
         TALER_ARL_adb->cls,
         &bsl);
@@ -791,18 +759,8 @@ handle_purse_merged (
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        // FIXME: error handling!
       }
-
-      TALER_ARL_report (report_bad_sig_losses,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_string ("operation",
-                                                   "merge-purse"),
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("loss",
-                                                  amount),
-                          GNUNET_JSON_pack_data_auto ("key_pub",
-                                                      merge_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount);
@@ -874,8 +832,6 @@ handle_account_merged (
 {
   struct PurseContext *pc = cls;
   struct PurseSummary *ps;
-  struct TALER_AUDITORDB_BadSigLosses bsl;
-  enum GNUNET_DB_QueryStatus qs;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= TALER_ARL_USE_PP (purse_account_merge_serial_id));
@@ -892,10 +848,13 @@ handle_account_merged (
                                          reserve_pub,
                                          reserve_sig))
   {
-    bsl.row_id = rowid;
-    bsl.operation = "account-merge";
-    bsl.loss = *purse_fee;
-    bsl.operation_specific_pub = reserve_pub->eddsa_pub;
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .row_id = rowid,
+      .operation = "account-merge",
+      .loss = *purse_fee,
+      .operation_specific_pub = reserve_pub->eddsa_pub
+    };
 
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
@@ -904,18 +863,8 @@ handle_account_merged (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling!
     }
-
-    TALER_ARL_report (report_bad_sig_losses,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("operation",
-                                                 "account-merge"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("loss",
-                                                purse_fee),
-                        GNUNET_JSON_pack_data_auto ("key_pub",
-                                                    reserve_pub)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           purse_fee);
@@ -1077,32 +1026,22 @@ handle_purse_expired (
   struct GNUNET_TIME_Timestamp expiration_date)
 {
   struct PurseContext *pc = cls;
-  struct TALER_AUDITORDB_PurseNotClosedInconsistencies pnci;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AUDITORDB_PurseNotClosedInconsistencies pnci = {
+    .amount = *balance,
+    .expiration_date = expiration_date.abs_time,
+    .purse_pub = purse_pub->eddsa_pub
+  };
 
   (void) pc;
-  pnci.amount = *balance;
-  pnci.expiration_date = expiration_date.abs_time;
-  pnci.purse_pub = purse_pub->eddsa_pub;
-
   qs = TALER_ARL_adb->insert_purse_not_closed_inconsistencies (
     TALER_ARL_adb->cls,
     &pnci);
-
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    // FIXME: error handling!
   }
-
-  TALER_ARL_report (report_purse_not_closed_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_data_auto ("purse_pub",
-                                                  purse_pub),
-                      TALER_JSON_pack_amount ("balance",
-                                              balance),
-                      TALER_JSON_pack_time_abs_human ("expired",
-                                                      expiration_date.abs_time))
-                    );
   TALER_ARL_amount_add (&total_delayed_decisions,
                         &total_delayed_decisions,
                         balance);

@@ -101,17 +101,6 @@ TALER_ARL_do_abort (void)
 }
 
 
-void
-TALER_ARL_report (json_t *array,
-                  json_t *object)
-{
-  GNUNET_assert (NULL != object);
-  GNUNET_assert (0 ==
-                 json_array_append_new (array,
-                                        object));
-}
-
-
 /**
  * Function called with the results of iterate_denomination_info(),
  * or directly (!).  Used to check and add the respective denomination

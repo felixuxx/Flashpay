@@ -212,6 +212,7 @@ struct TALER_AUDITORDB_Generic_Update
  */
 struct TALER_AUDITORDB_AmountArithmeticInconsistency
 {
+  // FIXME: which row?
   uint64_t row_id;
   char *operation;
   struct TALER_Amount exchange_amount;

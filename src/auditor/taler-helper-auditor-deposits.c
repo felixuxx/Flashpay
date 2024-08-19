@@ -204,19 +204,6 @@ test_dc (void *cls,
 
     return GNUNET_OK; /* all coins found, all good */
   }
-  /* deposit confirmation missing! report! */
-  TALER_ARL_report (
-    report_deposit_confirmation_inconsistencies,
-    GNUNET_JSON_PACK (
-
-      TALER_JSON_pack_time_abs_human ("timestamp",
-                                      dc->exchange_timestamp.abs_time),
-      TALER_JSON_pack_amount ("amount",
-                              &dc->total_without_fee),
-      GNUNET_JSON_pack_uint64 ("rowid",
-                               serial_id),
-      GNUNET_JSON_pack_data_auto ("account",
-                                  &dc->h_wire)));
   // dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial, serial_id);
   dcc->missed_count++;
   TALER_ARL_amount_add (&dcc->missed_amount,
