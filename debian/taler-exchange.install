@@ -7,7 +7,6 @@ usr/bin/taler-exchange-kyc-aml-pep-trigger.sh
 usr/bin/taler-exchange-kyc-oauth2-challenger.sh
 usr/bin/taler-exchange-kyc-kycaid-converter.sh
 usr/bin/taler-exchange-helper-measure-test-form
-usr/bin/usr/bin/taler-exchange-helper-measure-test-form
 usr/bin/taler-exchange-kyc-persona-converter.sh
 usr/bin/taler-exchange-router
 usr/bin/taler-exchange-secmod-cs
