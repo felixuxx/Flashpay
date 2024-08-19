@@ -98,6 +98,16 @@ extern struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
 extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
+ * Maximum amount per individual transaction. Invalid amount if unlimited.
+ */
+extern struct TALER_Amount TEH_transaction_limit;
+
+/**
+ * Maximum amount per refund. Invalid amount if unlimited.
+ */
+extern struct TALER_Amount TEH_refund_limit;
+
+/**
  * Absolute STEFAN parameter.
  */
 extern struct TALER_Amount TEH_stefan_abs;

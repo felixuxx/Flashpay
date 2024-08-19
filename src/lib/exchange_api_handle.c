@@ -74,7 +74,7 @@
  * how long do we assume the reply to be valid at least?
  */
 #define MINIMUM_EXPIRATION GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MINUTES, 2)
+          GNUNET_TIME_UNIT_MINUTES, 2)
 
 
 /**
@@ -363,7 +363,8 @@ TEAH_get_auditors_for_dc (
   if (0 == keys->num_auditors)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No auditor available. Not submitting deposit confirmations.\n");
+                "No auditor available. Not submitting deposit confirmations.\n")
+    ;
     return;
   }
   for (unsigned int i = 0; i<keys->num_auditors; i++)
@@ -379,9 +380,9 @@ TEAH_get_auditors_for_dc (
 
 
 #define EXITIF(cond)                                              \
-  do {                                                            \
-    if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
-  } while (0)
+        do {                                                            \
+          if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
+        } while (0)
 
 
 /**
@@ -932,6 +933,18 @@ decode_keys_json (const json_t *resp_obj,
           "stefan_log",
           currency,
           &key_data->stefan_log),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_amount (
+            "transaction_amount_limit",
+            currency,
+            &key_data->transaction_limit),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_amount (
+            "refund_amount_limit",
+            currency,
+            &key_data->refund_limit),
+          NULL),
         GNUNET_JSON_spec_double (
           "stefan_lin",
           &key_data->stefan_lin),
@@ -1411,7 +1424,8 @@ keys_completed_cb (void *cls,
                               &kd_old->denom_keys[i].key);
       kd->num_auditors = kd_old->num_auditors;
       kd->auditors = GNUNET_new_array (kd->num_auditors,
-                                       struct TALER_EXCHANGE_AuditorInformation);
+                                       struct TALER_EXCHANGE_AuditorInformation)
+      ;
       /* Now the necessary deep copy... */
       for (unsigned int i = 0; i<kd_old->num_auditors; i++)
       {
