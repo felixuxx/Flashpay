@@ -273,7 +273,9 @@ static int internal_checks;
  */
 static int ignore_account_404;
 
-// FIXME: comment
+/**
+ * Database event handler to wake us up again.
+ */
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
@@ -709,27 +711,9 @@ struct ReasonDetail
   struct GNUNET_TIME_Timestamp deadline;
 
   /**
-   * Target account, NULL if even that is not known (due to
-   * exchange lacking required entry in wire_targets table).
+   * Target account hash.
    */
-  char *payto_uri;
-
-  /**
-   * Account properties, possibly NULL.
-   * FIXME: not used!
-   */
-  json_t *properties;
-
-  /**
-   * Account KYC rules.
-   * FIXME: not used!
-   */
-  json_t *jrules;
-
-  /**
-   * TODO: Is the wire transfer blocked due to KYC/AML checks, according to the exchange?
-   */
-  /* bool is_blocked_because_of_kyc_aml; */
+  struct TALER_PaytoHashP wire_target_h_payto;
 
 };
 
@@ -784,9 +768,6 @@ free_report_entry (void *cls,
 {
   struct ReasonDetail *rd = value;
 
-  json_decref (rd->properties);
-  json_decref (rd->jrules);
-  GNUNET_free (rd->payto_uri);
   GNUNET_free (rd);
   return GNUNET_YES;
 }
@@ -802,7 +783,6 @@ free_report_entry (void *cls,
  * @return #GNUNET_YES if we should continue to
  *         iterate,
  *         #GNUNET_NO if not.
- * FIXME:
  */
 static enum GNUNET_GenericReturnValue
 generate_report (void *cls,
@@ -826,14 +806,11 @@ generate_report (void *cls,
                         &rd->total_amount);
   {
     enum GNUNET_DB_QueryStatus qs;
-    struct TALER_PaytoHashP h_payto;
 
-    TALER_payto_hash (rd->payto_uri,
-                      &h_payto);
     qs = TALER_ARL_adb->insert_pending_deposit (
       TALER_ARL_adb->cls,
       rd->batch_deposit_serial_id,
-      &h_payto,
+      &rd->wire_target_h_payto,
       &rd->total_amount,
       rd->deadline);
     if (qs < 0)
@@ -850,7 +827,6 @@ generate_report (void *cls,
 
 
 /**
- * FIXME:
  * Function called on deposits that are past their due date
  * and have not yet seen a wire transfer.
  *
@@ -876,20 +852,15 @@ report_wire_missing_cb (void *cls,
   {
     rd = GNUNET_new (struct ReasonDetail);
     rd->batch_deposit_serial_id = batch_deposit_serial_id;
+    rd->wire_target_h_payto = *wire_target_h_payto;
+    rd->total_amount = *total_amount;
+    rd->deadline = deadline;
     GNUNET_assert (GNUNET_YES ==
                    GNUNET_CONTAINER_multishortmap_put (
                      rc->map,
                      &wire_target_h_payto->hash,
                      rd,
                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-    rc->err = TALER_ARL_edb->select_justification_for_missing_wire (
-      TALER_ARL_edb->cls,
-      wire_target_h_payto,
-      &rd->payto_uri,
-      &rd->properties,
-      &rd->jrules);
-    rd->total_amount = *total_amount;
-    rd->deadline = deadline;
   }
   else
   {
@@ -1018,7 +989,11 @@ check_for_required_transfers (void)
   GNUNET_CONTAINER_multishortmap_destroy (rc.map);
   /* conclude with success */
   commit (global_qs);
-  GNUNET_SCHEDULER_shutdown ();
+  if (test_mode)
+  {
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
 }
 
 
@@ -1364,8 +1339,6 @@ complain_out_not_found (void *cls,
     struct GNUNET_TIME_Timestamp request_timestamp;
     struct TALER_Amount amount;
     struct TALER_MasterSignatureP master_sig;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi2;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi3;
 
     qs = TALER_ARL_edb->get_drain_profit (TALER_ARL_edb->cls,
                                           &roi->details.wtid,
@@ -1677,8 +1650,8 @@ process_debits (void *cls)
   struct WireAccount *wa = cls;
 
   /* skip accounts where DEBIT is not enabled */
-  while ((NULL != wa) &&
-         (GNUNET_NO == wa->ai->debit_enabled))
+  while ( (NULL != wa) &&
+          (GNUNET_NO == wa->ai->debit_enabled))
     wa = wa->next;
   if (NULL == wa)
   {
@@ -2026,8 +1999,6 @@ db_notify (void *cls,
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
   }
-
-
 }
 
 
