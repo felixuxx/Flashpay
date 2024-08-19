@@ -2876,8 +2876,9 @@ TALER_KYCLOGIC_measure_to_requirement (
                                xids),
       GNUNET_JSON_pack_string ("description",
                                kc->description),
-      GNUNET_JSON_pack_object_incref ("description_i18n",
-                                      (json_t *) kc->description_i18n));
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("description_i18n",
+                                        (json_t *) kc->description_i18n)));
     GNUNET_free (xids);
     return kri;
   case TALER_KYCLOGIC_CT_LINK:
