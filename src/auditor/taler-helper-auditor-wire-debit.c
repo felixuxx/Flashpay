@@ -731,11 +731,13 @@ struct ReasonDetail
 
   /**
    * Account properties, possibly NULL.
+   * FIXME: not used!
    */
   json_t *properties;
 
   /**
    * Account KYC rules.
+   * FIXME: not used!
    */
   json_t *jrules;
 
@@ -823,9 +825,7 @@ generate_report (void *cls,
                  void *value)
 {
   struct ReasonDetail *rd = value;
-  // struct TALER_AUDITORDB_KycLag kycl;
-  // struct TALER_AUDITORDB_AmlLag amllag;
-  // struct TALER_AUDITORDB_Lag lag;
+
 
   /* For now, we simplify and only check that the
      amount was tiny */
@@ -839,14 +839,18 @@ generate_report (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_amount_lag),
                         &TALER_ARL_USE_AB (total_amount_lag),
                         &rd->total_amount);
-  // TODO add kyc lag db entry
-#if FIXME
   {
     enum GNUNET_DB_QueryStatus qs;
+    struct TALER_PaytoHashP h_payto;
 
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
+    TALER_payto_hash (rd->payto_uri,
+                      &h_payto);
+    qs = TALER_ARL_adb->insert_pending_deposit (
       TALER_ARL_adb->cls,
-      &rbiil);
+      rd->batch_deposit_serial_id,
+      &h_payto,
+      &rd->total_amount,
+      rd->deadline);
     if (qs < 0)
     {
       global_qs = qs;
@@ -854,7 +858,6 @@ generate_report (void *cls,
       return GNUNET_SYSERR;
     }
   }
-#endif
 #if TO_BE_REMOVED_DEAD_CODE
   TALER_ARL_report (report_kyc_lags,
                     GNUNET_JSON_PACK (
