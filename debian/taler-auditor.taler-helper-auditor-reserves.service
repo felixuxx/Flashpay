@@ -1,5 +1,5 @@
 [Unit]
-Description=GNU Taler auditor helper checking confirmation deposits
+Description=GNU Taler auditor helper checking reserves
 After=postgres.service
 
 [Service]
@@ -8,7 +8,7 @@ Type=simple
 Restart=always
 RestartSec=1s
 RestartPreventExitStatus=9
-ExecStart=/usr/bin/taler-helper-auditor-deposits -c /etc/taler/taler.conf -L INFO
+ExecStart=/usr/bin/taler-helper-auditor-reserves -c /etc/taler/taler.conf -L INFO
 PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=full
