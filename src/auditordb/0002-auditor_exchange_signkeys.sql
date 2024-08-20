@@ -20,8 +20,7 @@ CREATE TABLE auditor_exchange_signkeys
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,ep_valid_from BIGINT NOT NULL
   ,ep_expire_sign BIGINT NOT NULL
-  ,ep_expire_legal BIGINT NOT NULL,
-   suppressed BOOLEAN NOT NULL DEFAULT FALSE
+  ,ep_expire_legal BIGINT NOT NULL
   );
 COMMENT ON TABLE auditor_exchange_signkeys
   IS 'list of the online signing keys of exchanges we are auditing';

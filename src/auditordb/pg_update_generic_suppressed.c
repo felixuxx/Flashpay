@@ -52,7 +52,7 @@ TAH_PG_update_generic_suppressed (
     TALER_AUDITORDB_SUPPRESSABLE_TABLES_MAX];
 
   struct Preparations *prep = &preps[table];
-  const char *table_name = TALER_AUDITORDB_get_table_name (table);
+  const char *table_name = TAH_PG_get_table_name (table);
   char statement_name[256];
 
   GNUNET_snprintf (statement_name,

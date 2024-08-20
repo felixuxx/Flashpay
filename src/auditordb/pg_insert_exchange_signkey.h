@@ -18,15 +18,13 @@
  * @brief implementation of the insert_exchange_signkey function
  * @author Christian Grothoff
  */
-
-/*
 #ifndef PG_INSERT_EXCHANGE_SIGNKEY_H
 #define PG_INSERT_EXCHANGE_SIGNKEY_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_auditordb_plugin.h"
-*/
+
 /**
  * Insert information about a signing key of the exchange.
  *
@@ -34,12 +32,9 @@
  * @param sk signing key information to store
  * @return query result status
  */
-/*
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_exchange_signkey (
   void *cls,
   const struct TALER_AUDITORDB_ExchangeSigningKey *sk);
 
-
 #endif
-*/

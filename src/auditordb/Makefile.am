@@ -86,7 +86,6 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_select_purse_expired.c pg_select_purse_expired.h \
   pg_update_generic_suppressed.c pg_update_generic_suppressed.h \
   pg_update_auditor_progress.c pg_update_auditor_progress.h \
-  pg_update_balance.c pg_update_balance.h \
   pg_update_denomination_balance.c pg_update_denomination_balance.h \
   pg_update_purse_info.c pg_update_purse_info.h \
   pg_update_reserve_info.c pg_update_reserve_info.h \
@@ -130,7 +129,6 @@ pg_update_row_inconsistency.c pg_update_row_inconsistency.h \
 pg_update_purse_not_closed_inconsistencies.c pg_update_purse_not_closed_inconsistencies.h \
 pg_update_reserve_balance_insufficient_inconsistency.c pg_update_reserve_balance_insufficient_inconsistency.h \
 pg_update_coin_inconsistency.c pg_update_coin_inconsistency.h \
-pg_update_progress.c pg_update_progress.h \
 pg_update_denomination_key_validity_withdraw_inconsistency.c pg_update_denomination_key_validity_withdraw_inconsistency.h \
 pg_update_refreshes_hanging.c pg_update_refreshes_hanging.h \
 pg_update_emergency.c pg_update_emergency.h \
@@ -151,31 +149,17 @@ pg_get_misattribution_in_inconsistency.c pg_get_misattribution_in_inconsistency.
 pg_del_misattribution_in_inconsistency.c pg_del_misattribution_in_inconsistency.h \
 pg_insert_misattribution_in_inconsistency.c pg_insert_misattribution_in_inconsistency.h \
 pg_update_misattribution_in_inconsistency.c pg_update_misattribution_in_inconsistency.h \
+pg_update_balance.c pg_update_balance.h \
 pg_get_reserves.c pg_get_reserves.h \
 pg_del_reserves.c pg_del_reserves.h \
-pg_insert_reserves.c pg_insert_reserves.h \
-pg_update_reserves.c pg_update_reserves.h \
 pg_get_purses.c pg_get_purses.h \
 pg_del_purses.c pg_del_purses.h \
-pg_insert_purses.c pg_insert_purses.h \
-pg_update_purses.c pg_update_purses.h \
-pg_get_historic_denomination_revenue.c pg_get_historic_denomination_revenue.h \
-pg_del_historic_denomination_revenue.c pg_del_historic_denomination_revenue.h \
 pg_insert_historic_denom_revenue.c pg_insert_historic_denom_revenue.h \
-pg_insert_historic_denomination_revenue.c pg_insert_historic_denomination_revenue.h \
-pg_update_historic_denomination_revenue.c pg_update_historic_denomination_revenue.h \
 pg_get_denomination_pending.c pg_get_denomination_pending.h \
 pg_del_denomination_pending.c pg_del_denomination_pending.h \
 pg_insert_denomination_pending.c pg_insert_denomination_pending.h \
 pg_update_denomination_pending.c pg_update_denomination_pending.h \
-pg_get_historic_reserve_summary.c pg_get_historic_reserve_summary.h \
-pg_del_historic_reserve_summary.c pg_del_historic_reserve_summary.h \
-pg_insert_historic_reserve_summary.c pg_insert_historic_reserve_summary.h \
-pg_update_historic_reserve_summary.c pg_update_historic_reserve_summary.h \
 pg_get_exchange_signkeys.c pg_get_exchange_signkeys.h \
-pg_del_exchange_signkeys.c pg_del_exchange_signkeys.h \
-pg_insert_exchange_signkeys.c pg_insert_exchange_signkeys.h \
-pg_update_exchange_signkeys.c pg_update_exchange_signkeys.h \
 pg_get_wire_format_inconsistency.c pg_get_wire_format_inconsistency.h \
 pg_del_wire_format_inconsistency.c pg_del_wire_format_inconsistency.h \
 pg_insert_wire_format_inconsistency.c pg_insert_wire_format_inconsistency.h \
@@ -198,11 +182,10 @@ pg_del_fee_time_inconsistency.c pg_del_fee_time_inconsistency.h \
 pg_insert_fee_time_inconsistency.c pg_insert_fee_time_inconsistency.h \
 pg_update_fee_time_inconsistency.c pg_update_fee_time_inconsistency.h \
 pg_get_balances.c pg_get_balances.h \
-pg_del_balances.c pg_del_balances.h \
-pg_insert_balances.c pg_insert_balances.h \
+pg_insert_exchange_signkey.c pg_insert_exchange_signkey.h \
 pg_update_deposit_confirmations.c pg_update_deposit_confirmations.h \
-pg_update_amount_arithmetic_inconsistency.c pg_update_amount_arithmetic_inconsistency.h \
-pg_update_balances.c pg_update_balances.h
+pg_update_amount_arithmetic_inconsistency.c pg_update_amount_arithmetic_inconsistency.h
+
 libtaler_plugin_auditordb_postgres_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS)
 libtaler_plugin_auditordb_postgres_la_LIBADD = \

@@ -52,7 +52,6 @@
 #include "pg_select_purse_expired.h"
 #include "pg_update_generic_suppressed.h"
 #include "pg_update_auditor_progress.h"
-#include "pg_update_balance.h"
 #include "pg_update_denomination_balance.h"
 #include "pg_update_purse_info.h"
 #include "pg_update_reserve_info.h"
@@ -65,12 +64,13 @@
 #include "pg_update_purse_not_closed_inconsistencies.h"
 #include "pg_update_reserve_balance_insufficient_inconsistency.h"
 #include "pg_update_coin_inconsistency.h"
-#include "pg_update_progress.h"
 #include "pg_update_denomination_key_validity_withdraw_inconsistency.h"
 #include "pg_update_refreshes_hanging.h"
 #include "pg_update_emergency.h"
 #include "pg_update_closure_lags.h"
 #include "pg_update_row_minor_inconsistencies.h"
+
+#include "pg_update_balance.h"
 
 #include "pg_del_amount_arithmetic_inconsistency.h"
 #include "pg_del_coin_inconsistency.h"
@@ -142,33 +142,16 @@
 
 #include "pg_get_reserves.h"
 #include "pg_del_reserves.h"
-#include "pg_insert_reserves.h"
-#include "pg_update_reserves.h"
 
 #include "pg_get_purses.h"
 #include "pg_del_purses.h"
-#include "pg_insert_purses.h"
-#include "pg_update_purses.h"
-
-#include "pg_get_historic_denomination_revenue.h"
-#include "pg_del_historic_denomination_revenue.h"
-#include "pg_insert_historic_denomination_revenue.h"
-#include "pg_update_historic_denomination_revenue.h"
 
 #include "pg_get_denomination_pending.h"
 #include "pg_del_denomination_pending.h"
 #include "pg_insert_denomination_pending.h"
 #include "pg_update_denomination_pending.h"
 
-#include "pg_get_historic_reserve_summary.h"
-#include "pg_del_historic_reserve_summary.h"
-#include "pg_insert_historic_reserve_summary.h"
-#include "pg_update_historic_reserve_summary.h"
-
 #include "pg_get_exchange_signkeys.h"
-#include "pg_del_exchange_signkeys.h"
-#include "pg_insert_exchange_signkeys.h"
-#include "pg_update_exchange_signkeys.h"
 
 #include "pg_get_wire_format_inconsistency.h"
 #include "pg_del_wire_format_inconsistency.h"
@@ -189,11 +172,6 @@
 #include "pg_del_row_minor_inconsistencies.h"
 #include "pg_insert_row_minor_inconsistencies.h"
 #include "pg_update_row_minor_inconsistencies.h"
-
-#include "pg_get_balances.h"
-#include "pg_del_balances.h"
-#include "pg_insert_balances.h"
-#include "pg_update_balances.h"
 
 #include "pg_update_amount_arithmetic_inconsistency.h"
 #include "pg_update_deposit_confirmations.h"
@@ -619,12 +597,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
 
   plugin->update_auditor_progress
     = &TAH_PG_update_auditor_progress;
-  plugin->update_balance
-    = &TAH_PG_update_balance;
-/*
-  plugin->insert_exchange_signkey
-    = &TAH_PG_insert_exchange_signkey;
-  */
   plugin->insert_deposit_confirmation
     = &TAH_PG_insert_deposit_confirmation;
   plugin->get_deposit_confirmations
@@ -759,7 +731,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_reserve_balance_insufficient_inconsistency =
     &TAH_PG_update_reserve_balance_insufficient_inconsistency;
   plugin->update_coin_inconsistency = &TAH_PG_update_coin_inconsistency;
-  plugin->update_progress = &TAH_PG_update_progress;
   plugin->update_denomination_key_validity_withdraw_inconsistency =
     &TAH_PG_update_denomination_key_validity_withdraw_inconsistency;
   plugin->update_refreshes_hanging = &TAH_PG_update_refreshes_hanging;
@@ -805,49 +776,18 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_misattribution_in_inconsistency =
     &TAH_PG_update_misattribution_in_inconsistency;
 
-
   plugin->delete_reserves = &TAH_PG_del_reserves;
-  plugin->insert_reserves = &TAH_PG_insert_reserves;
   plugin->get_reserves = &TAH_PG_get_reserves;
-  plugin->update_reserves = &TAH_PG_update_reserves;
-
 
   plugin->delete_purses = &TAH_PG_del_purses;
-  plugin->insert_purses = &TAH_PG_insert_purses;
   plugin->get_purses = &TAH_PG_get_purses;
-  plugin->update_purses = &TAH_PG_update_purses;
-
-
-  plugin->delete_historic_denomination_revenue =
-    &TAH_PG_del_historic_denomination_revenue;
-  plugin->insert_historic_denomination_revenue =
-    &TAH_PG_insert_historic_denomination_revenue;
-  plugin->get_historic_denomination_revenue =
-    &TAH_PG_get_historic_denomination_revenue;
-  plugin->update_historic_denomination_revenue =
-    &TAH_PG_update_historic_denomination_revenue;
-
 
   plugin->delete_denomination_pending = &TAH_PG_del_denomination_pending;
   plugin->insert_denomination_pending = &TAH_PG_insert_denomination_pending;
   plugin->get_denomination_pending = &TAH_PG_get_denomination_pending;
   plugin->update_denomination_pending = &TAH_PG_update_denomination_pending;
 
-
-  plugin->delete_historic_reserve_summary =
-    &TAH_PG_del_historic_reserve_summary;
-  plugin->insert_historic_reserve_summary =
-    &TAH_PG_insert_historic_reserve_summary;
-  plugin->get_historic_reserve_summary = &TAH_PG_get_historic_reserve_summary;
-  plugin->update_historic_reserve_summary =
-    &TAH_PG_update_historic_reserve_summary;
-
-
-  plugin->delete_exchange_signkeys = &TAH_PG_del_exchange_signkeys;
-  plugin->insert_exchange_signkeys = &TAH_PG_insert_exchange_signkeys;
   plugin->get_exchange_signkeys = &TAH_PG_get_exchange_signkeys;
-  plugin->update_exchange_signkeys = &TAH_PG_update_exchange_signkeys;
-
 
   plugin->delete_wire_format_inconsistency =
     &TAH_PG_del_wire_format_inconsistency;
@@ -887,14 +827,16 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->get_fee_time_inconsistency = &TAH_PG_get_fee_time_inconsistency;
   plugin->update_fee_time_inconsistency = &TAH_PG_update_fee_time_inconsistency;
 
-  plugin->delete_balances = &TAH_PG_del_balances;
-  plugin->insert_balances = &TAH_PG_insert_balances;
-  plugin->get_balances = &TAH_PG_get_balances;
-  plugin->update_balances = &TAH_PG_update_balances;
+  plugin->update_balance
+    = &TAH_PG_update_balance;
 
-  plugin->update_deposit_confirmations = &TAH_PG_update_deposit_confirmations;
-  plugin->update_amount_arithmetic_inconsistency =
-    &TAH_PG_update_amount_arithmetic_inconsistency;
+  plugin->insert_exchange_signkey
+    = &TAH_PG_insert_exchange_signkey;
+
+  plugin->update_deposit_confirmations
+    = &TAH_PG_update_deposit_confirmations;
+  plugin->update_amount_arithmetic_inconsistency
+    = &TAH_PG_update_amount_arithmetic_inconsistency;
 
   return plugin;
 }

@@ -37,10 +37,6 @@ enum TALER_AUDITORDB_SuppressableTables
 };
 
 
-// FIXME: comment
-const char *
-TALER_AUDITORDB_get_table_name (enum TALER_AUDITORDB_SuppressableTables table);
-
 /**
  * Initialize the plugin.
  *

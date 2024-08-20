@@ -1579,13 +1579,6 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     const struct TALER_AUDITORDB_Generic_Update *gu);
 
-
-  enum GNUNET_DB_QueryStatus
-    (*update_progress)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
-
   enum GNUNET_DB_QueryStatus
     (*update_denomination_key_validity_withdraw_inconsistency)(
     void *cls,
@@ -1747,19 +1740,6 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     uint64_t row_id);
 
-
-  enum GNUNET_DB_QueryStatus
-    (*insert_reserves)(
-    void *cls,
-    const struct TALER_AUDITORDB_Reserves *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*update_reserves)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
-
   enum GNUNET_DB_QueryStatus
     (*get_purses)(
     void *cls,
@@ -1775,47 +1755,6 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     uint64_t row_id);
 
-
-  enum GNUNET_DB_QueryStatus
-    (*insert_purses)(
-    void *cls,
-    const struct TALER_AUDITORDB_Purses *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*update_purses)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*get_historic_denomination_revenue)(
-    void *cls,
-    int64_t limit,
-    uint64_t offset,
-    bool return_suppressed,
-    TALER_AUDITORDB_HistoricDenominationRevenueCallback cb,
-    void *cb_cls);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*delete_historic_denomination_revenue)(
-    void *cls,
-    uint64_t row_id);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*insert_historic_denomination_revenue)(
-    void *cls,
-    const struct TALER_AUDITORDB_HistoricDenominationRevenue *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*update_historic_denomination_revenue)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
-
   enum GNUNET_DB_QueryStatus
     (*get_denomination_pending)(
     void *cls,
@@ -1825,52 +1764,20 @@ struct TALER_AUDITORDB_Plugin
     TALER_AUDITORDB_DenominationPendingCallback cb,
     void *cb_cls);
 
-
   enum GNUNET_DB_QueryStatus
     (*delete_denomination_pending)(
     void *cls,
     uint64_t row_id);
-
 
   enum GNUNET_DB_QueryStatus
     (*insert_denomination_pending)(
     void *cls,
     const struct TALER_AUDITORDB_DenominationPending *dc);
 
-
   enum GNUNET_DB_QueryStatus
     (*update_denomination_pending)(
     void *cls,
     const struct TALER_AUDITORDB_Generic_Update *gu);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*get_historic_reserve_summary)(
-    void *cls,
-    int64_t limit,
-    uint64_t offset,
-    bool return_suppressed,
-    TALER_AUDITORDB_HistoricReserveSummaryCallback cb,
-    void *cb_cls);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*delete_historic_reserve_summary)(
-    void *cls,
-    uint64_t row_id);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*insert_historic_reserve_summary)(
-    void *cls,
-    const struct TALER_AUDITORDB_HistoricReserveSummary *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*update_historic_reserve_summary)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
 
   enum GNUNET_DB_QueryStatus
     (*get_exchange_signkeys)(
@@ -1880,25 +1787,6 @@ struct TALER_AUDITORDB_Plugin
     bool return_suppressed,
     TALER_AUDITORDB_ExchangeSignkeysCallback cb,
     void *cb_cls);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*delete_exchange_signkeys)(
-    void *cls,
-    uint64_t row_id);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*insert_exchange_signkeys)(
-    void *cls,
-    const struct TALER_AUDITORDB_ExchangeSignkeys *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*update_exchange_signkeys)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
 
   enum GNUNET_DB_QueryStatus
     (*get_wire_format_inconsistency)(
@@ -2048,25 +1936,6 @@ struct TALER_AUDITORDB_Plugin
     const char *balance_key,
     TALER_AUDITORDB_BalancesCallback cb,
     void *cb_cls);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*delete_balances)(
-    void *cls,
-    uint64_t row_id);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*insert_balances)(
-    void *cls,
-    const struct TALER_AUDITORDB_Balances *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-    (*update_balances)(
-    void *cls,
-    const struct TALER_AUDITORDB_Generic_Update *gu);
-
 
   /**
  * Insert information about a reserve.  There must not be an
