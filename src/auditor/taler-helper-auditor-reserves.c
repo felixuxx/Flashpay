@@ -116,11 +116,6 @@ static int internal_checks;
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
- * Our database plugin.
- */
-static struct TALER_AUDITORDB_Plugin *db_plugin;
-
-/**
  * The auditors's configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -500,8 +495,6 @@ handle_reserve_in (void *cls,
   TALER_ARL_amount_add (&rs->total_in,
                         &rs->total_in,
                         credit);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -562,8 +555,6 @@ handle_reserve_out (void *cls,
     report_row_inconsistency ("withdraw",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -626,8 +617,6 @@ handle_reserve_out (void *cls,
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           amount_with_fee);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;     /* exit function here, we cannot add this to the legitimate withdrawals */
   }
 
@@ -665,8 +654,6 @@ handle_reserve_out (void *cls,
   TALER_ARL_amount_add (&rs->total_out,
                         &rs->total_out,
                         &auditor_amount_with_fee);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -834,8 +821,6 @@ handle_recoup_by_reserve (
                               idle_reserve_expiration_time));
   rs->a_expiration_date = GNUNET_TIME_timestamp_max (rs->a_expiration_date,
                                                      expiry);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -975,8 +960,6 @@ handle_reserve_open (
               "Additional open operation for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
               TALER_amount2s (reserve_payment));
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1167,8 +1150,6 @@ handle_reserve_closed (
               "Additional closing operation for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
               TALER_amount2s (amount_with_fee));
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1305,8 +1286,6 @@ purse_decision_cb (void *cls,
   TALER_ARL_amount_add (&rs->total_in,
                         &rs->total_in,
                         purse_value);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1698,8 +1677,6 @@ analyze_reserves (void *cls)
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsp;
-  char progress_exists = 1;
-  char balance_exists = 1;
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1727,10 +1704,6 @@ analyze_reserves (void *cls)
   }
   else
   {
-    if (TALER_ARL_USE_PP (reserves_reserve_in_serial_id) == 0)
-    {
-      progress_exists = 0;
-    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming reserve audit at %llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu\n",
                 (unsigned long long) TALER_ARL_USE_PP (
@@ -1771,15 +1744,68 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
-  if (GNUNET_NO ==
-      TALER_amount_is_valid (&TALER_ARL_USE_AB (
-                               reserves_reserve_total_balance)))
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
   {
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TALER_ARL_currency,
                                           &TALER_ARL_USE_AB (
                                             reserves_reserve_total_balance)));
-    balance_exists = 0;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_reserve_total_balance)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_reserve_loss)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_withdraw_fee_revenue)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_close_fee_revenue)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_purse_fee_revenue)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_open_fee_revenue)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_history_fee_revenue)));
+    // REVIEW:
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            total_balance_summary_delta_plus)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            total_balance_summary_delta_minus)))
+    ;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_total_arithmetic_delta_plus))
+                   );
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_total_arithmetic_delta_minus)
+                                          ));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            total_balance_reserve_not_closed)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (
+                                            reserves_total_bad_sig_loss)));
   }
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
@@ -1869,8 +1895,7 @@ analyze_reserves (void *cls)
   GNUNET_CONTAINER_multihashmap_destroy (rc.revoked);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != rc.qs)
     return qs;
-  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx) &&
-       (! balance_exists) )
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
   {
     qs = TALER_ARL_adb->insert_balance (
       TALER_ARL_adb->cls,
@@ -1887,14 +1912,10 @@ analyze_reserves (void *cls)
       TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
       TALER_ARL_SET_AB (total_balance_summary_delta_minus),
       NULL);
-    if (0 >= qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
   }
   else
   {
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx);
     qs = TALER_ARL_adb->update_balance (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_AB (reserves_reserve_total_balance),
@@ -1916,20 +1937,8 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx) &&
-       progress_exists)
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_out_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_recoup_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_open_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_close_serial_id),
-      TALER_ARL_SET_PP (reserves_purse_decisions_serial_id),
-      TALER_ARL_SET_PP (reserves_account_merges_serial_id),
-      TALER_ARL_SET_PP (reserves_history_requests_serial_id),
-      NULL);
-  else
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+  {
     qs = TALER_ARL_adb->insert_auditor_progress (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
@@ -1941,6 +1950,22 @@ analyze_reserves (void *cls)
       TALER_ARL_SET_PP (reserves_account_merges_serial_id),
       TALER_ARL_SET_PP (reserves_history_requests_serial_id),
       NULL);
+  }
+  else
+  {
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp);
+    qs = TALER_ARL_adb->update_auditor_progress (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
+      TALER_ARL_SET_PP (reserves_reserve_out_serial_id),
+      TALER_ARL_SET_PP (reserves_reserve_recoup_serial_id),
+      TALER_ARL_SET_PP (reserves_reserve_open_serial_id),
+      TALER_ARL_SET_PP (reserves_reserve_close_serial_id),
+      TALER_ARL_SET_PP (reserves_purse_decisions_serial_id),
+      TALER_ARL_SET_PP (reserves_account_merges_serial_id),
+      TALER_ARL_SET_PP (reserves_history_requests_serial_id),
+      NULL);
+  }
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1982,75 +2007,19 @@ db_notify (void *cls,
            const void *extra,
            size_t extra_size)
 {
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received notification to wake reserves helper\n");
-
   (void) cls;
   (void) extra;
   (void) extra_size;
 
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_reserve_total_balance)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_reserve_loss)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_withdraw_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_close_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_purse_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_open_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_history_fee_revenue)));
-  // REVIEW:
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_balance_summary_delta_plus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_balance_summary_delta_minus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_total_arithmetic_delta_plus))
-                 );
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_total_arithmetic_delta_minus)
-                                        ));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_balance_reserve_not_closed)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_total_bad_sig_loss)));
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received notification to wake reserves helper\n");
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_reserves,
                                         NULL))
   {
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
+    return;
   }
 }
 
@@ -2062,19 +2031,12 @@ static void
 do_shutdown (void *cls)
 {
   (void) cls;
-
-  if (test_mode != 1)
+  if (NULL != eh)
   {
-
-    db_plugin->event_listen_cancel (eh);
+    TALER_ARL_adb->event_listen_cancel (eh);
     eh = NULL;
-    TALER_AUDITORDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
-    TALER_ARL_done (NULL);
-
   }
-
-
+  TALER_ARL_done ();
 }
 
 
@@ -2109,45 +2071,6 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-
-  if (NULL ==
-      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
-      db_plugin->preflight (db_plugin->cls))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to connect to database\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
-  if (test_mode != 1)
-  {
-
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper indefinitely\n");
-
-    struct GNUNET_DB_EventHeaderP es = {
-      .size = htons (sizeof (es)),
-      .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_WAKE_HELPER_RESERVES)
-    };
-    eh = db_plugin->event_listen (db_plugin->cls,
-                                  &es,
-                                  GNUNET_TIME_UNIT_FOREVER_REL,
-                                  &db_notify,
-                                  NULL);
-    return;
-  }
-
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper in test mode\n");
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TALER_ARL_cfg,
                                            "exchangedb",
@@ -2157,80 +2080,37 @@ run (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
                                "IDLE_RESERVE_EXPIRATION_TIME");
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
+  if (test_mode != 1)
+  {
+    struct GNUNET_DB_EventHeaderP es = {
+      .size = htons (sizeof (es)),
+      .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_WAKE_HELPER_RESERVES)
+    };
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running helper indefinitely\n");
+    eh = TALER_ARL_adb->event_listen (TALER_ARL_adb->cls,
+                                      &es,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &db_notify,
+                                      NULL);
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_reserve_total_balance)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_reserve_loss)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_withdraw_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_close_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_purse_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_open_fee_revenue)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_history_fee_revenue)));
-  // REVIEW:
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_balance_summary_delta_plus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_balance_summary_delta_minus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_total_arithmetic_delta_plus))
-                 );
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_total_arithmetic_delta_minus)
-                                        ));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_balance_reserve_not_closed)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          reserves_total_bad_sig_loss)));
-
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_reserves,
                                         NULL))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
-    TALER_ARL_done (NULL);
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Audit complete\n");
 }
 
 

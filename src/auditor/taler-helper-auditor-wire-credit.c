@@ -52,8 +52,6 @@
 /**
  * Run in test mode. Exit when idle instead of
  * going to sleep and waiting for more work.
- *
- * FIXME: not yet implemented!
  */
 static int test_mode;
 
@@ -218,11 +216,6 @@ static int ignore_account_404;
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
- * Our database plugin.
- */
-static struct TALER_AUDITORDB_Plugin *db_plugin;
-
-/**
  * The auditors's configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -294,15 +287,10 @@ do_shutdown (void *cls)
   (void) cls;
   if (NULL != eh)
   {
-    db_plugin->event_listen_cancel (eh);
+    TALER_ARL_adb->event_listen_cancel (eh);
     eh = NULL;
   }
-  if (NULL != db_plugin)
-  {
-    TALER_AUDITORDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
-  }
-  TALER_ARL_done (NULL);
+  TALER_ARL_done ();
   if (NULL != in_map)
   {
     GNUNET_CONTAINER_multihashmap_iterate (in_map,
@@ -526,13 +514,9 @@ reserve_in_cb (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   wa->last_reserve_in_serial_id = rowid + 1;
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1130,24 +1114,6 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-
-  if (NULL ==
-      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
-      db_plugin->preflight (db_plugin->cls))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to connect to database\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
   if (GNUNET_OK !=
       TALER_config_get_amount (TALER_ARL_cfg,
                                "auditor",
@@ -1197,17 +1163,18 @@ run (void *cls,
   TALER_EXCHANGEDB_find_accounts (&process_account_cb,
                                   NULL);
 
+  if (0 == test_mode)
   {
     struct GNUNET_DB_EventHeaderP es = {
       .size = htons (sizeof (es)),
       .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_WAKE_HELPER_WIRE)
     };
 
-    eh = db_plugin->event_listen (db_plugin->cls,
-                                  &es,
-                                  GNUNET_TIME_UNIT_FOREVER_REL,
-                                  &db_notify,
-                                  NULL);
+    eh = TALER_ARL_adb->event_listen (TALER_ARL_adb->cls,
+                                      &es,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &db_notify,
+                                      NULL);
     GNUNET_assert (NULL != eh);
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=

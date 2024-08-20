@@ -95,11 +95,6 @@ static int internal_checks;
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
- * Our database plugin.
- */
-static struct TALER_AUDITORDB_Plugin *db_plugin;
-
-/**
  * The auditors's configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -1278,8 +1273,6 @@ check_wire_out_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Aggregation unit %s is OK\n",
               TALER_B2S (wtid));
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1499,8 +1492,9 @@ db_notify (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
-    TALER_ARL_done (NULL);
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
+    return;
   }
 }
 
@@ -1512,15 +1506,12 @@ static void
 do_shutdown (void *cls)
 {
   (void) cls;
-
-  if (test_mode != 1)
+  if (NULL != eh)
   {
-    db_plugin->event_listen_cancel (eh);
+    TALER_ARL_adb->event_listen_cancel (eh);
     eh = NULL;
-    TALER_AUDITORDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
-    TALER_ARL_done (NULL);
   }
+  TALER_ARL_done ();
 }
 
 
@@ -1543,8 +1534,8 @@ run (void *cls,
   (void) cfgfile;
 
   cfg = c;
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, NULL);
-
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching aggregation auditor\n");
   if (GNUNET_OK !=
@@ -1554,38 +1545,20 @@ run (void *cls,
     return;
   }
 
-  if (NULL ==
-      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
-      db_plugin->preflight (db_plugin->cls))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to connect to database\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
   if (test_mode != 1)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper indefinitely\n");
-
     struct GNUNET_DB_EventHeaderP es = {
       .size = htons (sizeof (es)),
       .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_WAKE_HELPER_AGGREGATION)
     };
-    eh = db_plugin->event_listen (db_plugin->cls,
-                                  &es,
-                                  GNUNET_TIME_UNIT_FOREVER_REL,
-                                  &db_notify,
-                                  NULL);
 
-    return;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running helper indefinitely\n");
+    eh = TALER_ARL_adb->event_listen (TALER_ARL_adb->cls,
+                                      &es,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &db_notify,
+                                      NULL);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
@@ -1595,11 +1568,10 @@ run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Audit complete\n");
 }
 
 

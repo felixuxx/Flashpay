@@ -140,11 +140,6 @@ static int internal_checks;
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
- * Our database plugin.
- */
-static struct TALER_AUDITORDB_Plugin *db_plugin;
-
-/**
  * The auditors's configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -961,8 +956,6 @@ withdraw_cb (void *cls,
     report_row_inconsistency ("withdraw",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1002,8 +995,6 @@ withdraw_cb (void *cls,
   TALER_ARL_amount_add (&ds->dcd.denom_risk,
                         &ds->dcd.denom_risk,
                         &issue->value);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1272,8 +1263,6 @@ refresh_session_cb (void *cls,
     report_row_inconsistency ("melt",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1375,8 +1364,6 @@ refresh_session_cb (void *cls,
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_refresh_hanging),
                             &TALER_ARL_USE_AB (total_refresh_hanging),
                             amount_with_fee);
-      if (TALER_ARL_do_abort ())
-        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
     if (GNUNET_SYSERR == reveal_ctx.err)
@@ -1386,8 +1373,6 @@ refresh_session_cb (void *cls,
     {
       GNUNET_free (reveal_ctx.new_issues);
       if (GNUNET_SYSERR == reveal_ctx.err)
-        return GNUNET_SYSERR;
-      if (TALER_ARL_do_abort ())
         return GNUNET_SYSERR;
       return GNUNET_OK;
     }
@@ -1509,8 +1494,6 @@ refresh_session_cb (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_melt_fee_revenue),
                         &TALER_ARL_USE_AB (coin_melt_fee_revenue),
                         &issue->fees.refresh);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1554,8 +1537,6 @@ deposit_cb (void *cls,
     report_row_inconsistency ("deposits",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_TIME_timestamp_cmp (deposit->refund_deadline,
@@ -1634,8 +1615,6 @@ deposit_cb (void *cls,
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                             &TALER_ARL_USE_AB (coin_irregular_loss),
                             &deposit->amount_with_fee);
-      if (TALER_ARL_do_abort ())
-        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
   }
@@ -1666,8 +1645,6 @@ deposit_cb (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_deposit_fee_revenue),
                         &TALER_ARL_USE_AB (coin_deposit_fee_revenue),
                         &issue->fees.deposit);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1719,8 +1696,6 @@ refund_cb (void *cls,
     report_row_inconsistency ("refunds",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1755,8 +1730,6 @@ refund_cb (void *cls,
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
                           amount_with_fee);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -1770,8 +1743,6 @@ refund_cb (void *cls,
                                             &amount_without_fee,
                                             &issue->fees.refund,
                                             -1);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -1820,8 +1791,6 @@ refund_cb (void *cls,
                                &TALER_ARL_USE_AB (coin_deposit_fee_revenue),
                                &issue->fees.deposit);
   }
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1858,8 +1827,6 @@ purse_refund_coin_cb (
     report_row_inconsistency ("purse-refunds",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1947,8 +1914,6 @@ purse_refund_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return GNUNET_SYSERR;
   }
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -2022,8 +1987,6 @@ check_recoup (struct CoinContext *cc,
     report_row_inconsistency (operation,
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -2086,8 +2049,6 @@ check_recoup (struct CoinContext *cc,
                           &TALER_ARL_USE_AB (total_recoup_loss),
                           amount);
   }
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -2148,8 +2109,6 @@ recoup_cb (void *cls,
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
                           amount);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   return check_recoup (cc,
@@ -2267,8 +2226,6 @@ recoup_refresh_cb (void *cls,
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
                           amount);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   return check_recoup (cc,
@@ -2404,8 +2361,6 @@ purse_deposit_cb (
     report_row_inconsistency ("purse-deposits",
                               rowid,
                               "denomination key not found");
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   qs = check_known_coin ("purse-deposit",
@@ -2451,8 +2406,6 @@ purse_deposit_cb (
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
                           &deposit->amount);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -2477,8 +2430,6 @@ purse_deposit_cb (
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_deposit_fee_revenue),
                         &TALER_ARL_USE_AB (coin_deposit_fee_revenue),
                         &issue->fees.deposit);
-  if (TALER_ARL_do_abort ())
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -2884,8 +2835,9 @@ db_notify (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
-    TALER_ARL_done (NULL);
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
+    return;
   }
 }
 
@@ -2897,11 +2849,12 @@ static void
 do_shutdown (void *cls)
 {
   (void) cls;
-  TALER_ARL_done (NULL);
-  db_plugin->event_listen_cancel (eh);
-  eh = NULL;
-  TALER_AUDITORDB_plugin_unload (db_plugin);
-  db_plugin = NULL;
+  if (NULL != eh)
+  {
+    TALER_ARL_adb->event_listen_cancel (eh);
+    eh = NULL;
+  }
+  TALER_ARL_done ();
 }
 
 
@@ -2932,23 +2885,6 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-  if (NULL ==
-      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
-      db_plugin->preflight (db_plugin->cls))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to connect to database\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
   if (test_mode != 1)
   {
     struct GNUNET_DB_EventHeaderP es = {
@@ -2958,11 +2894,11 @@ run (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Running helper indefinitely\n");
-    eh = db_plugin->event_listen (db_plugin->cls,
-                                  &es,
-                                  GNUNET_TIME_UNIT_FOREVER_REL,
-                                  &db_notify,
-                                  NULL);
+    eh = TALER_ARL_adb->event_listen (TALER_ARL_adb->cls,
+                                      &es,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &db_notify,
+                                      NULL);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
@@ -2972,6 +2908,7 @@ run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }

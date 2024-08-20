@@ -77,29 +77,6 @@ struct GNUNET_TIME_Absolute start_time;
  */
 static struct GNUNET_CONTAINER_MultiHashMap *denominations;
 
-/**
- * Flag that is raised to 'true' if the user
- * presses CTRL-C to abort the audit.
- */
-static volatile bool abort_flag;
-
-/**
- * Context for the SIG-INT (ctrl-C) handler.
- */
-static struct GNUNET_SIGNAL_Context *sig_int;
-
-/**
- * Context for the SIGTERM handler.
- */
-static struct GNUNET_SIGNAL_Context *sig_term;
-
-
-bool
-TALER_ARL_do_abort (void)
-{
-  return abort_flag;
-}
-
 
 /**
  * Function called with the results of iterate_denomination_info(),
@@ -495,17 +472,6 @@ TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
 }
 
 
-/**
- * Signal handler called for signals that should cause us to shutdown.
- */
-/*
-static void
-handle_sigint (void)
-{
-  abort_flag = true;
-}
-*/
-
 enum GNUNET_GenericReturnValue
 TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 {
@@ -660,33 +626,12 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
       return GNUNET_SYSERR;
     }
   }
-/*
-  sig_int = GNUNET_SIGNAL_handler_install (SIGINT,
-                                           &handle_sigint);
-  if (NULL == sig_int)
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "signal");
-    TALER_ARL_done (NULL);
-    return GNUNET_SYSERR;
-  }
-
-
-  sig_term = GNUNET_SIGNAL_handler_install (SIGTERM,
-                                            &handle_sigint);
-  if (NULL == sig_term)
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "signal");
-    TALER_ARL_done (NULL);
-    return GNUNET_SYSERR;
-  }*/
   if (NULL ==
       (TALER_ARL_edb = TALER_EXCHANGEDB_plugin_load (TALER_ARL_cfg)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize exchange database plugin.\n");
-    TALER_ARL_done (NULL);
+    TALER_ARL_done ();
     return GNUNET_SYSERR;
   }
   if (NULL ==
@@ -694,7 +639,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize auditor database plugin.\n");
-    TALER_ARL_done (NULL);
+    TALER_ARL_done ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_SYSERR ==
@@ -702,7 +647,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start session with auditor database.\n");
-    TALER_ARL_done (NULL);
+    TALER_ARL_done ();
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -710,20 +655,10 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 
 
 void
-TALER_ARL_done (json_t *report)
+TALER_ARL_done ()
 {
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  if (NULL != sig_int)
-  {
-    GNUNET_SIGNAL_handler_uninstall (sig_int);
-    sig_int = NULL;
-  }
-  if (NULL != sig_term)
-  {
-    GNUNET_SIGNAL_handler_uninstall (sig_term);
-    sig_term = NULL;
-  }
   if (NULL != TALER_ARL_adb)
   {
     TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
@@ -733,13 +668,6 @@ TALER_ARL_done (json_t *report)
   {
     TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
     TALER_ARL_edb = NULL;
-  }
-  if (NULL != report)
-  {
-    json_dumpf (report,
-                stdout,
-                JSON_INDENT (2));
-    json_decref (report);
   }
   GNUNET_free (TALER_ARL_exchange_url);
   GNUNET_free (TALER_ARL_auditor_url);

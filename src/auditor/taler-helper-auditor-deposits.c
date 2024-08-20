@@ -26,7 +26,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_auditordb_plugin.h"
 #include "taler_exchangedb_lib.h"
-#include "taler_json_lib.h"
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
 #include "report-lib.h"
@@ -69,13 +68,9 @@ static int global_ret;
 static int test_mode;
 
 /**
- * Array of reports about missing deposit confirmations.
- */
-static json_t *report_deposit_confirmation_inconsistencies;
-
-/**
  * Total number of deposit confirmations that we did not get.
  */
+// FIXME: persist!
 static json_int_t number_missed_deposit_confirmations;
 
 /**
@@ -89,11 +84,6 @@ static struct TALER_Amount total_missed_deposit_confirmations;
 static int internal_checks;
 
 static struct GNUNET_DB_EventHandler *eh;
-
-/**
- * Our database plugin.
- */
-static struct TALER_AUDITORDB_Plugin *db_plugin;
 
 /**
  * The auditors's configuration.
@@ -196,12 +186,6 @@ test_dc (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Found deposit %s in exchange database\n",
                 GNUNET_h2s (&dc->h_contract_terms.hash));
-
-    if (TALER_ARL_do_abort ())
-    {
-      return GNUNET_SYSERR;
-    }
-
     return GNUNET_OK; /* all coins found, all good */
   }
   // dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial, serial_id);
@@ -209,10 +193,6 @@ test_dc (void *cls,
   TALER_ARL_amount_add (&dcc->missed_amount,
                         &dcc->missed_amount,
                         &dc->total_without_fee);
-  if (TALER_ARL_do_abort ())
-  {
-    return GNUNET_SYSERR;
-  }
   return GNUNET_OK;
 }
 
@@ -263,7 +243,6 @@ analyze_deposit_confirmations (void *cls)
   dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   dcc.missed_count = 0LLU;
   // dcc.first_missed_coin_serial = UINT64_MAX;
-
 
   qsx = TALER_ARL_adb->get_deposit_confirmations (
     TALER_ARL_adb->cls,
@@ -336,22 +315,18 @@ db_notify (void *cls,
            const void *extra,
            size_t extra_size)
 {
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received notification for new deposit_confirmation\n");
-
   (void) cls;
   (void) extra;
   (void) extra_size;
-
-  GNUNET_assert (NULL !=
-                 (report_deposit_confirmation_inconsistencies = json_array ()));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received notification for new deposit_confirmation\n");
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_deposit_confirmations,
                                         NULL))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -365,15 +340,12 @@ static void
 do_shutdown (void *cls)
 {
   (void) cls;
-
-  if (test_mode != 1)
+  if (NULL != eh)
   {
-    db_plugin->event_listen_cancel (eh);
+    TALER_ARL_adb->event_listen_cancel (eh);
     eh = NULL;
-    TALER_AUDITORDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
-    TALER_ARL_done (NULL);
   }
+  TALER_ARL_done ();
 }
 
 
@@ -407,71 +379,31 @@ run (void *cls,
     return;
   }
 
-  if (NULL ==
-      (db_plugin = TALER_AUDITORDB_plugin_load (cfg)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
-      db_plugin->preflight (db_plugin->cls))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to connect to database\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
   if (test_mode != 1)
   {
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper indefinitely\n");
-
-
     struct GNUNET_DB_EventHeaderP es = {
       .size = htons (sizeof (es)),
       .type = htons (TALER_DBEVENT_EXCHANGE_AUDITOR_WAKE_HELPER_DEPOSITS)
     };
-    eh = db_plugin->event_listen (db_plugin->cls,
-                                  &es,
-                                  GNUNET_TIME_UNIT_FOREVER_REL,
-                                  &db_notify,
-                                  NULL);
 
-    return;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running helper indefinitely\n");
+    eh = TALER_ARL_adb->event_listen (TALER_ARL_adb->cls,
+                                      &es,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &db_notify,
+                                      NULL);
   }
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Running helper in test mode\n");
-
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
-  GNUNET_assert (NULL !=
-                 (report_deposit_confirmation_inconsistencies = json_array ()));
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_deposit_confirmations,
                                         NULL))
   {
+    GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Deposit audit complete\n");
-  TALER_ARL_done (
-    GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_array_steal ("deposit_confirmation_inconsistencies",
-                                    report_deposit_confirmation_inconsistencies)
-      ,
-      GNUNET_JSON_pack_uint64 ("missing_deposit_confirmation_count",
-                               number_missed_deposit_confirmations),
-      TALER_JSON_pack_amount ("missing_deposit_confirmation_total",
-                              &total_missed_deposit_confirmations),
-      TALER_JSON_pack_time_abs_human ("auditor_start_time",
-                                      start_time),
-      TALER_JSON_pack_time_abs_human ("auditor_end_time",
-                                      GNUNET_TIME_absolute_get ())));
 }
 
 

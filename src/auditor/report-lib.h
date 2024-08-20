@@ -323,17 +323,6 @@ TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
 
 
 /**
- * Test if the audit should be aborted because the user
- * pressed CTRL-C.
- *
- * @return false to continue the audit, true to terminate
- *         cleanly as soon as possible
- */
-bool
-TALER_ARL_do_abort (void);
-
-
-/**
  * Setup global variables based on configuration.
  *
  * @param c configuration to use
@@ -344,11 +333,9 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c);
 
 
 /**
- * Generate the report and close connectios to the database.
- *
- * @param report the report to output, may be NULL for no report
+ * Close connections to the database.
  */
 void
-TALER_ARL_done (json_t *report);
+TALER_ARL_done (void);
 
 #endif
