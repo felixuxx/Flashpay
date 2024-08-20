@@ -22,7 +22,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_auditordb_plugin.h"
 #include "taler_exchangedb_lib.h"
-#include "taler_json_lib.h"
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
 #include "report-lib.h"
@@ -75,82 +74,39 @@ static TALER_ARL_DEF_AB (reserves_purse_fee_revenue);
 static TALER_ARL_DEF_AB (reserves_open_fee_revenue);
 static TALER_ARL_DEF_AB (reserves_history_fee_revenue);
 
+/**
+ * Total amount lost by operations for which signatures were invalid.
+ */
+static TALER_ARL_DEF_AB (reserves_total_bad_sig_loss);
 
 /**
- * Array of reports about row inconsistencies.
+ * Total amount affected by reserves not having been closed on time.
  */
-static json_t *report_row_inconsistencies;
-
-/**
- * Array of reports about the denomination key not being
- * valid at the time of withdrawal.
- */
-static json_t *denomination_key_validity_withdraw_inconsistencies;
-
-/**
- * Array of reports about reserve balance insufficient inconsistencies.
- */
-static json_t *report_reserve_balance_insufficient_inconsistencies;
-
-/**
- * Array of reports about purse balance insufficient inconsistencies.
- */
-static json_t *report_purse_balance_insufficient_inconsistencies;
-
-/**
- * Array of reports about reserve balance summary wrong in database.
- */
-static json_t *report_reserve_balance_summary_wrong_inconsistencies;
+static TALER_ARL_DEF_AB (total_balance_reserve_not_closed);
 
 /**
  * Total delta between expected and stored reserve balance summaries,
  * for positive deltas.  Used only when internal checks are
  * enabled.
  */
-static struct TALER_Amount total_balance_summary_delta_plus;
+static TALER_ARL_DEF_AB (total_balance_summary_delta_plus);
 
 /**
  * Total delta between expected and stored reserve balance summaries,
  * for negative deltas.  Used only when internal checks are
  * enabled.
  */
-static struct TALER_Amount total_balance_summary_delta_minus;
-
-/**
- * Array of reports about reserve's not being closed inconsistencies.
- */
-static json_t *report_reserve_not_closed_inconsistencies;
-
-/**
- * Total amount affected by reserves not having been closed on time.
- */
-static struct TALER_Amount total_balance_reserve_not_closed;
-
-/**
- * Report about amount calculation differences (causing profit
- * or loss at the exchange).
- */
-static json_t *report_amount_arithmetic_inconsistencies;
+static TALER_ARL_DEF_AB (total_balance_summary_delta_minus);
 
 /**
  * Profits the exchange made by bad amount calculations.
  */
-static struct TALER_Amount total_arithmetic_delta_plus;
+static TALER_ARL_DEF_AB (reserves_total_arithmetic_delta_plus);
 
 /**
  * Losses the exchange made by bad amount calculations.
  */
-static struct TALER_Amount total_arithmetic_delta_minus;
-
-/**
- * Array of reports about coin operations with bad signatures.
- */
-static json_t *report_bad_sig_losses;
-
-/**
- * Total amount lost by operations for which signatures were invalid.
- */
-static struct TALER_Amount total_bad_sig_loss;
+static TALER_ARL_DEF_AB (reserves_total_arithmetic_delta_minus);
 
 /**
  * Should we run checks that only work for exchange-internal audits?
@@ -237,8 +193,8 @@ report_amount_arithmetic_inconsistency (
   if (0 != profitable)
   {
     target = (1 == profitable)
-             ? &total_arithmetic_delta_plus
-             : &total_arithmetic_delta_minus;
+      ? &TALER_ARL_USE_AB (reserves_total_arithmetic_delta_plus)
+      : &TALER_ARL_USE_AB (reserves_total_arithmetic_delta_minus);
     TALER_ARL_amount_add (target,
                           target,
                           &delta);
@@ -667,8 +623,8 @@ handle_reserve_out (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       // FIXME: error handling!
     }
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
+                          &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           amount_with_fee);
     if (TALER_ARL_do_abort ())
       return GNUNET_SYSERR;
@@ -779,8 +735,8 @@ handle_recoup_by_reserve (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       // FIXME: error handling!
     }
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
+                          &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           amount);
   }
 
@@ -854,8 +810,8 @@ handle_recoup_by_reserve (
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     }
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
+                          &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           amount);
   }
 
@@ -1001,8 +957,8 @@ handle_reserve_open (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       // FIXME: error handling!
     }
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
+                          &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           reserve_payment);
     return GNUNET_OK;
   }
@@ -1153,8 +1109,8 @@ handle_reserve_closed (
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
           // FIXME: error handling!
         }
-        TALER_ARL_amount_add (&total_bad_sig_loss,
-                              &total_bad_sig_loss,
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
+                              &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                               amount_with_fee);
       }
     }
@@ -1286,8 +1242,8 @@ handle_account_merged (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       // FIXME: error handling!
     }
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
+                          &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           purse_fee);
     return GNUNET_OK;
   }
@@ -1480,8 +1436,10 @@ verify_reserve_balance (void *cls,
           TALER_ARL_amount_subtract (&delta,
                                      &rs->curr_balance.reserve_balance,
                                      &reserve.balance);
-          TALER_ARL_amount_add (&total_balance_summary_delta_plus,
-                                &total_balance_summary_delta_plus,
+          TALER_ARL_amount_add (&TALER_ARL_USE_AB (
+                                  total_balance_summary_delta_plus),
+                                &TALER_ARL_USE_AB (
+                                  total_balance_summary_delta_plus),
                                 &delta);
         }
         else
@@ -1490,8 +1448,10 @@ verify_reserve_balance (void *cls,
           TALER_ARL_amount_subtract (&delta,
                                      &reserve.balance,
                                      &rs->curr_balance.reserve_balance);
-          TALER_ARL_amount_add (&total_balance_summary_delta_minus,
-                                &total_balance_summary_delta_minus,
+          TALER_ARL_amount_add (&TALER_ARL_USE_AB (
+                                  total_balance_summary_delta_minus),
+                                &TALER_ARL_USE_AB (
+                                  total_balance_summary_delta_minus),
                                 &delta);
         }
 
@@ -1562,8 +1522,10 @@ verify_reserve_balance (void *cls,
         };
 
         /* remaining balance (according to us) exceeds closing fee */
-        TALER_ARL_amount_add (&total_balance_reserve_not_closed,
-                              &total_balance_reserve_not_closed,
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (
+                                total_balance_reserve_not_closed),
+                              &TALER_ARL_USE_AB (
+                                total_balance_reserve_not_closed),
                               &rnci.balance);
         qs = TALER_ARL_adb->insert_reserve_not_closed_inconsistency (
           TALER_ARL_adb->cls,
@@ -1582,14 +1544,13 @@ verify_reserve_balance (void *cls,
       // TODO: fix correctly and not just comment out
       // nbalance is set to invalid and there is never a check happening when working further with nbalance,
       // why so and why adding those balances here? or what's the usecase of setting nbalance to zero?
-      /*TALER_ARL_amount_add (&total_balance_reserve_not_closed,
-                            &total_balance_reserve_not_closed,
+      /*
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB(total_balance_reserve_not_closed),
+        &TALER_ARL_USE_AB(total_balance_reserve_not_closed),
                             &nbalance);*/
       struct TALER_AUDITORDB_ReserveNotClosedInconsistency rncid = {
         .reserve_pub = rs->reserve_pub,
-        .balance = (nbalance.value)
-        ? total_balance_reserve_not_closed
-        : nbalance,
+        .balance = nbalance,
         .expiration_time = rs->a_expiration_date.abs_time,
         .diagnostic = "could not determine closing fee"
       };
@@ -1737,7 +1698,6 @@ analyze_reserves (void *cls)
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsp;
-  enum GNUNET_DB_QueryStatus qsb;
   char progress_exists = 1;
   char balance_exists = 1;
 
@@ -1800,14 +1760,20 @@ analyze_reserves (void *cls)
     TALER_ARL_GET_AB (reserves_purse_fee_revenue),
     TALER_ARL_GET_AB (reserves_open_fee_revenue),
     TALER_ARL_GET_AB (reserves_history_fee_revenue),
+    TALER_ARL_GET_AB (reserves_total_bad_sig_loss),
+    TALER_ARL_GET_AB (total_balance_reserve_not_closed),
+    TALER_ARL_GET_AB (reserves_total_arithmetic_delta_plus),
+    TALER_ARL_GET_AB (reserves_total_arithmetic_delta_minus),
+    TALER_ARL_GET_AB (total_balance_summary_delta_minus),
     NULL);
   if (qsx < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
-  if (GNUNET_NO == TALER_amount_is_valid (&TALER_ARL_USE_AB (
-                                            reserves_reserve_total_balance)))
+  if (GNUNET_NO ==
+      TALER_amount_is_valid (&TALER_ARL_USE_AB (
+                               reserves_reserve_total_balance)))
   {
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TALER_ARL_currency,
@@ -1903,7 +1869,8 @@ analyze_reserves (void *cls)
   GNUNET_CONTAINER_multihashmap_destroy (rc.revoked);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != rc.qs)
     return qs;
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx && balance_exists == 0)
+  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx) &&
+       (! balance_exists) )
   {
     qs = TALER_ARL_adb->insert_balance (
       TALER_ARL_adb->cls,
@@ -1914,61 +1881,12 @@ analyze_reserves (void *cls)
       TALER_ARL_SET_AB (reserves_purse_fee_revenue),
       TALER_ARL_SET_AB (reserves_open_fee_revenue),
       TALER_ARL_SET_AB (reserves_history_fee_revenue),
+      TALER_ARL_SET_AB (reserves_total_bad_sig_loss),
+      TALER_ARL_SET_AB (total_balance_reserve_not_closed),
+      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
+      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
+      TALER_ARL_SET_AB (total_balance_summary_delta_minus),
       NULL);
-    // TODO make it right
-    struct TALER_AUDITORDB_Balances b;
-    b.balance_key = "reserves_total_bad_sig_loss";
-    b.balance_value = total_bad_sig_loss;
-    qsb = TALER_ARL_adb->insert_balances (
-      TALER_ARL_adb->cls,
-      &b
-      );
-    if (0 >= qsb)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    struct TALER_AUDITORDB_Balances b2;
-    b2.balance_key = "total_balance_reserve_not_closed";
-    b2.balance_value = total_balance_reserve_not_closed;
-    qsb = TALER_ARL_adb->insert_balances (
-      TALER_ARL_adb->cls,
-      &b2
-      );
-    if (0 >= qsb)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    struct TALER_AUDITORDB_Balances b3;
-    b3.balance_key = "total_balance_summary_delta_minus";
-    b3.balance_value = total_balance_summary_delta_minus;
-    qsb = TALER_ARL_adb->insert_balances (
-      TALER_ARL_adb->cls,
-      &b3
-      );
-    if (0 >= qsb)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    b.balance_key = "reserves_total_arithmetic_delta_plus";
-    b.balance_value = total_arithmetic_delta_plus;
-    qs = TALER_ARL_adb->insert_balances (
-      TALER_ARL_adb->cls,
-      &b
-      );
-    if (0 >= qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    b.balance_key = "reserves_total_arithmetic_delta_minus";
-    b.balance_value = total_arithmetic_delta_minus;
-    qs = TALER_ARL_adb->insert_balances (
-      TALER_ARL_adb->cls,
-      &b
-      );
     if (0 >= qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1986,6 +1904,11 @@ analyze_reserves (void *cls)
       TALER_ARL_SET_AB (reserves_purse_fee_revenue),
       TALER_ARL_SET_AB (reserves_open_fee_revenue),
       TALER_ARL_SET_AB (reserves_history_fee_revenue),
+      TALER_ARL_SET_AB (reserves_total_bad_sig_loss),
+      TALER_ARL_SET_AB (total_balance_reserve_not_closed),
+      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
+      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
+      TALER_ARL_SET_AB (total_balance_summary_delta_minus),
       NULL);
   }
   if (0 >= qs)
@@ -1993,7 +1916,8 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp && progress_exists == 1)
+  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx) &&
+       progress_exists)
     qs = TALER_ARL_adb->update_auditor_progress (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
@@ -2066,7 +1990,6 @@ db_notify (void *cls,
   (void) extra;
   (void) extra_size;
 
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &TALER_ARL_USE_AB (
@@ -2098,54 +2021,37 @@ db_notify (void *cls,
   // REVIEW:
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_balance_summary_delta_plus));
+                                        &TALER_ARL_USE_AB (
+                                          total_balance_summary_delta_plus)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_balance_summary_delta_minus));
+                                        &TALER_ARL_USE_AB (
+                                          total_balance_summary_delta_minus)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_arithmetic_delta_plus));
+                                        &TALER_ARL_USE_AB (
+                                          reserves_total_arithmetic_delta_plus))
+                 );
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_arithmetic_delta_minus));
+                                        &TALER_ARL_USE_AB (
+                                          reserves_total_arithmetic_delta_minus)
+                                        ));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_balance_reserve_not_closed));
+                                        &TALER_ARL_USE_AB (
+                                          total_balance_reserve_not_closed)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_sig_loss));
+                                        &TALER_ARL_USE_AB (
+                                          reserves_total_bad_sig_loss)));
 
-  GNUNET_assert (NULL !=
-                 (report_row_inconsistencies = json_array ()));
-  GNUNET_assert (NULL !=
-                 (denomination_key_validity_withdraw_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_balance_summary_wrong_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_balance_insufficient_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_purse_balance_insufficient_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_not_closed_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_amount_arithmetic_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_bad_sig_losses = json_array ()));
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_reserves,
                                         NULL))
   {
-
-
     global_ret = EXIT_FAILURE;
   }
-
 }
 
 
@@ -2288,45 +2194,31 @@ run (void *cls,
   // REVIEW:
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_balance_summary_delta_plus));
+                                        &TALER_ARL_USE_AB (
+                                          total_balance_summary_delta_plus)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_balance_summary_delta_minus));
+                                        &TALER_ARL_USE_AB (
+                                          total_balance_summary_delta_minus)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_arithmetic_delta_plus));
+                                        &TALER_ARL_USE_AB (
+                                          reserves_total_arithmetic_delta_plus))
+                 );
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_arithmetic_delta_minus));
+                                        &TALER_ARL_USE_AB (
+                                          reserves_total_arithmetic_delta_minus)
+                                        ));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_balance_reserve_not_closed));
+                                        &TALER_ARL_USE_AB (
+                                          total_balance_reserve_not_closed)));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_sig_loss));
+                                        &TALER_ARL_USE_AB (
+                                          reserves_total_bad_sig_loss)));
 
-  GNUNET_assert (NULL !=
-                 (report_row_inconsistencies = json_array ()));
-  GNUNET_assert (NULL !=
-                 (denomination_key_validity_withdraw_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_balance_summary_wrong_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_balance_insufficient_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_purse_balance_insufficient_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_not_closed_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_amount_arithmetic_inconsistencies
-                    = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_bad_sig_losses = json_array ()));
   if (GNUNET_OK !=
       TALER_ARL_setup_sessions_and_run (&analyze_reserves,
                                         NULL))
@@ -2339,114 +2231,6 @@ run (void *cls,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Audit complete\n");
-  TALER_ARL_done (
-    GNUNET_JSON_PACK (
-      /* Tested in test-auditor.sh #3 */
-      GNUNET_JSON_pack_array_steal (
-        "reserve_balance_summary_wrong_inconsistencies",
-        report_reserve_balance_summary_wrong_inconsistencies),
-      TALER_JSON_pack_amount ("total_balance_summary_delta_plus",
-                              &total_balance_summary_delta_plus),
-      TALER_JSON_pack_amount ("total_balance_summary_delta_minus",
-                              &total_balance_summary_delta_minus),
-      /* Tested in test-auditor.sh #21 */
-      TALER_JSON_pack_amount ("total_balance_reserve_not_closed",
-                              &total_balance_reserve_not_closed),
-      /* Tested in test-auditor.sh #7 */
-      TALER_JSON_pack_amount ("total_bad_sig_loss",
-                              &total_bad_sig_loss),
-      TALER_JSON_pack_amount ("total_arithmetic_delta_plus",
-                              &total_arithmetic_delta_plus),
-      TALER_JSON_pack_amount ("total_arithmetic_delta_minus",
-                              &total_arithmetic_delta_minus),
-
-      /* Global 'balances' */
-      TALER_JSON_pack_amount ("total_escrow_balance",
-                              &TALER_ARL_USE_AB (
-                                reserves_reserve_total_balance)),
-      /* Tested in test-auditor.sh #3 */
-      TALER_JSON_pack_amount ("total_irregular_loss",
-                              &TALER_ARL_USE_AB (reserves_reserve_loss)),
-      TALER_JSON_pack_amount ("total_withdraw_fee_income",
-                              &TALER_ARL_USE_AB (
-                                reserves_withdraw_fee_revenue)),
-      TALER_JSON_pack_amount ("total_close_fee_income",
-                              &TALER_ARL_USE_AB (reserves_close_fee_revenue)),
-      TALER_JSON_pack_amount ("total_purse_fee_income",
-                              &TALER_ARL_USE_AB (reserves_purse_fee_revenue)),
-      TALER_JSON_pack_amount ("total_open_fee_income",
-                              &TALER_ARL_USE_AB (reserves_open_fee_revenue)),
-      TALER_JSON_pack_amount ("total_history_fee_income",
-                              &TALER_ARL_USE_AB (reserves_history_fee_revenue)),
-
-      /* Detailed report tables */
-      GNUNET_JSON_pack_array_steal (
-        "reserve_balance_insufficient_inconsistencies",
-        report_reserve_balance_insufficient_inconsistencies),
-      GNUNET_JSON_pack_array_steal (
-        "purse_balance_insufficient_inconsistencies",
-        report_purse_balance_insufficient_inconsistencies),
-      /* Tested in test-auditor.sh #21 */
-      GNUNET_JSON_pack_array_steal ("reserve_not_closed_inconsistencies",
-                                    report_reserve_not_closed_inconsistencies),
-      /* Tested in test-auditor.sh #7 */
-      GNUNET_JSON_pack_array_steal ("bad_sig_losses",
-                                    report_bad_sig_losses),
-      /* Tested in test-revocation.sh #4 */
-      GNUNET_JSON_pack_array_steal ("row_inconsistencies",
-                                    report_row_inconsistencies),
-      /* Tested in test-auditor.sh #23 */
-      GNUNET_JSON_pack_array_steal (
-        "denomination_key_validity_withdraw_inconsistencies",
-        denomination_key_validity_withdraw_inconsistencies),
-      GNUNET_JSON_pack_array_steal ("amount_arithmetic_inconsistencies",
-                                    report_amount_arithmetic_inconsistencies),
-
-      /* Information about audited range ... */
-      TALER_JSON_pack_time_abs_human ("auditor_start_time",
-                                      start_time),
-      TALER_JSON_pack_time_abs_human ("auditor_end_time",
-                                      GNUNET_TIME_absolute_get ()),
-      GNUNET_JSON_pack_uint64 ("start_ppr_reserve_in_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_reserve_out_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_reserve_recoup_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_reserve_open_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_reserve_close_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_purse_decisions_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_account_merges_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("start_ppr_history_requests_serial_id",
-                               0 /* no longer supported */),
-      GNUNET_JSON_pack_uint64 ("end_ppr_reserve_in_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_reserve_in_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_reserve_out_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_reserve_out_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_reserve_recoup_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_reserve_recoup_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_reserve_open_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_reserve_open_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_reserve_close_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_reserve_close_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_purse_decisions_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_purse_decisions_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_account_merges_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_account_merges_serial_id)),
-      GNUNET_JSON_pack_uint64 ("end_ppr_history_requests_serial_id",
-                               TALER_ARL_USE_PP (
-                                 reserves_history_requests_serial_id))));
 }
 
 

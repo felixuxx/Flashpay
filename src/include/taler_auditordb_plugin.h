@@ -48,6 +48,7 @@
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(
   void *cls,
+  uint64_t serial_id,
   const struct TALER_DenominationHashP *denom_pub_hash,
   struct GNUNET_TIME_Timestamp revenue_timestamp,
   const struct TALER_Amount *revenue_balance,
@@ -58,6 +59,7 @@ typedef enum GNUNET_GenericReturnValue
  * Function called with the results of select_historic_reserve_revenue()
  *
  * @param cls closure
+ * @param serial_id row ID in the history table
  * @param start_time beginning of aggregated time interval
  * @param end_time end of aggregated time interval
  * @param reserve_profits total profits made
@@ -70,6 +72,7 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_HistoricReserveRevenueDataCallback)(
   void *cls,
+  uint64_t serial_id,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *reserve_profits);
@@ -1247,7 +1250,7 @@ struct TALER_AUDITORDB_Plugin
    * Get information about deposit confirmations from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param start_id row/serial ID where to start the iteration (0 from
+   * @param offset row/serial ID where to start the iteration (0 from
    *                  the start, exclusive, i.e. serial_ids must start from 1)
    * @param return_suppressed should suppressed rows be returned anyway?
    * @param cb function to call with results
@@ -2232,6 +2235,8 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_historic_denom_revenue)(
     void *cls,
+    int64_t limit,
+    uint64_t offset,
     TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
     void *cb_cls);
 
@@ -2264,6 +2269,8 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_historic_reserve_revenue)(
     void *cls,
+    int64_t limit,
+    uint64_t offset,
     TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
     void *cb_cls);
 
