@@ -72,11 +72,14 @@ historic_denom_revenue_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
+    uint64_t rowid;
     struct TALER_DenominationHashP denom_pub_hash;
     struct GNUNET_TIME_Timestamp revenue_timestamp;
     struct TALER_Amount revenue_balance;
     struct TALER_Amount loss;
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &denom_pub_hash),
       GNUNET_PQ_result_spec_timestamp ("revenue_timestamp",
@@ -101,6 +104,7 @@ historic_denom_revenue_cb (void *cls,
     hrc->qs = i + 1;
     if (GNUNET_OK !=
         hrc->cb (hrc->cb_cls,
+                 rowid,
                  &denom_pub_hash,
                  revenue_timestamp,
                  &revenue_balance,
@@ -113,6 +117,8 @@ historic_denom_revenue_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_denom_revenue (
   void *cls,
+  int64_t limit,
+  uint64_t offset,
   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
   void *cb_cls)
 {
@@ -127,10 +133,12 @@ TAH_PG_select_historic_denom_revenue (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  // FIXME: implement limit/offset!
   PREPARE (pg,
            "auditor_historic_denomination_revenue_select",
            "SELECT"
-           " denom_pub_hash"
+           " row_id"
+           ",denom_pub_hash"
            ",revenue_timestamp"
            ",revenue_balance"
            ",loss_balance"

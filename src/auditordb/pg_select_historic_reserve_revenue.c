@@ -72,10 +72,13 @@ historic_reserve_revenue_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
+    uint64_t rowid;
     struct GNUNET_TIME_Timestamp start_date;
     struct GNUNET_TIME_Timestamp end_date;
     struct TALER_Amount reserve_profits;
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_timestamp ("start_date",
                                        &start_date),
       GNUNET_PQ_result_spec_timestamp ("end_date",
@@ -97,6 +100,7 @@ historic_reserve_revenue_cb (void *cls,
     hrc->qs = i + 1;
     if (GNUNET_OK !=
         hrc->cb (hrc->cb_cls,
+                 rowid,
                  start_date,
                  end_date,
                  &reserve_profits))
@@ -108,6 +112,8 @@ historic_reserve_revenue_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_reserve_revenue (
   void *cls,
+  int64_t limit,
+  uint64_t offset,
   TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
   void *cb_cls)
 {
@@ -122,10 +128,12 @@ TAH_PG_select_historic_reserve_revenue (
     .pg = pg
   };
 
+  // FIXME: use limit/offset!
   PREPARE (pg,
            "auditor_historic_reserve_summary_select",
            "SELECT"
-           " start_date"
+           " row_id"
+           ",start_date"
            ",end_date"
            ",reserve_profits"
            " FROM auditor_historic_reserve_summary");

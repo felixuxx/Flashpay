@@ -37,6 +37,8 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_select_historic_denom_revenue (
   void *cls,
+  int64_t limit,
+  uint64_t offset,
   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
   void *cb_cls);
 
