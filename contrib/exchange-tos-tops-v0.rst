@@ -116,7 +116,7 @@ eine Schweizer Mobiltelefonnummer zum Empfang von SMS zur Identifizierung.
 Sorgfaltspflichten und andere Pflichten der Nutzer
 ---------------------------------------------------------------------
 
-Beim Umgang mit dem Zahlungsdienst sind insbesondere folgende
+1. Beim Umgang mit dem Zahlungsdienst sind insbesondere folgende
 Sorgfaltspflichten von Nutzern einzuhalten:
 
 * Das Smartphone, PC, Notebook etc. ist vor unbefugter Benutzung oder Manipulation zu schützen (z.B. mittels Geräte- bzw. Displaysperre).
@@ -129,16 +129,18 @@ Sorgfaltspflichten von Nutzern einzuhalten:
 
 * Insbesondere werden Handlungen, die eine Drittperson unberechtigt mit dem Taler-Wallet vornimmt, dem Eigentümer des Wallet zugerechnet.
 
-* Die Nutzer müssen sich darüber im klaren sein, **elektronisches Geld wie Bargeld zu behandeln** und ebenso zu sichern, d.h. ein Backup der Wallet-Daten anzulegen. Die Nutzer der Taler-App sind
+2. Die Nutzer müssen sich darüber im klaren sein, **elektronisches Geld wie Bargeld zu behandeln** und ebenso zu
+sichern, d.h. ein Backup der Wallet-Daten anzulegen. Die Nutzer der Taler-App sind
 daher verpflichtet, den Zugang zum digitalen Endgerät zu sichern und vor unbefugtem Zugriff zu bewahren. Sie müssen die Wallet-Daten mit einer Sicherungskopie auf einem anderen Gerät speichern.
 Die Exportfunktion des Wallet hilft dabei, ein Backup der Wallet-Daten anzulegen und zu speichern. Ein verlorenes Nutzergerät mit einem Wallet darauf ohne Backup auf einem anderen Gerät oder
 Datenträger bedeutet einen Totalverlust des Guthabens.
 
-* Es ist dafür zu sorgen, dass sich das Endgerät mit einem darauf installierten Taler-Wallet **innerhalb eines Jahres** nach der letzten Transaktion
-**mit dem Zahlungsdienst über das Internet verbindet**, ansonsten kann das Guthaben im Wallet verloren werden.
-Ein Erneuern des Guthabens erfolgt regulär einen Monat vor dem Ende der Gültigkeit des elektronischen Bargelds, die zum Abhebezeitpunkt ca. ein Jahr beträgt.
+3. Es ist dafür zu sorgen, dass sich das Endgerät mit einem darauf installierten Taler-Wallet **innerhalb eines Jahres**
+nach der letzten Transaktion **mit dem Zahlungsdienst über das Internet verbindet**, ansonsten kann das Guthaben im
+Wallet verloren werden. Ein Erneuern des Guthabens erfolgt regulär einen Monat vor dem Ende der Gültigkeit des
+elektronischen Bargelds, die zum Abhebezeitpunkt ca. ein Jahr beträgt.
 
-Die Kommunikation von TOPS zu Nutzern erfolgt grundsätzlich über
+4. Die Kommunikation von TOPS zu Nutzern erfolgt grundsätzlich über
 Benachrichtigungen im Protokoll von GNU Taler. Die Nutzer sind dafür
 verantwortlich, auf entsprechende Benachrichtigungen zu reagieren. TOPS hat
 das Recht, Transaktionen solange nicht auszuführen, bis die Nutzer auf diesem Weg
