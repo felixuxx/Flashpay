@@ -3514,6 +3514,8 @@ TALER_KYCLOGIC_run_aml_program2 (
       aprh,
       prog->command,
       prog->command,
+      "-c",
+      cfg_filename,
       NULL);
     json_decref (input);
   }
