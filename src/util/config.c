@@ -37,9 +37,7 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              option,
                                              &str))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               option);
+    /* may be OK! */
     return GNUNET_NO;
   }
   if (GNUNET_OK !=

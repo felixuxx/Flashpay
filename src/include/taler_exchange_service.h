@@ -492,6 +492,7 @@ struct TALER_EXCHANGE_Keys
   /**
    * Array of amounts a wallet is allowed to hold from
    * this exchange before it must undergo further KYC checks.
+   * Length is given in @e wblwk_length.
    */
   struct TALER_Amount *wallet_balance_limit_without_kyc;
 
@@ -548,6 +549,20 @@ struct TALER_EXCHANGE_Keys
    * Logarithmic STEFAN parameter.
    */
   struct TALER_Amount stefan_log;
+
+  /**
+   * Maximum amount for an individual transaction.
+   * Set to an invalid amount (see #TALER_amount_is_valid())
+   * if there is no limit.
+   */
+  struct TALER_Amount transaction_limit;
+
+  /**
+   * Maximum amount that can be refunded per individual transaction.
+   * Set to an invalid amount (see #TALER_amount_is_valid())
+   * if there is no limit.
+   */
+  struct TALER_Amount refund_limit;
 
   /**
    * Linear STEFAN parameter.

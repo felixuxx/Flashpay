@@ -159,8 +159,6 @@ report_amount_arithmetic_inconsistency (
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_AmountArithmeticInconsistency aai;
 
   if (0 < TALER_amount_cmp (exchange,
                             auditor))
@@ -178,33 +176,26 @@ report_amount_arithmetic_inconsistency (
                                auditor,
                                exchange);
   }
-  aai.profitable = profitable;
-  aai.operation = (char *) operation;
-  aai.exchange_amount = *exchange;
-  aai.auditor_amount = *auditor;
 
-  qs = TALER_ARL_adb->insert_amount_arithmetic_inconsistency (
-    TALER_ARL_adb->cls,
-    &aai);
-
-  if (qs < 0)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_AUDITORDB_AmountArithmeticInconsistency aai = {
+      .profitable = profitable,
+      .operation = (char *) operation,
+      .exchange_amount = *exchange,
+      .auditor_amount = *auditor
+    };
+
+    qs = TALER_ARL_adb->insert_amount_arithmetic_inconsistency (
+      TALER_ARL_adb->cls,
+      &aai);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling
+    }
   }
-
-
-  TALER_ARL_report (report_amount_arithmetic_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("operation",
-                                               operation),
-                      GNUNET_JSON_pack_uint64 ("rowid",
-                                               rowid),
-                      TALER_JSON_pack_amount ("exchange",
-                                              exchange),
-                      TALER_JSON_pack_amount ("auditor",
-                                              auditor),
-                      GNUNET_JSON_pack_int64 ("profitable",
-                                              profitable)));
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -240,8 +231,6 @@ report_coin_arithmetic_inconsistency (
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_CoinInconsistency ci;
 
   if (0 < TALER_amount_cmp (exchange,
                             auditor))
@@ -260,33 +249,26 @@ report_coin_arithmetic_inconsistency (
                                exchange);
   }
 
-  ci.operation = (char *) operation;
-  ci.auditor_amount = *auditor;
-  ci.exchange_amount = *exchange;
-  ci.profitable = profitable;
-  ci.coin_pub = coin_pub->eddsa_pub;
-
-  qs = TALER_ARL_adb->insert_coin_inconsistency (
-    TALER_ARL_adb->cls,
-    &ci);
-
-  if (qs < 0)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-  }
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_AUDITORDB_CoinInconsistency ci = {
+      .operation = (char *) operation,
+      .auditor_amount = *auditor,
+      .exchange_amount = *exchange,
+      .profitable = profitable,
+      .coin_pub = coin_pub->eddsa_pub
+    };
 
-  TALER_ARL_report (report_coin_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("operation",
-                                               operation),
-                      GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                  coin_pub),
-                      TALER_JSON_pack_amount ("exchange",
-                                              exchange),
-                      TALER_JSON_pack_amount ("auditor",
-                                              auditor),
-                      GNUNET_JSON_pack_int64 ("profitable",
-                                              profitable)));
+    qs = TALER_ARL_adb->insert_coin_inconsistency (
+      TALER_ARL_adb->cls,
+      &ci);
+
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling
+    }
+  }
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -312,11 +294,11 @@ report_row_inconsistency (const char *table,
                           const char *diagnostic)
 {
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_RowInconsistency ri;
-
-  ri.diagnostic = (char *) diagnostic;
-  ri.row_table = (char *) table;
-  ri.row_id = rowid;
+  struct TALER_AUDITORDB_RowInconsistency ri = {
+    .diagnostic = (char *) diagnostic,
+    .row_table = (char *) table,
+    .row_id = rowid
+  };
 
   qs = TALER_ARL_adb->insert_row_inconsistency (
     TALER_ARL_adb->cls,
@@ -325,16 +307,8 @@ report_row_inconsistency (const char *table,
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    // FIXME: error handling
   }
-
-  TALER_ARL_report (report_row_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("table",
-                                               table),
-                      GNUNET_JSON_pack_uint64 ("row",
-                                               rowid),
-                      GNUNET_JSON_pack_string ("diagnostic",
-                                               diagnostic)));
 }
 
 
@@ -467,7 +441,6 @@ check_transaction_history_for_deposit (
   struct TALER_Amount merchant_loss;
   const struct TALER_Amount *deposit_fee;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_AUDITORDB_RowInconsistency ri;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
@@ -502,11 +475,12 @@ check_transaction_history_for_deposit (
       /* check wire and h_wire are consistent */
       if (NULL != deposited)
       {
-        ri.row_id = tl->serial_id;
-        char *diagnostic =
-          "multiple deposits of the same coin into the same contract detected";
-        ri.diagnostic = diagnostic;
-        ri.row_table = "deposits";
+        struct TALER_AUDITORDB_RowInconsistency ri = {
+          .row_id = tl->serial_id,
+          .diagnostic =
+            "multiple deposits of the same coin into the same contract detected",
+          .row_table = "deposits"
+        };
 
         qs = TALER_ARL_adb->insert_row_inconsistency (
           TALER_ARL_adb->cls,
@@ -515,16 +489,8 @@ check_transaction_history_for_deposit (
         if (qs < 0)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          // FIXME: error handling
         }
-
-        TALER_ARL_report (report_row_inconsistencies,
-                          GNUNET_JSON_PACK (
-                            GNUNET_JSON_pack_string ("table",
-                                                     "deposits"),
-                            GNUNET_JSON_pack_uint64 ("row",
-                                                     tl->serial_id),
-                            GNUNET_JSON_pack_string ("diagnostic",
-                                                     diagnostic)));
       }
       deposited = &tl->details.deposit->amount_with_fee;       /* according to exchange*/
       fee_claimed = &tl->details.deposit->deposit_fee;       /* Fee according to exchange DB */
@@ -850,7 +816,6 @@ wire_transfer_information_cb (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP hpt;
   uint64_t etag_out;
-  struct TALER_AUDITORDB_BadSigLosses bsl;
 
   TALER_payto_hash (account_pay_uri,
                     &hpt);
@@ -925,30 +890,21 @@ wire_transfer_information_cb (
       TALER_test_coin_valid (&coin,
                              denom_pub))
   {
-    bsl.row_id = rowid;
-    bsl.operation = "wire";
-    bsl.loss = *coin_value;
-    bsl.operation_specific_pub = coin.coin_pub.eddsa_pub;
+    struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .row_id = rowid,
+      .operation = "wire",
+      .loss = *coin_value,
+      .operation_specific_pub = coin.coin_pub.eddsa_pub
+    };
 
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling
     }
-
-    TALER_ARL_report (report_bad_sig_losses,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("operation",
-                                                 "wire"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("loss",
-                                                coin_value),
-                        GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                    &coin.coin_pub)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           coin_value);
@@ -1136,12 +1092,11 @@ get_wire_fee (struct AggregationContext *ac,
                                  >,
                                  wfi->start_date))
   {
-    struct TALER_AUDITORDB_FeeTimeInconsistency ftib;
-    char *diagnosticb = "start date before previous end date";
-    ftib.diagnostic = diagnosticb;
-    ftib.time = wfi->start_date.abs_time;
-    ftib.type = (char *) method;
-
+    struct TALER_AUDITORDB_FeeTimeInconsistency ftib = {
+      .diagnostic = "start date before previous end date",
+      .time = wfi->start_date.abs_time,
+      .type = (char *) method
+    };
 
     qs = TALER_ARL_adb->insert_fee_time_inconsistency (
       TALER_ARL_adb->cls,
@@ -1150,28 +1105,19 @@ get_wire_fee (struct AggregationContext *ac,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling
     }
-
-    TALER_ARL_report (report_fee_time_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("type",
-                                                 method),
-                        GNUNET_JSON_pack_string ("diagnostic",
-                                                 diagnosticb),
-                        TALER_JSON_pack_time_abs_human ("time",
-                                                        wfi->start_date.abs_time
-                                                        )));
   }
   if ((NULL != wfi->next) &&
       GNUNET_TIME_timestamp_cmp (wfi->next->start_date,
                                  >=,
                                  wfi->end_date))
   {
-    struct TALER_AUDITORDB_FeeTimeInconsistency ftia;
-    char *diagnostica = "end date date after next start date";
-    ftia.diagnostic = diagnostica;
-    ftia.time = wfi->end_date.abs_time;
-    ftia.type = (char *) method;
+    struct TALER_AUDITORDB_FeeTimeInconsistency ftia = {
+      .diagnostic = "end date date after next start date",
+      .time = wfi->end_date.abs_time,
+      .type = (char *) method
+    };
 
     qs = TALER_ARL_adb->insert_fee_time_inconsistency (
       TALER_ARL_adb->cls,
@@ -1180,17 +1126,8 @@ get_wire_fee (struct AggregationContext *ac,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      // FIXME: error handling
     }
-
-    TALER_ARL_report (report_fee_time_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("type",
-                                                 method),
-                        GNUNET_JSON_pack_string ("diagnostic",
-                                                 diagnostica),
-                        TALER_JSON_pack_time_abs_human ("time",
-                                                        wfi->end_date.abs_time))
-                      );
   }
   return &wfi->fees.wire;
 }
@@ -1222,7 +1159,6 @@ check_wire_out_cb (void *cls,
   struct TALER_Amount exchange_gain;
   enum GNUNET_DB_QueryStatus qs;
   char *method;
-  struct TALER_AUDITORDB_WireOutInconsistency woi;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >=
@@ -1346,32 +1282,25 @@ check_wire_out_cb (void *cls,
                             &total_wire_out_delta_minus,
                             &delta);
     }
-    woi.row_id = rowid;
-    woi.destination_account = (char *) payto_uri;
-    woi.expected = final_amount;
-    woi.claimed = *amount;
 
-    qs = TALER_ARL_adb->insert_wire_out_inconsistency (
-      TALER_ARL_adb->cls,
-      &woi);
-
-    if (qs < 0)
     {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    }
+      struct TALER_AUDITORDB_WireOutInconsistency woi = {
+        .row_id = rowid,
+        .destination_account = (char *) payto_uri,
+        .expected = final_amount,
+        .claimed = *amount
+      };
 
-    TALER_ARL_report (report_wire_out_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("destination_account",
-                                                 payto_uri),
-                        GNUNET_JSON_pack_uint64 ("rowid",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("expected",
-                                                &final_amount),
-                        TALER_JSON_pack_amount ("claimed",
-                                                amount)));
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
+      qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+        TALER_ARL_adb->cls,
+        &woi);
+
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        // FIXME: error handling
+      }
+    }
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

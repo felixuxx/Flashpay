@@ -28,7 +28,10 @@ set -eu
 
 echo "Running $0" 1>&2
 
-if [ "${1:-no}" = "--list-outputs" ]
+# FIXME: use getopt properly here, also support
+# -h, -v, -V, ...
+
+if [ "${1:-no}" = "-o" ]
 then
     # This converter produces a full name and birthdate.
     echo "full_name"

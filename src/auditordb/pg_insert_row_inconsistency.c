@@ -25,11 +25,10 @@ TAH_PG_insert_row_inconsistency (
   const struct TALER_AUDITORDB_RowInconsistency *dc)
 {
   struct PostgresClosure *pg = cls;
-
   struct GNUNET_PQ_QueryParam params[] = {
-
     GNUNET_PQ_query_param_string (dc->row_table),
     GNUNET_PQ_query_param_string (dc->diagnostic),
+    GNUNET_PQ_query_param_uint64 (&dc->row_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -38,8 +37,8 @@ TAH_PG_insert_row_inconsistency (
            "INSERT INTO auditor_row_inconsistency "
            "(row_table"
            ",diagnostic"
-           ") VALUES ($1,$2);");
-
+           ",problem_row_id"
+           ") VALUES ($1,$2,$3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_deposit_confirmation_insert",
                                              params);

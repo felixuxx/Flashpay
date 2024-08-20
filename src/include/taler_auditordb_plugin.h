@@ -212,7 +212,8 @@ struct TALER_AUDITORDB_Generic_Update
  */
 struct TALER_AUDITORDB_AmountArithmeticInconsistency
 {
-  unsigned int row_id;
+  // FIXME: which row?
+  uint64_t row_id;
   char *operation;
   struct TALER_Amount exchange_amount;
   struct TALER_Amount auditor_amount;
@@ -224,7 +225,7 @@ struct TALER_AUDITORDB_AmountArithmeticInconsistency
  */
 struct TALER_AUDITORDB_CoinInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *operation;
   struct TALER_Amount exchange_amount;
   struct TALER_Amount auditor_amount;
@@ -237,7 +238,7 @@ struct TALER_AUDITORDB_CoinInconsistency
  */
 struct TALER_AUDITORDB_RowInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *row_table;
   char *diagnostic;
   bool suppressed;
@@ -248,7 +249,7 @@ struct TALER_AUDITORDB_RowInconsistency
  */
 struct TALER_AUDITORDB_BadSigLosses
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *operation;
   struct TALER_Amount loss;
   struct GNUNET_CRYPTO_EddsaPublicKey operation_specific_pub;
@@ -259,10 +260,10 @@ struct TALER_AUDITORDB_BadSigLosses
  */
 struct TALER_AUDITORDB_ClosureLags
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute deadline;
-  struct GNUNET_HashCode wtid;
+  struct TALER_WireTransferIdentifierRawP wtid;
   char *account;
 
 };
@@ -272,7 +273,7 @@ struct TALER_AUDITORDB_ClosureLags
  */
 struct TALER_AUDITORDB_Emergency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_DenominationHashP denompub_h;
   struct TALER_Amount denom_risk;
   struct TALER_Amount denom_loss;
@@ -286,10 +287,10 @@ struct TALER_AUDITORDB_Emergency
  */
 struct TALER_AUDITORDB_EmergenciesByCount
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_DenominationHashP denompub_h;
-  int64_t num_issued;
-  int64_t num_known;
+  uint64_t num_issued;
+  uint64_t num_known;
   struct TALER_Amount risk;
   struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Absolute deposit_end;
@@ -301,9 +302,9 @@ struct TALER_AUDITORDB_EmergenciesByCount
  */
 struct TALER_AUDITORDB_Progress
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *progress_key;
-  int64_t progress_offset;
+  uint64_t progress_offset;
 };
 
 /**
@@ -311,7 +312,7 @@ struct TALER_AUDITORDB_Progress
  */
 struct TALER_AUDITORDB_RefreshesHanging
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_Amount amount;
   struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
 };
@@ -321,7 +322,7 @@ struct TALER_AUDITORDB_RefreshesHanging
  */
 struct TALER_AUDITORDB_FeeTimeInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *type;
   struct GNUNET_TIME_Absolute time;
   char *diagnostic;
@@ -332,7 +333,7 @@ struct TALER_AUDITORDB_FeeTimeInconsistency
  */
 struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_DenominationHashP denompub_h;
@@ -343,7 +344,7 @@ struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency
  */
 struct TALER_AUDITORDB_PurseNotClosedInconsistencies
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct GNUNET_CRYPTO_EddsaPublicKey purse_pub;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute expiration_date;
@@ -354,7 +355,7 @@ struct TALER_AUDITORDB_PurseNotClosedInconsistencies
  */
 struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
   bool inconsistency_gain;
   struct TALER_Amount inconsistency_amount;
@@ -365,7 +366,7 @@ struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency
  */
 struct TALER_AUDITORDB_ReserveInInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_Amount amount_exchange_expected;
   struct TALER_Amount amount_wired;
   struct TALER_ReservePublicKeyP reserve_pub;
@@ -381,7 +382,7 @@ struct TALER_AUDITORDB_ReserveInInconsistency
  */
 struct TALER_AUDITORDB_Balances
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *balance_key;
   struct TALER_Amount balance_value;
   bool suppressed;
@@ -678,7 +679,7 @@ struct TALER_AUDITORDB_DenominationCirculationData
 
 struct TALER_AUDITORDB_DenominationsWithoutSigs
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_DenominationHashP denompub_h;
   struct TALER_Amount value;
   struct GNUNET_TIME_Absolute start_time;
@@ -689,9 +690,9 @@ struct TALER_AUDITORDB_DenominationsWithoutSigs
 
 struct TALER_AUDITORDB_MisattributionInInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_Amount amount;
-  int64_t bank_row;
+  uint64_t bank_row;
   struct TALER_ReservePublicKeyP reserve_pub;
   bool suppressed;
 
@@ -699,8 +700,8 @@ struct TALER_AUDITORDB_MisattributionInInconsistency
 
 struct TALER_AUDITORDB_Reserves
 {
-  unsigned int row_id;
-  int64_t auditor_reserves_rowid;
+  uint64_t row_id;
+  uint64_t auditor_reserves_rowid;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount reserve_balance;
   struct TALER_Amount reserve_loss;
@@ -717,8 +718,8 @@ struct TALER_AUDITORDB_Reserves
 
 struct TALER_AUDITORDB_Purses
 {
-  unsigned int row_id;
-  int64_t auditor_purses_rowid;
+  uint64_t row_id;
+  uint64_t auditor_purses_rowid;
   struct TALER_PurseContractPublicKeyP purse_pub;
   struct TALER_Amount balance;
   struct TALER_Amount target;
@@ -729,7 +730,7 @@ struct TALER_AUDITORDB_Purses
 
 struct TALER_AUDITORDB_HistoricDenominationRevenue
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_DenominationHashP denom_pub_hash;
   struct GNUNET_TIME_Absolute revenue_timestamp;
   struct TALER_Amount revenue_balance;
@@ -740,11 +741,11 @@ struct TALER_AUDITORDB_HistoricDenominationRevenue
 
 struct TALER_AUDITORDB_DenominationPending
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_DenominationHashP denom_pub_hash;
   struct TALER_Amount denom_balance;
   struct TALER_Amount denom_loss;
-  int64_t num_issued;
+  uint64_t num_issued;
   struct TALER_Amount denom_risk;
   struct TALER_Amount recoup_loss;
   bool suppressed;
@@ -753,7 +754,7 @@ struct TALER_AUDITORDB_DenominationPending
 
 struct TALER_AUDITORDB_HistoricReserveSummary
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct GNUNET_TIME_Absolute start_date;
   struct GNUNET_TIME_Absolute end_date;
   struct TALER_Amount reserve_profits;
@@ -763,7 +764,7 @@ struct TALER_AUDITORDB_HistoricReserveSummary
 
 struct TALER_AUDITORDB_ExchangeSignkeys
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Absolute ep_valid_from;
@@ -775,7 +776,7 @@ struct TALER_AUDITORDB_ExchangeSignkeys
 
 struct TALER_AUDITORDB_WireFormatInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_Amount amount;
   int64_t wire_offset;
   char *diagnostic;
@@ -785,8 +786,9 @@ struct TALER_AUDITORDB_WireFormatInconsistency
 
 struct TALER_AUDITORDB_WireOutInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *destination_account;
+  char *diagnostic; // FIXME: new
   struct TALER_Amount expected;
   struct TALER_Amount claimed;
   bool suppressed;
@@ -795,7 +797,7 @@ struct TALER_AUDITORDB_WireOutInconsistency
 
 struct TALER_AUDITORDB_RowMinorInconsistencies
 {
-  unsigned int row_id;
+  uint64_t row_id;
   char *row_table;
   char *diagnostic;
   bool suppressed;
@@ -804,7 +806,7 @@ struct TALER_AUDITORDB_RowMinorInconsistencies
 
 struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount exchange_amount;
   struct TALER_Amount auditor_amount;
@@ -814,7 +816,7 @@ struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency
 
 struct TALER_AUDITORDB_ReserveNotClosedInconsistency
 {
-  unsigned int row_id;
+  uint64_t row_id;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount balance;
   struct GNUNET_TIME_Absolute expiration_time;

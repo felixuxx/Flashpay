@@ -71,20 +71,16 @@ emergency_by_count_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_EmergenciesByCount dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
       GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
       GNUNET_PQ_result_spec_auto_from_type ("denompub_h",  &dc.denompub_h),
-      GNUNET_PQ_result_spec_int64 ("num_issued", &dc.num_issued),
-      GNUNET_PQ_result_spec_int64 ("num_known", &dc.num_known),
+      GNUNET_PQ_result_spec_uint64 ("num_issued", &dc.num_issued),
+      GNUNET_PQ_result_spec_uint64 ("num_known", &dc.num_known),
       TALER_PQ_RESULT_SPEC_AMOUNT ("risk", &dc.risk),
       GNUNET_PQ_result_spec_absolute_time ("start", &dc.start),
       GNUNET_PQ_result_spec_absolute_time ("deposit_end", &dc.deposit_end),
       TALER_PQ_RESULT_SPEC_AMOUNT ("value",  &dc.value),
-
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -98,9 +94,7 @@ emergency_by_count_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     serial_id,
                     &dc);
@@ -120,9 +114,7 @@ TAH_PG_get_emergency_by_count (
   TALER_AUDITORDB_EmergenciesByCountCallback cb,
   void *cb_cls)
 {
-
   uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
@@ -172,13 +164,14 @@ TAH_PG_get_emergency_by_count (
            " LIMIT $3"
            );
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0) ?
+                                             (limit > 0)
+                                             ?
                                              "auditor_emergency_by_count_get_asc"
-  : "auditor_emergency_by_count_get_desc",
+                                             :
+                                             "auditor_emergency_by_count_get_desc",
                                              params,
                                              &emergency_by_count_cb,
                                              &dcc);
-
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

@@ -69,22 +69,16 @@ denomination_pending_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_DenominationPending dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
       GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &dc.denom_pub_hash),
       TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance",  &dc.denom_balance),
       TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss",  &dc.denom_loss),
-      GNUNET_PQ_result_spec_int64 ("num_issued",  &dc.num_issued),
+      GNUNET_PQ_result_spec_uint64 ("num_issued",  &dc.num_issued),
       TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk",  &dc.denom_risk),
       TALER_PQ_RESULT_SPEC_AMOUNT ("recoup_loss",  &dc.recoup_loss),
-
-
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -98,9 +92,7 @@ denomination_pending_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     serial_id,
                     &dc);

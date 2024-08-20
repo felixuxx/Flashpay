@@ -228,7 +228,7 @@ struct TALER_KYCLOGIC_AmlProgram
   char *fallback;
 
   /**
-   * Output of @e command "--required-context".
+   * Output of @e command "-r".
    */
   char **required_contexts;
 
@@ -238,7 +238,7 @@ struct TALER_KYCLOGIC_AmlProgram
   unsigned int num_required_contexts;
 
   /**
-   * Output of @e command "--required-attributes".
+   * Output of @e command "-a".
    */
   char **required_attributes;
 
@@ -294,6 +294,11 @@ static struct TALER_KYCLOGIC_AmlProgram **aml_programs;
  * Length of the #aml_programs array.
  */
 static unsigned int num_aml_programs;
+
+/**
+ * Name of our configuration file.
+ */
+static char *cfg_filename;
 
 
 struct GNUNET_TIME_Timestamp
@@ -1113,6 +1118,8 @@ command_output (const char *command,
     execlp (command,
             command,
             argument,
+            "-c",
+            cfg_filename,
             NULL);
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                               "exec",
@@ -1301,6 +1308,7 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
 {
   char *lib_name;
   struct TALER_KYCLOGIC_Plugin *plugin;
+
 
   GNUNET_asprintf (&lib_name,
                    "libtaler_plugin_kyclogic_%s",
@@ -1991,23 +1999,23 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
   }
 
   required_contexts = command_output (command,
-                                      "--required-context");
+                                      "-r");
   if (NULL == required_contexts)
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "COMMAND",
-                               "output for --required-context invalid");
+                               "output for -r invalid");
     goto fail;
   }
   required_attributes = command_output (command,
-                                        "--required-attributes");
+                                        "-a");
   if (NULL == required_attributes)
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "COMMAND",
-                               "output for --required-attributes invalid");
+                               "output for -a invalid");
     goto fail;
   }
 
@@ -2209,13 +2217,15 @@ sort_by_timeframe (const void *p1,
 
 enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_kyc_init (
-  const struct GNUNET_CONFIGURATION_Handle *cfg)
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *cfg_fn)
 {
   struct SectionContext sc = {
     .cfg = cfg,
     .result = true
   };
 
+  cfg_filename = GNUNET_strdup (cfg_fn);
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &handle_provider_section,
                                          &sc);
@@ -2422,6 +2432,7 @@ TALER_KYCLOGIC_kyc_done (void)
   GNUNET_array_grow (aml_programs,
                      num_aml_programs,
                      0);
+  GNUNET_free (cfg_filename);
 }
 
 
@@ -2865,8 +2876,9 @@ TALER_KYCLOGIC_measure_to_requirement (
                                xids),
       GNUNET_JSON_pack_string ("description",
                                kc->description),
-      GNUNET_JSON_pack_object_incref ("description_i18n",
-                                      (json_t *) kc->description_i18n));
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("description_i18n",
+                                        (json_t *) kc->description_i18n)));
     GNUNET_free (xids);
     return kri;
   case TALER_KYCLOGIC_CT_LINK:

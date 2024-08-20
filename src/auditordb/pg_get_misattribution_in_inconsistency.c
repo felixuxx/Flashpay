@@ -69,19 +69,13 @@ misattribution_in_inconsistency_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_MisattributionInInconsistency dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
       GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",  &dc.amount),
-      GNUNET_PQ_result_spec_int64 ("bank_row",  &dc.bank_row),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",  &dc.reserve_pub),
-      GNUNET_PQ_result_spec_bool ("suppressed",  &dc.suppressed),
-
-
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount", &dc.amount),
+      GNUNET_PQ_result_spec_uint64 ("bank_row", &dc.bank_row),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub", &dc.reserve_pub),
+      GNUNET_PQ_result_spec_bool ("suppressed", &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -95,9 +89,7 @@ misattribution_in_inconsistency_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     serial_id,
                     &dc);
@@ -169,7 +161,8 @@ TAH_PG_get_misattribution_in_inconsistency (
                                              :
                                              "auditor_misattribution_in_inconsistency_get_desc",
                                              params,
-                                             &misattribution_in_inconsistency_cb,
+                                             &misattribution_in_inconsistency_cb
+                                             ,
                                              &dcc);
 
   if (qs > 0)
