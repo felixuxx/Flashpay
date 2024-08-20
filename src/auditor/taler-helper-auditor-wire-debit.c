@@ -273,7 +273,9 @@ static int internal_checks;
  */
 static int ignore_account_404;
 
-// FIXME: comment
+/**
+ * Database event handler to wake us up again.
+ */
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
@@ -466,21 +468,6 @@ check_pending_rc (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (
-      report_closure_lags,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rc->rowid),
-        TALER_JSON_pack_amount ("amount",
-                                &rc->amount),
-        TALER_JSON_pack_time_abs_human ("deadline",
-                                        rc->execution_date.abs_time),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    &rc->wtid),
-        GNUNET_JSON_pack_string ("account",
-                                 rc->receiver_account)));
-#endif
   }
   TALER_ARL_USE_PP (wire_reserve_close_id)
     = GNUNET_MIN (TALER_ARL_USE_PP (wire_reserve_close_id),
@@ -724,25 +711,9 @@ struct ReasonDetail
   struct GNUNET_TIME_Timestamp deadline;
 
   /**
-   * Target account, NULL if even that is not known (due to
-   * exchange lacking required entry in wire_targets table).
+   * Target account hash.
    */
-  char *payto_uri;
-
-  /**
-   * Account properties, possibly NULL.
-   */
-  json_t *properties;
-
-  /**
-   * Account KYC rules.
-   */
-  json_t *jrules;
-
-  /**
-   * TODO: Is the wire transfer blocked due to KYC/AML checks, according to the exchange?
-   */
-  /* bool is_blocked_because_of_kyc_aml; */
+  struct TALER_PaytoHashP wire_target_h_payto;
 
 };
 
@@ -797,9 +768,6 @@ free_report_entry (void *cls,
 {
   struct ReasonDetail *rd = value;
 
-  json_decref (rd->properties);
-  json_decref (rd->jrules);
-  GNUNET_free (rd->payto_uri);
   GNUNET_free (rd);
   return GNUNET_YES;
 }
@@ -815,7 +783,6 @@ free_report_entry (void *cls,
  * @return #GNUNET_YES if we should continue to
  *         iterate,
  *         #GNUNET_NO if not.
- * FIXME:
  */
 static enum GNUNET_GenericReturnValue
 generate_report (void *cls,
@@ -823,9 +790,7 @@ generate_report (void *cls,
                  void *value)
 {
   struct ReasonDetail *rd = value;
-  // struct TALER_AUDITORDB_KycLag kycl;
-  // struct TALER_AUDITORDB_AmlLag amllag;
-  // struct TALER_AUDITORDB_Lag lag;
+
 
   /* For now, we simplify and only check that the
      amount was tiny */
@@ -839,14 +804,15 @@ generate_report (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_amount_lag),
                         &TALER_ARL_USE_AB (total_amount_lag),
                         &rd->total_amount);
-  // TODO add kyc lag db entry
-#if FIXME
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TALER_ARL_adb->insert_reserve_balance_insufficient_inconsistency (
+    qs = TALER_ARL_adb->insert_pending_deposit (
       TALER_ARL_adb->cls,
-      &rbiil);
+      rd->batch_deposit_serial_id,
+      &rd->wire_target_h_payto,
+      &rd->total_amount,
+      rd->deadline);
     if (qs < 0)
     {
       global_qs = qs;
@@ -854,24 +820,6 @@ generate_report (void *cls,
       return GNUNET_SYSERR;
     }
   }
-#endif
-#if TO_BE_REMOVED_DEAD_CODE
-  TALER_ARL_report (report_kyc_lags,
-                    GNUNET_JSON_PACK (
-                      TALER_JSON_pack_amount ("total_amount",
-                                              &rd->total_amount),
-                      TALER_JSON_pack_time_abs_human ("deadline",
-                                                      rd->deadline.abs_time),
-                      GNUNET_JSON_pack_object_incref ("kyc_rules",
-                                                      rd->rules),
-                      GNUNET_JSON_pack_allow_null (
-                        GNUNET_JSON_pack_object_incref ("properties",
-                                                        rd->properties)),
-                      GNUNET_JSON_pack_allow_null (
-                        GNUNET_JSON_pack_string ("account",
-                                                 rd->payto_uri)));
-#endif
-
   return free_report_entry (cls,
                             key,
                             value);
@@ -879,7 +827,6 @@ generate_report (void *cls,
 
 
 /**
- * FIXME:
  * Function called on deposits that are past their due date
  * and have not yet seen a wire transfer.
  *
@@ -905,20 +852,15 @@ report_wire_missing_cb (void *cls,
   {
     rd = GNUNET_new (struct ReasonDetail);
     rd->batch_deposit_serial_id = batch_deposit_serial_id;
+    rd->wire_target_h_payto = *wire_target_h_payto;
+    rd->total_amount = *total_amount;
+    rd->deadline = deadline;
     GNUNET_assert (GNUNET_YES ==
                    GNUNET_CONTAINER_multishortmap_put (
                      rc->map,
                      &wire_target_h_payto->hash,
                      rd,
                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-    rc->err = TALER_ARL_edb->select_justification_for_missing_wire (
-      TALER_ARL_edb->cls,
-      wire_target_h_payto,
-      &rd->payto_uri,
-      &rd->properties,
-      &rd->jrules);
-    rd->total_amount = *total_amount;
-    rd->deadline = deadline;
   }
   else
   {
@@ -1047,7 +989,11 @@ check_for_required_transfers (void)
   GNUNET_CONTAINER_multishortmap_destroy (rc.map);
   /* conclude with success */
   commit (global_qs);
-  GNUNET_SCHEDULER_shutdown ();
+  if (test_mode)
+  {
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
 }
 
 
@@ -1119,16 +1065,6 @@ check_time_difference (const char *table,
       return false;
     }
   }
-#if TO_BE_REMOVED_DEAD_CODE
-  TALER_ARL_report (report_row_minor_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("table",
-                                               table),
-                      GNUNET_JSON_pack_uint64 ("row",
-                                               rowid),
-                      GNUNET_JSON_pack_string ("diagnostic",
-                                               details)));
-#endif
   GNUNET_free (details);
   return true;
 }
@@ -1196,25 +1132,6 @@ wire_out_cb (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &zero),
-        TALER_JSON_pack_amount ("amount_justified",
-                                amount),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire transfer not made (yet?)"),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
                           &TALER_ARL_USE_AB (total_bad_amount_out_minus),
                           amount);
@@ -1246,27 +1163,6 @@ wire_out_cb (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &roi->details.amount),
-        TALER_JSON_pack_amount ("amount_justified",
-                                &zero),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "receiver account mismatch"),
-        GNUNET_JSON_pack_string ("target",
-                                 payto_uri),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
                           &TALER_ARL_USE_AB (total_bad_amount_out_plus),
                           &roi->details.amount);
@@ -1296,25 +1192,6 @@ wire_out_cb (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (
-      report_wire_out_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rowid),
-        TALER_JSON_pack_amount ("amount_justified",
-                                amount),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &roi->details.amount),
-        GNUNET_JSON_pack_data_auto ("wtid",
-                                    wtid),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        date.abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire amount does not match"),
-        GNUNET_JSON_pack_string ("account_section",
-                                 wa->ai->section_name)));
-#endif
     if (0 < TALER_amount_cmp (amount,
                               &roi->details.amount))
     {
@@ -1444,16 +1321,16 @@ complain_out_not_found (void *cls,
   };
 
   (void) key;
-   hash_rc (roi->details.credit_account_uri,
-            &roi->details.wtid,
-            &rkey);
-   GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
-                                               &rkey,
-                                               &check_rc_matches,
-                                               &ctx);
-   if (ctx.found)
-     return GNUNET_OK;
-   /* check for profit drain */
+  hash_rc (roi->details.credit_account_uri,
+           &roi->details.wtid,
+           &rkey);
+  GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
+                                              &rkey,
+                                              &check_rc_matches,
+                                              &ctx);
+  if (ctx.found)
+    return GNUNET_OK;
+  /* check for profit drain */
   {
     enum GNUNET_DB_QueryStatus qs;
     uint64_t serial;
@@ -1462,8 +1339,6 @@ complain_out_not_found (void *cls,
     struct GNUNET_TIME_Timestamp request_timestamp;
     struct TALER_Amount amount;
     struct TALER_MasterSignatureP master_sig;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi2;
-    // struct TALER_AUDITORDB_WireOutInconsistency woi3;
 
     qs = TALER_ARL_edb->get_drain_profit (TALER_ARL_edb->cls,
                                           &roi->details.wtid,
@@ -1475,168 +1350,113 @@ complain_out_not_found (void *cls,
                                           &master_sig);
     switch (qs)
     {
-      case GNUNET_DB_STATUS_HARD_ERROR:
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      global_ret = EXIT_FAILURE;
+      GNUNET_SCHEDULER_shutdown ();
+      return GNUNET_SYSERR;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      /* should fail on commit later ... */
+      GNUNET_break (0);
+      return GNUNET_NO;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      /* not a profit drain */
+      break;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Profit drain of %s to %s found!\n",
+                  TALER_amount2s (&amount),
+                  payto_uri);
+      if (GNUNET_OK !=
+          TALER_exchange_offline_profit_drain_verify (
+            &roi->details.wtid,
+            request_timestamp,
+            &amount,
+            account_section,
+            payto_uri,
+            &TALER_ARL_master_pub,
+            &master_sig))
+      {
+        struct TALER_AUDITORDB_RowInconsistency ri = {
+          .row_id = roi->details.serial_id,
+          .row_table = "profit_drains",
+          .diagnostic = "invalid signature"
+        };
+
         GNUNET_break (0);
-        global_ret = EXIT_FAILURE;
-        GNUNET_SCHEDULER_shutdown ();
-        return GNUNET_SYSERR;
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-        /* should fail on commit later ... */
-        GNUNET_break (0);
-        return GNUNET_NO;
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        /* not a profit drain */
-        break;
-      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Profit drain of %s to %s found!\n",
-                    TALER_amount2s (&amount),
-                    payto_uri);
-        if (GNUNET_OK !=
-            TALER_exchange_offline_profit_drain_verify (
-              &roi->details.wtid,
-              request_timestamp,
-              &amount,
-              account_section,
-              payto_uri,
-              &TALER_ARL_master_pub,
-              &master_sig))
+        qs = TALER_ARL_adb->insert_row_inconsistency (
+          TALER_ARL_adb->cls,
+          &ri);
+        if (qs < 0)
         {
-          struct TALER_AUDITORDB_RowInconsistency ri = {
-            .row_id = roi->details.serial_id,
-            .row_table = "profit_drains",
-            .diagnostic = "invalid signature"
-          };
-
-          GNUNET_break (0);
-          qs = TALER_ARL_adb->insert_row_inconsistency (
-            TALER_ARL_adb->cls,
-            &ri);
-          if (qs < 0)
-          {
-            global_qs = qs;
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-            return GNUNET_SYSERR;
-          }
-#if TO_BE_REMOVED_DEAD_CODE
-          TALER_ARL_report (report_row_inconsistencies,
-                            GNUNET_JSON_PACK (
-                              GNUNET_JSON_pack_string ("table",
-                                                       "profit_drains"),
-                              GNUNET_JSON_pack_uint64 ("row",
-                                                       serial),
-                              GNUNET_JSON_pack_data_auto ("id",
-                                                          &roi->details.wtid),
-                              GNUNET_JSON_pack_string ("diagnostic",
-                                                       "invalid signature")));
-#endif
-          TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                                &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                                &amount);
+          global_qs = qs;
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          return GNUNET_SYSERR;
         }
-        else if (0 !=
-                 strcasecmp (payto_uri,
-                             roi->details.credit_account_uri))
-        {
-          struct TALER_AUDITORDB_WireOutInconsistency woi = {
-            .row_id = serial,
-            .destination_account = (char *) roi->details.credit_account_uri,
-            .diagnostic = "amount wired to invalid account",
-            .expected = roi->details.amount,
-            .claimed = zero,
-          };
-
-          qs = TALER_ARL_adb->insert_wire_out_inconsistency (
-            TALER_ARL_adb->cls,
-            &woi);
-          if (qs < 0)
-          {
-            global_qs = qs;
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-            return GNUNET_SYSERR;
-          }
-#if TO_BE_REMOVED_DEAD_CODE
-          TALER_ARL_report (
-            report_wire_out_inconsistencies,
-            GNUNET_JSON_PACK (
-              GNUNET_JSON_pack_uint64 ("row",
-                                       serial),
-              TALER_JSON_pack_amount ("amount_expected",
-                                      &roi->details.amount),
-              TALER_JSON_pack_amount ("amount_wired",
-                                      &amount),
-              GNUNET_JSON_pack_data_auto ("wtid",
-                                          &roi->details.wtid),
-              TALER_JSON_pack_time_abs_human ("timestamp",
-                                              roi->details.execution_date.
-                                              abs_time
-                                              ),
-              GNUNET_JSON_pack_string ("account",
-                                       wa->ai->section_name),
-              GNUNET_JSON_pack_string ("diagnostic",
-                                       "wrong target account")));
-#endif
-          TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                                &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                                &amount);
-        }
-        else if (0 !=
-                 TALER_amount_cmp (&amount,
-                                   &roi->details.amount))
-        {
-          struct TALER_AUDITORDB_WireOutInconsistency woi = {
-            .row_id = roi->details.serial_id,
-            .destination_account = (char *) roi->details.credit_account_uri,
-            .diagnostic = "incorrect amount to correct account",
-            .expected = roi->details.amount,
-            .claimed = amount,
-          };
-
-          qs = TALER_ARL_adb->insert_wire_out_inconsistency (
-            TALER_ARL_adb->cls,
-            &woi);
-          if (qs < 0)
-          {
-            global_qs = qs;
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-            return GNUNET_SYSERR;
-          }
-
-#if TO_BE_REMOVED_DEAD_CODE
-          TALER_ARL_report (
-            report_wire_out_inconsistencies,
-            GNUNET_JSON_PACK (
-              GNUNET_JSON_pack_uint64 ("row",
-                                       serial),
-              TALER_JSON_pack_amount ("amount_justified",
-                                      &roi->details.amount),
-              TALER_JSON_pack_amount ("amount_wired",
-                                      &amount),
-              GNUNET_JSON_pack_data_auto ("wtid",
-                                          &roi->details.wtid),
-              TALER_JSON_pack_time_abs_human ("timestamp",
-                                              roi->details.execution_date.
-                                              abs_time
-                                              ),
-              GNUNET_JSON_pack_string ("account",
-                                       wa->ai->section_name),
-              GNUNET_JSON_pack_string ("diagnostic",
-                                       "profit drain amount incorrect")));
-#endif
-          TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
-                                &TALER_ARL_USE_AB (total_bad_amount_out_minus),
-                                &roi->details.amount);
-          TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                                &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                                &amount);
-        }
-        GNUNET_free (account_section);
-        GNUNET_free (payto_uri);
-        /* profit drain was correct */
-        TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_drained),
-                              &TALER_ARL_USE_AB (total_drained),
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                              &TALER_ARL_USE_AB (total_bad_amount_out_plus),
                               &amount);
-        return GNUNET_OK;
+      }
+      else if (0 !=
+               strcasecmp (payto_uri,
+                           roi->details.credit_account_uri))
+      {
+        struct TALER_AUDITORDB_WireOutInconsistency woi = {
+          .row_id = serial,
+          .destination_account = (char *) roi->details.credit_account_uri,
+          .diagnostic = "amount wired to invalid account",
+          .expected = roi->details.amount,
+          .claimed = zero,
+        };
+
+        qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+          TALER_ARL_adb->cls,
+          &woi);
+        if (qs < 0)
+        {
+          global_qs = qs;
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          return GNUNET_SYSERR;
+        }
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                              &TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                              &amount);
+      }
+      else if (0 !=
+               TALER_amount_cmp (&amount,
+                                 &roi->details.amount))
+      {
+        struct TALER_AUDITORDB_WireOutInconsistency woi = {
+          .row_id = roi->details.serial_id,
+          .destination_account = (char *) roi->details.credit_account_uri,
+          .diagnostic = "incorrect amount to correct account",
+          .expected = roi->details.amount,
+          .claimed = amount,
+        };
+
+        qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+          TALER_ARL_adb->cls,
+          &woi);
+        if (qs < 0)
+        {
+          global_qs = qs;
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          return GNUNET_SYSERR;
+        }
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                              &TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                              &roi->details.amount);
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                              &TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                              &amount);
+      }
+      GNUNET_free (account_section);
+      GNUNET_free (payto_uri);
+      /* profit drain was correct */
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_drained),
+                            &TALER_ARL_USE_AB (total_drained),
+                            &amount);
+      return GNUNET_OK;
     }
   }
 
@@ -1660,29 +1480,10 @@ complain_out_not_found (void *cls,
       return GNUNET_SYSERR;
     }
   }
-#if TO_BE_REMOVED_DEAD_CODE
-   TALER_ARL_report (
-     report_wire_out_inconsistencies,
-     GNUNET_JSON_PACK (
-       GNUNET_JSON_pack_uint64 ("row",
-                                0),
-       TALER_JSON_pack_amount ("amount_wired",
-                               &roi->details.amount),
-       TALER_JSON_pack_amount ("amount_justified",
-                               &zero),
-       GNUNET_JSON_pack_data_auto ("wtid",
-                                   &roi->details.wtid),
-       TALER_JSON_pack_time_abs_human ("timestamp",
-                                       roi->details.execution_date.abs_time),
-       GNUNET_JSON_pack_string ("account_section",
-                                wa->ai->section_name),
-       GNUNET_JSON_pack_string ("diagnostic",
-                                "justification for wire transfer not found")));
-#endif
-   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                         &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                         &roi->details.amount);
-   return GNUNET_OK;
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                        &TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                        &roi->details.amount);
+  return GNUNET_OK;
 }
 
 
@@ -1755,85 +1556,75 @@ history_debit_cb (void *cls,
   wa->dhh = NULL;
   switch (dhr->http_status)
   {
-    case MHD_HTTP_OK:
-      for (unsigned int i = 0; i < dhr->details.ok.details_length; i++)
+  case MHD_HTTP_OK:
+    for (unsigned int i = 0; i < dhr->details.ok.details_length; i++)
+    {
+      const struct TALER_BANK_DebitDetails *dd
+        = &dhr->details.ok.details[i];
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Analyzing bank DEBIT at %s of %s with WTID %s\n",
+                  GNUNET_TIME_timestamp2s (dd->execution_date),
+                  TALER_amount2s (&dd->amount),
+                  TALER_B2S (&dd->wtid));
+      /* Update offset */
+      wa->wire_off_out = dd->serial_id;
+      slen = strlen (dd->credit_account_uri) + 1;
+      roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
+                           + slen);
+      GNUNET_CRYPTO_hash (&dd->wtid,
+                          sizeof (dd->wtid),
+                          &roi->subject_hash);
+      roi->details.amount = dd->amount;
+      roi->details.execution_date = dd->execution_date;
+      roi->details.wtid = dd->wtid;
+      roi->details.credit_account_uri = (const char *) &roi[1];
+      GNUNET_memcpy (&roi[1],
+                     dd->credit_account_uri,
+                     slen);
+      if (GNUNET_OK !=
+          GNUNET_CONTAINER_multihashmap_put (out_map,
+                                             &roi->subject_hash,
+                                             roi,
+                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
       {
-        const struct TALER_BANK_DebitDetails *dd
-          = &dhr->details.ok.details[i];
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Analyzing bank DEBIT at %s of %s with WTID %s\n",
-                    GNUNET_TIME_timestamp2s (dd->execution_date),
-                    TALER_amount2s (&dd->amount),
-                    TALER_B2S (&dd->wtid));
-        /* Update offset */
-        wa->wire_off_out = dd->serial_id;
-        slen = strlen (dd->credit_account_uri) + 1;
-        roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
-                             + slen);
-        GNUNET_CRYPTO_hash (&dd->wtid,
-                            sizeof (dd->wtid),
-                            &roi->subject_hash);
-        roi->details.amount = dd->amount;
-        roi->details.execution_date = dd->execution_date;
-        roi->details.wtid = dd->wtid;
-        roi->details.credit_account_uri = (const char *) &roi[1];
-        GNUNET_memcpy (&roi[1],
-                       dd->credit_account_uri,
-                       slen);
-        if (GNUNET_OK !=
-            GNUNET_CONTAINER_multihashmap_put (out_map,
-                                               &roi->subject_hash,
-                                               roi,
-                                               GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+        struct TALER_AUDITORDB_WireFormatInconsistency wfi = {
+          // fixme: rowid!
+          .diagnostic = "duplicate subject hash",
+          .amount = dd->amount,
+          .wire_offset = dd->serial_id
+        };
+        enum GNUNET_DB_QueryStatus qs;
+
+        qs = TALER_ARL_adb->insert_wire_format_inconsistency (
+          TALER_ARL_adb->cls,
+          &wfi);
+
+        if (qs < 0)
         {
-          struct TALER_AUDITORDB_WireFormatInconsistency wfi = {
-            // fixme: rowid!
-            .diagnostic = "duplicate subject hash",
-            .amount = dd->amount,
-            .wire_offset = dd->serial_id
-          };
-          enum GNUNET_DB_QueryStatus qs;
-
-          qs = TALER_ARL_adb->insert_wire_format_inconsistency (
-            TALER_ARL_adb->cls,
-            &wfi);
-
-          if (qs < 0)
-          {
-            global_qs = qs;
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-            commit (qs);
-            return;
-          }
-          TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_format_amount),
-                                &TALER_ARL_USE_AB (total_wire_format_amount),
-                                &dd->amount);
-#if TO_BE_REMOVED_DEAD_CODE
-          TALER_ARL_report (report_wire_format_inconsistencies,
-                            GNUNET_JSON_PACK (
-                              TALER_JSON_pack_amount ("amount",
-                                                      &dd->amount),
-                              GNUNET_JSON_pack_uint64 ("wire_offset",
-                                                       dd->serial_id),
-                              GNUNET_JSON_pack_string ("diagnostic",
-                                                       diagnostic)));
-#endif
+          global_qs = qs;
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          commit (qs);
+          return;
         }
+        TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_format_amount),
+                              &TALER_ARL_USE_AB (total_wire_format_amount),
+                              &dd->amount);
       }
+    }
+    check_exchange_wire_out (wa);
+    return;
+  case MHD_HTTP_NO_CONTENT:
+    check_exchange_wire_out (wa);
+    return;
+  case MHD_HTTP_NOT_FOUND:
+    if (ignore_account_404)
+    {
       check_exchange_wire_out (wa);
       return;
-    case MHD_HTTP_NO_CONTENT:
-      check_exchange_wire_out (wa);
-      return;
-    case MHD_HTTP_NOT_FOUND:
-      if (ignore_account_404)
-      {
-        check_exchange_wire_out (wa);
-        return;
-      }
-      break;
-    default:
-      break;
+    }
+    break;
+  default:
+    break;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Error fetching debit history of account %s: %u/%u!\n",
@@ -1859,8 +1650,8 @@ process_debits (void *cls)
   struct WireAccount *wa = cls;
 
   /* skip accounts where DEBIT is not enabled */
-  while ((NULL != wa) &&
-         (GNUNET_NO == wa->ai->debit_enabled))
+  while ( (NULL != wa) &&
+          (GNUNET_NO == wa->ai->debit_enabled))
     wa = wa->next;
   if (NULL == wa)
   {
@@ -1962,22 +1753,6 @@ reserve_closed_cb (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_OK;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (report_row_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("table",
-                                                 "reserves_closures"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        GNUNET_JSON_pack_data_auto ("id",
-                                                    reserve_pub),
-                        TALER_JSON_pack_amount ("amount_with_fee",
-                                                amount_with_fee),
-                        TALER_JSON_pack_amount ("closing_fee",
-                                                closing_fee),
-                        GNUNET_JSON_pack_string ("diagnostic",
-                                                 "closing fee above total amount")));
-#endif
     GNUNET_free (rc);
     if (TALER_ARL_do_abort ())
       return GNUNET_SYSERR;
@@ -2074,25 +1849,25 @@ begin_transaction (void)
     NULL);
   switch (qs)
   {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-      GNUNET_break (0);
-      return qs;
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_break (0);
-      return qs;
-    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_set_zero (TALER_ARL_currency,
-                                            &TALER_ARL_USE_AB (total_drained)));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_set_zero (TALER_ARL_currency,
-                                            &TALER_ARL_USE_AB (total_wire_out)))
-      ;
-      had_start_balance = false;
-      break;
-    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      had_start_balance = true;
-      break;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    return qs;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    return qs;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (total_drained)));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &TALER_ARL_USE_AB (total_wire_out)))
+    ;
+    had_start_balance = false;
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    had_start_balance = true;
+    break;
   }
   for (struct WireAccount *wa = wa_head;
        NULL != wa;
@@ -2224,8 +1999,6 @@ db_notify (void *cls,
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
   }
-
-
 }
 
 

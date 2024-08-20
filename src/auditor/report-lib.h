@@ -132,17 +132,6 @@ extern struct GNUNET_TIME_Absolute start_time;
 
 
 /**
- * Add @a object to the report @a array.  Fail hard if this fails.
- *
- * @param array report array to append @a object to
- * @param object object to append, should be check that it is not NULL
- */
-void
-TALER_ARL_report (json_t *array,
-                  json_t *object);
-
-
-/**
  * Obtain information about a @a denom_pub.
  *
  * @param dh hash of the denomination public key to look up

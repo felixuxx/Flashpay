@@ -158,7 +158,9 @@ TALER_b2s (const void *buf,
  * @param section section of the configuration to access
  * @param option option of the configuration to access
  * @param[out] denom set to the amount found in configuration
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if not found,
+ *         #GNUNET_SYSERR on error
  */
 enum GNUNET_GenericReturnValue
 TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,

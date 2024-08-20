@@ -156,6 +156,16 @@ struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
 struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
+ * Maximum amount per individual transaction. Invalid amount if unlimited.
+ */
+struct TALER_Amount TEH_transaction_limit;
+
+/**
+ * Maximum amount per refund. Invalid amount if unlimited.
+ */
+struct TALER_Amount TEH_refund_limit;
+
+/**
  * Absolute STEFAN parameter.
  */
 struct TALER_Amount TEH_stefan_abs;
@@ -2207,33 +2217,57 @@ exchange_serve_process_config (const char *cfg_fn)
   }
   /* currency parser must provide default spec for main currency */
   GNUNET_assert (NULL != TEH_cspec);
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "TRANSACTION_LIMIT",
+                               &TEH_transaction_limit))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR ==
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "REFUND_LIMIT",
+                               &TEH_refund_limit))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &TEH_stefan_abs));
+  if (GNUNET_SYSERR ==
       TALER_config_get_amount (TEH_cfg,
                                "exchange",
                                "STEFAN_ABS",
                                &TEH_stefan_abs))
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TEH_currency,
-                                          &TEH_stefan_abs));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &TEH_stefan_log));
+  if (GNUNET_SYSERR ==
       TALER_config_get_amount (TEH_cfg,
                                "exchange",
                                "STEFAN_LOG",
                                &TEH_stefan_log))
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TEH_currency,
-                                          &TEH_stefan_log));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  TEH_stefan_lin = 0.0f;
+  if (GNUNET_SYSERR ==
       GNUNET_CONFIGURATION_get_value_float (TEH_cfg,
                                             "exchange",
                                             "STEFAN_LIN",
                                             &TEH_stefan_lin))
   {
-    TEH_stefan_lin = 0.0f;
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
 
   if (GNUNET_OK !=

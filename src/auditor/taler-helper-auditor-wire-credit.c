@@ -526,18 +526,6 @@ reserve_in_cb (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (report_row_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("table",
-                                                 "reserves_in"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        GNUNET_JSON_pack_data_auto ("id",
-                                                    &rii->row_off_hash),
-                        GNUNET_JSON_pack_string ("diagnostic",
-                                                 "duplicate wire offset")));
-#endif
     if (TALER_ARL_do_abort ())
       return GNUNET_SYSERR;
     return GNUNET_OK;
@@ -587,26 +575,6 @@ complain_in_not_found (void *cls,
     global_qs = qs;
     return GNUNET_SYSERR;
   }
-#if TO_BE_REMOVED_DEAD_CODE
-  TALER_ARL_report (
-    report_reserve_in_inconsistencies,
-    GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("row",
-                               rii->rowid),
-      TALER_JSON_pack_amount ("amount_exchange_expected",
-                              &rii->credit_details.amount),
-      TALER_JSON_pack_amount ("amount_wired",
-                              &zero),
-      GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                  &rii->credit_details.reserve.reserve_pub),
-      TALER_JSON_pack_time_abs_human ("timestamp",
-                                      rii->credit_details.execution_date.
-                                      abs_time),
-      GNUNET_JSON_pack_string ("account",
-                               wa->ai->section_name),
-      GNUNET_JSON_pack_string ("diagnostic",
-                               "incoming wire transfer claimed by exchange not found")));
-#endif
   TALER_ARL_amount_add (&total_bad_amount_in_minus,
                         &total_bad_amount_in_minus,
                         &rii->credit_details.amount);
@@ -717,27 +685,6 @@ analyze_credit (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (
-      report_reserve_in_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rii->rowid),
-        GNUNET_JSON_pack_uint64 ("bank_row",
-                                 credit_details->serial_id),
-        TALER_JSON_pack_amount ("amount_exchange_expected",
-                                &rii->credit_details.amount),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &zero),
-        GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &rii->credit_details.details.reserve.
-                                    reserve_pub),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        rii->credit_details.execution_date.
-                                        abs_time),
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire subject does not match")));
-#endif
     TALER_ARL_amount_add (&total_bad_amount_in_minus,
                           &total_bad_amount_in_minus,
                           &rii->credit_details.amount);
@@ -773,27 +720,6 @@ analyze_credit (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (
-      report_reserve_in_inconsistencies,
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_uint64 ("row",
-                                 rii->rowid),
-        GNUNET_JSON_pack_uint64 ("bank_row",
-                                 credit_details->serial_id),
-        TALER_JSON_pack_amount ("amount_exchange_expected",
-                                &rii->credit_details.amount),
-        TALER_JSON_pack_amount ("amount_wired",
-                                &credit_details->amount),
-        GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                    &credit_details->details.reserve.reserve_pub
-                                    ),
-        TALER_JSON_pack_time_abs_human ("timestamp",
-                                        credit_details->execution_date.abs_time)
-        ,
-        GNUNET_JSON_pack_string ("diagnostic",
-                                 "wire amount does not match")));
-#endif
     if (0 < TALER_amount_cmp (&credit_details->amount,
                               &rii->credit_details.amount))
     {
@@ -840,19 +766,6 @@ analyze_credit (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (report_misattribution_in_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        TALER_JSON_pack_amount ("amount",
-                                                &rii->credit_details.amount),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rii->rowid),
-                        GNUNET_JSON_pack_uint64 ("bank_row",
-                                                 credit_details->serial_id),
-                        GNUNET_JSON_pack_data_auto (
-                          "reserve_pub",
-                          &rii->credit_details.details.reserve.reserve_pub)));
-#endif
     TALER_ARL_amount_add (&total_misattribution_in,
                           &total_misattribution_in,
                           &rii->credit_details.amount);
@@ -878,18 +791,6 @@ analyze_credit (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-#if TO_BE_REMOVED_DEAD_CODE
-    TALER_ARL_report (report_row_minor_inconsistencies,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("table",
-                                                 "reserves_in"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rii->rowid),
-                        GNUNET_JSON_pack_uint64 ("bank_row",
-                                                 credit_details->serial_id),
-                        GNUNET_JSON_pack_string ("diagnostic",
-                                                 "execution date mismatch")));
-#endif
   }
   return true;
 }

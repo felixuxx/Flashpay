@@ -339,7 +339,6 @@ add_response_headers (void *cls,
                       struct MHD_Response *response)
 {
   (void) cls;
-  TALER_MHD_add_global_headers (response);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
