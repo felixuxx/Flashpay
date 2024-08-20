@@ -95,12 +95,16 @@ echo "$J" >> /dev/null
 # New rules apply for 30 days.
 EXPIRATION=$((3600 * 30 + $(date +%s)))
 
+# Read currency from the config
+CURRENCY=$(taler-config -c $CONF -s taler -o currency)
+
 # Finally, output the new rules.
 # See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlOutcome
 # for the required output format.
 
 jq -n \
     --argjson expiration "$EXPIRATION" \
+    --arg currency "$CURRENCY" \
     '{ "to_investigate": false,
        "new_rules" : {
          "new_check" : "info-oauth-test-passed",
@@ -108,7 +112,7 @@ jq -n \
          "rules" : [
          {
            "operation_type": "WITHDRAW",
-           "threshold" : "EUR:1000",
+           "threshold" : "\($currency):1000",
            "timeframe" : { "d_us" : 3600000000 },
            "measures" : [ "verboten" ],
            "display_priority" : 1,
@@ -117,7 +121,7 @@ jq -n \
          },
          {
            "operation_type": "DEPOSIT",
-           "threshold" : "EUR:1000",
+           "threshold" : "\($currency):1000",
            "timeframe" : { "d_us" : 3600000000 },
            "measures" : [ "verboten" ],
            "display_priority" : 1,
@@ -126,7 +130,7 @@ jq -n \
          },
          {
            "operation_type": "AGGREGATE",
-           "threshold" : "EUR:1000",
+           "threshold" : "\($currency):1000",
            "timeframe" : { "d_us" : 3600000000 },
            "measures" : [ "verboten" ],
            "display_priority" : 1,
@@ -135,7 +139,7 @@ jq -n \
          },
          {
            "operation_type": "MERGE",
-           "threshold" : "EUR:1000",
+           "threshold" : "\($currency):1000",
            "timeframe" : { "d_us" : 3600000000 },
            "measures" : [ "verboten" ],
            "display_priority" : 1,
@@ -144,7 +148,7 @@ jq -n \
          },
          {
            "operation_type": "BALANCE",
-           "threshold" : "EUR:1000",
+           "threshold" : "\($currency):1000",
            "timeframe" : { "d_us" : 3600000000 },
            "measures" : [ "verboten" ],
            "display_priority" : 1,
@@ -153,7 +157,7 @@ jq -n \
          },
          {
            "operation_type": "CLOSE",
-           "threshold" : "EUR:1000",
+           "threshold" : "\($currency):1000",
            "timeframe" : { "d_us" : 3600000000 },
            "measures" : [ "verboten" ],
            "display_priority" : 1,
