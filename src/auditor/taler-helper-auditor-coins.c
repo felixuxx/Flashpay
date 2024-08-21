@@ -532,7 +532,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     case TALER_EXCHANGEDB_TT_PURSE_REFUND:
       TALER_ARL_amount_add (&refunded,
                             &refunded,
-                            &tl->details.purse_refund->refund_amount);
+                            &pos->details.purse_refund->refund_amount);
       TALER_ARL_amount_add (&spent,
                             &spent,
                             &pos->details.purse_refund->refund_fee);
@@ -541,7 +541,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
       TALER_ARL_amount_add (&spent,
                             &spent,
-                            &tl->details.reserve_open->coin_contribution);
+                            &pos->details.reserve_open->coin_contribution);
       break;
     } /* switch (pos->type) */
   } /* for (...) */
