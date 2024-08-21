@@ -80,12 +80,13 @@ balance_cb (void *cls,
   GNUNET_assert (num_results <= ctx->len);
   for (unsigned int i = 0; i < num_results; i++)
   {
+    bool is_missing;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_allow_null (
         TALER_PQ_result_spec_amount ("balance",
                                      pg->currency,
                                      ctx->dst[i]),
-        NULL),
+        &is_missing),
       GNUNET_PQ_result_spec_end
     };
 
@@ -97,6 +98,12 @@ balance_cb (void *cls,
       GNUNET_break (0);
       ctx->failure = true;
       return;
+    }
+    if (is_missing)
+    {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_set_zero (pg->currency,
+                                            ctx->dst[i]));
     }
     ctx->off++;
   }
@@ -113,6 +120,9 @@ TAH_PG_get_balance (void *cls,
   unsigned int cnt = 1;
   va_list ap;
 
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pg->currency,
+                                        balance_value));
   va_start (ap,
             balance_value);
   while (NULL != va_arg (ap,
@@ -123,8 +133,9 @@ TAH_PG_get_balance (void *cls,
     cnt++;
     dst = va_arg (ap,
                   struct TALER_Amount *);
-    TALER_amount_set_zero (pg->currency,
-                           dst);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (pg->currency,
+                                          dst));
   }
   va_end (ap);
   {
