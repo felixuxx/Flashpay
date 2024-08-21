@@ -85,7 +85,7 @@ purse_decision_serial_helper_cb (void *cls,
         &no_reserve),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &val),
-      GNUNET_PQ_result_spec_uint64 ("purse_deposit_serial_id",
+      GNUNET_PQ_result_spec_uint64 ("purse_decision_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
