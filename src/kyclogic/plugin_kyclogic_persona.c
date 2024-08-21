@@ -796,7 +796,7 @@ persona_initiate (void *cls,
     GNUNET_asprintf (&proof_url,
                      "%skyc-proof/%s?state=%s",
                      pd->ps->exchange_base_url,
-                     pd->section,
+                     &pd->section[strlen ("kyc-provider-")],
                      payto_s);
     body = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_object_steal (

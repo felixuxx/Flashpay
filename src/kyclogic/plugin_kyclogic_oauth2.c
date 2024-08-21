@@ -566,7 +566,7 @@ initiate_with_url (struct TALER_KYCLOGIC_InitiateHandle *ih,
       GNUNET_asprintf (&redirect_uri,
                        "%skyc-proof/%s",
                        ps->exchange_base_url,
-                       pd->section);
+                       &pd->section[strlen ("kyc-provider-")]);
       redirect_uri_encoded = TALER_urlencode (redirect_uri);
       GNUNET_free (redirect_uri);
     }
@@ -1546,7 +1546,7 @@ oauth2_proof (void *cls,
       GNUNET_asprintf (&redirect_uri,
                        "%skyc-proof/%s",
                        ps->exchange_base_url,
-                       pd->section);
+                       &pd->section[strlen ("kyc-provider-")]);
       redirect_uri_encoded = TALER_urlencode (redirect_uri);
       GNUNET_free (redirect_uri);
     }
