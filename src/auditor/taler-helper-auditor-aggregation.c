@@ -809,8 +809,8 @@ wire_transfer_information_cb (
                                                &h_denom_pub,
                                                &tl);
   }
-  if ((qs < 0) ||
-      (NULL == tl))
+  if ( (qs < 0) ||
+       (NULL == tl) )
   {
     wcc->qs = qs;
     report_row_inconsistency ("aggregation",

@@ -1133,7 +1133,10 @@ TEH_PG_get_coin_transactions (
       return GNUNET_DB_STATUS_SOFT_ERROR;
     }
     if (! begin_transaction)
+    {
+      *tlp = chc.head;
       return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    }
     qs = TEH_PG_commit (pg);
     switch (qs)
     {
