@@ -43,7 +43,9 @@ TEH_PG_insert_kyc_failure (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_name),
+    NULL != provider_name
+    ? GNUNET_PQ_query_param_string (provider_name)
+    : GNUNET_PQ_query_param_null (),
     NULL != provider_account_id
     ? GNUNET_PQ_query_param_string (provider_account_id)
     : GNUNET_PQ_query_param_null (),
