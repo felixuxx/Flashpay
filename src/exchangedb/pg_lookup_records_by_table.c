@@ -2783,9 +2783,11 @@ lrbt_cb_table_legitimization_outcomes (void *cls,
       GNUNET_PQ_result_spec_timestamp (
         "expiration_time",
         &td.details.legitimization_outcomes.expiration_time),
-      TALER_PQ_result_spec_json (
-        "jproperties",
-        &td.details.legitimization_outcomes.properties),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_result_spec_json (
+          "jproperties",
+          &td.details.legitimization_outcomes.properties),
+        NULL),
       GNUNET_PQ_result_spec_bool (
         "to_investigate_id",
         &td.details.legitimization_outcomes.to_investigate),

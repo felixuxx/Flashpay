@@ -73,10 +73,10 @@ handle_aml_result (void *cls,
   {
     struct TALER_PaytoHashP h_payto;
     uint64_t rowid;
-    char *justification;
+    char *justification = NULL;
     struct GNUNET_TIME_Timestamp decision_time;
     struct GNUNET_TIME_Absolute expiration_time;
-    json_t *jproperties;
+    json_t *jproperties = NULL;
     bool to_investigate;
     bool is_active;
     json_t *account_rules;
@@ -93,8 +93,10 @@ handle_aml_result (void *cls,
                                        &decision_time),
       GNUNET_PQ_result_spec_absolute_time ("expiration_time",
                                            &expiration_time),
-      TALER_PQ_result_spec_json ("jproperties",
-                                 &jproperties),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_result_spec_json ("jproperties",
+                                   &jproperties),
+        NULL),
       TALER_PQ_result_spec_json ("jnew_rules",
                                  &account_rules),
       GNUNET_PQ_result_spec_bool ("to_investigate",

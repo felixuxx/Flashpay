@@ -76,7 +76,7 @@ handle_aml_entry (void *cls,
     char *justification;
     struct TALER_AmlOfficerPublicKeyP decider_pub;
     json_t *jproperties;
-    json_t *jnew_rules;
+    json_t *jnew_rules = NULL;
     bool to_investigate;
     bool is_active;
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -86,8 +86,10 @@ handle_aml_entry (void *cls,
                                     &justification),
       GNUNET_PQ_result_spec_auto_from_type ("decider_pub",
                                             &decider_pub),
-      TALER_PQ_result_spec_json ("jproperties",
-                                 &jproperties),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_result_spec_json ("jproperties",
+                                   &jproperties),
+        NULL),
       TALER_PQ_result_spec_json ("jnew_rules",
                                  &jnew_rules),
       GNUNET_PQ_result_spec_bool ("to_investigate",
