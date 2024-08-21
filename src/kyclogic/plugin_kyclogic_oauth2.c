@@ -1102,7 +1102,7 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
   if (NULL != ph->ec)
     return;
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Failed to start KYCAID conversion helper `%s'\n",
+              "Failed to start OAUTH2 conversion helper `%s'\n",
               pd->conversion_binary);
   ph->status = TALER_KYCLOGIC_STATUS_INTERNAL_ERROR;
   ph->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;

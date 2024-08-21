@@ -3262,7 +3262,7 @@ handle_aml_output (
           &apr->details.success.to_investigate),
         NULL),
       GNUNET_JSON_spec_mark_optional (
-        GNUNET_JSON_spec_array_const (
+        GNUNET_JSON_spec_object_const (
           "properties",
           &apr->details.success.account_properties),
         NULL),
