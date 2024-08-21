@@ -4,8 +4,7 @@
 Diese Allgemeinen Geschäftsbedingungen (nachfolgend **AGB**) der Taler
 Operations AG regeln die Rechte und Pflichten von Nutzern und
 Zahlungsempfängern (Begünstigten) des angebotenen Zahlungsdiensts.
-Mit der Nutzung von GNU Taler akzeptiert der Nutzer automatisch diese
-AGB.
+Mit der Nutzung des Zahlungsdiensts akzeptieren die Nutzer automatisch diese AGB.
 
 
 Dienstleistung; Geltungsbereich
