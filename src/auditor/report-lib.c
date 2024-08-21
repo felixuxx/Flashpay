@@ -282,8 +282,7 @@ transact (TALER_ARL_Analysis analysis,
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Processing failed (or no changes), rolling back transaction\n")
-    ;
+                "Processing failed; rolling back transaction\n");
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }

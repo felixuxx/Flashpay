@@ -4854,6 +4854,7 @@ struct TALER_EXCHANGEDB_Plugin
    * to the last row ID of the given @a coin_pub in the coin history table.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param begin_transaction true to run this in its own transaction(s)
    * @param coin_pub coin to investigate
    * @param start_off starting offset from which on to return entries
    * @param etag_in up to this offset the client already has a response, do not
@@ -4869,6 +4870,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*get_coin_transactions)(
     void *cls,
+    bool begin_transaction,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     uint64_t start_off,
     uint64_t etag_in,

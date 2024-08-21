@@ -453,7 +453,9 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   {
     struct TALER_Amount balance;
     struct TALER_DenominationHashP h_denom_pub;
+
     qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
+                                               false,
                                                coin_pub,
                                                0,
                                                0,

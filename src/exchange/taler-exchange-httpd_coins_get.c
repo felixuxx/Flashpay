@@ -609,6 +609,7 @@ TEH_handler_coins_get (struct TEH_RequestContext *rc,
     enum GNUNET_DB_QueryStatus qs;
 
     qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                            true,
                                             coin_pub,
                                             start_off,
                                             etag_in,

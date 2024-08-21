@@ -1739,6 +1739,7 @@ run (void *cls)
       struct TALER_DenominationHashP h_denom_pub;
 
       qs = plugin->get_coin_transactions (plugin->cls,
+                                          true,
                                           &refresh.coin.coin_pub,
                                           0,
                                           0,
@@ -2004,6 +2005,7 @@ run (void *cls)
     struct TALER_DenominationHashP h_denom_pub;
 
     qs = plugin->get_coin_transactions (plugin->cls,
+                                        true,
                                         &refund.coin.coin_pub,
                                         0,
                                         0,

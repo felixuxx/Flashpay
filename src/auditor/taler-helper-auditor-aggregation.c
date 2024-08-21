@@ -798,7 +798,9 @@ wire_transfer_information_cb (
   {
     struct TALER_Amount balance;
     struct TALER_DenominationHashP h_denom_pub;
+
     qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
+                                               false,
                                                coin_pub,
                                                0,
                                                0,
@@ -1363,34 +1365,34 @@ analyze_aggregations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
     return ac.qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
+  qs = TALER_ARL_adb->insert_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
+    TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_plus),
+    TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (aggregation_total_bad_sig_loss),
+    TALER_ARL_SET_AB (aggregation_total_wire_out_delta_plus),
+    TALER_ARL_SET_AB (aggregation_total_wire_out_delta_minus),
+    TALER_ARL_SET_AB (aggregation_total_coin_delta_plus),
+    NULL);
+  if (0 > qs)
   {
-    qs = TALER_ARL_adb->insert_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
-      TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_plus),
-      TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_minus),
-      TALER_ARL_SET_AB (aggregation_total_bad_sig_loss),
-      TALER_ARL_SET_AB (aggregation_total_wire_out_delta_plus),
-      TALER_ARL_SET_AB (aggregation_total_wire_out_delta_minus),
-      TALER_ARL_SET_AB (aggregation_total_coin_delta_plus),
-      NULL);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  else
-  {
-    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx);
-    qs = TALER_ARL_adb->update_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
-      TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_plus),
-      TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_minus),
-      TALER_ARL_SET_AB (aggregation_total_bad_sig_loss),
-      TALER_ARL_SET_AB (aggregation_total_wire_out_delta_plus),
-      TALER_ARL_SET_AB (aggregation_total_wire_out_delta_minus),
-      TALER_ARL_SET_AB (aggregation_total_coin_delta_plus),
-      NULL);
-  }
-  if (0 >= qs)
+  qs = TALER_ARL_adb->update_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
+    TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_plus),
+    TALER_ARL_SET_AB (aggregation_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (aggregation_total_bad_sig_loss),
+    TALER_ARL_SET_AB (aggregation_total_wire_out_delta_plus),
+    TALER_ARL_SET_AB (aggregation_total_wire_out_delta_minus),
+    TALER_ARL_SET_AB (aggregation_total_coin_delta_plus),
+    NULL);
+  if (0 > qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to update auditor DB, not recording progress\n");

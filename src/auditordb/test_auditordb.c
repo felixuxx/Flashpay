@@ -106,6 +106,7 @@ static struct TALER_Amount reserve_profits;
 static enum GNUNET_GenericReturnValue
 select_historic_denom_revenue_result (
   void *cls,
+  uint64_t rowid,
   const struct TALER_DenominationHashP *denom_pub_hash2,
   struct GNUNET_TIME_Timestamp revenue_timestamp2,
   const struct TALER_Amount *revenue_balance2,
@@ -144,6 +145,7 @@ select_historic_denom_revenue_result (
 static enum GNUNET_GenericReturnValue
 select_historic_reserve_revenue_result (
   void *cls,
+  uint64_t rowid,
   struct GNUNET_TIME_Timestamp start_time2,
   struct GNUNET_TIME_Timestamp end_time2,
   const struct TALER_Amount *reserve_profits2)
@@ -414,6 +416,8 @@ run (void *cls)
   FAILIF (0 >=
           plugin->select_historic_denom_revenue (
             plugin->cls,
+            0,
+            1024,
             &select_historic_denom_revenue_result,
             NULL));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -434,9 +438,12 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_historic_reserve_revenue\n");
   FAILIF (0 >=
-          plugin->select_historic_reserve_revenue (plugin->cls,
-                                                   select_historic_reserve_revenue_result,
-                                                   NULL));
+          plugin->select_historic_reserve_revenue (
+            plugin->cls,
+            0,
+            1024,
+            &select_historic_reserve_revenue_result,
+            NULL));
 
   FAILIF (0 >
           plugin->commit (plugin->cls));

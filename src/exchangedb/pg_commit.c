@@ -45,7 +45,6 @@ TEH_PG_commit (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Committing transaction `%s'\n",
               pg->transaction_name);
-  /* used in #postgres_commit */
   PREPARE (pg,
            "do_commit",
            "COMMIT");

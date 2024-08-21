@@ -807,6 +807,7 @@ handle_history_entry (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_coin_transactions (
   void *cls,
+  bool begin_transaction,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   uint64_t start_off,
   uint64_t etag_in,
@@ -1010,7 +1011,7 @@ TEH_PG_get_coin_transactions (
            "   ON (denoms.denominations_serial = coins.denominations_serial)"
            " WHERE rcp.recoup_uuid=$2"
            "   AND coins.coin_pub=$1;");
-  /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
+  /* Used to obtain recoup transactions
      for a refreshed coin */
   PREPARE (pg,
            "recoup_by_refreshed_coin",
@@ -1062,12 +1063,15 @@ TEH_PG_get_coin_transactions (
       GNUNET_PQ_result_spec_end
     };
 
-    if (GNUNET_OK !=
-        TEH_PG_start_read_committed (pg,
-                                     "get-coin-transactions"))
+    if (begin_transaction)
     {
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      if (GNUNET_OK !=
+          TEH_PG_start_read_committed (pg,
+                                       "get-coin-transactions"))
+      {
+        GNUNET_break (0);
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
     }
     /* First only check the last item, to see if
        we even need to iterate */
@@ -1079,13 +1083,16 @@ TEH_PG_get_coin_transactions (
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
-      TEH_PG_rollback (pg);
+      if (begin_transaction)
+        TEH_PG_rollback (pg);
       return qs;
     case GNUNET_DB_STATUS_SOFT_ERROR:
-      TEH_PG_rollback (pg);
+      if (begin_transaction)
+        TEH_PG_rollback (pg);
       continue;
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      TEH_PG_rollback (pg);
+      if (begin_transaction)
+        TEH_PG_rollback (pg);
       return qs;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       *etag_out = end;
@@ -1107,21 +1114,26 @@ TEH_PG_get_coin_transactions (
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
-      TEH_PG_rollback (pg);
+      if (begin_transaction)
+        TEH_PG_rollback (pg);
       return qs;
     case GNUNET_DB_STATUS_SOFT_ERROR:
-      TEH_PG_rollback (pg);
+      if (begin_transaction)
+        TEH_PG_rollback (pg);
       continue;
     default:
       break;
     }
     if (chc.failed)
     {
-      TEH_PG_rollback (pg);
+      if (begin_transaction)
+        TEH_PG_rollback (pg);
       TEH_COMMON_free_coin_transaction_list (pg,
                                              chc.head);
       return GNUNET_DB_STATUS_SOFT_ERROR;
     }
+    if (! begin_transaction)
+      return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     qs = TEH_PG_commit (pg);
     switch (qs)
     {
