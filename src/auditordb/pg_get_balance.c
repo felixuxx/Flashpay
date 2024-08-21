@@ -56,6 +56,7 @@ struct BalanceContext
    * Set to true on failure.
    */
   bool failure;
+
 };
 
 
@@ -99,9 +100,10 @@ balance_cb (void *cls,
       return;
     }
     if (is_missing)
-      memset (ctx->dst[i],
-              0,
-              sizeof (struct TALER_Amount));
+    {
+      TALER_amount_set_zero (pg->currency,
+                             ctx->dst[i]);
+    }
     ctx->off++;
   }
 }

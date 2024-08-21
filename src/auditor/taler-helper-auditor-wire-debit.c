@@ -509,6 +509,12 @@ commit (enum GNUNET_DB_QueryStatus qs)
         TALER_ARL_adb->cls,
         TALER_ARL_SET_AB (total_drained),
         TALER_ARL_SET_AB (total_wire_out),
+        TALER_ARL_SET_AB (total_bad_amount_out_plus),
+        TALER_ARL_SET_AB (total_bad_amount_out_minus),
+        TALER_ARL_SET_AB (total_amount_lag),
+        TALER_ARL_SET_AB (total_closure_amount_lag),
+        TALER_ARL_SET_AB (total_wire_format_amount),
+        TALER_ARL_SET_AB (total_wire_out),
         NULL);
     }
     else
@@ -516,6 +522,12 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->insert_balance (
         TALER_ARL_adb->cls,
         TALER_ARL_SET_AB (total_drained),
+        TALER_ARL_SET_AB (total_wire_out),
+        TALER_ARL_SET_AB (total_bad_amount_out_plus),
+        TALER_ARL_SET_AB (total_bad_amount_out_minus),
+        TALER_ARL_SET_AB (total_amount_lag),
+        TALER_ARL_SET_AB (total_closure_amount_lag),
+        TALER_ARL_SET_AB (total_wire_format_amount),
         TALER_ARL_SET_AB (total_wire_out),
         NULL);
     }
@@ -653,11 +665,12 @@ struct ImportMissingWireContext
  * @param deadline what was the earliest requested wire transfer deadline
  */
 static void
-import_wire_missing_cb (void *cls,
-                        uint64_t batch_deposit_serial_id,
-                        const struct TALER_Amount *total_amount,
-                        const struct TALER_PaytoHashP *wire_target_h_payto,
-                        struct GNUNET_TIME_Timestamp deadline)
+import_wire_missing_cb (
+  void *cls,
+  uint64_t batch_deposit_serial_id,
+  const struct TALER_Amount *total_amount,
+  const struct TALER_PaytoHashP *wire_target_h_payto,
+  struct GNUNET_TIME_Timestamp deadline)
 {
   struct ImportMissingWireContext *wc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -825,11 +838,12 @@ generate_report (void *cls,
  * @param deadline what was the earliest requested wire transfer deadline
  */
 static void
-report_wire_missing_cb (void *cls,
-                        uint64_t batch_deposit_serial_id,
-                        const struct TALER_Amount *total_amount,
-                        const struct TALER_PaytoHashP *wire_target_h_payto,
-                        struct GNUNET_TIME_Timestamp deadline)
+report_wire_missing_cb (
+  void *cls,
+  uint64_t batch_deposit_serial_id,
+  const struct TALER_Amount *total_amount,
+  const struct TALER_PaytoHashP *wire_target_h_payto,
+  struct GNUNET_TIME_Timestamp deadline)
 {
   struct ReportMissingWireContext *rc = cls;
   struct ReasonDetail *rd;
@@ -1797,34 +1811,15 @@ begin_transaction (void)
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_bad_amount_out_plus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_bad_amount_out_minus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (total_amount_lag)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_closure_amount_lag)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_wire_format_amount)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &zero));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (total_wire_out)));
   qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (total_drained),
+    TALER_ARL_GET_AB (total_wire_out),
+    TALER_ARL_GET_AB (total_bad_amount_out_plus),
+    TALER_ARL_GET_AB (total_bad_amount_out_minus),
+    TALER_ARL_GET_AB (total_amount_lag),
+    TALER_ARL_GET_AB (total_closure_amount_lag),
+    TALER_ARL_GET_AB (total_wire_format_amount),
     TALER_ARL_GET_AB (total_wire_out),
     NULL);
   switch (qs)
@@ -1836,13 +1831,6 @@ begin_transaction (void)
     GNUNET_break (0);
     return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (total_drained)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (total_wire_out)))
-    ;
     had_start_balance = false;
     break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -2022,6 +2010,9 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &zero));
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
@@ -2035,28 +2026,6 @@ run (void *cls,
   }
   reserve_closures = GNUNET_CONTAINER_multihashmap_create (1024,
                                                            GNUNET_NO);
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_bad_amount_out_plus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_bad_amount_out_minus)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (total_amount_lag)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_closure_amount_lag)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (
-                                          total_wire_format_amount)));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &zero));
   if (GNUNET_OK !=
       TALER_EXCHANGEDB_load_accounts (TALER_ARL_cfg,
                                       TALER_EXCHANGEDB_ALO_DEBIT

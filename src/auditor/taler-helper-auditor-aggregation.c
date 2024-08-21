@@ -1335,45 +1335,6 @@ analyze_aggregations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_wire_fee_revenue)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_arithmetic_delta_plus)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_arithmetic_delta_minus)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_bad_sig_loss)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_wire_out_delta_plus)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_wire_out_delta_minus)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (
-                     TALER_ARL_currency,
-                     &TALER_ARL_USE_AB (
-                       aggregation_total_coin_delta_plus)));
-  }
-
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = TALER_ARL_edb->select_wire_out_above_serial_id (
     TALER_ARL_edb->cls,

@@ -152,24 +152,24 @@ static struct TALER_Amount tiny_amount;
 /**
  * Total amount that was transferred too much to the exchange.
  */
-static struct TALER_Amount total_bad_amount_in_plus;
+static TALER_ARL_DEF_AB (total_bad_amount_in_plus);
 
 /**
  * Total amount that was transferred too little to the exchange.
  */
-static struct TALER_Amount total_bad_amount_in_minus;
+static TALER_ARL_DEF_AB (total_bad_amount_in_minus);
 
 /**
  * Total amount where the exchange has the wrong sender account
  * for incoming funds and may thus wire funds to the wrong
  * destination when closing the reserve.
  */
-static struct TALER_Amount total_misattribution_in;
+static TALER_ARL_DEF_AB (total_misattribution_in);
 
 /**
  * Total amount affected by wire format troubles.
  */
-static struct TALER_Amount total_wire_format_amount; // FIXME
+static TALER_ARL_DEF_AB (total_wire_format_amount); // FIXME
 
 /**
  * Total amount credited to exchange accounts.
@@ -343,6 +343,10 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->update_balance (
         TALER_ARL_adb->cls,
         TALER_ARL_SET_AB (total_wire_in),
+        TALER_ARL_SET_AB (total_bad_amount_in_plus),
+        TALER_ARL_SET_AB (total_bad_amount_in_minus),
+        TALER_ARL_SET_AB (total_misattribution_in),
+        TALER_ARL_SET_AB (total_wire_format_amount),
         NULL);
     }
     else
@@ -350,6 +354,10 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->insert_balance (
         TALER_ARL_adb->cls,
         TALER_ARL_SET_AB (total_wire_in),
+        TALER_ARL_SET_AB (total_bad_amount_in_plus),
+        TALER_ARL_SET_AB (total_bad_amount_in_minus),
+        TALER_ARL_SET_AB (total_misattribution_in),
+        TALER_ARL_SET_AB (total_wire_format_amount),
         NULL);
     }
   }
@@ -559,8 +567,8 @@ complain_in_not_found (void *cls,
     global_qs = qs;
     return GNUNET_SYSERR;
   }
-  TALER_ARL_amount_add (&total_bad_amount_in_minus,
-                        &total_bad_amount_in_minus,
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_in_minus),
+                        &TALER_ARL_USE_AB (total_bad_amount_in_minus),
                         &rii->credit_details.amount);
   return GNUNET_OK;
 }
@@ -669,11 +677,11 @@ analyze_credit (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-    TALER_ARL_amount_add (&total_bad_amount_in_minus,
-                          &total_bad_amount_in_minus,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_in_minus),
+                          &TALER_ARL_USE_AB (total_bad_amount_in_minus),
                           &rii->credit_details.amount);
-    TALER_ARL_amount_add (&total_bad_amount_in_plus,
-                          &total_bad_amount_in_plus,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_in_plus),
+                          &TALER_ARL_USE_AB (total_bad_amount_in_plus),
                           &credit_details->amount);
     GNUNET_assert (GNUNET_OK ==
                    free_rii (NULL,
@@ -713,8 +721,8 @@ analyze_credit (
       TALER_ARL_amount_subtract (&delta,
                                  &credit_details->amount,
                                  &rii->credit_details.amount);
-      TALER_ARL_amount_add (&total_bad_amount_in_plus,
-                            &total_bad_amount_in_plus,
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_in_plus),
+                            &TALER_ARL_USE_AB (total_bad_amount_in_plus),
                             &delta);
     }
     else
@@ -725,8 +733,8 @@ analyze_credit (
       TALER_ARL_amount_subtract (&delta,
                                  &rii->credit_details.amount,
                                  &credit_details->amount);
-      TALER_ARL_amount_add (&total_bad_amount_in_minus,
-                            &total_bad_amount_in_minus,
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_in_minus),
+                            &TALER_ARL_USE_AB (total_bad_amount_in_minus),
                             &delta);
     }
   }
@@ -750,8 +758,8 @@ analyze_credit (
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
     }
-    TALER_ARL_amount_add (&total_misattribution_in,
-                          &total_misattribution_in,
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_misattribution_in),
+                          &TALER_ARL_USE_AB (total_misattribution_in),
                           &rii->credit_details.amount);
   }
   if (GNUNET_TIME_timestamp_cmp (credit_details->execution_date,
@@ -958,27 +966,13 @@ begin_transaction (void)
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_in_plus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_in_minus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_misattribution_in));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_wire_format_amount));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &zero));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &TALER_ARL_USE_AB (total_wire_in)));
   qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (total_wire_in),
+    TALER_ARL_GET_AB (total_bad_amount_in_plus),
+    TALER_ARL_GET_AB (total_bad_amount_in_minus),
+    TALER_ARL_GET_AB (total_misattribution_in),
+    TALER_ARL_GET_AB (total_wire_format_amount),
     NULL);
   switch (qs)
   {
@@ -989,9 +983,6 @@ begin_transaction (void)
     GNUNET_break (0);
     return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (total_wire_in)));
     had_start_balance = false;
     break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -1123,6 +1114,9 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &zero));
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
@@ -1134,21 +1128,6 @@ run (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_in_plus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_bad_amount_in_minus));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_misattribution_in));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_wire_format_amount));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &zero));
   if (GNUNET_OK !=
       TALER_EXCHANGEDB_load_accounts (TALER_ARL_cfg,
                                       TALER_EXCHANGEDB_ALO_CREDIT

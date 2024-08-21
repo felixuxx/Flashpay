@@ -1172,41 +1172,6 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Found no balance, starting by 0.\n");
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_global_balance)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_total_balance_insufficient_loss)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_total_delayed_decisions)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_total_arithmetic_delta_plus)))
-    ;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_total_arithmetic_delta_minus))
-                   );
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_total_balance_purse_not_closed)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (TALER_ARL_currency,
-                                          &TALER_ARL_USE_AB (
-                                            purse_total_bad_sig_loss)));
-  }
   pc.purses = GNUNET_CONTAINER_multihashmap_create (512,
                                                     GNUNET_NO);
 

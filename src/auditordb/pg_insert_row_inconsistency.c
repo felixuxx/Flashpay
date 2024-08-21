@@ -33,13 +33,13 @@ TAH_PG_insert_row_inconsistency (
   };
 
   PREPARE (pg,
-           "auditor_deposit_confirmation_insert",
+           "auditor_insert_row_inconsistency",
            "INSERT INTO auditor_row_inconsistency "
            "(row_table"
            ",diagnostic"
            ",problem_row_id"
            ") VALUES ($1,$2,$3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "auditor_deposit_confirmation_insert",
+                                             "auditor_insert_row_inconsistency",
                                              params);
 }
