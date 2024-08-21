@@ -1,7 +1,7 @@
 ﻿Allgemeine Geschäftsbedingungen für eNetzBon
 ============================================
 
-Version vom 24.6.2024
+Version vom 21.8.2024
 ---------------------
 
 1. Vertragspartner
@@ -9,7 +9,7 @@ Version vom 24.6.2024
 
 Diese Allgemeinen Geschäftsbedingungen (nachfolgend AGB) des Vereins Soziale Ökonomie regeln die
 Rechte und Pflichten von Nutzer\*innen und Zahlungsempfängern (Begünstigten) des angebotenen
-Zahlungsdiensts.
+Zahlungsdiensts. Mit der Nutzung des Zahlungsdiensts akzeptieren die Nutzer automatisch diese AGB.
 
 2. Produktbeschreibung
 ----------------------
