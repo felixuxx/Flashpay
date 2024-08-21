@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2023 Taler Systems SA
+  Copyright (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -59,24 +59,18 @@
  */
 static int global_ret;
 
+static TALER_ARL_DEF_PP (deposit_confirmation_serial_id);
+
 /**
  * Run in test mode. Exit when idle instead of
  * going to sleep and waiting for more work.
- *
- * FIXME: not yet implemented!
  */
 static int test_mode;
 
 /**
- * Total number of deposit confirmations that we did not get.
- */
-// FIXME: persist!
-static json_int_t number_missed_deposit_confirmations;
-
-/**
  * Total amount involved in deposit confirmations that we did not get.
  */
-static struct TALER_Amount total_missed_deposit_confirmations;
+static TALER_ARL_DEF_AB (total_missed_deposit_confirmations);
 
 /**
  * Should we run checks that only work for exchange-internal audits?
@@ -91,40 +85,11 @@ static struct GNUNET_DB_EventHandler *eh;
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
- * Closure for #test_dc.
+ * Success or failure of (exchange) database operations within
+ * #test_dc.
  */
-struct DepositConfirmationContext
-{
+static enum GNUNET_DB_QueryStatus eqs;
 
-  /**
-   * How many deposit confirmations did we NOT find in the #TALER_ARL_edb?
-   */
-  unsigned long long missed_count;
-
-  /**
-   * What is the total amount missing?
-   */
-  struct TALER_Amount missed_amount;
-
-  /**
-   * Lowest SerialID of the first coin we missed? (This is where we
-   * should resume next time).
-   */
-  // uint64_t first_missed_coin_serial;
-
-  /**
-   * Lowest SerialID of the first coin we missed? (This is where we
-   * should resume next time).
-   */
-  // uint64_t last_seen_coin_serial;
-
-  /**
-   * Success or failure of (exchange) database operations within
-   * #test_dc.
-   */
-  enum GNUNET_DB_QueryStatus qs;
-
-};
 
 /**
  * Given a deposit confirmation from #TALER_ARL_adb, check that it is also
@@ -140,15 +105,13 @@ test_dc (void *cls,
          uint64_t serial_id,
          const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
-  struct DepositConfirmationContext *dcc = cls;
   bool missing = false;
-  (void) cls;
-
   enum GNUNET_DB_QueryStatus qs;
-  // dcc->last_seen_coin_serial = serial_id;
+
+  (void) cls;
+  TALER_ARL_USE_PP (deposit_confirmation_serial_id) = serial_id;
   for (unsigned int i = 0; i < dc->num_coins; i++)
   {
-
     struct GNUNET_TIME_Timestamp exchange_timestamp;
     struct TALER_Amount deposit_fee;
 
@@ -164,7 +127,7 @@ test_dc (void *cls,
     if (qs < 0)
     {
       GNUNET_break (0); /* DB error, complain */
-      dcc->qs = qs;
+      eqs = qs;
       return GNUNET_SYSERR;
     }
   }
@@ -173,13 +136,8 @@ test_dc (void *cls,
   if (qs < 0)
   {
     GNUNET_break (0); /* DB error, complain */
-    dcc->qs = qs;
+    eqs = qs;
     return GNUNET_SYSERR;
-  }
-  if (dcc->qs == 1)
-  {
-    (void) cls;
-
   }
   if (! missing)
   {
@@ -188,10 +146,9 @@ test_dc (void *cls,
                 GNUNET_h2s (&dc->h_contract_terms.hash));
     return GNUNET_OK; /* all coins found, all good */
   }
-  // dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial, serial_id);
-  dcc->missed_count++;
-  TALER_ARL_amount_add (&dcc->missed_amount,
-                        &dcc->missed_amount,
+  // FIXME: where do we *decrease* this amount if we get a DC later?
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_missed_deposit_confirmations),
+                        &TALER_ARL_USE_AB (total_missed_deposit_confirmations),
                         &dc->total_without_fee);
   return GNUNET_OK;
 }
@@ -207,23 +164,19 @@ test_dc (void *cls,
 static enum GNUNET_DB_QueryStatus
 analyze_deposit_confirmations (void *cls)
 {
-  // TALER_ARL_DEF_PP (deposit_confirmation_serial_id);
-  struct DepositConfirmationContext dcc;
-  // enum GNUNET_DB_QueryStatus qs;
-  enum GNUNET_DB_QueryStatus qsx;
-  // enum GNUNET_DB_QueryStatus qsp;
+  enum GNUNET_DB_QueryStatus qs;
+
   (void) cls;
-/*
-  qsp = TALER_ARL_adb->get_auditor_progress (
+  qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_PP (deposit_confirmation_serial_id),
     NULL);
-  if (0 > qsp)
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
-    return qsp;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 "First analysis using deposit auditor, starting audit from scratch\n");
@@ -235,70 +188,79 @@ analyze_deposit_confirmations (void *cls)
                 (unsigned long long) TALER_ARL_USE_PP (
                   deposit_confirmation_serial_id));
   }
-*/
-  /* setup 'cc' */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TALER_ARL_currency,
-                                        &dcc.missed_amount));
-  dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  dcc.missed_count = 0LLU;
-  // dcc.first_missed_coin_serial = UINT64_MAX;
-
-  qsx = TALER_ARL_adb->get_deposit_confirmations (
+  qs = TALER_ARL_adb->get_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_GET_AB (total_missed_deposit_confirmations),
+    NULL);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  qs = TALER_ARL_adb->get_deposit_confirmations (
     TALER_ARL_adb->cls,
     INT64_MAX,
     0,
     true, /* return suppressed */
     &test_dc,
-    &dcc);
-
-
-  if (0 > qsx)
+    NULL);
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
-    return qsx;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > eqs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == eqs);
+    return eqs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzed %d deposit confirmations\n",
-              (int) qsx);
-  if (0 > dcc.qs)
+              (int) qs);
+  qs = TALER_ARL_adb->insert_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (deposit_confirmation_serial_id),
+    NULL);
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == dcc.qs);
-    return dcc.qs;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-/* TODO: zu überprüfen
-  if (UINT64_MAX == dcc.first_missed_coin_serial)
-     ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
-   else
-     ppdc.last_deposit_confirmation_serial_id = dcc.first_missed_coin_serial - 1;
- */
-/* sync 'cc' back to disk */
-/*
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (deposit_confirmation_serial_id),
-      NULL);
-  else
-    qs = TALER_ARL_adb->insert_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (deposit_confirmation_serial_id),
-      NULL);
-*/
-// TODO :correct me and above
-/* if (0 >= qs) {
-     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                 "Failed to update auditor DB, not recording progress\n");
-     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-     return qs;
-   }*/
-
-  number_missed_deposit_confirmations = (json_int_t) dcc.missed_count;
-  total_missed_deposit_confirmations = dcc.missed_amount;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Concluded deposit confirmation audit");
-
+  qs = TALER_ARL_adb->update_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (deposit_confirmation_serial_id),
+    NULL);
+  if (0 > qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  qs = TALER_ARL_adb->insert_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (total_missed_deposit_confirmations),
+    NULL);
+  if (0 > qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  qs = TALER_ARL_adb->update_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (total_missed_deposit_confirmations),
+    NULL);
+  if (0 > qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -367,7 +329,6 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
   cfg = c;
-
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,

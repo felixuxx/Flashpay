@@ -1292,23 +1292,21 @@ analyze_aggregations (void *cls)
 {
   struct AggregationContext ac;
   struct WireFeeInfo *wfi;
-  enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
-  enum GNUNET_DB_QueryStatus qsp;
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
-  qsp = TALER_ARL_adb->get_auditor_progress (
+  qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_PP (aggregation_last_wire_out_serial_id),
     NULL);
-  if (0 > qsp)
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
-    return qsp;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 "First analysis using this auditor, starting audit from scratch\n");
@@ -1324,7 +1322,7 @@ analyze_aggregations (void *cls)
   memset (&ac,
           0,
           sizeof (ac));
-  qsx = TALER_ARL_adb->get_balance (
+  qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (aggregation_total_wire_fee_revenue),
     TALER_ARL_GET_AB (aggregation_total_arithmetic_delta_plus),
@@ -1334,11 +1332,12 @@ analyze_aggregations (void *cls)
     TALER_ARL_GET_AB (aggregation_total_wire_out_delta_minus),
     TALER_ARL_GET_AB (aggregation_total_coin_delta_plus),
     NULL);
-  if (0 > qsx)
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
-    return qsx;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
+
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = TALER_ARL_edb->select_wire_out_above_serial_id (
     TALER_ARL_edb->cls,
@@ -1402,23 +1401,22 @@ analyze_aggregations (void *cls)
     return qs;
   }
 
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
+  qs = TALER_ARL_adb->insert_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
+    NULL);
+  if (0 > qs)
   {
-    qs = TALER_ARL_adb->insert_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
-      NULL);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  else
-  {
-    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp);
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
-      NULL);
-  }
-
-  if (0 >= qs)
+  qs = TALER_ARL_adb->update_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (aggregation_last_wire_out_serial_id),
+    NULL);
+  if (0 > qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to update auditor DB, not recording progress\n");

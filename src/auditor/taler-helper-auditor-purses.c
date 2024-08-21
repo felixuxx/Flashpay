@@ -1115,14 +1115,12 @@ static enum GNUNET_DB_QueryStatus
 analyze_purses (void *cls)
 {
   struct PurseContext pc;
-  enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
-  enum GNUNET_DB_QueryStatus qsp;
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing purses\n");
-  qsp = TALER_ARL_adb->get_auditor_progress (
+  qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_PP (purse_account_merge_serial_id),
     TALER_ARL_GET_PP (purse_decision_serial_id),
@@ -1131,12 +1129,12 @@ analyze_purses (void *cls)
     TALER_ARL_GET_PP (purse_request_serial_id),
     TALER_ARL_GET_PP (purse_open_counter),
     NULL);
-  if (0 > qsp)
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
-    return qsp;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 "First analysis using this auditor, starting audit from scratch\n");
@@ -1157,7 +1155,7 @@ analyze_purses (void *cls)
                   purse_account_merge_serial_id));
   }
   pc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  qsx = TALER_ARL_adb->get_balance (
+  qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (purse_global_balance),
     TALER_ARL_GET_AB (purse_total_balance_insufficient_loss),
@@ -1167,10 +1165,10 @@ analyze_purses (void *cls)
     TALER_ARL_GET_AB (purse_total_arithmetic_delta_minus),
     TALER_ARL_GET_AB (purse_total_bad_sig_loss),
     NULL);
-  if (qsx < 0)
+  if (qs < 0)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
-    return qsx;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
   pc.purses = GNUNET_CONTAINER_multihashmap_create (512,
                                                     GNUNET_NO);
@@ -1195,6 +1193,7 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_edb->select_purse_deposits_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (purse_deposits_serial_id),
@@ -1205,6 +1204,7 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   /* Charge purse fee! */
   qs = TALER_ARL_edb->select_account_merges_above_serial_id (
     TALER_ARL_edb->cls,
@@ -1216,6 +1216,7 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_edb->select_all_purse_decisions_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (purse_decision_serial_id),
@@ -1226,6 +1227,7 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_adb->select_purse_expired (
     TALER_ARL_adb->cls,
     &handle_purse_expired,
@@ -1244,66 +1246,70 @@ analyze_purses (void *cls)
   GNUNET_CONTAINER_multihashmap_destroy (pc.purses);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != pc.qs)
     return qs;
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    qs = TALER_ARL_adb->insert_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (purse_global_balance),
-      TALER_ARL_SET_AB (purse_total_balance_insufficient_loss),
-      TALER_ARL_SET_AB (purse_total_delayed_decisions),
-      TALER_ARL_SET_AB (purse_total_balance_purse_not_closed),
-      TALER_ARL_SET_AB (purse_total_arithmetic_delta_plus),
-      TALER_ARL_SET_AB (purse_total_arithmetic_delta_minus),
-      TALER_ARL_SET_AB (purse_total_bad_sig_loss),
-      NULL);
-  }
-  else
-  {
-    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx);
-    qs = TALER_ARL_adb->update_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (purse_global_balance),
-      TALER_ARL_SET_AB (purse_total_balance_insufficient_loss),
-      TALER_ARL_SET_AB (purse_total_delayed_decisions),
-      TALER_ARL_SET_AB (purse_total_balance_purse_not_closed),
-      TALER_ARL_SET_AB (purse_total_arithmetic_delta_plus),
-      TALER_ARL_SET_AB (purse_total_arithmetic_delta_minus),
-      TALER_ARL_SET_AB (purse_total_bad_sig_loss),
-      NULL);
-  }
-  if (0 >= qs)
+
+  qs = TALER_ARL_adb->insert_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (purse_global_balance),
+    TALER_ARL_SET_AB (purse_total_balance_insufficient_loss),
+    TALER_ARL_SET_AB (purse_total_delayed_decisions),
+    TALER_ARL_SET_AB (purse_total_balance_purse_not_closed),
+    TALER_ARL_SET_AB (purse_total_arithmetic_delta_plus),
+    TALER_ARL_SET_AB (purse_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (purse_total_bad_sig_loss),
+    NULL);
+  if (0 > qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to update auditor DB, not recording progress\n");
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+
+  qs = TALER_ARL_adb->update_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (purse_global_balance),
+    TALER_ARL_SET_AB (purse_total_balance_insufficient_loss),
+    TALER_ARL_SET_AB (purse_total_delayed_decisions),
+    TALER_ARL_SET_AB (purse_total_balance_purse_not_closed),
+    TALER_ARL_SET_AB (purse_total_arithmetic_delta_plus),
+    TALER_ARL_SET_AB (purse_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (purse_total_bad_sig_loss),
+    NULL);
+  if (0 > qs)
   {
-    qs = TALER_ARL_adb->insert_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (purse_account_merge_serial_id),
-      TALER_ARL_SET_PP (purse_decision_serial_id),
-      TALER_ARL_SET_PP (purse_deposits_serial_id),
-      TALER_ARL_SET_PP (purse_merges_serial_id),
-      TALER_ARL_SET_PP (purse_request_serial_id),
-      TALER_ARL_SET_PP (purse_open_counter),
-      NULL);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  else
+
+  qs = TALER_ARL_adb->insert_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (purse_account_merge_serial_id),
+    TALER_ARL_SET_PP (purse_decision_serial_id),
+    TALER_ARL_SET_PP (purse_deposits_serial_id),
+    TALER_ARL_SET_PP (purse_merges_serial_id),
+    TALER_ARL_SET_PP (purse_request_serial_id),
+    TALER_ARL_SET_PP (purse_open_counter),
+    NULL);
+  if (0 > qs)
   {
-    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp);
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (purse_account_merge_serial_id),
-      TALER_ARL_SET_PP (purse_decision_serial_id),
-      TALER_ARL_SET_PP (purse_deposits_serial_id),
-      TALER_ARL_SET_PP (purse_merges_serial_id),
-      TALER_ARL_SET_PP (purse_request_serial_id),
-      TALER_ARL_SET_PP (purse_open_counter),
-      NULL);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  if (0 >= qs)
+
+  qs = TALER_ARL_adb->update_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (purse_account_merge_serial_id),
+    TALER_ARL_SET_PP (purse_decision_serial_id),
+    TALER_ARL_SET_PP (purse_deposits_serial_id),
+    TALER_ARL_SET_PP (purse_merges_serial_id),
+    TALER_ARL_SET_PP (purse_request_serial_id),
+    TALER_ARL_SET_PP (purse_open_counter),
+    NULL);
+  if (0 > qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to update auditor DB, not recording progress\n");

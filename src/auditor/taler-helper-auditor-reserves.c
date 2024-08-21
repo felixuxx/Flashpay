@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2022 Taler Systems SA
+  Copyright (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -1674,14 +1674,12 @@ static enum GNUNET_DB_QueryStatus
 analyze_reserves (void *cls)
 {
   struct ReserveContext rc;
-  enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
-  enum GNUNET_DB_QueryStatus qsp;
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing reserves\n");
-  qsp = TALER_ARL_adb->get_auditor_progress (
+  qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_PP (reserves_reserve_in_serial_id),
     TALER_ARL_GET_PP (reserves_reserve_out_serial_id),
@@ -1692,12 +1690,12 @@ analyze_reserves (void *cls)
     TALER_ARL_GET_PP (reserves_account_merges_serial_id),
     TALER_ARL_GET_PP (reserves_history_requests_serial_id),
     NULL);
-  if (0 > qsp)
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
-    return qsp;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 "First analysis using this auditor, starting audit from scratch\n");
@@ -1724,7 +1722,7 @@ analyze_reserves (void *cls)
                   reserves_history_requests_serial_id));
   }
   rc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  qsx = TALER_ARL_adb->get_balance (
+  qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (reserves_reserve_total_balance),
     TALER_ARL_GET_AB (reserves_reserve_loss),
@@ -1739,15 +1737,16 @@ analyze_reserves (void *cls)
     TALER_ARL_GET_AB (reserves_total_arithmetic_delta_minus),
     TALER_ARL_GET_AB (total_balance_summary_delta_minus),
     NULL);
-  if (qsx < 0)
+  if (qs < 0)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
-    return qsx;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
   rc.revoked = GNUNET_CONTAINER_multihashmap_create (4,
                                                      GNUNET_NO);
+
   qs = TALER_ARL_edb->select_reserves_in_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_in_serial_id),
@@ -1758,6 +1757,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_edb->select_withdrawals_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_out_serial_id),
@@ -1768,6 +1768,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_edb->select_recoup_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_recoup_serial_id),
@@ -1778,6 +1779,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_edb->select_reserve_open_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_open_serial_id),
@@ -1788,6 +1790,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_close_serial_id),
@@ -1798,6 +1801,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   /* process purse_decisions (to credit reserve) */
   if (0 >
       (qs = TALER_ARL_edb->select_purse_decisions_above_serial_id (
@@ -1810,9 +1814,11 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   if (0 > rc.qs)
     return rc.qs;
   /* Charge purse fee! */
+
   qs = TALER_ARL_edb->select_account_merges_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_account_merges_serial_id),
@@ -1823,6 +1829,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+
   GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
                                          &verify_reserve_balance,
                                          &rc);
@@ -1832,84 +1839,86 @@ analyze_reserves (void *cls)
   GNUNET_CONTAINER_multihashmap_destroy (rc.revoked);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != rc.qs)
     return qs;
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    qs = TALER_ARL_adb->insert_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (reserves_reserve_total_balance),
-      TALER_ARL_SET_AB (reserves_reserve_loss),
-      TALER_ARL_SET_AB (reserves_withdraw_fee_revenue),
-      TALER_ARL_SET_AB (reserves_close_fee_revenue),
-      TALER_ARL_SET_AB (reserves_purse_fee_revenue),
-      TALER_ARL_SET_AB (reserves_open_fee_revenue),
-      TALER_ARL_SET_AB (reserves_history_fee_revenue),
-      TALER_ARL_SET_AB (reserves_total_bad_sig_loss),
-      TALER_ARL_SET_AB (total_balance_reserve_not_closed),
-      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
-      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
-      TALER_ARL_SET_AB (total_balance_summary_delta_minus),
-      NULL);
-  }
-  else
-  {
-    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx);
-    qs = TALER_ARL_adb->update_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (reserves_reserve_total_balance),
-      TALER_ARL_SET_AB (reserves_reserve_loss),
-      TALER_ARL_SET_AB (reserves_withdraw_fee_revenue),
-      TALER_ARL_SET_AB (reserves_close_fee_revenue),
-      TALER_ARL_SET_AB (reserves_purse_fee_revenue),
-      TALER_ARL_SET_AB (reserves_open_fee_revenue),
-      TALER_ARL_SET_AB (reserves_history_fee_revenue),
-      TALER_ARL_SET_AB (reserves_total_bad_sig_loss),
-      TALER_ARL_SET_AB (total_balance_reserve_not_closed),
-      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
-      TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
-      TALER_ARL_SET_AB (total_balance_summary_delta_minus),
-      NULL);
-  }
-  if (0 >= qs)
+
+  qs = TALER_ARL_adb->insert_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (reserves_reserve_total_balance),
+    TALER_ARL_SET_AB (reserves_reserve_loss),
+    TALER_ARL_SET_AB (reserves_withdraw_fee_revenue),
+    TALER_ARL_SET_AB (reserves_close_fee_revenue),
+    TALER_ARL_SET_AB (reserves_purse_fee_revenue),
+    TALER_ARL_SET_AB (reserves_open_fee_revenue),
+    TALER_ARL_SET_AB (reserves_history_fee_revenue),
+    TALER_ARL_SET_AB (reserves_total_bad_sig_loss),
+    TALER_ARL_SET_AB (total_balance_reserve_not_closed),
+    TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
+    TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (total_balance_summary_delta_minus),
+    NULL);
+  if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+
+  qs = TALER_ARL_adb->update_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (reserves_reserve_total_balance),
+    TALER_ARL_SET_AB (reserves_reserve_loss),
+    TALER_ARL_SET_AB (reserves_withdraw_fee_revenue),
+    TALER_ARL_SET_AB (reserves_close_fee_revenue),
+    TALER_ARL_SET_AB (reserves_purse_fee_revenue),
+    TALER_ARL_SET_AB (reserves_open_fee_revenue),
+    TALER_ARL_SET_AB (reserves_history_fee_revenue),
+    TALER_ARL_SET_AB (reserves_total_bad_sig_loss),
+    TALER_ARL_SET_AB (total_balance_reserve_not_closed),
+    TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
+    TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (total_balance_summary_delta_minus),
+    NULL);
+  if (0 > qs)
   {
-    qs = TALER_ARL_adb->insert_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_out_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_recoup_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_open_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_close_serial_id),
-      TALER_ARL_SET_PP (reserves_purse_decisions_serial_id),
-      TALER_ARL_SET_PP (reserves_account_merges_serial_id),
-      TALER_ARL_SET_PP (reserves_history_requests_serial_id),
-      NULL);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  else
-  {
-    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp);
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_out_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_recoup_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_open_serial_id),
-      TALER_ARL_SET_PP (reserves_reserve_close_serial_id),
-      TALER_ARL_SET_PP (reserves_purse_decisions_serial_id),
-      TALER_ARL_SET_PP (reserves_account_merges_serial_id),
-      TALER_ARL_SET_PP (reserves_history_requests_serial_id),
-      NULL);
-  }
-  if (0 >= qs)
+
+  qs = TALER_ARL_adb->insert_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_out_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_recoup_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_open_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_close_serial_id),
+    TALER_ARL_SET_PP (reserves_purse_decisions_serial_id),
+    TALER_ARL_SET_PP (reserves_account_merges_serial_id),
+    TALER_ARL_SET_PP (reserves_history_requests_serial_id),
+    NULL);
+  if (0 > qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to update auditor DB, not recording progress\n");
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  qs = TALER_ARL_adb->update_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (reserves_reserve_in_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_out_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_recoup_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_open_serial_id),
+    TALER_ARL_SET_PP (reserves_reserve_close_serial_id),
+    TALER_ARL_SET_PP (reserves_purse_decisions_serial_id),
+    TALER_ARL_SET_PP (reserves_account_merges_serial_id),
+    TALER_ARL_SET_PP (reserves_history_requests_serial_id),
+    NULL);
+  if (0 > qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Concluded reserve audit step at %llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu\n",
               (unsigned long long) TALER_ARL_USE_PP (
@@ -1996,10 +2005,8 @@ run (void *cls,
   (void) cfgfile;
 
   cfg = c;
-
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching reserves auditor\n");
   if (GNUNET_OK !=

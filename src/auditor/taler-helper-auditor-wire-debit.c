@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2023 Taler Systems SA
+  Copyright (C) 2017-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -109,11 +109,6 @@ struct WireAccount
    * Label under which we store our wire_off_out.
    */
   char *label_wire_off_out;
-
-  /**
-   * Return value when we got this account's progress point.
-   */
-  enum GNUNET_DB_QueryStatus qsx;
 };
 
 
@@ -183,12 +178,6 @@ static struct WireAccount *wa_head;
 static struct WireAccount *wa_tail;
 
 /**
- * Query status for the incremental processing status in the auditordb.
- * Return value from our call to the "get_wire_auditor_progress" function.
- */
-static enum GNUNET_DB_QueryStatus qsx_gwap;
-
-/**
  * Last reserve_out / wire_out serial IDs seen.
  */
 static TALER_ARL_DEF_PP (wire_reserve_close_id);
@@ -234,16 +223,6 @@ static TALER_ARL_DEF_AB (total_wire_out);
  * Total amount of profits drained.
  */
 static TALER_ARL_DEF_AB (total_drained);
-
-/**
- * True if #start_balance was initialized.
- */
-static bool had_start_balance;
-
-/**
- * True if #start_balance was initialized.
- */
-static bool had_start_progress;
 
 /**
  * Amount of zero in our currency.
@@ -503,22 +482,18 @@ commit (enum GNUNET_DB_QueryStatus qs)
 {
   if (qs >= 0)
   {
-    if (had_start_balance)
-    {
-      qs = TALER_ARL_adb->update_balance (
-        TALER_ARL_adb->cls,
-        TALER_ARL_SET_AB (total_drained),
-        TALER_ARL_SET_AB (total_wire_out),
-        TALER_ARL_SET_AB (total_bad_amount_out_plus),
-        TALER_ARL_SET_AB (total_bad_amount_out_minus),
-        TALER_ARL_SET_AB (total_amount_lag),
-        TALER_ARL_SET_AB (total_closure_amount_lag),
-        TALER_ARL_SET_AB (total_wire_format_amount),
-        TALER_ARL_SET_AB (total_wire_out),
-        NULL);
-    }
-    else
-    {
+    qs = TALER_ARL_adb->update_balance (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_AB (total_drained),
+      TALER_ARL_SET_AB (total_wire_out),
+      TALER_ARL_SET_AB (total_bad_amount_out_plus),
+      TALER_ARL_SET_AB (total_bad_amount_out_minus),
+      TALER_ARL_SET_AB (total_amount_lag),
+      TALER_ARL_SET_AB (total_closure_amount_lag),
+      TALER_ARL_SET_AB (total_wire_format_amount),
+      TALER_ARL_SET_AB (total_wire_out),
+      NULL);
+    if (qs >= 0)
       qs = TALER_ARL_adb->insert_balance (
         TALER_ARL_adb->cls,
         TALER_ARL_SET_AB (total_drained),
@@ -530,7 +505,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
         TALER_ARL_SET_AB (total_wire_format_amount),
         TALER_ARL_SET_AB (total_wire_out),
         NULL);
-    }
   }
   if (0 > qs)
   {
@@ -548,16 +522,14 @@ commit (enum GNUNET_DB_QueryStatus qs)
        NULL != wa;
        wa = wa->next)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == wa->qsx &&
-        had_start_progress)
-      qs = TALER_ARL_adb->update_auditor_progress (
-        TALER_ARL_adb->cls,
-        wa->label_wire_out_serial_id,
-        wa->last_wire_out_serial_id,
-        wa->label_wire_off_out,
-        wa->wire_off_out,
-        NULL);
-    else
+    qs = TALER_ARL_adb->update_auditor_progress (
+      TALER_ARL_adb->cls,
+      wa->label_wire_out_serial_id,
+      wa->last_wire_out_serial_id,
+      wa->label_wire_off_out,
+      wa->wire_off_out,
+      NULL);
+    if (0 <= qs)
       qs = TALER_ARL_adb->insert_auditor_progress (
         TALER_ARL_adb->cls,
         wa->label_wire_out_serial_id,
@@ -565,37 +537,39 @@ commit (enum GNUNET_DB_QueryStatus qs)
         wa->label_wire_off_out,
         wa->wire_off_out,
         NULL);
-    if (0 >= qs)
+    if (0 > qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Failed to update auditor DB, not recording progress\n");
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
+      TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
       return;
     }
   }
   GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
                                          &check_pending_rc,
                                          NULL);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx_gwap && had_start_progress ==
-      true)
-    qs = TALER_ARL_adb->update_auditor_progress (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_PP (wire_reserve_close_id),
-      TALER_ARL_SET_PP (wire_batch_deposit_id),
-      TALER_ARL_SET_PP (wire_aggregation_id),
-      NULL);
-  else
+  qs = TALER_ARL_adb->update_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (wire_reserve_close_id),
+    TALER_ARL_SET_PP (wire_batch_deposit_id),
+    TALER_ARL_SET_PP (wire_aggregation_id),
+    NULL);
+  if (0 <= qs)
     qs = TALER_ARL_adb->insert_auditor_progress (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_PP (wire_reserve_close_id),
       TALER_ARL_SET_PP (wire_batch_deposit_id),
       TALER_ARL_SET_PP (wire_aggregation_id),
       NULL);
-  if (0 >= qs)
+  if (0 > qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to update auditor DB, not recording progress\n");
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -603,35 +577,32 @@ commit (enum GNUNET_DB_QueryStatus qs)
               (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id),
               (unsigned long long) TALER_ARL_USE_PP (wire_batch_deposit_id));
 
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
-    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Exchange DB commit failed, rolling back transaction\n");
-      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-    }
-    else
-    {
-      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
-      if (0 > qs)
-      {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Auditor DB commit failed!\n");
-      }
-    }
-  }
-  else
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Processing failed, rolling back transaction\n");
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
+    return;
   }
-  return;
+
+  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Exchange DB commit failed, rolling back transaction\n");
+    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
+    return;
+  }
+  qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Auditor DB commit failed!\n");
+    return;
+  }
 }
 
 
@@ -1831,10 +1802,7 @@ begin_transaction (void)
     GNUNET_break (0);
     return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    had_start_balance = false;
-    break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    had_start_balance = true;
     break;
   }
   for (struct WireAccount *wa = wa_head;
@@ -1849,42 +1817,38 @@ begin_transaction (void)
                      "wire-%s-%s",
                      wa->ai->section_name,
                      "wire_off_out");
-    wa->qsx = TALER_ARL_adb->get_auditor_progress (
+    qs = TALER_ARL_adb->get_auditor_progress (
       TALER_ARL_adb->cls,
       wa->label_wire_out_serial_id,
       &wa->last_wire_out_serial_id,
       wa->label_wire_off_out,
       &wa->wire_off_out,
       NULL);
-    if (0 > wa->qsx)
+    if (0 > qs)
     {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wa->qsx);
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
     }
     wa->start_wire_out_serial_id = wa->last_wire_out_serial_id;
   }
-  qsx_gwap = TALER_ARL_adb->get_auditor_progress (
+  qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_PP (wire_reserve_close_id),
     TALER_ARL_GET_PP (wire_batch_deposit_id),
     TALER_ARL_GET_PP (wire_aggregation_id),
     NULL);
-  if (0 > qsx_gwap)
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx_gwap);
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx_gwap)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 "First analysis of with wire auditor, starting audit from scratch\n");
   }
   else
   {
-    if (TALER_ARL_USE_PP (wire_reserve_close_id) == 0)
-      had_start_progress = false;
-    else
-      had_start_progress = true;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming wire audit at %llu / %llu / %llu\n",
                 (unsigned long long) TALER_ARL_USE_PP (wire_reserve_close_id),
@@ -1892,19 +1856,15 @@ begin_transaction (void)
                 (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id));
   }
 
+  qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_USE_PP (wire_reserve_close_id),
+    &reserve_closed_cb,
+    NULL);
+  if (0 > qs)
   {
-    enum GNUNET_DB_QueryStatus qs;
-
-    qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
-      TALER_ARL_edb->cls,
-      TALER_ARL_USE_PP (wire_reserve_close_id),
-      &reserve_closed_cb,
-      NULL);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   begin_debit_audit ();
   return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;

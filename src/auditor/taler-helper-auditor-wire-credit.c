@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2023 Taler Systems SA
+  Copyright (C) 2017-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -105,10 +105,6 @@ struct WireAccount
    */
   char *label_wire_off_in;
 
-  /**
-   * Return value when we got this account's progress point.
-   */
-  enum GNUNET_DB_QueryStatus qsx;
 };
 
 
@@ -175,16 +171,6 @@ static TALER_ARL_DEF_AB (total_wire_format_amount); // FIXME
  * Total amount credited to exchange accounts.
  */
 static TALER_ARL_DEF_AB (total_wire_in);
-
-/**
- * True if #total_wire_in was initialized.
- */
-static bool had_start_balance;
-
-/**
- * True if #wire_reserve_in_id was initialized.
- */
-static bool had_start_progress;
 
 /**
  * Amount of zero in our currency.
@@ -338,19 +324,15 @@ commit (enum GNUNET_DB_QueryStatus qs)
 {
   if (qs >= 0)
   {
-    if (had_start_balance)
-    {
-      qs = TALER_ARL_adb->update_balance (
-        TALER_ARL_adb->cls,
-        TALER_ARL_SET_AB (total_wire_in),
-        TALER_ARL_SET_AB (total_bad_amount_in_plus),
-        TALER_ARL_SET_AB (total_bad_amount_in_minus),
-        TALER_ARL_SET_AB (total_misattribution_in),
-        TALER_ARL_SET_AB (total_wire_format_amount),
-        NULL);
-    }
-    else
-    {
+    qs = TALER_ARL_adb->update_balance (
+      TALER_ARL_adb->cls,
+      TALER_ARL_SET_AB (total_wire_in),
+      TALER_ARL_SET_AB (total_bad_amount_in_plus),
+      TALER_ARL_SET_AB (total_bad_amount_in_minus),
+      TALER_ARL_SET_AB (total_misattribution_in),
+      TALER_ARL_SET_AB (total_wire_format_amount),
+      NULL);
+    if (0 <= qs)
       qs = TALER_ARL_adb->insert_balance (
         TALER_ARL_adb->cls,
         TALER_ARL_SET_AB (total_wire_in),
@@ -359,34 +341,31 @@ commit (enum GNUNET_DB_QueryStatus qs)
         TALER_ARL_SET_AB (total_misattribution_in),
         TALER_ARL_SET_AB (total_wire_format_amount),
         NULL);
+    if (0 > qs)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Serialization issue, not recording progress\n");
+      else
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Hard error, not recording progress\n");
+      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
+      TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
+      return;
     }
-  }
-  if (0 > qs)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Serialization issue, not recording progress\n");
-    else
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Hard error, not recording progress\n");
-    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
-    return;
   }
   for (struct WireAccount *wa = wa_head;
        NULL != wa;
        wa = wa->next)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == wa->qsx &&
-        had_start_progress)
-      qs = TALER_ARL_adb->update_auditor_progress (
-        TALER_ARL_adb->cls,
-        wa->label_reserve_in_serial_id,
-        wa->last_reserve_in_serial_id,
-        wa->label_wire_off_in,
-        wa->wire_off_in,
-        NULL);
-    else
+    qs = TALER_ARL_adb->update_auditor_progress (
+      TALER_ARL_adb->cls,
+      wa->label_reserve_in_serial_id,
+      wa->last_reserve_in_serial_id,
+      wa->label_wire_off_in,
+      wa->wire_off_in,
+      NULL);
+    if (0 <= qs)
       qs = TALER_ARL_adb->insert_auditor_progress (
         TALER_ARL_adb->cls,
         wa->label_reserve_in_serial_id,
@@ -394,7 +373,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
         wa->label_wire_off_in,
         wa->wire_off_in,
         NULL);
-    if (0 >= qs)
+    if (0 > qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Failed to update auditor DB, not recording progress\n");
@@ -983,10 +962,7 @@ begin_transaction (void)
     GNUNET_break (0);
     return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    had_start_balance = false;
-    break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    had_start_balance = true;
     break;
   }
   for (struct WireAccount *wa = wa_head;
@@ -1001,17 +977,17 @@ begin_transaction (void)
                      "wire-%s-%s",
                      wa->ai->section_name,
                      "wire_off_in");
-    wa->qsx = TALER_ARL_adb->get_auditor_progress (
+    qs = TALER_ARL_adb->get_auditor_progress (
       TALER_ARL_adb->cls,
       wa->label_reserve_in_serial_id,
       &wa->last_reserve_in_serial_id,
       wa->label_wire_off_in,
       &wa->wire_off_in,
       NULL);
-    if (0 > wa->qsx)
+    if (0 > qs)
     {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wa->qsx);
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
     }
     wa->start_reserve_in_serial_id = wa->last_reserve_in_serial_id;
   }

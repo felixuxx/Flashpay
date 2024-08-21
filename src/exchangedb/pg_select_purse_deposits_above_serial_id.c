@@ -88,7 +88,7 @@ purse_deposit_serial_helper_cb (void *cls,
                                    &purse_balance),
       TALER_PQ_RESULT_SPEC_AMOUNT ("total",
                                    &purse_total),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee",
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                    &deposit.deposit_fee),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_string ("partner_base_url",
@@ -176,6 +176,7 @@ TEH_PG_select_purse_deposits_above_serial_id (
            ",pd.coin_sig"
            ",partner_base_url"
            ",denom.denom_pub"
+           ",denom.fee_deposit"
            ",pm.reserve_pub"
            ",kc.coin_pub"
            ",kc.age_commitment_hash"
