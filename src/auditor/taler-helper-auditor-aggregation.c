@@ -816,6 +816,8 @@ wire_transfer_information_cb (
     report_row_inconsistency ("aggregation",
                               rowid,
                               "no transaction history for coin claimed in aggregation");
+    TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                               tl);
     return;
   }
   qs = TALER_ARL_edb->get_known_coin (TALER_ARL_edb->cls,
