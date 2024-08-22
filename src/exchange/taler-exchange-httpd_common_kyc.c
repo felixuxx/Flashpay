@@ -771,7 +771,7 @@ handle_aml_fallback_result (
     if (! TEH_kyc_failed (
           fb->orig_requirement_row,
           &fb->account_id,
-          NULL,
+          "FALLBACK",
           NULL,
           NULL,
           apr->details.failure.error_message,
