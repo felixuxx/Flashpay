@@ -28,6 +28,7 @@ BEGIN
     ' DROP COLUMN kyc_prox'
     ',DROP COLUMN provider'
     ',DROP COLUMN satisfied_checks'
+    ',DROP CONSTRAINT kyc_attributes_pkey'
     ',ADD COLUMN trigger_outcome_serial INT8 NOT NULL'
     ';'
     ,table_name
@@ -39,6 +40,26 @@ BEGIN
     ,'trigger_outcome_serial'
     ,table_name
     ,partition_suffix
+  );
+END $$;
+
+
+
+CREATE OR REPLACE FUNCTION constrain_table_kyc_attributes5(
+  IN partition_suffix TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT DEFAULT 'kyc_attributes';
+BEGIN
+  table_name = concat_ws('_', table_name, partition_suffix);
+  -- To search accounts
+  EXECUTE FORMAT (
+    'CREATE INDEX ' || table_name || '_h_payto_index '
+    'ON ' || table_name || ' '
+    '(h_payto);'
   );
 END $$;
 
@@ -69,6 +90,11 @@ INSERT INTO exchange_tables
     ('kyc_attributes5'
     ,'exchange-0005'
     ,'alter'
+    ,TRUE
+    ,FALSE),
+    ('kyc_attributes5'
+    ,'exchange-0005'
+    ,'constrain'
     ,TRUE
     ,FALSE),
     ('kyc_attributes5'
