@@ -154,18 +154,6 @@ INSERT INTO kyc_alerts
   (in_h_payto,1)
    ON CONFLICT DO NOTHING;
 
-IF in_to_investigate
-THEN
-  INSERT INTO aml_status
-    (h_payto
-    ,status)
-   VALUES
-    (in_h_payto
-    ,1)
-  ON CONFLICT (h_payto) DO
-    UPDATE SET status=EXCLUDED.status | 1;
-END IF;
-
 
 FOR i IN 1..COALESCE(array_length(ina_events,1),0)
 LOOP
