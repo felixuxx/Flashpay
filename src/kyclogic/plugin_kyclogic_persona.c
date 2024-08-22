@@ -1138,8 +1138,8 @@ handle_proof_finished (void *cls,
             GNUNET_JSON_parse (data,
                                spec,
                                NULL, NULL)) ||
-           (0 != strcmp (type,
-                         "inquiry")) )
+           (0 != strcasecmp (type,
+                             "inquiry")) )
       {
         GNUNET_break_op (0);
         return_invalid_response (ph,
@@ -1220,8 +1220,8 @@ handle_proof_finished (void *cls,
               "data"),
             "id"));
 
-        if (0 != strcmp (status,
-                         "completed"))
+        if (0 != strcasecmp (status,
+                             "completed"))
         {
           proof_generic_reply (
             ph,
@@ -1675,8 +1675,8 @@ handle_webhook_finished (void *cls,
             GNUNET_JSON_parse (data,
                                spec,
                                NULL, NULL)) ||
-           (0 != strcmp (type,
-                         "inquiry")) )
+           (0 != strcasecmp (type,
+                             "inquiry")) )
       {
         GNUNET_break_op (0);
         json_dumpf (j,
@@ -1755,8 +1755,8 @@ handle_webhook_finished (void *cls,
               "data"),
             "id"));
 
-        if (0 != strcmp (status,
-                         "completed"))
+        if (0 != strcasecmp (status,
+                             "completed"))
         {
           webhook_generic_reply (wh,
                                  TALER_KYCLOGIC_STATUS_FAILED,

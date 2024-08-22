@@ -333,8 +333,8 @@ find_check (const char *check_name)
     struct TALER_KYCLOGIC_KycCheck *kyc_check
       = kyc_checks[i];
 
-    if (0 == strcmp (check_name,
-                     kyc_check->check_name))
+    if (0 == strcasecmp (check_name,
+                         kyc_check->check_name))
       return kyc_check;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -358,8 +358,8 @@ find_program (const char *program_name)
     struct TALER_KYCLOGIC_AmlProgram *program
       = aml_programs[i];
 
-    if (0 == strcmp (program_name,
-                     program->program_name))
+    if (0 == strcasecmp (program_name,
+                         program->program_name))
       return program;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -383,8 +383,8 @@ find_provider (const char *provider_name)
     struct TALER_KYCLOGIC_KycProvider *provider
       = kyc_providers[i];
 
-    if (0 == strcmp (provider_name,
-                     provider->provider_name))
+    if (0 == strcasecmp (provider_name,
+                         provider->provider_name))
       return provider;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -829,8 +829,8 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
         json_decref (limits);
         return NULL;
       }
-      if (0 == strcmp (KYC_MEASURE_IMPOSSIBLE,
-                       val))
+      if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
+                           val))
         forbidden = true;
     }
 
@@ -876,8 +876,8 @@ find_measure (
       const struct TALER_KYCLOGIC_Measure *cm
         = &lrs->custom_measures[i];
 
-      if (0 == strcmp (measure_name,
-                       cm->measure_name))
+      if (0 == strcasecmp (measure_name,
+                           cm->measure_name))
         return cm;
     }
   }
@@ -889,8 +889,8 @@ find_measure (
       const struct TALER_KYCLOGIC_Measure *cm
         = &default_rules.custom_measures[i];
 
-      if (0 == strcmp (measure_name,
-                       cm->measure_name))
+      if (0 == strcasecmp (measure_name,
+                           cm->measure_name))
         return cm;
     }
   }
@@ -989,8 +989,8 @@ TALER_KYCLOGIC_get_measure (
   json_t *mi;
   json_t *jmeasures;
 
-  if (0 == strcmp ("verboten",
-                   measure_name))
+  if (0 == strcasecmp ("verboten",
+                       measure_name))
   {
     jmeasures = json_array ();
     GNUNET_assert (NULL != jmeasures);
@@ -1314,8 +1314,8 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
                    "libtaler_plugin_kyclogic_%s",
                    name);
   for (unsigned int i = 0; i<num_kyc_logics; i++)
-    if (0 == strcmp (lib_name,
-                     kyc_logics[i]->library_name))
+    if (0 == strcasecmp (lib_name,
+                         kyc_logics[i]->library_name))
     {
       GNUNET_free (lib_name);
       return kyc_logics[i];
@@ -2475,8 +2475,8 @@ TALER_KYCLOGIC_get_original_measure (
   }
 
   for (unsigned int i = 0; i<num_kyc_checks; i++)
-    if (0 == strcmp (measure->check_name,
-                     kyc_checks[i]->check_name))
+    if (0 == strcasecmp (measure->check_name,
+                         kyc_checks[i]->check_name))
     {
       kcc->check = kyc_checks[i];
       kcc->prog_name = measure->prog_name;
@@ -2512,8 +2512,8 @@ TALER_KYCLOGIC_requirements_to_check (
   {
     for (unsigned int i = 0; i<kyc_rule->num_measures; i++)
     {
-      if (0 != strcmp (measure_name,
-                       kyc_rule->next_measures[i]))
+      if (0 != strcasecmp (measure_name,
+                           kyc_rule->next_measures[i]))
         continue;
       found = true;
       break;
@@ -2556,8 +2556,8 @@ TALER_KYCLOGIC_requirements_to_check (
   }
 
   for (unsigned int i = 0; i<num_kyc_checks; i++)
-    if (0 == strcmp (measure->check_name,
-                     kyc_checks[i]->check_name))
+    if (0 == strcasecmp (measure->check_name,
+                         kyc_checks[i]->check_name))
     {
       kcc->check = kyc_checks[i];
       kcc->prog_name = measure->prog_name;
@@ -2624,8 +2624,8 @@ TALER_KYCLOGIC_kyc_get_details (
       = kyc_providers[i];
 
     if (0 !=
-        strcmp (kp->logic->name,
-                logic_name))
+        strcasecmp (kp->logic->name,
+                    logic_name))
       continue;
     if (GNUNET_OK !=
         cb (cb_cls,

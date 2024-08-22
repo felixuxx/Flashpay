@@ -426,8 +426,8 @@ oauth2_load_configuration (void *cls,
     const char *extra = strchr (s, '#');
     const char *slash = strrchr (s, '/');
 
-    if ( (0 != strcmp (extra,
-                       "#setup")) ||
+    if ( (0 != strcasecmp (extra,
+                           "#setup")) ||
          (NULL == slash) )
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
@@ -1477,14 +1477,14 @@ oauth2_proof (void *cls,
                 "OAuth2 process %llu failed with error `%s'\n",
                 (unsigned long long) process_row,
                 err);
-    if (0 == strcmp (err,
-                     "server_error"))
+    if (0 == strcasecmp (err,
+                         "server_error"))
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
-    else if (0 == strcmp (err,
-                          "unauthorized_client"))
+    else if (0 == strcasecmp (err,
+                              "unauthorized_client"))
       ph->status = TALER_KYCLOGIC_STATUS_FAILED;
-    else if (0 == strcmp (err,
-                          "temporarily_unavailable"))
+    else if (0 == strcasecmp (err,
+                              "temporarily_unavailable"))
       ph->status = TALER_KYCLOGIC_STATUS_PENDING;
     else
       ph->status = TALER_KYCLOGIC_STATUS_INTERNAL_ERROR;
