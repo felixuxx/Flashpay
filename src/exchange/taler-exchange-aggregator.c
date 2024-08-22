@@ -507,7 +507,11 @@ legitimization_satisfied (struct AggregationUnit *au_active)
   json_t *jrule;
 
   if (kyc_off)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC checks are off, legitimization satisfied\n");
     return true;
+  }
 
   {
     json_t *jrules;
