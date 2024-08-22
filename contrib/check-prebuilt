@@ -3,13 +3,26 @@
 import os
 import sys
 
+failed = False
 contrib = os.path.abspath(os.path.dirname(__file__))
 
-spa_ver_lock = open(contrib + "/" + "aml-spa.lock").read().strip()
-spa_ver_prebuilt = open(contrib + "/" + "wallet-core/aml-backoffice/version.txt").read().strip()
+aml_spa_ver_lock = open(contrib + "/" + "aml-spa.lock").read().strip()
+aml_spa_ver_prebuilt = open(contrib + "/" + "wallet-core/aml-backoffice/version.txt").read().strip()
 
-if spa_ver_lock != spa_ver_prebuilt:
-    print("SPA version mismatch")
-    print("lockfile has version", spa_ver_lock)
-    print("prebuilt has version", spa_ver_prebuilt)
+kyc_spa_ver_lock = open(contrib + "/" + "kyc-spa.lock").read().strip()
+kyc_spa_ver_prebuilt = open(contrib + "/" + "wallet-core/kyc/version.txt").read().strip()
+
+if aml_spa_ver_lock != aml_spa_ver_prebuilt:
+    print("AML SPA version mismatch")
+    print("lockfile has version", aml_spa_ver_lock)
+    print("prebuilt has version", aml_spa_ver_prebuilt)
+    failed = True
+
+if kyc_spa_ver_lock != kyc_spa_ver_prebuilt:
+    print("KYC SPA version mismatch")
+    print("lockfile has version", kyc_spa_ver_lock)
+    print("prebuilt has version", kyc_spa_ver_prebuilt)
+    failed = True
+
+if failed:
     sys.exit(1)
