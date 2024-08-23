@@ -3623,7 +3623,6 @@ typedef void
 (*TALER_EXCHANGEDB_AmlAttributeCallback)(
   void *cls,
   uint64_t row_id,
-  const char *provider_name,
   struct GNUNET_TIME_Timestamp collection_time,
   size_t enc_attributes_size,
   const void *enc_attributes);

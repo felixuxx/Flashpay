@@ -41,7 +41,6 @@
  *
  * @param cls closure
  * @param row_id current row in kyc_attributes table
- * @param provider_name which provider collected the data, NULL for user upload
  * @param collection_time when were the attributes collected
  * @param enc_attributes_size length of @a enc_attributes
  * @param enc_attributes the encrypted collected attributes
@@ -50,7 +49,6 @@ static void
 detail_cb (
   void *cls,
   uint64_t row_id,
-  const char *provider_name,
   struct GNUNET_TIME_Timestamp collection_time,
   size_t enc_attributes_size,
   const void *enc_attributes)
@@ -73,9 +71,6 @@ detail_cb (
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_int64 ("rowid",
                                 row_id),
-        GNUNET_JSON_pack_allow_null (
-          GNUNET_JSON_pack_string ("provider_name",
-                                   provider_name)),
         GNUNET_JSON_pack_allow_null (
           GNUNET_JSON_pack_object_steal ("attributes",
                                          attrs)),

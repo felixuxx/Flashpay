@@ -72,17 +72,12 @@ handle_aml_attributes (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     uint64_t rowid;
-    char *provider_name;
     struct GNUNET_TIME_Timestamp collection_time;
     size_t enc_attributes_size;
     void *enc_attributes;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("kyc_attributes_serial_id",
                                     &rowid),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("provider",
-                                      &provider_name),
-        NULL),
       GNUNET_PQ_result_spec_timestamp ("collection_time",
                                        &collection_time),
       GNUNET_PQ_result_spec_variable_size ("encrypted_attributes",
@@ -103,7 +98,6 @@ handle_aml_attributes (void *cls,
 
     ctx->cb (ctx->cb_cls,
              rowid,
-             provider_name,
              collection_time,
              enc_attributes_size,
              enc_attributes);
@@ -144,7 +138,6 @@ TEH_PG_select_aml_attributes (
            "select_aml_attributes_inc",
            "SELECT"
            " kyc_attributes_serial_id"
-           ",provider"
            ",collection_time"
            ",encrypted_attributes"
            " FROM kyc_attributes"
