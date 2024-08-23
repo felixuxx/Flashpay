@@ -75,7 +75,7 @@ auditor_progress_cb (void *cls,
 {
   struct AuditorProgressContext *ctx = cls;
 
-  GNUNET_assert (num_results <= ctx->len);
+  GNUNET_assert (num_results == ctx->len);
   for (unsigned int i = 0; i < num_results; i++)
   {
     bool is_missing = false;
@@ -142,7 +142,6 @@ TAH_PG_get_auditor_progress (void *cls,
 
     keys[0] = progress_key;
     dsts[0] = progress_offset;
-
     va_start (ap,
               progress_offset);
     while (off < cnt)
@@ -163,6 +162,7 @@ TAH_PG_get_auditor_progress (void *cls,
              " auditor_do_get_auditor_progress AS progress_offset"
              " FROM auditor_do_get_auditor_progress "
              "($1);");
+    ctx.off = 0;
     qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "get_auditor_progress",
                                                params,
@@ -173,6 +173,7 @@ TAH_PG_get_auditor_progress (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     if (qs < 0)
       return qs;
+    GNUNET_assert (ctx.off == cnt);
     return qs;
   }
 }

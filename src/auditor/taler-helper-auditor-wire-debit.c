@@ -43,13 +43,6 @@
 
 
 /**
- * How much time do we allow the aggregator to lag behind?  If
- * wire transfers should have been made more than #GRACE_PERIOD
- * before, we issue warnings.
- */
-#define GRACE_PERIOD GNUNET_TIME_UNIT_HOURS
-
-/**
  * Maximum number of wire transfers we process per
  * (database) transaction.
  */
@@ -60,16 +53,25 @@
  * timestamps? Should be sufficiently large to avoid bogus reports from deltas
  * created by imperfect clock synchronization and network delay.
  */
-#define TIME_TOLERANCE GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, \
-                                                      15)
+#define TIME_TOLERANCE GNUNET_TIME_relative_multiply ( \
+          GNUNET_TIME_UNIT_MINUTES, \
+          15)
 
 
 /**
- * How long do we long-poll for bank wire transfers?
+ * How long do we try to long-poll for bank wire transfers?
  */
-#define MAX_LONGPOLL_DELAY GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS \
-                                                          , \
-                                                          1)
+#define MAX_LONGPOLL_DELAY GNUNET_TIME_relative_multiply ( \
+          GNUNET_TIME_UNIT_HOURS, \
+          1)
+
+
+/**
+ * How long do we wait between polling for bank wire transfers at the minimum?
+ */
+#define MIN_LONGPOLL_DELAY GNUNET_TIME_relative_multiply ( \
+          GNUNET_TIME_UNIT_MINUTES, \
+          5)
 
 
 /**
@@ -558,6 +560,11 @@ commit (enum GNUNET_DB_QueryStatus qs)
        NULL != wa;
        wa = wa->next)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Transaction of account %s ends at %llu/%llu\n",
+                wa->ai->section_name,
+                (unsigned long long) wa->last_wire_out_serial_id,
+                (unsigned long long) wa->wire_off_out);
     qs = TALER_ARL_adb->update_auditor_progress (
       TALER_ARL_adb->cls,
       wa->label_wire_out_serial_id,
@@ -1065,6 +1072,7 @@ wire_out_cb (
               GNUNET_TIME_timestamp2s (date),
               TALER_amount2s (amount),
               TALER_B2S (wtid));
+  wa->last_wire_out_serial_id = rowid + 1;
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_out),
                         &TALER_ARL_USE_AB (total_wire_out),
                         amount);
@@ -1207,7 +1215,6 @@ wire_out_cb (
                    free_roi (NULL,
                              &key,
                              roi));
-    wa->last_wire_out_serial_id = rowid + 1;
     return ret;
   }
 }
@@ -1290,7 +1297,7 @@ dh_long_poll (void *cls)
 
   wa->dhh_task = NULL;
   wa->dhh_next
-    = GNUNET_TIME_relative_to_absolute (MAX_LONGPOLL_DELAY);
+    = GNUNET_TIME_relative_to_absolute (MIN_LONGPOLL_DELAY);
   GNUNET_assert (NULL == wa->dhh);
   wa->dhh = TALER_BANK_debit_history (
     ctx,
@@ -1322,8 +1329,12 @@ history_debit_cb (
   size_t slen;
 
   wa->dhh = NULL;
-  if (MHD_HTTP_OK == dhr->http_status)
+  if ( (MHD_HTTP_OK == dhr->http_status) &&
+       (0 != dhr->details.ok.details_length) )
+  {
+    /* As we got results, we go again *immediately* */
     wa->dhh_next = GNUNET_TIME_UNIT_ZERO_ABS;
+  }
   GNUNET_assert (NULL == wa->dhh_task);
   wa->dhh_task
     = GNUNET_SCHEDULER_add_at (wa->dhh_next,
@@ -1338,11 +1349,12 @@ history_debit_cb (
         = &dhr->details.ok.details[i];
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Analyzing bank DEBIT at %s of %s with WTID %s\n",
+                  "Analyzing bank DEBIT #%llu at %s of %s with WTID %s\n",
+                  (unsigned long long) dd->serial_id,
                   GNUNET_TIME_timestamp2s (dd->execution_date),
                   TALER_amount2s (&dd->amount),
                   TALER_B2S (&dd->wtid));
-      wa->wire_off_out = dd->serial_id;
+      wa->wire_off_out = dd->serial_id + 1;
       slen = strlen (dd->credit_account_uri) + 1;
       roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
                            + slen);
@@ -1615,7 +1627,13 @@ begin_transaction (void)
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return qs;
     }
+    GNUNET_assert (2 == qs);
     wa->start_wire_out_serial_id = wa->last_wire_out_serial_id;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Resuming account %s debit audit at %llu/%llu\n",
+                wa->ai->section_name,
+                (unsigned long long) wa->last_wire_out_serial_id,
+                (unsigned long long) wa->wire_off_out);
   }
   qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,

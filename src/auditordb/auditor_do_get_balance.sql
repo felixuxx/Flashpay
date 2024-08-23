@@ -15,9 +15,10 @@
 --
 -- @author Christian Grothoff
 
+DROP FUNCTION IF EXISTS auditor_do_get_balance;
 CREATE OR REPLACE FUNCTION auditor_do_get_balance(
   IN in_keys TEXT[])
-RETURNS taler_amount
+RETURNS SETOF taler_amount
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -36,9 +37,9 @@ BEGIN
     THEN
         my_val.val = my_rec.val;
         my_val.frac = my_rec.frac;
-        RETURN my_val;
+        RETURN NEXT my_val;
     ELSE
-        RETURN NULL;
+        RETURN NEXT NULL;
     END IF;
   END LOOP;
 END $$;

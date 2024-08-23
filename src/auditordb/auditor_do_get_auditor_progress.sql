@@ -15,22 +15,28 @@
 --
 -- @author Christian Grothoff
 
-CREATE OR REPLACE FUNCTION auditor_do_get_auditor_progress(
+DROP FUNCTION IF EXISTS auditor_do_get_auditor_progress;
+CREATE FUNCTION auditor_do_get_auditor_progress(
   IN in_keys TEXT[])
-RETURNS INT8
+RETURNS SETOF INT8
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  my_key TEXT;
+  ini_key TEXT;
   my_off INT8;
 BEGIN
-  FOREACH my_key IN ARRAY in_keys
+  FOREACH ini_key IN ARRAY in_keys
   LOOP
     SELECT progress_offset
       INTO my_off
       FROM auditor_progress
-      WHERE progress_key=my_key;
-    RETURN my_off;
+      WHERE progress_key=ini_key;
+    IF FOUND
+    THEN
+      RETURN NEXT my_off;
+    ELSE
+      RETURN NEXT NULL;
+    END IF;
   END LOOP;
 END $$;
 

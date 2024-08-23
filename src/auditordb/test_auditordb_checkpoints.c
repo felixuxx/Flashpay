@@ -179,15 +179,23 @@ run (void *cls)
    * Test3 = 245
    * Let's make sure that's the case! */
   uint64_t value;
+  uint64_t valueNX;
+  uint64_t value3;
   GNUNET_assert (
-    GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+    3 ==
     plugin->get_auditor_progress (
       plugin->cls,
       "Test",
       &value,
+      "TestNX",
+      &valueNX,
+      "Test3",
+      &value3,
       NULL)
     );
   GNUNET_assert (value == 42);
+  GNUNET_assert (valueNX == 0);
+  GNUNET_assert (value3 == 245);
 
   /* Ensure the rest are also at their expected values */
   GNUNET_assert (
@@ -323,8 +331,7 @@ run (void *cls)
       &a1,
       NULL)
     );
-  GNUNET_assert (GNUNET_OK !=
-                 TALER_amount_is_valid (&a1));
+  GNUNET_assert (TALER_amount_is_zero (&a1));
 
   result = 0;
   GNUNET_break (0 <=
