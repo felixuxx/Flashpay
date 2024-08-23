@@ -28,22 +28,22 @@ TAH_PG_insert_reserve_in_inconsistency (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
-    TALER_PQ_query_param_amount (pg->conn, &dc->amount_exchange_expected),
-    TALER_PQ_query_param_amount (pg->conn, &dc->amount_wired),
+    GNUNET_PQ_query_param_uint64 (&dc->bank_row_id),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->amount_exchange_expected),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->amount_wired),
     GNUNET_PQ_query_param_auto_from_type (&dc->reserve_pub),
     GNUNET_PQ_query_param_absolute_time (&dc->timestamp),
     GNUNET_PQ_query_param_auto_from_type (&dc->account),
     GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
-
-
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "auditor_reserve_in_inconsistency_insert",
            "INSERT INTO auditor_reserve_in_inconsistency "
-           "( row_id,"
+           "(bank_row_id,"
            " amount_exchange_expected,"
            " amount_wired,"
            " reserve_pub,"

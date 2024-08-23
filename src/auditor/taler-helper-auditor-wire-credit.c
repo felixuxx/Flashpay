@@ -409,6 +409,8 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }
+  if (1 == test_mode)
+    GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -525,7 +527,7 @@ complain_in_not_found (void *cls,
   struct ReserveInInfo *rii = value;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
-    .row_id = rii->rowid,
+    .bank_row_id = rii->rowid,
     .diagnostic = "incoming wire transfer claimed by exchange not found",
     .account = (char *) wa->ai->section_name,
     .amount_exchange_expected = rii->credit_details.amount,
@@ -639,7 +641,7 @@ analyze_credit (
     struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
       .diagnostic = "wire subject does not match",
       .account = (char *) wa->ai->section_name,
-      .row_id = credit_details->serial_id, // FIXME: correct row?
+      .bank_row_id = credit_details->serial_id,
       .amount_exchange_expected = rii->credit_details.amount,
       .amount_wired = zero,
       .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
@@ -674,7 +676,7 @@ analyze_credit (
     struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
       .diagnostic = "wire amount does not match",
       .account = (char *) wa->ai->section_name,
-      .row_id = credit_details->serial_id, // FIXME: correct row?
+      .bank_row_id = credit_details->serial_id,
       .amount_exchange_expected = rii->credit_details.amount,
       .amount_wired = credit_details->amount,
       .reserve_pub = rii->credit_details.details.reserve.reserve_pub,

@@ -369,7 +369,7 @@ struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency
  */
 struct TALER_AUDITORDB_ReserveInInconsistency
 {
-  uint64_t row_id;
+  uint64_t bank_row_id;
   struct TALER_Amount amount_exchange_expected;
   struct TALER_Amount amount_wired;
   struct TALER_ReservePublicKeyP reserve_pub;
