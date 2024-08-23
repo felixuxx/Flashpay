@@ -42,18 +42,7 @@ TEH_handler_aml_spa (struct TEH_RequestContext *rc,
                      const char *const args[])
 {
   const char *path = args[0];
-  struct TALER_AccountAccessTokenP tok;
 
-  if (GNUNET_OK ==
-      GNUNET_STRINGS_string_to_data (path,
-                                     strlen (path),
-                                     &tok,
-                                     sizeof (tok)))
-  {
-    /* The access token is used internally by the SPA,
-       we simply map all access tokens to "index.html" */
-    path = "index.html";
-  }
   return TALER_MHD_spa_handler (aml_spa,
                                 rc->connection,
                                 path);
@@ -65,7 +54,27 @@ TEH_handler_kyc_spa (struct TEH_RequestContext *rc,
                      const char *const args[])
 {
   const char *path = args[0];
+  struct TALER_AccountAccessTokenP tok;
 
+  if (NULL == path)
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_GENERIC_TOKEN_PERMISSION_INSUFFICIENT,
+      "no account access token specified");
+  }
+  if (GNUNET_OK ==
+      GNUNET_STRINGS_string_to_data (path,
+                                     strlen (path),
+                                     &tok,
+                                     sizeof (tok)))
+  {
+    /* The access token is used internally by the SPA,
+       we simply map all access tokens to "index.html" */
+    path = "index.html";
+  }
   return TALER_MHD_spa_handler (kyc_spa,
                                 rc->connection,
                                 path);
