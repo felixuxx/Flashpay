@@ -1200,11 +1200,11 @@ history_debit_cb (
                   TALER_B2S (&dd->wtid));
       wa->wire_off_out = dd->serial_id;
       slen = strlen (dd->credit_account_uri) + 1;
+      roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
+                           + slen);
       GNUNET_CRYPTO_hash (&dd->wtid,
                           sizeof (dd->wtid),
                           &roi->subject_hash);
-      roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
-                           + slen);
       roi->details = *dd;
       roi->details.credit_account_uri
         = (const char *) &roi[1];
