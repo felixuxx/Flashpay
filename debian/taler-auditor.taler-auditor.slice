@@ -1,0 +1,7 @@
+[Unit]
+Description=Slice for GNU taler auditor processes
+Before=slices.target
+
+[Slice]
+# Add settings that should affect all GNU Taler auditor
+# components here.

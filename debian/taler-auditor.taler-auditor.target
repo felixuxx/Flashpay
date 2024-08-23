@@ -1,0 +1,15 @@
+[Unit]
+Description=GNU Taler auditor
+After=postgres.service network.target
+
+Wants=taler-auditor-httpd.service
+Wants=taler-helper-auditor-aggregation.service
+Wants=taler-helper-auditor-coins.service
+Wants=taler-helper-auditor-deposits.service
+Wants=taler-helper-auditor-purses.service
+Wants=taler-helper-auditor-reserves.service
+Wants=taler-helper-auditor-wire-credit.service
+Wants=taler-helper-auditor-wire-debit.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,13 +1,29 @@
 [Unit]
 Description=GNU Taler payment system auditor REST API
 After=postgres.service network.target
+PartOf=taler-auditor.target
 
 [Service]
 User=taler-auditor-httpd
 Type=simple
 Restart=on-failure
 RestartPreventExitStatus=9
+
+# Disable the service if more than 5 restarts are encountered within 5s.
+# These are usually the systemd defaults, but can be overwritten, thus we set
+# them here explicitly, as the exchange code assumes StartLimitInterval
+# to be >=5s.
+StartLimitBurst=5
+StartLimitInterval=5s
+
 ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler/taler.conf -L INFO
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+Slice=taler-auditor.slice
+
 
 [Install]
 WantedBy=multi-user.target

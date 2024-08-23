@@ -1,6 +1,7 @@
 [Unit]
 Description=GNU Taler auditor helper checking aggregations
 After=postgres.service
+PartOf=taler-auditor.target
 
 [Service]
 User=taler-auditor-httpd
@@ -13,3 +14,14 @@ PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=full
 RuntimeMaxSec=3600s
+
+StandardOutput=journal
+StandardError=journal
+Slice=taler-auditor.slice
+
+# Disable the service if more than 5 restarts are encountered within 5s.
+# These are usually the systemd defaults, but can be overwritten, thus we set
+# them here explicitly, as the exchange code assumes StartLimitInterval
+# to be >=5s.
+StartLimitBurst=5
+StartLimitInterval=5s
