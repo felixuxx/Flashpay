@@ -30,6 +30,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_auditordb_lib.h"
 #include "taler_exchangedb_lib.h"
+#include "taler-auditor-httpd_spa.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_deposit-confirmation-del.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
@@ -406,8 +407,12 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_PUT,
       .mime_type = "application/json",
       .handler = &TAH_DEPOSIT_CONFIRMATION_handler,
-      .response_code = MHD_HTTP_OK,
-      .requires_auth = true
+      .response_code = MHD_HTTP_OK
+    },
+    {
+      .url = "/spa/",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler = &TAH_spa_handler
     },
     {
       "/monitoring/deposit-confirmation",
@@ -1135,6 +1140,13 @@ run (void *cls,
                                  NULL);
   if (GNUNET_OK !=
       auditor_serve_process_config ())
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TAH_spa_init ())
   {
     global_ret = EXIT_NOTCONFIGURED;
     GNUNET_SCHEDULER_shutdown ();
