@@ -181,3 +181,4 @@ src/testing/*/master.priv
 /debian/taler-terms-generator/**
 /debian/taler-terms-generator/*
 release-artifacts
+test-suite.log

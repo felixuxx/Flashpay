@@ -1,3 +1,5 @@
 locale/**/*.pot
 Makefile.am
 Makefile.am.ext
+*.log
+*.trs

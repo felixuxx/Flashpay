@@ -6,6 +6,9 @@ import sys
 failed = False
 contrib = os.path.abspath(os.path.dirname(__file__))
 
+auditor_spa_ver_lock = open(contrib + "/" + "auditor-spa.lock").read().strip()
+auditor_spa_ver_prebuilt = open(contrib + "/" + "wallet-core/auditor-backoffice/version.txt").read().strip()
+
 aml_spa_ver_lock = open(contrib + "/" + "aml-spa.lock").read().strip()
 aml_spa_ver_prebuilt = open(contrib + "/" + "wallet-core/aml-backoffice/version.txt").read().strip()
 
@@ -13,15 +16,21 @@ kyc_spa_ver_lock = open(contrib + "/" + "kyc-spa.lock").read().strip()
 kyc_spa_ver_prebuilt = open(contrib + "/" + "wallet-core/kyc/version.txt").read().strip()
 
 if aml_spa_ver_lock != aml_spa_ver_prebuilt:
-    print("AML SPA version mismatch")
+    print("AML SPA version mismatch (contrib/aml-spa.lock)")
     print("lockfile has version", aml_spa_ver_lock)
     print("prebuilt has version", aml_spa_ver_prebuilt)
     failed = True
 
 if kyc_spa_ver_lock != kyc_spa_ver_prebuilt:
-    print("KYC SPA version mismatch")
+    print("KYC SPA version mismatch (contrib/kyc-spa.lock)")
     print("lockfile has version", kyc_spa_ver_lock)
     print("prebuilt has version", kyc_spa_ver_prebuilt)
+    failed = True
+
+if auditor_spa_ver_lock != auditor_spa_ver_prebuilt:
+    print("auditor SPA version mismatch (contrib/auditor-spa.lock)")
+    print("lockfile has version", auditor_spa_ver_lock)
+    print("prebuilt has version", auditor_spa_ver_prebuilt)
     failed = True
 
 if failed:
