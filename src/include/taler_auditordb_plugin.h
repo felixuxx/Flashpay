@@ -1934,16 +1934,6 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     const struct TALER_AUDITORDB_Generic_Update *gu);
 
-  enum GNUNET_DB_QueryStatus
-    (*get_balances)(
-    void *cls,
-    int64_t limit,
-    uint64_t offset,
-    bool return_suppressed,
-    const char *balance_key,
-    TALER_AUDITORDB_BalancesCallback cb,
-    void *cb_cls);
-
   /**
  * Insert information about a reserve.  There must not be an
  * existing record for the reserve.

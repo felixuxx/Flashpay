@@ -198,6 +198,11 @@ static unsigned int connection_timeout = 30;
 static int global_ret;
 
 /**
+ * Disables authentication checks.
+ */
+static int disable_auth;
+
+/**
  * Port to run the daemon on.
  */
 static uint16_t serve_port;
@@ -855,6 +860,9 @@ handle_mhd_request (void *cls,
                              rh->method)) )
       {
         match = rh;
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Matched %s\n",
+                    rh->url);
         break;
       }
     }
@@ -864,7 +872,7 @@ handle_mhd_request (void *cls,
     GNUNET_break_op (0);
     goto not_found;
   }
-  if (match->requires_auth)
+  if (match->requires_auth && (0 == disable_auth) )
   {
     const char *auth;
 
@@ -1214,6 +1222,10 @@ main (int argc,
                                "connection-close",
                                "force HTTP connections to be closed after each request",
                                &auditor_connection_close),
+    GNUNET_GETOPT_option_flag ('n',
+                               "no-authentication",
+                               "disable authentication checks",
+                               &disable_auth),
     GNUNET_GETOPT_option_uint ('t',
                                "timeout",
                                "SECONDS",
