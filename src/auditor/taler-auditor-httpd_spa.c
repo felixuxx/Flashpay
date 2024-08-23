@@ -41,8 +41,10 @@ TAH_spa_handler (
   size_t *upload_data_size,
   const char *const args[])
 {
-  const char *path = args[0];
+  const char *path = args[1];
 
+  GNUNET_assert (0 == strcmp (args[0],
+                              "spa"));
   if (NULL == path)
     path = "index.html";
   return TALER_MHD_spa_handler (spa,

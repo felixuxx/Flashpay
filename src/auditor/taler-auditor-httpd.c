@@ -410,7 +410,7 @@ handle_mhd_request (void *cls,
       .response_code = MHD_HTTP_OK
     },
     {
-      .url = "/spa/",
+      .url = "/spa",
       .method = MHD_HTTP_METHOD_GET,
       .handler = &TAH_spa_handler
     },
@@ -842,11 +842,11 @@ handle_mhd_request (void *cls,
   {
     /* const */ struct TAH_RequestHandler *rh = &handlers[i];
 
-    if ( (0 == strcasecmp (url,
-                           rh->url)) ||
-         ( (0 == strncasecmp (url,
-                              rh->url,
-                              strlen (rh->url))) &&
+    if ( (0 == strcmp (url,
+                       rh->url)) ||
+         ( (0 == strncmp (url,
+                          rh->url,
+                          strlen (rh->url))) &&
            ('/' == url[strlen (rh->url)]) ) )
     {
       url_match = true;
