@@ -625,7 +625,8 @@ analyze_credit (
   GNUNET_assert (TALER_BANK_CT_RESERVE ==
                  credit_details->type);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Analyzing bank CREDIT at %s of %s with Reserve-pub %s\n",
+              "Analyzing bank CREDIT #%llu at %s of %s with Reserve-pub %s\n",
+              (unsigned long long) credit_details->serial_id,
               GNUNET_TIME_timestamp2s (credit_details->execution_date),
               TALER_amount2s (&credit_details->amount),
               TALER_B2S (&credit_details->details.reserve.reserve_pub));
@@ -637,7 +638,7 @@ analyze_credit (
   if (NULL == rii)
   {
     // FIXME: probably should instead add to
-    // auditor DB and report missing!
+    // auditor DB and report missing! (& continue!)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
                 GNUNET_TIME_timestamp2s (credit_details->execution_date));
