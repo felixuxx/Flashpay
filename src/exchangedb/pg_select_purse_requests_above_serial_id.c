@@ -98,7 +98,7 @@ purse_requests_serial_helper_cb (void *cls,
                                             &purse_sig),
       GNUNET_PQ_result_spec_auto_from_type ("merge_pub",
                                             &merge_pub),
-      GNUNET_PQ_result_spec_uint64 ("purse_requests_request_serial_id",
+      GNUNET_PQ_result_spec_uint64 ("purse_requests_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
