@@ -161,6 +161,7 @@
 #include "pg_get_wire_out_inconsistency.h"
 #include "pg_del_wire_out_inconsistency.h"
 #include "pg_insert_wire_out_inconsistency.h"
+#include "pg_delete_wire_out_inconsistency_if_matching.h"
 #include "pg_update_wire_out_inconsistency.h"
 
 #include "pg_get_reserve_balance_summary_wrong_inconsistency.h"
@@ -798,11 +799,16 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_update_wire_format_inconsistency;
 
 
-  plugin->delete_wire_out_inconsistency = &TAH_PG_del_wire_out_inconsistency;
-  plugin->insert_wire_out_inconsistency = &TAH_PG_insert_wire_out_inconsistency;
-  plugin->get_wire_out_inconsistency = &TAH_PG_get_wire_out_inconsistency;
-  plugin->update_wire_out_inconsistency = &TAH_PG_update_wire_out_inconsistency;
-
+  plugin->delete_wire_out_inconsistency
+    = &TAH_PG_del_wire_out_inconsistency;
+  plugin->insert_wire_out_inconsistency
+    = &TAH_PG_insert_wire_out_inconsistency;
+  plugin->delete_wire_out_inconsistency_if_matching
+    = &TAH_PG_delete_wire_out_inconsistency_if_matching;
+  plugin->get_wire_out_inconsistency
+    = &TAH_PG_get_wire_out_inconsistency;
+  plugin->update_wire_out_inconsistency
+    = &TAH_PG_update_wire_out_inconsistency;
 
   plugin->delete_reserve_balance_summary_wrong_inconsistency =
     &TAH_PG_del_reserve_balance_summary_wrong_inconsistency;

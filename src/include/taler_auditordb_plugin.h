@@ -1840,6 +1840,10 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     const struct TALER_AUDITORDB_WireOutInconsistency *dc);
 
+  enum GNUNET_DB_QueryStatus
+    (*delete_wire_out_inconsistency_if_matching)(
+    void *cls,
+    const struct TALER_AUDITORDB_WireOutInconsistency *dc);
 
   enum GNUNET_DB_QueryStatus
     (*update_wire_out_inconsistency)(

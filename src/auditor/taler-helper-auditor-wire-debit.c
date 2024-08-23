@@ -748,6 +748,76 @@ check_rc_matches (void *cls,
 
 
 /**
+ * Maximum required length for make_missing_diag().
+ */
+#define MAX_DIAG_LEN 128
+
+/**
+ * Make diagnostic string for missing wire transfer.
+ *
+ * @param[out] where to write the diagnostic
+ * @param wtid wire transfer ID to include
+ */
+static void
+make_missing_diag (char diag[MAX_DIAG_LEN],
+                   const struct TALER_WireTransferIdentifierRawP *wtid)
+{
+  char *wtid_s;
+
+  wtid_s = GNUNET_STRINGS_data_to_string_alloc (wtid,
+                                                sizeof (*wtid));
+  GNUNET_snprintf (diag,
+                   MAX_DIAG_LEN,
+                   "expected outgoing wire transfer %s missing",
+                   wtid_s);
+  GNUNET_free (wtid_s);
+}
+
+
+/**
+ * Check if an existing report on a missing wire
+ * out operation justified the @a roi. If so,
+ * clear the existing report.
+ *
+ * @param roi reserve out operation to check
+ * @return #GNUNET_YES if @a roi was justified by a previous report,
+ *         #GNUNET_NO of @a roi was not justified by a previous missing report
+ *         #GNUNET_SYSERR on database trouble
+ */
+static enum GNUNET_GenericReturnValue
+check_reported_inconsistency (struct ReserveOutInfo *roi)
+{
+  char diag[MAX_DIAG_LEN];
+  struct TALER_AUDITORDB_WireOutInconsistency woi = {
+    .wire_out_row_id = roi->details.serial_id,
+    .destination_account = (char *) roi->details.credit_account_uri,
+    .diagnostic = diag,
+    .expected = roi->details.amount,
+    .claimed = zero,
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  make_missing_diag (diag,
+                     &roi->details.wtid);
+  qs = TALER_ARL_adb->delete_wire_out_inconsistency_if_matching (
+    TALER_ARL_adb->cls,
+    &woi);
+  if (qs < 0)
+  {
+    global_qs = qs;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return GNUNET_NO;
+  TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                             &TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                             &roi->details.amount);
+  return GNUNET_YES;
+}
+
+
+/**
  * Check if a profit drain operation justified the @a roi
  *
  * @param roi reserve out operation to check
@@ -929,9 +999,13 @@ complain_out_not_found (void *cls,
                                               &ctx);
   if (ctx.found)
     return GNUNET_OK;
+  ret = check_reported_inconsistency (roi);
+  if (GNUNET_NO != ret)
+    return ret;
   ret = check_profit_drain (roi);
   if (GNUNET_NO != ret)
     return ret;
+
 
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
@@ -965,7 +1039,7 @@ complain_out_not_found (void *cls,
  * as claimed by the exchange DB.
  *
  * @param cls a `struct WireAccount`
- * @param rowid unique serial ID for the refresh session in our DB
+ * @param rowid unique serial ID in wire_out table
  * @param date timestamp of the transfer (roughly)
  * @param wtid wire transfer subject
  * @param payto_uri wire transfer details of the receiver
@@ -1005,16 +1079,20 @@ wire_out_cb (
        justified), so the entire amount is missing / still to be done.  This
        is moderately harmless, it might just be that the
        taler-exchange-transfer tool or bank has not yet fully caught up with
-       the transfers it should do. */
+       the transfers it should do.
+       May be cleared later by check_reported_inconsistency() */
+    char diag[MAX_DIAG_LEN];
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .row_id = rowid,
       .destination_account = (char *) payto_uri,
-      .diagnostic = "expected outgoing wire transfer missing",
+      .diagnostic = diag,
+      .wire_out_row_id = rowid,
       .expected = *amount,
       .claimed = zero,
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    make_missing_diag (diag,
+                       wtid);
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
       &woi);
