@@ -67,8 +67,9 @@
 /**
  * How long do we long-poll for bank wire transfers?
  */
-#define LONG_POLL_MAX GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, \
-                                                     1)
+#define MAX_LONGPOLL_DELAY GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS \
+                                                          , \
+                                                          1)
 
 
 /**
@@ -102,6 +103,17 @@ struct WireAccount
    * Active wire request for the transaction history.
    */
   struct TALER_BANK_DebitHistoryHandle *dhh;
+
+  /**
+   * Task to trigger @e dhh long-polling.
+   */
+  struct GNUNET_SCHEDULER_Task *dhh_task;
+
+  /**
+   * Time when we expect the current @e dhh long-poll
+   * to finish and we thus could begin another one.
+   */
+  struct GNUNET_TIME_Absolute dhh_next;
 
   /**
    * Progress point for this account.
@@ -384,6 +396,11 @@ do_shutdown (void *cls)
   }
   while (NULL != (wa = wa_head))
   {
+    if (NULL != wa->dhh_task)
+    {
+      GNUNET_SCHEDULER_cancel (wa->dhh_task);
+      wa->dhh_task = NULL;
+    }
     if (NULL != wa->dhh)
     {
       TALER_BANK_debit_history_cancel (wa->dhh);
@@ -985,9 +1002,10 @@ wire_out_cb (
   if (NULL == roi)
   {
     /* Wire transfer was not made (yet) at all (but would have been
-       justified), so the entire amount is missing / still to be done.
-       This is moderately harmless, it might just be that the aggregator
-       has not yet fully caught up with the transfers it should do. */
+       justified), so the entire amount is missing / still to be done.  This
+       is moderately harmless, it might just be that the
+       taler-exchange-transfer tool or bank has not yet fully caught up with
+       the transfers it should do. */
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .row_id = rowid,
       .destination_account = (char *) payto_uri,
@@ -1178,6 +1196,47 @@ check_exchange_wire_out (struct WireAccount *wa)
 static void
 history_debit_cb (
   void *cls,
+  const struct TALER_BANK_DebitHistoryResponse *dhr);
+
+
+/**
+ * Task scheduled to begin long-polling on the
+ * bank transfer.
+ *
+ * @param cls a `struct WireAccount *`
+ */
+static void
+dh_long_poll (void *cls)
+{
+  struct WireAccount *wa = cls;
+
+  wa->dhh_task = NULL;
+  wa->dhh_next
+    = GNUNET_TIME_relative_to_absolute (MAX_LONGPOLL_DELAY);
+  GNUNET_assert (NULL == wa->dhh);
+  wa->dhh = TALER_BANK_debit_history (
+    ctx,
+    wa->ai->auth,
+    wa->wire_off_out,
+    MAX_PER_TRANSACTION,
+    MAX_LONGPOLL_DELAY,
+    &history_debit_cb,
+    wa);
+  if (NULL == wa->dhh)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to start long-polling for bank transaction history for `%s'\n",
+                wa->ai->section_name);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+}
+
+
+static void
+history_debit_cb (
+  void *cls,
   const struct TALER_BANK_DebitHistoryResponse *dhr)
 {
   struct WireAccount *wa = cls;
@@ -1185,6 +1244,13 @@ history_debit_cb (
   size_t slen;
 
   wa->dhh = NULL;
+  if (MHD_HTTP_OK == dhr->http_status)
+    wa->dhh_next = GNUNET_TIME_UNIT_ZERO_ABS;
+  GNUNET_assert (NULL == wa->dhh_task);
+  wa->dhh_task
+    = GNUNET_SCHEDULER_add_at (wa->dhh_next,
+                               &dh_long_poll,
+                               wa);
   switch (dhr->http_status)
   {
   case MHD_HTTP_OK:
@@ -1264,6 +1330,7 @@ history_debit_cb (
   commit (GNUNET_DB_STATUS_HARD_ERROR);
   global_ret = EXIT_FAILURE;
   GNUNET_SCHEDULER_shutdown ();
+  return;
 }
 
 
@@ -1283,24 +1350,27 @@ process_debits (struct WireAccount *wa)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking bank DEBIT records of account `%s'\n",
               wa->ai->section_name);
-  GNUNET_assert (NULL == wa->dhh);
-  wa->dhh = TALER_BANK_debit_history (
-    ctx,
-    wa->ai->auth,
-    wa->wire_off_out,
-    MAX_PER_TRANSACTION,
-    GNUNET_TIME_UNIT_ZERO,
-    &history_debit_cb,
-    wa);
-  if (NULL == wa->dhh)
+  if ( (NULL == wa->dhh) &&
+       (NULL == wa->dhh_task) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to obtain bank transaction history for `%s'\n",
-                wa->ai->section_name);
-    commit (GNUNET_DB_STATUS_HARD_ERROR);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
+    wa->dhh = TALER_BANK_debit_history (
+      ctx,
+      wa->ai->auth,
+      wa->wire_off_out,
+      MAX_PER_TRANSACTION,
+      GNUNET_TIME_UNIT_ZERO,
+      &history_debit_cb,
+      wa);
+    if (NULL == wa->dhh)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to obtain bank transaction history for `%s'\n",
+                  wa->ai->section_name);
+      commit (GNUNET_DB_STATUS_HARD_ERROR);
+      global_ret = EXIT_FAILURE;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
   }
 }
 
