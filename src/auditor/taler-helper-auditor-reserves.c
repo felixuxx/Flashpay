@@ -1485,11 +1485,11 @@ verify_reserve_balance (void *cls,
     /* Reserve is expired */
     struct TALER_Amount cfee;
 
-    if ((NULL != rs->sender_account) &&
-        (GNUNET_OK ==
-         get_closing_fee (rs->sender_account,
-                          rs->a_expiration_date,
-                          &cfee)))
+    if ( (NULL != rs->sender_account) &&
+         (GNUNET_OK ==
+          get_closing_fee (rs->sender_account,
+                           rs->a_expiration_date,
+                           &cfee)) )
     {
       /* We got the closing fee */
       if (1 == TALER_amount_cmp (&nbalance,
@@ -1497,7 +1497,9 @@ verify_reserve_balance (void *cls,
       {
         struct TALER_AUDITORDB_ReserveNotClosedInconsistency rnci = {
           .reserve_pub = rs->reserve_pub,
-          .expiration_time = rs->a_expiration_date.abs_time
+          .expiration_time = rs->a_expiration_date.abs_time,
+          .balance = nbalance
+
         };
 
         /* remaining balance (according to us) exceeds closing fee */
