@@ -41,6 +41,12 @@
 #define GRACE_PERIOD GNUNET_TIME_UNIT_HOURS
 
 /**
+ * Maximum number of wire transfers we process per
+ * (database) transaction.
+ */
+#define MAX_PER_TRANSACTION 1024
+
+/**
  * How much do we allow the bank and the exchange to disagree about
  * timestamps? Should be sufficiently large to avoid bogus reports from deltas
  * created by imperfect clock synchronization and network delay.
@@ -315,6 +321,15 @@ do_shutdown (void *cls)
 
 
 /**
+ * Start the database transactions and begin the audit.
+ *
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+begin_transaction (void);
+
+
+/**
  * Commit the transaction, checkpointing our progress in the auditor DB.
  *
  * @param qs transaction status so far
@@ -322,9 +337,21 @@ do_shutdown (void *cls)
 static void
 commit (enum GNUNET_DB_QueryStatus qs)
 {
-  if (qs >= 0)
-  {
-    qs = TALER_ARL_adb->update_balance (
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Transaction logic ended with status %d\n",
+              qs);
+  if (qs < 0)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->update_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (total_wire_in),
+    TALER_ARL_SET_AB (total_bad_amount_in_plus),
+    TALER_ARL_SET_AB (total_bad_amount_in_minus),
+    TALER_ARL_SET_AB (total_misattribution_in),
+    TALER_ARL_SET_AB (total_wire_format_amount),
+    NULL);
+  if (0 <= qs)
+    qs = TALER_ARL_adb->insert_balance (
       TALER_ARL_adb->cls,
       TALER_ARL_SET_AB (total_wire_in),
       TALER_ARL_SET_AB (total_bad_amount_in_plus),
@@ -332,28 +359,8 @@ commit (enum GNUNET_DB_QueryStatus qs)
       TALER_ARL_SET_AB (total_misattribution_in),
       TALER_ARL_SET_AB (total_wire_format_amount),
       NULL);
-    if (0 <= qs)
-      qs = TALER_ARL_adb->insert_balance (
-        TALER_ARL_adb->cls,
-        TALER_ARL_SET_AB (total_wire_in),
-        TALER_ARL_SET_AB (total_bad_amount_in_plus),
-        TALER_ARL_SET_AB (total_bad_amount_in_minus),
-        TALER_ARL_SET_AB (total_misattribution_in),
-        TALER_ARL_SET_AB (total_wire_format_amount),
-        NULL);
-    if (0 > qs)
-    {
-      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Serialization issue, not recording progress\n");
-      else
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Hard error, not recording progress\n");
-      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-      TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
-      return;
-    }
-  }
+  if (0 > qs)
+    goto handle_db_error;
   for (struct WireAccount *wa = wa_head;
        NULL != wa;
        wa = wa->next)
@@ -374,43 +381,46 @@ commit (enum GNUNET_DB_QueryStatus qs)
         wa->wire_off_in,
         NULL);
     if (0 > qs)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Failed to update auditor DB, not recording progress\n");
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return;
-    }
+      goto handle_db_error;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Transaction ends at %s=%llu for account `%s'\n",
+                wa->label_reserve_in_serial_id,
+                (unsigned long long) wa->last_reserve_in_serial_id,
+                wa->ai->section_name);
   }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
+  if (0 > qs)
   {
-    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Exchange DB commit failed, rolling back transaction\n");
-      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-    }
-    else
-    {
-      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
-      if (0 > qs)
-      {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Auditor DB commit failed!\n");
-      }
-    }
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Exchange DB commit failed, rolling back transaction\n");
+    goto handle_db_error;
   }
-  else
+  qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
+  if (0 > qs)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Processing failed, rolling back transaction\n");
-    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    goto handle_db_error;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Transaction concluded!\n");
   if (1 == test_mode)
     GNUNET_SCHEDULER_shutdown ();
+  return;
+handle_db_error:
+  TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
+  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
+  for (unsigned int max_retries = 3; max_retries>0; max_retries--)
+  {
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      break;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Serialization issue, trying again\n");
+    qs = begin_transaction ();
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Hard database error, terminating\n");
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -422,6 +432,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
 static void
 conclude_credit_history (void)
 {
+  // FIXME: what about entries that are left in in_map?
   if (NULL != in_map)
   {
     GNUNET_CONTAINER_multihashmap_destroy (in_map);
@@ -625,6 +636,8 @@ analyze_credit (
                                            &key);
   if (NULL == rii)
   {
+    // FIXME: probably should instead add to
+    // auditor DB and report missing!
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
                 GNUNET_TIME_timestamp2s (credit_details->execution_date));
@@ -838,8 +851,8 @@ process_credits (void *cls)
   enum GNUNET_DB_QueryStatus qs;
 
   /* skip accounts where CREDIT is not enabled */
-  while ((NULL != wa) &&
-         (GNUNET_NO == wa->ai->credit_enabled))
+  while ( (NULL != wa) &&
+          (GNUNET_NO == wa->ai->credit_enabled) )
     wa = wa->next;
   if (NULL == wa)
   {
@@ -873,12 +886,10 @@ process_credits (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "pass `%s'\n",
               wa->ai->auth->details.basic.password);
-  // NOTE: handle the case where more than INT32_MAX transactions exist.
-  // (CG: used to be INT64_MAX, changed by MS to INT32_MAX, why? To be discussed with him!)
   wa->chh = TALER_BANK_credit_history (ctx,
                                        wa->ai->auth,
                                        wa->wire_off_in,
-                                       INT32_MAX,
+                                       MAX_PER_TRANSACTION,
                                        GNUNET_TIME_UNIT_ZERO,
                                        &history_credit_cb,
                                        wa);
@@ -908,11 +919,6 @@ begin_credit_audit (void)
 }
 
 
-/**
- * Start the database transactions and begin the audit.
- *
- * @return transaction status code
- */
 static enum GNUNET_DB_QueryStatus
 begin_transaction (void)
 {
@@ -942,7 +948,7 @@ begin_transaction (void)
   TALER_ARL_edb->preflight (TALER_ARL_edb->cls);
   if (GNUNET_OK !=
       TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                            "wire auditor"))
+                            "wire credit auditor"))
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -992,7 +998,13 @@ begin_transaction (void)
       return qs;
     }
     wa->start_reserve_in_serial_id = wa->last_reserve_in_serial_id;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Starting from reserve_in at %s=%llu for account `%s'\n",
+                wa->label_reserve_in_serial_id,
+                (unsigned long long) wa->start_reserve_in_serial_id,
+                wa->ai->section_name);
   }
+
   begin_credit_audit ();
   return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
