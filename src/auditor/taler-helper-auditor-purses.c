@@ -955,7 +955,6 @@ handle_purse_decision (
 
   qs = TALER_ARL_adb->delete_purse_info (TALER_ARL_adb->cls,
                                          purse_pub);
-  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
