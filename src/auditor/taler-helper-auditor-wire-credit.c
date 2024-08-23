@@ -350,15 +350,16 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_SET_AB (total_misattribution_in),
     TALER_ARL_SET_AB (total_wire_format_amount),
     NULL);
-  if (0 <= qs)
-    qs = TALER_ARL_adb->insert_balance (
-      TALER_ARL_adb->cls,
-      TALER_ARL_SET_AB (total_wire_in),
-      TALER_ARL_SET_AB (total_bad_amount_in_plus),
-      TALER_ARL_SET_AB (total_bad_amount_in_minus),
-      TALER_ARL_SET_AB (total_misattribution_in),
-      TALER_ARL_SET_AB (total_wire_format_amount),
-      NULL);
+  if (0 > qs)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->insert_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (total_wire_in),
+    TALER_ARL_SET_AB (total_bad_amount_in_plus),
+    TALER_ARL_SET_AB (total_bad_amount_in_minus),
+    TALER_ARL_SET_AB (total_misattribution_in),
+    TALER_ARL_SET_AB (total_wire_format_amount),
+    NULL);
   if (0 > qs)
     goto handle_db_error;
   for (struct WireAccount *wa = wa_head;
@@ -372,14 +373,15 @@ commit (enum GNUNET_DB_QueryStatus qs)
       wa->label_wire_off_in,
       wa->wire_off_in,
       NULL);
-    if (0 <= qs)
-      qs = TALER_ARL_adb->insert_auditor_progress (
-        TALER_ARL_adb->cls,
-        wa->label_reserve_in_serial_id,
-        wa->last_reserve_in_serial_id,
-        wa->label_wire_off_in,
-        wa->wire_off_in,
-        NULL);
+    if (0 > qs)
+      goto handle_db_error;
+    qs = TALER_ARL_adb->insert_auditor_progress (
+      TALER_ARL_adb->cls,
+      wa->label_reserve_in_serial_id,
+      wa->last_reserve_in_serial_id,
+      wa->label_wire_off_in,
+      wa->wire_off_in,
+      NULL);
     if (0 > qs)
       goto handle_db_error;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
