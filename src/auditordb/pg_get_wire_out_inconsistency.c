@@ -68,21 +68,22 @@ wire_out_inconsistency_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
-
     struct TALER_AUDITORDB_WireOutInconsistency dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &dc.row_id),
       GNUNET_PQ_result_spec_string ("destination_account",
                                     &dc.destination_account),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("expected",  &dc.expected),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("claimed",  &dc.claimed),
-      GNUNET_PQ_result_spec_bool ("suppressed",  &dc.suppressed),
-
-
+      GNUNET_PQ_result_spec_string ("diagnostic",
+                                    &dc.diagnostic),
+      GNUNET_PQ_result_spec_uint64 ("wire_out_row_id",
+                                    &dc.wire_out_row_id),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("expected",
+                                   &dc.expected),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("claimed",
+                                   &dc.claimed),
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -96,11 +97,8 @@ wire_out_inconsistency_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -114,14 +112,12 @@ TAH_PG_get_wire_out_inconsistency (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,             // maybe not needed
+  bool return_suppressed,
   TALER_AUDITORDB_WireOutInconsistencyCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
@@ -138,41 +134,43 @@ TAH_PG_get_wire_out_inconsistency (
   PREPARE (pg,
            "auditor_wire_out_inconsistency_get_desc",
            "SELECT"
-           " row_id,"
-           " destination_account,"
-           " expected,"
-           " claimed,"
-           " suppressed"
+           " row_id"
+           ",destination_account"
+           ",diagnostic"
+           ",wire_out_row_id"
+           ",expected"
+           ",claimed"
+           ",suppressed"
            " FROM auditor_wire_out_inconsistency"
            " WHERE (row_id < $1)"
-           " AND ($2 OR suppressed is false)"
+           "   AND ($2 OR NOT suppressed)"
            " ORDER BY row_id DESC"
            " LIMIT $3"
            );
   PREPARE (pg,
            "auditor_wire_out_inconsistency_get_asc",
            "SELECT"
-           " row_id,"
-           " destination_account,"
-           " expected,"
-           " claimed,"
-           " suppressed"
+           " row_id"
+           ",destination_account"
+           ",diagnostic"
+           ",wire_out_row_id"
+           ",expected"
+           ",claimed"
+           ",suppressed"
            " FROM auditor_wire_out_inconsistency"
            " WHERE (row_id > $1)"
-           " AND ($2 OR suppressed is false)"
+           "   AND ($2 OR NOT suppressed)"
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ?
-                                             "auditor_wire_out_inconsistency_get_asc"
-                                             :
-                                             "auditor_wire_out_inconsistency_get_desc",
-                                             params,
-                                             &wire_out_inconsistency_cb,
-                                             &dcc);
-
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_wire_out_inconsistency_get_asc"
+    : "auditor_wire_out_inconsistency_get_desc",
+    params,
+    &wire_out_inconsistency_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

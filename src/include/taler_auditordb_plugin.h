@@ -781,7 +781,7 @@ struct TALER_AUDITORDB_WireFormatInconsistency
 {
   uint64_t row_id;
   struct TALER_Amount amount;
-  int64_t wire_offset;
+  uint64_t wire_offset;
   char *diagnostic;
   bool suppressed;
 
@@ -791,7 +791,8 @@ struct TALER_AUDITORDB_WireOutInconsistency
 {
   uint64_t row_id;
   char *destination_account;
-  char *diagnostic; // FIXME: new
+  char *diagnostic;
+  uint64_t wire_out_row_id;
   struct TALER_Amount expected;
   struct TALER_Amount claimed;
   bool suppressed;
@@ -951,7 +952,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_WireOutInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_WireOutInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue

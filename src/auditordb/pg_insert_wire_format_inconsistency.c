@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_wire_format_inconsistency.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_wire_format_inconsistency (
@@ -30,17 +28,15 @@ TAH_PG_insert_wire_format_inconsistency (
   struct GNUNET_PQ_QueryParam params[] = {
 
     TALER_PQ_query_param_amount (pg->conn, &dc->amount),
-    GNUNET_PQ_query_param_int64 (&dc->wire_offset),
+    GNUNET_PQ_query_param_uint64 (&dc->wire_offset),
     GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
-
-
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "auditor_wire_format_inconsistency_insert",
            "INSERT INTO auditor_wire_format_inconsistency "
-           "( row_id,"
+           "(row_id,"
            " amount,"
            " wire_offset,"
            " diagnostic"

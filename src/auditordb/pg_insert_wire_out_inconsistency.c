@@ -28,22 +28,25 @@ TAH_PG_insert_wire_out_inconsistency (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
     GNUNET_PQ_query_param_string (dc->destination_account),
-    TALER_PQ_query_param_amount (pg->conn, &dc->expected),
-    TALER_PQ_query_param_amount (pg->conn, &dc->claimed),
-
-
+    GNUNET_PQ_query_param_string (dc->diagnostic),
+    GNUNET_PQ_query_param_uint64 (&dc->wire_out_row_id),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->expected),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->claimed),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "auditor_wire_out_inconsistency_insert",
            "INSERT INTO auditor_wire_out_inconsistency "
-           "( destination_account,"
-           " expected,"
-           " claimed"
-           ") VALUES ($1,$2,$3);"
+           "(destination_account"
+           ",diagnostic"
+           ",wire_out_serial_id"
+           ",expected"
+           ",claimed"
+           ") VALUES ($1,$2,$3,$4,$5);"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_wire_out_inconsistency_insert",

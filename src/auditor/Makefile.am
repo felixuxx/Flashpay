@@ -23,6 +23,7 @@ bin_PROGRAMS = \
   taler-helper-auditor-deposits \
   taler-helper-auditor-purses \
   taler-helper-auditor-reserves \
+  taler-helper-auditor-transfer \
   taler-helper-auditor-wire-credit \
   taler-helper-auditor-wire-debit
 
@@ -141,7 +142,19 @@ taler_helper_auditor_reserves_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-
+taler_helper_auditor_transfer_SOURCES = \
+  taler-helper-auditor-transfer.c
+taler_helper_auditor_transfer_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  libauditorreport.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  $(XLIB)
 
 taler_helper_auditor_wire_credit_SOURCES = \
   taler-helper-auditor-wire-credit.c
