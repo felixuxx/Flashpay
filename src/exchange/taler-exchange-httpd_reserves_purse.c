@@ -220,7 +220,7 @@ amount_iterator (void *cls,
   enum GNUNET_GenericReturnValue ret;
 
   ret = cb (cb_cls,
-            &rpc->deposit_total,
+            &rpc->pd.target_amount,
             GNUNET_TIME_absolute_get ());
   GNUNET_break (GNUNET_SYSERR != ret);
   if (GNUNET_OK != ret)
