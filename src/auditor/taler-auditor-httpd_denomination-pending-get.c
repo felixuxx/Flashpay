@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -44,21 +42,22 @@ process_denomination_pending (
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
-    GNUNET_JSON_pack_data_auto ("denom_pub_hash", &dc->denom_pub_hash),
-    TALER_JSON_pack_amount ("denom_balance", &dc->denom_balance),
-    TALER_JSON_pack_amount ("denom_loss", &dc->denom_loss),
-    GNUNET_JSON_pack_int64 ("num_issued", dc->num_issued),
-    TALER_JSON_pack_amount ("denom_risk", &dc->denom_risk),
-    TALER_JSON_pack_amount ("recoup_loss", &dc->recoup_loss)
-
-
+    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                &dc->denom_pub_hash),
+    TALER_JSON_pack_amount ("denom_balance",
+                            &dc->denom_balance),
+    TALER_JSON_pack_amount ("denom_loss",
+                            &dc->denom_loss),
+    GNUNET_JSON_pack_int64 ("num_issued",
+                            dc->num_issued),
+    TALER_JSON_pack_amount ("denom_risk",
+                            &dc->denom_risk),
+    TALER_JSON_pack_amount ("recoup_loss",
+                            &dc->recoup_loss)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -74,6 +73,8 @@ TAH_DENOMINATION_PENDING_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
 
   (void) rh;
   (void) connection_cls;
@@ -88,32 +89,22 @@ TAH_DENOMINATION_PENDING_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_denomination_pending (
     TAH_plugin->cls,
     limit,
     offset,
-    return_suppressed,
     &process_denomination_pending,
     ja);
 
@@ -123,10 +114,11 @@ TAH_DENOMINATION_PENDING_handler_get (
     json_decref (ja);
     TALER_LOG_WARNING (
       "Failed to handle GET /denomination-pending");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                       "denomination-pending");
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "get_denomination_pending");
   }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,

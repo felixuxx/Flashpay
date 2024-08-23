@@ -106,12 +106,11 @@ TAH_PG_get_purses (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,             // maybe not needed
   TALER_AUDITORDB_PursesCallback cb,
   void *cb_cls)
 {
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_uint64 (&plimit),
@@ -133,9 +132,9 @@ TAH_PG_get_purses (
            " target,"
            " expiration_date"
            " FROM auditor_purses"
-           " WHERE (row_id < $1)"
-           " ORDER BY row_id DESC"
-           " LIMIT $3"
+           " WHERE (auditor_purses_rowid < $1)"
+           " ORDER BY auditor_purses_rowid DESC"
+           " LIMIT $2"
            );
   PREPARE (pg,
            "auditor_purses_get_asc",
@@ -146,17 +145,18 @@ TAH_PG_get_purses (
            " target,"
            " expiration_date"
            " FROM auditor_purses"
-           " WHERE (row_id > $1)"
-           " ORDER BY row_id ASC"
-           " LIMIT $3"
+           " WHERE (auditor_purses_rowid > $1)"
+           " ORDER BY auditor_purses_rowid ASC"
+           " LIMIT $2"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ? "auditor_purses_get_asc"
-                                             : "auditor_purses_get_desc",
-                                             params,
-                                             &purses_cb,
-                                             &dcc);
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_purses_get_asc"
+    : "auditor_purses_get_desc",
+    params,
+    &purses_cb,
+    &dcc);
 
   if (qs > 0)
     return dcc.qs;

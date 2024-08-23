@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_wire_out_inconsistency.h"
 
 
@@ -76,7 +73,7 @@ wire_out_inconsistency_cb (void *cls,
                                     &dc.destination_account),
       GNUNET_PQ_result_spec_string ("diagnostic",
                                     &dc.diagnostic),
-      GNUNET_PQ_result_spec_uint64 ("wire_out_row_id",
+      GNUNET_PQ_result_spec_uint64 ("wire_out_serial_id",
                                     &dc.wire_out_row_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("expected",
                                    &dc.expected),
@@ -137,7 +134,7 @@ TAH_PG_get_wire_out_inconsistency (
            " row_id"
            ",destination_account"
            ",diagnostic"
-           ",wire_out_row_id"
+           ",wire_out_serial_id"
            ",expected"
            ",claimed"
            ",suppressed"
@@ -153,7 +150,7 @@ TAH_PG_get_wire_out_inconsistency (
            " row_id"
            ",destination_account"
            ",diagnostic"
-           ",wire_out_row_id"
+           ",wire_out_serial_id"
            ",expected"
            ",claimed"
            ",suppressed"

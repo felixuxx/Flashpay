@@ -152,9 +152,7 @@ pg_insert_misattribution_in_inconsistency.c pg_insert_misattribution_in_inconsis
 pg_update_misattribution_in_inconsistency.c pg_update_misattribution_in_inconsistency.h \
 pg_update_balance.c pg_update_balance.h \
 pg_get_reserves.c pg_get_reserves.h \
-pg_del_reserves.c pg_del_reserves.h \
 pg_get_purses.c pg_get_purses.h \
-pg_del_purses.c pg_del_purses.h \
 pg_insert_historic_denom_revenue.c pg_insert_historic_denom_revenue.h \
 pg_get_denomination_pending.c pg_get_denomination_pending.h \
 pg_del_denomination_pending.c pg_del_denomination_pending.h \

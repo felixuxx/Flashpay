@@ -13,24 +13,21 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
-#ifndef SRC_PG_GET_BALANCES_H
-#define SRC_PG_GET_BALANCES_H
+#ifndef PG_GET_BALANCES_H
+#define PG_GET_BALANCES_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_auditordb_plugin.h"
 
-
 /**
  * Get information about balances from the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param limit number of records to return, negative for descending
- * @param offset table row to start from, exclusive, direction determined by @a limit
- * @param return_suppressed should suppressed rows be returned anyway?
- * @param balance_key key to look for
+ * @param limit number of balances to return at most,
+ *        negative value to descend from @a offset
+ * @param offset row/serial ID where to start the iteration (0 from
+ *               the start, exclusive, i.e. serial_ids must start from 1)
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
  * @return query result status
@@ -40,7 +37,6 @@ TAH_PG_get_balances (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,
   const char *balance_key,
   TALER_AUDITORDB_BalancesCallback cb,
   void *cb_cls);

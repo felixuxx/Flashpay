@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_denomination_pending.h"
 
 
@@ -71,14 +68,20 @@ denomination_pending_cb (void *cls,
     uint64_t serial_id;
     struct TALER_AUDITORDB_DenominationPending dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &serial_id),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &dc.denom_pub_hash),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance",  &dc.denom_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss",  &dc.denom_loss),
-      GNUNET_PQ_result_spec_uint64 ("num_issued",  &dc.num_issued),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk",  &dc.denom_risk),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("recoup_loss",  &dc.recoup_loss),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance",
+                                   &dc.denom_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss",
+                                   &dc.denom_loss),
+      GNUNET_PQ_result_spec_uint64 ("num_issued",
+                                    &dc.num_issued),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk",
+                                   &dc.denom_risk),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("recoup_loss",
+                                   &dc.recoup_loss),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -108,14 +111,11 @@ TAH_PG_get_denomination_pending (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,             // maybe not needed
   TALER_AUDITORDB_DenominationPendingCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_uint64 (&plimit),
@@ -141,7 +141,7 @@ TAH_PG_get_denomination_pending (
            " FROM auditor_denomination_pending"
            " WHERE (row_id < $1)"
            " ORDER BY row_id DESC"
-           " LIMIT $3"
+           " LIMIT $2"
            );
   PREPARE (pg,
            "auditor_denomination_pending_get_asc",
@@ -156,18 +156,16 @@ TAH_PG_get_denomination_pending (
            " FROM auditor_denomination_pending"
            " WHERE (row_id > $1)"
            " ORDER BY row_id ASC"
-           " LIMIT $3"
+           " LIMIT $2"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ?
-                                             "auditor_denomination_pending_get_asc"
-                                             :
-                                             "auditor_denomination_pending_get_desc",
-                                             params,
-                                             &denomination_pending_cb,
-                                             &dcc);
-
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_denomination_pending_get_asc"
+    : "auditor_denomination_pending_get_desc",
+    params,
+    &denomination_pending_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

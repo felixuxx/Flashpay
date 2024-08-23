@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_balances.h"
 
 
@@ -69,17 +66,14 @@ balances_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_Balances dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-
-      GNUNET_PQ_result_spec_string ("balance_key",  &dc.balance_key),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("balance_value",  &dc.balance_value),
-
-
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &serial_id),
+      GNUNET_PQ_result_spec_string ("balance_key",
+                                    &dc.balance_key),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("balance_value",
+                                   &dc.balance_value),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -93,9 +87,7 @@ balances_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     serial_id,
                     &dc);
@@ -111,30 +103,14 @@ TAH_PG_get_balances (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,
   const char *balance_key,
   TALER_AUDITORDB_BalancesCallback cb,
   void *cb_cls)
 {
-
-
-  /*if true, does not filter for a specific balance*/
-  bool any_balance = true;
-  const char *bk;
-
-  if (balance_key != NULL)
-  {
-    any_balance = false;
-    bk = balance_key;
-  }
-  else
-  {
-    bk = "";
-  }
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  bool any_balance = (NULL == balance_key);
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
+  const char *bk = (any_balance) ? "" : balance_key;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_uint64 (&plimit),
@@ -157,7 +133,7 @@ TAH_PG_get_balances (
            " balance_value"
            " FROM auditor_balances"
            " WHERE (row_id < $1)"
-           " AND ($3 OR balance_key = $4)"
+           "   AND ($3 OR balance_key = $4)"
            " ORDER BY row_id DESC"
            " LIMIT $2"
            );
@@ -169,18 +145,18 @@ TAH_PG_get_balances (
            " balance_value"
            " FROM auditor_balances"
            " WHERE (row_id > $1)"
-           " AND ($3 OR balance_key = $4)"
+           "   AND ($3 OR balance_key = $4)"
            " ORDER BY row_id ASC"
            " LIMIT $2"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ? "auditor_balances_get_asc"
-                                             : "auditor_balances_get_desc",
-                                             params,
-                                             &balances_cb,
-                                             &dcc);
-
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_balances_get_asc"
+    : "auditor_balances_get_desc",
+    params,
+    &balances_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

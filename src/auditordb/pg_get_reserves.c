@@ -69,19 +69,26 @@ reserves_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid",
                                     &dc.auditor_reserves_rowid),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",  &dc.reserve_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",  &dc.reserve_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_loss",  &dc.reserve_loss),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &dc.reserve_pub),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",
+                                   &dc.reserve_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_loss",
+                                   &dc.reserve_loss),
       TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance",
                                    &dc.withdraw_fee_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("close_fee_balance",  &dc.close_fee_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance",  &dc.purse_fee_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("open_fee_balance",  &dc.open_fee_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("close_fee_balance",
+                                   &dc.close_fee_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance",
+                                   &dc.purse_fee_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("open_fee_balance",
+                                   &dc.open_fee_balance),
       TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee_balance",
                                    &dc.history_fee_balance),
       GNUNET_PQ_result_spec_absolute_time ("expiration_date",
                                            &dc.expiration_date),
-      GNUNET_PQ_result_spec_string ("origin_account",  &dc.origin_account),
+      GNUNET_PQ_result_spec_string ("origin_account",
+                                    &dc.origin_account),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -111,7 +118,6 @@ TAH_PG_get_reserves (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,             // maybe not needed
   TALER_AUDITORDB_ReservesCallback cb,
   void *cb_cls)
 {
@@ -145,8 +151,8 @@ TAH_PG_get_reserves (
            " origin_account"
            " FROM auditor_reserves"
            " WHERE (auditor_reserves_rowid < $1)"
-           " ORDER BY row_id DESC"
-           " LIMIT $3"
+           " ORDER BY auditor_reserves_rowid DESC"
+           " LIMIT $2"
            );
   PREPARE (pg,
            "auditor_reserves_get_asc",
@@ -164,16 +170,17 @@ TAH_PG_get_reserves (
            " origin_account"
            " FROM auditor_reserves"
            " WHERE (auditor_reserves_rowid > $1)"
-           " ORDER BY row_id ASC"
-           " LIMIT $3"
+           " ORDER BY auditor_reserves_rowid ASC"
+           " LIMIT $2"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ? "auditor_reserves_get_asc"
-                                             : "auditor_reserves_get_desc",
-                                             params,
-                                             &reserves_cb,
-                                             &dcc);
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_reserves_get_asc"
+    : "auditor_reserves_get_desc",
+    params,
+    &reserves_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

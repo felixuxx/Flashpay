@@ -73,6 +73,8 @@ TAH_PURSES_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
 
   (void) rh;
   (void) connection_cls;
@@ -82,41 +84,30 @@ TAH_PURSES_handler_get (
       TAH_plugin->preflight (TAH_plugin->cls))
   {
     GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_SETUP_FAILED,
-                                       NULL);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_SETUP_FAILED,
+      NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-
-
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_purses (
     TAH_plugin->cls,
     limit,
     offset,
-    return_suppressed,
     &process_purses,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);

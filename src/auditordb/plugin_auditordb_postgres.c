@@ -30,6 +30,7 @@
 #include "pg_del_reserve_info.h"
 #include "pg_get_auditor_progress.h"
 #include "pg_get_balance.h"
+#include "pg_get_balances.h"
 #include "pg_get_denomination_balance.h"
 #include "pg_get_deposit_confirmations.h"
 #include "pg_get_purse_info.h"
@@ -141,10 +142,7 @@
 #include "pg_update_misattribution_in_inconsistency.h"
 
 #include "pg_get_reserves.h"
-#include "pg_del_reserves.h"
-
 #include "pg_get_purses.h"
-#include "pg_del_purses.h"
 
 #include "pg_get_denomination_pending.h"
 #include "pg_del_denomination_pending.h"
@@ -588,6 +586,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_get_auditor_progress;
 
   plugin->get_balance = &TAH_PG_get_balance;
+  plugin->get_balances = &TAH_PG_get_balances;
 
   plugin->insert_auditor_progress
     = &TAH_PG_insert_auditor_progress;
@@ -777,10 +776,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_misattribution_in_inconsistency =
     &TAH_PG_update_misattribution_in_inconsistency;
 
-  plugin->delete_reserves = &TAH_PG_del_reserves;
   plugin->get_reserves = &TAH_PG_get_reserves;
-
-  plugin->delete_purses = &TAH_PG_del_purses;
   plugin->get_purses = &TAH_PG_get_purses;
 
   plugin->delete_denomination_pending = &TAH_PG_del_denomination_pending;

@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -26,14 +24,15 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_reserves-get.h"
 
+
 /**
-* Add reserves to the list.
-*
-* @param[in,out] cls a `json_t *` array to extend
-* @param serial_id location of the @a dc in the database
-* @param dc struct of inconsistencies
-* @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
-*/
+ * Add reserves to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param serial_id location of the @a dc in the database
+ * @param dc struct of inconsistencies
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
 static enum GNUNET_GenericReturnValue
 process_reserves (
   void *cls,
@@ -44,7 +43,6 @@ process_reserves (
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
     GNUNET_JSON_pack_int64 ("auditor_reserves_rowid",
                             dc->auditor_reserves_rowid),
     GNUNET_JSON_pack_data_auto ("reserve_pub", &dc->reserve_pub),
@@ -57,14 +55,10 @@ process_reserves (
     TALER_JSON_pack_amount ("history_fee_balance", &dc->history_fee_balance),
     TALER_JSON_pack_time_abs_human ("expiration_date", dc->expiration_date),
     GNUNET_JSON_pack_string ("origin_account", dc->origin_account)
-
-
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -80,6 +74,8 @@ TAH_RESERVES_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
 
   (void) rh;
   (void) connection_cls;
@@ -94,12 +90,6 @@ TAH_RESERVES_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
@@ -108,21 +98,17 @@ TAH_RESERVES_handler_get (
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_reserves (
     TAH_plugin->cls,
     limit,
     offset,
-    return_suppressed,
     &process_reserves,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
