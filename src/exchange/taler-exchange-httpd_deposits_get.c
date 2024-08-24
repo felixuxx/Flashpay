@@ -75,6 +75,15 @@ struct DepositWtidContext
   struct TALER_MerchantPublicKeyP merchant;
 
   /**
+   * Public key for KYC operations on the target bank
+   * account for the wire transfer. All zero if no
+   * public key is accepted yet. In that case, the
+   * client should use the @e merchant public key for
+   * the KYC auth wire transfer.
+   */
+  union TALER_AccountPublicKeyP account_pub;
+
+  /**
    * The coin's public key.  This is the value that must have been
    * signed (blindly) by the Exchange.
    */
@@ -254,7 +263,8 @@ deposits_get_transaction (void *cls,
     &ctx->execution_time,
     &ctx->coin_contribution,
     &fee,
-    &ctx->kyc);
+    &ctx->kyc,
+    &ctx->account_pub);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -401,6 +411,12 @@ handle_track_transaction_request (
                                    NULL)
         : GNUNET_JSON_pack_uint64 ("requirement_row",
                                    ctx->kyc.requirement_row)),
+      GNUNET_JSON_pack_allow_null (
+        (GNUNET_is_zero (&ctx->account_pub))
+        ? GNUNET_JSON_pack_string ("account_pub",
+                                   NULL)
+        : GNUNET_JSON_pack_data_auto ("account_pub",
+                                      &ctx->account_pub)),
       GNUNET_JSON_pack_bool ("kyc_ok",
                              ctx->kyc.ok),
       GNUNET_JSON_pack_timestamp ("execution_time",

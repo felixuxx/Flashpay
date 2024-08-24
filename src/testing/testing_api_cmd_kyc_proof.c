@@ -175,7 +175,7 @@ proof_kyc_run (void *cls,
 
 
 /**
- * Cleanup the state from a "track transaction" CMD, and possibly
+ * Cleanup the state from a "kyc proof" CMD, and possibly
  * cancel a operation thereof.
  *
  * @param cls closure.

@@ -72,6 +72,13 @@ TEH_PG_insert_kyc_requirement_process (
            "  ,measure_index"
            "  ) VALUES "
            "  ($1, $2, $3, $4, $5, $6, $7)"
+           " ON CONFLICT (legitimization_measure_serial_id,measure_index)"
+           " DO UPDATE"
+           "   SET h_payto=$1"
+           "      ,start_time=$2"
+           "      ,provider_name=$3"
+           "      ,provider_user_id=$4"
+           "      ,provider_legitimization_id=$5"
            " RETURNING legitimization_process_serial_id");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

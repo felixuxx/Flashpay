@@ -38,7 +38,8 @@ TEH_PG_lookup_transfer_by_deposit (
   struct GNUNET_TIME_Timestamp *exec_time,
   struct TALER_Amount *amount_with_fee,
   struct TALER_Amount *deposit_fee,
-  struct TALER_EXCHANGEDB_KycStatus *kyc)
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  union TALER_AccountPublicKeyP *account_pub)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -63,6 +64,10 @@ TEH_PG_lookup_transfer_by_deposit (
                                  amount_with_fee),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                  deposit_fee),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("target_pub",
+                                            account_pub),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
 
@@ -78,6 +83,7 @@ TEH_PG_lookup_transfer_by_deposit (
            ",cdep.amount_with_fee"
            ",bdep.wire_salt"
            ",wt.payto_uri"
+           ",wt.target_pub"
            ",denom.fee_deposit"
            " FROM coin_deposits cdep"
            "    JOIN batch_deposits bdep"
