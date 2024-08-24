@@ -1977,6 +1977,9 @@ analyze_reserves (void *cls)
 }
 
 
+#undef CHECK_DB
+
+
 /**
  * Function called on events received from Postgres.
  *
