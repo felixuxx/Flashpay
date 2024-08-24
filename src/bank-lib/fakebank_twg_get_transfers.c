@@ -132,7 +132,8 @@ TALER_FAKEBANK_twg_get_transfers_ (
            (t->row_id == offset) )
         overflow = true; /* full circle, give up! */
     }
-    if (t->debit_account != acc)
+    if ( (NULL == t) ||
+         (t->debit_account != acc) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid start specified, transaction %llu not with account %s!\n",

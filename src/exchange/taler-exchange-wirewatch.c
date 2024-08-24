@@ -581,6 +581,10 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[details_length];
     unsigned int j = 0;
 
+    /* make compiler happy */
+    memset (qss,
+            0,
+            sizeof (qss));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Importing %u transactions\n",
                 details_length);

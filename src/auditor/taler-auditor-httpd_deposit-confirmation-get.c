@@ -48,53 +48,60 @@ add_deposit_confirmation (
 {
   json_t *list = cls;
   json_t *obj;
-
   json_t *coin_pubs_json = json_array ();
   json_t *coin_sigs_json = json_array ();
 
-  for (int i = 0; dc->num_coins > i; i++)
+  GNUNET_assert (NULL != coin_pubs_json);
+  GNUNET_assert (NULL != coin_sigs_json);
+  for (unsigned int i = 0; i < dc->num_coins; i++)
   {
+    json_t *pub;
+    json_t *sig;
 
-    int sz_pub = sizeof(dc->coin_pubs[0]) * 9;
-    char *o_pub = malloc (sz_pub);
-    GNUNET_STRINGS_data_to_string (&dc->coin_pubs[i], sizeof(dc->coin_pubs[0]),
-                                   o_pub, sz_pub);
-    json_t *pub = json_string (o_pub);
-    json_array_append_new (coin_pubs_json, pub);
-    free (o_pub);
-
-
-    int sz_sig = sizeof(dc->coin_sigs[0]) * 9;
-    char *o_sig = malloc (sz_sig);
-    GNUNET_STRINGS_data_to_string (&dc->coin_sigs[i], sizeof(dc->coin_sigs[0]),
-                                   o_sig, sz_sig);
-    json_t *sig = json_string (o_sig);
-    json_array_append_new (coin_sigs_json, sig);
-    free (o_sig);
-
+    pub = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_auto (NULL,
+                                  &dc->coin_pubs[i]));
+    GNUNET_assert (0 ==
+                   json_array_append_new (coin_pubs_json,
+                                          pub));
+    sig = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_auto (NULL,
+                                  &dc->coin_sigs[i]));
+    GNUNET_assert (0 ==
+                   json_array_append_new (coin_sigs_json,
+                                          sig));
   }
 
   obj = GNUNET_JSON_PACK (
-
-    GNUNET_JSON_pack_int64 ("deposit_confirmation_serial_id", serial_id),
-    GNUNET_JSON_pack_data_auto ("h_contract_terms", &dc->h_contract_terms),
-    GNUNET_JSON_pack_data_auto ("h_policy", &dc->h_policy),
-    GNUNET_JSON_pack_data_auto ("h_wire", &dc->h_wire),
-    GNUNET_JSON_pack_timestamp ("exchange_timestamp", dc->exchange_timestamp),
-    GNUNET_JSON_pack_timestamp ("refund_deadline", dc->refund_deadline),
-    GNUNET_JSON_pack_timestamp ("wire_deadline", dc->wire_deadline),
-    TALER_JSON_pack_amount ("total_without_fee", &dc->total_without_fee),
-
-    GNUNET_JSON_pack_array_steal ("coin_pubs", coin_pubs_json),
-    GNUNET_JSON_pack_array_steal ("coin_sigs", coin_sigs_json),
-
-    GNUNET_JSON_pack_data_auto ("merchant_pub", &dc->merchant),
-    GNUNET_JSON_pack_data_auto ("exchange_sig", &dc->exchange_sig),
-    GNUNET_JSON_pack_data_auto ("exchange_pub", &dc->exchange_pub),
-    GNUNET_JSON_pack_data_auto ("master_sig", &dc->master_sig)
-
+    GNUNET_JSON_pack_int64 ("deposit_confirmation_serial_id",
+                            serial_id),
+    GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                &dc->h_contract_terms),
+    GNUNET_JSON_pack_data_auto ("h_policy",
+                                &dc->h_policy),
+    GNUNET_JSON_pack_data_auto ("h_wire",
+                                &dc->h_wire),
+    GNUNET_JSON_pack_timestamp ("exchange_timestamp",
+                                dc->exchange_timestamp),
+    GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                dc->refund_deadline),
+    GNUNET_JSON_pack_timestamp ("wire_deadline",
+                                dc->wire_deadline),
+    TALER_JSON_pack_amount ("total_without_fee",
+                            &dc->total_without_fee),
+    GNUNET_JSON_pack_array_steal ("coin_pubs",
+                                  coin_pubs_json),
+    GNUNET_JSON_pack_array_steal ("coin_sigs",
+                                  coin_sigs_json),
+    GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                &dc->merchant),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &dc->exchange_sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &dc->exchange_pub),
+    GNUNET_JSON_pack_data_auto ("master_sig",
+                                &dc->master_sig)
     );
-
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
@@ -113,6 +120,9 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  bool return_suppressed = false;
+  int64_t limit = -20;
+  uint64_t offset;
 
   (void) rh;
   (void) connection_cls;
@@ -127,36 +137,29 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  bool return_suppressed = false;
-
-  int64_t limit = -20;   // unused here
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-
-  const char *ret_s = MHD_lookup_connection_value (connection,
-                                                   MHD_GET_ARGUMENT_KIND,
-                                                   "return_suppressed");
-  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
   {
-    return_suppressed = true;
+    const char *ret_s = MHD_lookup_connection_value (connection,
+                                                     MHD_GET_ARGUMENT_KIND,
+                                                     "return_suppressed");
+    if ( (NULL != ret_s) &&
+         (0 == strcmp (ret_s, "true")) )
+    {
+      return_suppressed = true;
+    }
   }
 
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_deposit_confirmations (
     TAH_plugin->cls,
     limit,

@@ -27,10 +27,7 @@ TAH_EMERGENCY_BY_COUNT_handler_delete (struct TAH_RequestHandler *rh,
                                        size_t *upload_data_size,
                                        const char *const args[])
 {
-
-  MHD_RESULT res;
   enum GNUNET_DB_QueryStatus qs;
-
   uint64_t row_id;
 
   if (args[2] != NULL)
@@ -75,6 +72,4 @@ TAH_EMERGENCY_BY_COUNT_handler_delete (struct TAH_RequestHandler *rh,
                                     MHD_HTTP_NO_CONTENT,
                                     GNUNET_JSON_pack_string ("status",
                                                              "EMERGENCY_BY_COUNT_OK"));
-
-  return res;
 }

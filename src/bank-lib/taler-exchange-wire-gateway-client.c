@@ -214,6 +214,7 @@ credit_history_cb (void *cls,
                  TALER_B2S (&cd->details.kycauth.account_pub),
                  TALER_amount2s (&cd->amount),
                  GNUNET_TIME_timestamp2s (cd->execution_date));
+        break;
       case TALER_BANK_CT_WAD:
         GNUNET_break (0); // FIXME
         break;

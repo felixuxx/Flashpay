@@ -1043,7 +1043,9 @@ TALER_KYCLOGIC_check_to_measures (
 
   mi = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("check_name",
-                             check->check_name),
+                             NULL == check
+                             ? "SKIP"
+                             : check->check_name),
     GNUNET_JSON_pack_string ("prog_name",
                              kcc->prog_name),
     GNUNET_JSON_pack_allow_null (
@@ -1802,11 +1804,10 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "amount required");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_YES !=
-      GNUNET_CONFIGURATION_get_value_yesno (cfg,
-                                            section,
-                                            "EXPOSED"))
-    exposed = false;
+  exposed = (GNUNET_YES ==
+             GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                                   section,
+                                                   "EXPOSED"));
   {
     enum GNUNET_GenericReturnValue r;
 
@@ -1887,16 +1888,18 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
               "Adding KYC rule %s\n",
               section);
   {
-    struct TALER_KYCLOGIC_KycRule kt;
+    struct TALER_KYCLOGIC_KycRule kt = {
+      .lrs = &default_rules,
+      .rule_name = GNUNET_strdup (&section[strlen ("kyc-rule-")]),
+      .timeframe = timeframe,
+      .threshold = threshold,
+      .trigger = ot,
+      .is_and_combinator = is_and,
+      .exposed = exposed,
+      .display_priority = 0,
+      .verboten = false
+    };
 
-    kt.lrs = &default_rules;
-    kt.rule_name = GNUNET_strdup (&section[strlen ("kyc-rule-")]);
-    kt.timeframe = timeframe;
-    kt.threshold = threshold;
-    kt.trigger = ot;
-    kt.is_and_combinator = is_and;
-    kt.exposed = exposed;
-    kt.verboten = false;
     add_tokens (measures,
                 " ",
                 &kt.next_measures,
@@ -3162,6 +3165,11 @@ TALER_KYCLOGIC_check_to_provider (const char *check_name)
 {
   struct TALER_KYCLOGIC_KycCheck *kc;
 
+  if (NULL == check_name)
+    return NULL;
+  if (0 == strcasecmp (check_name,
+                       "SKIP"))
+    return NULL;
   kc = find_check (check_name);
   switch (kc->type)
   {

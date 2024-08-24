@@ -805,7 +805,7 @@ handle_mhd_request (void *cls,
   size_t ulen = strlen (url) + 1;
   char d[ulen];
   /* const */ struct TAH_RequestHandler *match = NULL;
-  bool url_match;
+  bool url_match = false;
 
   (void) cls;
   (void) version;

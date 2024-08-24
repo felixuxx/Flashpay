@@ -277,13 +277,13 @@ TALER_EXCHANGE_lookup_kyc_attributes (
                                 &officer_sig);
 
   {
-    char payto_s[sizeof (h_payto) * 2];
+    char payto_s[sizeof (*h_payto) * 2];
     char pub_str[sizeof (officer_pub) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
       h_payto,
-      sizeof (h_payto),
+      sizeof (*h_payto),
       payto_s,
       sizeof (payto_s));
     *end = '\0';

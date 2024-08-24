@@ -1966,7 +1966,7 @@ check_recoup (struct CoinContext *cc,
       .operation = (char *) operation,
       .loss = *amount,
       // TODO: maybe adding the wrong pub
-      bsl.operation_specific_pub = coin->coin_pub.eddsa_pub
+      .operation_specific_pub = coin->coin_pub.eddsa_pub
     };
 
     qs = TALER_ARL_adb->insert_bad_sig_losses (

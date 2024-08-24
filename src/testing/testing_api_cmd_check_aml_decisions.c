@@ -155,7 +155,7 @@ check_aml_decisions_run (
   struct TALER_TESTING_Interpreter *is)
 {
   struct AmlCheckState *ds = cls;
-  const struct TALER_PaytoHashP *h_payto;
+  const struct TALER_PaytoHashP *h_payto = NULL;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
   const char *exchange_url;

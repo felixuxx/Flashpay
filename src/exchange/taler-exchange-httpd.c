@@ -2096,7 +2096,7 @@ handle_mhd_request (void *cls,
       return ret;
     }
     return TEH_handler_kyc_upload (rc,
-                                   url + strlen ("/kyc-upload/"),
+                                   &url[strlen ("/kyc-upload/")],
                                    upload_data_size,
                                    upload_data);
   }
