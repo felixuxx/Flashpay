@@ -150,6 +150,10 @@
  */
 #define AUDITOR_PROTOCOL_VERSION "1:0:1"
 
+/**
+ * Salt we use when doing the KDF for access.
+ */
+#define KDF_SALT "auditor-standard-auth"
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -212,9 +216,14 @@ static uint16_t serve_port;
  */
 char *TAH_currency;
 
-// FIXME: this is done in a very weird way, needs review!
-char *TMA_auth;
+/**
+ * Authorization code to use.
+ */
+static struct GNUNET_HashCode TAH_auth;
 
+/**
+ * Prefix required for the access token.
+ */
 #define RFC_8959_PREFIX "secret-token:"
 
 
@@ -338,44 +347,24 @@ enum GNUNET_GenericReturnValue
 TMH_check_auth (const char *token)
 {
   struct GNUNET_HashCode val;
-  struct GNUNET_HashCode salt;
-  struct GNUNET_HashCode tok;
-
-  char *dec = "auditor-standard-auth";
-  size_t dec_len = strlen ("auditor-standard-auth");
 
   if (NULL == token)
     return GNUNET_SYSERR;
-
   token += strlen (RFC_8959_PREFIX);
-  GNUNET_STRINGS_string_to_data (token,
-                                 strlen (token),
-                                 &tok,
-                                 sizeof (tok));
-  if (NULL != TMA_auth)
-  {
-    GNUNET_STRINGS_string_to_data (TMA_auth,
-                                   strlen (TMA_auth),
-                                   &salt,
-                                   sizeof (salt));
-  }
-  else
-  {
-    memset (&salt,
-            0,
-            sizeof (salt));
-  }
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (&val,
                                     sizeof (val),
-                                    &salt,
-                                    sizeof (salt),
-                                    dec,
-                                    dec_len,
+                                    KDF_SALT,
+                                    strlen (KDF_SALT),
+                                    token,
+                                    strlen (token),
                                     NULL,
                                     0));
-
-  return (0 == GNUNET_memcmp (&val, &tok))
+  /* We compare hashes instead of directly comparing
+     tokens to minimize side-channel attacks on token length */
+  return (0 ==
+          GNUNET_memcmp_priv (&val,
+                              &TAH_auth))
            ? GNUNET_OK
            : GNUNET_SYSERR;
 }
@@ -872,7 +861,8 @@ handle_mhd_request (void *cls,
     GNUNET_break_op (0);
     goto not_found;
   }
-  if (match->requires_auth && (0 == disable_auth) )
+  if (match->requires_auth &&
+      (0 == disable_auth) )
   {
     const char *auth;
 
@@ -1123,18 +1113,28 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
+  if (0 == disable_auth)
   {
     const char *tok;
 
-    tok = getenv ("TALER_AUDITOR_SALT");
-
-    if ( (NULL != tok) &&
-         (NULL == TMA_auth) )
-      TMA_auth = GNUNET_strdup (tok);
-    if ( (NULL == TMA_auth) )
+    tok = getenv ("TALER_AUDITOR_ACCESS_TOKEN");
+    if (NULL == tok)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "TALER_AUDITOR_SALT environment variable not set\n");
+                  "TALER_AUDITOR_ACCESS_TOKEN environment variable not set. Disabling authentication\n");
+      disable_auth = 1;
+    }
+    else
+    {
+      GNUNET_assert (GNUNET_YES ==
+                     GNUNET_CRYPTO_kdf (&TAH_auth,
+                                        sizeof (TAH_auth),
+                                        KDF_SALT,
+                                        strlen (KDF_SALT),
+                                        tok,
+                                        strlen (tok),
+                                        NULL,
+                                        0));
     }
   }
 
