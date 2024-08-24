@@ -475,6 +475,17 @@ TEH_handler_kyc_upload (
       &is_finished,
       &enc_attributes_len,
       &enc_attributes);
+    /* FIXME: not exactly elegant, should eventually
+       modify lookup_completed_legitimization to
+       return something if we are purely pending? */
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      qs = TEH_plugin->lookup_pending_legitimization (
+        TEH_plugin->cls,
+        uc->legitimization_measure_serial_id,
+        &uc->access_token,
+        &h_payto,
+        &jmeasures,
+        &is_finished);
     if (qs < 0)
     {
       GNUNET_break (0);
