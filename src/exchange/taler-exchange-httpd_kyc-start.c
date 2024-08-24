@@ -273,8 +273,6 @@ TEH_handler_kyc_start (
     const struct TALER_KYCLOGIC_KycProvider *provider;
     struct TALER_KYCLOGIC_ProviderDetails *pd;
     bool is_finished;
-    size_t enc_len;
-    void *enc = NULL;
 
     kyp = GNUNET_new (struct KycPoller);
     kyp->connection = rc->connection;
@@ -329,9 +327,7 @@ TEH_handler_kyc_start (
       &kyp->access_token,
       &kyp->h_payto,
       &kyp->jmeasures,
-      &is_finished,
-      &enc_len,
-      &enc);
+      &is_finished);
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -349,14 +345,13 @@ TEH_handler_kyc_start (
         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
         rc->url);
     }
-    GNUNET_free (enc);
     if (is_finished)
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_CONFLICT,
-        -1, // FIXME: TALER_EC_..._ALREADY_FINISHED
+        TALER_EC_EXCHANGE_KYC_FORM_ALREADY_UPLOADED,
         rc->url);
     }
 

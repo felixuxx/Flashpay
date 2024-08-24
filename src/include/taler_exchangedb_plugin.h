@@ -7441,17 +7441,46 @@ struct TALER_EXCHANGEDB_Plugin
    *    measures that were put on the account
    * @param[out] is_finished set to true if the legitimization was
    *    already finished
-   * @param[out] encrypted_attributes_len set to length of
-   *    @a encrypted_attributes
-   * @param[out] encrypted_attributes set to the attributes
-   *    obtained for the legitimization process, if it
-   *    succeeded, otherwise set to NULL
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
     (*lookup_pending_legitimization)(
     void *cls,
     uint64_t legitimization_measure_serial_id,
+    struct TALER_AccountAccessTokenP *access_token,
+    struct TALER_PaytoHashP *h_payto,
+    json_t **jmeasures,
+    bool *is_finished);
+
+
+  /**
+ * Lookup measure data for a legitimization process.
+ *
+ * @param cls closure
+ * @param legitimization_measure_serial_id
+ *    row in legitimization_measures table to access
+ * @param measure_index index of the measure to return
+ *    attribute data for
+ * @param[out] access_token
+ *    set to token for access control that must match
+ * @param[out] h_payto set to the the hash of the
+ *    payto URI of the account undergoing legitimization
+ * @param[out] jmeasures set to the legitimization
+ *    measures that were put on the account
+ * @param[out] is_finished set to true if the legitimization was
+ *    already finished
+ * @param[out] encrypted_attributes_len set to length of
+ *    @a encrypted_attributes
+ * @param[out] encrypted_attributes set to the attributes
+ *    obtained for the legitimization process, if it
+ *    succeeded, otherwise set to NULL
+ * @return database transaction status
+ */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_completed_legitimization)(
+    void *cls,
+    uint64_t legitimization_measure_serial_id,
+    uint32_t measure_index,
     struct TALER_AccountAccessTokenP *access_token,
     struct TALER_PaytoHashP *h_payto,
     json_t **jmeasures,

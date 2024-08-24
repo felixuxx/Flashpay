@@ -40,11 +40,6 @@
  *    measures that were put on the account
  * @param[out] is_finished set to true if the legitimization was
  *    already finished
- * @param[out] encrypted_attributes_len set to length of
- *    @a encrypted_attributes
- * @param[out] encrypted_attributes set to the attributes
- *    obtained for the legitimization process, if it
- *    succeeded, otherwise set to NULL
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -54,8 +49,6 @@ TEH_PG_lookup_pending_legitimization (
   struct TALER_AccountAccessTokenP *access_token,
   struct TALER_PaytoHashP *h_payto,
   json_t **jmeasures,
-  bool *is_finished,
-  size_t *encrypted_attributes_len,
-  void **encrypted_attributes);
+  bool *is_finished);
 
 #endif

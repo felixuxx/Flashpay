@@ -33,10 +33,7 @@ TEH_PG_lookup_pending_legitimization (
   struct TALER_AccountAccessTokenP *access_token,
   struct TALER_PaytoHashP *h_payto,
   json_t **jmeasures,
-  bool *is_finished,
-  size_t *encrypted_attributes_len,
-  void **encrypted_attributes
-  )
+  bool *is_finished)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -56,17 +53,9 @@ TEH_PG_lookup_pending_legitimization (
     GNUNET_PQ_result_spec_bool (
       "is_finished",
       is_finished),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_variable_size (
-        "encrypted_attributes",
-        encrypted_attributes,
-        encrypted_attributes_len),
-      NULL),
     GNUNET_PQ_result_spec_end
   };
 
-  *encrypted_attributes_len = 0;
-  *encrypted_attributes = NULL;
   PREPARE (pg,
            "lookup_pending_legitimization",
            "SELECT "
@@ -74,14 +63,9 @@ TEH_PG_lookup_pending_legitimization (
            ",wt.wire_target_h_payto"
            ",lm.access_token"
            ",lm.is_finished"
-           ",ka.encrypted_attributes"
            " FROM legitimization_measures lm"
            " JOIN wire_targets wt"
            "   ON (lm.access_token = wt.access_token)"
-           " LEFT JOIN legitimization_processes lp"
-           "   ON (lm.legitimization_measure_serial_id = lp.legitimization_measure_serial_id)"
-           " LEFT JOIN kyc_attributes ka"
-           "   ON (ka.legitimization_serial = lp.legitimization_process_serial_id)"
            " WHERE lm.legitimization_measure_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

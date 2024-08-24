@@ -465,9 +465,10 @@ TEH_handler_kyc_upload (
     const char *error_message;
     enum TALER_ErrorCode ec;
 
-    qs = TEH_plugin->lookup_pending_legitimization (
+    qs = TEH_plugin->lookup_completed_legitimization (
       TEH_plugin->cls,
       uc->legitimization_measure_serial_id,
+      uc->measure_index,
       &uc->access_token,
       &h_payto,
       &jmeasures,

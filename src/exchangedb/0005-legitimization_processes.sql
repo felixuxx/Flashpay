@@ -81,6 +81,11 @@ BEGIN
     ' ADD CONSTRAINT ' || table_name || '_foreign_key_legitimization_measure'
     ' FOREIGN KEY (legitimization_measure_serial_id)'
     ' REFERENCES legitimization_measures (legitimization_measure_serial_id)');
+
+  EXECUTE FORMAT (
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_unique_measure_and_index'
+    ' UNIQUE (legitimization_measure_serial_id,measure_index)');
 END
 $$;
 
