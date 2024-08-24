@@ -305,6 +305,8 @@ enum GNUNET_GenericReturnValue
 TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
                                   void *ana_cls)
 {
+  enum GNUNET_DB_QueryStatus qs;
+
   if (GNUNET_SYSERR ==
       TALER_ARL_edb->preflight (TALER_ARL_edb->cls))
   {
@@ -320,8 +322,14 @@ TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
     return GNUNET_SYSERR;
   }
 
-  if (0 > transact (ana,
-                    ana_cls))
+  for (unsigned int retries=0; retries<3; retries++)
+  {
+    qs = transact (ana,
+                   ana_cls);
+    if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
+      break;
+  }
+  if (qs < 0)
     return GNUNET_SYSERR;
   return GNUNET_OK;
 }

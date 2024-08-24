@@ -39,6 +39,11 @@
 static int global_ret;
 
 /**
+ * State of the last database transaction.
+ */
+static enum GNUNET_DB_QueryStatus global_qs;
+
+/**
  * Run in test mode. Exit when idle instead of
  * going to sleep and waiting for more work.
  *
@@ -181,7 +186,8 @@ report_amount_arithmetic_inconsistency (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!!?
+      global_qs = qs;
+      return;
     }
   }
 
@@ -223,7 +229,8 @@ report_row_inconsistency (const char *table,
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling!!?
+    global_qs = qs;
+    return;
   }
 }
 
@@ -458,13 +465,14 @@ setup_reserve (struct ReserveContext *rc,
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue
-handle_reserve_in (void *cls,
-                   uint64_t rowid,
-                   const struct TALER_ReservePublicKeyP *reserve_pub,
-                   const struct TALER_Amount *credit,
-                   const char *sender_account_details,
-                   uint64_t wire_reference,
-                   struct GNUNET_TIME_Timestamp execution_date)
+handle_reserve_in (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *credit,
+  const char *sender_account_details,
+  uint64_t wire_reference,
+  struct GNUNET_TIME_Timestamp execution_date)
 {
   struct ReserveContext *rc = cls;
   struct ReserveSummary *rs;
@@ -514,14 +522,15 @@ handle_reserve_in (void *cls,
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue
-handle_reserve_out (void *cls,
-                    uint64_t rowid,
-                    const struct TALER_BlindedCoinHashP *h_blind_ev,
-                    const struct TALER_DenominationPublicKey *denom_pub,
-                    const struct TALER_ReservePublicKeyP *reserve_pub,
-                    const struct TALER_ReserveSignatureP *reserve_sig,
-                    struct GNUNET_TIME_Timestamp execution_date,
-                    const struct TALER_Amount *amount_with_fee)
+handle_reserve_out (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_BlindedCoinHashP *h_blind_ev,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig,
+  struct GNUNET_TIME_Timestamp execution_date,
+  const struct TALER_Amount *amount_with_fee)
 {
   struct ReserveContext *rc = cls;
   struct ReserveSummary *rs;
@@ -555,6 +564,8 @@ handle_reserve_out (void *cls,
     report_row_inconsistency ("withdraw",
                               rowid,
                               "denomination key not found");
+    if (global_qs < 0)
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -586,7 +597,8 @@ handle_reserve_out (void *cls,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      /* FIXME: error handling! */
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
   }
 
@@ -612,7 +624,8 @@ handle_reserve_out (void *cls,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
@@ -630,6 +643,8 @@ handle_reserve_out (void *cls,
     report_row_inconsistency ("withdraw",
                               rowid,
                               "amount with fee from exchange does not match denomination value plus fee");
+    if (global_qs < 0)
+      return GNUNET_SYSERR;
   }
   rs = setup_reserve (rc,
                       reserve_pub);
@@ -720,7 +735,8 @@ handle_recoup_by_reserve (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
@@ -747,6 +763,8 @@ handle_recoup_by_reserve (
       report_row_inconsistency ("recoup",
                                 rowid,
                                 "denomination key not in revocation set");
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_reserve_loss),
                             &TALER_ARL_USE_AB (reserves_reserve_loss),
                             amount);
@@ -796,6 +814,8 @@ handle_recoup_by_reserve (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
@@ -940,7 +960,8 @@ handle_reserve_open (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
@@ -1027,6 +1048,8 @@ handle_reserve_closed (
         closing_fee,
         &expected_fee,
         1);
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
     }
   }
 
@@ -1062,6 +1085,8 @@ handle_reserve_closed (
       report_row_inconsistency ("reserves_close",
                                 rowid,
                                 "reserve close request unknown");
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
     }
     else
     {
@@ -1090,20 +1115,24 @@ handle_reserve_closed (
         if (qs < 0)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-          // FIXME: error handling!
+          rc->qs = qs;
+          GNUNET_free (payto_uri);
+          return GNUNET_SYSERR;
         }
         TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                               &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                               amount_with_fee);
       }
     }
-    if ((NULL == payto_uri) &&
-        (NULL == rs->sender_account))
+    if ( (NULL == payto_uri) &&
+         (NULL == rs->sender_account) )
     {
       GNUNET_break (! rs->had_ri);
       report_row_inconsistency ("reserves_close",
                                 rowid,
                                 "target account not verified, auditor does not know reserve");
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
     }
     if (NULL == payto_uri)
     {
@@ -1114,6 +1143,8 @@ handle_reserve_closed (
         report_row_inconsistency ("reserves_close",
                                   rowid,
                                   "target account does not match origin account");
+        if (global_qs < 0)
+          return GNUNET_SYSERR;
       }
     }
     else
@@ -1124,6 +1155,11 @@ handle_reserve_closed (
         report_row_inconsistency ("reserves_close",
                                   rowid,
                                   "target account does not match origin account");
+        if (global_qs < 0)
+        {
+          GNUNET_free (payto_uri);
+          return GNUNET_SYSERR;
+        }
       }
     }
     GNUNET_free (payto_uri);
@@ -1136,6 +1172,8 @@ handle_reserve_closed (
       report_row_inconsistency ("reserves_close",
                                 rowid,
                                 "target account not verified, auditor does not know reserve");
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
     }
     else if (0 != strcmp (rs->sender_account,
                           receiver_account))
@@ -1143,6 +1181,8 @@ handle_reserve_closed (
       report_row_inconsistency ("reserves_close",
                                 rowid,
                                 "target account does not match origin account");
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
     }
   }
 
@@ -1217,11 +1257,11 @@ handle_account_merged (
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
@@ -1345,7 +1385,8 @@ verify_reserve_balance (void *cls,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      rc->qs = qs;
+      return GNUNET_SYSERR;
     }
     /* Continue with a reserve balance of zero */
     GNUNET_assert (GNUNET_OK ==
@@ -1364,9 +1405,10 @@ verify_reserve_balance (void *cls,
        in its database. This can only be done when we are doing an
        internal audit, as otherwise the balance of the 'reserves' table
        is not replicated at the auditor. */
-    struct TALER_EXCHANGEDB_Reserve reserve;
+    struct TALER_EXCHANGEDB_Reserve reserve = {
+      .pub = rs->reserve_pub
+    };
 
-    reserve.pub = rs->reserve_pub;
     qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
                                       &reserve);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1390,7 +1432,8 @@ verify_reserve_balance (void *cls,
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling
+        rc->qs = qs;
+        return GNUNET_SYSERR;
       }
       if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
       {
@@ -1405,7 +1448,6 @@ verify_reserve_balance (void *cls,
       if (0 != TALER_amount_cmp (&rs->curr_balance.reserve_balance,
                                  &reserve.balance))
       {
-
         struct TALER_Amount delta;
 
         if (0 < TALER_amount_cmp (&rs->curr_balance.reserve_balance,
@@ -1450,7 +1492,8 @@ verify_reserve_balance (void *cls,
         if (qs < 0)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-          // FIXME: error handling
+          rc->qs = qs;
+          return GNUNET_SYSERR;
         }
 
         {
@@ -1469,7 +1512,8 @@ verify_reserve_balance (void *cls,
         if (qs < 0)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-          // FIXME: error handling
+          rc->qs = qs;
+          return GNUNET_SYSERR;
         }
       }
     }
@@ -1511,11 +1555,11 @@ verify_reserve_balance (void *cls,
         qs = TALER_ARL_adb->insert_reserve_not_closed_inconsistency (
           TALER_ARL_adb->cls,
           &rnci);
-
         if (qs < 0)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-          // FIXME: error handling
+          rc->qs = qs;
+          return GNUNET_SYSERR;
         }
       }
     }
@@ -1542,7 +1586,8 @@ verify_reserve_balance (void *cls,
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling
+        rc->qs = qs;
+        return GNUNET_SYSERR;
       }
     }
   }
@@ -1594,6 +1639,8 @@ verify_reserve_balance (void *cls,
                                               &rs->total_out,   /* what we needed */
                                               0 /* specific profit/loss does not apply to the total summary */
                                               );
+      if (global_qs < 0)
+        return GNUNET_SYSERR;
       /* We unexpectedly went negative, so a sane value to continue from
          would be zero. */
       GNUNET_assert (GNUNET_OK ==
@@ -1666,6 +1713,22 @@ verify_reserve_balance (void *cls,
 }
 
 
+#define CHECK_DB() do {                                       \
+          if (qs < 0) {                                       \
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs); \
+            return qs;                                        \
+          }                                                   \
+          if (global_qs < 0) {                                \
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == global_qs); \
+            return global_qs;                                        \
+          }                                                          \
+          if (rc.qs < 0) {                                           \
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == rc.qs);     \
+            return rc.qs;                                            \
+          }                                                          \
+} while (0)
+
+
 /**
  * Analyze reserves for being well-formed.
  *
@@ -1675,10 +1738,13 @@ verify_reserve_balance (void *cls,
 static enum GNUNET_DB_QueryStatus
 analyze_reserves (void *cls)
 {
-  struct ReserveContext rc;
+  struct ReserveContext rc = {
+    .qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+  };
   enum GNUNET_DB_QueryStatus qs;
 
   (void) cls;
+  global_qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing reserves\n");
   qs = TALER_ARL_adb->get_auditor_progress (
@@ -1723,7 +1789,6 @@ analyze_reserves (void *cls)
                 (unsigned long long) TALER_ARL_USE_PP (
                   reserves_history_requests_serial_id));
   }
-  rc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (reserves_reserve_total_balance),
@@ -1754,29 +1819,21 @@ analyze_reserves (void *cls)
     TALER_ARL_USE_PP (reserves_reserve_in_serial_id),
     &handle_reserve_in,
     &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
+  CHECK_DB ();
   qs = TALER_ARL_edb->select_withdrawals_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_out_serial_id),
     &handle_reserve_out,
     &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
+  CHECK_DB ();
   qs = TALER_ARL_edb->select_recoup_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_recoup_serial_id),
     &handle_recoup_by_reserve,
     &rc);
-  if (qs < 0)
+  if ( (qs < 0) ||
+       (rc.qs < 0) ||
+       (global_qs < 0) )
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -1787,38 +1844,21 @@ analyze_reserves (void *cls)
     TALER_ARL_USE_PP (reserves_reserve_open_serial_id),
     &handle_reserve_open,
     &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
+  CHECK_DB ();
   qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (reserves_reserve_close_serial_id),
     &handle_reserve_closed,
     &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
+  CHECK_DB ();
   /* process purse_decisions (to credit reserve) */
-  if (0 >
-      (qs = TALER_ARL_edb->select_purse_decisions_above_serial_id (
-         TALER_ARL_edb->cls,
-         TALER_ARL_USE_PP (reserves_purse_decisions_serial_id),
-         false, /* only go for merged purses! */
-         &purse_decision_cb,
-         &rc)))
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
-  if (0 > rc.qs)
-    return rc.qs;
+  qs = TALER_ARL_edb->select_purse_decisions_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_USE_PP (reserves_purse_decisions_serial_id),
+    false,      /* only go for merged purses! */
+    &purse_decision_cb,
+    &rc);
+  CHECK_DB ();
   /* Charge purse fee! */
 
   qs = TALER_ARL_edb->select_account_merges_above_serial_id (
@@ -1826,21 +1866,15 @@ analyze_reserves (void *cls)
     TALER_ARL_USE_PP (reserves_account_merges_serial_id),
     &handle_account_merged,
     &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
+  CHECK_DB ();
   GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
                                          &verify_reserve_balance,
                                          &rc);
+  CHECK_DB ();
   GNUNET_break (0 ==
                 GNUNET_CONTAINER_multihashmap_size (rc.reserves));
   GNUNET_CONTAINER_multihashmap_destroy (rc.reserves);
   GNUNET_CONTAINER_multihashmap_destroy (rc.revoked);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != rc.qs)
-    return qs;
 
   qs = TALER_ARL_adb->insert_balance (
     TALER_ARL_adb->cls,
