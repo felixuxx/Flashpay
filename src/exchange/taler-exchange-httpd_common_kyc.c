@@ -157,7 +157,6 @@ fallback_result_cb (void *cls,
 
   kat->fb = NULL;
   (void) requirement_row;
-  // FIXME: return new requirement_row!?
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
   if (result)
@@ -1087,13 +1086,16 @@ static void
 async_return_legi_result (void *cls)
 {
   struct TEH_LegitimizationCheckHandle *lch = cls;
+  struct GNUNET_AsyncScopeSave old_scope;
 
   lch->async_task = NULL;
-  // FIXME: enter (+exit) lch->scope...
+  GNUNET_async_scope_enter (&lch->scope,
+                            &old_scope);
   lch->result_cb (lch->result_cb_cls,
                   &lch->lcr);
   lch->lcr.response = NULL;
   TEH_legitimization_check_cancel (lch);
+  GNUNET_async_scope_restore (&old_scope);
 }
 
 
@@ -1434,6 +1436,7 @@ legitimization_check_run (
   const struct TALER_KYCLOGIC_KycRule *requirement;
   enum GNUNET_DB_QueryStatus qs;
   const struct TALER_KYCLOGIC_Measure *instant_ms;
+  struct GNUNET_AsyncScopeSave old_scope;
 
   if (! TEH_enable_kyc)
   {
@@ -1453,7 +1456,8 @@ legitimization_check_run (
           lch);
     return;
   }
-  // FIXME: enter (+exit) lch->scope!
+  GNUNET_async_scope_enter (&lch->scope,
+                            &old_scope);
   {
     json_t *jrules;
 
@@ -1466,6 +1470,7 @@ legitimization_check_run (
       legi_fail (lch,
                  TALER_EC_GENERIC_DB_FETCH_FAILED,
                  "get_kyc_rules");
+      GNUNET_async_scope_restore (&old_scope);
       return;
     }
     if (qs > 0)
@@ -1522,6 +1527,7 @@ legitimization_check_run (
     legi_fail (lch,
                TALER_EC_GENERIC_DB_FETCH_FAILED,
                "kyc_test_required");
+    GNUNET_async_scope_restore (&old_scope);
     return;
   }
 
@@ -1539,6 +1545,7 @@ legitimization_check_run (
       = GNUNET_SCHEDULER_add_now (
           &async_return_legi_result,
           lch);
+    GNUNET_async_scope_restore (&old_scope);
     return;
   }
 
@@ -1579,8 +1586,10 @@ legitimization_check_run (
       legi_fail (lch,
                  TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
                  NULL);
+      GNUNET_async_scope_restore (&old_scope);
       return;
     }
+    GNUNET_async_scope_restore (&old_scope);
     return;
   }
 
@@ -1608,6 +1617,7 @@ legitimization_check_run (
     legi_fail (lch,
                TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
                "trigger_kyc_rule_for_account");
+    GNUNET_async_scope_restore (&old_scope);
     return;
   }
   TALER_KYCLOGIC_rules_free (lrs);
@@ -1617,6 +1627,7 @@ legitimization_check_run (
     legi_fail (lch,
                TALER_EC_GENERIC_DB_STORE_FAILED,
                "trigger_kyc_rule_for_account");
+    GNUNET_async_scope_restore (&old_scope);
     return;
   }
   /* return success! */
@@ -1624,6 +1635,7 @@ legitimization_check_run (
     = GNUNET_SCHEDULER_add_now (
         &async_return_legi_result,
         lch);
+  GNUNET_async_scope_restore (&old_scope);
 }
 
 
