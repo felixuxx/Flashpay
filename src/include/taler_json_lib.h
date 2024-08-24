@@ -151,7 +151,7 @@ TALER_JSON_pack_token_issue_sig (
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_token_envelope (
   const char *name,
-  const struct TALER_TokenEnvelopeP *envelope);
+  const struct TALER_TokenEnvelope *envelope);
 
 
 /**
@@ -635,7 +635,7 @@ TALER_JSON_spec_blinded_token_issue_sig (
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_envelope (
   const char *field,
-  struct TALER_TokenEnvelopeP *env);
+  struct TALER_TokenEnvelope *env);
 
 
 /**

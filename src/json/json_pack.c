@@ -173,7 +173,7 @@ TALER_JSON_pack_token_issue_sig (
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_token_envelope (
   const char *name,
-  const struct TALER_TokenEnvelopeP *envelope)
+  const struct TALER_TokenEnvelope *envelope)
 {
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,

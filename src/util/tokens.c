@@ -176,7 +176,7 @@ TALER_token_blind_input_copy (struct TALER_TokenUseMerchantValues *bi_dst,
 
 enum GNUNET_GenericReturnValue
 TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKeyP *issue_priv,
-                        const struct TALER_TokenEnvelopeP *envelope,
+                        const struct TALER_TokenEnvelope *envelope,
                         struct TALER_TokenIssueBlindSignatureP *issue_sig)
 {
   issue_sig->signature
@@ -187,6 +187,7 @@ TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKeyP *issue_priv,
     return GNUNET_SYSERR;
   return GNUNET_OK;
 }
+
 
 enum GNUNET_GenericReturnValue
 TALER_token_issue_verify (const struct TALER_TokenUsePublicKeyP *use_pub,
@@ -211,6 +212,7 @@ TALER_token_issue_verify (const struct TALER_TokenUsePublicKeyP *use_pub,
   return GNUNET_OK;
 }
 
+
 enum GNUNET_GenericReturnValue
 TALER_token_issue_sig_unblind (
   struct TALER_TokenIssueSignatureP *issue_sig,
@@ -221,12 +223,12 @@ TALER_token_issue_sig_unblind (
   const struct TALER_TokenIssuePublicKeyP *issue_pub)
 {
   issue_sig->signature
-        = GNUNET_CRYPTO_blind_sig_unblind (blinded_sig->signature,
-                                           secret,
-                                           &use_pub_hash->hash,
-                                           sizeof (use_pub_hash->hash),
-                                           alg_values->blinding_inputs,
-                                           issue_pub->public_key);
+    = GNUNET_CRYPTO_blind_sig_unblind (blinded_sig->signature,
+                                       secret,
+                                       &use_pub_hash->hash,
+                                       sizeof (use_pub_hash->hash),
+                                       alg_values->blinding_inputs,
+                                       issue_pub->public_key);
   if (NULL == issue_sig->signature)
   {
     GNUNET_break_op (0);

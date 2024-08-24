@@ -555,7 +555,7 @@ TALER_JSON_spec_blinded_token_issue_sig (
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_envelope (const char *field,
-                                struct TALER_TokenEnvelopeP *env)
+                                struct TALER_TokenEnvelope *env)
 {
   env->blinded_pub = NULL;
   return GNUNET_JSON_spec_blinded_message (field,

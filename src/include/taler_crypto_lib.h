@@ -2465,7 +2465,7 @@ struct TALER_TokenUseMerchantValues
 /**
  * The blinded token use public key of a token. Ready to be signed by the merchant.
  */
-struct TALER_TokenEnvelopeP
+struct TALER_TokenEnvelope
 {
   /**
    * Blinded public key of the token.
@@ -2566,7 +2566,7 @@ TALER_token_blind_input_copy (struct TALER_TokenUseMerchantValues *bi_dst,
  */
 enum GNUNET_GenericReturnValue
 TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKeyP *issue_priv,
-                        const struct TALER_TokenEnvelopeP *envelope,
+                        const struct TALER_TokenEnvelope *envelope,
                         struct TALER_TokenIssueBlindSignatureP *issue_sig);
 
 
