@@ -356,18 +356,18 @@ function run_audit () {
                         2> "${MY_TMP_DIR}/taler-exchange-drain.log" \
             || exit_fail "FAIL"
         echo " DONE"
+   fi
+    echo -n "Running taler-exchange-transfer ..."
+    taler-exchange-transfer \
+        -L INFO \
+        -t \
+        -c "$CONF" \
+        2> "${MY_TMP_DIR}/drain-transfer.log" \
+        || exit_fail "FAIL"
+    echo " DONE"
 
-        echo -n "Running taler-exchange-transfer ..."
-        taler-exchange-transfer \
-            -L INFO \
-            -t \
-            -c "$CONF" \
-            2> "${MY_TMP_DIR}/drain-transfer.log" \
-            || exit_fail "FAIL"
-        echo " DONE"
-
-        audit_only
-        post_audit
+    audit_only
+    post_audit
 }
 
 

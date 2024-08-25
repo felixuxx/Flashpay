@@ -305,7 +305,11 @@ check_SCRIPTS = \
   test-revocation.sh \
   test-sync.sh
 
-# TESTS = $(check_SCRIPTS)
+TESTS = \
+  test-auditor.sh \
+  test-revocation.sh \
+  test-sync.sh
+
 
 EXTRA_DIST = \
   taler-auditor.in \
