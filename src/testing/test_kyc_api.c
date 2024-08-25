@@ -560,7 +560,7 @@ run (void *cls,
       "check-decisions-none-normal",
       "create-aml-officer-1",
       NULL,
-      MHD_HTTP_NO_CONTENT),
+      MHD_HTTP_OK),
     /* Trigger something upon which an AML officer could act */
     TALER_TESTING_cmd_wallet_kyc_get (
       "wallet-trigger-kyc-for-aml",
