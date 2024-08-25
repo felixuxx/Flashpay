@@ -108,7 +108,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_get_kyc_rules.h pg_get_kyc_rules.c \
   pg_get_pending_kyc_requirement_process.h pg_get_pending_kyc_requirement_process.c \
   pg_kyc_provider_account_lookup.h pg_kyc_provider_account_lookup.c \
-  pg_insert_kyc_requirement_for_account.h pg_insert_kyc_requirement_for_account.c \
   pg_lookup_kyc_process_by_account.h pg_lookup_kyc_process_by_account.c \
   pg_update_kyc_process_by_row.h pg_update_kyc_process_by_row.c \
   pg_insert_kyc_requirement_process.h pg_insert_kyc_requirement_process.c \
