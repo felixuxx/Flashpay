@@ -61,7 +61,7 @@ TEH_PG_insert_kyc_requirement_process (
   };
 
   PREPARE (pg,
-           "insert_legitimization_process",
+           "insert_kyc_requirement_process",
            "INSERT INTO legitimization_processes"
            "  (h_payto"
            "  ,start_time"
@@ -82,7 +82,7 @@ TEH_PG_insert_kyc_requirement_process (
            " RETURNING legitimization_process_serial_id");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
-    "insert_legitimization_process",
+    "insert_kyc_requirement_process",
     params,
     rs);
 }
