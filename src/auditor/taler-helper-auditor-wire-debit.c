@@ -815,7 +815,12 @@ check_reported_inconsistency (struct ReserveOutInfo *roi)
     return GNUNET_SYSERR;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Deletion of wire out inconsistency %llu failed: not reported missing!\n",
+                (unsigned long long) roi->details.serial_id);
     return GNUNET_NO;
+  }
   TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
                              &TALER_ARL_USE_AB (total_bad_amount_out_minus),
                              &roi->details.amount);
@@ -1098,6 +1103,9 @@ wire_out_cb (
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Wire out for row %llu still missing\n",
+                (unsigned long long) rowid);
     make_missing_diag (diag,
                        wtid);
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (

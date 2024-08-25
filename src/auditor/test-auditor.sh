@@ -229,24 +229,42 @@ function audit_only () {
               2> "${MY_TMP_DIR}/test-audit-reserves-inc.err" \
         || exit_fail "incremental reserves audit failed (see ${MY_TMP_DIR}/test-audit-reserves-inc.*)"
     echo -n "."
-    #$VALGRIND taler-helper-auditor-wire \
-    #          -i \
-    #          -L DEBUG \
-    #          -c "$CONF" \
-    #          -t \
-    #          > "${MY_TMP_DIR}/test-audit-wire.out" \
-    #          2> "${MY_TMP_DIR}/test-audit-wire.err" \
-    #    || exit_fail "wire audit failed (see ${MY_TMP_DIR}/test-audit-wire.*)"
-    #echo -n "."
-    #$VALGRIND taler-helper-auditor-wire \
-    #          -i \
-    #          -L DEBUG \
-    #          -c "$CONF" \
-    #          -t \
-    #          > "${MY_TMP_DIR}/test-audit-wire-inc.out" \
-    #          2> "${MY_TMP_DIR}/test-audit-wire-inc.err" \
-    #    || exit_fail "wire audit inc failed (see ${MY_TMP_DIR}/test-audit-wire-inc.*)"
-    #echo -n "."
+    $VALGRIND taler-helper-auditor-wire-credit \
+              -i \
+              -L DEBUG \
+              -c "$CONF" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-wire-credit.out" \
+              2> "${MY_TMP_DIR}/test-audit-wire-credit.err" \
+        || exit_fail "wire credit audit failed (see ${MY_TMP_DIR}/test-audit-wire-credit.*)"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-wire-credit \
+              -i \
+              -L DEBUG \
+              -c "$CONF" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-wire-credit-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-wire-credit-inc.err" \
+        || exit_fail "wire credit audit inc failed (see ${MY_TMP_DIR}/test-audit-wire-credit-inc.*)"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-wire-debit \
+              -i \
+              -L DEBUG \
+              -c "$CONF" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-wire-debit.out" \
+              2> "${MY_TMP_DIR}/test-audit-wire-debit.err" \
+        || exit_fail "wire debit audit failed (see ${MY_TMP_DIR}/test-audit-wire-debit.*)"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-wire-debit \
+              -i \
+              -L DEBUG \
+              -c "$CONF" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-wire-debit-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-wire-debit-inc.err" \
+        || exit_fail "wire debit audit inc failed (see ${MY_TMP_DIR}/test-audit-wire-debit-inc.*)"
+    echo -n "."
     $VALGRIND taler-helper-auditor-purses \
              -i \
              -L DEBUG \
@@ -264,6 +282,24 @@ function audit_only () {
               > "${MY_TMP_DIR}/test-audit-purses-inc.out" \
               2> "${MY_TMP_DIR}/test-audit-purses-inc.err" \
         || exit_fail "audit purses inc failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-transfer \
+             -i \
+             -L DEBUG \
+             -c "$CONF" \
+             -t \
+             > "${MY_TMP_DIR}/test-audit-transfer.out" \
+             2> "${MY_TMP_DIR}/test-audit-transfer.err" \
+       || exit_fail "audit transfer failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-transfer \
+              -i \
+              -L DEBUG \
+              -c "$CONF" \
+              -t \
+              > "${MY_TMP_DIR}/test-audit-transfer-inc.out" \
+              2> "${MY_TMP_DIR}/test-audit-transfer-inc.err" \
+        || exit_fail "audit transfer inc failed"
     echo -n "."
 
     echo " DONE"
@@ -458,6 +494,7 @@ function test_0() {
     # Just to test the endpoint and for logging ...
     call_endpoint "balances"
 
+    echo -n "Testing loss balances... "
     call_endpoint "balances" "aggregation_total_bad_sig_loss"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_bad_sig_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
@@ -478,36 +515,34 @@ function test_0() {
     then
         exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of '$LOSS'"
     fi
+    echo "PASS"
 
-    #echo -n "Test for wire amounts... "
-    #WIRED=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json)
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json)
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json)
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json)
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_misattribution_in < test-audit-wire.json)
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total misattribution in wrong, got $WIRED"
-    #fi
-    #echo "PASS"
+    echo -n "Test for aggregation wire out deltas... "
+    call_endpoint "balances" "aggregation_total_wire_out_delta_plus"
+    WIRED=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_wire_out_delta_plus.json)
+    if [ "$WIRED" != "TESTKUDOS:0" ]
+    then
+        exit_fail "Expected total wire out delta plus wrong, got '$WIRED'"
+    fi
+    call_endpoint "balances" "aggregation_total_wire_out_delta_minus"
+    WIRED=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_wire_out_delta_minus.json)
+    if [ "$WIRED" != "TESTKUDOS:0" ]
+    then
+        exit_fail "Expected total wire out delta minus wrong, got '$WIRED'"
+    fi
+    call_endpoint "balances" "total_misattribution_in"
+    echo "PASS"
 
-    echo -n "Checking for unexpected arithmetic differences "
+    echo -n "Test for misattribution amounts... "
+
+    WIRED=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/total_misattribution_in.json)
+    if [ "$WIRED" != "TESTKUDOS:0" ]
+    then
+        exit_fail "Expected total misattribution in wrong, got $WIRED"
+    fi
+    echo "PASS"
+
+    echo -n "Checking for unexpected arithmetic differences... "
     call_endpoint "balances" "aggregation_total_arithmetic_delta_plus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
@@ -2303,7 +2338,7 @@ function test_33() {
     #fi
     echo "PASS"
 
-    echo -n "Checking for unexpected arithmetic differences "
+    echo -n "Checking for unexpected arithmetic differences... "
     call_endpoint "balances" "aggregation_total_arithmetic_delta_plus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
@@ -2363,7 +2398,7 @@ function test_33() {
 #        && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
     echo "PASS"
 
-    echo -n "Checking for unexpected wire out differences "
+    echo -n "Checking for unexpected wire out differences... "
     call_endpoint "wire-out-inconsistency"
     jq -e .wire_out_inconsistency[0] \
        < ${MY_TMP_DIR}/wire-out-inconsistency.json \

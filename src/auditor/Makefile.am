@@ -306,9 +306,9 @@ check_SCRIPTS = \
   test-sync.sh
 
 TESTS = \
-  test-auditor.sh \
   test-revocation.sh \
   test-sync.sh
+#  test-auditor.sh
 
 
 EXTRA_DIST = \

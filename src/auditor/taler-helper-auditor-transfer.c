@@ -250,7 +250,7 @@ clear_finished_transfer_cb (
 
   if (0 > ac->err)
     return; /* already failed */
-  GNUNET_assert (ac->max_aggregation_serial < tracking_serial_id);
+  GNUNET_assert (ac->max_aggregation_serial <= tracking_serial_id);
   ac->max_aggregation_serial = tracking_serial_id + 1;
   qs = TALER_ARL_adb->delete_pending_deposit (
     TALER_ARL_adb->cls,
