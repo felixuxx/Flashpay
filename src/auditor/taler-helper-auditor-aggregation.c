@@ -1341,9 +1341,9 @@ check_wire_out_cb (void *cls,
 
     {
       struct TALER_AUDITORDB_WireOutInconsistency woi = {
-        .row_id = rowid,
         .destination_account = (char *) payto_uri,
         .diagnostic = "aggregated amount does not match expectations",
+        .wire_out_row_id = rowid,
         .expected = final_amount,
         .claimed = *amount
       };
