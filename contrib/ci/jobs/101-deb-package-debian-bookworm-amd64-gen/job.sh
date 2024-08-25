@@ -2,7 +2,7 @@
 set -exuo pipefail
 # This file is in the public domain.
 # Helper script to build the latest DEB packages in the container.
-# Shared between various jobs.
+
 
 unset LD_LIBRARY_PATH
 
@@ -12,7 +12,7 @@ apt-get update
 apt-get upgrade -y
 mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
 
-export VERSION="$(./contrib/ci/version.sh)"
+export VERSION="$(./contrib/ci/jobs/4-deb-package/version.sh)"
 echo "Building package version ${VERSION}"
 EMAIL=none gbp dch --dch-opt=-b --ignore-branch --debian-tag="%(version)s" --git-author --new-version="${VERSION}"
 ./bootstrap

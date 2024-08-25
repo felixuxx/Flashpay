@@ -1,2 +1,6 @@
 #!/bin/bash
-exec ./contrib/ci/debian-package-job.sh
+set -exuo pipefail
+
+job_dir=$(dirname "${BASH_SOURCE[0]}")
+
+"${job_dir}"/test.sh

@@ -1,8 +1,5 @@
 #!/bin/sh
 set -ex
-# This file is in the public domain.
-# Determines the current version of our code.
-# Shared between various jobs.
 
 BRANCH=$(git name-rev --name-only HEAD)
 if [ -z "${BRANCH}" ]; then
