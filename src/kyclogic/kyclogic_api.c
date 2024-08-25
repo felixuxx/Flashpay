@@ -495,7 +495,7 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
   struct GNUNET_TIME_Timestamp expiration_time;
   const char *successor_measure = NULL;
   const json_t *jrules;
-  const json_t *jcustom_measures = NULL;
+  const json_t *jcustom_measures;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp (
       "expiration_time",
@@ -507,10 +507,8 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       NULL),
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_object_const ("custom_measures",
-                                     &jcustom_measures),
-      NULL),
+    GNUNET_JSON_spec_object_const ("custom_measures",
+                                   &jcustom_measures),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;

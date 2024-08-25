@@ -98,11 +98,14 @@ EXPIRATION=$((3600 * 30 + $(date +%s)))
 # See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlOutcome
 # for the required output format.
 
+# NOTE: new_check is not yet supported!
+
 jq -n \
     --argjson expiration "$EXPIRATION" \
     '{ "to_investigate": false,
        "new_rules" : {
          "new_check" : "info-oauth-test-passed",
+         "custom_measures" : {},
          "expiration_time" : { "t_s": $expiration },
          "rules" : [
          {
