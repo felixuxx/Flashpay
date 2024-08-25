@@ -30,9 +30,7 @@ fi;
 # Generate the deb-package target
 cd "${CI_DIR}/jobs/$(mktarget 1 deb-package)"
 sed "1s|FROM .*|FROM ${OCI_IMAGE}|" "$CONTAINERFILE" > Containerfile
-cp "$DISTRO_TARGET/deb-package/version.sh" ./
 cp "$DISTRO_TARGET/deb-package/job.sh" ./
-cp "$DISTRO_TARGET/deb-package/install-fix.patch" ./
 
 if [[ "$ARCH" != "amd64" ]]; then
   echo '[build]
