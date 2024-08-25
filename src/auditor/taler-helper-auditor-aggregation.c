@@ -922,15 +922,15 @@ wire_transfer_information_cb (
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (aggregation_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (aggregation_total_bad_sig_loss),
                           coin_value);
-    TALER_denom_sig_free (&coin.denom_sig);
-    TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
-                                               tl);
     qs = report_row_inconsistency ("deposit",
                                    rowid,
                                    "coin denomination signature invalid");
     if (0 > qs)
     {
       wcc->qs = qs;
+      TALER_denom_sig_free (&coin.denom_sig);
+      TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                                 tl);
       return;
     }
   }
