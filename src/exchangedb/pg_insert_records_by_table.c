@@ -172,10 +172,14 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&payto_hash),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.wire_targets.target_token),
     GNUNET_PQ_query_param_string (
       td->details.wire_targets.payto_uri),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wire_targets.access_token),
+    td->details.wire_targets.no_account
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wire_targets.target_pub),
     GNUNET_PQ_query_param_end
   };
 
@@ -187,10 +191,11 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
            "INSERT INTO wire_targets"
            "(wire_target_serial_id"
            ",wire_target_h_payto"
-           ",target_token"
            ",payto_uri"
+           ",access_token"
+           ",target_pub"
            ") VALUES "
-           "($1, $2, $3, $4);");
+           "($1, $2, $3, $4, $5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_targets",
                                              params);
@@ -1014,8 +1019,8 @@ irbt_cb_table_batch_deposits (struct PostgresClosure *pg,
            ",wallet_data_hash"
            ",wire_salt"
            ",wire_target_h_payto"
-           ",policy_details_serial_id"
            ",policy_blocked"
+           ",policy_details_serial_id"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
            " $11, $12, $13);");

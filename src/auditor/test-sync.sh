@@ -71,7 +71,7 @@ function check_with_database()
         -d test-sync-out.conf -t
 
     # cs_nonce_locks excluded: no point
-    for table in denominations denomination_revocations wire_targets reserves reserves_in reserves_close reserves_out auditors auditor_denom_sigs exchange_sign_keys signkey_revocations extensions policy_details policy_fulfillments known_coins refresh_commitments refresh_revealed_coins refresh_transfer_keys deposits refunds wire_out aggregation_tracking wire_fee recoup recoup_refresh
+    for table in denominations denomination_revocations wire_targets reserves reserves_in reserves_close reserves_open_requests reserves_open_deposits reserves_out auditors auditor_denom_sigs exchange_sign_keys signkey_revocations known_coins refresh_commitments refresh_revealed_coins refresh_transfer_keys batch_deposits coin_deposits refunds wire_out aggregation_tracking wire_fee recoup recoup_refresh extensions policy_details policy_fulfillments purse_requests purse_decision purse_merges purse_deposits account_merges history_requests close_requests wads_out wads_out_entries wads_in wads_in_entries profit_Drains aml_staff purse_deletion age_withdraw legitimization_measures legitimization_outcomes legitimization_processes kyc_attributes aml_history kyc_events kycauths_in
     do
         echo -n "."
         CIN=$(echo "SELECT COUNT(*) FROM exchange.$table" | psql talercheck-in -Aqt)

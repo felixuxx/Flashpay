@@ -383,8 +383,9 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       char *payto_uri;
-      struct TALER_AccountAccessTokenP target_token;
-      union TALER_AccountPublicKeyP account_pub;
+      struct TALER_AccountAccessTokenP access_token;
+      union TALER_AccountPublicKeyP target_pub;
+      bool no_account;
     } wire_targets;
 
     struct

@@ -215,7 +215,12 @@ lrbt_cb_table_wire_targets (void *cls,
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "access_token",
-        &td.details.wire_targets.target_token),
+        &td.details.wire_targets.access_token),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type (
+          "target_pub",
+          &td.details.wire_targets.target_pub),
+        &td.details.wire_targets.no_account),
       GNUNET_PQ_result_spec_string (
         "payto_uri",
         &td.details.wire_targets.payto_uri),
@@ -3117,6 +3122,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               "SELECT"
               " wire_target_serial_id AS serial"
               ",access_token"
+              ",target_pub"
               ",payto_uri"
               " FROM wire_targets"
               " WHERE wire_target_serial_id > $1"
