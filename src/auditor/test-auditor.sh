@@ -1798,6 +1798,7 @@ function test_23() {
 
     echo -n "Testing inconsistency detection... "
 
+    call_endpoint "wire-out-inconsistency"
     jq -e .wire_out_inconsistencies[0] < ${MY_TMP_DIR}/test-audit-aggregation.out > /dev/null || exit_fail "Wire out inconsistency not detected"
 
     ROW=$(jq .wire_out_inconsistencies[0].rowid < ${MY_TMP_DIR}/test-audit-aggregation.out)
