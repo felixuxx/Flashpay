@@ -85,7 +85,7 @@ EXPIRATION=$((3600 * 30 + $(date +%s)))
 # See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlOutcome
 # for the required output format.
 
-# NOTE: new_check is not yet supported!
+# NOTE: new_check is not yet supported! #9124
 jq -n \
     --arg expiration "$EXPIRATION" \
     '{ "to_investigate": true,
