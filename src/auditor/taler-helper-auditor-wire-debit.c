@@ -670,9 +670,9 @@ check_time_difference (const char *table,
                                            true));
   {
     struct TALER_AUDITORDB_RowMinorInconsistencies rmi = {
-      .row_id = rowid,
-      .diagnostic = details,
-      .row_table = (char *) table
+      .row_table = (char *) table,
+      .problem_row = rowid,
+      .diagnostic = details
     };
     enum GNUNET_DB_QueryStatus qs;
 

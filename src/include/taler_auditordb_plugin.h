@@ -803,10 +803,11 @@ struct TALER_AUDITORDB_RowMinorInconsistencies
 {
   uint64_t row_id;
   char *row_table;
+  uint64_t problem_row;
   char *diagnostic;
   bool suppressed;
-
 };
+
 
 struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency
 {
@@ -963,7 +964,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_RowMinorInconsistenciesCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_RowMinorInconsistencies *dc);
 
 

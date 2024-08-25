@@ -28,20 +28,18 @@ TAH_PG_insert_row_minor_inconsistencies (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
     GNUNET_PQ_query_param_auto_from_type (&dc->row_table),
+    GNUNET_PQ_query_param_uint64 (&dc->problem_row),
     GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
-
-
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
            "auditor_row_minor_inconsistencies_insert",
            "INSERT INTO auditor_row_minor_inconsistencies "
-           "( row_id,"
-           " row_table,"
-           " diagnostic"
+           "(row_table"
+           ",problem_row"
+           ",diagnostic"
            ") VALUES ($1,$2,$3);"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,

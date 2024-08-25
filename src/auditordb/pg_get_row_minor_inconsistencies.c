@@ -65,13 +65,14 @@ row_minor_inconsistencies_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_RowMinorInconsistencies dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
-                                    &serial_id),
+                                    &dc.row_id),
       GNUNET_PQ_result_spec_auto_from_type ("row_table",
                                             &dc.row_table),
+      GNUNET_PQ_result_spec_uint64 ("problem_row",
+                                    &dc.problem_row),
       GNUNET_PQ_result_spec_auto_from_type ("diagnostic",
                                             &dc.diagnostic),
       GNUNET_PQ_result_spec_bool ("suppressed",
@@ -91,7 +92,6 @@ row_minor_inconsistencies_cb (void *cls,
     }
     dcc->qs = i + 1;
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)

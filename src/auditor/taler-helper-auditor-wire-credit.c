@@ -774,7 +774,7 @@ analyze_credit (
                                  rii->credit_details.execution_date))
   {
     struct TALER_AUDITORDB_RowMinorInconsistencies rmi = {
-      .row_id = rii->rowid,
+      .problem_row = rii->rowid,
       .diagnostic = "execution date mismatch",
       .row_table = "reserves_in"
     };
@@ -784,8 +784,9 @@ analyze_credit (
       TALER_ARL_adb->cls,
       &rmi);
 
-    if (qs <= 0)
+    if (qs < 0)
     {
+      /* FIXME: this error handling sucks... */
       global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
@@ -820,7 +821,17 @@ history_credit_cb (void *cls,
 
       if (! analyze_credit (wa,
                             cd))
-        return;
+      {
+        if (global_qs < 0)
+        {
+          /* FIXME: this error handling sucks,
+             doesn't retry on SOFT errors, doesn't
+             set global_ret, etc. */
+          GNUNET_SCHEDULER_shutdown ();
+          return;
+        }
+        break;
+      }
     }
     conclude_account (wa);
     return;
