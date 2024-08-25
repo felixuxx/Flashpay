@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #  This file is part of TALER
-#  Copyright (C) 2014-2023 Taler Systems SA
+#  Copyright (C) 2014-2024 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -355,7 +355,6 @@ function full_reload()
 {
     echo -n "Doing full reload of the database (loading ${BASEDB}.sql into $DB at $PGHOST)... "
     dropdb -f "$DB" 2> /dev/null || true
-    echo "/n here is a problem  "
     createdb -T template0 "$DB" \
         || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
@@ -440,52 +439,44 @@ function test_0() {
     # if an emergency was detected, that is a bug and we should fail
     echo -n "Test for emergencies... "
     call_endpoint "emergency"
-    jq -e .emergency[0] < ${MY_TMP_DIR}/emergency.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+    jq -e .emergency[0] < ${MY_TMP_DIR}/emergency.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
+    echo "PASS"
     echo -n "Test for deposit confirmation emergencies... "
     call_endpoint "deposit-confirmation"
-    jq -e .deposit_confirmation[0] < ${MY_TMP_DIR}/deposit-confirmation.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
+    jq -e .deposit_confirmation[0] < ${MY_TMP_DIR}/deposit-confirmation.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected"
+    echo "PASS"
     echo -n "Test for emergencies by count... "
     call_endpoint "emergency-by-count"
-    jq -e .emergency_by_count[0] < ${MY_TMP_DIR}/emergency-by-count.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+    jq -e .emergency_by_count[0] < ${MY_TMP_DIR}/emergency-by-count.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run"
+    echo "PASS"
 
     echo -n "Test for wire inconsistencies... "
-    #jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-    #jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-    #jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
-    #jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
     call_endpoint "denomination-key-validity-withdraw-inconsistency"
     jq -e .denomination_key_validity_withdraw_inconsistency[0] < ${MY_TMP_DIR}/denomination-key-validity-withdraw-inconsistency.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-    #jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-    #jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
-    #jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+    echo "PASS"
 
-
-    # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
-    # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
-
-    echo PASS
+    # Just to test the endpoint and for logging ...
     call_endpoint "balances"
-    call_endpoint "balances" "coin_irregular_loss"
-    call_endpoint "balances" "aggregator_total_bad_sig_loss"
-    call_endpoint "balances" "reserves_total_bad_sig_loss"
-    call_endpoint "amount-arithmetic-inconsistency"
 
-    #${MY_TMP_DIR}/test-audit-bad-sig-losses.json
-
-    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_bad_sig_loss.json)
+    call_endpoint "balances" "aggregation_total_bad_sig_loss"
+    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_bad_sig_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
-        exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
+        exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of '$LOSS'"
     fi
+
+    call_endpoint "balances" "coin_irregular_loss"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/coin_irregular_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
-        exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
+        exit_fail "Wrong total bad sig loss from coins, got unexpected loss of '$LOSS'"
     fi
+
+    call_endpoint "balances" "reserves_total_bad_sig_loss"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/reserves_total_bad_sig_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
-        exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
+        exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of '$LOSS'"
     fi
 
     #echo -n "Test for wire amounts... "
@@ -516,39 +507,39 @@ function test_0() {
     #fi
     #echo "PASS"
 
-    call_endpoint "balances" "aggregator_total_arithmetic_delta_plus"
-    call_endpoint "balances" "aggregator_total_arithmetic_delta_minus"
-    call_endpoint "balances" "coins_total_arithmetic_delta_plus"
-    call_endpoint "balances" "coins_total_arithmetic_delta_minus"
-    call_endpoint "balances" "reserves_total_arithmetic_delta_plus"
-    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
-
     echo -n "Checking for unexpected arithmetic differences "
-    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_arithmetic_delta_plus.json)
+    call_endpoint "balances" "aggregation_total_arithmetic_delta_plus"
+    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
-        exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
+        exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of '$LOSS'"
     fi
-    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_arithmetic_delta_minus.json)
+    call_endpoint "balances" "aggregation_total_arithmetic_delta_minus"
+    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_arithmetic_delta_minus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
-        exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
+        exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of '$LOSS'"
     fi
+    call_endpoint "balances" "coins_total_arithmetic_delta_plus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/coins_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
     fi
+    call_endpoint "balances" "coins_total_arithmetic_delta_minus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/coins_total_arithmetic_delta_minus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
     fi
+    call_endpoint "balances" "reserves_total_arithmetic_delta_plus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/reserves_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
     fi
+    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
+
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/reserves_total_arithmetic_delta_minus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
@@ -2525,6 +2516,8 @@ then
         echo "Generation failed"
         exit 1
     fi
+    echo "To re-use this database in the future, use:"
+    echo "export REUSE_BASEDB_DIR=$MY_TMP_DIR"
 else
     echo "Reusing existing database from ${REUSE_BASEDB_DIR}"
     cp -r "${REUSE_BASEDB_DIR}/basedb"/* "${MYDIR}/"

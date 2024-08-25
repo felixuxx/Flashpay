@@ -1802,6 +1802,7 @@ analyze_reserves (void *cls)
     TALER_ARL_GET_AB (total_balance_reserve_not_closed),
     TALER_ARL_GET_AB (reserves_total_arithmetic_delta_plus),
     TALER_ARL_GET_AB (reserves_total_arithmetic_delta_minus),
+    TALER_ARL_GET_AB (total_balance_summary_delta_plus),
     TALER_ARL_GET_AB (total_balance_summary_delta_minus),
     NULL);
   if (qs < 0)
@@ -1889,6 +1890,7 @@ analyze_reserves (void *cls)
     TALER_ARL_SET_AB (total_balance_reserve_not_closed),
     TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
     TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (total_balance_summary_delta_plus),
     TALER_ARL_SET_AB (total_balance_summary_delta_minus),
     NULL);
   if (0 > qs)
@@ -1910,6 +1912,7 @@ analyze_reserves (void *cls)
     TALER_ARL_SET_AB (total_balance_reserve_not_closed),
     TALER_ARL_SET_AB (reserves_total_arithmetic_delta_plus),
     TALER_ARL_SET_AB (reserves_total_arithmetic_delta_minus),
+    TALER_ARL_SET_AB (total_balance_summary_delta_plus),
     TALER_ARL_SET_AB (total_balance_summary_delta_minus),
     NULL);
   if (0 > qs)
