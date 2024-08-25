@@ -908,33 +908,40 @@ check_profit_drain (struct ReserveOutInfo *roi)
     return GNUNET_NO;
   }
   GNUNET_free (account_section);
-  if (0 !=
-      strcasecmp (payto_uri,
-                  roi->details.credit_account_uri))
-  {
-    struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .wire_out_row_id = serial,
-      .destination_account = (char *) roi->details.credit_account_uri,
-      .diagnostic = "profit drain wired to invalid account",
-      .expected = roi->details.amount,
-      .claimed = zero,
-    };
 
-    qs = TALER_ARL_adb->insert_wire_out_inconsistency (
-      TALER_ARL_adb->cls,
-      &woi);
-    if (qs < 0)
+  {
+    char *np = TALER_payto_normalize (payto_uri);
+
+    if (0 !=
+        strcasecmp (np,
+                    roi->details.credit_account_uri))
     {
-      global_qs = qs;
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      struct TALER_AUDITORDB_WireOutInconsistency woi = {
+        .wire_out_row_id = serial,
+        .destination_account = (char *) roi->details.credit_account_uri,
+        .diagnostic = "profit drain wired to invalid account",
+        .expected = roi->details.amount,
+        .claimed = zero,
+      };
+
+      GNUNET_free (np);
+      qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+        TALER_ARL_adb->cls,
+        &woi);
+      if (qs < 0)
+      {
+        global_qs = qs;
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        GNUNET_free (payto_uri);
+        return GNUNET_SYSERR;
+      }
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                            &TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                            &amount);
       GNUNET_free (payto_uri);
-      return GNUNET_SYSERR;
+      return GNUNET_YES; /* justified, kind-of */
     }
-    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                          &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                          &amount);
-    GNUNET_free (payto_uri);
-    return GNUNET_YES; /* justified, kind-of */
+    GNUNET_free (np);
   }
   GNUNET_free (payto_uri);
   if (0 !=
@@ -1122,37 +1129,43 @@ wire_out_cb (
                           amount);
     return GNUNET_OK;
   }
-  if (0 != strcasecmp (payto_uri,
-                       roi->details.credit_account_uri))
   {
-    /* Destination bank account is wrong in actual wire transfer, so
-       we should count the wire transfer as entirely spurious, and
-       additionally consider the justified wire transfer as missing. */
-    struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .wire_out_row_id = rowid,
-      .destination_account = (char *) payto_uri,
-      .diagnostic = "receiver account mismatch",
-      .expected = *amount,
-      .claimed = zero,
-    };
-    enum GNUNET_DB_QueryStatus qs;
+    char *np = TALER_payto_normalize (payto_uri);
 
-    qs = TALER_ARL_adb->insert_wire_out_inconsistency (
-      TALER_ARL_adb->cls,
-      &woi);
-    if (qs < 0)
+    if (0 != strcasecmp (np,
+                         roi->details.credit_account_uri))
     {
-      global_qs = qs;
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return GNUNET_SYSERR;
+      /* Destination bank account is wrong in actual wire transfer, so
+         we should count the wire transfer as entirely spurious, and
+         additionally consider the justified wire transfer as missing. */
+      struct TALER_AUDITORDB_WireOutInconsistency woi = {
+        .wire_out_row_id = rowid,
+        .destination_account = (char *) payto_uri,
+        .diagnostic = "receiver account mismatch",
+        .expected = *amount,
+        .claimed = zero,
+      };
+      enum GNUNET_DB_QueryStatus qs;
+
+      GNUNET_free (np);
+      qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+        TALER_ARL_adb->cls,
+        &woi);
+      if (qs < 0)
+      {
+        global_qs = qs;
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        return GNUNET_SYSERR;
+      }
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                            &TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                            &roi->details.amount);
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                            &TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                            amount);
+      return GNUNET_OK;
     }
-    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                          &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                          &roi->details.amount);
-    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
-                          &TALER_ARL_USE_AB (total_bad_amount_out_minus),
-                          amount);
-    return GNUNET_OK;
+    GNUNET_free (np);
   }
   if (0 != TALER_amount_cmp (&roi->details.amount,
                              amount))
@@ -1354,6 +1367,7 @@ history_debit_cb (
     {
       const struct TALER_BANK_DebitDetails *dd
         = &dhr->details.ok.details[i];
+      char *np = TALER_payto_normalize (dd->credit_account_uri);
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Analyzing bank DEBIT #%llu at %s of %s with WTID %s\n",
@@ -1362,7 +1376,7 @@ history_debit_cb (
                   TALER_amount2s (&dd->amount),
                   TALER_B2S (&dd->wtid));
       wa->wire_off_out = dd->serial_id + 1;
-      slen = strlen (dd->credit_account_uri) + 1;
+      slen = strlen (np) + 1;
       roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
                            + slen);
       GNUNET_CRYPTO_hash (&dd->wtid,
@@ -1372,8 +1386,9 @@ history_debit_cb (
       roi->details.credit_account_uri
         = (const char *) &roi[1];
       GNUNET_memcpy (&roi[1],
-                     dd->credit_account_uri,
+                     np,
                      slen);
+      GNUNET_free (np);
       if (GNUNET_OK !=
           GNUNET_CONTAINER_multihashmap_put (out_map,
                                              &roi->subject_hash,
@@ -1532,7 +1547,7 @@ reserve_closed_cb (
   TALER_ARL_USE_PP (wire_reserve_close_id)
     = GNUNET_MAX (TALER_ARL_USE_PP (wire_reserve_close_id),
                   rowid + 1);
-  rc->receiver_account = GNUNET_strdup (receiver_account);
+  rc->receiver_account = TALER_payto_normalize (receiver_account);
   rc->wtid = *wtid;
   rc->execution_date = execution_date;
   rc->rowid = rowid;

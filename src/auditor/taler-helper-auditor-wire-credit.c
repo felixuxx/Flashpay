@@ -469,7 +469,9 @@ reserve_in_cb (void *cls,
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii;
   size_t slen;
+  char *snp;
 
+  snp = TALER_payto_normalize (sender_account_details);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange wire IN (%llu) at %s of %s with reserve_pub %s\n",
               (unsigned long long) rowid,
@@ -479,7 +481,7 @@ reserve_in_cb (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_in),
                         &TALER_ARL_USE_AB (total_wire_in),
                         credit);
-  slen = strlen (sender_account_details) + 1;
+  slen = strlen (snp) + 1;
   rii = GNUNET_malloc (sizeof (struct ReserveInInfo) + slen);
   rii->rowid = rowid;
   rii->credit_details.type = TALER_BANK_CT_RESERVE;
@@ -488,8 +490,9 @@ reserve_in_cb (void *cls,
   rii->credit_details.details.reserve.reserve_pub = *reserve_pub;
   rii->credit_details.debit_account_uri = (const char *) &rii[1];
   GNUNET_memcpy (&rii[1],
-                 sender_account_details,
+                 snp,
                  slen);
+  GNUNET_free (snp);
   GNUNET_CRYPTO_hash (&wire_reference,
                       sizeof (uint64_t),
                       &rii->row_off_hash);
@@ -736,28 +739,35 @@ analyze_credit (
     }
   }
 
-  if (0 != strcasecmp (credit_details->debit_account_uri,
-                       rii->credit_details.debit_account_uri))
   {
-    struct TALER_AUDITORDB_MisattributionInInconsistency mii = {
-      .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
-      .amount = rii->credit_details.amount,
-      .bank_row = credit_details->serial_id
-    };
-    enum GNUNET_DB_QueryStatus qs;
+    char *np;
 
-    qs = TALER_ARL_adb->insert_misattribution_in_inconsistency (
-      TALER_ARL_adb->cls,
-      &mii);
-    if (qs <= 0)
+    np = TALER_payto_normalize (credit_details->debit_account_uri);
+    if (0 != strcasecmp (np,
+                         rii->credit_details.debit_account_uri))
     {
-      global_qs = qs;
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return false;
+      struct TALER_AUDITORDB_MisattributionInInconsistency mii = {
+        .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
+        .amount = rii->credit_details.amount,
+        .bank_row = credit_details->serial_id
+      };
+      enum GNUNET_DB_QueryStatus qs;
+
+      qs = TALER_ARL_adb->insert_misattribution_in_inconsistency (
+        TALER_ARL_adb->cls,
+        &mii);
+      if (qs <= 0)
+      {
+        global_qs = qs;
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        GNUNET_free (np);
+        return false;
+      }
+      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_misattribution_in),
+                            &TALER_ARL_USE_AB (total_misattribution_in),
+                            &rii->credit_details.amount);
     }
-    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_misattribution_in),
-                          &TALER_ARL_USE_AB (total_misattribution_in),
-                          &rii->credit_details.amount);
+    GNUNET_free (np);
   }
   if (GNUNET_TIME_timestamp_cmp (credit_details->execution_date,
                                  !=,
