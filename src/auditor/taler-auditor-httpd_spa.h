@@ -34,6 +34,7 @@
  * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args request URL broken up into tokens at '/' characters
  * @return MHD result code
  */
 MHD_RESULT

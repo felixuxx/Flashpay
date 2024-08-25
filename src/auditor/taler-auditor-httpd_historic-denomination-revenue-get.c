@@ -32,7 +32,10 @@
  *
  * @param[in,out] cls a `json_t *` array to extend
  * @param serial_id location of the @a dc in the database
- * @param dc struct of inconsistencies
+ * @param denom_pub_hash public key hash of the denomination
+ * @param revenue_timestamp when was the revenue effective
+ * @param revenue_balance how much in profit did we make from this denomination
+ * @param loss_balance how much loss did we make from this denomination
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue

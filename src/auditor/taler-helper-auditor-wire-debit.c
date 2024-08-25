@@ -520,7 +520,6 @@ begin_transaction (void);
  * Commit the transaction, checkpointing our progress in the auditor DB.
  *
  * @param qs transaction status so far
- * @return transaction status code
  */
 static void
 commit (enum GNUNET_DB_QueryStatus qs)
@@ -762,7 +761,7 @@ check_rc_matches (void *cls,
 /**
  * Make diagnostic string for missing wire transfer.
  *
- * @param[out] where to write the diagnostic
+ * @param[out] diag where to write the diagnostic string
  * @param wtid wire transfer ID to include
  */
 static void

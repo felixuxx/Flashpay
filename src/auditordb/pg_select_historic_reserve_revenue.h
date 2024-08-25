@@ -29,6 +29,8 @@
  * Return information about an exchange's historic revenue from reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
+ * @param limit return at most this number of results, negative to descend from @a offset
+ * @param offset row from which to return @a limit results
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
  * @return transaction status code

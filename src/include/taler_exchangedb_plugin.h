@@ -3614,7 +3614,6 @@ typedef void
  *
  * @param cls closure
  * @param row_id current row in kyc_attributes table
- * @param provider_name which provider collected the data, NULL for user upload
  * @param collection_time when were the attributes collected
  * @param enc_attributes_size size of @a enc_attributes
  * @param enc_attributes the encrypted collected attributes

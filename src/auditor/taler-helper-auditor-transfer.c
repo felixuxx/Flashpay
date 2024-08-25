@@ -103,7 +103,6 @@ begin_transaction (void);
  * Commit the transaction, checkpointing our progress in the auditor DB.
  *
  * @param qs transaction status so far
- * @return transaction status code
  */
 static void
 commit_transaction (enum GNUNET_DB_QueryStatus qs)
