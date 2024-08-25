@@ -111,8 +111,9 @@ static const struct GNUNET_CONFIGURATION_Handle *cfg;
  *           profitable for the exchange for this operation,
  *           -1 if @a exchange being smaller than @a auditor is
  *           profitable for the exchange, and 0 if it is unclear
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_amount_arithmetic_inconsistency (
   const char *operation,
   uint64_t rowid,
@@ -156,7 +157,7 @@ report_amount_arithmetic_inconsistency (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      return qs;
     }
   }
   if (0 != profitable)
@@ -168,6 +169,7 @@ report_amount_arithmetic_inconsistency (
                           target,
                           &delta);
   }
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -183,8 +185,9 @@ report_amount_arithmetic_inconsistency (
  *           profitable for the exchange for this operation,
  *           -1 if @a exchange being smaller than @a auditor is
  *           profitable for the exchange, and 0 if it is unclear
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_coin_arithmetic_inconsistency (
   const char *operation,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -229,7 +232,7 @@ report_coin_arithmetic_inconsistency (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      return qs;
     }
   }
   if (0 != profitable)
@@ -241,6 +244,7 @@ report_coin_arithmetic_inconsistency (
                           target,
                           &delta);
   }
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -250,8 +254,9 @@ report_coin_arithmetic_inconsistency (
  * @param table affected table
  * @param rowid affected row, 0 if row is missing
  * @param diagnostic message explaining the problem
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
@@ -270,8 +275,9 @@ report_row_inconsistency (const char *table,
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling
+    return qs;
   }
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -385,9 +391,9 @@ struct WireCheckContext
  * @param tl_head head of transaction history to verify
  * @param[out] merchant_gain amount the coin contributes to the wire transfer to the merchant
  * @param[out] deposit_gain amount the coin contributes excluding refunds
- * @return #GNUNET_OK on success, #GNUNET_SYSERR if the transaction must fail (hard error)
+ * @return database transaction status
  */
-static enum GNUNET_GenericReturnValue
+static enum GNUNET_DB_QueryStatus
 check_transaction_history_for_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -486,11 +492,13 @@ check_transaction_history_for_deposit (
                             fee_claimed))
       {
         /* Disagreement in fee structure between auditor and exchange DB! */
-        report_amount_arithmetic_inconsistency ("deposit fee",
-                                                0,
-                                                fee_claimed,
-                                                &issue->fees.deposit,
-                                                1);
+        qs = report_amount_arithmetic_inconsistency ("deposit fee",
+                                                     0,
+                                                     fee_claimed,
+                                                     &issue->fees.deposit,
+                                                     1);
+        if (0 > qs)
+          return qs;
       }
       break;
     case TALER_EXCHANGEDB_TT_MELT:
@@ -508,11 +516,13 @@ check_transaction_history_for_deposit (
                               fee_claimed))
         {
           /* Disagreement in fee structure between exchange and auditor */
-          report_amount_arithmetic_inconsistency ("melt fee",
-                                                  0,
-                                                  fee_claimed,
-                                                  &issue->fees.refresh,
-                                                  1);
+          qs = report_amount_arithmetic_inconsistency ("melt fee",
+                                                       0,
+                                                       fee_claimed,
+                                                       &issue->fees.refresh,
+                                                       1);
+          if (0 > qs)
+            return qs;
         }
         break;
       }
@@ -548,11 +558,13 @@ check_transaction_history_for_deposit (
                               fee_claimed))
         {
           /* Disagreement in fee structure between exchange and auditor! */
-          report_amount_arithmetic_inconsistency ("refund fee",
-                                                  0,
-                                                  fee_claimed,
-                                                  &issue->fees.refund,
-                                                  1);
+          qs = report_amount_arithmetic_inconsistency ("refund fee",
+                                                       0,
+                                                       fee_claimed,
+                                                       &issue->fees.refund,
+                                                       1);
+          if (0 > qs)
+            return qs;
         }
         break;
       }
@@ -623,11 +635,13 @@ check_transaction_history_for_deposit (
                               fee_claimed))
         {
           /* Disagreement in fee structure between exchange and auditor! */
-          report_amount_arithmetic_inconsistency ("refund fee",
-                                                  0,
-                                                  fee_claimed,
-                                                  &issue->fees.refund,
-                                                  1);
+          qs = report_amount_arithmetic_inconsistency ("refund fee",
+                                                       0,
+                                                       fee_claimed,
+                                                       &issue->fees.refund,
+                                                       1);
+          if (0 > qs)
+            return qs;
         }
         break;
       }
@@ -674,11 +688,13 @@ check_transaction_history_for_deposit (
                                        &merchant_loss))
     {
       /* refunds above deposits? Bad! */
-      report_coin_arithmetic_inconsistency ("refund (merchant)",
-                                            coin_pub,
-                                            merchant_gain,
-                                            &merchant_loss,
-                                            1);
+      qs = report_coin_arithmetic_inconsistency ("refund (merchant)",
+                                                 coin_pub,
+                                                 merchant_gain,
+                                                 &merchant_loss,
+                                                 1);
+      if (0 > qs)
+        return qs;
       /* For the overall aggregation, we should not count this
          as a NEGATIVE contribution as that is not allowed; so
          let's count it as zero as that's the best we can do. */
@@ -704,11 +720,13 @@ check_transaction_history_for_deposit (
                                      &refunds))
   {
     /* refunds above expenditures? Bad! */
-    report_coin_arithmetic_inconsistency ("refund (balance)",
-                                          coin_pub,
-                                          &expenditures,
-                                          &refunds,
-                                          1);
+    qs = report_coin_arithmetic_inconsistency ("refund (balance)",
+                                               coin_pub,
+                                               &expenditures,
+                                               &refunds,
+                                               1);
+    if (0 > qs)
+      return qs;
   }
   else
   {
@@ -717,15 +735,15 @@ check_transaction_history_for_deposit (
                                &issue->value))
     {
       /* spent > value */
-      report_coin_arithmetic_inconsistency ("spend",
-                                            coin_pub,
-                                            &spent,
-                                            &issue->value,
-                                            -1);
+      qs = report_coin_arithmetic_inconsistency ("spend",
+                                                 coin_pub,
+                                                 &spent,
+                                                 &issue->value,
+                                                 -1);
+      if (0 > qs)
+        return qs;
     }
   }
-
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Final merchant gain after refunds is %s\n",
               TALER_amount2s (deposit_gain));
@@ -734,7 +752,7 @@ check_transaction_history_for_deposit (
               TALER_B2S (coin_pub),
               TALER_amount2s (merchant_gain),
               GNUNET_h2s (&h_contract_terms->hash));
-  return GNUNET_OK;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -780,15 +798,22 @@ wire_transfer_information_cb (
   struct TALER_PaytoHashP hpt;
   uint64_t etag_out;
 
+  if (0 > wcc->qs)
+    return;
   TALER_payto_hash (account_pay_uri,
                     &hpt);
   if (0 !=
       GNUNET_memcmp (&hpt,
                      h_payto))
   {
-    report_row_inconsistency ("wire_targets",
-                              rowid,
-                              "h-payto does not match payto URI");
+    qs = report_row_inconsistency ("wire_targets",
+                                   rowid,
+                                   "h-payto does not match payto URI");
+    if (0 > qs)
+    {
+      wcc->qs = qs;
+      return;
+    }
   }
   /* Obtain coin's transaction history */
   /* TODO: could use 'start' mechanism to only fetch transactions
@@ -809,44 +834,62 @@ wire_transfer_information_cb (
                                                &h_denom_pub,
                                                &tl);
   }
-  if ( (qs < 0) ||
-       (NULL == tl) )
+  if (0 > qs)
   {
     wcc->qs = qs;
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "no transaction history for coin claimed in aggregation");
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
+    return;
+  }
+  if (NULL == tl)
+  {
+    qs = report_row_inconsistency ("aggregation",
+                                   rowid,
+                                   "no transaction history for coin claimed in aggregation");
+    if (0 > qs)
+      wcc->qs = qs;
     return;
   }
   qs = TALER_ARL_edb->get_known_coin (TALER_ARL_edb->cls,
                                       coin_pub,
                                       &coin);
-  if (qs <= 0)
+  if (0 > qs)
   {
-    /* this should be a foreign key violation at this point! */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     wcc->qs = qs;
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "could not get coin details for coin claimed in aggregation");
+    return;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    /* this should be a foreign key violation at this point! */
+    qs = report_row_inconsistency ("aggregation",
+                                   rowid,
+                                   "could not get coin details for coin claimed in aggregation");
+    if (0 > qs)
+      wcc->qs = qs;
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
     return;
   }
   qs = TALER_ARL_get_denomination_info_by_hash (&coin.denom_pub_hash,
                                                 &issue);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (0 > qs)
+  {
+    wcc->qs = qs;
+    TALER_denom_sig_free (&coin.denom_sig);
+    TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                               tl);
+    return;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     TALER_denom_sig_free (&coin.denom_sig);
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
-    if (0 == qs)
-      report_row_inconsistency ("aggregation",
-                                rowid,
-                                "could not find denomination key for coin claimed in aggregation");
-    else
+    qs = report_row_inconsistency ("aggregation",
+                                   rowid,
+                                   "could not find denomination key for coin claimed in aggregation");
+    if (0 > qs)
       wcc->qs = qs;
     return;
   }
@@ -870,7 +913,11 @@ wire_transfer_information_cb (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      wcc->qs = qs;
+      TALER_denom_sig_free (&coin.denom_sig);
+      TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                                 tl);
+      return;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (aggregation_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (aggregation_total_bad_sig_loss),
@@ -878,27 +925,32 @@ wire_transfer_information_cb (
     TALER_denom_sig_free (&coin.denom_sig);
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
-    report_row_inconsistency ("deposit",
-                              rowid,
-                              "coin denomination signature invalid");
-    return;
+    qs = report_row_inconsistency ("deposit",
+                                   rowid,
+                                   "coin denomination signature invalid");
+    if (0 > qs)
+    {
+      wcc->qs = qs;
+      return;
+    }
   }
   TALER_denom_sig_free (&coin.denom_sig);
   GNUNET_assert (NULL != issue); /* mostly to help static analysis */
   /* Check transaction history to see if it supports aggregate
      valuation */
-  if (GNUNET_OK !=
-      check_transaction_history_for_deposit (coin_pub,
-                                             h_contract_terms,
-                                             merchant_pub,
-                                             issue,
-                                             tl,
-                                             &computed_value,
-                                             &total_deposit_without_refunds))
+  qs = check_transaction_history_for_deposit (
+    coin_pub,
+    h_contract_terms,
+    merchant_pub,
+    issue,
+    tl,
+    &computed_value,
+    &total_deposit_without_refunds);
+  if (0 > qs)
   {
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    wcc->qs = qs;
     return;
   }
   TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
@@ -914,14 +966,17 @@ wire_transfer_information_cb (
                                        coin_value,
                                        deposit_fee))
     {
-      wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-      report_amount_arithmetic_inconsistency (
+      qs = report_amount_arithmetic_inconsistency (
         "aggregation (fee structure)",
         rowid,
         coin_value,
         deposit_fee,
         -1);
-      return;
+      if (0 > qs)
+      {
+        wcc->qs = qs;
+        return;
+      }
     }
     if (0 !=
         TALER_amount_cmp (&total_deposit_without_refunds,
@@ -930,21 +985,31 @@ wire_transfer_information_cb (
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Expected coin contribution of %s to aggregate\n",
                   TALER_amount2s (&coin_value_without_fee));
-      report_amount_arithmetic_inconsistency (
+      qs = report_amount_arithmetic_inconsistency (
         "aggregation (contribution)",
         rowid,
         &coin_value_without_fee,
         &total_deposit_without_refunds,
         -1);
+      if (0 > qs)
+      {
+        wcc->qs = qs;
+        return;
+      }
     }
   }
   /* Check other details of wire transfer match */
   if (0 != strcmp (account_pay_uri,
                    wcc->payto_uri))
   {
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "target of outgoing wire transfer do not match hash of wire from deposit");
+    qs = report_row_inconsistency ("aggregation",
+                                   rowid,
+                                   "target of outgoing wire transfer do not match hash of wire from deposit");
+    if (0 > qs)
+    {
+      wcc->qs = qs;
+      return;
+    }
   }
   if (GNUNET_TIME_timestamp_cmp (exec_time,
                                  !=,
@@ -952,9 +1017,14 @@ wire_transfer_information_cb (
   {
     /* This should be impossible from database constraints */
     GNUNET_break (0);
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "date given in aggregate does not match wire transfer date");
+    qs = report_row_inconsistency ("aggregation",
+                                   rowid,
+                                   "date given in aggregate does not match wire transfer date");
+    if (0 > qs)
+    {
+      wcc->qs = qs;
+      return;
+    }
   }
 
   /* Add coin's contribution to total aggregate value */
@@ -1072,7 +1142,8 @@ get_wire_fee (struct AggregationContext *ac,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      ac->qs = qs;
+      return NULL;
     }
   }
   if ((NULL != wfi->next) &&
@@ -1093,7 +1164,8 @@ get_wire_fee (struct AggregationContext *ac,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      ac->qs = qs;
+      return NULL;
     }
   }
   return &wfi->fees.wire;
@@ -1139,9 +1211,11 @@ check_wire_out_cb (void *cls,
               GNUNET_TIME_timestamp2s (date));
   if (NULL == (method = TALER_payto_get_method (payto_uri)))
   {
-    report_row_inconsistency ("wire_out",
-                              rowid,
-                              "specified wire address lacks method");
+    qs = report_row_inconsistency ("wire_out",
+                                   rowid,
+                                   "specified wire address lacks method");
+    if (0 > qs)
+      ac->qs = qs;
     return GNUNET_OK;
   }
 
@@ -1182,6 +1256,11 @@ check_wire_out_cb (void *cls,
     wire_fee = get_wire_fee (ac,
                              method,
                              date);
+    if (0 > ac->qs)
+    {
+      GNUNET_free (method);
+      return GNUNET_SYSERR;
+    }
     if (NULL == wire_fee)
     {
       report_row_inconsistency ("wire-fee",
@@ -1195,13 +1274,19 @@ check_wire_out_cb (void *cls,
                                             &wcc.total_deposits,
                                             wire_fee))
     {
-      report_amount_arithmetic_inconsistency (
+      qs = report_amount_arithmetic_inconsistency (
         "wire out (fee structure)",
         rowid,
         &wcc.total_deposits,
         wire_fee,
         -1);
       /* If fee arithmetic fails, we just assume the fee is zero */
+      if (0 > qs)
+      {
+        ac->qs = qs;
+        GNUNET_free (method);
+        return GNUNET_SYSERR;
+      }
       final_amount = wcc.total_deposits;
     }
   }
@@ -1258,6 +1343,7 @@ check_wire_out_cb (void *cls,
       struct TALER_AUDITORDB_WireOutInconsistency woi = {
         .row_id = rowid,
         .destination_account = (char *) payto_uri,
+        .diagnostic = "aggregated amount does not match expectations",
         .expected = final_amount,
         .claimed = *amount
       };
@@ -1269,7 +1355,8 @@ check_wire_out_cb (void *cls,
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling
+        ac->qs = qs;
+        return GNUNET_SYSERR;
       }
     }
     return GNUNET_OK;

@@ -2521,6 +2521,7 @@ analyze_coins (void *cls)
     TALER_ARL_GET_AB (coins_reported_emergency_risk_by_count),
     TALER_ARL_GET_AB (coins_reported_emergency_risk_by_amount),
     TALER_ARL_GET_AB (coins_emergencies_loss),
+    TALER_ARL_GET_AB (coins_emergencies_loss_by_count),
     TALER_ARL_GET_AB (total_refresh_hanging),
     NULL);
   if (0 > qs)
@@ -2660,6 +2661,7 @@ analyze_coins (void *cls)
     TALER_ARL_SET_AB (coins_reported_emergency_risk_by_count),
     TALER_ARL_SET_AB (coins_reported_emergency_risk_by_amount),
     TALER_ARL_SET_AB (coins_emergencies_loss),
+    TALER_ARL_SET_AB (coins_emergencies_loss_by_count),
     TALER_ARL_SET_AB (total_refresh_hanging),
     NULL);
   if (0 > qs)
@@ -2684,6 +2686,7 @@ analyze_coins (void *cls)
     TALER_ARL_SET_AB (coins_reported_emergency_risk_by_count),
     TALER_ARL_SET_AB (coins_reported_emergency_risk_by_amount),
     TALER_ARL_SET_AB (coins_emergencies_loss),
+    TALER_ARL_SET_AB (coins_emergencies_loss_by_count),
     TALER_ARL_SET_AB (total_refresh_hanging),
     NULL);
   if (0 > qs)

@@ -1761,8 +1761,6 @@ function test_23() {
     echo -n "Testing inconsistency detection... "
 
     call_endpoint "wire-out-inconsistency"
-    call_endpoint "balances" "aggregator_total_wire_out_delta_plus"
-    call_endpoint "balances" "aggregator_total_wire_out_delta_minus"
 
     jq -e .wire_out_inconsistency[0] \
        < ${MY_TMP_DIR}/wire-out-inconsistency.json \
@@ -1775,15 +1773,18 @@ function test_23() {
         exit_fail "Row wrong"
     fi
 
-    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_wire_out_delta_plus.json)
+    call_endpoint "balances" "aggregation_total_wire_out_delta_plus"
+    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_wire_out_delta_plus.json)
     if [ "$AMOUNT" != "TESTKUDOS:0" ]
     then
-        exit_fail "Reported amount wrong: $AMOUNT"
+        exit_fail "Reported amount wrong: '$AMOUNT'"
     fi
-    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_wire_out_delta_minus.json)
+
+    call_endpoint "balances" "aggregation_total_wire_out_delta_minus"
+    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_wire_out_delta_minus.json)
     if [ "$AMOUNT" != "TESTKUDOS:0.01" ]
     then
-        exit_fail "Reported total amount wrong: $AMOUNT"
+        exit_fail "Reported total amount wrong: '$AMOUNT'"
     fi
     echo "PASS"
 
@@ -1795,9 +1796,6 @@ function test_23() {
     audit_only
     post_audit
 
-    call_endpoint "balances" "aggregator_total_wire_out_delta_plus"
-    call_endpoint "balances" "aggregator_total_wire_out_delta_minus"
-
     echo -n "Testing inconsistency detection... "
 
     jq -e .wire_out_inconsistencies[0] < ${MY_TMP_DIR}/test-audit-aggregation.out > /dev/null || exit_fail "Wire out inconsistency not detected"
@@ -1807,12 +1805,16 @@ function test_23() {
     then
         exit_fail "Row wrong"
     fi
-    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_wire_out_delta_minus.json)
+
+    call_endpoint "balances" "aggregation_total_wire_out_delta_minus"
+    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_wire_out_delta_minus.json)
     if [ "$AMOUNT" != "TESTKUDOS:0" ]
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
-    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_wire_out_delta_plus.json)
+
+    call_endpoint "balances" "aggregation_total_wire_out_delta_plus"
+    AMOUNT=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_wire_out_delta_plus.json)
     if [ "$AMOUNT" != "TESTKUDOS:0.01" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1887,7 +1889,6 @@ function test_25() {
 
     call_endpoint "coin-inconsistency"
     call_endpoint "emergency"
-    call_endpoint "balances" "aggregator_total_coin_delta_minus"
     call_endpoint "balances" "coins_reported_emergency_risk_by_amount"
 
 #TODO: doesn't find any
@@ -1903,7 +1904,8 @@ function test_25() {
     #   > /dev/null \
     #    || exit_fail "Denomination value emergency NOT reported"
 #TODO: find's only wrong amount
-    #AMOUNT=$(jq -er .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_coin_delta_minus.json)
+    call_endpoint "balances" "aggregation_total_coin_delta_minus"
+    #AMOUNT=$(jq -er .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_coin_delta_minus.json)
     #if [ "$AMOUNT" = "TESTKUDOS:0" ]
     #then
     #    exit_fail "Expected non-zero total inconsistency amount from coins"
@@ -2030,8 +2032,6 @@ function test_28() {
     check_auditor_running
 
     call_endpoint "bad-sig-losses"
-    call_endpoint "row-inconsistency"
-    call_endpoint "balances" "aggregator_total_bad_sig_loss"
 
     echo -n "Testing inconsistency detection... "
     LOSS=$(jq -r .bad_sig_losses[0].loss < ${MY_TMP_DIR}/bad-sig-losses.json)
@@ -2045,6 +2045,8 @@ function test_28() {
     then
         exit_fail "Wrong operation, got $OP"
     fi
+
+    call_endpoint "row-inconsistency"
     TAB=$(jq -r .row_inconsistency[0].row_table < ${MY_TMP_DIR}/row-inconsistency.json)
     if [ "$TAB" != "deposit" ]
     then
@@ -2223,30 +2225,16 @@ function test_33() {
     run_audit aggregator drain
     check_auditor_running
 
-    call_endpoint "emergency"
-    call_endpoint "deposit-confirmation"
-    call_endpoint "emergency-by-count"
-    call_endpoint "bad-sig-losses"
-    call_endpoint "balances" "coin_irregular_loss"
-    call_endpoint "balances" "aggregator_total_bad_sig_loss"
-    call_endpoint "balances" "reserves_total_bad_sig_loss"
-    call_endpoint "balances" "aggregator_total_arithmetic_delta_plus"
-    call_endpoint "balances" "aggregator_total_arithmetic_delta_minus"
-    call_endpoint "balances" "coins_total_arithmetic_delta_plus"
-    call_endpoint "balances" "coins_total_arithmetic_delta_minus"
-    call_endpoint "balances" "reserves_total_arithmetic_delta_plus"
-    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
-    call_endpoint "balances"
-    call_endpoint "amount-arithmetic-inconsistency"
-    call_endpoint "wire-out-inconsistency"
-
     echo "Checking output"
     # if an emergency was detected, that is a bug and we should fail
     echo -n "Test for emergencies... "
+    call_endpoint "emergency"
     jq -e .emergency[0] < ${MY_TMP_DIR}/emergency.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
     echo -n "Test for deposit confirmation emergencies... "
+    call_endpoint "deposit-confirmation"
     jq -e .deposit_confirmation[0] < ${MY_TMP_DIR}/deposit-confirmation.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
     echo -n "Test for emergencies by count... "
+    call_endpoint "emergency-by-count"
     jq -e .emergency_by_count[0] < ${MY_TMP_DIR}/emergency-by-count.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
     echo -n "Test for wire inconsistencies... "
@@ -2264,18 +2252,22 @@ function test_33() {
     # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
     # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
-    echo PASS
+    echo "PASS"
 
-    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_bad_sig_loss.json)
+    echo "Testing for aggregation bad sig loss"
+    call_endpoint "balances" "aggregation_total_bad_sig_loss"
+    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_bad_sig_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
     fi
+    call_endpoint "balances" "coin_irregular_loss"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/coin_irregular_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
     fi
+    call_endpoint "balances" "reserves_total_bad_sig_loss"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/reserves_total_bad_sig_loss.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
@@ -2308,34 +2300,40 @@ function test_33() {
     #then
     #    exit_fail "Expected total misattribution in wrong, got $WIRED"
     #fi
-    echo PASS
+    echo "PASS"
 
     echo -n "Checking for unexpected arithmetic differences "
-    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_arithmetic_delta_plus.json)
+    call_endpoint "balances" "aggregation_total_arithmetic_delta_plus"
+    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
     fi
-    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregator_total_arithmetic_delta_minus.json)
+    call_endpoint "balances" "aggregation_total_arithmetic_delta_minus"
+    LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/aggregation_total_arithmetic_delta_minus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
     fi
+    call_endpoint "balances" "coins_total_arithmetic_delta_plus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/coins_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
     fi
+    call_endpoint "balances" "coins_total_arithmetic_delta_minus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/coins_total_arithmetic_delta_minus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
     fi
+    call_endpoint "balances" "reserves_total_arithmetic_delta_plus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/reserves_total_arithmetic_delta_plus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
     fi
+    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
     LOSS=$(jq -r .balances[0].balance_value < ${MY_TMP_DIR}/reserves_total_arithmetic_delta_minus.json)
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
@@ -2349,6 +2347,7 @@ function test_33() {
     #fi
 
 #TODO: fix AAI
+    call_endpoint "amount-arithmetic-inconsistency"
 #    jq -e .amount_arithmetic_inconsistency[0] \
 #       < ${MY_TMP_DIR}/amount-arithmetic-inconsistency.json \
 #       > /dev/null \
@@ -2364,6 +2363,7 @@ function test_33() {
     echo "PASS"
 
     echo -n "Checking for unexpected wire out differences "
+    call_endpoint "wire-out-inconsistency"
     jq -e .wire_out_inconsistency[0] \
        < ${MY_TMP_DIR}/wire-out-inconsistency.json \
        > /dev/null \
