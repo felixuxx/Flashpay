@@ -913,7 +913,7 @@ check_profit_drain (struct ReserveOutInfo *roi)
                   roi->details.credit_account_uri))
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .row_id = serial,
+      .wire_out_row_id = serial,
       .destination_account = (char *) roi->details.credit_account_uri,
       .diagnostic = "profit drain wired to invalid account",
       .expected = roi->details.amount,
@@ -942,7 +942,7 @@ check_profit_drain (struct ReserveOutInfo *roi)
                         &roi->details.amount))
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .row_id = roi->details.serial_id,
+      .wire_out_row_id = roi->details.serial_id,
       .destination_account = (char *) roi->details.credit_account_uri,
       .diagnostic = "incorrect amount drained to correct account",
       .expected = roi->details.amount,
@@ -1020,9 +1020,9 @@ complain_out_not_found (void *cls,
 
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .row_id = roi->details.serial_id,
       .destination_account = (char *) roi->details.credit_account_uri,
       .diagnostic = "missing justification for outgoing wire transfer",
+      .wire_out_row_id = roi->details.serial_id,
       .expected = zero,
       .claimed = roi->details.amount
     };
@@ -1129,7 +1129,7 @@ wire_out_cb (
        we should count the wire transfer as entirely spurious, and
        additionally consider the justified wire transfer as missing. */
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .row_id = rowid,
+      .wire_out_row_id = rowid,
       .destination_account = (char *) payto_uri,
       .diagnostic = "receiver account mismatch",
       .expected = *amount,

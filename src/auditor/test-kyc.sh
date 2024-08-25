@@ -342,7 +342,7 @@ function run_audit () {
             -L DEBUG \
             -c "${CONF}" \
             drain TESTKUDOS:0.1 \
-            exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
+            exchange-account-1 payto://iban/DE360679?receiver-name=Exchange+Drain \
             upload \
             2> "${MY_TMP_DIR}/taler-exchange-offline-drain.log" \
             || exit_fail "offline draining failed"

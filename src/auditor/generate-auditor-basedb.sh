@@ -80,7 +80,7 @@ curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external
 echo " DONE"
 
 echo -n "Setting up merchant account ..."
-FORTYTHREE="payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"
+FORTYTHREE="payto://iban/DE474361?receiver-name=Merchant43"
 STATUS=$(curl -H "Content-Type: application/json" -X POST \
     "${MERCHANT_URL}private/accounts" \
     -d '{"payto_uri":"'"$FORTYTHREE"'"}' \
@@ -90,6 +90,16 @@ if [ "$STATUS" != "200" ]
 then
     exit_fail "Expected 200 OK. Got: $STATUS"
 fi
+echo " DONE"
+
+echo -n "Setting up libeufin merchant account ..."
+libeufin-bank create-account \
+              --config="${CONF}" \
+              --name="Merchant43" \
+              --username="Merchant43" \
+              --password="X" \
+              --payto_uri="payto://iban/DE474361?receiver-name=Merchant43"
+
 echo " DONE"
 
 # delete existing wallet database

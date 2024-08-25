@@ -124,6 +124,7 @@ function pre_audit () {
         exit_skip "Failed to launch libeufin-bank"
     fi
     echo " DONE"
+
     if [ "${1:-no}" = "aggregator" ]
     then
         echo -n "Running exchange aggregator ..."
@@ -357,7 +358,7 @@ function run_audit () {
             -L DEBUG \
             -c "${CONF}" \
             drain TESTKUDOS:0.1 \
-            exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
+            exchange-account-1 payto://iban/DE360679?receiver-name=Exchange+Drain \
             upload \
             2> "${MY_TMP_DIR}/taler-exchange-offline-drain.log" \
             || exit_fail "offline draining failed"
@@ -1137,7 +1138,7 @@ function test_9() {
     #exit 0
     #OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
     #OLD_ACC=$(echo 'SELECT "incomingPaytoUri" FROM TalerIncomingPayments WHERE payment='"'$OLD_ID';" | psql "${DB}" -Aqt)
-    #echo "UPDATE TalerIncomingPayments SET \"incomingPaytoUri\"='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" \
+    #echo "UPDATE TalerIncomingPayments SET \"incomingPaytoUri\"='payto://iban/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" \
     #    | psql "${DB}" -q
 
     run_audit
@@ -1234,7 +1235,7 @@ function test_11() {
     #    | psql "${DB}" -q
     # Now populate the TWG table that accounts for outgoing payments, in
     # order to let /history/outgoing return one result.
-    #echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/""$OTHER_IBAN""?receiver-name=Forty+Two')" \
+    #echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/""$OTHER_IBAN""?receiver-name=Forty+Two')" \
     #    | psql "${DB}" -q
 
     run_audit
@@ -2025,7 +2026,7 @@ function test_27() {
  #   # point to any record.  That's only needed to set a non null value.
  #   echo -e "INSERT INTO PaymentInitiations (\"bankAccount\",\"preparationDate\",\"submissionDate\",sum,currency,\"endToEndId\",\"paymentInformationId\",\"instructionId\",subject,\"creditorIban\",\"creditorBic\",\"creditorName\",submitted,\"messageId\",\"rawConfirmation\") VALUES (1,$(date +%s),$(( $(date +%s) + 2)),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two',false,1,2)" \
  #       | psql "${DB}" -q
- #   echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" \
+ #   echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/$OTHER_IBAN?receiver-name=Forty+Two')" \
  #       | psql "${DB}" -q
  #   launch_libeufin
  #   audit_only
