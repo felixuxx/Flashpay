@@ -287,8 +287,10 @@ parse_aml_decisions (
                                    &decision->h_payto),
       GNUNET_JSON_spec_uint64 ("rowid",
                                &decision->rowid),
-      GNUNET_JSON_spec_string ("justification",
-                               &decision->justification),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_string ("justification",
+                                 &decision->justification),
+        NULL),
       GNUNET_JSON_spec_timestamp ("decision_time",
                                   &decision->decision_time),
       GNUNET_JSON_spec_mark_optional (
