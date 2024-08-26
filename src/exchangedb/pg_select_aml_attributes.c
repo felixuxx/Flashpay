@@ -145,6 +145,17 @@ TEH_PG_select_aml_attributes (
            "   AND kyc_attributes_serial_id > $2"
            " ORDER BY kyc_attributes_serial_id ASC"
            " LIMIT $3");
+  PREPARE (pg,
+           "select_aml_attributes_dec",
+           "SELECT"
+           " kyc_attributes_serial_id"
+           ",collection_time"
+           ",encrypted_attributes"
+           " FROM kyc_attributes"
+           " WHERE h_payto=$1"
+           "   AND kyc_attributes_serial_id < $2"
+           " ORDER BY kyc_attributes_serial_id DESC"
+           " LIMIT $3");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              stmt,
                                              params,

@@ -569,17 +569,13 @@ function test_0() {
     then
         exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
     fi
-    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
 
+    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
     LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_arithmetic_delta_minus.json")
     if [ "$LOSS" != "TESTKUDOS:0" ]
     then
         exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
     fi
-
-#    jq -e .amount_arithmetic_inconsistency[0] < "${MY_TMP_DIR}/test-audit-aggregation.json" > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
-#    jq -e .amount_arithmetic_inconsistency[0] < "${MY_TMP_DIR}/test-audit-coins.json" > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
-#    jq -e .amount_arithmetic_inconsistency[0] < "${MY_TMP_DIR}/test-audit-reserves.json" > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
     echo "PASS"
 
     echo -n "Checking for unexpected wire out differences "
@@ -617,57 +613,25 @@ function test_1() {
         < "${MY_TMP_DIR}/emergency-by-count.json" \
         > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
-    #echo -n "Test for wire inconsistencies... "
-    #jq -e .wire_out_amount_inconsistencies[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-    #jq -e .reserve_in_amount_inconsistencies[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-    #jq -e .misattribution_inconsistencies[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
-    #jq -e .row_inconsistencies[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    && exit_fail "Unexpected row inconsistency detected in ordinary run"
-    #jq -e .row_minor_inconsistencies[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-    #jq -e .wire_format_inconsistencies[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+    echo -n "Test for wire inconsistencies... "
+    call_endpoint "denomination-key-validity-withdraw-inconsistency"
+    jq -e .denomination_key_validity_withdraw_inconsistency[0] < "${MY_TMP_DIR}/denomination-key-validity-withdraw-inconsistency.json" > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
+    echo "PASS"
 
     # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
     # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
-    echo "PASS"
-
     echo -n "Check for lag detection... "
-
     # Check wire transfer lag reported (no aggregator!)
-    # NOTE: This test is EXPECTED to fail for ~1h after
-    # re-generating the test database as we do not
-    # report lag of less than 1h (see GRACE_PERIOD in
-    # taler-helper-auditor-wire.c)
-    #jq -e .lag_details[0] \
-    #   < test-audit-wire.json" \
-    #   > /dev/null \
-    #    || exit_fail "Lag not detected in run without aggregator"
-#
-    #LAG=$(jq -r .total_amount_lag < test-audit-wire.json")
-    #if [ "$LAG" = "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total lag to be non-zero"
-    #fi
+    call_endpoint "balances"
+    call_endpoint "balances" "total_amount_lag"
+    LAG=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/total_amount_lag.json")
+    if [ "$LAG" = "TESTKUDOS:0" ]
+    then
+        exit_fail "Failed to detect lag"
+    fi
     echo "PASS"
-#
-#
+
     #echo -n "Test for wire amounts... "
     #WIRED=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
     #if [ "$WIRED" != "TESTKUDOS:0" ]
@@ -2033,13 +1997,7 @@ function test_27() {
  #   then
  #       exit_fail "Amount wrong, got ${AMOUNT}"
  #   fi
-#
- #   AMOUNT=$(jq -r .total_wire_format_amount < test-audit-wire.json")
- #   if [ "${AMOUNT}" != "TESTKUDOS:1" ]
- #   then
- #       exit_fail "Wrong total wire format amount, got $AMOUNT"
- #   fi
-#
+ #
  #   # cannot easily undo aggregator, hence full reload
  #   full_reload
 }
