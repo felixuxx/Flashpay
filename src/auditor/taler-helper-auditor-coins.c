@@ -70,6 +70,7 @@ static TALER_ARL_DEF_AB (total_escrowed);
 static TALER_ARL_DEF_AB (coin_irregular_loss);
 static TALER_ARL_DEF_AB (coin_melt_fee_revenue);
 static TALER_ARL_DEF_AB (coin_deposit_fee_revenue);
+static TALER_ARL_DEF_AB (coin_deposit_fee_loss);
 static TALER_ARL_DEF_AB (coin_refund_fee_revenue);
 static TALER_ARL_DEF_AB (total_recoup_loss);
 
@@ -1952,9 +1953,9 @@ refund_cb (void *cls,
                         &issue->fees.refund);
   if (full_refund)
   {
-    TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (coin_deposit_fee_revenue),
-                               &TALER_ARL_USE_AB (coin_deposit_fee_revenue),
-                               &issue->fees.deposit);
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_deposit_fee_loss),
+                          &TALER_ARL_USE_AB (coin_deposit_fee_loss),
+                          &issue->fees.deposit);
   }
   return GNUNET_OK;
 }
@@ -2047,9 +2048,9 @@ purse_refund_coin_cb (
                 TALER_amount2s (&ds->dcd.denom_balance));
   }
   /* update total deposit fee balance */
-  TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (coin_deposit_fee_revenue),
-                             &TALER_ARL_USE_AB (coin_deposit_fee_revenue),
-                             &issue->fees.deposit);
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_deposit_fee_loss),
+                        &TALER_ARL_USE_AB (coin_deposit_fee_loss),
+                        &issue->fees.deposit);
 
   return GNUNET_OK;
 }
@@ -2748,6 +2749,7 @@ analyze_coins (void *cls)
     TALER_ARL_GET_AB (coin_irregular_loss),
     TALER_ARL_GET_AB (coin_melt_fee_revenue),
     TALER_ARL_GET_AB (coin_deposit_fee_revenue),
+    TALER_ARL_GET_AB (coin_deposit_fee_loss),
     TALER_ARL_GET_AB (coin_refund_fee_revenue),
     TALER_ARL_GET_AB (total_recoup_loss),
     TALER_ARL_GET_AB (coins_total_arithmetic_delta_plus),
@@ -2776,66 +2778,12 @@ analyze_coins (void *cls)
   }
   if (0 > cc.qs)
     return cc.qs;
-  /* process refunds */
-  if (0 >
-      (qs = TALER_ARL_edb->select_refunds_above_serial_id (
-         TALER_ARL_edb->cls,
-         TALER_ARL_USE_PP (coins_refund_serial_id),
-         &refund_cb,
-         &cc)))
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-  if (0 > cc.qs)
-    return cc.qs;
-  /* process purse_refunds */
-  if (0 >
-      (qs = TALER_ARL_edb->select_purse_decisions_above_serial_id (
-         TALER_ARL_edb->cls,
-         TALER_ARL_USE_PP (coins_purse_refunds_serial_id),
-         true, /* only go for refunds! */
-         &purse_refund_cb,
-         &cc)))
-  {
-
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-  if (0 > cc.qs)
-    return cc.qs;
-
   /* process recoups */
   if (0 >
       (qs = TALER_ARL_edb->select_recoup_refresh_above_serial_id (
          TALER_ARL_edb->cls,
          TALER_ARL_USE_PP (coins_recoup_refresh_serial_id),
          &recoup_refresh_cb,
-         &cc)))
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-  if (0 > cc.qs)
-    return cc.qs;
-  if (0 >
-      (qs = TALER_ARL_edb->select_recoup_above_serial_id (
-         TALER_ARL_edb->cls,
-         TALER_ARL_USE_PP (coins_recoup_serial_id),
-         &recoup_cb,
-         &cc)))
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-  if (0 > cc.qs)
-    return cc.qs;
-  /* process refreshes */
-  if (0 >
-      (qs = TALER_ARL_edb->select_refreshes_above_serial_id (
-         TALER_ARL_edb->cls,
-         TALER_ARL_USE_PP (coins_melt_serial_id),
-         &refresh_session_cb,
          &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2869,6 +2817,58 @@ analyze_coins (void *cls)
   }
   if (0 > cc.qs)
     return cc.qs;
+  /* process refunds */
+  if (0 >
+      (qs = TALER_ARL_edb->select_refunds_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_USE_PP (coins_refund_serial_id),
+         &refund_cb,
+         &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > cc.qs)
+    return cc.qs;
+  /* process purse_refunds */
+  if (0 >
+      (qs = TALER_ARL_edb->select_purse_decisions_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_USE_PP (coins_purse_refunds_serial_id),
+         true, /* only go for refunds! */
+         &purse_refund_cb,
+         &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > cc.qs)
+    return cc.qs;
+  /* process refreshes */
+  if (0 >
+      (qs = TALER_ARL_edb->select_refreshes_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_USE_PP (coins_melt_serial_id),
+         &refresh_session_cb,
+         &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > cc.qs)
+    return cc.qs;
+  if (0 >
+      (qs = TALER_ARL_edb->select_recoup_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_USE_PP (coins_recoup_serial_id),
+         &recoup_cb,
+         &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > cc.qs)
+    return cc.qs;
   /* sync 'cc' back to disk */
   cc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   GNUNET_CONTAINER_multihashmap_iterate (cc.denom_summaries,
@@ -2891,6 +2891,7 @@ analyze_coins (void *cls)
     TALER_ARL_SET_AB (coin_irregular_loss),
     TALER_ARL_SET_AB (coin_melt_fee_revenue),
     TALER_ARL_SET_AB (coin_deposit_fee_revenue),
+    TALER_ARL_SET_AB (coin_deposit_fee_loss),
     TALER_ARL_SET_AB (coin_refund_fee_revenue),
     TALER_ARL_SET_AB (total_recoup_loss),
     TALER_ARL_SET_AB (coins_total_arithmetic_delta_plus),
@@ -2916,6 +2917,7 @@ analyze_coins (void *cls)
     TALER_ARL_SET_AB (coin_irregular_loss),
     TALER_ARL_SET_AB (coin_melt_fee_revenue),
     TALER_ARL_SET_AB (coin_deposit_fee_revenue),
+    TALER_ARL_SET_AB (coin_deposit_fee_loss),
     TALER_ARL_SET_AB (coin_refund_fee_revenue),
     TALER_ARL_SET_AB (total_recoup_loss),
     TALER_ARL_SET_AB (coins_total_arithmetic_delta_plus),
