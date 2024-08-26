@@ -33,7 +33,7 @@
 #include "taler_crypto_lib.h"
 
 #if MHD_VERSION < 0x00097701
-#define MHD_create_response_from_buffer_static (s,b)            \
+#define MHD_create_response_from_buffer_static(s, b)            \
         MHD_create_response_from_buffer (s,                     \
                                          (const char *) b,      \
                                          MHD_RESPMEM_PERSISTENT)
