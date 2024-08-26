@@ -371,7 +371,8 @@ setup_key (struct Key *key,
                    "%s/%llu",
                    keydir,
                    (unsigned long long) (key->anchor.abs_time.abs_value_us
-                                         / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
+                                         / GNUNET_TIME_UNIT_SECONDS.rel_value_us
+                                         ));
   if (GNUNET_OK !=
       GNUNET_DISK_fn_write (key->filename,
                             &priv,
@@ -1118,20 +1119,11 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
-  GNUNET_free (secname);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
-  {
-    char *secname;
-
-    GNUNET_asprintf (&secname,
-                     "%s-secmod-eddsa",
-                     section);
-    global_ret = TES_listen_start (cfg,
-                                   secname,
-                                   &cb);
-    GNUNET_free (secname);
-  }
+  global_ret = TES_listen_start (cfg,
+                                 secname,
+                                 &cb);
   if (0 != global_ret)
     return;
   /* Load keys */

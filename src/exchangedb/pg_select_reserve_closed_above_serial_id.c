@@ -22,7 +22,7 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_get_reserve_history.h"
+#include "pg_select_reserve_closed_above_serial_id.h"
 #include "plugin_exchangedb_common.h"
 #include "pg_helper.h"
 

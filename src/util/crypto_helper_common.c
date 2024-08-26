@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
+#include "crypto_helper_common.h"
 
 
 enum GNUNET_GenericReturnValue

@@ -30,7 +30,7 @@
 #include "taler_signatures.h"
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd_keys.h"
-#include "taler-exchange-httpd_kyc-wallet.h"
+#include "taler-exchange-httpd_kyc-info.h"
 #include "taler-exchange-httpd_responses.h"
 
 
@@ -221,18 +221,18 @@ generate_reply (struct KycPoller *kyp,
                                   &measures),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_GenericReturnValue res;
+  enum GNUNET_GenericReturnValue ret;
   const char *ename;
   unsigned int eline;
   json_t *kris;
   size_t i;
   json_t *mi;
 
-  res = GNUNET_JSON_parse (jmeasures,
+  ret = GNUNET_JSON_parse (jmeasures,
                            spec,
                            &ename,
                            &eline);
-  if (GNUNET_OK != res)
+  if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
     return TALER_MHD_reply_with_ec (
@@ -255,11 +255,11 @@ generate_reply (struct KycPoller *kyp,
     };
     json_t *kri;
 
-    res = GNUNET_JSON_parse (mi,
+    ret = GNUNET_JSON_parse (mi,
                              ispec,
                              &ename,
                              &eline);
-    if (GNUNET_OK != res)
+    if (GNUNET_OK != ret)
     {
       GNUNET_break (0);
       json_decref (kris);

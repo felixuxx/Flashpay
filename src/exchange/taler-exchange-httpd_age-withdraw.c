@@ -966,6 +966,8 @@ TEH_handler_age_withdraw (
         size_t num_coins = json_array_size (j_denom_hs);
         const char *error = NULL;
 
+        _Static_assert ((TALER_MAX_FRESH_COINS < INT_MAX / TALER_CNC_KAPPA),
+                        "TALER_MAX_FRESH_COINS too large");
         if (0 == num_coins)
           error = "denoms_h must not be empty";
         else if (num_coins != json_array_size (j_blinded_coin_evs))
@@ -978,9 +980,6 @@ TEH_handler_age_withdraw (
            */
           error =
             "maximum number of coins that can be withdrawn has been exceeded";
-
-        _Static_assert ((TALER_MAX_FRESH_COINS < INT_MAX / TALER_CNC_KAPPA),
-                        "TALER_MAX_FRESH_COINS too large");
 
         if (NULL != error)
         {

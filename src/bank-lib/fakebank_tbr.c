@@ -27,6 +27,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
+#include "fakebank_tbr.h"
 #include "fakebank_tbr_get_history.h"
 #include "fakebank_tbr_get_root.h"
 

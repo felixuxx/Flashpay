@@ -459,12 +459,6 @@ TALER_CRYPTO_contract_decrypt_for_deposit (
   size_t econtract_size)
 {
   const struct TALER_PurseContractPublicKeyP *purse_pub = econtract;
-
-  if (econtract_size < sizeof (*purse_pub))
-  {
-    GNUNET_break_op (0);
-    return NULL;
-  }
   struct GNUNET_HashCode key;
   void *xhdr;
   size_t hdr_size;
@@ -474,6 +468,11 @@ TALER_CRYPTO_contract_decrypt_for_deposit (
   json_error_t json_error;
   json_t *ret;
 
+  if (econtract_size < sizeof (*purse_pub))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdh_eddsa (&contract_priv->ecdhe_priv,
                                 &purse_pub->eddsa_pub,

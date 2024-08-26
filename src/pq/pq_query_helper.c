@@ -668,14 +668,14 @@ qconv_array (
   same_sized = (0 != meta->same_size);
 
 #define RETURN_UNLESS(cond) \
-  do { \
-    if (! (cond)) \
-    { \
-      GNUNET_break ((cond)); \
-      noerror = false; \
-      goto DONE; \
-    } \
-  } while (0)
+        do { \
+          if (! (cond)) \
+          { \
+            GNUNET_break ((cond)); \
+            noerror = false; \
+            goto DONE; \
+          } \
+        } while (0)
 
   /* Calculate sizes and check bounds */
   {

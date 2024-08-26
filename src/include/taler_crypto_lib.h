@@ -2539,7 +2539,7 @@ TALER_token_use_blinding_secret_create (
  * @return singleton to use for RSA blinding
  */
 const struct TALER_TokenUseMerchantValues *
-TALER_token_blind_input_rsa_singleton ();
+TALER_token_blind_input_rsa_singleton (void);
 
 
 /**

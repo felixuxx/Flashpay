@@ -466,9 +466,8 @@ TEH_handler_reserves_history (
   if (NULL == rh)
   {
     /* 204: empty history */
-    resp = MHD_create_response_from_buffer (0,
-                                            "",
-                                            MHD_RESPMEM_PERSISTENT);
+    resp = MHD_create_response_from_buffer_static (0,
+                                                   "");
     http_status = MHD_HTTP_NO_CONTENT;
   }
   else

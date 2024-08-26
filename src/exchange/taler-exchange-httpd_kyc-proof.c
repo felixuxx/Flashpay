@@ -198,7 +198,7 @@ proof_finish (
  * @param message extended message to return
  * @return MHD response object
  */
-struct MHD_Response *
+static struct MHD_Response *
 make_html_error (struct MHD_Connection *connection,
                  const char *template,
                  unsigned int *http_status,

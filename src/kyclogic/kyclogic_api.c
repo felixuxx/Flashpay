@@ -862,7 +862,7 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
  * @param measure_name name of measure to find
  * @return NULL if not found, otherwise the measure
  */
-const struct TALER_KYCLOGIC_Measure *
+static const struct TALER_KYCLOGIC_Measure *
 find_measure (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const char *measure_name)
@@ -1511,7 +1511,6 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
 {
   bool voluntary;
   enum TALER_KYCLOGIC_CheckType ct;
-  char *form_name = NULL;
   char *description = NULL;
   json_t *description_i18n = NULL;
   char *requires = NULL;
@@ -1728,7 +1727,6 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
   return GNUNET_OK;
 fail:
-  GNUNET_free (form_name);
   GNUNET_free (description);
   json_decref (description_i18n);
   GNUNET_free (requires);

@@ -29,6 +29,7 @@
 #include "taler_kyclogic_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_aml-decision.h"
 
 
 MHD_RESULT

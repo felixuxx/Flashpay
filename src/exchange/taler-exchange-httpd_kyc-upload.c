@@ -579,9 +579,8 @@ TEH_handler_kyc_upload (
     }
 
     empty_response
-      = MHD_create_response_from_buffer (0,
-                                         "",
-                                         MHD_RESPMEM_PERSISTENT);
+      = MHD_create_response_from_buffer_static (0,
+                                                "");
     uc->kat = TEH_kyc_finished (
       &rc->async_scope_id,
       legi_process_row,

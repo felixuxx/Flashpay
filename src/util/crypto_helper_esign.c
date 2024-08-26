@@ -466,7 +466,7 @@ more:
             (const struct TALER_CRYPTO_EddsaSignFailure *) buf;
 
           finished = true;
-          ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          ec = (enum TALER_ErrorCode) (int) ntohl (sf->ec);
           break;
         }
       case TALER_HELPER_EDDSA_MT_AVAIL:

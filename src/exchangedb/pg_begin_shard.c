@@ -94,9 +94,9 @@ TEH_PG_begin_shard (void *cls,
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         {
-          enum GNUNET_DB_QueryStatus qs;
+          enum GNUNET_DB_QueryStatus qsz;
           struct GNUNET_TIME_Absolute now;
-          struct GNUNET_PQ_QueryParam params[] = {
+          struct GNUNET_PQ_QueryParam iparams[] = {
             GNUNET_PQ_query_param_string (job_name),
             GNUNET_PQ_query_param_absolute_time (&now),
             GNUNET_PQ_query_param_uint64 (start_row),
@@ -112,15 +112,15 @@ TEH_PG_begin_shard (void *cls,
                    " WHERE job_name=$1"
                    "   AND start_row=$3"
                    "   AND end_row=$4");
-          qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                   "reclaim_shard",
-                                                   params);
-          switch (qs)
+          qsz = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                                    "reclaim_shard",
+                                                    iparams);
+          switch (qsz)
           {
           case GNUNET_DB_STATUS_HARD_ERROR:
             GNUNET_break (0);
             TEH_PG_rollback (pg);
-            return qs;
+            return qsz;
           case GNUNET_DB_STATUS_SOFT_ERROR:
             GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                         "Serialization error on claiming open shard\n");

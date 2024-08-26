@@ -223,7 +223,6 @@ TALER_iban_validate (const char *iban)
   char *nbuf;
   unsigned long long dividend;
   unsigned long long remainder;
-  unsigned int i;
   unsigned int j;
 
   if (NULL == iban)
@@ -255,7 +254,8 @@ TALER_iban_validate (const char *iban)
     return msg;
   }
   nbuf = GNUNET_malloc ((len * 2) + 1);
-  for (i = 0, j = 0; i < len; i++)
+  j = 0;
+  for (unsigned int i = 0; i < len; i++)
   {
     if (isalpha ((unsigned char) ibancpy[i]))
     {

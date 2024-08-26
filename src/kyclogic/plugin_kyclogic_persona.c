@@ -1073,9 +1073,8 @@ proof_post_conversion_cb (void *cls,
     return;
   }
   expiration = GNUNET_TIME_relative_to_absolute (ph->pd->validity);
-  resp = MHD_create_response_from_buffer (0,
-                                          "",
-                                          MHD_RESPMEM_PERSISTENT);
+  resp = MHD_create_response_from_buffer_static (0,
+                                                 "");
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_LOCATION,
@@ -1565,9 +1564,8 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
     expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
   else
     expiration = GNUNET_TIME_UNIT_ZERO_ABS;
-  resp = MHD_create_response_from_buffer (0,
-                                          "",
-                                          MHD_RESPMEM_PERSISTENT);
+  resp = MHD_create_response_from_buffer_static (0,
+                                                 "");
   TALER_MHD_add_global_headers (resp);
   wh->cb (wh->cb_cls,
           wh->process_row,

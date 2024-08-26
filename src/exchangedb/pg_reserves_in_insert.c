@@ -327,18 +327,18 @@ TEH_PG_reserves_in_insert (
                                     &duplicate),
         GNUNET_PQ_result_spec_end
       };
-      enum GNUNET_DB_QueryStatus qs;
+      enum GNUNET_DB_QueryStatus qsi;
 
-      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                     "reserves_update",
-                                                     params,
-                                                     rs);
-      if (qs < 0)
+      qsi = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                      "reserves_update",
+                                                      params,
+                                                      rs);
+      if (qsi < 0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Failed to update reserves (%d)\n",
-                    qs);
-        results[i] = qs;
+                    qsi);
+        results[i] = qsi;
         goto finished;
       }
       results[i] = duplicate

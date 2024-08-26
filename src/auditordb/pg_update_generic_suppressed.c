@@ -13,12 +13,10 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-#include "pg_update_closure_lags.h"
+#include "pg_update_generic_suppressed.h"
 
 struct Preparations
 {

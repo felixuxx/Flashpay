@@ -25,6 +25,7 @@
 #include <microhttpd.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_terms.h"
 
 /**
  * Our terms of service.

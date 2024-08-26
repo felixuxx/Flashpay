@@ -28,6 +28,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
+#include "fakebank_twg_history.h"
 #include "fakebank_common_lookup.h"
 #include "fakebank_common_lp.h"
 #include "fakebank_common_parser.h"
@@ -288,7 +289,7 @@ finish:
                                    0);
   }
   {
-    json_t *h = hc->history;
+    json_t *jh = hc->history;
 
     hc->history = NULL;
     return TALER_MHD_REPLY_JSON_PACK (
@@ -299,7 +300,7 @@ finish:
         acc_payto_uri),
       GNUNET_JSON_pack_array_steal (
         "outgoing_transactions",
-        h));
+        jh));
   }
 }
 
@@ -564,7 +565,7 @@ finish:
                                    0);
   }
   {
-    json_t *h = hc->history;
+    json_t *jh = hc->history;
 
     hc->history = NULL;
     return TALER_MHD_REPLY_JSON_PACK (
@@ -575,6 +576,6 @@ finish:
         acc_payto_uri),
       GNUNET_JSON_pack_array_steal (
         "incoming_transactions",
-        h));
+        jh));
   }
 }

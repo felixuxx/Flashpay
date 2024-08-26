@@ -21,9 +21,9 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
+#include "crypto_helper_common.h"
 #include "taler-exchange-secmod-rsa.h"
 #include <poll.h>
-#include "crypto_helper_common.h"
 
 
 struct TALER_CRYPTO_RsaDenominationHelper
@@ -553,7 +553,7 @@ more:
           const struct TALER_CRYPTO_SignFailure *sf =
             (const struct TALER_CRYPTO_SignFailure *) buf;
 
-          ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          ec = (enum TALER_ErrorCode) (int) ntohl (sf->ec);
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Signing failed!\n");
           finished = true;
@@ -808,7 +808,7 @@ more:
             const struct TALER_CRYPTO_SignFailure *sf =
               (const struct TALER_CRYPTO_SignFailure *) buf;
 
-            ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+            ec = (enum TALER_ErrorCode) (int) ntohl (sf->ec);
             GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                         "Signing %u failed with status %d!\n",
                         wpos,

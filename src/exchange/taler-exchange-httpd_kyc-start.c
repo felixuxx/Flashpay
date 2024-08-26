@@ -30,7 +30,7 @@
 #include "taler_signatures.h"
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd_keys.h"
-#include "taler-exchange-httpd_kyc-wallet.h"
+#include "taler-exchange-httpd_kyc-start.h"
 #include "taler-exchange-httpd_responses.h"
 
 

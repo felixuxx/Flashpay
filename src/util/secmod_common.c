@@ -133,7 +133,7 @@ TES_transmit (int sock,
 
 
 struct GNUNET_NETWORK_Handle *
-TES_open_socket (const char *unixpath)
+TES_open_socket (const char *my_unixpath)
 {
   int sock;
   mode_t old_umask;
@@ -159,25 +159,25 @@ TES_open_socket (const char *unixpath)
     struct sockaddr_un un;
 
     if (GNUNET_OK !=
-        GNUNET_DISK_directory_create_for_file (unixpath))
+        GNUNET_DISK_directory_create_for_file (my_unixpath))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                                 "mkdir(dirname)",
-                                unixpath);
+                                my_unixpath);
     }
-    if (0 != unlink (unixpath))
+    if (0 != unlink (my_unixpath))
     {
       if (ENOENT != errno)
         GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                                   "unlink",
-                                  unixpath);
+                                  my_unixpath);
     }
     memset (&un,
             0,
             sizeof (un));
     un.sun_family = AF_UNIX;
     strncpy (un.sun_path,
-             unixpath,
+             my_unixpath,
              sizeof (un.sun_path) - 1);
     if (0 != bind (sock,
                    (const struct sockaddr *) &un,
@@ -185,7 +185,7 @@ TES_open_socket (const char *unixpath)
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                                 "bind",
-                                unixpath);
+                                my_unixpath);
       GNUNET_break (0 == close (sock));
       goto cleanup;
     }
@@ -196,7 +196,7 @@ TES_open_socket (const char *unixpath)
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                                 "listen",
-                                unixpath);
+                                my_unixpath);
       GNUNET_break (GNUNET_OK ==
                     GNUNET_NETWORK_socket_close (ret));
       ret = NULL;
@@ -218,14 +218,17 @@ TES_wake_clients (void)
        NULL != client;
        client = client->next)
   {
-    GNUNET_assert (sizeof (num) ==
 #ifdef __linux__
+    GNUNET_assert (sizeof (num) ==
                    write (client->esock,
-#else
-                   write (client->esock_in,
-#endif
                           &num,
                           sizeof (num)));
+#else
+    GNUNET_assert (sizeof (num) ==
+                   write (client->esock_in,
+                          &num,
+                          sizeof (num)));
+#endif
   }
   GNUNET_assert (0 == pthread_mutex_unlock (&TES_clients_lock));
 }
@@ -249,7 +252,7 @@ TES_read_work (void *cls,
     recv_size = recv (client->csock,
                       &buf[off],
                       sizeof (client->iobuf) - off,
-                              0);
+                      0);
     if (-1 == recv_size)
     {
       if ( (0 == off) &&
@@ -334,23 +337,27 @@ TES_await_ready (struct TES_Client *client)
                          "poll");
   for (int i = 0; i<2; i++)
   {
+    if (
 #ifdef __linux__
-    if ( (pfds[i].fd == client->esock) &&
+      (pfds[i].fd == client->esock) &&
 #else
-    if ( (pfds[i].fd == client->esock_out) &&
+      (pfds[i].fd == client->esock_out) &&
 #endif
-         (POLLIN == pfds[i].revents) )
+      (POLLIN == pfds[i].revents) )
     {
       uint64_t num;
 
-      GNUNET_assert (sizeof (num) ==
 #ifdef __linux__
+      GNUNET_assert (sizeof (num) ==
                      read (client->esock,
-#else
-                     read (client->esock_out,
-#endif
                            &num,
                            sizeof (num)));
+#else
+      GNUNET_assert (sizeof (num) ==
+                     read (client->esock_out,
+                           &num,
+                           sizeof (num)));
+#endif
       return true;
     }
   }

@@ -701,6 +701,8 @@ parse_path (json_t *obj,
   {
     char *end_bracket = strchr (bracket,
                                 ']');
+    json_t *array;
+
     if (NULL == end_bracket)
     {
       GNUNET_free (id);
@@ -708,12 +710,10 @@ parse_path (json_t *obj,
       return GNUNET_SYSERR;
     }
     *end_bracket = '\0';
-
     *bracket = '\0';
     bracket++;
-
-    json_t *array = json_object_get (obj,
-                                     next_id);
+    array = json_object_get (obj,
+                             next_id);
     if (0 == strcmp (bracket,
                      "*"))
     {
@@ -808,7 +808,7 @@ TALER_JSON_get_error_code (const json_t *json)
     return TALER_EC_INVALID;
   }
   if (json_is_integer (jc))
-    return (enum TALER_ErrorCode) json_integer_value (jc);
+    return (enum TALER_ErrorCode) (int) json_integer_value (jc);
   GNUNET_break_op (0);
   return TALER_EC_INVALID;
 }

@@ -24,16 +24,7 @@
 #include "taler_pq_lib.h"
 #include "pg_preflight.h"
 #include "pg_helper.h"
-
-
-/**
- * Connect to the database if the connection does not exist yet.
- *
- * @param pg the plugin-specific state
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TEH_PG_internal_setup (struct PostgresClosure *pg);
+#include "plugin_exchangedb_postgres.h"
 
 
 enum GNUNET_GenericReturnValue

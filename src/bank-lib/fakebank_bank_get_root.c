@@ -46,10 +46,9 @@ TALER_FAKEBANK_bank_get_root_ (struct TALER_FAKEBANK_Handle *h,
 #define HELLOMSG "Hello, Fakebank!"
 
   (void) h;
-  resp = MHD_create_response_from_buffer (
+  resp = MHD_create_response_from_buffer_static (
     strlen (HELLOMSG),
-    HELLOMSG,
-    MHD_RESPMEM_MUST_COPY);
+    HELLOMSG);
   ret = MHD_queue_response (connection,
                             MHD_HTTP_OK,
                             resp);

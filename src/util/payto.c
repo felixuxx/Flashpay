@@ -347,8 +347,6 @@ TALER_payto_validate (const char *payto_uri)
     if (NULL == strchr (ALLOWED_CHARACTERS,
                         (int) payto_uri[i]))
     {
-      char *ret;
-
       GNUNET_asprintf (&ret,
                        "Encountered invalid character `%c' at offset %u in payto URI `%s'",
                        payto_uri[i],

@@ -169,16 +169,32 @@ TALER_PQ_query_param_array_blinded_coin_hash (
 
 
 /**
- * Generate query parameter for an array of GNUNET_HashCode
+ * Generate query parameter for an array of
+ * `struct GNUNET_HashCode`.
  *
  * @param num number of elements in @e hash_codes
- * @param hashes array of GNUNET_HashCode
+ * @param hashes array of hashes
  * @param db context for the db-connection
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_array_hash_code (
   size_t num,
   const struct GNUNET_HashCode *hashes,
+  struct GNUNET_PQ_Context *db);
+
+
+/**
+ * Generate query parameter for an array of
+ * `struct TALER_DenominationHashP`
+ *
+ * @param num number of elements in @e hash_codes
+ * @param hashes array of GNUNET_HashCode
+ * @param db context for the db-connection
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_array_denom_hash (
+  size_t num,
+  const struct TALER_DenominationHashP *denom_hs,
   struct GNUNET_PQ_Context *db);
 
 

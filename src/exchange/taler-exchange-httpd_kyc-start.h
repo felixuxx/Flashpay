@@ -26,18 +26,25 @@
 
 
 /**
+ * Resume suspended requests for /kyc-start.
+ */
+void
+TEH_kyc_start_cleanup (void);
+
+
+/**
  * Handle a "/kyc-start" request.
  *
  * @param rc request to handle
  * @param root uploaded JSON data (empty by current API)
- * @param args empty array
+ * @param args array with the ID
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_kyc_start (
   struct TEH_RequestContext *rc,
   const json_t *root,
-  const char *const args[]);
+  const char *const args[1]);
 
 
 #endif

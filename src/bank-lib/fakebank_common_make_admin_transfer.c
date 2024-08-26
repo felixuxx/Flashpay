@@ -28,6 +28,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
+#include "fakebank_common_make_admin_transfer.h"
 #include "fakebank_common_lookup.h"
 #include "fakebank_common_lp.h"
 #include "fakebank_common_transact.h"

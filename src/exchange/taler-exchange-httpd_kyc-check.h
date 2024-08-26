@@ -36,7 +36,7 @@
 MHD_RESULT
 TEH_handler_kyc_check (
   struct TEH_RequestContext *rc,
-  const char *const args[]);
+  const char *const args[1]);
 
 
 /**

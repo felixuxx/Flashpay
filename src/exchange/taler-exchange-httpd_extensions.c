@@ -48,11 +48,11 @@ extension_update_event_cb (void *cls,
                            const void *extra,
                            size_t extra_size)
 {
-  (void) cls;
   uint32_t nbo_type;
   enum TALER_Extension_Type type;
   const struct TALER_Extension *extension;
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received extensions update event\n");
 
@@ -67,7 +67,7 @@ extension_update_event_cb (void *cls,
   GNUNET_assert (NULL != extra);
 
   nbo_type = *(uint32_t *) extra;
-  type = (enum TALER_Extension_Type) ntohl (nbo_type);
+  type = (enum TALER_Extension_Type) (int) ntohl (nbo_type);
 
   /* Get the corresponding extension */
   extension = TALER_extensions_get_by_type (type);

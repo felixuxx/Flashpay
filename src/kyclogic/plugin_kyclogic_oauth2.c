@@ -1057,9 +1057,8 @@ converted_proof_cb (void *cls,
     ph->provider_user_id = GNUNET_strdup (id);
   }
   ph->status = TALER_KYCLOGIC_STATUS_SUCCESS;
-  ph->response = MHD_create_response_from_buffer (0,
-                                                  "",
-                                                  MHD_RESPMEM_PERSISTENT);
+  ph->response = MHD_create_response_from_buffer_static (0,
+                                                         "");
   GNUNET_assert (NULL != ph->response);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (
@@ -1612,9 +1611,8 @@ wh_return_not_found (void *cls)
   struct MHD_Response *response;
 
   wh->task = NULL;
-  response = MHD_create_response_from_buffer (0,
-                                              "",
-                                              MHD_RESPMEM_PERSISTENT);
+  response = MHD_create_response_from_buffer_static (0,
+                                                     "");
   wh->cb (wh->cb_cls,
           0LLU,
           NULL,

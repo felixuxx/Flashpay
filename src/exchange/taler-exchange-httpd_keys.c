@@ -956,7 +956,7 @@ TEH_wire_update_state (void)
  *
  * @return NULL on error
  */
-struct WireStateHandle *
+static struct WireStateHandle *
 get_wire_state (void)
 {
   struct WireStateHandle *old_wsh;

@@ -47,6 +47,8 @@ extract_amount (void *cls,
 {
   struct TALER_Amount *amount = dst;
   const char *currency = cls;
+  uint64_t frac;
+
   if ((sizeof (struct TALER_Amount) != *dst_size) ||
       (SQLITE_INTEGER != sqlite3_column_type (result,
                                               (int) column)) ||
@@ -61,8 +63,8 @@ extract_amount (void *cls,
                   TALER_CURRENCY_LEN);
   amount->value = (uint64_t) sqlite3_column_int64 (result,
                                                    (int) column);
-  uint64_t frac = (uint64_t) sqlite3_column_int64 (result,
-                                                   (int) column + 1);
+  frac = (uint64_t) sqlite3_column_int64 (result,
+                                          (int) column + 1);
   amount->fraction = (uint32_t) frac;
   return GNUNET_YES;
 }

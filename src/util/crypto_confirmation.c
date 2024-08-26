@@ -29,7 +29,7 @@
  * How long is a TOTP code valid?
  */
 #define TOTP_VALIDITY_PERIOD GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_SECONDS, 30)
+          GNUNET_TIME_UNIT_SECONDS, 30)
 
 /**
  * Range of time we allow (plus-minus).
@@ -132,6 +132,7 @@ TALER_rfc3548_base32decode (const char *val,
   {
     if ((rpos < val_size) && (vbit < 8))
     {
+      const char *p;
       char c = val[rpos++];
 
       if (c == '=')
@@ -144,7 +145,7 @@ TALER_rfc3548_base32decode (const char *val,
           break; /* Ok, 2x '=' padding is allowed */
         return -1; /* invalid padding */
       }
-      const char *p = strchr (decTable__, toupper (c));
+      p = strchr (decTable__, toupper (c));
       if (! p)
       {
         /* invalid character */

@@ -296,7 +296,7 @@ finish:
                                    0);
   }
   {
-    json_t *h = hc->history;
+    json_t *jh = hc->history;
 
     hc->history = NULL;
     return TALER_MHD_REPLY_JSON_PACK (
@@ -307,6 +307,6 @@ finish:
         acc_payto_uri),
       GNUNET_JSON_pack_array_steal (
         "incoming_transactions",
-        h));
+        jh));
   }
 }

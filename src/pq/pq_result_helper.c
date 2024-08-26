@@ -1162,13 +1162,13 @@ extract_array_generic (
   *((void **) dst) = NULL;
 
   #define FAIL_IF(cond) \
-  do { \
-    if ((cond)) \
-    { \
-      GNUNET_break (! (cond)); \
-      goto FAIL; \
-    } \
-  } while (0)
+          do { \
+            if ((cond)) \
+            { \
+              GNUNET_break (! (cond)); \
+              goto FAIL; \
+            } \
+          } while (0)
 
   col_num = PQfnumber (result, fname);
   FAIL_IF (0 > col_num);
@@ -1444,17 +1444,19 @@ TALER_PQ_result_spec_array_blinded_denom_sig (
                  GNUNET_PQ_get_oid_by_name (db,
                                             "bytea",
                                             &info->oid));
+  {
+    struct GNUNET_PQ_ResultSpec res = {
+      .conv = extract_array_generic,
+      .cleaner = array_cleanup,
+      .dst = (void *) denom_sigs,
+      .fname = name,
+      .cls = info
+    };
 
-  struct GNUNET_PQ_ResultSpec res = {
-    .conv = extract_array_generic,
-    .cleaner = array_cleanup,
-    .dst = (void *) denom_sigs,
-    .fname = name,
-    .cls = info
-  };
-  return res;
+    return res;
+  }
+}
 
-};
 
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_blinded_coin_hash (
@@ -1471,17 +1473,19 @@ TALER_PQ_result_spec_array_blinded_coin_hash (
                  GNUNET_PQ_get_oid_by_name (db,
                                             "bytea",
                                             &info->oid));
+  {
+    struct GNUNET_PQ_ResultSpec res = {
+      .conv = extract_array_generic,
+      .cleaner = array_cleanup,
+      .dst = (void *) h_coin_evs,
+      .fname = name,
+      .cls = info
+    };
 
-  struct GNUNET_PQ_ResultSpec res = {
-    .conv = extract_array_generic,
-    .cleaner = array_cleanup,
-    .dst = (void *) h_coin_evs,
-    .fname = name,
-    .cls = info
-  };
-  return res;
+    return res;
+  }
+}
 
-};
 
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_denom_hash (
@@ -1498,17 +1502,19 @@ TALER_PQ_result_spec_array_denom_hash (
                  GNUNET_PQ_get_oid_by_name (db,
                                             "bytea",
                                             &info->oid));
+  {
+    struct GNUNET_PQ_ResultSpec res = {
+      .conv = extract_array_generic,
+      .cleaner = array_cleanup,
+      .dst = (void *) denom_hs,
+      .fname = name,
+      .cls = info
+    };
 
-  struct GNUNET_PQ_ResultSpec res = {
-    .conv = extract_array_generic,
-    .cleaner = array_cleanup,
-    .dst = (void *) denom_hs,
-    .fname = name,
-    .cls = info
-  };
-  return res;
+    return res;
+  }
+}
 
-};
 
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_array_amount (
@@ -1535,15 +1541,17 @@ TALER_PQ_result_spec_array_amount (
                    currency,
                    clen);
   }
+  {
+    struct GNUNET_PQ_ResultSpec res = {
+      .conv = extract_array_generic,
+      .cleaner = array_cleanup,
+      .dst = (void *) amounts,
+      .fname = name,
+      .cls = info,
+    };
 
-  struct GNUNET_PQ_ResultSpec res = {
-    .conv = extract_array_generic,
-    .cleaner = array_cleanup,
-    .dst = (void *) amounts,
-    .fname = name,
-    .cls = info,
-  };
-  return res;
+    return res;
+  }
 }
 
 
@@ -1563,15 +1571,18 @@ TALER_PQ_result_spec_array_hash_code (
                  GNUNET_PQ_get_oid_by_name (db,
                                             "gnunet_hashcode",
                                             &info->oid));
+  {
+    struct GNUNET_PQ_ResultSpec res = {
+      .conv = extract_array_generic,
+      .cleaner = array_cleanup,
+      .dst = (void *) hashes,
+      .fname = name,
+      .cls = info,
+    };
 
-  struct GNUNET_PQ_ResultSpec res = {
-    .conv = extract_array_generic,
-    .cleaner = array_cleanup,
-    .dst = (void *) hashes,
-    .fname = name,
-    .cls = info,
-  };
-  return res;
+    return res;
+  }
 }
+
 
 /* end of pq_result_helper.c */

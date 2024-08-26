@@ -2601,10 +2601,10 @@ connection_done (void *cls,
 static void
 do_shutdown (void *cls)
 {
-  struct MHD_Daemon *mhd;
+  struct MHD_Daemon *my_mhd;
   (void) cls;
 
-  mhd = TALER_MHD_daemon_stop ();
+  my_mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
   TEH_age_withdraw_cleanup ();
   TEH_batch_withdraw_cleanup ();
@@ -2619,11 +2619,12 @@ do_shutdown (void *cls)
   TEH_kyc_check_cleanup ();
   TEH_kyc_info_cleanup ();
   TEH_kyc_proof_cleanup ();
+  TEH_kyc_start_cleanup ();
   TALER_KYCLOGIC_kyc_done ();
-  if (NULL != mhd)
+  if (NULL != my_mhd)
   {
-    MHD_stop_daemon (mhd);
-    mhd = NULL;
+    MHD_stop_daemon (my_mhd);
+    my_mhd = NULL;
   }
   TEH_wire_done ();
   TEH_extensions_done ();

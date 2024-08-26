@@ -225,13 +225,10 @@
 #include "pg_test_aml_officer.h"
 #include "pg_lookup_aml_officer.h"
 #include "pg_trigger_aml_process.h"
-// #include "pg_select_justification_for_missing_wire.h"
 #include "pg_lookup_kyc_requirement_by_row.h"
-// #include "pg_select_aml_history.h"
-// #include "pg_select_aml_process.h"
-// #include "pg_select_aml_threshold.h"
 #include "pg_insert_aml_decision.h"
 #include "pg_batch_ensure_coin_known.h"
+#include "plugin_exchangedb_postgres.h"
 
 /**
  * Set to 1 to enable Postgres auto_explain module. This will

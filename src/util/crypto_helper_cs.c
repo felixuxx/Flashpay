@@ -534,7 +534,7 @@ more:
           const struct TALER_CRYPTO_SignFailure *sf =
             (const struct TALER_CRYPTO_SignFailure *) buf;
 
-          ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          ec = (enum TALER_ErrorCode) (int) ntohl (sf->ec);
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Signing failed with status %d!\n",
                       ec);
@@ -757,7 +757,7 @@ more:
           const struct TALER_CRYPTO_RDeriveFailure *rdf =
             (const struct TALER_CRYPTO_RDeriveFailure *) buf;
 
-          ec = (enum TALER_ErrorCode) ntohl (rdf->ec);
+          ec = (enum TALER_ErrorCode) (int) ntohl (rdf->ec);
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "R derivation failed!\n");
           finished = true;
@@ -995,7 +995,7 @@ more:
             const struct TALER_CRYPTO_SignFailure *sf =
               (const struct TALER_CRYPTO_SignFailure *) buf;
 
-            ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+            ec = (enum TALER_ErrorCode) (int) ntohl (sf->ec);
             GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                         "Signing %u failed with status %d!\n",
                         wpos,
@@ -1238,7 +1238,7 @@ more:
             const struct TALER_CRYPTO_RDeriveFailure *rdf =
               (const struct TALER_CRYPTO_RDeriveFailure *) buf;
 
-            ec = (enum TALER_ErrorCode) ntohl (rdf->ec);
+            ec = (enum TALER_ErrorCode) (int) ntohl (rdf->ec);
             GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                         "R derivation %u failed with status %d!\n",
                         wpos,

@@ -14,7 +14,7 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_lookup_pending_legitimization.c
+ * @file exchangedb/pg_lookup_completed_legitimization.c
  * @brief Implementation of the lookup_pending_legitimization function for Postgres
  * @author Christian Grothoff
  */
@@ -22,7 +22,7 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_lookup_pending_legitimization.h"
+#include "pg_lookup_completed_legitimization.h"
 #include "pg_helper.h"
 
 

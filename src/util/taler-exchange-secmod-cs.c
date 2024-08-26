@@ -327,13 +327,13 @@ static int global_ret;
  * Time when the key update is executed.
  * Either the actual current time, or a pretended time.
  */
-static struct GNUNET_TIME_Timestamp now;
+static struct GNUNET_TIME_Timestamp global_now;
 
 /**
  * The time for the key update, as passed by the user
  * on the command line.
  */
-static struct GNUNET_TIME_Timestamp now_tmp;
+static struct GNUNET_TIME_Timestamp global_now_tmp;
 
 /**
  * Where do we store the keys?
@@ -1107,7 +1107,8 @@ setup_key (struct DenominationKey *dk,
                    keydir,
                    denom->section,
                    (unsigned long long) (dk->anchor.abs_time.abs_value_us
-                                         / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
+                                         / GNUNET_TIME_UNIT_SECONDS.rel_value_us
+                                         ));
   if (GNUNET_OK !=
       GNUNET_DISK_fn_write (dk->filename,
                             &priv,
@@ -2185,15 +2186,17 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
-  if (GNUNET_TIME_timestamp_cmp (now, !=, now_tmp))
+  if (GNUNET_TIME_timestamp_cmp (global_now,
+                                 !=,
+                                 global_now_tmp))
   {
     /* The user gave "--now", use it! */
-    now = now_tmp;
+    global_now = global_now_tmp;
   }
   else
   {
     /* get current time again, we may be timetraveling! */
-    now = GNUNET_TIME_timestamp_get ();
+    global_now = GNUNET_TIME_timestamp_get ();
   }
   GNUNET_asprintf (&secname,
                    "%s-secmod-cs",
@@ -2211,24 +2214,17 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
-  GNUNET_free (secname);
   if (GNUNET_OK !=
       load_durations (cfg))
   {
     global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_free (secname);
     return;
   }
-  {
-    char *secname;
-
-    GNUNET_asprintf (&secname,
-                     "%s-secmod-cs",
-                     section);
-    global_ret = TES_listen_start (cfg,
-                                   secname,
-                                   &cb);
-    GNUNET_free (secname);
-  }
+  global_ret = TES_listen_start (cfg,
+                                 secname,
+                                 &cb);
+  GNUNET_free (secname);
   if (0 != global_ret)
     return;
   sem_init (&worker_sem,
@@ -2258,7 +2254,7 @@ run (void *cls,
     struct LoadContext lc = {
       .cfg = cfg,
       .ret = GNUNET_OK,
-      .t = now
+      .t = global_now
     };
 
     GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
@@ -2312,7 +2308,7 @@ main (int argc,
                                     "time",
                                     "TIMESTAMP",
                                     "pretend it is a different time for the update",
-                                    &now_tmp),
+                                    &global_now_tmp),
     GNUNET_GETOPT_option_uint ('w',
                                "workers",
                                "COUNT",
@@ -2329,7 +2325,9 @@ main (int argc,
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
   TALER_OS_init ();
-  now_tmp = now = GNUNET_TIME_timestamp_get ();
+  global_now_tmp
+    = global_now
+      = GNUNET_TIME_timestamp_get ();
   ret = GNUNET_PROGRAM_run (argc, argv,
                             "taler-exchange-secmod-cs",
                             "Handle private CS key operations for a Taler exchange",

@@ -27,6 +27,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
+#include "fakebank_common_parser.h"
 
 
 enum GNUNET_GenericReturnValue

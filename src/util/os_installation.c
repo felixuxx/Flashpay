@@ -24,7 +24,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-
+#include "taler_util.h"
 
 /**
  * Default project data used for installation path detection
@@ -44,6 +44,7 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
   .is_gnu = 1,
   .gettext_domain = "taler",
   .gettext_path = NULL,
+  .agpl_url = "https://git.taler.net/"
 };
 
 

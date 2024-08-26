@@ -362,11 +362,10 @@ TALER_extensions_load_manifests (
 }
 
 
-/*
+/**
  * Policy related
  */
-
-static char *fulfillment2str[] =  {
+static const char *fulfillment2str[] =  {
   [TALER_PolicyFulfillmentInitial]      = "<init>",
   [TALER_PolicyFulfillmentReady]        = "Ready",
   [TALER_PolicyFulfillmentSuccess]      = "Success",

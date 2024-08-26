@@ -117,53 +117,49 @@ TALER_FAKEBANK_handle_transfer_ (
       json_decref (json);
       return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
     }
+    credit = TALER_xtalerbank_account_from_payto (credit_account);
+    if (NULL == credit)
     {
-      enum GNUNET_GenericReturnValue ret;
-
-      credit = TALER_xtalerbank_account_from_payto (credit_account);
-      if (NULL == credit)
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
-          credit_account);
-      }
-      ret = TALER_FAKEBANK_make_transfer_ (h,
-                                           account,
-                                           credit,
-                                           &amount,
-                                           &wtid,
-                                           base_url,
-                                           &uuid,
-                                           &row_id,
-                                           &ts);
-      if (GNUNET_OK != ret)
-      {
-        MHD_RESULT res;
-        char *uids;
-
-        GNUNET_break (0);
-        uids = GNUNET_STRINGS_data_to_string_alloc (&uuid,
-                                                    sizeof (uuid));
-        json_decref (json);
-        res = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_CONFLICT,
-                                          TALER_EC_BANK_TRANSFER_REQUEST_UID_REUSED,
-                                          uids);
-        GNUNET_free (uids);
-        return res;
-      }
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
-                  account,
-                  credit,
-                  TALER_B2S (&wtid),
-                  TALER_amount2s (&amount),
-                  base_url);
-      GNUNET_free (credit);
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
+        credit_account);
     }
+    ret = TALER_FAKEBANK_make_transfer_ (h,
+                                         account,
+                                         credit,
+                                         &amount,
+                                         &wtid,
+                                         base_url,
+                                         &uuid,
+                                         &row_id,
+                                         &ts);
+    if (GNUNET_OK != ret)
+    {
+      MHD_RESULT res;
+      char *uids;
+
+      GNUNET_break (0);
+      uids = GNUNET_STRINGS_data_to_string_alloc (&uuid,
+                                                  sizeof (uuid));
+      json_decref (json);
+      res = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_CONFLICT,
+                                        TALER_EC_BANK_TRANSFER_REQUEST_UID_REUSED,
+                                        uids);
+      GNUNET_free (uids);
+      return res;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
+                account,
+                credit,
+                TALER_B2S (&wtid),
+                TALER_amount2s (&amount),
+                base_url);
+    GNUNET_free (credit);
   }
   json_decref (json);
 

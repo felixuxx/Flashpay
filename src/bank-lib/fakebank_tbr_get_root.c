@@ -27,6 +27,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
+#include "fakebank_tbr_get_root.h"
 
 
 MHD_RESULT
@@ -38,10 +39,9 @@ TALER_FAKEBANK_tbr_get_root (struct TALER_FAKEBANK_Handle *h,
 #define HELLOMSG "Hello, Fakebank (Bank Revenue API here)!"
 
   (void) h;
-  resp = MHD_create_response_from_buffer (
+  resp = MHD_create_response_from_buffer_static (
     strlen (HELLOMSG),
-    HELLOMSG,
-    MHD_RESPMEM_MUST_COPY);
+    HELLOMSG);
   ret = MHD_queue_response (connection,
                             MHD_HTTP_OK,
                             resp);

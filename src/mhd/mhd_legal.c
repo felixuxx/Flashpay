@@ -191,8 +191,8 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   /* Default terms of service if none are configured */
   static struct Terms none = {
     .mime_type = "text/plain",
-    .terms = "not configured",
-    .language = "en",
+    .terms = (void *) "not configured",
+    .language = (void *) "en",
     .terms_size = strlen ("not configured")
   };
   struct MHD_Response *resp;

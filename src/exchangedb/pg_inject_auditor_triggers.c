@@ -24,6 +24,7 @@
 #include "taler_pq_lib.h"
 #include "pg_gc.h"
 #include "pg_helper.h"
+#include "pg_inject_auditor_triggers.h"
 
 
 /**

@@ -38,16 +38,6 @@ insert1 (struct PostgresClosure *pg,
   enum GNUNET_DB_QueryStatus qs;
   bool is_denom_pub_hash_null = false;
   bool is_age_hash_null = false;
-  PREPARE (pg,
-           "batch1_known_coin",
-           "SELECT"
-           " existed1 AS existed"
-           ",known_coin_id1 AS known_coin_id"
-           ",denom_pub_hash1 AS denom_hash"
-           ",age_commitment_hash1 AS h_age_commitment"
-           " FROM exchange_do_batch1_known_coin"
-           "  ($1, $2, $3, $4);"
-           );
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin[0].coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin[0].denom_pub_hash),
@@ -71,6 +61,16 @@ insert1 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
+  PREPARE (pg,
+           "batch1_known_coin",
+           "SELECT"
+           " existed1 AS existed"
+           ",known_coin_id1 AS known_coin_id"
+           ",denom_pub_hash1 AS denom_hash"
+           ",age_commitment_hash1 AS h_age_commitment"
+           " FROM exchange_do_batch1_known_coin"
+           "  ($1, $2, $3, $4);"
+           );
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch1_known_coin",
                                                  params,
@@ -140,21 +140,6 @@ insert2 (struct PostgresClosure *pg,
   enum GNUNET_DB_QueryStatus qs;
   bool is_denom_pub_hash_null[2] = {false, false};
   bool is_age_hash_null[2] = {false, false};
-
-  PREPARE (pg,
-           "batch2_known_coin",
-           "SELECT"
-           " existed1 AS existed"
-           ",known_coin_id1 AS known_coin_id"
-           ",denom_pub_hash1 AS denom_hash"
-           ",age_commitment_hash1 AS h_age_commitment"
-           ",existed2 AS existed2"
-           ",known_coin_id2 AS known_coin_id2"
-           ",denom_pub_hash2 AS denom_hash2"
-           ",age_commitment_hash2 AS h_age_commitment2"
-           " FROM exchange_do_batch2_known_coin"
-           "  ($1, $2, $3, $4, $5, $6, $7, $8);"
-           );
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin[0].coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin[0].denom_pub_hash),
@@ -195,6 +180,20 @@ insert2 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
+  PREPARE (pg,
+           "batch2_known_coin",
+           "SELECT"
+           " existed1 AS existed"
+           ",known_coin_id1 AS known_coin_id"
+           ",denom_pub_hash1 AS denom_hash"
+           ",age_commitment_hash1 AS h_age_commitment"
+           ",existed2 AS existed2"
+           ",known_coin_id2 AS known_coin_id2"
+           ",denom_pub_hash2 AS denom_hash2"
+           ",age_commitment_hash2 AS h_age_commitment2"
+           " FROM exchange_do_batch2_known_coin"
+           "  ($1, $2, $3, $4, $5, $6, $7, $8);"
+           );
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch2_known_coin",
                                                  params,
@@ -259,28 +258,6 @@ insert4 (struct PostgresClosure *pg,
   enum GNUNET_DB_QueryStatus qs;
   bool is_denom_pub_hash_null[4] = {false, false, false, false};
   bool is_age_hash_null[4] = {false, false, false, false};
-  PREPARE (pg,
-           "batch4_known_coin",
-           "SELECT"
-           " existed1 AS existed"
-           ",known_coin_id1 AS known_coin_id"
-           ",denom_pub_hash1 AS denom_hash"
-           ",age_commitment_hash1 AS h_age_commitment"
-           ",existed2 AS existed2"
-           ",known_coin_id2 AS known_coin_id2"
-           ",denom_pub_hash2 AS denom_hash2"
-           ",age_commitment_hash2 AS h_age_commitment2"
-           ",existed3 AS existed3"
-           ",known_coin_id3 AS known_coin_id3"
-           ",denom_pub_hash3 AS denom_hash3"
-           ",age_commitment_hash3 AS h_age_commitment3"
-           ",existed4 AS existed4"
-           ",known_coin_id4 AS known_coin_id4"
-           ",denom_pub_hash4 AS denom_hash4"
-           ",age_commitment_hash4 AS h_age_commitment4"
-           " FROM exchange_do_batch2_known_coin"
-           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);"
-           );
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin[0].coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin[0].denom_pub_hash),
@@ -355,6 +332,28 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
+  PREPARE (pg,
+           "batch4_known_coin",
+           "SELECT"
+           " existed1 AS existed"
+           ",known_coin_id1 AS known_coin_id"
+           ",denom_pub_hash1 AS denom_hash"
+           ",age_commitment_hash1 AS h_age_commitment"
+           ",existed2 AS existed2"
+           ",known_coin_id2 AS known_coin_id2"
+           ",denom_pub_hash2 AS denom_hash2"
+           ",age_commitment_hash2 AS h_age_commitment2"
+           ",existed3 AS existed3"
+           ",known_coin_id3 AS known_coin_id3"
+           ",denom_pub_hash3 AS denom_hash3"
+           ",age_commitment_hash3 AS h_age_commitment3"
+           ",existed4 AS existed4"
+           ",known_coin_id4 AS known_coin_id4"
+           ",denom_pub_hash4 AS denom_hash4"
+           ",age_commitment_hash4 AS h_age_commitment4"
+           " FROM exchange_do_batch2_known_coin"
+           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);"
+           );
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch4_known_coin",
                                                  params,

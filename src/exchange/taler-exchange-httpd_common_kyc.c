@@ -503,7 +503,7 @@ add_kyc_history_entry (
  * @param cb_cls closure for @a cb
  * @return handle to cancel the operation
  */
-struct TEH_KycAmlTrigger *
+static struct TEH_KycAmlTrigger *
 TEH_kyc_finished2 (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,

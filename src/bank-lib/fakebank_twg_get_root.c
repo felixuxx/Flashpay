@@ -27,6 +27,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "fakebank.h"
+#include "fakebank_twg_get_root.h"
 
 
 /**
@@ -46,10 +47,9 @@ TALER_FAKEBANK_twg_get_root_ (
 #define HELLOMSG "Hello, Fakebank (Taler Wire Gateway)!"
 
   (void) h;
-  resp = MHD_create_response_from_buffer (
+  resp = MHD_create_response_from_buffer_static (
     strlen (HELLOMSG),
-    HELLOMSG,
-    MHD_RESPMEM_MUST_COPY);
+    HELLOMSG);
   ret = MHD_queue_response (connection,
                             MHD_HTTP_OK,
                             resp);

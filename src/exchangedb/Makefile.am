@@ -101,7 +101,8 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_common.c plugin_exchangedb_common.h \
   pg_setup_wire_target.h pg_setup_wire_target.c \
   pg_compute_shard.h pg_compute_shard.c \
-  plugin_exchangedb_postgres.c pg_helper.h \
+  plugin_exchangedb_postgres.c plugin_exchangedb_postgres.h \
+  pg_helper.h \
   pg_reserves_update.h pg_reserves_update.c \
   pg_select_aggregation_amounts_for_kyc_check.h pg_select_aggregation_amounts_for_kyc_check.c \
   pg_lookup_wire_fee_by_time.h pg_lookup_wire_fee_by_time.c \

@@ -24,6 +24,7 @@
 #include "taler_mhd_lib.h"
 #include <gnunet/gnunet_mhd_compat.h>
 #include "taler-exchange-httpd.h"
+#include "taler-exchange-httpd_spa.h"
 
 
 /**
@@ -106,7 +107,7 @@ TEH_spa_init ()
  * Nicely shut down.
  */
 void __attribute__ ((destructor))
-get_spa_fini ()
+get_spa_fini (void)
 {
   if (NULL != kyc_spa)
   {

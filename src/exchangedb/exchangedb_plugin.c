@@ -20,7 +20,7 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
-#include "taler_exchangedb_plugin.h"
+#include "taler_exchangedb_lib.h"
 #include <ltdl.h>
 
 
