@@ -46,8 +46,6 @@ static enum GNUNET_DB_QueryStatus global_qs;
 /**
  * Run in test mode. Exit when idle instead of
  * going to sleep and waiting for more work.
- *
- * FIXME: not yet implemented!
  */
 static int test_mode;
 

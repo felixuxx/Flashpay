@@ -142,11 +142,6 @@ static struct WireAccount *wa_head;
 static struct WireAccount *wa_tail;
 
 /**
- * Last reserve_in seen.
- */
-// static TALER_ARL_DEF_PP (wire_reserve_in_id); // FIXME: new!
-
-/**
  * Amount that is considered "tiny"
  */
 static struct TALER_Amount tiny_amount;
@@ -167,11 +162,6 @@ static TALER_ARL_DEF_AB (total_bad_amount_in_minus);
  * destination when closing the reserve.
  */
 static TALER_ARL_DEF_AB (total_misattribution_in);
-
-/**
- * Total amount affected by wire format troubles.
- */
-static TALER_ARL_DEF_AB (total_wire_format_amount); // FIXME
 
 /**
  * Total amount credited to exchange accounts.
@@ -348,7 +338,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_SET_AB (total_bad_amount_in_plus),
     TALER_ARL_SET_AB (total_bad_amount_in_minus),
     TALER_ARL_SET_AB (total_misattribution_in),
-    TALER_ARL_SET_AB (total_wire_format_amount),
     NULL);
   if (0 > qs)
     goto handle_db_error;
@@ -358,7 +347,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_SET_AB (total_bad_amount_in_plus),
     TALER_ARL_SET_AB (total_bad_amount_in_minus),
     TALER_ARL_SET_AB (total_misattribution_in),
-    TALER_ARL_SET_AB (total_wire_format_amount),
     NULL);
   if (0 > qs)
     goto handle_db_error;
@@ -983,7 +971,6 @@ begin_transaction (void)
     TALER_ARL_GET_AB (total_bad_amount_in_plus),
     TALER_ARL_GET_AB (total_bad_amount_in_minus),
     TALER_ARL_GET_AB (total_misattribution_in),
-    TALER_ARL_GET_AB (total_wire_format_amount),
     NULL);
   switch (qs)
   {
