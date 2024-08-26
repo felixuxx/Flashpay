@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_bad_sig_losses.h"
 
 
@@ -71,17 +68,16 @@ bad_sig_losses_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_BadSigLosses dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-      GNUNET_PQ_result_spec_string ("operation",  &dc.operation),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("loss",  &dc.loss),
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &serial_id),
+      GNUNET_PQ_result_spec_string ("operation",
+                                    &dc.operation),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("loss",
+                                   &dc.loss),
       GNUNET_PQ_result_spec_auto_from_type ("operation_specific_pub",
                                             &dc.operation_specific_pub),
-
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -95,9 +91,7 @@ bad_sig_losses_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     serial_id,
                     &dc);
@@ -120,27 +114,13 @@ TAH_PG_get_bad_sig_losses (
   TALER_AUDITORDB_BadSigLossesCallback cb,
   void *cb_cls)
 {
-
+  struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   /*if true, does not filter for an operation specific key*/
   bool any_spec_pub = ! filter_spec_pub;
-
   /*if true, does not filter for an operation*/
-  bool any_op = true;
-  const char *o;
-
-  if (op != NULL)
-  {
-    any_op = false;
-    o = op;
-  }
-  else
-  {
-    o = "";
-  }
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
-  struct PostgresClosure *pg = cls;
+  bool any_op = (NULL == op) ? true : false;
+  const char *o = (NULL == op) ? "" : op;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
