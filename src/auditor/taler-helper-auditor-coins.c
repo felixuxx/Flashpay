@@ -1292,7 +1292,7 @@ reduce_denom_balance (struct DenominationSummary *dso,
               "New balance of denomination `%s' is %s\n",
               GNUNET_h2s (&dso->issue->denom_hash.hash),
               TALER_amount2s (&dso->dcd.denom_balance));
-  return qs;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
