@@ -43,12 +43,6 @@ static int test_mode;
 static int global_ret;
 
 /**
- * State of the current database transaction with
- * the auditor DB.
- */
-static enum GNUNET_DB_QueryStatus global_qs;
-
-/**
  * Last reserve_out / wire_out serial IDs seen.
  */
 static TALER_ARL_DEF_PP (wire_batch_deposit_id);
@@ -87,77 +81,6 @@ do_shutdown (void *cls)
   TALER_ARL_done ();
   TALER_EXCHANGEDB_unload_accounts ();
   TALER_ARL_cfg = NULL;
-}
-
-
-/**
- * Start the database transactions and begin the audit.
- *
- * @return false on failure
- */
-static bool
-begin_transaction (void);
-
-
-/**
- * Commit the transaction, checkpointing our progress in the auditor DB.
- *
- * @param qs transaction status so far
- */
-static void
-commit_transaction (enum GNUNET_DB_QueryStatus qs)
-{
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Transaction logic ended with status %d\n",
-              qs);
-  if (qs < 0)
-    goto handle_db_error;
-  qs = TALER_ARL_adb->update_auditor_progress (
-    TALER_ARL_adb->cls,
-    TALER_ARL_SET_PP (wire_batch_deposit_id),
-    TALER_ARL_SET_PP (wire_aggregation_id),
-    NULL);
-  if (0 > qs)
-    goto handle_db_error;
-  qs = TALER_ARL_adb->insert_auditor_progress (
-    TALER_ARL_adb->cls,
-    TALER_ARL_SET_PP (wire_batch_deposit_id),
-    TALER_ARL_SET_PP (wire_aggregation_id),
-    NULL);
-  if (0 > qs)
-    goto handle_db_error;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Concluded audit step at %llu/%llu\n",
-              (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id),
-              (unsigned long long) TALER_ARL_USE_PP (wire_batch_deposit_id));
-  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-  if (0 > qs)
-    goto handle_db_error;
-  qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
-  if (0 > qs)
-    goto handle_db_error;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Transaction concluded!\n");
-  if (1 == test_mode)
-    GNUNET_SCHEDULER_shutdown ();
-  return;
-handle_db_error:
-  TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
-  if (GNUNET_DB_STATUS_HARD_ERROR != qs)
-  {
-    for (unsigned int max_retries = 3; max_retries>0; max_retries--)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Trying again (%u attempts left)\n",
-                  max_retries);
-      if (begin_transaction ())
-        return;
-    }
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Hard database error, terminating\n");
-  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -202,7 +125,7 @@ import_wire_missing_cb (
   if (wc->err < 0)
     return; /* already failed */
   GNUNET_assert (batch_deposit_serial_id > wc->max_batch_deposit_uuid);
-  wc->max_batch_deposit_uuid = batch_deposit_serial_id;
+  wc->max_batch_deposit_uuid = batch_deposit_serial_id + 1;
   qs = TALER_ARL_adb->insert_pending_deposit (
     TALER_ARL_adb->cls,
     batch_deposit_serial_id,
@@ -210,7 +133,44 @@ import_wire_missing_cb (
     total_amount,
     deadline);
   if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     wc->err = qs;
+  }
+}
+
+
+/**
+ * Checks for wire transfers that should have happened.
+ *
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+check_for_required_transfers (void)
+{
+  enum GNUNET_DB_QueryStatus qs;
+  struct ImportMissingWireContext wc = {
+    .max_batch_deposit_uuid = TALER_ARL_USE_PP (wire_batch_deposit_id),
+    .err = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+  };
+
+  qs = TALER_ARL_edb->select_batch_deposits_missing_wire (
+    TALER_ARL_edb->cls,
+    TALER_ARL_USE_PP (wire_batch_deposit_id),
+    &import_wire_missing_cb,
+    &wc);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > wc.err)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wc.err);
+    return wc.err;
+  }
+  TALER_ARL_USE_PP (wire_batch_deposit_id) = wc.max_batch_deposit_uuid;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -262,40 +222,10 @@ clear_finished_transfer_cb (
     // FIXME: report more nicely!
   }
   if (0 > qs)
-    ac->err = qs;
-}
-
-
-/**
- * Checks for wire transfers that should have happened.
- *
- * @return false on failure
- */
-static bool
-check_for_required_transfers (void)
-{
-  enum GNUNET_DB_QueryStatus qs;
-  struct ImportMissingWireContext wc = {
-    .max_batch_deposit_uuid = TALER_ARL_USE_PP (wire_batch_deposit_id),
-    .err = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
-  };
-
-  qs = TALER_ARL_edb->select_batch_deposits_missing_wire (
-    TALER_ARL_edb->cls,
-    TALER_ARL_USE_PP (wire_batch_deposit_id),
-    &import_wire_missing_cb,
-    &wc);
-  if ((0 > qs) || (0 > wc.err))
   {
-    GNUNET_break (0);
-    GNUNET_break ((GNUNET_DB_STATUS_SOFT_ERROR == qs) ||
-                  (GNUNET_DB_STATUS_SOFT_ERROR == wc.err));
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return false;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    ac->err = qs;
   }
-  TALER_ARL_USE_PP (wire_batch_deposit_id) = wc.max_batch_deposit_uuid;
-  return true;
 }
 
 
@@ -303,9 +233,9 @@ check_for_required_transfers (void)
  * Checks that all wire transfers that should have happened
  * (based on deposits) have indeed happened.
  *
- * @return false on failure
+ * @return transaction status
  */
-static bool
+static enum GNUNET_DB_QueryStatus
 check_for_completed_transfers (void)
 {
   struct AggregationContext ac = {
@@ -319,26 +249,27 @@ check_for_completed_transfers (void)
     TALER_ARL_USE_PP (wire_aggregation_id),
     &clear_finished_transfer_cb,
     &ac);
-  if ( (0 > qs) || (0 > ac.err) )
+  if (0 > qs)
   {
-    GNUNET_break (0);
-    GNUNET_break ((GNUNET_DB_STATUS_SOFT_ERROR == qs) ||
-                  (GNUNET_DB_STATUS_SOFT_ERROR == ac.err));
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return false;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > ac.err)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.err);
+    return ac.err;
   }
   TALER_ARL_USE_PP (wire_aggregation_id) = ac.max_aggregation_serial;
-  return true;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
 /**
  * Start the database transactions and begin the audit.
  *
- * @return true on success
+ * @return transaction status
  */
-static bool
+static enum GNUNET_DB_QueryStatus
 begin_transaction (void)
 {
   enum GNUNET_DB_QueryStatus qs;
@@ -348,21 +279,20 @@ begin_transaction (void)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize exchange database connection.\n");
-    return false;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_SYSERR ==
       TALER_ARL_adb->preflight (TALER_ARL_adb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize auditor database session.\n");
-    return false;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  global_qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   if (GNUNET_OK !=
       TALER_ARL_adb->start (TALER_ARL_adb->cls))
   {
     GNUNET_break (0);
-    return false;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TALER_ARL_edb->preflight (TALER_ARL_edb->cls);
   if (GNUNET_OK !=
@@ -371,7 +301,7 @@ begin_transaction (void)
   {
     GNUNET_break (0);
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-    return false;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TALER_ARL_adb->get_auditor_progress (
     TALER_ARL_adb->cls,
@@ -379,13 +309,7 @@ begin_transaction (void)
     TALER_ARL_GET_PP (wire_aggregation_id),
     NULL);
   if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
-    return false;
-  }
-
+    goto handle_db_error;
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
@@ -399,19 +323,72 @@ begin_transaction (void)
                 (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id));
   }
 
-  {
-    bool ok;
+  qs = check_for_required_transfers ();
+  if (0 > qs)
+    goto handle_db_error;
+  qs = check_for_completed_transfers ();
+  if (0 > qs)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->update_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (wire_batch_deposit_id),
+    TALER_ARL_SET_PP (wire_aggregation_id),
+    NULL);
+  if (0 > qs)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->insert_auditor_progress (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_PP (wire_batch_deposit_id),
+    TALER_ARL_SET_PP (wire_aggregation_id),
+    NULL);
+  if (0 > qs)
+    goto handle_db_error;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Concluded audit step at %llu/%llu\n",
+              (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id),
+              (unsigned long long) TALER_ARL_USE_PP (wire_batch_deposit_id));
+  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
+  if (0 > qs)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
+  if (0 > qs)
+    goto handle_db_error;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Transaction concluded!\n");
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+handle_db_error:
+  TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
+  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
+  GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+  return qs;
+}
 
-    ok = check_for_required_transfers ();
-    if (ok)
-      ok = check_for_completed_transfers ();
-    commit_transaction (global_qs);
-    if (test_mode)
-    {
-      GNUNET_SCHEDULER_shutdown ();
-      return ok;
-    }
-    return ok;
+
+/**
+ * Start auditor process.
+ */
+static void
+start (void)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  for (unsigned int max_retries = 3; max_retries>0; max_retries--)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Trying again (%u attempts left)\n",
+                max_retries);
+    qs = begin_transaction ();
+    if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
+      break;
+  }
+  if (0 > qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Audit failed\n");
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
 }
 
@@ -434,15 +411,7 @@ db_notify (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received notification to wake transfer helper\n");
-  if (! begin_transaction ())
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Audit failed\n");
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+  start ();
 }
 
 
@@ -499,13 +468,7 @@ run (void *cls,
                                       NULL);
     GNUNET_assert (NULL != eh);
   }
-  if (! begin_transaction ())
-  {
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+  start ();
 }
 
 

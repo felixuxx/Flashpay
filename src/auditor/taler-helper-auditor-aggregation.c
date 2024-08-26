@@ -1444,6 +1444,8 @@ analyze_aggregations (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     /* there were no wire out entries to be looked at, we are done */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No wire out entries found\n");
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
@@ -1451,6 +1453,10 @@ analyze_aggregations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
     return ac.qs;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Finished aggregation audit at %llu\n",
+              (unsigned long long) TALER_ARL_USE_PP (
+                aggregation_last_wire_out_serial_id));
   qs = TALER_ARL_adb->insert_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_SET_AB (aggregation_total_wire_fee_revenue),
