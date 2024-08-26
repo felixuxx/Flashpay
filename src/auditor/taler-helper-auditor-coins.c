@@ -2146,7 +2146,6 @@ check_recoup (struct CoinContext *cc,
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .operation = (char *) operation,
       .loss = *amount,
-      // FIXME: maybe adding the wrong pub
       .operation_specific_pub = coin->coin_pub.eddsa_pub
     };
 

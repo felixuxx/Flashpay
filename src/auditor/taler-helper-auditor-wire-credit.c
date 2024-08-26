@@ -194,7 +194,9 @@ static int internal_checks;
  */
 static int ignore_account_404;
 
-// FIXME: comment
+/**
+ * Database event handler to wake us up again.
+ */
 static struct GNUNET_DB_EventHandler *eh;
 
 /**
@@ -422,9 +424,10 @@ handle_db_error:
 static void
 conclude_credit_history (void)
 {
-  // FIXME: what about entries that are left in in_map?
   if (NULL != in_map)
   {
+    GNUNET_assert (0 ==
+                   GNUNET_CONTAINER_multihashmap_size (in_map));
     GNUNET_CONTAINER_multihashmap_destroy (in_map);
     in_map = NULL;
   }
