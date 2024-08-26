@@ -1566,7 +1566,7 @@ verify_reserve_balance (void *cls,
     else
     {
       /* We failed to determine the closing fee, complain! */
-      // TODO: fix correctly and not just comment out
+      // FIXME: fix correctly and not just comment out
       // nbalance is set to invalid and there is never a check happening when working further with nbalance,
       // why so and why adding those balances here? or what's the usecase of setting nbalance to zero?
       /*

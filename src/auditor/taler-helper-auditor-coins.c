@@ -46,8 +46,6 @@ static int global_ret;
 /**
  * Run in test mode. Exit when idle instead of
  * going to sleep and waiting for more work.
- *
- * FIXME: not yet implemented!
  */
 static int test_mode;
 
@@ -220,8 +218,9 @@ get_cached_history (const struct TALER_CoinSpendPublicKeyP *coin_pub)
  * @param issue denomination key where the loss was detected
  * @param risk maximum risk that might have just become real (coins created by this @a issue)
  * @param loss actual losses already (actualized before denomination was revoked)
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_emergency_by_amount (
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue,
   const struct TALER_Amount *risk,
@@ -249,7 +248,7 @@ report_emergency_by_amount (
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling
+    return qs;
   }
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (
                           coins_reported_emergency_risk_by_amount),
@@ -259,6 +258,7 @@ report_emergency_by_amount (
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (coins_emergencies_loss),
                         &TALER_ARL_USE_AB (coins_emergencies_loss),
                         loss);
+  return qs;
 }
 
 
@@ -275,8 +275,9 @@ report_emergency_by_amount (
  * @param num_issued number of coins that were issued
  * @param num_known number of coins that have been deposited
  * @param risk amount that is at risk
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_emergency_by_count (
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue,
   uint64_t num_issued,
@@ -300,7 +301,7 @@ report_emergency_by_count (
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling
+    return qs;
   }
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (
                           coins_reported_emergency_risk_by_count),
@@ -311,7 +312,7 @@ report_emergency_by_count (
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coins_emergencies_loss_by_count),
                           &TALER_ARL_USE_AB (coins_emergencies_loss_by_count),
                           &issue->value);
-
+  return qs;
 }
 
 
@@ -329,8 +330,9 @@ report_emergency_by_count (
  *            representing a loss for the exchange);
  *           -1 if @a exchange being smaller than @a auditor is
  *           profitable for the exchange; and 0 if it is unclear
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_amount_arithmetic_inconsistency (
   const char *operation,
   uint64_t rowid,
@@ -373,7 +375,7 @@ report_amount_arithmetic_inconsistency (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      return qs;
     }
   }
   if (0 != profitable)
@@ -385,6 +387,7 @@ report_amount_arithmetic_inconsistency (
                           target,
                           &delta);
   }
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -394,8 +397,9 @@ report_amount_arithmetic_inconsistency (
  * @param table affected table
  * @param rowid affected row, 0 if row is missing
  * @param diagnostic message explaining the problem
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
@@ -414,8 +418,9 @@ report_row_inconsistency (const char *table,
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling!
+    return qs;
   }
+  return qs;
 }
 
 
@@ -447,7 +452,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   bool have_refund;
   uint64_t etag_out;
 
-  /* TODO: could use 'etag' mechanism to only fetch transactions
+  /* FIXME: could use 'etag' mechanism to only fetch transactions
      we did not yet process, instead of going over them
      again and again. */
   {
@@ -464,8 +469,8 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                                &h_denom_pub,
                                                &tl);
   }
-  /*if (0 >= qs)
-    return qs;*/
+  if (0 > qs)
+    return qs;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (value->currency,
                                         &refunded));
@@ -562,6 +567,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   {
     /* spent > total: bad */
     struct TALER_Amount loss;
+
     TALER_ARL_amount_subtract (&loss,
                                &spent,
                                &total);
@@ -569,11 +575,18 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                 "Loss detected for coin %s - %s\n",
                 TALER_B2S (coin_pub),
                 TALER_amount2s (&loss));
-    report_amount_arithmetic_inconsistency (operation,
-                                            rowid,
-                                            &spent,
-                                            &total,
-                                            -1);
+    qs = report_amount_arithmetic_inconsistency (operation,
+                                                 rowid,
+                                                 &spent,
+                                                 &total,
+                                                 -1);
+    if (qs < 0)
+    {
+      TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                                 tl);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
   }
   cache_history (coin_pub,
                  tl);
@@ -697,7 +710,7 @@ init_denomination (const struct TALER_DenominationHashP *denom_hash,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (0 < qs)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     /* check revocation signature */
     if (GNUNET_OK !=
@@ -706,9 +719,14 @@ init_denomination (const struct TALER_DenominationHashP *denom_hash,
           &TALER_ARL_master_pub,
           &msig))
     {
-      report_row_inconsistency ("denomination revocations",
-                                rowid,
-                                "revocation signature invalid");
+      qs = report_row_inconsistency ("denomination revocations",
+                                     rowid,
+                                     "revocation signature invalid");
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        return qs;
+      }
     }
     else
     {
@@ -716,8 +734,8 @@ init_denomination (const struct TALER_DenominationHashP *denom_hash,
     }
   }
   return ds->in_db
-         ? GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
-         : GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+    ? GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+    : GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
 
 
@@ -762,12 +780,13 @@ get_denomination_summary (
 /**
  * Write information about the current knowledge about a denomination key
  * back to the database and update our global reporting data about the
- * denomination.  Also remove and free the memory of @a value.
+ * denomination.
  *
  * @param cls the `struct CoinContext`
  * @param denom_hash the hash of the denomination key
  * @param value a `struct DenominationSummary`
  * @return #GNUNET_OK (continue to iterate)
+ *         #GNUNET_SYSERR (stop to iterate)
  */
 static enum GNUNET_GenericReturnValue
 sync_denomination (void *cls,
@@ -801,8 +820,14 @@ sync_denomination (void *cls,
                                                     &denom_h);
     else
       qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-    if ((GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
-        (! TALER_amount_is_zero (&ds->dcd.denom_risk)))
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+      return GNUNET_SYSERR;
+    }
+    if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
+         (! TALER_amount_is_zero (&ds->dcd.denom_risk)) )
     {
       /* The denomination expired and carried a balance; we can now
          book the remaining balance as profit, and reduce our risk
@@ -816,25 +841,26 @@ sync_denomination (void *cls,
          this assertion fails, well, good luck: there is a bug
          in the auditor _or_ the auditor's database is corrupt. */
     }
-    if ((GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
-        (! TALER_amount_is_zero (&ds->dcd.denom_balance)))
+    if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
+         (! TALER_amount_is_zero (&ds->dcd.denom_balance)) )
     {
       /* book denom_balance coin expiration profits! */
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Denomination `%s' expired, booking %s in expiration profits\n",
                   GNUNET_h2s (denom_hash),
                   TALER_amount2s (&ds->dcd.denom_balance));
-      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          (qs = TALER_ARL_adb->insert_historic_denom_revenue (
-             TALER_ARL_adb->cls,
-             &denom_h,
-             expire_deposit,
-             &ds->dcd.denom_balance,
-             &ds->dcd.recoup_loss)))
+      qs = TALER_ARL_adb->insert_historic_denom_revenue (
+        TALER_ARL_adb->cls,
+        &denom_h,
+        expire_deposit,
+        &ds->dcd.denom_balance,
+        &ds->dcd.recoup_loss);
+      if (qs < 0)
       {
         /* Failed to store profits? Bad database */
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
         cc->qs = qs;
+        return GNUNET_SYSERR;
       }
     }
   }
@@ -857,48 +883,78 @@ sync_denomination (void *cls,
       qs = (enum GNUNET_DB_QueryStatus) cnt;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       cc->qs = qs;
+      return GNUNET_SYSERR;
     }
-    else
+    if (ds->dcd.num_issued < (uint64_t) cnt)
     {
-      if (ds->dcd.num_issued < (uint64_t) cnt)
+      /* more coins deposited than issued! very bad */
+      qs = report_emergency_by_count (issue,
+                                      ds->dcd.num_issued,
+                                      cnt,
+                                      &ds->dcd.denom_risk);
+      if (qs < 0)
       {
-        /* more coins deposited than issued! very bad */
-        report_emergency_by_count (issue,
-                                   ds->dcd.num_issued,
-                                   cnt,
-                                   &ds->dcd.denom_risk);
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        cc->qs = qs;
+        return GNUNET_SYSERR;
       }
-      if (ds->report_emergency)
+    }
+    if (ds->report_emergency)
+    {
+      /* Value of coins deposited exceed value of coins
+         issued! Also very bad! */
+      qs = report_emergency_by_amount (issue,
+                                       &ds->dcd.denom_risk,
+                                       &ds->dcd.denom_loss);
+      if (qs < 0)
       {
-        /* Value of coins deposited exceed value of coins
-           issued! Also very bad! */
-        report_emergency_by_amount (issue,
-                                    &ds->dcd.denom_risk,
-                                    &ds->dcd.denom_loss);
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        cc->qs = qs;
+        return GNUNET_SYSERR;
+      }
+    }
+    if (ds->in_db)
+      qs = TALER_ARL_adb->update_denomination_balance (TALER_ARL_adb->cls,
+                                                       &denom_h,
+                                                       &ds->dcd);
+    else
+      qs = TALER_ARL_adb->insert_denomination_balance (TALER_ARL_adb->cls,
+                                                       &denom_h,
+                                                       &ds->dcd);
 
-      }
-      if (ds->in_db)
-        qs = TALER_ARL_adb->update_denomination_balance (TALER_ARL_adb->cls,
-                                                         &denom_h,
-                                                         &ds->dcd);
-      else
-        qs = TALER_ARL_adb->insert_denomination_balance (TALER_ARL_adb->cls,
-                                                         &denom_h,
-                                                         &ds->dcd);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+      return GNUNET_SYSERR;
     }
   }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    cc->qs = qs;
-  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Remove and free the memory of @a value from the
+ * denomination summaries.
+ *
+ * @param cls the `struct CoinContext`
+ * @param denom_hash the hash of the denomination key
+ * @param value a `struct DenominationSummary`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static enum GNUNET_GenericReturnValue
+cleanup_denomination (void *cls,
+                      const struct GNUNET_HashCode *denom_hash,
+                      void *value)
+{
+  struct CoinContext *cc = cls;
+  struct DenominationSummary *ds = value;
+
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (cc->denom_summaries,
                                                        denom_hash,
                                                        ds));
   GNUNET_free (ds);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != cc->qs)
-    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -953,19 +1009,24 @@ withdraw_cb (void *cls,
   qs = TALER_ARL_get_denomination_info (denom_pub,
                                         &issue,
                                         &dh);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  if (0 > qs)
   {
-    report_row_inconsistency ("withdraw",
-                              rowid,
-                              "denomination key not found");
-    return GNUNET_OK;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-  {
-    /* This really ought to be a transient DB error. */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
     return GNUNET_SYSERR;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    qs = report_row_inconsistency ("withdraw",
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
   }
   ds = get_denomination_summary (cc,
                                  issue,
@@ -1063,18 +1124,26 @@ reveal_data_cb (void *cls,
     /* lookup new coin denomination key */
     qs = TALER_ARL_get_denomination_info_by_hash (&rrcs[i].h_denom_pub,
                                                   &rctx->new_issues[i]);
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      report_row_inconsistency ("refresh_reveal",
-                                rctx->rowid,
-                                "denomination key not found");
-      rctx->err = GNUNET_NO; /* terminate here, but return "OK" to commit transaction */
-    }
-    else if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       rctx->qs = qs;
-      rctx->err = GNUNET_SYSERR; /* terminate, return #GNUNET_SYSERR: abort transaction */
+      rctx->err = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      qs = report_row_inconsistency ("refresh_reveal",
+                                     rctx->rowid,
+                                     "denomination key not found");
+      if (0 > qs)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        rctx->qs = qs;
+        rctx->err = GNUNET_SYSERR;
+        return;
+      }
+      rctx->err = GNUNET_NO;
     }
   }
 }
@@ -1148,7 +1217,7 @@ check_known_coin (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      return qs;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -1167,13 +1236,15 @@ check_known_coin (
  * @param dso denomination summary to update
  * @param rowid responsible row (for logging)
  * @param amount_with_fee amount to subtract
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 reduce_denom_balance (struct DenominationSummary *dso,
                       uint64_t rowid,
                       const struct TALER_Amount *amount_with_fee)
 {
   struct TALER_Amount tmp;
+  enum GNUNET_DB_QueryStatus qs;
 
   if (TALER_ARL_SR_INVALID_NEGATIVE ==
       TALER_ARL_amount_subtract_neg (&tmp,
@@ -1198,12 +1269,17 @@ reduce_denom_balance (struct DenominationSummary *dso,
        private key compromise). In that case, we cannot even
        subtract the profit we make from the fee from the escrow
        balance. Tested as part of test-auditor.sh, case #18 */
-    report_amount_arithmetic_inconsistency (
+    qs = report_amount_arithmetic_inconsistency (
       "subtracting amount from escrow balance",
       rowid,
       &TALER_ARL_USE_AB (total_escrowed),
       amount_with_fee,
       0);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
   }
   else
   {
@@ -1215,6 +1291,7 @@ reduce_denom_balance (struct DenominationSummary *dso,
               "New balance of denomination `%s' is %s\n",
               GNUNET_h2s (&dso->issue->denom_hash.hash),
               TALER_amount2s (&dso->dcd.denom_balance));
+  return qs;
 }
 
 
@@ -1260,18 +1337,24 @@ refresh_session_cb (void *cls,
   qs = TALER_ARL_get_denomination_info (denom_pub,
                                         &issue,
                                         NULL);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    report_row_inconsistency ("melt",
-                              rowid,
-                              "denomination key not found");
-    return GNUNET_OK;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
     return GNUNET_SYSERR;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    qs = report_row_inconsistency ("melt",
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
   }
   qs = check_known_coin ("melt",
                          issue,
@@ -1279,12 +1362,13 @@ refresh_session_cb (void *cls,
                          coin_pub,
                          denom_pub,
                          amount_with_fee);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
+
   /* verify melt signature */
   {
     struct TALER_DenominationHashP h_denom_pub;
@@ -1313,7 +1397,8 @@ refresh_session_cb (void *cls,
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling
+        cc->qs = qs;
+        return GNUNET_SYSERR;
       }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                             &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -1343,8 +1428,14 @@ refresh_session_cb (void *cls,
       cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return GNUNET_SYSERR;
     }
-    if ((GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
-        (0 == reveal_ctx.num_freshcoins))
+    if (GNUNET_SYSERR == reveal_ctx.err)
+    {
+      cc->qs = reveal_ctx.qs;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == cc->qs);
+      return GNUNET_SYSERR;
+    }
+    if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
+         (0 == reveal_ctx.num_freshcoins) )
     {
       /* This can legitimately happen if reveal was not yet called or only
          with invalid data, even if the exchange is correctly operating. We
@@ -1361,21 +1452,18 @@ refresh_session_cb (void *cls,
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling!
+        cc->qs = qs;
+        return GNUNET_SYSERR;
       }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_refresh_hanging),
                             &TALER_ARL_USE_AB (total_refresh_hanging),
                             amount_with_fee);
       return GNUNET_OK;
     }
-    if (GNUNET_SYSERR == reveal_ctx.err)
-      cc->qs = reveal_ctx.qs;
 
-    if (GNUNET_OK != reveal_ctx.err)
+    if (GNUNET_NO == reveal_ctx.err)
     {
       GNUNET_free (reveal_ctx.new_issues);
-      if (GNUNET_SYSERR == reveal_ctx.err)
-        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
 
@@ -1406,11 +1494,17 @@ refresh_session_cb (void *cls,
     {
       /* Melt fee higher than contribution of melted coin; this makes
          no sense (exchange should never have accepted the operation) */
-      report_amount_arithmetic_inconsistency ("melt contribution vs. fee",
-                                              rowid,
-                                              amount_with_fee,
-                                              &issue->fees.refresh,
-                                              -1);
+      qs = report_amount_arithmetic_inconsistency ("melt contribution vs. fee",
+                                                   rowid,
+                                                   amount_with_fee,
+                                                   &issue->fees.refresh,
+                                                   -1);
+      if (0 > qs)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+        return GNUNET_SYSERR;
+      }
       /* To continue, best assumption is the melted coin contributed
          nothing (=> all withdrawal amounts will be counted as losses) */
       GNUNET_assert (GNUNET_OK ==
@@ -1424,11 +1518,17 @@ refresh_session_cb (void *cls,
     {
       /* refresh_cost > amount_without_fee, which is bad (exchange lost) */
       GNUNET_break_op (0);
-      report_amount_arithmetic_inconsistency ("melt (cost)",
-                                              rowid,
-                                              &amount_without_fee, /* 'exchange' */
-                                              &refresh_cost, /* 'auditor' */
-                                              1);
+      qs = report_amount_arithmetic_inconsistency ("melt (cost)",
+                                                   rowid,
+                                                   &amount_without_fee, /* 'exchange' */
+                                                   &refresh_cost, /* 'auditor' */
+                                                   1);
+      if (0 > qs)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+        return GNUNET_SYSERR;
+      }
     }
 
     /* update outstanding denomination amounts for fresh coins withdrawn */
@@ -1443,9 +1543,15 @@ refresh_session_cb (void *cls,
                                       &ni->denom_hash);
       if (NULL == dsi)
       {
-        report_row_inconsistency ("refresh_reveal",
-                                  rowid,
-                                  "denomination key for fresh coin unknown to auditor");
+        qs = report_row_inconsistency ("refresh_reveal",
+                                       rowid,
+                                       "denomination key for fresh coin unknown to auditor");
+        if (0 > qs)
+        {
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
       }
       else
       {
@@ -1481,15 +1587,27 @@ refresh_session_cb (void *cls,
                                   &issue->denom_hash);
   if (NULL == dso)
   {
-    report_row_inconsistency ("refresh_reveal",
-                              rowid,
-                              "denomination key for dirty coin unknown to auditor");
+    qs = report_row_inconsistency ("refresh_reveal",
+                                   rowid,
+                                   "denomination key for dirty coin unknown to auditor");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
   else
   {
-    reduce_denom_balance (dso,
-                          rowid,
-                          amount_with_fee);
+    qs = reduce_denom_balance (dso,
+                               rowid,
+                               amount_with_fee);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
 
   /* update global melt fees */
@@ -1536,18 +1654,30 @@ deposit_cb (void *cls,
                                         NULL);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    report_row_inconsistency ("deposits",
-                              rowid,
-                              "denomination key not found");
+    qs = report_row_inconsistency ("deposits",
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
     return GNUNET_OK;
   }
   if (GNUNET_TIME_timestamp_cmp (deposit->refund_deadline,
                                  >,
                                  deposit->wire_deadline))
   {
-    report_row_inconsistency ("deposits",
-                              rowid,
-                              "refund deadline past wire deadline");
+    qs = report_row_inconsistency ("deposits",
+                                   rowid,
+                                   "refund deadline past wire deadline");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1609,10 +1739,11 @@ deposit_cb (void *cls,
         TALER_ARL_adb->cls,
         &bsl);
 
-      if (qs < 0)
+      if (0 > qs)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling!
+        cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+        return GNUNET_SYSERR;
       }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                             &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -1632,15 +1763,27 @@ deposit_cb (void *cls,
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    report_row_inconsistency ("deposit",
-                              rowid,
-                              "denomination key for deposited coin unknown to auditor");
+    qs = report_row_inconsistency ("deposit",
+                                   rowid,
+                                   "denomination key for deposited coin unknown to auditor");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
   else
   {
-    reduce_denom_balance (ds,
-                          rowid,
-                          &deposit->amount_with_fee);
+    qs = reduce_denom_balance (ds,
+                               rowid,
+                               &deposit->amount_with_fee);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
 
   /* update global deposit fees */
@@ -1693,17 +1836,24 @@ refund_cb (void *cls,
   qs = TALER_ARL_get_denomination_info (denom_pub,
                                         &issue,
                                         NULL);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    report_row_inconsistency ("refunds",
-                              rowid,
-                              "denomination key not found");
-    return GNUNET_OK;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    qs = report_row_inconsistency ("refunds",
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
   }
 
   /* verify refund signature */
@@ -1724,10 +1874,11 @@ refund_cb (void *cls,
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-    if (qs < 0)
+    if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -1740,11 +1891,17 @@ refund_cb (void *cls,
                                      amount_with_fee,
                                      &issue->fees.refund))
   {
-    report_amount_arithmetic_inconsistency ("refund (fee)",
-                                            rowid,
-                                            &amount_without_fee,
-                                            &issue->fees.refund,
-                                            -1);
+    qs = report_amount_arithmetic_inconsistency ("refund (fee)",
+                                                 rowid,
+                                                 &amount_without_fee,
+                                                 &issue->fees.refund,
+                                                 -1);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
     return GNUNET_OK;
   }
 
@@ -1760,9 +1917,15 @@ refund_cb (void *cls,
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    report_row_inconsistency ("refund",
-                              rowid,
-                              "denomination key for refunded coin unknown to auditor");
+    qs = report_row_inconsistency ("refund",
+                                   rowid,
+                                   "denomination key for refunded coin unknown to auditor");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
   else
   {
@@ -1826,9 +1989,15 @@ purse_refund_coin_cb (
                                         NULL);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    report_row_inconsistency ("purse-refunds",
-                              rowid,
-                              "denomination key not found");
+    qs = report_row_inconsistency ("purse-refunds",
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1848,9 +2017,15 @@ purse_refund_coin_cb (
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    report_row_inconsistency ("purse-refund",
-                              rowid,
-                              "denomination key for purse-refunded coin unknown to auditor");
+    qs = report_row_inconsistency ("purse-refund",
+                                   rowid,
+                                   "denomination key for purse-refunded coin unknown to auditor");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
   else
   {
@@ -1954,9 +2129,15 @@ check_recoup (struct CoinContext *cc,
                                   &coin->coin_pub,
                                   coin_sig))
   {
-    report_row_inconsistency (operation,
-                              rowid,
-                              "recoup signature invalid");
+    qs = report_row_inconsistency (operation,
+                                   rowid,
+                                   "recoup signature invalid");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
   if (GNUNET_OK !=
       TALER_test_coin_valid (coin,
@@ -1965,7 +2146,7 @@ check_recoup (struct CoinContext *cc,
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .operation = (char *) operation,
       .loss = *amount,
-      // TODO: maybe adding the wrong pub
+      // FIXME: maybe adding the wrong pub
       .operation_specific_pub = coin->coin_pub.eddsa_pub
     };
 
@@ -1973,10 +2154,11 @@ check_recoup (struct CoinContext *cc,
       TALER_ARL_adb->cls,
       &bsl);
 
-    if (qs < 0)
+    if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -1984,20 +2166,24 @@ check_recoup (struct CoinContext *cc,
   }
   qs = TALER_ARL_get_denomination_info_by_hash (&coin->denom_pub_hash,
                                                 &issue);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    report_row_inconsistency (operation,
-                              rowid,
-                              "denomination key not found");
+    qs = report_row_inconsistency (operation,
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
     return GNUNET_OK;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-  {
-    /* The key not existing should be prevented by foreign key constraints,
-       so must be a transient DB error. */
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    cc->qs = qs;
-    return GNUNET_SYSERR;
   }
   qs = check_known_coin (operation,
                          issue,
@@ -2005,7 +2191,7 @@ check_recoup (struct CoinContext *cc,
                          &coin->coin_pub,
                          denom_pub,
                          amount);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
@@ -2016,9 +2202,15 @@ check_recoup (struct CoinContext *cc,
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    report_row_inconsistency ("recoup",
-                              rowid,
-                              "denomination key for recouped coin unknown to auditor");
+    qs = report_row_inconsistency ("recoup",
+                                   rowid,
+                                   "denomination key for recouped coin unknown to auditor");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
   else
   {
@@ -2027,7 +2219,6 @@ check_recoup (struct CoinContext *cc,
       struct TALER_AUDITORDB_BadSigLosses bsldnr = {
         .operation = (char *) operation,
         .loss = *amount,
-        // TODO: hint missing?
         .operation_specific_pub = coin->coin_pub.eddsa_pub
       };
 
@@ -2038,7 +2229,8 @@ check_recoup (struct CoinContext *cc,
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling!
+        cc->qs = qs;
+        return GNUNET_SYSERR;
       }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                             &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -2106,7 +2298,8 @@ recoup_cb (void *cls,
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      cc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -2167,19 +2360,25 @@ recoup_refresh_cb (void *cls,
   /* Update old coin's denomination balance summary */
   qs = TALER_ARL_get_denomination_info_by_hash (old_denom_pub_hash,
                                                 &issue);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS >= qs)
+  if (qs < 0)
   {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cc->qs = qs;
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    qs = report_row_inconsistency ("refresh-recoup",
+                                   rowid,
+                                   "denomination key of old coin not found");
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       cc->qs = qs;
       return GNUNET_SYSERR;
     }
-    report_row_inconsistency ("refresh-recoup",
-                              rowid,
-                              "denomination key of old coin not found");
   }
-  else
+
   {
     struct DenominationSummary *dso;
 
@@ -2188,9 +2387,15 @@ recoup_refresh_cb (void *cls,
                                     old_denom_pub_hash);
     if (NULL == dso)
     {
-      report_row_inconsistency ("refresh_reveal",
-                                rowid,
-                                "denomination key for old coin unknown to auditor");
+      qs = report_row_inconsistency ("refresh_reveal",
+                                     rowid,
+                                     "denomination key for old coin unknown to auditor");
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        cc->qs = qs;
+        return GNUNET_SYSERR;
+      }
     }
     else
     {
@@ -2219,11 +2424,11 @@ recoup_refresh_cb (void *cls,
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling
+      cc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -2247,9 +2452,10 @@ recoup_refresh_cb (void *cls,
  * denomination and to warn if there are denominations not approved
  * by this auditor.
  *
- * @param cls closure, NULL
+ * @param cls closure, pointer to `enum GNUNET_DB_QueryStatus`
  * @param denom_pub public key, sometimes NULL (!)
  * @param issue issuing information with value, fees and other info about the denomination.
+ * @return transaction status
  */
 static void
 check_denomination (
@@ -2257,6 +2463,7 @@ check_denomination (
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
 {
+  enum GNUNET_DB_QueryStatus *iqs = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AuditorSignatureP auditor_sig;
 
@@ -2268,8 +2475,9 @@ check_denomination (
                                                 &auditor_sig);
   if (0 > qs)
   {
-    GNUNET_break (0);
-    return; /* skip! */
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    *iqs = qs;
+    return;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
@@ -2310,9 +2518,11 @@ check_denomination (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      *iqs = qs;
+      return;
     }
   }
+  *iqs = qs;
 }
 
 
@@ -2360,9 +2570,15 @@ purse_deposit_cb (
                                         &dh);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    report_row_inconsistency ("purse-deposits",
-                              rowid,
-                              "denomination key not found");
+    qs = report_row_inconsistency ("purse-deposits",
+                                   rowid,
+                                   "denomination key not found");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+      return GNUNET_SYSERR;
+    }
     return GNUNET_OK;
   }
   qs = check_known_coin ("purse-deposit",
@@ -2371,7 +2587,7 @@ purse_deposit_cb (
                          &deposit->coin_pub,
                          denom_pub,
                          &deposit->amount);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
@@ -2399,11 +2615,11 @@ purse_deposit_cb (
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
-    if (qs < 0)
+    if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      cc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (coin_irregular_loss),
                           &TALER_ARL_USE_AB (coin_irregular_loss),
@@ -2417,15 +2633,27 @@ purse_deposit_cb (
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    report_row_inconsistency ("purse-deposit",
-                              rowid,
-                              "denomination key for purse-deposited coin unknown to auditor");
+    qs = report_row_inconsistency ("purse-deposit",
+                                   rowid,
+                                   "denomination key for purse-deposited coin unknown to auditor");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+      return GNUNET_SYSERR;
+    }
   }
   else
   {
-    reduce_denom_balance (ds,
-                          rowid,
-                          &deposit->amount);
+    qs = reduce_denom_balance (ds,
+                               rowid,
+                               &deposit->amount);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    }
   }
 
   /* update global deposit fees */
@@ -2447,14 +2675,21 @@ analyze_coins (void *cls)
 {
   struct CoinContext cc;
   enum GNUNET_DB_QueryStatus qs;
+  enum GNUNET_DB_QueryStatus iqs;
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking denominations...\n");
+  iqs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = TALER_ARL_edb->iterate_denomination_info (TALER_ARL_edb->cls,
                                                  &check_denomination,
-                                                 NULL);
+                                                 &iqs);
   if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > iqs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -2639,6 +2874,9 @@ analyze_coins (void *cls)
   cc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   GNUNET_CONTAINER_multihashmap_iterate (cc.denom_summaries,
                                          &sync_denomination,
+                                         &cc);
+  GNUNET_CONTAINER_multihashmap_iterate (cc.denom_summaries,
+                                         &cleanup_denomination,
                                          &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.denom_summaries);
   if (0 > cc.qs)

@@ -908,7 +908,7 @@ handle_mhd_request (void *cls,
 not_found:
   if (url_match)
   {
-    /* TODO: return list of allowed methods... */
+    /* FIXME: return list of allowed methods... */
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (
       connection,

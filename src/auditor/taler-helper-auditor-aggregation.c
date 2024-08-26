@@ -816,7 +816,7 @@ wire_transfer_information_cb (
     }
   }
   /* Obtain coin's transaction history */
-  /* TODO: could use 'start' mechanism to only fetch transactions
+  /* FIXME: could use 'start' mechanism to only fetch transactions
      we did not yet process, instead of going over them
      again and again.*/
 
