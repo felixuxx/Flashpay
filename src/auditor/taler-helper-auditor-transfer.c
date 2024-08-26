@@ -124,7 +124,7 @@ import_wire_missing_cb (
 
   if (wc->err < 0)
     return; /* already failed */
-  GNUNET_assert (batch_deposit_serial_id > wc->max_batch_deposit_uuid);
+  GNUNET_assert (batch_deposit_serial_id >= wc->max_batch_deposit_uuid);
   wc->max_batch_deposit_uuid = batch_deposit_serial_id + 1;
   qs = TALER_ARL_adb->insert_pending_deposit (
     TALER_ARL_adb->cls,
