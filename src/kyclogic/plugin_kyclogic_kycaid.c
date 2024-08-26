@@ -893,9 +893,8 @@ webhook_conversion_cb (void *cls,
     return;
   }
   expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
-  resp = MHD_create_response_from_buffer (0,
-                                          "",
-                                          MHD_RESPMEM_PERSISTENT);
+  resp = MHD_create_response_from_buffer_static (0,
+                                                 "");
   wh->cb (wh->cb_cls,
           wh->process_row,
           &wh->h_payto,
@@ -953,9 +952,8 @@ handle_webhook_finished (void *cls,
                                profile_status))
           ? TALER_KYCLOGIC_STATUS_PENDING
           : TALER_KYCLOGIC_STATUS_USER_ABORTED;
-        resp = MHD_create_response_from_buffer (0,
-                                                "",
-                                                MHD_RESPMEM_PERSISTENT);
+        resp = MHD_create_response_from_buffer_static (0,
+                                                       "");
         wh->cb (wh->cb_cls,
                 wh->process_row,
                 &wh->h_payto,
@@ -1344,9 +1342,8 @@ kycaid_webhook (void *cls,
                 "Webhook called with non-completion status: %s\n",
                 type);
     wh->response_code = MHD_HTTP_NO_CONTENT;
-    wh->resp = MHD_create_response_from_buffer (0,
-                                                "",
-                                                MHD_RESPMEM_PERSISTENT);
+    wh->resp = MHD_create_response_from_buffer_static (0,
+                                                       "");
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
     return wh;

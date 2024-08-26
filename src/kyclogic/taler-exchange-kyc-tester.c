@@ -1325,7 +1325,7 @@ exchange_serve_process_config (void)
 static void
 do_shutdown (void *cls)
 {
-  struct MHD_Daemon *mhd;
+  struct MHD_Daemon *my_mhd;
   struct ProofRequestState *rs;
 
   (void) cls;
@@ -1345,9 +1345,9 @@ do_shutdown (void *cls)
   }
   kyc_webhook_cleanup ();
   TALER_KYCLOGIC_kyc_done ();
-  mhd = TALER_MHD_daemon_stop ();
-  if (NULL != mhd)
-    MHD_stop_daemon (mhd);
+  my_mhd = TALER_MHD_daemon_stop ();
+  if (NULL != my_mhd)
+    MHD_stop_daemon (my_mhd);
   if (NULL != TEKT_curl_ctx)
   {
     GNUNET_CURL_fini (TEKT_curl_ctx);

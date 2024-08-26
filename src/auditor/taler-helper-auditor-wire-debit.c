@@ -268,7 +268,7 @@ static struct GNUNET_CURL_Context *ctx;
 /**
  * Scheduler context for running the @e ctx.
  */
-static struct GNUNET_CURL_RescheduleContext *rc;
+static struct GNUNET_CURL_RescheduleContext *rctx;
 
 /**
  * Should we run checks that only work for exchange-internal audits?
@@ -420,10 +420,10 @@ do_shutdown (void *cls)
     GNUNET_CURL_fini (ctx);
     ctx = NULL;
   }
-  if (NULL != rc)
+  if (NULL != rctx)
   {
-    GNUNET_CURL_gnunet_rc_destroy (rc);
-    rc = NULL;
+    GNUNET_CURL_gnunet_rc_destroy (rctx);
+    rctx = NULL;
   }
   TALER_EXCHANGEDB_unload_accounts ();
   TALER_ARL_cfg = NULL;
@@ -723,27 +723,27 @@ check_rc_matches (void *cls,
                   const struct GNUNET_HashCode *key,
                   void *value)
 {
-  struct CheckMatchContext *ctx = cls;
+  struct CheckMatchContext *cmx = cls;
   struct ReserveClosure *rc = value;
 
-  if ((0 == GNUNET_memcmp (&ctx->roi->details.wtid,
+  if ((0 == GNUNET_memcmp (&cmx->roi->details.wtid,
                            &rc->wtid)) &&
       (0 == strcasecmp (rc->receiver_account,
-                        ctx->roi->details.credit_account_uri)) &&
+                        cmx->roi->details.credit_account_uri)) &&
       (0 == TALER_amount_cmp (&rc->amount,
-                              &ctx->roi->details.amount)))
+                              &cmx->roi->details.amount)))
   {
     if (! check_time_difference ("reserves_closures",
                                  rc->rowid,
                                  rc->execution_date,
-                                 ctx->roi->details.execution_date))
+                                 cmx->roi->details.execution_date))
     {
       free_rc (NULL,
                key,
                rc);
       return GNUNET_SYSERR;
     }
-    ctx->found = true;
+    cmx->found = true;
     free_rc (NULL,
              key,
              rc);
@@ -1000,7 +1000,7 @@ complain_out_not_found (void *cls,
   // struct WireAccount *wa = cls;
   struct ReserveOutInfo *roi = value;
   struct GNUNET_HashCode rkey;
-  struct CheckMatchContext ctx = {
+  struct CheckMatchContext cmx = {
     .roi = roi,
     .found = false
   };
@@ -1014,8 +1014,8 @@ complain_out_not_found (void *cls,
   GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
                                               &rkey,
                                               &check_rc_matches,
-                                              &ctx);
-  if (ctx.found)
+                                              &cmx);
+  if (cmx.found)
     return GNUNET_OK;
   ret = check_reported_inconsistency (roi);
   if (GNUNET_NO != ret)
@@ -1798,8 +1798,8 @@ run (void *cls,
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
-                          &rc);
-  rc = GNUNET_CURL_gnunet_rc_create (ctx);
+                          &rctx);
+  rctx = GNUNET_CURL_gnunet_rc_create (ctx);
   if (NULL == ctx)
   {
     GNUNET_break (0);
