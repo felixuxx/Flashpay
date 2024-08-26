@@ -27,104 +27,93 @@ CFGFILE="/etc/taler/secrets/auditor-db.secret.conf"
 
 # Parse command-line options
 while getopts ':hn:rsu:' OPTION; do
-    case "$OPTION" in
-        h)
-            echo 'Supported options:'
-            echo "  -c FILENAME  -- write configuration to FILENAME (default: $CFGFILE)"
-            echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
-            echo "  -r           -- reset database (dangerous)"
-            echo "  -s           -- skip database initialization"
-            echo "  -u USER      -- taler-auditor to be run by USER (default: $DBUSER)"
-            exit 0
-            ;;
-        n)
-            DBNAME="$OPTARG"
-            ;;
-        r)
-            RESET_DB="1"
-            ;;
-        s)
-            SKIP_DBINIT="1"
-            ;;
-        u)
-            DBUSER="$OPTARG"
-            ;;
-        ?)
-        exit_fail "Unrecognized command line option"
-        ;;
-    esac
+  case "$OPTION" in
+  h)
+    echo 'Supported options:'
+    echo "  -c FILENAME  -- write configuration to FILENAME (default: $CFGFILE)"
+    echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
+    echo "  -r           -- reset database (dangerous)"
+    echo "  -s           -- skip database initialization"
+    echo "  -u USER      -- taler-auditor to be run by USER (default: $DBUSER)"
+    exit 0
+    ;;
+  n)
+    DBNAME="$OPTARG"
+    ;;
+  r)
+    RESET_DB="1"
+    ;;
+  s)
+    SKIP_DBINIT="1"
+    ;;
+  u)
+    DBUSER="$OPTARG"
+    ;;
+  ?)
+    exit_fail "Unrecognized command line option"
+    ;;
+  esac
 done
 
-if ! id postgres > /dev/null
-then
-    echo "Could not find 'postgres' user. Please install Postgresql first"
-    exit 1
+if ! id postgres >/dev/null; then
+  echo "Could not find 'postgres' user. Please install Postgresql first"
+  exit 1
 fi
 
-if [ "$(id -u)" -ne 0 ]
-then
-    echo "This script must be run as root"
-    exit 1
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run as root"
+  exit 1
 fi
 
-if [ 0 = "$SKIP_DBINIT" ]
-then
-    if ! taler-auditor-dbinit -v 2> /dev/null
-    then
-        echo "Required 'taler-auditor-dbinit' not found. Please fix your installation."
-    fi
+if [ 0 = "$SKIP_DBINIT" ]; then
+  if ! taler-auditor-dbinit -v 2>/dev/null; then
+    echo "Required 'taler-auditor-dbinit' not found. Please fix your installation."
+  fi
 fi
 
-if ! id "$DBUSER" > /dev/null
-then
-    echo "Could not find '$DBUSER' user. Please set it up first"
-    exit 1
+if ! id "$DBUSER" >/dev/null; then
+  echo "Could not find '$DBUSER' user. Please set it up first"
+  exit 1
 fi
 
-if sudo -i -u postgres psql "$DBNAME" < /dev/null 2> /dev/null
-then
-    if [ 1 = "$RESET_DB" ]
-    then
-        echo "Deleting existing database '$DBNAME'." 1>&2
-        sudo -i -u postgres dropdb "$DBNAME"
-    else
-        echo "Database '$DBNAME' already exists, refusing to setup again."
-        echo "Use -r to delete the existing database first (dangerous!)."
-        exit 77
-    fi
+if sudo -i -u postgres psql "$DBNAME" </dev/null 2>/dev/null; then
+  if [ 1 = "$RESET_DB" ]; then
+    echo "Deleting existing database '$DBNAME'." 1>&2
+    sudo -i -u postgres dropdb "$DBNAME"
+  else
+    echo "Database '$DBNAME' already exists, refusing to setup again."
+    echo "Use -r to delete the existing database first (dangerous!)."
+    exit 77
+  fi
 fi
 
 echo "Setting up database user $DBUSER." 1>&2
 
-if ! sudo -i -u postgres createuser "$DBUSER" 2> /dev/null
-then
-    echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
+if ! sudo -i -u postgres createuser "$DBUSER" 2>/dev/null; then
+  echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
 fi
 
 echo "Creating database $DBNAME." 1>&2
 
-if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
-then
-    echo "Failed to create database '$DBNAME'"
-    exit 1
+if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"; then
+  echo "Failed to create database '$DBNAME'"
+  exit 1
 fi
 
-if [ -f "$CFGFILE" ]
-then
-    echo "Adding database configuration to '$CFGFILE'." 1>&2
-    echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
+if [ -f "$CFGFILE" ]; then
+  echo "Adding database configuration to '$CFGFILE'." 1>&2
+  echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >>"$CFGFILE"
 else
-    echo "Configuration '$CFGFILE' does not yet exist, creating it." 1>&2
-    mkdir -p "$(dirname "$CFGFILE")"
-    echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >> "$CFGFILE"
-    chown "$DBUSER":root "$CFGFILE"
-    chmod 460 "$CFGFILE"
+  echo "Configuration '$CFGFILE' does not yet exist, creating it." 1>&2
+  mkdir -p "$(dirname "$CFGFILE")"
+  echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >>"$CFGFILE"
+  chown "$DBUSER":root "$CFGFILE"
+  chmod 460 "$CFGFILE"
 fi
 
-if [ 0 = "$SKIP_DBINIT" ]
-then
-    echo "Initializing database '$DBNAME'." 1>&2
-    sudo -u "$DBUSER" taler-auditor-dbinit
+if [ 0 = "$SKIP_DBINIT" ]; then
+  echo "Initializing database '$DBNAME'." 1>&2
+  sudo -u "$DBUSER" taler-auditor-dbinit
 fi
 
 echo "Database configuration finished." 1>&2

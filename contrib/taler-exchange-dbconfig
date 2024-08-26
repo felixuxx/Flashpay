@@ -28,157 +28,138 @@ CFGFILE="/etc/taler/taler.conf"
 
 # Parse command-line options
 while getopts 'c:g:hprsu:' OPTION; do
-    case "$OPTION" in
-        c)
-            CFGFILE="$OPTARG"
-            ;;
-        h)
-            echo 'Supported options:'
-            echo "  -c FILENAME  -- use configuration FILENAME (default: $CFGFILE)"
-            echo "  -g GROUP     -- taler-exchange to be run by GROUP (default: $DBGROUP)"
-            echo "  -h           -- print this help text"
-            echo "  -r           -- reset database (dangerous)"
-            echo "  -p           -- force permission setup even without database initialization"
-            echo "  -s           -- skip database initialization"
-            echo "  -u USER      -- taler-exchange to be run by USER (default: $DBUSER)"
-            exit 0
-            ;;
-        p)
-            FORCE_PERMS="1"
-            ;;
-        r)
-            RESET_DB="1"
-            ;;
-        s)
-            SKIP_DBINIT="1"
-            ;;
-        u)
-            DBUSER="$OPTARG"
-            ;;
-        ?)
-            echo "Unrecognized command line option" 1>&2
-            exit 1
-        ;;
-    esac
+  case "$OPTION" in
+  c)
+    CFGFILE="$OPTARG"
+    ;;
+  h)
+    echo 'Supported options:'
+    echo "  -c FILENAME  -- use configuration FILENAME (default: $CFGFILE)"
+    echo "  -g GROUP     -- taler-exchange to be run by GROUP (default: $DBGROUP)"
+    echo "  -h           -- print this help text"
+    echo "  -r           -- reset database (dangerous)"
+    echo "  -p           -- force permission setup even without database initialization"
+    echo "  -s           -- skip database initialization"
+    echo "  -u USER      -- taler-exchange to be run by USER (default: $DBUSER)"
+    exit 0
+    ;;
+  p)
+    FORCE_PERMS="1"
+    ;;
+  r)
+    RESET_DB="1"
+    ;;
+  s)
+    SKIP_DBINIT="1"
+    ;;
+  u)
+    DBUSER="$OPTARG"
+    ;;
+  ?)
+    echo "Unrecognized command line option" 1>&2
+    exit 1
+    ;;
+  esac
 done
 
-if ! id postgres > /dev/null
-then
-    echo "Could not find 'postgres' user. Please install Postgresql first"
-    exit 1
+if ! id postgres >/dev/null; then
+  echo "Could not find 'postgres' user. Please install Postgresql first"
+  exit 1
 fi
 
-if [ "$(id -u)" -ne 0 ]
-then
-    echo "This script must be run as root"
-    exit 1
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run as root"
+  exit 1
 fi
 
-if [ 0 = "$SKIP_DBINIT" ]
-then
-    if ! taler-exchange-dbinit -v 2> /dev/null
-    then
-        echo "Required 'taler-exchange-dbinit' not found. Please fix your installation."
-        exit 1
-    fi
-    DBINIT=$(which taler-exchange-dbinit)
+if [ 0 = "$SKIP_DBINIT" ]; then
+  if ! taler-exchange-dbinit -v 2>/dev/null; then
+    echo "Required 'taler-exchange-dbinit' not found. Please fix your installation."
+    exit 1
+  fi
+  DBINIT=$(which taler-exchange-dbinit)
 fi
 
-if ! id "$DBUSER" > /dev/null
-then
-    echo "Could not find '$DBUSER' user. Please set it up first"
-    exit 1
+if ! id "$DBUSER" >/dev/null; then
+  echo "Could not find '$DBUSER' user. Please set it up first"
+  exit 1
 fi
 
 echo "Setting up database user '$DBUSER'." 1>&2
 
-if ! sudo -i -u postgres createuser "$DBUSER" 2> /dev/null
-then
-    echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
+if ! sudo -i -u postgres createuser "$DBUSER" 2>/dev/null; then
+  echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
 fi
 
 DBPATH=$(taler-config \
-             -c "$CFGFILE" \
-             -s exchangedb-postgres \
-             -o CONFIG)
+  -c "$CFGFILE" \
+  -s exchangedb-postgres \
+  -o CONFIG)
 
-if ! echo "$DBPATH" | grep "postgres://" > /dev/null
-then
-    echo "Invalid database configuration value '$DBPATH'." 1>&2
-    exit 1
+if ! echo "$DBPATH" | grep "postgres://" >/dev/null; then
+  echo "Invalid database configuration value '$DBPATH'." 1>&2
+  exit 1
 fi
 
-DBNAME=$(echo "$DBPATH" \
-         | sed \
-             -e "s/postgres:\/\/.*\///" \
-             -e "s/?.*//")
+DBNAME=$(echo "$DBPATH" |
+  sed \
+    -e "s/postgres:\/\/.*\///" \
+    -e "s/?.*//")
 
-if sudo -i -u postgres psql "$DBNAME" < /dev/null 2> /dev/null
-then
-    if [ 1 = "$RESET_DB" ]
-    then
-        echo "Deleting existing database '$DBNAME'." 1>&2
-        if ! sudo -i -u postgres dropdb "$DBNAME"
-        then
-            echo "Failed to delete existing database '$DBNAME'"
-            exit 1
-        fi
-        DO_CREATE=1
-    else
-        echo "Database '$DBNAME' already exists, continuing anyway."
-        DO_CREATE=0
+if sudo -i -u postgres psql "$DBNAME" </dev/null 2>/dev/null; then
+  if [ 1 = "$RESET_DB" ]; then
+    echo "Deleting existing database '$DBNAME'." 1>&2
+    if ! sudo -i -u postgres dropdb "$DBNAME"; then
+      echo "Failed to delete existing database '$DBNAME'"
+      exit 1
     fi
-else
     DO_CREATE=1
+  else
+    echo "Database '$DBNAME' already exists, continuing anyway."
+    DO_CREATE=0
+  fi
+else
+  DO_CREATE=1
 fi
 
-if [ 1 = "$DO_CREATE" ]
-then
-    echo "Creating database '$DBNAME'." 1>&2
+if [ 1 = "$DO_CREATE" ]; then
+  echo "Creating database '$DBNAME'." 1>&2
 
-    if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
-    then
-        echo "Failed to create database '$DBNAME'"
-        exit 1
+  if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"; then
+    echo "Failed to create database '$DBNAME'"
+    exit 1
+  fi
+fi
+
+if [ 0 = "$SKIP_DBINIT" ]; then
+  echo "Initializing database '$DBNAME'." 1>&2
+  if ! sudo -u "$DBUSER" "$DBINIT" -c "$CFGFILE"; then
+    echo "Failed to initialize database schema"
+    exit 1
+  fi
+fi
+
+if [ 0 = "$SKIP_DBINIT" ] || [ 1 = "$FORCE_PERMS" ]; then
+  DB_GRP="$(getent group "$DBGROUP" | sed -e "s/.*://g" -e "s/,/ /g")"
+  echo "Initializing permissions for '$DB_GRP'." 1>&2
+  for GROUPIE in $DB_GRP; do
+    if [ "$GROUPIE" != "$DBUSER" ]; then
+      if ! sudo -i -u postgres createuser "$GROUPIE" 2>/dev/null; then
+        echo "Database user '$GROUPIE' already existed. Continuing anyway." 1>&2
+      fi
+      echo -e 'GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
+        'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' |
+        sudo -u "$DBUSER" psql "$DBNAME"
+      echo -e 'GRANT USAGE ON SCHEMA exchange TO "'"$GROUPIE"'"' |
+        sudo -u "$DBUSER" psql "$DBNAME"
+      # FIXME: double-check the following GRANTs
+      echo -e 'GRANT USAGE ON SCHEMA _v TO "'"$GROUPIE"'"' |
+        sudo -u "$DBUSER" psql "$DBNAME"
+      echo -e 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _v TO "'"$GROUPIE"'"' |
+        sudo -u "$DBUSER" psql "$DBNAME"
+
     fi
-fi
-
-if [ 0 = "$SKIP_DBINIT" ]
-then
-    echo "Initializing database '$DBNAME'." 1>&2
-    if ! sudo -u "$DBUSER" "$DBINIT" -c "$CFGFILE"
-    then
-        echo "Failed to initialize database schema"
-        exit 1
-    fi
-fi
-
-if [ 0 = "$SKIP_DBINIT" ] || [ 1 = "$FORCE_PERMS" ]
-then
-    DB_GRP="$(getent group "$DBGROUP" | sed -e "s/.*://g" -e "s/,/ /g")"
-    echo "Initializing permissions for '$DB_GRP'." 1>&2
-    for GROUPIE in $DB_GRP
-    do
-        if [ "$GROUPIE" != "$DBUSER" ]
-        then
-            if ! sudo -i -u postgres createuser "$GROUPIE" 2> /dev/null
-            then
-                echo "Database user '$GROUPIE' already existed. Continuing anyway." 1>&2
-            fi
-            echo -e 'GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
-                    'GRANT USAGE ON ALL SEQUENCES IN SCHEMA exchange TO "'"$GROUPIE"'";\n' \
-                | sudo -u "$DBUSER" psql "$DBNAME"
-            echo -e 'GRANT USAGE ON SCHEMA exchange TO "'"$GROUPIE"'"' \
-                | sudo -u "$DBUSER" psql "$DBNAME"
-	    # FIXME: double-check the following GRANTs
-            echo -e 'GRANT USAGE ON SCHEMA _v TO "'"$GROUPIE"'"' \
-                | sudo -u "$DBUSER" psql "$DBNAME"
-            echo -e 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _v TO "'"$GROUPIE"'"' \
-                | sudo -u "$DBUSER" psql "$DBNAME"
-
-
-        fi
-    done
+  done
 fi
 
 echo "Database configuration finished." 1>&2
