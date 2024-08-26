@@ -231,7 +231,6 @@ AS_IF([test "x$curl" = x1],[
   [curl=0])
 ])
 
-
 # libcurl should be mutually exclusive
 AS_IF([test "$curl" = 1],
       AM_CONDITIONAL(HAVE_LIBCURL, true)

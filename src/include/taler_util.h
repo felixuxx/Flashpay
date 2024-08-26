@@ -32,11 +32,18 @@
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
 
+#if MHD_VERSION < 0x00097701
+#define MHD_create_response_from_buffer_static (s,b)            \
+        MHD_create_response_from_buffer (s,                     \
+                                         (const char *) b,      \
+                                         MHD_RESPMEM_PERSISTENT)
+#endif
+
 /**
  * Version of the Taler API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_API_VERSION 0x00090401
+#define TALER_API_VERSION 0x000D0000
 
 /**
  * Stringify operator.
