@@ -88,6 +88,11 @@ if ! echo "$DBPATH" | grep "postgres://" >/dev/null; then
   exit 1
 fi
 
+DBNAME=$(echo "$DBPATH" |
+  sed \
+    -e "s/postgres:\/\/.*\///" \
+    -e "s/?.*//")
+
 if sudo -i -u postgres psql "$DBNAME" </dev/null 2>/dev/null; then
   if [ 1 = "$RESET_DB" ]; then
     echo "Deleting existing database '$DBNAME'." 1>&2
