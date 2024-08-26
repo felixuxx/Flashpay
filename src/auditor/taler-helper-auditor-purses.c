@@ -112,8 +112,9 @@ static const struct GNUNET_CONFIGURATION_Handle *cfg;
  *           profitable for the exchange for this operation,
  *           -1 if @a exchange being smaller than @a auditor is
  *           profitable for the exchange, and 0 if it is unclear
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_amount_arithmetic_inconsistency (
   const char *operation,
   uint64_t rowid,
@@ -157,7 +158,7 @@ report_amount_arithmetic_inconsistency (
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      return qs;
     }
   }
 
@@ -170,6 +171,7 @@ report_amount_arithmetic_inconsistency (
                           target,
                           &delta);
   }
+  return qs;
 }
 
 
@@ -179,8 +181,9 @@ report_amount_arithmetic_inconsistency (
  * @param table affected table
  * @param rowid affected row, 0 if row is missing
  * @param diagnostic message explaining the problem
+ * @return transaction status
  */
-static void
+static enum GNUNET_DB_QueryStatus
 report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
@@ -199,8 +202,9 @@ report_row_inconsistency (const char *table,
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling!
+    return qs;
   }
+  return qs;
 }
 
 
@@ -209,12 +213,13 @@ report_row_inconsistency (const char *table,
  *
  * @param atime when was the purse created
  * @param[out] fee set to the purse fee
- * @return #GNUNET_OK on success
+ * @return #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT on success
  */
-static enum GNUNET_GenericReturnValue
+static enum GNUNET_DB_QueryStatus
 get_purse_fee (struct GNUNET_TIME_Timestamp atime,
                struct TALER_Amount *fee)
 {
+  enum GNUNET_DB_QueryStatus qs;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Timestamp start_date;
   struct GNUNET_TIME_Timestamp end_date;
@@ -223,30 +228,40 @@ get_purse_fee (struct GNUNET_TIME_Timestamp atime,
   struct GNUNET_TIME_Relative hexp;
   uint32_t pacl;
 
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      TALER_ARL_edb->get_global_fee (TALER_ARL_edb->cls,
-                                     atime,
-                                     &start_date,
-                                     &end_date,
-                                     &fees,
-                                     &ptimeout,
-                                     &hexp,
-                                     &pacl,
-                                     &master_sig))
+  qs = TALER_ARL_edb->get_global_fee (TALER_ARL_edb->cls,
+                                      atime,
+                                      &start_date,
+                                      &end_date,
+                                      &fees,
+                                      &ptimeout,
+                                      &hexp,
+                                      &pacl,
+                                      &master_sig);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     char *diag;
 
     GNUNET_asprintf (&diag,
                      "purse fee unavailable at %s\n",
                      GNUNET_TIME_timestamp2s (atime));
-    report_row_inconsistency ("purse-fee",
-                              atime.abs_time.abs_value_us,
-                              diag);
+    qs = report_row_inconsistency ("purse-fee",
+                                   atime.abs_time.abs_value_us,
+                                   diag);
     GNUNET_free (diag);
-    return GNUNET_SYSERR;
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   *fee = fees.purse;
-  return GNUNET_OK;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -428,7 +443,9 @@ setup_purse (struct PurseContext *pc,
     pc->qs = qs;
     return NULL;
   }
-  if (0 > (qs = load_auditor_purse_summary (ps)))
+  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+  qs = load_auditor_purse_summary (ps);
+  if (0 > qs)
   {
     GNUNET_free (ps);
     pc->qs = qs;
@@ -496,11 +513,11 @@ handle_purse_requested (
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (purse_total_bad_sig_loss),
@@ -586,9 +603,15 @@ handle_purse_deposits (
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
-      report_row_inconsistency ("purse-deposit",
-                                rowid,
-                                "denomination key not found");
+      qs = report_row_inconsistency ("purse-deposit",
+                                     rowid,
+                                     "denomination key not found");
+      if (0 > qs)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        pc->qs = qs;
+        return GNUNET_SYSERR;
+      }
       return GNUNET_OK;
     }
     TALER_ARL_amount_subtract (&amount_minus_fee,
@@ -615,11 +638,11 @@ handle_purse_deposits (
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (purse_total_bad_sig_loss),
@@ -631,18 +654,22 @@ handle_purse_deposits (
                     &deposit->purse_pub);
   if (NULL == ps)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs)
+    if (0 > pc->qs)
     {
-      report_row_inconsistency ("purse_deposit",
-                                rowid,
-                                "purse not found");
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc->qs);
+      return GNUNET_SYSERR;
     }
-    else
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs);
+    qs = report_row_inconsistency ("purse_deposit",
+                                   rowid,
+                                   "purse not found");
+    if (0 > qs)
     {
-      /* Database trouble!? */
-      GNUNET_break (0);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   TALER_ARL_amount_add (&ps->balance,
                         &ps->balance,
@@ -719,11 +746,11 @@ handle_purse_merged (
       qs = TALER_ARL_adb->insert_bad_sig_losses (
         TALER_ARL_adb->cls,
         &bsl);
-
       if (qs < 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        // FIXME: error handling!
+        pc->qs = qs;
+        return GNUNET_SYSERR;
       }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_total_bad_sig_loss),
                             &TALER_ARL_USE_AB (purse_total_bad_sig_loss),
@@ -737,18 +764,22 @@ handle_purse_merged (
                     purse_pub);
   if (NULL == ps)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs)
+    if (0 < pc->qs)
     {
-      report_row_inconsistency ("purse-merge",
-                                rowid,
-                                "purse not found");
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc->qs);
+      return GNUNET_SYSERR;
     }
-    else
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs);
+    qs = report_row_inconsistency ("purse-merge",
+                                   rowid,
+                                   "purse not found");
+    if (qs < 0)
     {
-      /* Database trouble!? */
-      GNUNET_break (0);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   GNUNET_break (0 ==
                 GNUNET_TIME_timestamp_cmp (merge_timestamp,
@@ -796,6 +827,7 @@ handle_account_merged (
 {
   struct PurseContext *pc = cls;
   struct PurseSummary *ps;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= TALER_ARL_USE_PP (purse_account_merge_serial_id));
@@ -812,7 +844,6 @@ handle_account_merged (
                                          reserve_pub,
                                          reserve_sig))
   {
-    enum GNUNET_DB_QueryStatus qs;
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .row_id = rowid,
       .operation = "account-merge",
@@ -823,11 +854,11 @@ handle_account_merged (
     qs = TALER_ARL_adb->insert_bad_sig_losses (
       TALER_ARL_adb->cls,
       &bsl);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      // FIXME: error handling!
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
     TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_total_bad_sig_loss),
                           &TALER_ARL_USE_AB (purse_total_bad_sig_loss),
@@ -838,18 +869,22 @@ handle_account_merged (
                     purse_pub);
   if (NULL == ps)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs)
+    if (0 > pc->qs)
     {
-      report_row_inconsistency ("account-merge",
-                                rowid,
-                                "purse not found");
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc->qs);
+      return GNUNET_SYSERR;
     }
-    else
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs);
+    qs = report_row_inconsistency ("account-merge",
+                                   rowid,
+                                   "purse not found");
+    if (0 > qs)
     {
-      /* Database trouble!? */
-      GNUNET_break (0);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_global_balance),
                         &TALER_ARL_USE_AB (purse_global_balance),
@@ -889,35 +924,46 @@ handle_purse_decision (
                     purse_pub);
   if (NULL == ps)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == pc->qs)
+    if (0 > pc->qs)
     {
-      report_row_inconsistency ("purse-decision",
-                                rowid,
-                                "purse not found");
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc->qs);
+      return GNUNET_SYSERR;
     }
-    else
+    qs = report_row_inconsistency ("purse-decision",
+                                   rowid,
+                                   "purse not found");
+    if (0 > qs)
     {
-      /* Database trouble!? */
-      GNUNET_break (0);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
+    return GNUNET_OK;
+  }
+  qs = get_purse_fee (ps->creation_date,
+                      &purse_fee);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    pc->qs = qs;
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      get_purse_fee (ps->creation_date,
-                     &purse_fee))
-  {
-    report_row_inconsistency ("purse-request",
-                              rowid,
-                              "purse fee unavailable");
-  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return GNUNET_OK; /* already reported */
   if (0 >
       TALER_amount_subtract (&balance_without_purse_fee,
                              &ps->balance,
                              &purse_fee))
   {
-    report_row_inconsistency ("purse-request",
-                              rowid,
-                              "purse fee higher than balance");
+    qs = report_row_inconsistency ("purse-request",
+                                   rowid,
+                                   "purse fee higher than balance");
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      pc->qs = qs;
+      return GNUNET_SYSERR;
+    }
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (TALER_ARL_currency,
                                           &balance_without_purse_fee));
@@ -928,11 +974,17 @@ handle_purse_decision (
     if (-1 != TALER_amount_cmp (&balance_without_purse_fee,
                                 &ps->total_value))
     {
-      report_amount_arithmetic_inconsistency ("purse-decision: refund",
-                                              rowid,
-                                              &balance_without_purse_fee,
-                                              &ps->total_value,
-                                              0);
+      qs = report_amount_arithmetic_inconsistency ("purse-decision: refund",
+                                                   rowid,
+                                                   &balance_without_purse_fee,
+                                                   &ps->total_value,
+                                                   0);
+      if (0 > qs)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        pc->qs = qs;
+        return GNUNET_SYSERR;
+      }
     }
   }
   else
@@ -940,11 +992,17 @@ handle_purse_decision (
     if (-1 == TALER_amount_cmp (&balance_without_purse_fee,
                                 &ps->total_value))
     {
-      report_amount_arithmetic_inconsistency ("purse-decision: merge",
-                                              rowid,
-                                              &ps->total_value,
-                                              &balance_without_purse_fee,
-                                              0);
+      qs = report_amount_arithmetic_inconsistency ("purse-decision: merge",
+                                                   rowid,
+                                                   &ps->total_value,
+                                                   &balance_without_purse_fee,
+                                                   0);
+      if (0 > qs)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        pc->qs = qs;
+        return GNUNET_SYSERR;
+      }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (
                               purse_total_balance_insufficient_loss),
                             &TALER_ARL_USE_AB (
@@ -958,7 +1016,6 @@ handle_purse_decision (
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
     pc->qs = qs;
     return GNUNET_SYSERR;
   }
@@ -1005,7 +1062,8 @@ handle_purse_expired (
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    // FIXME: error handling!
+    pc->qs = qs;
+    return GNUNET_SYSERR;
   }
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (purse_total_delayed_decisions),
                         &TALER_ARL_USE_AB (purse_total_delayed_decisions),
@@ -1032,10 +1090,8 @@ verify_purse_balance (void *cls,
 {
   struct PurseContext *pc = cls;
   struct PurseSummary *ps = value;
-  enum GNUNET_GenericReturnValue ret;
   enum GNUNET_DB_QueryStatus qs;
 
-  ret = GNUNET_OK;
   if (internal_checks)
   {
     struct TALER_Amount pf;
@@ -1044,23 +1100,30 @@ verify_purse_balance (void *cls,
     /* subtract purse fee from ps->balance to get actual balance we expect, as
        we track the balance including purse fee, while the exchange subtracts
        the purse fee early on. */
-    if (GNUNET_OK !=
-        get_purse_fee (ps->creation_date,
-                       &pf))
+    qs = get_purse_fee (ps->creation_date,
+                        &pf);
+    if (qs < 0)
     {
-      GNUNET_break (0);
-      report_row_inconsistency ("purse",
-                                0,
-                                "purse fee unavailable");
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      pc->qs = qs;
+      return GNUNET_SYSERR;
     }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      return GNUNET_OK; /* error already reported */
     if (0 >
         TALER_amount_subtract (&balance_without_purse_fee,
                                &ps->balance,
                                &pf))
     {
-      report_row_inconsistency ("purse",
-                                0,
-                                "purse fee higher than balance");
+      qs = report_row_inconsistency ("purse",
+                                     0,
+                                     "purse fee higher than balance");
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        pc->qs = qs;
+        return GNUNET_SYSERR;
+      }
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_set_zero (TALER_ARL_currency,
                                             &balance_without_purse_fee));
@@ -1069,11 +1132,17 @@ verify_purse_balance (void *cls,
     if (0 != TALER_amount_cmp (&ps->exchange_balance,
                                &balance_without_purse_fee))
     {
-      report_amount_arithmetic_inconsistency ("purse-balance",
-                                              0,
-                                              &ps->exchange_balance,
-                                              &balance_without_purse_fee,
-                                              0);
+      qs = report_amount_arithmetic_inconsistency ("purse-balance",
+                                                   0,
+                                                   &ps->exchange_balance,
+                                                   &balance_without_purse_fee,
+                                                   0);
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        pc->qs = qs;
+        return GNUNET_SYSERR;
+      }
     }
   }
 
@@ -1086,21 +1155,39 @@ verify_purse_balance (void *cls,
                                            &ps->purse_pub,
                                            &ps->balance,
                                            ps->expiration_date);
-  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
     pc->qs = qs;
     return GNUNET_SYSERR;
   }
+  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Clear memory from the purses hash map.
+ *
+ * @param cls our `struct PurseContext`
+ * @param key hash of the purse public key
+ * @param value a `struct PurseSummary`
+ * @return #GNUNET_OK to process more entries
+ */
+static enum GNUNET_GenericReturnValue
+release_purse_balance (void *cls,
+                       const struct GNUNET_HashCode *key,
+                       void *value)
+{
+  struct PurseContext *pc = cls;
+  struct PurseSummary *ps = value;
 
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (pc->purses,
                                                        key,
                                                        ps));
   GNUNET_free (ps);
-  return ret;
+  return GNUNET_OK;
 }
 
 
@@ -1182,6 +1269,11 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
+  }
   qs = TALER_ARL_edb->select_purse_merges_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (purse_merges_serial_id),
@@ -1191,6 +1283,11 @@ analyze_purses (void *cls)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
+  }
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
   }
 
   qs = TALER_ARL_edb->select_purse_deposits_above_serial_id (
@@ -1202,6 +1299,11 @@ analyze_purses (void *cls)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
+  }
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
   }
 
   /* Charge purse fee! */
@@ -1215,6 +1317,11 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
+  }
 
   qs = TALER_ARL_edb->select_all_purse_decisions_above_serial_id (
     TALER_ARL_edb->cls,
@@ -1226,6 +1333,11 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
+  }
 
   qs = TALER_ARL_adb->select_purse_expired (
     TALER_ARL_adb->cls,
@@ -1236,15 +1348,26 @@ analyze_purses (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
+  }
 
   GNUNET_CONTAINER_multihashmap_iterate (pc.purses,
                                          &verify_purse_balance,
                                          &pc);
+  GNUNET_CONTAINER_multihashmap_iterate (pc.purses,
+                                         &release_purse_balance,
+                                         &pc);
   GNUNET_break (0 ==
                 GNUNET_CONTAINER_multihashmap_size (pc.purses));
   GNUNET_CONTAINER_multihashmap_destroy (pc.purses);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != pc.qs)
-    return qs;
+  if (pc.qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == pc.qs);
+    return pc.qs;
+  }
 
   qs = TALER_ARL_adb->insert_balance (
     TALER_ARL_adb->cls,
