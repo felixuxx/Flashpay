@@ -141,7 +141,7 @@ age_withdraw_reveal_ok (
     /* Reconstruct the coins and unblind the signatures */
     json_array_foreach (j_sigs, n, j_sig)
     {
-      struct GNUNET_JSON_Specification spec[] = {
+      struct GNUNET_JSON_Specification ispec[] = {
         TALER_JSON_spec_blinded_denom_sig (NULL,
                                            &denom_sigs[n]),
         GNUNET_JSON_spec_end ()
@@ -149,13 +149,12 @@ age_withdraw_reveal_ok (
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j_sig,
-                             spec,
+                             ispec,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-
     }
 
     response.details.ok.num_sigs = awrh->num_coins;
