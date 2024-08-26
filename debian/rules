@@ -47,7 +47,15 @@ override_dh_installsystemd:
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-closer --no-start --no-enable --no-stop-on-upgrade
 	dh_installsystemd -ptaler-exchange --name=taler-exchange --no-start --no-enable --no-stop-on-upgrade
 	dh_installsystemd -ptaler-auditor --name=taler-auditor-httpd --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-aggregation --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-coins --no-start --no-enable --no-stop-on-upgrade
 	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-deposits --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-purses --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-reserves --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-transfer --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-wire-credit --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-helper-auditor-wire-debit --no-start --no-enable --no-stop-on-upgrade
+	dh_installsystemd -ptaler-auditor --name=taler-auditor --no-start --no-enable --no-stop-on-upgrade
 	dh_installsystemd -ptaler-exchange-offline --name=taler-exchange-offline --no-start --no-enable --no-stop-on-upgrade
 	dh_installsystemd -ptaler-exchange-offline --name=taler-exchange-offline.timer --no-start --no-enable --no-stop-on-upgrade
 	# final invocation to generate daemon reload
