@@ -182,7 +182,7 @@ handle_lookup_finished (void *cls,
 
 
 struct TALER_EXCHANGE_KycGetStatisticsHandle *
-TALER_EXCHANGE_get_kyc_statistics (
+TALER_EXCHANGE_kyc_get_statistics (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
   const char *name,

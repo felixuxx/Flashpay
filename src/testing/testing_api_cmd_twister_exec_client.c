@@ -523,16 +523,17 @@ TALER_TESTING_cmd_delete_object (const char *label,
   dos = GNUNET_new (struct DeleteObjectState);
   dos->path = path;
   dos->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &delete_object_run,
+      .cleanup = &delete_object_cleanup,
+      .traits = &delete_object_traits,
+      .cls = dos
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &delete_object_run,
-    .cleanup = &delete_object_cleanup,
-    .traits = &delete_object_traits,
-    .cls = dos
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -901,17 +902,17 @@ TALER_TESTING_cmd_malform_response (const char *label,
 
   mrs = GNUNET_new (struct MalformResponseState);
   mrs->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &malform_response_run,
+      .cleanup = &malform_response_cleanup,
+      .traits = &malform_response_traits,
+      .cls = mrs
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &malform_response_run,
-    .cleanup = &malform_response_cleanup,
-    .traits = &malform_response_traits,
-    .cls = mrs
-  };
-
-  return cmd;
-
+    return cmd;
+  }
 }
 
 

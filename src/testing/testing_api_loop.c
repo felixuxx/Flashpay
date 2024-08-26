@@ -829,14 +829,15 @@ rewind_ip_run (void *cls,
        NULL != is->commands[new_ip].label;
        new_ip++)
   {
-    const struct TALER_TESTING_Command *cmd = &is->commands[new_ip];
+    const struct TALER_TESTING_Command *ipcmd
+      = &is->commands[new_ip];
 
-    if (cmd == target)
+    if (ipcmd == target)
       break;
-    if (TALER_TESTING_cmd_is_batch (cmd))
+    if (TALER_TESTING_cmd_is_batch (ipcmd))
     {
       int ret = seek_batch (is,
-                            cmd,
+                            ipcmd,
                             target);
       if (GNUNET_SYSERR == ret)
         return;   /* failure! */

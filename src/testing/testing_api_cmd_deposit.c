@@ -38,7 +38,7 @@
  * How long do we wait AT MOST when retrying?
  */
 #define MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+          GNUNET_TIME_UNIT_MILLISECONDS, 100)
 
 
 /**
@@ -342,18 +342,18 @@ deposit_run (void *cls,
   if (NULL != ds->deposit_reference)
   {
     /* We're copying another deposit operation, initialize here. */
-    const struct TALER_TESTING_Command *cmd;
+    const struct TALER_TESTING_Command *drcmd;
     struct DepositState *ods;
 
-    cmd = TALER_TESTING_interpreter_lookup_command (is,
-                                                    ds->deposit_reference);
-    if (NULL == cmd)
+    drcmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                      ds->deposit_reference);
+    if (NULL == drcmd)
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    ods = cmd->cls;
+    ods = drcmd->cls;
     ds->coin_reference = ods->coin_reference;
     ds->coin_index = ods->coin_index;
     ds->wire_details = json_incref (ods->wire_details);
@@ -370,18 +370,19 @@ deposit_run (void *cls,
   {
     /* We're copying the merchant key from another deposit operation */
     const struct TALER_MerchantPrivateKeyP *merchant_priv;
-    const struct TALER_TESTING_Command *cmd;
+    const struct TALER_TESTING_Command *mpcmd;
 
-    cmd = TALER_TESTING_interpreter_lookup_command (is,
-                                                    ds->merchant_priv_reference);
-    if (NULL == cmd)
+    mpcmd = TALER_TESTING_interpreter_lookup_command (
+      is,
+      ds->merchant_priv_reference);
+    if (NULL == mpcmd)
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);
       return;
     }
     if ( (GNUNET_OK !=
-          TALER_TESTING_get_trait_merchant_priv (cmd,
+          TALER_TESTING_get_trait_merchant_priv (mpcmd,
                                                  &merchant_priv)) )
     {
       GNUNET_break (0);

@@ -29,7 +29,29 @@
 #include "taler_testing_lib.h"
 
 #define TWISTER_FAIL() \
-  do {GNUNET_break (0); return NULL; } while (0)
+        do {GNUNET_break (0); return NULL; } while (0)
+
+
+/**
+ * Prepare twister for execution; mainly checks whether the
+ * HTTP port is available and construct the base URL based on it.
+ *
+ * @param config_filename configuration file name.
+ * @return twister base URL, NULL upon errors.
+ */
+char *
+TALER_TWISTER_prepare_twister (const char *config_filename);
+
+
+/**
+ * Run the twister service.
+ *
+ * @param config_filename configuration file name.
+ * @return twister process handle, NULL upon errors.
+ */
+struct GNUNET_OS_Process *
+TALER_TWISTER_run_twister (const char *config_filename);
+
 
 /**
  * Define a "hack response code" CMD.  This causes the next

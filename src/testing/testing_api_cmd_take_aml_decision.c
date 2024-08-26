@@ -368,9 +368,9 @@ take_aml_decision_run (void *cls,
       officer_priv,
       &take_aml_decision_cb,
       ds);
-    for (unsigned int i = 0; i<num_rules; i++)
+    for (unsigned int j = 0; j<num_rules; j++)
     {
-      struct TALER_EXCHANGE_AccountRule *rule = &rules[i];
+      struct TALER_EXCHANGE_AccountRule *rule = &rules[j];
 
       GNUNET_free (rule->measures);
     }

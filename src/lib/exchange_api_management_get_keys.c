@@ -176,7 +176,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     struct TALER_EXCHANGE_FutureDenomPublicKey *denom_key
       = &fk->denom_keys[i];
     const char *section_name;
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification ispec[] = {
       TALER_JSON_spec_amount_any ("value",
                                   &denom_key->value),
       GNUNET_JSON_spec_timestamp ("stamp_start",
@@ -206,7 +206,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (j,
-                           spec,
+                           ispec,
                            NULL, NULL))
     {
       GNUNET_break_op (0);

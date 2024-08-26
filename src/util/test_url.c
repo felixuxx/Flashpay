@@ -30,11 +30,15 @@
  * @param expected expected input
  */
 static void
-cf (char *input, char *expected)
+cf (char *input,
+    const char *expected)
 {
-  if (0 != strcmp (input, expected))
+  if (0 != strcmp (input,
+                   expected))
   {
-    printf ("got '%s' but expected '%s'\n", input, expected);
+    printf ("got '%s' but expected '%s'\n",
+            input,
+            expected);
     GNUNET_assert (0);
   }
   GNUNET_free (input);

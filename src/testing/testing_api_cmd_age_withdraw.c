@@ -742,16 +742,17 @@ TALER_TESTING_cmd_age_withdraw_reveal (
 
   awrs->age_withdraw_reference = age_withdraw_reference;
   awrs->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = awrs,
+      .label = label,
+      .run = age_withdraw_reveal_run,
+      .cleanup = age_withdraw_reveal_cleanup,
+      .traits = age_withdraw_reveal_traits,
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = awrs,
-    .label = label,
-    .run = age_withdraw_reveal_run,
-    .cleanup = age_withdraw_reveal_cleanup,
-    .traits = age_withdraw_reveal_traits,
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

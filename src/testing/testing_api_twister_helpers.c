@@ -23,10 +23,10 @@
  * @author Christian Grothoff
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_twister_testing_lib.h"
+
 
 /**
  * Prepare twister for execution; mainly checks whether the

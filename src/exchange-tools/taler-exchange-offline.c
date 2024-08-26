@@ -2160,7 +2160,7 @@ upload_keys (const char *exchange_url,
     struct TALER_EXCHANGE_SigningKeySignature *ss = &pkd.sign_sigs[i];
     json_t *val = json_array_get (signkey_sigs,
                                   i);
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification ispec[] = {
       GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                    &ss->exchange_pub),
       GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -2170,7 +2170,7 @@ upload_keys (const char *exchange_url,
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (val,
-                           spec,
+                           ispec,
                            &err_name,
                            &err_line))
     {
@@ -2190,7 +2190,7 @@ upload_keys (const char *exchange_url,
     struct TALER_EXCHANGE_DenominationKeySignature *ds = &pkd.denom_sigs[i];
     json_t *val = json_array_get (denom_sigs,
                                   i);
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification ispec[] = {
       GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                    &ds->h_denom_pub),
       GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -2200,7 +2200,7 @@ upload_keys (const char *exchange_url,
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (val,
-                           spec,
+                           ispec,
                            &err_name,
                            &err_line))
     {
@@ -3314,7 +3314,8 @@ do_del_wire (char *const *args)
   if (NULL != in)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Downloaded data was not consumed, not deleting wire account\n");
+                "Downloaded data was not consumed, not deleting wire account\n")
+    ;
     GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_FAILURE;
     return;

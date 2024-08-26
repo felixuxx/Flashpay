@@ -102,13 +102,14 @@ TALER_TESTING_cmd_signal (const char *label,
   ss->process = process;
   ss->signal = signal;
 
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ss,
+      .label = label,
+      .run = &signal_run,
+      .cleanup = &signal_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ss,
-    .label = label,
-    .run = &signal_run,
-    .cleanup = &signal_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

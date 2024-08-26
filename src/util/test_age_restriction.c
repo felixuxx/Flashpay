@@ -30,7 +30,7 @@
  * @return String representation of the age mask, allocated by GNUNET_malloc.
  *         Can be used as value in the TALER config.
  */
-char *
+static char *
 age_mask_to_string (
   const struct TALER_AgeMask *m)
 {
@@ -68,7 +68,7 @@ age_mask_to_string (
 }
 
 
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 test_groups (void)
 {
   struct
@@ -129,7 +129,7 @@ test_groups (void)
 }
 
 
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 test_dates (void)
 {
   struct TALER_AgeMask mask = {
@@ -137,7 +137,7 @@ test_dates (void)
   };
   struct
   {
-    char *date;
+    const char *date;
     uint32_t expected;
     enum GNUNET_GenericReturnValue ret;
   }
@@ -174,7 +174,7 @@ test_dates (void)
   {
     uint32_t d;
     enum GNUNET_GenericReturnValue ret;
-    char *date = test[t].date;
+    const char *date = test[t].date;
 
     if (NULL == test[t].date)
     {
@@ -224,7 +224,7 @@ test_dates (void)
 }
 
 
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 test_lowest (void)
 {
   struct TALER_AgeMask mask = {
@@ -270,7 +270,7 @@ test_lowest (void)
 }
 
 
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 test_adult (void)
 {
   struct { struct TALER_AgeMask mask; uint8_t expected; }
@@ -304,7 +304,8 @@ static struct TALER_AgeMask age_mask = {
   .bits = 1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21
 };
 
-enum GNUNET_GenericReturnValue
+
+static enum GNUNET_GenericReturnValue
 test_attestation (void)
 {
   uint8_t age;
