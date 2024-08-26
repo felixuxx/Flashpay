@@ -22,23 +22,18 @@ set -eu
 RESET_DB=0
 SKIP_DBINIT=0
 DBUSER="taler-auditor-httpd"
-DBNAME="auditor"
-CFGFILE="/etc/taler/secrets/auditor-db.secret.conf"
+CFGFILE="/etc/taler/taler.conf"
 
 # Parse command-line options
-while getopts ':hn:rsu:' OPTION; do
+while getopts ':hrsu:' OPTION; do
   case "$OPTION" in
   h)
     echo 'Supported options:'
-    echo "  -c FILENAME  -- write configuration to FILENAME (default: $CFGFILE)"
-    echo "  -n NAME      -- user NAME for database name (default: $DBNAME)"
+    echo "  -c FILENAME  -- use configuration FILENAME (default: $CFGFILE)"
     echo "  -r           -- reset database (dangerous)"
     echo "  -s           -- skip database initialization"
     echo "  -u USER      -- taler-auditor to be run by USER (default: $DBUSER)"
     exit 0
-    ;;
-  n)
-    DBNAME="$OPTARG"
     ;;
   r)
     RESET_DB="1"
@@ -69,6 +64,7 @@ if [ 0 = "$SKIP_DBINIT" ]; then
   if ! taler-auditor-dbinit -v 2>/dev/null; then
     echo "Required 'taler-auditor-dbinit' not found. Please fix your installation."
   fi
+  DBINIT=$(which taler-auditor-dbinit)
 fi
 
 if ! id "$DBUSER" >/dev/null; then
@@ -76,44 +72,53 @@ if ! id "$DBUSER" >/dev/null; then
   exit 1
 fi
 
-if sudo -i -u postgres psql "$DBNAME" </dev/null 2>/dev/null; then
-  if [ 1 = "$RESET_DB" ]; then
-    echo "Deleting existing database '$DBNAME'." 1>&2
-    sudo -i -u postgres dropdb "$DBNAME"
-  else
-    echo "Database '$DBNAME' already exists, refusing to setup again."
-    echo "Use -r to delete the existing database first (dangerous!)."
-    exit 77
-  fi
-fi
-
-echo "Setting up database user $DBUSER." 1>&2
+echo "Setting up database user '$DBUSER'." 1>&2
 
 if ! sudo -i -u postgres createuser "$DBUSER" 2>/dev/null; then
   echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
 fi
 
-echo "Creating database $DBNAME." 1>&2
+DBPATH=$(taler-config \
+  -c "$CFGFILE" \
+  -s auditordb-postgres \
+  -o CONFIG)
 
-if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"; then
-  echo "Failed to create database '$DBNAME'"
+if ! echo "$DBPATH" | grep "postgres://" >/dev/null; then
+  echo "Invalid database configuration value '$DBPATH'." 1>&2
   exit 1
 fi
 
-if [ -f "$CFGFILE" ]; then
-  echo "Adding database configuration to '$CFGFILE'." 1>&2
-  echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >>"$CFGFILE"
+if sudo -i -u postgres psql "$DBNAME" </dev/null 2>/dev/null; then
+  if [ 1 = "$RESET_DB" ]; then
+    echo "Deleting existing database '$DBNAME'." 1>&2
+    if ! sudo -i -u postgres dropdb "$DBNAME"; then
+      echo "Failed to delete existing database '$DBNAME'"
+      exit 1
+    fi
+    DO_CREATE=1
+  else
+    echo "Database '$DBNAME' already exists, continuing anyway."
+    DO_CREATE=0
+  fi
 else
-  echo "Configuration '$CFGFILE' does not yet exist, creating it." 1>&2
-  mkdir -p "$(dirname "$CFGFILE")"
-  echo -e "[auditordb-postgres]\nCONFIG=postgres:///$DBNAME\n" >>"$CFGFILE"
-  chown "$DBUSER":root "$CFGFILE"
-  chmod 460 "$CFGFILE"
+  DO_CREATE=1
+fi
+
+if [ 1 = "$DO_CREATE" ]; then
+  echo "Creating database '$DBNAME'." 1>&2
+
+  if ! sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"; then
+    echo "Failed to create database '$DBNAME'"
+    exit 1
+  fi
 fi
 
 if [ 0 = "$SKIP_DBINIT" ]; then
   echo "Initializing database '$DBNAME'." 1>&2
-  sudo -u "$DBUSER" taler-auditor-dbinit
+  if ! sudo -u "$DBUSER" "$DBINIT" -c "$CFGFILE"; then
+    echo "Failed to initialize database schema"
+    exit 1
+  fi
 fi
 
 echo "Database configuration finished." 1>&2
