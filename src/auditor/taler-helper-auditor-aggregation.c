@@ -35,8 +35,6 @@ static int global_ret;
 /**
  * Run in test mode. Exit when idle instead of
  * going to sleep and waiting for more work.
- *
- * FIXME: not yet implemented!
  */
 static int test_mode;
 
@@ -458,7 +456,7 @@ check_transaction_history_for_deposit (
         if (qs < 0)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-          // FIXME: error handling
+          return qs;
         }
       }
       deposited = &tl->details.deposit->amount_with_fee;       /* according to exchange*/
