@@ -21,18 +21,16 @@ garantie des dépôts des clients.
 
 **Les utilisateurs** sont propriétaires de jetons (monnaie électronique)
 signés par TOPS et libellés en CHF, qui sont stockés dans des porte-monnaies
-Taler sous la responsabilité des utilisateurs et avec lesquels les
-utilisateurs peuvent payer.
+Taler sous la responsabilité des utilisateurs et avec lesquels les utilisateurs peuvent payer.
 
-Les **portefeuilles Taler** sont des produits qui gèrent des espèces
-numériques (monnaie électronique) selon le protocole GNU Taler, qu'un service
-de paiement émet et rachète pour payer des bénéficiaires. Les jetons (e-CHF)
-émis par TOPS peuvent être utilisés comme moyen de paiement dans les commerces
-fixes, les distributeurs automatiques, en ligne et dans les applications
-auprès de commerçants ou de prestataires de services agréés qui acceptent ce
-moyen de paiement (ci-après « **bénéficiaires** »). Les utilisateurs peuvent
-également effectuer des paiements à d'autres utilisateurs ou retransférer la
-monnaie électronique sur un compte bancaire suisse.
+Les **portefeuilles Taler** sont des produits qui gèrent des jetons (espèces numériques, monnaie
+électronique) selon le protocole GNU Taler, qu'un service de paiement émet et rachète pour payer
+des bénéficiaires. Les jetons (e-CHF) émis par TOPS peuvent être utilisés comme moyen de paiement
+dans les commerces fixes, dans les distributeurs automatiques, dans les boutiques en ligne et dans
+les applications auprès de commerçants ou de prestataires de services autorisés qui acceptent ce
+moyen de paiement (ci-après **bénéficiaires**). Les utilisateurs peuvent également effectuer
+des paiements à d'autres utilisateurs ou retransférer la monnaie électronique sur un compte
+bancaire suisse.
 
 
 Exigences techniques
