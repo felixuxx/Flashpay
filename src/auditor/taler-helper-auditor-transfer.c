@@ -294,10 +294,9 @@ begin_transaction (void)
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TALER_ARL_edb->preflight (TALER_ARL_edb->cls);
   if (GNUNET_OK !=
-      TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                            "transfer auditor"))
+      TALER_ARL_edb->start_read_only (TALER_ARL_edb->cls,
+                                      "transfer auditor"))
   {
     GNUNET_break (0);
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
@@ -347,9 +346,7 @@ begin_transaction (void)
               "Concluded audit step at %llu/%llu\n",
               (unsigned long long) TALER_ARL_USE_PP (wire_aggregation_id),
               (unsigned long long) TALER_ARL_USE_PP (wire_batch_deposit_id));
-  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-  if (0 > qs)
-    goto handle_db_error;
+  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
   if (0 > qs)
     goto handle_db_error;

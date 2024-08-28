@@ -527,6 +527,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Transaction logic ended with status %d\n",
               qs);
+  qs = TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   if (qs < 0)
     goto handle_db_error;
   qs = TALER_ARL_adb->update_balance (
@@ -606,9 +607,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Concluded audit step at %llu\n",
               (unsigned long long) TALER_ARL_USE_PP (wire_reserve_close_id));
-  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-  if (0 > qs)
-    goto handle_db_error;
   qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
   if (0 > qs)
     goto handle_db_error;
@@ -619,7 +617,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
   return;
 handle_db_error:
   TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   for (unsigned int max_retries = 3; max_retries>0; max_retries--)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -1594,10 +1591,9 @@ begin_transaction (void)
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TALER_ARL_edb->preflight (TALER_ARL_edb->cls);
   if (GNUNET_OK !=
-      TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                            "wire auditor"))
+      TALER_ARL_edb->start_read_only (TALER_ARL_edb->cls,
+                                      "wire debit auditor"))
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;

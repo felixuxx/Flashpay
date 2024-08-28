@@ -332,6 +332,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Transaction logic ended with status %d\n",
               qs);
+  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   if (qs < 0)
     goto handle_db_error;
   qs = TALER_ARL_adb->update_balance (
@@ -380,14 +381,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
                 (unsigned long long) wa->last_reserve_in_serial_id,
                 wa->ai->section_name);
   }
-  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-  if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Exchange DB commit failed, rolling back transaction\n");
-    goto handle_db_error;
-  }
   qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
   if (0 > qs)
   {
@@ -401,7 +394,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
   return;
 handle_db_error:
   TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
-  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   for (unsigned int max_retries = 3; max_retries>0; max_retries--)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -960,10 +952,9 @@ begin_transaction (void)
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TALER_ARL_edb->preflight (TALER_ARL_edb->cls);
   if (GNUNET_OK !=
-      TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                            "wire credit auditor"))
+      TALER_ARL_edb->start_read_only (TALER_ARL_edb->cls,
+                                      "wire credit auditor"))
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;

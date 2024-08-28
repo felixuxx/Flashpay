@@ -144,7 +144,7 @@ static struct TALER_TESTING_Timer timings[] = {
  * @param label string to add to the table
  * @return same string, now stored in the table
  */
-const char *
+static const char *
 add_label (char *label)
 {
   if (label_off == label_len)
@@ -296,7 +296,7 @@ run (void *cls,
                                      GNUNET_TIME_UNIT_ZERO,
                                      amount_1,
                                      MHD_HTTP_OK));
-      if (eval_probability (refresh_rate / 100.0))
+      if (eval_probability (refresh_rate / 100.0d))
       {
         char *melt_label;
         char *reveal_label;
@@ -630,7 +630,7 @@ main (int argc,
              " * Reserve=%u * Parallel=%u, operations in %s\n",
              howmany_coins,
              howmany_coins,
-             (float) howmany_coins * (refresh_rate / 100.0),
+             howmany_coins * (refresh_rate / 100.0d),
              howmany_reserves,
              howmany_clients,
              GNUNET_STRINGS_relative_time_to_string (

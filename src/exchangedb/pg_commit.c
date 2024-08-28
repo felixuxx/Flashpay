@@ -48,7 +48,6 @@ TEH_PG_commit (void *cls)
   PREPARE (pg,
            "do_commit",
            "COMMIT");
-
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "do_commit",
                                            params);
