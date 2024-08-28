@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_refreshes_hanging.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_refreshes_hanging (
@@ -28,10 +26,10 @@ TAH_PG_insert_refreshes_hanging (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
-    TALER_PQ_query_param_amount (pg->conn, &dc->amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->amount),
+    GNUNET_PQ_query_param_uint64 (&dc->problem_row_id),
     GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
-
     GNUNET_PQ_query_param_end
   };
 
@@ -39,11 +37,9 @@ TAH_PG_insert_refreshes_hanging (
            "auditor_refreshes_hanging_insert",
            "INSERT INTO auditor_refreshes_hanging "
            "(amount"
+           ",problem_row_id"
            ",coin_pub"
-           ") VALUES ($1,$2)"
-           " ON CONFLICT (coin_pub) DO UPDATE"
-           " SET amount = excluded.amount,"
-           " suppressed = false;"
+           ") VALUES ($1,$2);"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_refreshes_hanging_insert",

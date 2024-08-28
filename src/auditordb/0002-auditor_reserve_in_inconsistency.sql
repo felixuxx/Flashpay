@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS auditor_reserve_in_inconsistency
     bank_row_id INT8 NOT NULL,
     amount_exchange_expected taler_amount NOT NULL,
     amount_wired taler_amount NOT NULL,
-    reserve_pub BYTEA NOT NULL,
+    reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32),
     timestamp BIGINT NOT NULL,
     account BYTEA NOT NULL,
     diagnostic BYTEA NOT NULL,

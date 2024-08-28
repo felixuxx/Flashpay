@@ -26,8 +26,8 @@ TAH_PG_insert_wire_format_inconsistency (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
-    TALER_PQ_query_param_amount (pg->conn, &dc->amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->amount),
     GNUNET_PQ_query_param_uint64 (&dc->wire_offset),
     GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
     GNUNET_PQ_query_param_end
@@ -36,11 +36,10 @@ TAH_PG_insert_wire_format_inconsistency (
   PREPARE (pg,
            "auditor_wire_format_inconsistency_insert",
            "INSERT INTO auditor_wire_format_inconsistency "
-           "(row_id,"
-           " amount,"
+           "(amount,"
            " wire_offset,"
            " diagnostic"
-           ") VALUES ($1,$2,$3,$4);"
+           ") VALUES ($1,$2,$3);"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_wire_format_inconsistency_insert",

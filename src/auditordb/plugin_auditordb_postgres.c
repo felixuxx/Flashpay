@@ -477,7 +477,7 @@ postgres_rollback (void *cls)
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @return transaction status code
  */
-enum GNUNET_DB_QueryStatus
+static enum GNUNET_DB_QueryStatus
 postgres_commit (void *cls)
 {
   struct PostgresClosure *pg = cls;

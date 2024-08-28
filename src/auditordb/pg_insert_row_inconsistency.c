@@ -19,6 +19,7 @@
 #include "pg_helper.h"
 #include "pg_insert_row_inconsistency.h"
 
+
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_row_inconsistency (
   void *cls,

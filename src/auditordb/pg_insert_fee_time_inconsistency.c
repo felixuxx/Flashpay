@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_fee_time_inconsistency.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_fee_time_inconsistency (
@@ -28,12 +26,10 @@ TAH_PG_insert_fee_time_inconsistency (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
-
     GNUNET_PQ_query_param_string (dc->type),
+    GNUNET_PQ_query_param_uint64 (&dc->problem_row_id),
     GNUNET_PQ_query_param_absolute_time (&dc->time),
     GNUNET_PQ_query_param_string (dc->diagnostic),
-
     GNUNET_PQ_query_param_end
   };
 
@@ -41,9 +37,10 @@ TAH_PG_insert_fee_time_inconsistency (
            "auditor_fee_time_inconsistency_insert",
            "INSERT INTO auditor_fee_time_inconsistency "
            "(type"
+           ",problem_row_id"
            ",time"
            ",diagnostic"
-           ") VALUES ($1,$2,$3);");
+           ") VALUES ($1,$2,$3,$4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_fee_time_inconsistency_insert",
                                              params);

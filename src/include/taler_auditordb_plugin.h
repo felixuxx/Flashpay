@@ -215,8 +215,8 @@ struct TALER_AUDITORDB_Generic_Update
  */
 struct TALER_AUDITORDB_AmountArithmeticInconsistency
 {
-  // FIXME: which row?
   uint64_t row_id;
+  uint64_t problem_row_id;
   char *operation;
   struct TALER_Amount exchange_amount;
   struct TALER_Amount auditor_amount;
@@ -253,6 +253,7 @@ struct TALER_AUDITORDB_RowInconsistency
 struct TALER_AUDITORDB_BadSigLosses
 {
   uint64_t row_id;
+  uint64_t problem_row_id;
   char *operation;
   struct TALER_Amount loss;
   struct GNUNET_CRYPTO_EddsaPublicKey operation_specific_pub;
@@ -264,6 +265,7 @@ struct TALER_AUDITORDB_BadSigLosses
 struct TALER_AUDITORDB_ClosureLags
 {
   uint64_t row_id;
+  uint64_t problem_row_id;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute deadline;
   struct TALER_WireTransferIdentifierRawP wtid;
@@ -316,6 +318,7 @@ struct TALER_AUDITORDB_Progress
 struct TALER_AUDITORDB_RefreshesHanging
 {
   uint64_t row_id;
+  uint64_t problem_row_id;
   struct TALER_Amount amount;
   struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
 };
@@ -326,6 +329,7 @@ struct TALER_AUDITORDB_RefreshesHanging
 struct TALER_AUDITORDB_FeeTimeInconsistency
 {
   uint64_t row_id;
+  uint64_t problem_row_id;
   char *type;
   struct GNUNET_TIME_Absolute time;
   char *diagnostic;
@@ -337,6 +341,7 @@ struct TALER_AUDITORDB_FeeTimeInconsistency
 struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency
 {
   uint64_t row_id;
+  uint64_t problem_row_id;
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_DenominationHashP denompub_h;
@@ -688,7 +693,6 @@ struct TALER_AUDITORDB_DenominationsWithoutSigs
   struct GNUNET_TIME_Absolute start_time;
   struct GNUNET_TIME_Absolute end_time;
   bool suppressed;
-
 };
 
 struct TALER_AUDITORDB_MisattributionInInconsistency

@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "taler_auditordb_plugin.h"
 #include <ltdl.h>
+#include "pg_helper.h"
 
 
 const char *

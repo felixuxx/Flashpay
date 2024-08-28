@@ -146,6 +146,7 @@ report_amount_arithmetic_inconsistency (
   {
     struct TALER_AUDITORDB_AmountArithmeticInconsistency aai = {
       .profitable = profitable,
+      .problem_row_id = rowid,
       .operation = (char *) operation,
       .exchange_amount = *exchange,
       .auditor_amount = *auditor
@@ -504,7 +505,7 @@ handle_purse_requested (
                                         purse_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "purse-request",
       .loss = *target_amount,
       .operation_specific_pub = purse_pub->eddsa_pub
@@ -629,7 +630,7 @@ handle_purse_deposits (
                                          &deposit->coin_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "purse-deposit",
       .loss = deposit->amount,
       .operation_specific_pub = deposit->coin_pub.eddsa_pub
@@ -736,7 +737,7 @@ handle_purse_merged (
                                          merge_sig))
     {
       struct TALER_AUDITORDB_BadSigLosses bsl = {
-        .row_id = rowid,
+        .problem_row_id = rowid,
         .operation = "merge-purse",
         .loss = *amount,
         .operation_specific_pub = merge_pub->eddsa_pub
@@ -845,7 +846,7 @@ handle_account_merged (
                                          reserve_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "account-merge",
       .loss = *purse_fee,
       .operation_specific_pub = reserve_pub->eddsa_pub

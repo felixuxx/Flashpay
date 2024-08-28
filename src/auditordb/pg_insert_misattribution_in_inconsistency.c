@@ -18,6 +18,7 @@
 #include "pg_helper.h"
 #include "pg_insert_misattribution_in_inconsistency.h"
 
+
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_misattribution_in_inconsistency (
   void *cls,

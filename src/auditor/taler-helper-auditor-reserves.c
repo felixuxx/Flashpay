@@ -170,7 +170,7 @@ report_amount_arithmetic_inconsistency (
 
   {
     struct TALER_AUDITORDB_AmountArithmeticInconsistency aai = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .profitable = profitable,
       .operation = (char *) operation,
       .exchange_amount = *exchange,
@@ -581,7 +581,7 @@ handle_reserve_out (
                                  execution_date))
   {
     struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency dkvwi ={
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .execution_date = execution_date.abs_time,
       .denompub_h = *&h_denom_pub,
       .reserve_pub = *reserve_pub
@@ -609,7 +609,7 @@ handle_reserve_out (
                                     reserve_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "withdraw",
       .loss = *amount_with_fee,
       .operation_specific_pub = reserve_pub->eddsa_pub
@@ -720,7 +720,7 @@ handle_recoup_by_reserve (
                                   coin_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bslr = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "recoup",
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
@@ -799,7 +799,7 @@ handle_recoup_by_reserve (
                     "master signature invalid")))
   {
     struct TALER_AUDITORDB_BadSigLosses bslrm = {
-      .row_id = rev_rowid,
+      .problem_row_id = rev_rowid,
       .operation = "recoup-master",
       .loss = *amount,
       .operation_specific_pub = TALER_ARL_master_pub.eddsa_pub
@@ -945,7 +945,7 @@ handle_reserve_open (
                                         reserve_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "reserve-open",
       .loss = *reserve_payment,
       .operation_specific_pub = reserve_pub->eddsa_pub
@@ -1100,7 +1100,7 @@ handle_reserve_closed (
             &reserve_sig))
       {
         struct TALER_AUDITORDB_BadSigLosses bsl = {
-          .row_id = close_request_row,
+          .problem_row_id = close_request_row,
           .operation = "close-request",
           .loss = *amount_with_fee,
           .operation_specific_pub = reserve_pub->eddsa_pub
@@ -1246,7 +1246,7 @@ handle_account_merged (
                                          reserve_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "account-merge",
       .loss = *purse_fee,
       .operation_specific_pub = reserve_pub->eddsa_pub

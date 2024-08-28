@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_auditor_closure_lags.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_auditor_closure_lags (
@@ -28,12 +26,12 @@ TAH_PG_insert_auditor_closure_lags (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
-    TALER_PQ_query_param_amount (pg->conn, &dc->amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->amount),
+    GNUNET_PQ_query_param_uint64 (&dc->problem_row_id),
     GNUNET_PQ_query_param_absolute_time (&dc->deadline),
     GNUNET_PQ_query_param_auto_from_type (&dc->wtid),
     GNUNET_PQ_query_param_string (dc->account),
-
     GNUNET_PQ_query_param_end
   };
 
@@ -41,10 +39,11 @@ TAH_PG_insert_auditor_closure_lags (
            "auditor_closure_lags_insert",
            "INSERT INTO auditor_closure_lags "
            "(amount"
+           ",problem_row_id"
            ",deadline"
            ",wtid"
            ",account"
-           ") VALUES ($1,$2,$3,$4);");
+           ") VALUES ($1,$2,$3,$4,$5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_closure_lags_insert",
                                              params);

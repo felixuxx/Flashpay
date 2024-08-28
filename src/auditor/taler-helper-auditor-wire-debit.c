@@ -455,6 +455,7 @@ check_pending_rc (void *cls,
   if (! TALER_amount_is_zero (&rc->amount))
   {
     struct TALER_AUDITORDB_ClosureLags cl = {
+      .problem_row_id = rc->rowid,
       .account = rc->receiver_account,
       .amount = rc->amount,
       .deadline = rc->execution_date.abs_time,

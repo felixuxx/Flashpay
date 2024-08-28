@@ -364,6 +364,7 @@ report_amount_arithmetic_inconsistency (
   {
     struct TALER_AUDITORDB_AmountArithmeticInconsistency aai = {
       .profitable = profitable,
+      .problem_row_id = rowid,
       .operation = (char *) operation,
       .exchange_amount = *exchange,
       .auditor_amount = *auditor
@@ -1207,6 +1208,7 @@ check_known_coin (
                              denom_pub))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .problem_row_id = rowid,
       .operation = (char *) operation,
       .loss = *loss_potential,
       .operation_specific_pub = coin_pub->eddsa_pub
@@ -1386,6 +1388,7 @@ refresh_session_cb (void *cls,
                                   coin_sig))
     {
       struct TALER_AUDITORDB_BadSigLosses bsl = {
+        .problem_row_id = rowid,
         .operation = "melt",
         .loss = *amount_with_fee,
         .operation_specific_pub = coin_pub->eddsa_pub
@@ -1442,7 +1445,7 @@ refresh_session_cb (void *cls,
          with invalid data, even if the exchange is correctly operating. We
          still report it. */
       struct TALER_AUDITORDB_RefreshesHanging rh = {
-        .row_id = rowid,
+        .problem_row_id = rowid,
         .amount = *amount_with_fee,
         .coin_pub = coin_pub->eddsa_pub
       };
@@ -1731,6 +1734,7 @@ deposit_cb (void *cls,
                                      &deposit->csig))
     {
       struct TALER_AUDITORDB_BadSigLosses bsl = {
+        .problem_row_id = rowid,
         .operation = "deposit",
         .loss = deposit->amount_with_fee,
         .operation_specific_pub = deposit->coin.coin_pub.eddsa_pub
@@ -1867,6 +1871,7 @@ refund_cb (void *cls,
                                     merchant_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .problem_row_id = rowid,
       .operation = "refund",
       .loss = *amount_with_fee,
       .operation_specific_pub = coin_pub->eddsa_pub
@@ -2145,6 +2150,7 @@ check_recoup (struct CoinContext *cc,
                              denom_pub))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .problem_row_id = rowid,
       .operation = (char *) operation,
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
@@ -2217,6 +2223,7 @@ check_recoup (struct CoinContext *cc,
     if (! ds->was_revoked)
     {
       struct TALER_AUDITORDB_BadSigLosses bsldnr = {
+        .problem_row_id = rowid,
         .operation = (char *) operation,
         .loss = *amount,
         .operation_specific_pub = coin->coin_pub.eddsa_pub
@@ -2286,6 +2293,7 @@ recoup_cb (void *cls,
                                   coin_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .problem_row_id = rowid,
       .operation = "recoup",
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
@@ -2416,6 +2424,7 @@ recoup_refresh_cb (void *cls,
                                           coin_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .problem_row_id = rowid,
       .operation = "recoup-refresh",
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
@@ -2607,6 +2616,7 @@ purse_deposit_cb (
         &deposit->coin_sig))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
+      .problem_row_id = rowid,
       .operation = "purse-deposit",
       .loss = deposit->amount,
       .operation_specific_pub = deposit->coin_pub.eddsa_pub

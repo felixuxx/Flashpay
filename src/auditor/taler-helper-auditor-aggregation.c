@@ -140,13 +140,14 @@ report_amount_arithmetic_inconsistency (
   }
 
   {
-    enum GNUNET_DB_QueryStatus qs;
     struct TALER_AUDITORDB_AmountArithmeticInconsistency aai = {
+      .problem_row_id = rowid,
       .profitable = profitable,
       .operation = (char *) operation,
       .exchange_amount = *exchange,
       .auditor_amount = *auditor
     };
+    enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_amount_arithmetic_inconsistency (
       TALER_ARL_adb->cls,
@@ -899,7 +900,7 @@ wire_transfer_information_cb (
                              denom_pub))
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
-      .row_id = rowid,
+      .problem_row_id = rowid,
       .operation = "wire",
       .loss = *coin_value,
       .operation_specific_pub = coin.coin_pub.eddsa_pub
@@ -1128,6 +1129,7 @@ get_wire_fee (struct AggregationContext *ac,
                                  wfi->start_date))
   {
     struct TALER_AUDITORDB_FeeTimeInconsistency ftib = {
+      .problem_row_id = 0, /* FIXME: fetch above! */
       .diagnostic = "start date before previous end date",
       .time = wfi->start_date.abs_time,
       .type = (char *) method
@@ -1136,7 +1138,6 @@ get_wire_fee (struct AggregationContext *ac,
     qs = TALER_ARL_adb->insert_fee_time_inconsistency (
       TALER_ARL_adb->cls,
       &ftib);
-
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1150,6 +1151,7 @@ get_wire_fee (struct AggregationContext *ac,
                                  wfi->end_date))
   {
     struct TALER_AUDITORDB_FeeTimeInconsistency ftia = {
+      .problem_row_id = 0, /* FIXME: fetch above! */
       .diagnostic = "end date date after next start date",
       .time = wfi->end_date.abs_time,
       .type = (char *) method

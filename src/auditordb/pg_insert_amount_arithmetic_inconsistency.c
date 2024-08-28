@@ -13,12 +13,9 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include "platform.h"
 #include "taler_pq_lib.h"
-
 #include "pg_helper.h"
-
 #include "pg_insert_amount_arithmetic_inconsistency.h"
 
 enum GNUNET_DB_QueryStatus
@@ -28,12 +25,13 @@ TAH_PG_insert_amount_arithmetic_inconsistency (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
     GNUNET_PQ_query_param_string (dc->operation),
-    TALER_PQ_query_param_amount (pg->conn, &dc->exchange_amount),
-    TALER_PQ_query_param_amount (pg->conn, &dc->auditor_amount),
+    GNUNET_PQ_query_param_uint64 (&dc->problem_row_id),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->exchange_amount),
+    TALER_PQ_query_param_amount (pg->conn,
+                                 &dc->auditor_amount),
     GNUNET_PQ_query_param_bool (dc->profitable),
-
     GNUNET_PQ_query_param_end
   };
 
@@ -41,15 +39,11 @@ TAH_PG_insert_amount_arithmetic_inconsistency (
            "auditor_amount_arithmetic_inconsistency_insert",
            "INSERT INTO auditor_amount_arithmetic_inconsistency "
            "(operation"
+           ",problem_row_id"
            ",exchange_amount"
            ",auditor_amount"
            ",profitable"
-           ") VALUES ($1,$2,$3,$4)"
-           " ON CONFLICT (operation) DO UPDATE"
-           " SET exchange_amount = excluded.exchange_amount,"
-           " auditor_amount = excluded.auditor_amount,"
-           " profitable = excluded.profitable,"
-           " suppressed = false;"
+           ") VALUES ($1,$2,$3,$4,$5);"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_amount_arithmetic_inconsistency_insert",

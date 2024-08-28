@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_denominations_without_sigs.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_denominations_without_sigs (
@@ -28,13 +26,10 @@ TAH_PG_insert_denominations_without_sigs (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-
     GNUNET_PQ_query_param_auto_from_type (&dc->denompub_h),
     TALER_PQ_query_param_amount (pg->conn, &dc->value),
     GNUNET_PQ_query_param_absolute_time (&dc->start_time),
     GNUNET_PQ_query_param_absolute_time (&dc->end_time),
-
-
     GNUNET_PQ_query_param_end
   };
 
