@@ -527,9 +527,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Transaction logic ended with status %d\n",
               qs);
-  qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
-  if (qs < 0)
-    goto handle_db_error;
+  TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   qs = TALER_ARL_adb->update_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_SET_AB (total_drained),
