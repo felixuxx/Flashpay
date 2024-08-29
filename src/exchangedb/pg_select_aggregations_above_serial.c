@@ -75,7 +75,7 @@ aggregation_serial_helper_cb (void *cls,
     uint64_t batch_deposit_serial_id;
     struct TALER_Amount amount;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+      TALER_PQ_RESULT_SPEC_AMOUNT ("total_amount",
                                    &amount),
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id",
                                     &tracking_rowid),
@@ -128,9 +128,8 @@ TEH_PG_select_aggregations_above_serial (
            "SELECT"
            " aggregation_serial_id"
            ",batch_deposit_serial_id"
-           " FROM aggregation_tracking"
-           " WHERE aggregation_serial_id>=$1"
-           " ORDER BY aggregation_serial_id ASC;");
+           ",total_amount"
+           " FROM exchange_do_select_aggregations_above_serial($1);");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "select_aggregations_above_serial",
                                              params,
