@@ -492,6 +492,8 @@ reserve_in_cb (void *cls,
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Duplicate wire offset\n");
     qs = TALER_ARL_adb->insert_row_inconsistency (
       TALER_ARL_adb->cls,
       &ri);
@@ -536,6 +538,9 @@ complain_in_not_found (void *cls,
   };
 
   (void) key;
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Incoming wire transfer #%llu claimed by exchange not found\n",
+              rii->rowid);
   GNUNET_assert (TALER_BANK_CT_RESERVE ==
                  rii->credit_details.type);
   qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
@@ -625,13 +630,12 @@ analyze_credit (
                                            &key);
   if (NULL == rii)
   {
-    // FIXME: probably should instead add to
-    // auditor DB and report missing! (& continue!)
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
+    // FIXME: add to auditor DB and report missing!
+    // (and modify balances!)
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to find wire transfer at `%s' in exchange database.\n",
                 GNUNET_TIME_timestamp2s (credit_details->execution_date));
-    process_credits (wa->next);
-    return false; /* not an error, just end of processing */
+    return true;
   }
 
   /* Update offset */
@@ -651,6 +655,8 @@ analyze_credit (
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Reserve public key differs\n");
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
       &riiDb);
@@ -686,6 +692,8 @@ analyze_credit (
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Wire transfer amount differs\n");
     qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
       TALER_ARL_adb->cls,
       &riiDb);
@@ -736,6 +744,8 @@ analyze_credit (
       };
       enum GNUNET_DB_QueryStatus qs;
 
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Origin bank account differs\n");
       qs = TALER_ARL_adb->insert_misattribution_in_inconsistency (
         TALER_ARL_adb->cls,
         &mii);
@@ -763,6 +773,8 @@ analyze_credit (
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Execution date differs\n");
     qs = TALER_ARL_adb->insert_row_minor_inconsistencies (
       TALER_ARL_adb->cls,
       &rmi);
@@ -775,6 +787,10 @@ analyze_credit (
       return false;
     }
   }
+  GNUNET_assert (GNUNET_OK ==
+                 free_rii (NULL,
+                           &key,
+                           rii));
   return true;
 }
 

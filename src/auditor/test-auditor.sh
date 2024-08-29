@@ -466,7 +466,18 @@ function check_balance() {
     BAL=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/${1}.json")
     if [ "$BAL" != "$2" ]
     then
-        exit_fail "$3"
+        exit_fail "$3 (got $BAL, wanted $2)"
+    fi
+    echo "PASS"
+}
+
+
+function check_not_balance() {
+    call_endpoint "balances" "$1"
+    BAL=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/${1}.json")
+    if [ "$BAL" = "$2" ]
+    then
+        exit_fail "$3 (got $BAL, wanted NOT $2)"
     fi
     echo "PASS"
 }
@@ -502,98 +513,89 @@ function test_0() {
     # Just to test the endpoint and for logging ...
     call_endpoint "balances"
 
-    echo -n "Testing loss balances... "
+    echo -n "Testing bad sig loss balance... "
     check_balance \
         "aggregation_total_bad_sig_loss" \
         "TESTKUDOS:0" \
-        "Wrong total bad sig loss from aggregation, got unexpected loss of '$LOSS'"
+        "Wrong total bad sig loss from aggregation, got unexpected loss"
 
-    call_endpoint "balances" "aggregation_total_bad_sig_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_bad_sig_loss.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of '$LOSS'"
-    fi
+    echo -n "Testing coin irregular loss balances... "
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from coins"
 
-    call_endpoint "balances" "coin_irregular_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coin_irregular_loss.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss from coins, got unexpected loss of '$LOSS'"
-    fi
+    echo -n "Testing reserves bad sig loss balances... "
+    check_balance \
+        "reserves_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from reserves"
 
-    call_endpoint "balances" "reserves_total_bad_sig_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_bad_sig_loss.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of '$LOSS'"
-    fi
-    echo "PASS"
+    echo -n "Test for aggregation wire out delta plus... "
+    check_balance \
+        "aggregation_total_wire_out_delta_plus" \
+        "TESTKUDOS:0" \
+        "Expected total wire out delta plus wrong"
 
-    echo -n "Test for aggregation wire out deltas... "
-    call_endpoint "balances" "aggregation_total_wire_out_delta_plus"
-    WIRED=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_wire_out_delta_plus.json")
-    if [ "$WIRED" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Expected total wire out delta plus wrong, got '$WIRED'"
-    fi
-    call_endpoint "balances" "aggregation_total_wire_out_delta_minus"
-    WIRED=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_wire_out_delta_minus.json")
-    if [ "$WIRED" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Expected total wire out delta minus wrong, got '$WIRED'"
-    fi
-    call_endpoint "balances" "total_misattribution_in"
-    echo "PASS"
+    echo -n "Test for aggregation wire out delta minus... "
+    check_balance \
+        "aggregation_total_wire_out_delta_minus" \
+        "TESTKUDOS:0" \
+        "Expected total wire out delta minus wrong"
+
+    echo -n "Test for bad incoming delta plus... "
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta plus wrong"
+
+    echo -n "Test for bad incoming delta minus... "
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta minus wrong"
 
     echo -n "Test for misattribution amounts... "
+    check_balance \
+        "total_misattribution_in" \
+        "TESTKUDOS:0" \
+        "Expected total misattribution in wrong"
 
-    WIRED=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/total_misattribution_in.json")
-    if [ "$WIRED" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Expected total misattribution in wrong, got $WIRED"
-    fi
-    echo "PASS"
+    echo -n "Checking for unexpected aggregation delta plus differences... "
+    check_balance \
+        "aggregation_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from aggregations"
 
-    echo -n "Checking for unexpected arithmetic differences... "
-    call_endpoint "balances" "aggregation_total_arithmetic_delta_plus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_arithmetic_delta_plus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of '$LOSS'"
-    fi
-    call_endpoint "balances" "aggregation_total_arithmetic_delta_minus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_arithmetic_delta_minus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of '$LOSS'"
-    fi
-    call_endpoint "balances" "coins_total_arithmetic_delta_plus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coins_total_arithmetic_delta_plus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
-    fi
-    call_endpoint "balances" "coins_total_arithmetic_delta_minus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coins_total_arithmetic_delta_minus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
-    fi
-    call_endpoint "balances" "reserves_total_arithmetic_delta_plus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_arithmetic_delta_plus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
-    fi
+    echo -n "Checking for unexpected aggregation delta minus differences... "
+    check_balance \
+        "aggregation_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from aggregations"
 
-    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_arithmetic_delta_minus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
-    fi
-    echo "PASS"
+    echo -n "Checking for unexpected coin delta plus differences... "
+    check_balance \
+        "coins_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from coins"
+
+    echo -n "Checking for unexpected coin delta minus differences... "
+    check_balance \
+        "coins_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from coins"
+
+    echo -n "Checking for unexpected reserves delta plus... "
+    check_balance \
+        "reserves_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from reserves"
+
+    echo -n "Checking for unexpected reserves delta minus... "
+    check_balance \
+        "reserves_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from reserves"
 
     echo -n "Checking for unexpected wire out differences "
     call_endpoint "wire-out-inconsistency"
@@ -617,15 +619,16 @@ function test_1() {
     echo "Checking output"
     # if an emergency was detected, that is a bug and we should fail
 
-    call_endpoint "emergency"
-    call_endpoint "emergency-by-count"
+    call_endpoint "balances"
 
     echo -n "Test for emergencies... "
+    call_endpoint "emergency"
     jq -e .emergency[0] \
         < "${MY_TMP_DIR}/emergency.json" \
         > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
 
     echo -n "Test for emergencies by count... "
+    call_endpoint "emergency-by-count"
     jq -e .emergency_by_count[0] \
         < "${MY_TMP_DIR}/emergency-by-count.json" \
         > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
@@ -640,41 +643,28 @@ function test_1() {
 
     echo -n "Check for lag detection... "
     # Check wire transfer lag reported (no aggregator!)
-    call_endpoint "balances"
-    call_endpoint "balances" "total_amount_lag"
-    LAG=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/total_amount_lag.json")
-    if [ "$LAG" = "TESTKUDOS:0" ]
-    then
-        exit_fail "Failed to detect lag"
-    fi
-    echo "PASS"
+    check_not_balance \
+        "total_amount_lag" \
+        "TESTKUDOS:0" \
+        "Failed to detect lag"
 
-    #echo -n "Test for wire amounts... "
-    #WIRED=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_misattribution_in < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total misattribution in wrong, got $WIRED"
-    #fi
+    echo -n "Test for bad incoming delta plus... "
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta plus wrong"
+
+    echo -n "Test for bad incoming delta minus... "
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta minus wrong"
+
+    echo -n "Test for misattribution amounts... "
+    check_balance \
+        "total_misattribution_in" \
+        "TESTKUDOS:0" \
+        "Expected total misattribution in wrong"
     # Database was unmodified, no need to undo
 }
 
