@@ -100,27 +100,27 @@ struct PostgresClosure
  * @param name name to prepare the statement under
  * @param sql actual SQL text
  */
-#define PREPARE(pg,name,sql)                      \
+#define PREPARE(pg,name,sql)                            \
         do {                                            \
           static struct {                               \
             unsigned long long cnt;                     \
             struct PostgresClosure *pg;                 \
-          } preps[2]; /* 2 ctrs for taler-auditor-sync*/ \
-          unsigned int off = 0;                         \
-                                                  \
-          while ( (NULL != preps[off].pg) &&            \
-                  (pg != preps[off].pg) &&              \
-                  (off < sizeof(preps) / sizeof(*preps)) ) \
-          off++;                                      \
-          GNUNET_assert (off <                          \
-                         sizeof(preps) / sizeof(*preps)); \
-          if (preps[off].cnt < pg->prep_gen)            \
+          } preps_[2]; /* 2 ctrs for taler-auditor-sync*/ \
+          unsigned int off_ = 0;                        \
+                                                        \
+          while ( (NULL != preps_[off_].pg) &&          \
+                  (pg != preps_[off_].pg) &&            \
+                  (off_ < sizeof(preps_) / sizeof(*preps_)) ) \
+          off_++;                                       \
+          GNUNET_assert (off_ <                         \
+                         sizeof(preps_) / sizeof(*preps_)); \
+          if (preps_[off_].cnt < pg->prep_gen)          \
           {                                             \
             struct GNUNET_PQ_PreparedStatement ps[] = { \
               GNUNET_PQ_make_prepare (name, sql),       \
               GNUNET_PQ_PREPARED_STATEMENT_END          \
             };                                          \
-                                                  \
+                                                        \
             if (GNUNET_OK !=                            \
                 GNUNET_PQ_prepare_statements (pg->conn, \
                                               ps))      \
@@ -128,8 +128,8 @@ struct PostgresClosure
               GNUNET_break (0);                         \
               return GNUNET_DB_STATUS_HARD_ERROR;       \
             }                                           \
-            preps[off].pg = pg;                         \
-            preps[off].cnt = pg->prep_gen;              \
+            preps_[off_].pg = pg;                       \
+            preps_[off_].cnt = pg->prep_gen;            \
           }                                             \
         } while (0)
 

@@ -49,6 +49,11 @@ static TALER_ARL_DEF_PP (wire_batch_deposit_id);
 static TALER_ARL_DEF_PP (wire_aggregation_id);
 
 /**
+ * Total amount which the exchange did not transfer in time.
+ */
+static TALER_ARL_DEF_AB (total_amount_lag);
+
+/**
  * Should we run checks that only work for exchange-internal audits?
  */
 static int internal_checks;
@@ -137,6 +142,9 @@ import_wire_missing_cb (
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     wc->err = qs;
   }
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_amount_lag),
+                        &TALER_ARL_USE_AB (total_amount_lag),
+                        total_amount);
 }
 
 
@@ -196,12 +204,14 @@ struct AggregationContext
  * a (batch) deposit.
  *
  * @param cls closure
+ * @param amount affected amount
  * @param tracking_serial_id where in the table are we
  * @param batch_deposit_serial_id which batch deposit was aggregated
  */
 static void
 clear_finished_transfer_cb (
   void *cls,
+  const struct TALER_Amount *amount,
   uint64_t tracking_serial_id,
   uint64_t batch_deposit_serial_id)
 {
@@ -220,12 +230,17 @@ clear_finished_transfer_cb (
     /* Aggregated something twice or other error, report! */
     GNUNET_break (0);
     // FIXME: report more nicely!
+    return;
   }
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     ac->err = qs;
+    return;
   }
+  TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (total_amount_lag),
+                             &TALER_ARL_USE_AB (total_amount_lag),
+                             amount);
 }
 
 
@@ -309,6 +324,13 @@ begin_transaction (void)
     NULL);
   if (0 > qs)
     goto handle_db_error;
+
+  qs = TALER_ARL_adb->get_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_GET_AB (total_amount_lag),
+    NULL);
+  if (0 > qs)
+    goto handle_db_error;
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
@@ -328,6 +350,7 @@ begin_transaction (void)
   qs = check_for_completed_transfers ();
   if (0 > qs)
     goto handle_db_error;
+
   qs = TALER_ARL_adb->update_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_SET_PP (wire_batch_deposit_id),
@@ -339,6 +362,18 @@ begin_transaction (void)
     TALER_ARL_adb->cls,
     TALER_ARL_SET_PP (wire_batch_deposit_id),
     TALER_ARL_SET_PP (wire_aggregation_id),
+    NULL);
+  if (0 > qs)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->update_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (total_amount_lag),
+    NULL);
+  if (0 > qs)
+    goto handle_db_error;
+  qs = TALER_ARL_adb->insert_balance (
+    TALER_ARL_adb->cls,
+    TALER_ARL_SET_AB (total_amount_lag),
     NULL);
   if (0 > qs)
     goto handle_db_error;

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2023 Taler Systems SA
+   Copyright (C) 2023, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -67,12 +67,16 @@ aggregation_serial_helper_cb (void *cls,
                               unsigned int num_results)
 {
   struct AggregationSerialContext *dsc = cls;
+  struct PostgresClosure *pg = dsc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
   {
     uint64_t tracking_rowid;
     uint64_t batch_deposit_serial_id;
+    struct TALER_Amount amount;
     struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &amount),
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id",
                                     &tracking_rowid),
       GNUNET_PQ_result_spec_uint64 ("batch_deposit_serial_id",
@@ -90,6 +94,7 @@ aggregation_serial_helper_cb (void *cls,
       return;
     }
     dsc->cb (dsc->cb_cls,
+             &amount,
              tracking_rowid,
              batch_deposit_serial_id);
     GNUNET_PQ_cleanup_result (rs);

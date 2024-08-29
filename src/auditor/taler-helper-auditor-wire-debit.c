@@ -230,11 +230,6 @@ static TALER_ARL_DEF_AB (total_bad_amount_out_plus);
 static TALER_ARL_DEF_AB (total_bad_amount_out_minus);
 
 /**
- * Total amount which the exchange did not transfer in time.
- */
-static TALER_ARL_DEF_AB (total_amount_lag);
-
-/**
  * Total amount of reserve closures which the exchange did not transfer in time.
  */
 static TALER_ARL_DEF_AB (total_closure_amount_lag);
@@ -535,7 +530,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_SET_AB (total_wire_out),
     TALER_ARL_SET_AB (total_bad_amount_out_plus),
     TALER_ARL_SET_AB (total_bad_amount_out_minus),
-    TALER_ARL_SET_AB (total_amount_lag),
     TALER_ARL_SET_AB (total_closure_amount_lag),
     TALER_ARL_SET_AB (wire_debit_duplicate_transfer_subject_total),
     TALER_ARL_SET_AB (total_wire_out),
@@ -548,7 +542,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
     TALER_ARL_SET_AB (total_wire_out),
     TALER_ARL_SET_AB (total_bad_amount_out_plus),
     TALER_ARL_SET_AB (total_bad_amount_out_minus),
-    TALER_ARL_SET_AB (total_amount_lag),
     TALER_ARL_SET_AB (total_closure_amount_lag),
     TALER_ARL_SET_AB (wire_debit_duplicate_transfer_subject_total),
     TALER_ARL_SET_AB (total_wire_out),
@@ -1603,7 +1596,6 @@ begin_transaction (void)
     TALER_ARL_GET_AB (total_wire_out),
     TALER_ARL_GET_AB (total_bad_amount_out_plus),
     TALER_ARL_GET_AB (total_bad_amount_out_minus),
-    TALER_ARL_GET_AB (total_amount_lag),
     TALER_ARL_GET_AB (total_closure_amount_lag),
     TALER_ARL_GET_AB (wire_debit_duplicate_transfer_subject_total),
     TALER_ARL_GET_AB (total_wire_out),

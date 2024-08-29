@@ -3526,12 +3526,14 @@ typedef void
  * a (batch) deposit.
  *
  * @param cls closure
+ * @param amount affected amount
  * @param tracking_serial_id where in the table are we
  * @param batch_deposit_serial_id which batch deposit was aggregated
  */
 typedef void
 (*TALER_EXCHANGEDB_AggregationCallback)(
   void *cls,
+  const struct TALER_Amount *amount,
   uint64_t tracking_serial_id,
   uint64_t batch_deposit_serial_id);
 

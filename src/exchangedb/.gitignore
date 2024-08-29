@@ -15,3 +15,4 @@ test-exchangedb-populate-ready-deposit-postgres
 test-exchangedb-populate-select-refunds-by-coin-postgres
 exchange-0004.sql
 exchange-0005.sql
+exchange-0006.sql
