@@ -29,7 +29,6 @@ TAH_PG_insert_refreshes_hanging (
     TALER_PQ_query_param_amount (pg->conn,
                                  &dc->amount),
     GNUNET_PQ_query_param_uint64 (&dc->problem_row_id),
-    GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
     GNUNET_PQ_query_param_end
   };
 
@@ -38,7 +37,6 @@ TAH_PG_insert_refreshes_hanging (
            "INSERT INTO auditor_refreshes_hanging "
            "(amount"
            ",problem_row_id"
-           ",coin_pub"
            ") VALUES ($1,$2);"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,

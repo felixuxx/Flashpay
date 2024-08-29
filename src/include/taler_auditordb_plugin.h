@@ -320,7 +320,6 @@ struct TALER_AUDITORDB_RefreshesHanging
   uint64_t row_id;
   uint64_t problem_row_id;
   struct TALER_Amount amount;
-  struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
 };
 
 /**

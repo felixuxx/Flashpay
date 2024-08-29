@@ -44,16 +44,14 @@ process_refreshes_hanging (
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
-    TALER_JSON_pack_amount ("amount", &dc->amount),
-    GNUNET_JSON_pack_data_auto ("coin_pub", &dc->coin_pub)
-
+    TALER_JSON_pack_amount ("amount",
+                            &dc->amount),
+    GNUNET_JSON_pack_uint64 ("problem_row",
+                             dc->problem_row_id)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -69,6 +67,9 @@ TAH_REFRESHES_HANGING_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
+  bool return_suppressed = false;
 
   (void) rh;
   (void) connection_cls;
@@ -83,34 +84,31 @@ TAH_REFRESHES_HANGING_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-  const char *ret_s = MHD_lookup_connection_value (connection,
-                                                   MHD_GET_ARGUMENT_KIND,
-                                                   "return_suppressed");
-  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
   {
-    return_suppressed = true;
-  }
+    const char *ret_s
+      = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "return_suppressed");
 
+    if ( (NULL != ret_s) &&
+         (0 == strcmp (ret_s,
+                       "true")) )
+    {
+      return_suppressed = true;
+    }
+  }
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_refreshes_hanging (
     TAH_plugin->cls,
     limit,
@@ -118,7 +116,6 @@ TAH_REFRESHES_HANGING_handler_get (
     return_suppressed,
     &process_refreshes_hanging,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);

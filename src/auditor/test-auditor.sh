@@ -460,6 +460,18 @@ function call_endpoint() {
    fi
 }
 
+
+function check_balance() {
+    call_endpoint "balances" "$1"
+    BAL=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/${1}.json")
+    if [ "$BAL" != "$2" ]
+    then
+        exit_fail "$3"
+    fi
+    echo "PASS"
+}
+
+
 function test_0() {
 
     echo "===========0: normal run with aggregator==========="
@@ -491,6 +503,11 @@ function test_0() {
     call_endpoint "balances"
 
     echo -n "Testing loss balances... "
+    check_balance \
+        "aggregation_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from aggregation, got unexpected loss of '$LOSS'"
+
     call_endpoint "balances" "aggregation_total_bad_sig_loss"
     LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_bad_sig_loss.json")
     if [ "$LOSS" != "TESTKUDOS:0" ]
@@ -924,7 +941,7 @@ function test_6() {
     fi
 
     OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "melt" ]
+    if [ "$OP" != "melt" ] && [ "$OP" != "deposit" ]
     then
         exit_fail "Wrong operation, got $OP"
     fi

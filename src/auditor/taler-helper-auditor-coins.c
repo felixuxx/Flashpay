@@ -1446,8 +1446,7 @@ refresh_session_cb (void *cls,
          still report it. */
       struct TALER_AUDITORDB_RefreshesHanging rh = {
         .problem_row_id = rowid,
-        .amount = *amount_with_fee,
-        .coin_pub = coin_pub->eddsa_pub
+        .amount = *amount_with_fee
       };
 
       qs = TALER_ARL_adb->insert_refreshes_hanging (
