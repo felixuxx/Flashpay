@@ -1,169 +1,123 @@
 ﻿Conditions générales d'utilisation de Taler Operations AG
 ==========================================================
 
-Les présentes conditions générales d'utilisation (ci-après **CGU**) de Taler
-Operations AG régissent les droits et obligations des utilisateurs et des
-bénéficiaires du service de paiement proposé. En utilisant le service de
+Les présentes conditions générales d'utilisation (ci-après **CGU**) de l'entreprise Taler Operations AG régissent les
+droits et obligations des utilisateurs et des bénéficiaires du service de paiement proposé. En utilisant le service de
 paiement, les utilisateurs acceptent automatiquement les présentes CGU.
 
 
 Prestation de services ; champ d'application
 --------------------------------
 
-GNU Taler est un système technique qui permet d'effectuer des paiements sans
-argent liquide. Taler Operations AG (ci-après **TOPS**), dont le siège est à
-Biel/Bienne, Suisse, propose un **service de paiement** basé sur GNU Taler
-pour les utilisateurs en Suisse. TOPS est membre du VQF, un organisme
-d'autorégulation accrédité par la FINMA. TOPS n'est donc pas directement
-surveillée par la FINMA, mais exploite un service financier selon l'art. 6
-al. 2 OB sans être une banque à titre professionnel (non-banque) et donc sans
-garantie des dépôts des clients.
+GNU Taler est un système technique qui permet d'effectuer des paiements sans argent liquide. Taler Operations AG
+(ci-après **TOPS**), dont le siège est à Biel/Bienne, Suisse, propose un **service de paiement** basé sur GNU Taler
+pour les utilisateurs en Suisse. TOPS est membre du VQF, un organisme d'autorégulation accrédité par la FINMA. TOPS
+n'est donc pas directement surveillée par la FINMA, mais exploite un service financier selon l'art. 6 al. 2 OB sans être
+une banque à titre professionnel (non-banque) et donc sans garantie des dépôts des clients.
 
-**Les utilisateurs** sont propriétaires de jetons (monnaie électronique)
-signés par TOPS et libellés en CHF, qui sont stockés dans des porte-monnaies
-Taler sous la responsabilité des utilisateurs et avec lesquels les utilisateurs peuvent payer.
+**Les utilisateurs** sont propriétaires de jetons (monnaie électronique) signés par TOPS et libellés en CHF, qui sont
+stockés dans des portefeuilles Taler sous la responsabilité des utilisateurs et avec lesquels les utilisateurs peuvent
+payer.
 
-Les **portefeuilles Taler** sont des produits qui gèrent des jetons (espèces numériques, monnaie
-électronique) selon le protocole GNU Taler, qu'un service de paiement émet et rachète pour payer
-des bénéficiaires. Les jetons (e-CHF) émis par TOPS peuvent être utilisés comme moyen de paiement
-dans les commerces fixes, dans les distributeurs automatiques, dans les boutiques en ligne et dans
-les applications auprès de commerçants ou de prestataires de services autorisés qui acceptent ce
-moyen de paiement (ci-après **bénéficiaires**). Les utilisateurs peuvent également effectuer
-des paiements à d'autres utilisateurs ou retransférer la monnaie électronique sur un compte
-bancaire suisse.
+Les **portefeuilles Taler** sont des produits qui gèrent des jetons (espèces numériques), monnaie électronique selon
+le protocole GNU Taler, qu'un service de paiement émet et rachète pour payer des bénéficiaires. Les jetons émis par TOPS
+(e-CHF) peuvent être utilisés comme moyen de paiement dans les commerces fixes, dans les distributeurs automatiques,
+dans les boutiques en ligne et dans les applications auprès de commerçants ou de prestataires de services autorisés qui
+acceptent ce moyen de paiement (ci-après **bénéficiaires**). Les utilisateurs peuvent également effectuer des paiements
+à d'autres utilisateurs ou retransférer la monnaie électronique sur un compte bancaire suisse.
 
 
 Exigences techniques
 --------------------------
 
-Pour pouvoir bénéficier des services proposés, les utilisateurs doivent
-installer un porte-monnaie électronique (portefeuilles Taler) comme
-application sur leur smartphone ou comme extension dans un navigateur sur leur
-PC. Les utilisateurs sont libres de choisir leur application de portefeuille
-Taler. Les bénéficiaires sont également libres de choisir leur application de
-portefeuille Taler ou leur backend Taler. Différentes solutions sont proposées
-par divers fournisseurs. TOPS n'impose aucune restriction à cet égard et ne
-donne aucune garantie quant à la solution choisie. Les utilisateurs sont
-responsables de la sécurité de leurs portefeuilles ou backends Taler et des
-jetons ou données de transaction qui y sont enregistrés.
+Pour pouvoir bénéficier des services proposés, les utilisateurs doivent installer un portefeuille Taler (porte-monnaie
+électronique) comme application Taler sur leur smartphone ou comme extension dans un navigateur sur leur PC. Les
+utilisateurs sont libres de choisir leur application de portefeuille Taler. Les bénéficiaires sont également libres de
+choisir leur application de portefeuille Taler ou leur backend Taler. Différentes solutions sont proposées par divers
+fournisseurs. TOPS n'impose aucune restriction à cet égard et ne donne aucune garantie quant à la solution choisie. Les
+utilisateurs sont responsables de la sécurité de leurs portefeuilles Taler ou backends Taler et des jetons ou données
+de transaction qui y sont enregistrés.
 
-Le portefeuille Taler est chargé par les utilisateurs via les mécanismes
-prévus à cet effet. Pour créditer la quantité d'argent souhaitée, on choisit
-dans le portefeuille Taler le service de paiement exploité par TOPS, auquel on
-transfère cette quantité d'argent depuis le compte courant et duquel le
-portefeuille Taler retire finalement les jetons électroniques correspondant à
-la quantité d'argent envoyée. TOPS peut introduire d'autres options de
-rechargement ou ne plus proposer les mécanismes existants. Les éventuels frais
-de transaction ou autres frais liés à la recharge sont à la charge des
-utilisateurs. Le crédit des utilisateurs dans les portefeuilles électroniques
-ne porte pas d'intérêts. Les utilisateurs prennent connaissance du fait que
-l'avoir n'est pas couvert par la garantie des dépôts.
+Le portefeuille Taler est chargé par les utilisateurs via les mécanismes prévus à cet effet. Pour créditer la quantité
+d'argent souhaitée, on choisit dans le portefeuille Taler le service de paiement exploité par TOPS, auquel on transfère
+cette quantité d'argent sur le compte courant du service de paiement et duquel le portefeuille Taler retire finalement
+les jetons électroniques correspondant à la quantité d'argent envoyée. TOPS peut introduire d'autres options de
+rechargement ou ne plus proposer les mécanismes existants. Les éventuels frais de transaction ou autres frais liés à la
+recharge sont à la charge des utilisateurs. Le crédit des utilisateurs dans les portefeuilles électroniques ne porte
+pas d'intérêts. Les utilisateurs prennent connaissance du fait que le crédit n'est pas couvert par la garantie des
+dépôts des clients.
 
-Le débit du portefeuille Taler doit être effectué sur un compte bancaire
-suisse. Les paiements internationaux ne sont pas autorisés. Les utilisateurs
-peuvent payer avec le portefeuille Taler installé dans leur smartphone ou leur
-navigateur web, dans les limites en vigueur, auprès de personnes physiques et
-morales qui acceptent cette option de paiement et qui ont un compte bancaire
-suisse pour recevoir de l'argent (p. ex. magasins, boutiques en ligne, apps et
-autres bénéficiaires). Lors d'un paiement, le montant correspondant est
-directement débité du portefeuille Taler. Il faut qu'au moins le montant de la
-transaction soit disponible dans le portefeuille Taler. Les utilisateurs
-acceptent tous les paiements effectués avec le portefeuille Taler depuis leur
-terminal numérique, même si ces paiements ont été effectués sans leur
-consentement.
+Le débit du portefeuille Taler doit être effectué sur un compte bancaire suisse. Les paiements internationaux ne sont
+pas autorisés. Les utilisateurs peuvent payer avec le portefeuille Taler installé dans leur smartphone ou leur
+navigateur web, dans les limites en vigueur, auprès de personnes physiques et morales qui acceptent cette option de
+paiement et qui ont un compte bancaire suisse pour recevoir de l'argent (p. ex. magasins, boutiques en ligne, apps et
+autres bénéficiaires). Lors d'un paiement, le montant correspondant est directement débité du portefeuille Taler. Il
+faut qu'au moins le montant de la transaction soit disponible dans le portefeuille Taler. Les utilisateurs acceptent
+tous les paiements effectués avec le portefeuille Taler depuis leur terminal numérique, même si ces paiements ont été
+effectués sans leur consentement. La personne qui a dépensé un jeton dans le portefeuille Taler a utilisé le valeur
+d'argent correspondant pour effectuer un paiement.
 
---- TOBECHECKED BASED ON THE ENGLISH VERSION ----
-
-La personne qui a dépensé des fonds dans le portefeuille Taler a
-utilisé cet argent pour effectuer un paiement.
+Le processus de traitement pour augmenter ou diminuer le crédit stocké dans le portefeuille Taler peut prendre jusqu'à
+plusieurs jours, selon le mécanisme utilisé.
 
 
-
-Le processus de traitement pour augmenter ou diminuer l'avoir stocké dans le
-portefeuille Taler peut prendre jusqu'à plusieurs jours, selon le mécanisme
-utilisé.
-
-
-Tarifs, commissions et limites
+Tarifs, frais, commissions et limites
 ----------------------------
 
-TOPS peut modifier les frais à tout moment. Les modifications n'ont d'effet
-que sur les jetons achetés après la modification. Les portefeuilles Taler
-corrects informent les utilisateurs des changements de frais avant l'achat de
-nouveaux jetons. Le retrait de jetons de TOPS après une modification des frais
-vaut acceptation des conditions modifiées.
+TOPS peut modifier les frais à tout moment. Les modifications n'ont d'effet que sur les jetons achetés après la
+modification. Les portefeuilles Taler corrects informent les utilisateurs des changements de frais avant l'achat de
+nouveaux jetons. Le retrait de jetons de TOPS après une modification des frais vaut acceptation des conditions
+modifiées par l'utilisateur.
 
-Il existe des limites de 3 000 CHF par mois et de 15 000 CHF par année civile
-pour le retrait d'argent électronique d'un compte courant ou pour la réception
-de paiements peer-to-peer entre portefeuilles Taler avec un numéro de portable
-suisse confirmé.
+Il existent des limites de 3 000 CHF par mois et de 15 000 CHF par année civile pour le retrait d'argent électronique
+d'un compte courant ou pour la réception de paiements peer-to-peer (d'égal à égal) entre les portefeuilles Taler avec
+un numéro de portable suisse confirmé.
 
 
 Obligations générales de coopération
 -------------------------------
 
-Pour utiliser le service de paiement, l'utilisateur et le bénéficiaire sont
-tenus d'aider TOPS à satisfaire aux exigences réglementaires et légales. En
-particulier, TOPS peut demander des informations sur l'identité des
-bénéficiaires effectifs. TOPS a le droit et, le cas échéant, l'obligation
-légale d'exclure les utilisateurs et les bénéficiaires de l'utilisation du
-service de paiement s'ils refusent de fournir les informations requises ou
-s'ils fournissent des informations fausses.
+Pour utiliser le service de paiement, l'utilisateur et le bénéficiaire sont tenus d'aider TOPS à satisfaire aux
+exigences réglementaires et légales. En particulier, TOPS peut demander des informations sur l'identité des
+bénéficiaires effectifs. TOPS a le droit et, le cas échéant, l'obligation légale d'exclure les utilisateurs et les
+bénéficiaires de l'utilisation du service de paiement s'ils refusent de fournir les informations requises ou s'ils
+fournissent des informations fausses.
 
-Pour utiliser le service de paiement, les *bénéficiaires* établissent une
-relation commerciale avec TOPS et peuvent être tenus, le cas échéant, de
-s'enregistrer auprès de TOPS et de fournir les informations demandées à cette
-occasion. TOPS se réserve le droit de demander à tout moment des informations
-supplémentaires pour satisfaire aux exigences réglementaires.
+Pour utiliser le service de paiement, les *bénéficiaires* établissent une relation commerciale avec TOPS et peuvent être
+tenus, le cas échéant, de s'enregistrer auprès de TOPS et de fournir les informations demandées à cette occasion. TOPS
+se réserve le droit de demander à tout moment des informations supplémentaires pour satisfaire aux exigences
+réglementaires.
 
-Il n'y a pas de création de compte des *utilisateurs* chez TOPS. TOPS
-enregistre cependant les comptes IBAN des utilisateurs qui transfèrent des CHF
-à TOPS pour acheter des jetons. Pour recevoir des paiements d'égal à égal, les
-utilisateurs ont besoin d'au moins un numéro de téléphone portable suisse pour
-recevoir des SMS d'identification.
+Il n'y a pas de création de compte des *utilisateurs* chez TOPS. TOPS enregistre cependant les comptes IBAN des
+utilisateurs qui transfèrent des CHF à TOPS pour acheter des jetons. Pour recevoir des paiements d'égal à égal, les
+utilisateurs ont besoin d'au moins un numéro de téléphone portable suisse pour recevoir des SMS pour l'effet
+d'identification.
 
 
 Devoir de diligence et autres obligations des utilisateurs
 ---------------------------------------------------------------------
 
-1) Lors de l'utilisation du service de paiement, les utilisateurs doivent
-   notamment respecter les obligations de diligence suivantes :
+1. Lors de l'utilisation du service de paiement, les utilisateurs doivent notamment respecter les obligations de diligence suivantes :
 
-* Le smartphone, le PC, l'ordinateur portable, etc. doivent être protégés
-  contre toute utilisation ou manipulation non autorisée (p. ex. au moyen d'un
-  verrouillage de l'appareil ou de l'écran).
+* Le smartphone, le PC, l'ordinateur portable, etc. doivent être protégés contre toute utilisation ou manipulation non autorisée (p. ex. au moyen d'un verrouillage de l'appareil ou de l'écran).
 
-* En cas de dommage, les utilisateurs doivent contribuer de leur mieux à
-  l'élucidation du cas et à la réduction du dommage. En cas d'actes
-  délictueux, ils doivent porter plainte auprès de la police.
+* En cas de dommage, les utilisateurs doivent contribuer de leur mieux à l'élucidation du cas et à la réduction du dommage. En cas d'actes délictueux, ils doivent porter plainte auprès de la police.
 
-* Avant chaque exécution d'un paiement, les données relatives au bénéficiaire
-  doivent être vérifiées afin d'éviter les transactions erronées.
+* Avant chaque exécution d'un paiement, les données relatives au bénéficiaire doivent être vérifiées afin d'éviter les transactions erronées.
 
-* Les utilisateurs sont responsables de leurs utilisation du système et
-  assument toutes les conséquences qui en découlent.
+* Les utilisateurs sont responsables de leurs utilisation du système et assument toutes les conséquences qui en découlent.
 
-* En particulier, les actions qu'une tierce personne effectue sans
-  autorisation avec un portefeuille Taler sont imputées au propriétaire du
-  portefeuille.
+* En particulier, les actions qu'une tierce personne effectue sans autorisation avec un portefeuille Taler sont imputées au propriétaire du portefeuille.
 
-2. les utilisateurs doivent être conscients de la nécessité de **traiter la
-monnaie électronique comme des espèces** et de sécuriser, c'est-à-dire faire
-une sauvegarde des données du portefeuille. Les utilisateurs de l'application
-portefeuille Taler sont tenus sont donc tenus de sécuriser l'accès au terminal
-numérique et de le protéger contre tout accès non autorisé. Ils doivent
-enregistrer les données du portefeuille avec une copie de sauvegarde sur un
-autre appareil.  La fonction d'exportation du portefeuille aide à créer et à
-enregistrer une sauvegarde des données du portefeuille. Un appareil
-utilisateur perdu avec un portefeuille dessus sans sauvegarde sur un autre
-appareil ou un autre support de données signifie une perte totale de l'avoir.
+2. Les utilisateurs doivent être conscients de la nécessité de **traiter la monnaie électronique comme des espèces** et de la sécuriser comme selle-ci,
+c'est-à-dire faire une sauvegarde des données du portefeuille. Les utilisateurs du portefeuille Taler sont donc tenus de sécuriser l'accès au terminal
+numérique et de le protéger contre tout accès non autorisé. Ils doivent enregistrer les données du portefeuille avec une copie de sauvegarde sur un
+autre appareil. La fonction d'exportation du portefeuille aide à créer et à enregistrer une sauvegarde des données du portefeuille.
+Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un autre appareil ou un autre support de données signifie une perte totale du débit.
 
-3. il faut veiller à ce que le terminal sur lequel est installé un
-   portefeuille Taler se connecte **dans un délai d'un an** après la
-   dernière transaction **au service de paiement par Internet**, faute de quoi
-   le crédit du portefeuille peut être perdu. Le renouvellement de l'avoir a
-   lieu normalement un mois avant la fin de la validité de l'argent liquide
-   électronique, qui est d'environ un an au moment du retrait.
+3. Il faut veiller à ce que le terminal numérique sur lequel est installé un portefeuille Taler se connecte **dans un délai d'un an**
+après la dernière transaction **au service de paiement par Internet**, faute de quoi le crédit du portefeuille peut être perdu.
+Le renouvellement du débit a lieu normalement un mois avant la fin de la validité de la monnaie électronique, qui est d'environ un an au moment du retrait.
 
 4. la communication de TOPS avec les utilisateurs se fait en principe par le
    biais de notifications dans le protocole de GNU Taler. Il incombe aux
