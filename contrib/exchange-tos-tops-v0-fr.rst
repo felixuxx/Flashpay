@@ -7,7 +7,7 @@ paiement, les utilisateurs acceptent automatiquement les présentes CGU.
 
 
 Prestation de services ; champ d'application
---------------------------------
+-----------------------------------------------------------------------
 
 GNU Taler est un système technique qui permet d'effectuer des paiements sans argent liquide. Taler Operations AG
 (ci-après **TOPS**), dont le siège est à Biel/Bienne, Suisse, propose un **service de paiement** basé sur GNU Taler
@@ -28,7 +28,7 @@ acceptent ce moyen de paiement (ci-après **bénéficiaires**). Les utilisateurs
 
 
 Exigences techniques
---------------------------
+-----------------------------------
 
 Pour pouvoir bénéficier des services proposés, les utilisateurs doivent installer un portefeuille Taler (porte-monnaie
 électronique) comme application Taler sur leur smartphone ou comme extension dans un navigateur sur leur PC. Les
@@ -62,20 +62,20 @@ plusieurs jours, selon le mécanisme utilisé.
 
 
 Tarifs, frais, commissions et limites
-----------------------------
+---------------------------------------------------------
 
 TOPS peut modifier les frais à tout moment. Les modifications n'ont d'effet que sur les jetons achetés après la
 modification. Les portefeuilles Taler corrects informent les utilisateurs des changements de frais avant l'achat de
 nouveaux jetons. Le retrait de jetons de TOPS après une modification des frais vaut acceptation des conditions
 modifiées par l'utilisateur.
 
-Il existent des limites de 3 000 CHF par mois et de 15 000 CHF par année civile pour le retrait d'argent électronique
+Il existent des limites de 3 000 CHF par mois et de 15 000 CHF par année civile pour le retrait de la monnaie électronique
 d'un compte courant ou pour la réception de paiements peer-to-peer (d'égal à égal) entre les portefeuilles Taler avec
 un numéro de portable suisse confirmé.
 
 
 Obligations générales de coopération
--------------------------------
+------------------------------------------------------------
 
 Pour utiliser le service de paiement, l'utilisateur et le bénéficiaire sont tenus d'aider TOPS à satisfaire aux
 exigences réglementaires et légales. En particulier, TOPS peut demander des informations sur l'identité des
@@ -95,9 +95,10 @@ d'identification.
 
 
 Devoir de diligence et autres obligations des utilisateurs
----------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
 
-1. Lors de l'utilisation du service de paiement, les utilisateurs doivent notamment respecter les obligations de diligence suivantes :
+1.
+Lors de l'utilisation du service de paiement, les utilisateurs doivent notamment respecter les obligations de diligence suivantes :
 
 * Le smartphone, le PC, l'ordinateur portable, etc. doivent être protégés contre toute utilisation ou manipulation non autorisée (p. ex. au moyen d'un verrouillage de l'appareil ou de l'écran).
 
@@ -109,25 +110,24 @@ Devoir de diligence et autres obligations des utilisateurs
 
 * En particulier, les actions qu'une tierce personne effectue sans autorisation avec un portefeuille Taler sont imputées au propriétaire du portefeuille.
 
-2. Les utilisateurs doivent être conscients de la nécessité de **traiter la monnaie électronique comme des espèces** et de la sécuriser comme selle-ci,
-c'est-à-dire faire une sauvegarde des données du portefeuille. Les utilisateurs du portefeuille Taler sont donc tenus de sécuriser l'accès au terminal
-numérique et de le protéger contre tout accès non autorisé. Ils doivent enregistrer les données du portefeuille avec une copie de sauvegarde sur un
-autre appareil. La fonction d'exportation du portefeuille aide à créer et à enregistrer une sauvegarde des données du portefeuille.
+2. Les utilisateurs doivent être conscients de la nécessité de **traiter la monnaie électronique comme des espèces** et de la sécuriser comme celle-ci,
+c'est-à-dire faire une sauvegarde des données du portefeuille.
+Les utilisateurs du portefeuille Taler sont donc tenus de sécuriser l'accès au terminal numérique et de le protéger contre tout accès non autorisé.
+Ils doivent enregistrer les données du portefeuille avec une copie de sauvegarde sur un autre appareil.
+La fonction d'exportation du portefeuille aide à créer et à enregistrer une sauvegarde des données du portefeuille.
 Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un autre appareil ou un autre support de données signifie une perte totale du débit.
 
 3. Il faut veiller à ce que le terminal numérique sur lequel est installé un portefeuille Taler se connecte **dans un délai d'un an**
 après la dernière transaction **au service de paiement par Internet**, faute de quoi le crédit du portefeuille peut être perdu.
-Le renouvellement du débit a lieu normalement un mois avant la fin de la validité de la monnaie électronique, qui est d'environ un an au moment du retrait.
+Le renouvellement du débit a lieu normalement un mois avant la fin de la validité des jetons les plus vieux, qui est d'environ un an aaprès le retrait.
 
-4. la communication de TOPS avec les utilisateurs se fait en principe par le
-   biais de notifications dans le protocole de GNU Taler. Il incombe aux
-   utilisateurs de répondre aux notifications correspondantes. TOPS a le droit
-   de ne pas effectuer de transactions jusqu'à ce que les utilisateurs
-   fournissent les données légalement nécessaires demandées par ce biais.
+4. La communication de TOPS avec les utilisateurs se fait en principe par le biais de notifications dans le protocole de GNU Taler.
+Il incombe aux utilisateurs de répondre aux notifications correspondantes. TOPS a le droit de ne pas effectuer de transactions jusqu'à ce que
+les utilisateurs fournissent les données légalement nécessaires demandées par ce biais.
 
 
 Responsabilité
--------
+------------------------
 
 TOPS n'est pas responsable des pertes ou des dommages subis par les
 utilisateurs en raison de l'utilisation de GNU Taler, en particulier des
@@ -157,7 +157,7 @@ exclue dans tous les cas - dans la mesure où la loi le permet.
 
 
 Utilisation : abus
---------------------
+--------------------------
 
 Les utilisateurs indemnisent TOPS en cas de dommages ou de pertes subis par
 TOPS en raison du non-respect des présentes CGU ou des dispositions légales,
@@ -168,7 +168,7 @@ Si l'utilisation s'écarte considérablement de l'usage habituel ou s'il existe 
 
 
 Réserves concernant les modifications apportées aux présentes CGU
---------------------------------------
+---------------------------------------------------------------------------------------------------------------
 
 TOPS peut modifier les CGU à tout moment. Les modifications n'ont d'effet que sur les jetons obtenus après la modification. Les porte-monnaie électroniques corrects informent les utilisateurs des modifications avant l'achat de nouveaux jetons. Le retrait de jetons de TOPS après une modification des CGU est considéré comme une acceptation des conditions modifiées.
 
@@ -181,7 +181,7 @@ autre société à tout moment et sans information préalable.
 
 
 Confidentialité et protection des données
------------------------------
+------------------------------------------------------------------
 
 Les données personnelles ne sont collectées, traitées, conservées ou transmises par TOPS que dans le cadre du respect des obligations légales. Aucune donnée relative à l'identité de l'utilisateur n'est collectée lors du processus de paiement par monnaie électronique.
 
@@ -198,7 +198,7 @@ Pour plus d'informations sur le traitement des données, veuillez consulter la d
 
 
 Durée et résiliation
--------------------
+------------------------------
 
 La relation commerciale entre TOPS et les bénéficiaires (commerçants, entreprises, vendeurs et autres destinataires réguliers des virements du service de paiement vers les comptes IBAN des bénéficiaires) est conclue pour une durée indéterminée. TOPS peut à tout moment - notamment en cas d'abus avec effet immédiat - résilier la relation commerciale avec les bénéficiaires. Une résiliation écrite par TOPS est envoyée à l'une des dernières adresses communiquées par les partenaires commerciaux (par ex. par e-mail ou par lettre). Si aucune transaction n'est effectuée vers les bénéficiaires pendant plus de 12 mois, la relation commerciale est considérée comme terminée.
 
@@ -210,7 +210,7 @@ protocole de Taler et sont invités par les portefeuille Taler à solder l'avoir
 
 
 Droit applicable et juridiction compétente
------------------------------------
+------------------------------------------------------------------
 
 Dans la mesure où la loi le permet, toutes les relations juridiques entre TOPS et les utilisateurs sont exclusivement soumises au droit matériel suisse, à l'exclusion des règles de conflit de lois et à l'exclusion des traités internationaux.
 
