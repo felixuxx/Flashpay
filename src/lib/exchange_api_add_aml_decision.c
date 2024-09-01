@@ -167,9 +167,8 @@ TALER_EXCHANGE_add_aml_decision (
                      json_array_append_new (ameasures,
                                             json_string (al->measures[j])));
     rule = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("operation_type",
-                               TALER_KYCLOGIC_kyc_trigger2s (al->operation_type)
-                               ),
+      TALER_JSON_pack_kycte ("operation_type",
+                             al->operation_type),
       TALER_JSON_pack_amount ("threshold",
                               &al->threshold),
       GNUNET_JSON_pack_time_rel ("timeframe",

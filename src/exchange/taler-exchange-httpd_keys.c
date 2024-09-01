@@ -2413,18 +2413,9 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_JSON_pack_object_steal (
       "currency_specification",
       TALER_CONFIG_currency_specs_to_json (TEH_cspec)),
-    GNUNET_JSON_pack_allow_null (
-      TALER_JSON_pack_amount ("transaction_amount_limit",
-                              GNUNET_OK ==
-                              TALER_amount_is_valid (&TEH_transaction_limit)
-                              ? &TEH_transaction_limit
-                              : NULL)),
-    GNUNET_JSON_pack_allow_null (
-      TALER_JSON_pack_amount ("refund_amount_limit",
-                              GNUNET_OK ==
-                              TALER_amount_is_valid (&TEH_refund_limit)
-                              ? &TEH_refund_limit
-                              : NULL)),
+    GNUNET_JSON_pack_array_incref (
+      "hard_limits",
+      TEH_hard_limits),
     TALER_JSON_pack_amount ("stefan_abs",
                             &TEH_stefan_abs),
     TALER_JSON_pack_amount ("stefan_log",

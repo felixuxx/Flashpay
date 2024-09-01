@@ -209,6 +209,17 @@ TALER_JSON_pack_age_commitment (
 
 
 /**
+ * Generate packer instruction of a KYC Trigger Event.
+ *
+ * @param name name of the field to add to the object
+ * @param event event type to add
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_kycte (const char *name,
+                       enum TALER_KYCLOGIC_KycTriggerEvent event);
+
+/**
  * Convert a TALER amount to a JSON object.
  *
  * @param amount the amount

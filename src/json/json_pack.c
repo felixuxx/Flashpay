@@ -97,6 +97,47 @@ TALER_JSON_pack_age_commitment (
 
 
 struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_kycte (const char *name,
+                       enum TALER_KYCLOGIC_KycTriggerEvent event)
+{
+  const char *str = "INVALID";
+
+  switch (event)
+  {
+  case TALER_KYCLOGIC_KYC_TRIGGER_NONE:
+    str = "NONE";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW:
+    str = "WITHDRAW";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT:
+    str = "DEPOSIT";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE:
+    str = "MERGE";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE:
+    str = "BALANCE";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE:
+    str = "CLOSE";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE:
+    str = "AGGREGATE";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_TRANSACTION:
+    str = "TRANSACTION";
+    break;
+  case TALER_KYCLOGIC_KYC_TRIGGER_REFUND:
+    str = "REFUND";
+    break;
+  }
+  return GNUNET_JSON_pack_string (name,
+                                  str);
+}
+
+
+struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_denom_pub (
   const char *name,
   const struct TALER_DenominationPublicKey *pk)

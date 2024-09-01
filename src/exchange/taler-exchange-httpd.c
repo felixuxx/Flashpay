@@ -156,16 +156,6 @@ struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
 struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
- * Maximum amount per individual transaction. Invalid amount if unlimited.
- */
-struct TALER_Amount TEH_transaction_limit;
-
-/**
- * Maximum amount per refund. Invalid amount if unlimited.
- */
-struct TALER_Amount TEH_refund_limit;
-
-/**
  * Absolute STEFAN parameter.
  */
 struct TALER_Amount TEH_stefan_abs;
@@ -179,6 +169,11 @@ struct TALER_Amount TEH_stefan_log;
  * Linear STEFAN parameter.
  */
 float TEH_stefan_lin;
+
+/**
+ * JSON array with hard limits for /keys response.
+ */
+json_t *TEH_hard_limits;
 
 /**
  * Where to redirect users from "/"?
@@ -2144,6 +2139,8 @@ exchange_serve_process_config (const char *cfg_fn)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  TEH_hard_limits
+    = TALER_KYCLOGIC_get_hard_limits ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
                                              "exchange",
@@ -2217,24 +2214,6 @@ exchange_serve_process_config (const char *cfg_fn)
   }
   /* currency parser must provide default spec for main currency */
   GNUNET_assert (NULL != TEH_cspec);
-  if (GNUNET_SYSERR ==
-      TALER_config_get_amount (TEH_cfg,
-                               "exchange",
-                               "TRANSACTION_LIMIT",
-                               &TEH_transaction_limit))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_SYSERR ==
-      TALER_config_get_amount (TEH_cfg,
-                               "exchange",
-                               "REFUND_LIMIT",
-                               &TEH_refund_limit))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TEH_currency,
                                         &TEH_stefan_abs));

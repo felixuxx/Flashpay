@@ -54,7 +54,8 @@ enum TALER_KYCLOGIC_KycTriggerEvent
   TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE = 3,
 
   /**
-   * Wallet balance exceeds threshold.
+   * Wallet balance exceeds threshold. The timeframe is
+   * irrelevant for this limit.
    */
   TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE = 4,
 
@@ -67,7 +68,19 @@ enum TALER_KYCLOGIC_KycTriggerEvent
    * Deposits have been aggregated, we are wiring a
    * certain amount into a (merchant) bank account.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE = 6
+  TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE = 6,
+
+  /**
+   * Limit per transaction.  The timeframe is
+   * irrelevant for this limit.
+   */
+  TALER_KYCLOGIC_KYC_TRIGGER_TRANSACTION = 7,
+
+  /**
+   * Limit per refund.  The timeframe is
+   * irrelevant for this limit.
+   */
+  TALER_KYCLOGIC_KYC_TRIGGER_REFUND = 8
 
 };
 
@@ -225,16 +238,6 @@ TALER_KYCLOGIC_kyc_trigger_from_string (
 
 
 /**
- * Convert KYC trigger value to human-readable string.
- *
- * @param trigger value to convert
- * @return human-readable representation of the @a trigger
- */
-const char *
-TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger);
-
-
-/**
  * Initialize KYC subsystem. Loads the KYC configuration.
  *
  * @param cfg configuration to parse
@@ -353,6 +356,17 @@ TALER_KYCLOGIC_kyc_test_required (
   void *ai_cls,
   const struct TALER_KYCLOGIC_KycRule **triggered_rule,
   struct TALER_Amount *next_threshold);
+
+
+/**
+ * Return JSON array of AccountLimit objects with hard limits of this exchange
+ * suitable for the "hard_limits" field of the "/keys" response.
+ *
+ * @return the JSON array of AccountLimit objects,
+ *   empty array if there are no hard limits
+ */
+json_t *
+TALER_KYCLOGIC_get_hard_limits (void);
 
 
 /**

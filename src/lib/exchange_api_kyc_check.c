@@ -99,8 +99,10 @@ parse_account_status (
     {
       struct TALER_EXCHANGE_AccountLimit *al = &ala[i];
       struct GNUNET_JSON_Specification ispec[] = {
-        GNUNET_JSON_spec_bool ("soft_limit",
-                               &al->soft_limit),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("soft_limit",
+                                 &al->soft_limit),
+          NULL),
         GNUNET_JSON_spec_relative_time ("timeframe",
                                         &al->timeframe),
         TALER_JSON_spec_kycte ("operation_type",
@@ -110,6 +112,7 @@ parse_account_status (
         GNUNET_JSON_spec_end ()
       };
 
+      al->soft_limit = false;
       if (GNUNET_OK !=
           GNUNET_JSON_parse (limit,
                              ispec,

@@ -41,7 +41,7 @@ libtalerkyclogic_la_LIBADD = \
   -lgnunetutil \
   $(XLIB)
 libtalerkyclogic_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:0 \
   -no-undefined
 
 

@@ -28,24 +28,25 @@
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                            \
-  do {                                          \
-    if (! (cond)) {break;}                    \
-    GNUNET_break (0);                           \
-    goto drop;                                  \
-  } while (0)
+        do {                                          \
+          if (! (cond)) {break;}                    \
+          GNUNET_break (0);                           \
+          goto drop;                                  \
+        } while (0)
 
 
 /**
  * Initializes @a ptr with random data.
  */
 #define RND_BLK(ptr)                                                    \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (* \
+                                                                             ptr))
 
 /**
  * Initializes @a ptr with zeros.
  */
 #define ZR_BLK(ptr) \
-  memset (ptr, 0, sizeof (*ptr))
+        memset (ptr, 0, sizeof (*ptr))
 
 #define CURRENCY "EUR"
 #define RSA_KEY_SIZE 1024
@@ -58,7 +59,6 @@
  * Database plugin under test.
  */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
-static struct TALER_DenomFeeSet fees;
 /**
  * Denomination keys used for fresh coins in melt test.
  */
@@ -215,6 +215,7 @@ run (void *cls)
   struct TALER_ExchangeWithdrawValues alg_values = {
     .blinding_inputs = &bi
   };
+  struct TALER_DenomFeeSet fees;
 
   ref = GNUNET_new_array (ROUNDS + 1,
                           struct TALER_EXCHANGEDB_Refund);
@@ -307,10 +308,10 @@ run (void *cls)
         struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coin =
           &revealed_coins[p];
         struct TALER_BlindedPlanchet *bp = &revealed_coin->blinded_planchet;
-        bp->blinded_message = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
-        struct GNUNET_CRYPTO_RsaBlindedMessage *rp =
-          &bp->blinded_message->details.rsa_blinded_message;
+        struct GNUNET_CRYPTO_RsaBlindedMessage *rp;
 
+        bp->blinded_message = GNUNET_new (struct GNUNET_CRYPTO_BlindedMessage);
+        rp = &bp->blinded_message->details.rsa_blinded_message;
         /* h_coin_ev must be unique, but we only have MELT_NEW_COINS created
            above for NUM_ROWS iterations; instead of making "all new" coins,
            we simply randomize the hash here as nobody is checking for consistency

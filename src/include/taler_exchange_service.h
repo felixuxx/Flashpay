@@ -422,6 +422,39 @@ struct TALER_EXCHANGE_WireAccount
 
 
 /**
+ * Applicable limits for an account (or wallet). Exceeding these limits may
+ * trigger additional KYC requirements or be categorically verboten.
+ */
+struct TALER_EXCHANGE_AccountLimit
+{
+
+  /**
+   * Operation type for which the restriction applies.
+   */
+  enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
+
+  /**
+   * Timeframe over which the @e threshold is computed.
+   */
+  struct GNUNET_TIME_Relative timeframe;
+
+  /**
+   * The maximum amount transacted within the given @e timeframe for the
+   * specified @e operation_type.
+   */
+  struct TALER_Amount threshold;
+
+  /**
+   * True if this is a soft limit and passing KYC checks
+   * or AML reviews may raise this limit. False if this
+   * is a hard limit that the exchange will not permit
+   * the client to exceed.
+   */
+  bool soft_limit;
+};
+
+
+/**
  * @brief Information about keys from the exchange.
  */
 struct TALER_EXCHANGE_Keys
@@ -502,6 +535,12 @@ struct TALER_EXCHANGE_Keys
   struct TALER_EXCHANGE_WireAccount *accounts;
 
   /**
+   * Array of hard limits that apply at this exchange.
+   * All limits in this array will be hard limits.
+   */
+  struct TALER_EXCHANGE_AccountLimit *hard_limits;
+
+  /**
    * Array of wire fees by wire method.
    */
   struct TALER_EXCHANGE_WireFeesByMethod *fees;
@@ -551,20 +590,6 @@ struct TALER_EXCHANGE_Keys
   struct TALER_Amount stefan_log;
 
   /**
-   * Maximum amount for an individual transaction.
-   * Set to an invalid amount (see #TALER_amount_is_valid())
-   * if there is no limit.
-   */
-  struct TALER_Amount transaction_limit;
-
-  /**
-   * Maximum amount that can be refunded per individual transaction.
-   * Set to an invalid amount (see #TALER_amount_is_valid())
-   * if there is no limit.
-   */
-  struct TALER_Amount refund_limit;
-
-  /**
    * Linear STEFAN parameter.
    */
   double stefan_lin;
@@ -578,6 +603,11 @@ struct TALER_EXCHANGE_Keys
    * Length of @e fees array.
    */
   unsigned int fees_len;
+
+  /**
+   * Length of @e hard_limits array.
+   */
+  unsigned int hard_limits_length;
 
   /**
    * Length of the @e wallet_balance_limit_without_kyc
@@ -4262,39 +4292,6 @@ TALER_EXCHANGE_recoup_refresh_cancel (
  * Handle for a ``/kyc-check`` operation.
  */
 struct TALER_EXCHANGE_KycCheckHandle;
-
-
-/**
- * Applicable limits for an account. Exceeding these limits may trigger
- * additional KYC requirements or be categorically verboten.
- */
-struct TALER_EXCHANGE_AccountLimit
-{
-
-  /**
-   * Operation type for which the restriction applies.
-   */
-  enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
-
-  /**
-   * Timeframe over which the @e threshold is computed.
-   */
-  struct GNUNET_TIME_Relative timeframe;
-
-  /**
-   * The maximum amount transacted within the given @e timeframe for the
-   * specified @e operation_type.
-   */
-  struct TALER_Amount threshold;
-
-  /**
-   * True if this is a soft limit and passing KYC checks
-   * or AML reviews may raise this limit. False if this
-   * is a hard limit that the exchange will not permit
-   * the client to exceed.
-   */
-  bool soft_limit;
-};
 
 
 /**

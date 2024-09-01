@@ -833,15 +833,16 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
     }
 
     limit = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string (
+      TALER_JSON_pack_kycte (
         "operation_type",
-        TALER_KYCLOGIC_kyc_trigger2s (operation_type)),
+        operation_type),
       GNUNET_JSON_pack_time_rel (
         "timeframe",
         timeframe),
       TALER_JSON_pack_amount (
         "threshold",
         &threshold),
+      /* optional since v21, defaults to 'false' */
       GNUNET_JSON_pack_bool (
         "soft_limit",
         ! forbidden));
@@ -1215,6 +1216,8 @@ TALER_KYCLOGIC_kyc_trigger_from_string (
   const char *trigger_s,
   enum TALER_KYCLOGIC_KycTriggerEvent *trigger)
 {
+  /* NOTE: if you change this, also change
+     the code in src/json/json_helper.c! */
   struct
   {
     const char *in;
@@ -1226,6 +1229,8 @@ TALER_KYCLOGIC_kyc_trigger_from_string (
     { "BALANCE", TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
     { "CLOSE", TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
     { "AGGREGATE", TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE },
+    { "TRANSACTION", TALER_KYCLOGIC_KYC_TRIGGER_TRANSACTION },
+    { "REFUND", TALER_KYCLOGIC_KYC_TRIGGER_REFUND },
     { NULL, 0 }
   };
 
@@ -1240,33 +1245,6 @@ TALER_KYCLOGIC_kyc_trigger_from_string (
               "Invalid KYC trigger `%s'\n",
               trigger_s);
   return GNUNET_SYSERR;
-}
-
-
-const char *
-TALER_KYCLOGIC_kyc_trigger2s (
-  enum TALER_KYCLOGIC_KycTriggerEvent trigger)
-{
-  switch (trigger)
-  {
-  case TALER_KYCLOGIC_KYC_TRIGGER_NONE:
-    GNUNET_break (0);
-    return NULL;
-  case TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW:
-    return "WITHDRAW";
-  case TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT:
-    return "DEPOSIT";
-  case TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE:
-    return "MERGE";
-  case TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE:
-    return "BALANCE";
-  case TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE:
-    return "CLOSE";
-  case TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE:
-    return "AGGREGATE";
-  }
-  GNUNET_break (0);
-  return NULL;
 }
 
 
@@ -3562,6 +3540,42 @@ TALER_KYCLOGIC_run_aml_program_cancel (
     aprh->async_cb = NULL;
   }
   GNUNET_free (aprh);
+}
+
+
+json_t *
+TALER_KYCLOGIC_get_hard_limits ()
+{
+  const struct TALER_KYCLOGIC_KycRule *rules
+    = default_rules.kyc_rules;
+  unsigned int num_rules
+    = default_rules.num_kyc_rules;
+  json_t *hard_limits;
+
+  hard_limits = json_array ();
+  GNUNET_assert (NULL != hard_limits);
+  for (unsigned int i = 0; i<num_rules; i++)
+  {
+    const struct TALER_KYCLOGIC_KycRule *rule = &rules[i];
+    json_t *hard_limit;
+
+    if (! rule->verboten)
+      continue;
+    if (! rule->exposed)
+      continue;
+    hard_limit = GNUNET_JSON_PACK (
+      TALER_JSON_pack_kycte ("operation_type",
+                             rule->trigger),
+      GNUNET_JSON_pack_time_rel ("timeframe",
+                                 rule->timeframe),
+      TALER_JSON_pack_amount ("threshold",
+                              &rule->threshold)
+      );
+    GNUNET_assert (0 ==
+                   json_array_append_new (hard_limits,
+                                          hard_limit));
+  }
+  return hard_limits;
 }
 
 

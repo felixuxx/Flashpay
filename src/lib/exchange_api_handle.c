@@ -758,6 +758,61 @@ denoms_cmp (const struct TALER_EXCHANGE_DenomPublicKey *denom1,
 
 
 /**
+ * Decode the JSON array in @a hard_limits from the /keys response
+ * and store the data in `hard_limits` array the @a key_data.
+ *
+ * @param[in] hard_limits JSON array to parse
+ * @param[out] key_data where to store the results we decoded
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * (malformed JSON)
+ */
+static enum GNUNET_GenericReturnValue
+parse_hard_limits (const json_t *hard_limits,
+                   struct TALER_EXCHANGE_Keys *key_data)
+{
+  json_t *obj;
+  size_t off;
+
+  key_data->hard_limits_length
+    = (unsigned int) json_array_size (hard_limits);
+  if ( ((size_t) key_data->hard_limits_length)
+       != json_array_size (hard_limits))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  key_data->hard_limits
+    = GNUNET_new_array (key_data->hard_limits_length,
+                        struct TALER_EXCHANGE_AccountLimit);
+
+  json_array_foreach (hard_limits, off, obj)
+  {
+    struct TALER_EXCHANGE_AccountLimit *al
+      = &key_data->hard_limits[off];
+    struct GNUNET_JSON_Specification spec[] = {
+      TALER_JSON_spec_kycte ("operation_type",
+                             &al->operation_type),
+      TALER_JSON_spec_amount_any ("threshold",
+                                  &al->threshold),
+      GNUNET_JSON_spec_relative_time ("timeframe",
+                                      &al->timeframe),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (obj,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Decode the JSON in @a resp_obj from the /keys response
  * and store the data in the @a key_data.
  *
@@ -920,6 +975,7 @@ decode_keys_json (const json_t *resp_obj,
       EXITIF (1);
     }
     {
+      const json_t *hard_limits;
       struct GNUNET_JSON_Specification sspec[] = {
         TALER_JSON_spec_currency_specification (
           "currency_specification",
@@ -933,18 +989,9 @@ decode_keys_json (const json_t *resp_obj,
           "stefan_log",
           currency,
           &key_data->stefan_log),
-        GNUNET_JSON_spec_mark_optional (
-          TALER_JSON_spec_amount (
-            "transaction_amount_limit",
-            currency,
-            &key_data->transaction_limit),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          TALER_JSON_spec_amount (
-            "refund_amount_limit",
-            currency,
-            &key_data->refund_limit),
-          NULL),
+        GNUNET_JSON_spec_array_const (
+          "hard_limits",
+          &hard_limits),
         GNUNET_JSON_spec_double (
           "stefan_lin",
           &key_data->stefan_lin),
@@ -961,6 +1008,14 @@ decode_keys_json (const json_t *resp_obj,
                     "Parsing /keys failed for `%s' (%u)\n",
                     emsg,
                     eline);
+        EXITIF (1);
+      }
+      if (GNUNET_OK !=
+          parse_hard_limits (hard_limits,
+                             key_data))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Parsing hard limits of /keys failed\n");
         EXITIF (1);
       }
     }
@@ -1903,6 +1958,9 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys)
                      0);
   free_fees (keys->fees,
              keys->fees_len);
+  GNUNET_array_grow (keys->hard_limits,
+                     keys->hard_limits_length,
+                     0);
   json_decref (keys->extensions);
   GNUNET_free (keys->cspec.name);
   json_decref (keys->cspec.map_alt_unit_names);
