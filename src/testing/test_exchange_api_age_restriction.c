@@ -99,7 +99,6 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  (void) cls;
   /**
    * Test withdrawal with age restriction.  Success is expected (because the
    * amount is below the kyc threshold ), so it MUST be
@@ -380,6 +379,7 @@ run (void *cls,
       TALER_TESTING_cmd_end ()
     };
 
+    (void) cls;
     TALER_TESTING_run (is,
                        commands);
   }

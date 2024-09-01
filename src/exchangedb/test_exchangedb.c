@@ -340,9 +340,8 @@ create_denom_key_pair (unsigned int size,
 
 
 static struct TALER_Amount value;
-static struct TALER_DenomFeeSet fees;
+static struct TALER_DenomFeeSet global_fees;
 static struct TALER_Amount fee_closing;
-static struct TALER_Amount amount_with_fee;
 
 
 /**
@@ -600,7 +599,7 @@ cb_wt_check (void *cls,
 /**
  * Here we store the hash of the payto URI.
  */
-static struct TALER_PaytoHashP wire_target_h_payto;
+static struct TALER_PaytoHashP global_wire_target_h_payto;
 
 
 /**
@@ -769,7 +768,7 @@ test_gc (void)
   dkp = create_denom_key_pair (RSA_KEY_SIZE,
                                past,
                                &value,
-                               &fees);
+                               &global_fees);
   GNUNET_assert (NULL != dkp);
   if (GNUNET_OK !=
       plugin->gc (plugin->cls))
@@ -964,7 +963,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_BatchDeposit *bd)
   coin_pub_wt = deposit->coin.coin_pub;
 
   coin_value_wt = deposit->amount_with_fee;
-  coin_fee_wt = fees.deposit;
+  coin_fee_wt = global_fees.deposit;
   GNUNET_assert (0 <
                  TALER_amount_subtract (&transfer_value_wt,
                                         &coin_value_wt,
@@ -1194,13 +1193,10 @@ run (void *cls)
   struct TALER_CoinSpendPublicKeyP cpub2;
   struct TALER_MerchantPublicKeyP mpub2;
   struct TALER_EXCHANGEDB_Refund refund;
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-  struct TALER_EXCHANGEDB_TransactionList *tlp;
   const char *sndr = "payto://x-taler-bank/localhost:8080/1";
   const char *rcvr = "payto://x-taler-bank/localhost:8080/2";
   const uint32_t num_partitions = 10;
   unsigned int matched;
-  unsigned int cnt;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Timestamp now;
   struct TALER_WireSaltP salt;
@@ -1213,6 +1209,7 @@ run (void *cls)
   uint64_t melt_serial_id;
   struct TALER_PlanchetMasterSecretP ps;
   union GNUNET_CRYPTO_BlindingSecretP bks;
+  struct TALER_Amount amount_with_fee;
   const struct TALER_ExchangeWithdrawValues *alg_values
     = TALER_denom_ewv_rsa_singleton ();
 
@@ -1269,16 +1266,16 @@ run (void *cls)
                                          &value));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
-                                         &fees.withdraw));
+                                         &global_fees.withdraw));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
-                                         &fees.deposit));
+                                         &global_fees.deposit));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
-                                         &fees.refresh));
+                                         &global_fees.refresh));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
-                                         &fees.refund));
+                                         &global_fees.refund));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
                                          &amount_with_fee));
@@ -1349,7 +1346,7 @@ run (void *cls)
   dkp = create_denom_key_pair (RSA_KEY_SIZE,
                                now,
                                &value,
-                               &fees);
+                               &global_fees);
   GNUNET_assert (NULL != dkp);
   TALER_denom_pub_hash (&dkp->pub,
                         &cbc.denom_pub_hash);
@@ -1552,12 +1549,12 @@ run (void *cls)
     refund.details.h_contract_terms = bd.h_contract_terms;
     refund.details.rtransaction_id = 1;
     refund.details.refund_amount = value;
-    refund.details.refund_fee = fees.refund;
+    refund.details.refund_fee = global_fees.refund;
     RND_BLK (&refund.details.merchant_sig);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_refund (plugin->cls,
                                &refund,
-                               &fees.deposit,
+                               &global_fees.deposit,
                                known_coin_id,
                                &not_found,
                                &refund_ok,
@@ -1613,7 +1610,7 @@ run (void *cls)
             TALER_amount_cmp (&refresh.amount_with_fee,
                               &ret_refresh_session.session.amount_with_fee));
     FAILIF (0 !=
-            TALER_amount_cmp (&fees.refresh,
+            TALER_amount_cmp (&global_fees.refresh,
                               &ret_refresh_session.melt_fee));
     FAILIF (0 !=
             GNUNET_memcmp (&refresh.rc,
@@ -1640,6 +1637,7 @@ run (void *cls)
   }
 
   /* do refresh-reveal */
+  now = GNUNET_TIME_timestamp_get ();
   {
     new_dkp = GNUNET_new_array (MELT_NEW_COINS,
                                 struct DenomKeyPair *);
@@ -1651,16 +1649,14 @@ run (void *cls)
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
-      struct GNUNET_TIME_Timestamp now;
       struct GNUNET_CRYPTO_BlindedMessage *rp;
       struct GNUNET_CRYPTO_RsaBlindedMessage *rsa;
       struct TALER_BlindedPlanchet *bp;
 
-      now = GNUNET_TIME_timestamp_get ();
       new_dkp[cnt] = create_denom_key_pair (RSA_KEY_SIZE,
                                             now,
                                             &value,
-                                            &fees);
+                                            &global_fees);
       GNUNET_assert (NULL != new_dkp[cnt]);
       new_denom_pubs[cnt] = new_dkp[cnt]->pub;
       ccoin = &revealed_coins[cnt];
@@ -1737,7 +1733,6 @@ run (void *cls)
     {
       /* Just to test fetching a coin with melt history */
       struct TALER_EXCHANGEDB_TransactionList *tl;
-      enum GNUNET_DB_QueryStatus qs;
       uint64_t etag;
       struct TALER_Amount balance;
       struct TALER_DenominationHashP h_denom_pub;
@@ -1898,89 +1893,95 @@ run (void *cls)
   FAILIF (0 > qs);
   FAILIF (NULL == rh);
   rh_head = rh;
-  for (cnt = 0; NULL != rh_head; rh_head = rh_head->next, cnt++)
   {
-    switch (rh_head->type)
+    unsigned int cnt;
+
+    for (cnt = 0;
+         NULL != rh_head;
+         rh_head = rh_head->next, cnt++)
     {
-    case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
-      bt = rh_head->details.bank;
-      FAILIF (0 !=
-              GNUNET_memcmp (&bt->reserve_pub,
-                             &reserve_pub));
-      /* this is the amount we transferred twice*/
-      FAILIF (1 != bt->amount.value);
-      FAILIF (1000 != bt->amount.fraction);
-      FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
-      FAILIF (NULL == bt->sender_account_details);
-      break;
-    case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
-      withdraw = rh_head->details.withdraw;
-      FAILIF (0 !=
-              GNUNET_memcmp (&withdraw->reserve_pub,
-                             &reserve_pub));
-      FAILIF (0 !=
-              GNUNET_memcmp (&withdraw->h_coin_envelope,
-                             &cbc.h_coin_envelope));
-      break;
-    case TALER_EXCHANGEDB_RO_RECOUP_COIN:
+      switch (rh_head->type)
       {
-        struct TALER_EXCHANGEDB_Recoup *recoup = rh_head->details.recoup;
-
+      case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
+        bt = rh_head->details.bank;
         FAILIF (0 !=
-                GNUNET_memcmp (&recoup->coin_sig,
-                               &coin_sig));
+                GNUNET_memcmp (&bt->reserve_pub,
+                               &reserve_pub));
+        /* this is the amount we transferred twice*/
+        FAILIF (1 != bt->amount.value);
+        FAILIF (1000 != bt->amount.fraction);
+        FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
+        FAILIF (NULL == bt->sender_account_details);
+        break;
+      case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
+        withdraw = rh_head->details.withdraw;
         FAILIF (0 !=
-                GNUNET_memcmp (&recoup->coin_blind,
-                               &coin_blind));
-        FAILIF (0 !=
-                GNUNET_memcmp (&recoup->reserve_pub,
+                GNUNET_memcmp (&withdraw->reserve_pub,
                                &reserve_pub));
         FAILIF (0 !=
-                GNUNET_memcmp (&recoup->coin.coin_pub,
-                               &deposit.coin.coin_pub));
-        FAILIF (0 !=
-                TALER_amount_cmp (&recoup->value,
-                                  &value));
-      }
-      break;
-    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
-      {
-        struct TALER_EXCHANGEDB_ClosingTransfer *closing
-          = rh_head->details.closing;
+                GNUNET_memcmp (&withdraw->h_coin_envelope,
+                               &cbc.h_coin_envelope));
+        break;
+      case TALER_EXCHANGEDB_RO_RECOUP_COIN:
+        {
+          struct TALER_EXCHANGEDB_Recoup *recoup = rh_head->details.recoup;
 
-        FAILIF (0 !=
-                GNUNET_memcmp (&closing->reserve_pub,
-                               &reserve_pub));
-        FAILIF (0 != TALER_amount_cmp (&closing->amount,
-                                       &amount_with_fee));
-        FAILIF (0 != TALER_amount_cmp (&closing->closing_fee,
-                                       &fee_closing));
-      }
-      break;
-    case TALER_EXCHANGEDB_RO_PURSE_MERGE:
-      {
-        /* FIXME: not yet tested */
+          FAILIF (0 !=
+                  GNUNET_memcmp (&recoup->coin_sig,
+                                 &coin_sig));
+          FAILIF (0 !=
+                  GNUNET_memcmp (&recoup->coin_blind,
+                                 &coin_blind));
+          FAILIF (0 !=
+                  GNUNET_memcmp (&recoup->reserve_pub,
+                                 &reserve_pub));
+          FAILIF (0 !=
+                  GNUNET_memcmp (&recoup->coin.coin_pub,
+                                 &deposit.coin.coin_pub));
+          FAILIF (0 !=
+                  TALER_amount_cmp (&recoup->value,
+                                    &value));
+        }
         break;
-      }
-    case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
-      {
-        /* FIXME: not yet tested */
+      case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
+        {
+          struct TALER_EXCHANGEDB_ClosingTransfer *closing
+            = rh_head->details.closing;
+
+          FAILIF (0 !=
+                  GNUNET_memcmp (&closing->reserve_pub,
+                                 &reserve_pub));
+          FAILIF (0 != TALER_amount_cmp (&closing->amount,
+                                         &amount_with_fee));
+          FAILIF (0 != TALER_amount_cmp (&closing->closing_fee,
+                                         &fee_closing));
+        }
         break;
-      }
-    case TALER_EXCHANGEDB_RO_OPEN_REQUEST:
-      {
-        /* FIXME: not yet tested */
-        break;
-      }
-    case TALER_EXCHANGEDB_RO_CLOSE_REQUEST:
-      {
-        /* FIXME: not yet tested */
-        break;
+      case TALER_EXCHANGEDB_RO_PURSE_MERGE:
+        {
+          /* FIXME: not yet tested */
+          break;
+        }
+      case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
+        {
+          /* FIXME: not yet tested */
+          break;
+        }
+      case TALER_EXCHANGEDB_RO_OPEN_REQUEST:
+        {
+          /* FIXME: not yet tested */
+          break;
+        }
+      case TALER_EXCHANGEDB_RO_CLOSE_REQUEST:
+        {
+          /* FIXME: not yet tested */
+          break;
+        }
       }
     }
+    GNUNET_assert (4 == cnt);
+    FAILIF (4 != cnt);
   }
-  GNUNET_assert (4 == cnt);
-  FAILIF (4 != cnt);
 
   auditor_row_cnt = 0;
   FAILIF (0 >=
@@ -2007,6 +2008,7 @@ run (void *cls)
     uint64_t etag = 0;
     struct TALER_Amount balance;
     struct TALER_DenominationHashP h_denom_pub;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
 
     qs = plugin->get_coin_transactions (plugin->cls,
                                         true,
@@ -2017,108 +2019,109 @@ run (void *cls)
                                         &balance,
                                         &h_denom_pub,
                                         &tl);
-  }
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
-  GNUNET_assert (NULL != tl);
-  matched = 0;
-  for (tlp = tl; NULL != tlp; tlp = tlp->next)
-  {
-    switch (tlp->type)
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
+    GNUNET_assert (NULL != tl);
+    matched = 0;
+    for (struct TALER_EXCHANGEDB_TransactionList *tlp = tl;
+         NULL != tlp;
+         tlp = tlp->next)
     {
-    case TALER_EXCHANGEDB_TT_DEPOSIT:
+      switch (tlp->type)
       {
-        struct TALER_EXCHANGEDB_DepositListEntry *have = tlp->details.deposit;
+      case TALER_EXCHANGEDB_TT_DEPOSIT:
+        {
+          struct TALER_EXCHANGEDB_DepositListEntry *have = tlp->details.deposit;
 
-        /* Note: we're not comparing the denomination keys, as there is
-           still the question of whether we should even bother exporting
-           them here. */
+          /* Note: we're not comparing the denomination keys, as there is
+             still the question of whether we should even bother exporting
+             them here. */
+          FAILIF (0 !=
+                  GNUNET_memcmp (&have->csig,
+                                 &deposit.csig));
+          FAILIF (0 !=
+                  GNUNET_memcmp (&have->merchant_pub,
+                                 &bd.merchant_pub));
+          FAILIF (0 !=
+                  GNUNET_memcmp (&have->h_contract_terms,
+                                 &bd.h_contract_terms));
+          FAILIF (0 !=
+                  GNUNET_memcmp (&have->wire_salt,
+                                 &bd.wire_salt));
+          FAILIF (GNUNET_TIME_timestamp_cmp (have->timestamp,
+                                             !=,
+                                             bd.wallet_timestamp));
+          FAILIF (GNUNET_TIME_timestamp_cmp (have->refund_deadline,
+                                             !=,
+                                             bd.refund_deadline));
+          FAILIF (GNUNET_TIME_timestamp_cmp (have->wire_deadline,
+                                             !=,
+                                             bd.wire_deadline));
+          FAILIF (0 != TALER_amount_cmp (&have->amount_with_fee,
+                                         &deposit.amount_with_fee));
+          matched |= 1;
+          break;
+        }
+      /* this coin pub was actually never melted... */
+      case TALER_EXCHANGEDB_TT_MELT:
         FAILIF (0 !=
-                GNUNET_memcmp (&have->csig,
-                               &deposit.csig));
-        FAILIF (0 !=
-                GNUNET_memcmp (&have->merchant_pub,
-                               &bd.merchant_pub));
-        FAILIF (0 !=
-                GNUNET_memcmp (&have->h_contract_terms,
-                               &bd.h_contract_terms));
-        FAILIF (0 !=
-                GNUNET_memcmp (&have->wire_salt,
-                               &bd.wire_salt));
-        FAILIF (GNUNET_TIME_timestamp_cmp (have->timestamp,
-                                           !=,
-                                           bd.wallet_timestamp));
-        FAILIF (GNUNET_TIME_timestamp_cmp (have->refund_deadline,
-                                           !=,
-                                           bd.refund_deadline));
-        FAILIF (GNUNET_TIME_timestamp_cmp (have->wire_deadline,
-                                           !=,
-                                           bd.wire_deadline));
-        FAILIF (0 != TALER_amount_cmp (&have->amount_with_fee,
-                                       &deposit.amount_with_fee));
-        matched |= 1;
+                GNUNET_memcmp (&refresh.rc,
+                               &tlp->details.melt->rc));
+        matched |= 2;
+        break;
+      case TALER_EXCHANGEDB_TT_REFUND:
+        {
+          struct TALER_EXCHANGEDB_RefundListEntry *have = tlp->details.refund;
+
+          /* Note: we're not comparing the denomination keys, as there is
+             still the question of whether we should even bother exporting
+             them here. */
+          FAILIF (0 != GNUNET_memcmp (&have->merchant_pub,
+                                      &refund.details.merchant_pub));
+          FAILIF (0 != GNUNET_memcmp (&have->merchant_sig,
+                                      &refund.details.merchant_sig));
+          FAILIF (0 != GNUNET_memcmp (&have->h_contract_terms,
+                                      &refund.details.h_contract_terms));
+          FAILIF (have->rtransaction_id != refund.details.rtransaction_id);
+          FAILIF (0 != TALER_amount_cmp (&have->refund_amount,
+                                         &refund.details.refund_amount));
+          FAILIF (0 != TALER_amount_cmp (&have->refund_fee,
+                                         &refund.details.refund_fee));
+          matched |= 4;
+          break;
+        }
+      case TALER_EXCHANGEDB_TT_RECOUP:
+        {
+          struct TALER_EXCHANGEDB_RecoupListEntry *recoup =
+            tlp->details.recoup;
+
+          FAILIF (0 != GNUNET_memcmp (&recoup->coin_sig,
+                                      &coin_sig));
+          FAILIF (0 != GNUNET_memcmp (&recoup->coin_blind,
+                                      &coin_blind));
+          FAILIF (0 != GNUNET_memcmp (&recoup->reserve_pub,
+                                      &reserve_pub));
+          FAILIF (0 != TALER_amount_cmp (&recoup->value,
+                                         &value));
+          matched |= 8;
+          break;
+        }
+      case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
+        /* TODO: check fields better... */
+        matched |= 16;
+        break;
+      default:
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Unexpected coin history transaction type: %d\n",
+                    tlp->type);
+        FAILIF (1);
         break;
       }
-    /* this coin pub was actually never melted... */
-    case TALER_EXCHANGEDB_TT_MELT:
-      FAILIF (0 !=
-              GNUNET_memcmp (&refresh.rc,
-                             &tlp->details.melt->rc));
-      matched |= 2;
-      break;
-    case TALER_EXCHANGEDB_TT_REFUND:
-      {
-        struct TALER_EXCHANGEDB_RefundListEntry *have = tlp->details.refund;
-
-        /* Note: we're not comparing the denomination keys, as there is
-           still the question of whether we should even bother exporting
-           them here. */
-        FAILIF (0 != GNUNET_memcmp (&have->merchant_pub,
-                                    &refund.details.merchant_pub));
-        FAILIF (0 != GNUNET_memcmp (&have->merchant_sig,
-                                    &refund.details.merchant_sig));
-        FAILIF (0 != GNUNET_memcmp (&have->h_contract_terms,
-                                    &refund.details.h_contract_terms));
-        FAILIF (have->rtransaction_id != refund.details.rtransaction_id);
-        FAILIF (0 != TALER_amount_cmp (&have->refund_amount,
-                                       &refund.details.refund_amount));
-        FAILIF (0 != TALER_amount_cmp (&have->refund_fee,
-                                       &refund.details.refund_fee));
-        matched |= 4;
-        break;
-      }
-    case TALER_EXCHANGEDB_TT_RECOUP:
-      {
-        struct TALER_EXCHANGEDB_RecoupListEntry *recoup =
-          tlp->details.recoup;
-
-        FAILIF (0 != GNUNET_memcmp (&recoup->coin_sig,
-                                    &coin_sig));
-        FAILIF (0 != GNUNET_memcmp (&recoup->coin_blind,
-                                    &coin_blind));
-        FAILIF (0 != GNUNET_memcmp (&recoup->reserve_pub,
-                                    &reserve_pub));
-        FAILIF (0 != TALER_amount_cmp (&recoup->value,
-                                       &value));
-        matched |= 8;
-        break;
-      }
-    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
-      /* TODO: check fields better... */
-      matched |= 16;
-      break;
-    default:
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unexpected coin history transaction type: %d\n",
-                  tlp->type);
-      FAILIF (1);
-      break;
     }
+    FAILIF (31 != matched);
+
+    plugin->free_coin_transaction_list (plugin->cls,
+                                        tl);
   }
-  FAILIF (31 != matched);
-
-  plugin->free_coin_transaction_list (plugin->cls,
-                                      tl);
-
 
   /* Tests for deposits+wire */
   TALER_denom_sig_free (&deposit.coin.denom_sig);
@@ -2153,19 +2156,19 @@ run (void *cls)
           plugin->start (plugin->cls,
                          "test-3"));
   {
-    uint64_t known_coin_id;
+    uint64_t known_coin_id2;
     struct TALER_DenominationHashP dph;
     struct TALER_AgeCommitmentHash agh;
 
     FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
             plugin->ensure_coin_known (plugin->cls,
                                        &deposit.coin,
-                                       &known_coin_id,
+                                       &known_coin_id2,
                                        &dph,
                                        &agh));
   }
+  now = GNUNET_TIME_timestamp_get ();
   {
-    struct GNUNET_TIME_Timestamp now;
     struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
     struct TALER_MerchantWireHashP h_wire;
@@ -2173,7 +2176,6 @@ run (void *cls)
     uint32_t bad_idx;
     bool ctr_conflict;
 
-    now = GNUNET_TIME_timestamp_get ();
     TALER_payto_hash (bd.receiver_wire_account,
                       &bd.wire_target_h_payto);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -2232,7 +2234,7 @@ run (void *cls)
     FAILIF (0 != strcmp (payto_uri2,
                          bd.receiver_wire_account));
     TALER_payto_hash (payto_uri2,
-                      &wire_target_h_payto);
+                      &global_wire_target_h_payto);
     GNUNET_free (payto_uri2);
   }
 
@@ -2245,7 +2247,7 @@ run (void *cls)
             sizeof (wtid));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->aggregate (plugin->cls,
-                               &wire_target_h_payto,
+                               &global_wire_target_h_payto,
                                &bd.merchant_pub,
                                &wtid,
                                &total));
@@ -2268,27 +2270,30 @@ run (void *cls)
                    TALER_string_to_amount (CURRENCY ":42",
                                            &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-            plugin->select_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  &bd.merchant_pub,
-                                                  "x-bank",
-                                                  &wtid2,
-                                                  &total2));
+            plugin->select_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              &bd.merchant_pub,
+              "x-bank",
+              &wtid2,
+              &total2));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->create_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  "x-bank",
-                                                  &bd.merchant_pub,
-                                                  &wtid,
-                                                  0,
-                                                  &total));
+            plugin->create_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              "x-bank",
+              &bd.merchant_pub,
+              &wtid,
+              0,
+              &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->select_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  &bd.merchant_pub,
-                                                  "x-bank",
-                                                  &wtid2,
-                                                  &total2));
+            plugin->select_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              &bd.merchant_pub,
+              "x-bank",
+              &wtid2,
+              &total2));
     FAILIF (0 !=
             GNUNET_memcmp (&wtid2,
                            &wtid));
@@ -2299,18 +2304,20 @@ run (void *cls)
                    TALER_string_to_amount (CURRENCY ":43",
                                            &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->update_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  &wtid,
-                                                  0,
-                                                  &total));
+            plugin->update_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              &wtid,
+              0,
+              &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->select_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  &bd.merchant_pub,
-                                                  "x-bank",
-                                                  &wtid2,
-                                                  &total2));
+            plugin->select_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              &bd.merchant_pub,
+              "x-bank",
+              &wtid2,
+              &total2));
     FAILIF (0 !=
             GNUNET_memcmp (&wtid2,
                            &wtid));
@@ -2318,16 +2325,18 @@ run (void *cls)
             TALER_amount_cmp (&total2,
                               &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->delete_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  &wtid));
+            plugin->delete_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              &wtid));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-            plugin->select_aggregation_transient (plugin->cls,
-                                                  &wire_target_h_payto,
-                                                  &bd.merchant_pub,
-                                                  "x-bank",
-                                                  &wtid2,
-                                                  &total2));
+            plugin->select_aggregation_transient (
+              plugin->cls,
+              &global_wire_target_h_payto,
+              &bd.merchant_pub,
+              "x-bank",
+              &wtid2,
+              &total2));
   }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
