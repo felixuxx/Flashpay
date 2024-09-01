@@ -3585,4 +3585,37 @@ TALER_KYCLOGIC_get_hard_limits ()
 }
 
 
+json_t *
+TALER_KYCLOGIC_get_zero_limits ()
+{
+  const struct TALER_KYCLOGIC_KycRule *rules
+    = default_rules.kyc_rules;
+  unsigned int num_rules
+    = default_rules.num_kyc_rules;
+  json_t *zero_limits;
+
+  zero_limits = json_array ();
+  GNUNET_assert (NULL != zero_limits);
+  for (unsigned int i = 0; i<num_rules; i++)
+  {
+    const struct TALER_KYCLOGIC_KycRule *rule = &rules[i];
+    json_t *zero_limit;
+
+    if (! rule->exposed)
+      continue;
+    if (rule->verboten)
+      continue; /* see: hard_limits */
+    if (! TALER_amount_is_zero (&rule->threshold))
+      continue;
+    zero_limit = GNUNET_JSON_PACK (
+      TALER_JSON_pack_kycte ("operation_type",
+                             rule->trigger));
+    GNUNET_assert (0 ==
+                   json_array_append_new (zero_limits,
+                                          zero_limit));
+  }
+  return zero_limits;
+}
+
+
 /* end of kyclogic_api.c */

@@ -450,6 +450,22 @@ struct TALER_EXCHANGE_WireAccount
 
 
 /**
+ * Applicable soft limits of zero for an account (or wallet).
+ * Clients should begin a KYC process before attempting
+ * these operations.
+ */
+struct TALER_EXCHANGE_ZeroLimitedOperation
+{
+
+  /**
+   * Operation type for which the restriction applies.
+   */
+  enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
+
+};
+
+
+/**
  * Applicable limits for an account (or wallet). Exceeding these limits may
  * trigger additional KYC requirements or be categorically verboten.
  */
@@ -569,6 +585,14 @@ struct TALER_EXCHANGE_Keys
   struct TALER_EXCHANGE_AccountLimit *hard_limits;
 
   /**
+   * Array of operations with a default soft limit of zero
+   * that apply at this exchange.
+   * Clients should begin a KYC process before attempting
+   * these operations.
+   */
+  struct TALER_EXCHANGE_ZeroLimitedOperation *zero_limits;
+
+  /**
    * Array of wire fees by wire method.
    */
   struct TALER_EXCHANGE_WireFeesByMethod *fees;
@@ -636,6 +660,11 @@ struct TALER_EXCHANGE_Keys
    * Length of @e hard_limits array.
    */
   unsigned int hard_limits_length;
+
+  /**
+   * Length of @e zero_limits array.
+   */
+  unsigned int zero_limits_length;
 
   /**
    * Length of the @e wallet_balance_limit_without_kyc

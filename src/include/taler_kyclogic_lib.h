@@ -370,6 +370,19 @@ TALER_KYCLOGIC_get_hard_limits (void);
 
 
 /**
+ * Return JSON array of ZeroLimitedOperation objects with
+ * operations for which this exchange has a limit
+ * of zero, that means KYC is always required (or
+ * the operation is categorically forbidden).
+ *
+ * @return the JSON array of ZeroLimitedOperation objects,
+ *   empty array if there are no hard limits
+ */
+json_t *
+TALER_KYCLOGIC_get_zero_limits (void);
+
+
+/**
  * Get human-readable name of KYC rule.
  *
  * @param r rule to convert

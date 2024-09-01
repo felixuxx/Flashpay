@@ -2416,6 +2416,9 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_JSON_pack_array_incref (
       "hard_limits",
       TEH_hard_limits),
+    GNUNET_JSON_pack_array_incref (
+      "zero_limits",
+      TEH_zero_limits),
     TALER_JSON_pack_amount ("stefan_abs",
                             &TEH_stefan_abs),
     TALER_JSON_pack_amount ("stefan_log",

@@ -176,6 +176,11 @@ float TEH_stefan_lin;
 json_t *TEH_hard_limits;
 
 /**
+ * JSON array with zero limits for /keys response.
+ */
+json_t *TEH_zero_limits;
+
+/**
  * Where to redirect users from "/"?
  */
 static char *toplevel_redirect_url;
@@ -2141,6 +2146,8 @@ exchange_serve_process_config (const char *cfg_fn)
   }
   TEH_hard_limits
     = TALER_KYCLOGIC_get_hard_limits ();
+  TEH_zero_limits
+    = TALER_KYCLOGIC_get_zero_limits ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
                                              "exchange",

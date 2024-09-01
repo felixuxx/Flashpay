@@ -103,6 +103,11 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 extern json_t *TEH_hard_limits;
 
 /**
+ * JSON array with zero limits for /keys response.
+ */
+extern json_t *TEH_zero_limits;
+
+/**
  * Absolute STEFAN parameter.
  */
 extern struct TALER_Amount TEH_stefan_abs;
