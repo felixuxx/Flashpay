@@ -68,8 +68,6 @@ static int result;
  */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 
-static struct TALER_DenomFeeSet fees;
-
 static struct TALER_MerchantWireHashP h_wire_wt;
 
 /**
@@ -203,6 +201,7 @@ run (void *cls)
   unsigned int *perm;
   unsigned long long duration_sq;
   struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
+  struct TALER_DenomFeeSet fees;
   struct GNUNET_CRYPTO_BlindingInputValues bi = {
     .cipher = GNUNET_CRYPTO_BSA_RSA,
     .rc = 0

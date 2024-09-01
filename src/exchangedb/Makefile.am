@@ -130,6 +130,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_profit_drains_get_pending.h pg_profit_drains_get_pending.c \
   pg_get_drain_profit.h pg_get_drain_profit.c \
   pg_get_purse_deposit.h pg_get_purse_deposit.c \
+  pg_do_check_deposit_idempotent.h pg_do_check_deposit_idempotent.c \
   pg_insert_contract.h pg_insert_contract.c \
   pg_select_contract.h pg_select_contract.c \
   pg_select_purse_merge.h pg_select_purse_merge.c \

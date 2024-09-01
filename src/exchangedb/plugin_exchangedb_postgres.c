@@ -38,6 +38,7 @@
 #include "pg_delete_aggregation_transient.h"
 #include "pg_get_link_data.h"
 #include "pg_helper.h"
+#include "pg_do_check_deposit_idempotent.h"
 #include "pg_do_reserve_open.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_get_expired_reserves.h"
@@ -744,6 +745,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_aml_decisions;
   plugin->select_deposit_amounts_for_kyc_check
     = &TEH_PG_select_deposit_amounts_for_kyc_check;
+  plugin->do_check_deposit_idempotent
+    = &TEH_PG_do_check_deposit_idempotent;
   plugin->insert_signkey_revocation
     = &TEH_PG_insert_signkey_revocation;
   plugin->select_aml_attributes

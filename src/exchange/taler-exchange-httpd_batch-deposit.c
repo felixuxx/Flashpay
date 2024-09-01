@@ -451,43 +451,31 @@ static bool
 check_request_idempotent (
   struct BatchDepositContext *bdc)
 {
-#if FIXME_PLACEHOLDER
   const struct TEH_RequestContext *rc = bdc->rc;
+  enum GNUNET_DB_QueryStatus qs;
+  bool is_idempotent;
 
-  for (unsigned int i = 0; i<bwc->planchets_length; i++)
+  qs = TEH_plugin->do_check_deposit_idempotent (
+    TEH_plugin->cls,
+    &bdc->bd,
+    &bdc->exchange_timestamp,
+    &is_idempotent);
+  if (0 > qs)
   {
-    struct PlanchetContext *pc = &bwc->planchets[i];
-    enum GNUNET_DB_QueryStatus qs;
-    struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
-
-    qs = TEH_plugin->get_withdraw_info (
-      TEH_plugin->cls,
-      &pc->collectable.h_coin_envelope,
-      &collectable);
-    if (0 > qs)
-    {
-      /* FIXME: soft error not handled correctly! */
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      finish_loop (bwc,
-                   TALER_MHD_reply_with_error (
-                     rc->connection,
-                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                     "get_withdraw_info"));
-      return true;
-    }
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      return false;
-    pc->collectable = collectable;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    finish_loop (bdc,
+                 TALER_MHD_reply_with_error (
+                   rc->connection,
+                   MHD_HTTP_INTERNAL_SERVER_ERROR,
+                   TALER_EC_GENERIC_DB_FETCH_FAILED,
+                   "get_withdraw_info"));
+    return true;
   }
-  /* generate idempotent reply */
-  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW]++;
-  bwc->phase = BDC_PHASE_GENERATE_REPLY_SUCCESS;
+  if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
+       (! is_idempotent) )
+    return false;
+  bdc->phase = BDC_PHASE_REPLY_SUCCESS;
   return true;
-#else
-  GNUNET_break (0); // NOT IMPLEMENTED
-  return false;
-#endif
 }
 
 

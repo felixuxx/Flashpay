@@ -4218,6 +4218,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Check ifdeposit operation is idempotent to existing one.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param bd batch deposit operation details
+   * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
+   * @param[out] is_idempotent set to true if the request is idempotent
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*do_check_deposit_idempotent)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_BatchDeposit *bd,
+    struct GNUNET_TIME_Timestamp *exchange_timestamp,
+    bool *is_idempotent);
+
+
+  /**
    * Perform melt operation, checking for sufficient balance
    * of the coin and possibly persisting the melt details.
    *

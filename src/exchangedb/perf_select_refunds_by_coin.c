@@ -67,7 +67,6 @@ static int result;
  */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 
-static struct TALER_DenomFeeSet fees;
 
 static struct TALER_MerchantWireHashP h_wire_wt;
 
@@ -231,6 +230,7 @@ run (void *cls)
   unsigned long long duration_sq;
   struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
   struct TALER_DenominationPublicKey *new_denom_pubs = NULL;
+  struct TALER_DenomFeeSet fees;
   unsigned int count = 0;
 
   ref = GNUNET_new_array (ROUNDS + 1,
