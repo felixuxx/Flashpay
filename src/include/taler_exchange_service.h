@@ -36,7 +36,35 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00100001
+#define TALER_EXCHANGE_API_VERSION 0x00100002
+
+/**
+ * Information returned when a client needs to pass
+ * a KYC check before the transaction may succeed.
+ */
+struct TALER_EXCHANGE_KycNeededRedirect
+{
+
+  /**
+   * Hash of the payto-URI of the account to KYC;
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Public key needed to access the KYC state of
+   * this account. All zeros if a wire transfer
+   * is required first to establish the key.
+   */
+  union TALER_AccountPublicKeyP account_pub;
+
+  /**
+   * Legitimization requirement that the merchant should use
+   * to check for its KYC status, 0 if not known.
+   */
+  uint64_t requirement_row;
+
+};
+
 
 /* *********************  /keys *********************** */
 
@@ -1234,6 +1262,11 @@ struct TALER_EXCHANGE_BatchDepositResult
       struct TALER_CoinSpendPublicKeyP coin_pub;
 
     } conflict;
+
+    /**
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct TALER_EXCHANGE_KycNeededRedirect unavailable_for_legal_reasons;
 
   } details;
 };
@@ -2507,34 +2540,6 @@ TALER_EXCHANGE_reserves_history (
 void
 TALER_EXCHANGE_reserves_history_cancel (
   struct TALER_EXCHANGE_ReservesHistoryHandle *rsh);
-
-
-/**
- * Information returned when a client needs to pass
- * a KYC check before the transaction may succeed.
- */
-struct TALER_EXCHANGE_KycNeededRedirect
-{
-
-  /**
-   * Hash of the payto-URI of the account to KYC;
-   */
-  struct TALER_PaytoHashP h_payto;
-
-  /**
-   * Public key needed to access the KYC state of
-   * this account. All zeros if a wire transfer
-   * is required first to establish the key.
-   */
-  union TALER_AccountPublicKeyP account_pub;
-
-  /**
-   * Legitimization requirement that the merchant should use
-   * to check for its KYC status, 0 if not known.
-   */
-  uint64_t requirement_row;
-
-};
 
 
 /**

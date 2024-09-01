@@ -18,7 +18,7 @@ lib_LTLIBRARIES = \
   libtalerexchange.la
 
 libtalerexchange_la_LDFLAGS = \
-  -version-info 10:0:0 \
+  -version-info 11:0:1 \
   -no-undefined
 libtalerexchange_la_SOURCES = \
   exchange_api_add_aml_decision.c \

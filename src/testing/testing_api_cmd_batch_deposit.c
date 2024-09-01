@@ -39,7 +39,7 @@
  * How long do we wait AT MOST when retrying?
  */
 #define MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+          GNUNET_TIME_UNIT_MILLISECONDS, 100)
 
 
 /**
@@ -172,6 +172,18 @@ struct BatchDepositState
   struct TALER_ExchangeSignatureP exchange_sig;
 
   /**
+   * Set to the KYC requirement payto hash *if* the exchange replied with a
+   * request for KYC.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC requirement row *if* the exchange replied with
+   * a request for KYC.
+   */
+  uint64_t requirement_row;
+
+  /**
    * Reference to previous deposit operation.
    * Only present if we're supposed to replay the previous deposit.
    */
@@ -218,12 +230,21 @@ batch_deposit_cb (void *cls,
                                      ds->expected_response_code);
     return;
   }
-  if (MHD_HTTP_OK == dr->hr.http_status)
+  switch (dr->hr.http_status)
   {
+  case MHD_HTTP_OK:
     ds->deposit_succeeded = GNUNET_YES;
     ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
     ds->exchange_pub = *dr->details.ok.exchange_pub;
     ds->exchange_sig = *dr->details.ok.exchange_sig;
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    /* nothing to check */
+    ds->requirement_row
+      = dr->details.unavailable_for_legal_reasons.requirement_row;
+    ds->h_payto
+      = dr->details.unavailable_for_legal_reasons.h_payto;
+    break;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -548,6 +569,8 @@ batch_deposit_traits (void *cls,
                                               &ds->wire_deadline),
       TALER_TESTING_make_trait_refund_deadline (index,
                                                 &ds->refund_deadline),
+      TALER_TESTING_make_trait_legi_requirement_row (&ds->requirement_row),
+      TALER_TESTING_make_trait_h_payto (&ds->h_payto),
       TALER_TESTING_trait_end ()
     };
 

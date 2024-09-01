@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2023 Taler Systems SA
+   Copyright (C) 2014-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -463,6 +463,30 @@ handle_deposit_finished (void *cls,
        is outdated => left to clients */
     dr->hr.ec = TALER_JSON_get_error_code (j);
     dr->hr.hint = TALER_JSON_get_error_hint (j);
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto (
+          "h_payto",
+          &dr->details.unavailable_for_legal_reasons.h_payto),
+        GNUNET_JSON_spec_uint64 (
+          "requirement_row",
+          &dr->details.unavailable_for_legal_reasons.requirement_row),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        dr->hr.http_status = 0;
+        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+    }
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     dr->hr.ec = TALER_JSON_get_error_code (j);
