@@ -63,7 +63,7 @@ TEH_PG_trigger_kyc_rule_for_account (
            "trigger_kyc_rule_for_account",
            "SELECT"
            "  out_legitimization_measure_serial_id"
-           "    AS legitimization_measure_serial_id"
+           "   AS legitimization_measure_serial_id"
            " FROM exchange_do_trigger_kyc_rule_for_account"
            "($1, $2, $3, $4, $5, $6);");
 

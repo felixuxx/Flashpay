@@ -612,7 +612,7 @@ bdc_phase_kyc (struct BatchDepositContext *bdc)
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
     bdc->bd.receiver_wire_account,
     &bdc->bd.wire_target_h_payto,
-    NULL,
+    NULL, /* account_pub */
     &deposit_amount_cb,
     bdc,
     &deposit_legi_cb,
