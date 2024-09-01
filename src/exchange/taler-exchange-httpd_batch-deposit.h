@@ -29,6 +29,14 @@
 
 
 /**
+ * Resumes all suspended batch deposit requests
+ * during cleanup.
+ */
+void
+TEH_batch_deposit_cleanup (void);
+
+
+/**
  * Handle a "/batch-deposit" request.  Parses the JSON, and, if
  * successful, passes the JSON data to #deposit_transaction() to
  * further check the details of the operation specified.  If everything checks

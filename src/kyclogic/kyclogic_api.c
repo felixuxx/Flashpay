@@ -2777,6 +2777,12 @@ TALER_KYCLOGIC_kyc_test_required (
                                       rule->timeframe);
   }
 
+  if (! have_threshold)
+  {
+    *triggered_rule = NULL;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
+
   {
     struct GNUNET_TIME_Absolute now
       = GNUNET_TIME_absolute_get ();

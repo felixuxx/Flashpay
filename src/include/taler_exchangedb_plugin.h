@@ -7164,6 +7164,28 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Call @a kac on deposited amounts after @a time_limit which are relevant for a
+   * KYC trigger for a merchant identified by @a h_payto.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param time_limit oldest transaction that could be relevant
+   * @param kac function to call for each applicable amount,
+   *    in reverse chronological order (or until @a kac aborts
+   *    by returning anything except #GNUNET_OK).
+   * @param kac_cls closure for @a kac
+   * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+   */
+  enum GNUNET_DB_QueryStatus
+    (*select_deposit_amounts_for_kyc_check)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Absolute time_limit,
+    TALER_EXCHANGEDB_KycAmountCallback kac,
+    void *kac_cls);
+
+
+  /**
    * Store automated legitimization outcome.
    *
    * @param cls closure

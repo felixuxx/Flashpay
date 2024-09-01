@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,17 +14,16 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_select_merge_amounts_for_kyc_check.c
- * @brief Implementation of the select_merge_amounts_for_kyc_check function for Postgres
+ * @file exchangedb/pg_select_deposit_amounts_for_kyc_check.c
+ * @brief Implementation of the select_deposit_amounts_for_kyc_check function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_select_merge_amounts_for_kyc_check.h"
+#include "pg_select_deposit_amounts_for_kyc_check.h"
 #include "pg_helper.h"
-
 
 /**
  * Closure for #get_kyc_amounts_cb().
@@ -110,7 +109,7 @@ get_kyc_amounts_cb (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_merge_amounts_for_kyc_check (
+TEH_PG_select_deposit_amounts_for_kyc_check (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
@@ -132,21 +131,19 @@ TEH_PG_select_merge_amounts_for_kyc_check (
   enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
-           "select_kyc_relevant_merge_events",
+           "select_kyc_relevant_deposit_events",
            "SELECT"
-           " amount_with_fee AS amount"
-           ",merge_timestamp AS date"
-           " FROM account_merges"
-           " JOIN purse_merges USING (purse_pub)"
-           " JOIN purse_requests USING (purse_pub)"
-           " JOIN purse_decision USING (purse_pub)"
-           " WHERE wallet_h_payto=$1"
-           "   AND merge_timestamp >= $2"
-           "   AND NOT refunded"
-           " ORDER BY merge_timestamp DESC");
+           " cd.amount_with_fee AS amount"
+           ",bd.exchange_timestamp AS date"
+           " FROM batch_deposits bd"
+           " JOIN coin_deposits cd"
+           "   USING (batch_deposit_serial_id)"
+           " WHERE wire_target_h_payto=$1"
+           "   AND bd.exchange_timestamp >= $2"
+           " ORDER BY bd.exchange_timestamp DESC");
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
-    "select_kyc_relevant_merge_events",
+    "select_kyc_relevant_deposit_events",
     params,
     &get_kyc_amounts_cb,
     &ctx);

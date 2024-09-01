@@ -55,6 +55,7 @@
 #include "pg_lookup_records_by_table.h"
 #include "pg_lookup_kyc_status_by_token.h"
 #include "pg_lookup_serial_by_table.h"
+#include "pg_select_deposit_amounts_for_kyc_check.h"
 #include "pg_lookup_pending_legitimization.h"
 #include "pg_lookup_completed_legitimization.h"
 #include "pg_lookup_active_legitimization.h"
@@ -741,6 +742,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_wire_fees;
   plugin->select_aml_decisions
     = &TEH_PG_select_aml_decisions;
+  plugin->select_deposit_amounts_for_kyc_check
+    = &TEH_PG_select_deposit_amounts_for_kyc_check;
   plugin->insert_signkey_revocation
     = &TEH_PG_insert_signkey_revocation;
   plugin->select_aml_attributes

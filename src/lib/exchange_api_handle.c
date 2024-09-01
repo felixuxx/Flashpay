@@ -40,12 +40,12 @@
  * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define EXCHANGE_PROTOCOL_CURRENT 19
+#define EXCHANGE_PROTOCOL_CURRENT 21
 
 /**
  * How many versions are we backwards compatible with?
  */
-#define EXCHANGE_PROTOCOL_AGE 2
+#define EXCHANGE_PROTOCOL_AGE 4
 
 /**
  * Set to 1 for extra debug logging.
@@ -975,7 +975,7 @@ decode_keys_json (const json_t *resp_obj,
       EXITIF (1);
     }
     {
-      const json_t *hard_limits;
+      const json_t *hard_limits = NULL;
       struct GNUNET_JSON_Specification sspec[] = {
         TALER_JSON_spec_currency_specification (
           "currency_specification",
@@ -989,9 +989,11 @@ decode_keys_json (const json_t *resp_obj,
           "stefan_log",
           currency,
           &key_data->stefan_log),
-        GNUNET_JSON_spec_array_const (
-          "hard_limits",
-          &hard_limits),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_array_const (
+            "hard_limits",
+            &hard_limits),
+          NULL),
         GNUNET_JSON_spec_double (
           "stefan_lin",
           &key_data->stefan_lin),
@@ -1010,9 +1012,10 @@ decode_keys_json (const json_t *resp_obj,
                     eline);
         EXITIF (1);
       }
-      if (GNUNET_OK !=
-          parse_hard_limits (hard_limits,
-                             key_data))
+      if ( (NULL != hard_limits) &&
+           (GNUNET_OK !=
+            parse_hard_limits (hard_limits,
+                               key_data)) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Parsing hard limits of /keys failed\n");

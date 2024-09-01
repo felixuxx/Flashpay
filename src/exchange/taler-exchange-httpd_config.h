@@ -41,7 +41,7 @@
  *
  * Returned via both /config and /keys endpoints.
  */
-#define EXCHANGE_PROTOCOL_VERSION "20:0:3"
+#define EXCHANGE_PROTOCOL_VERSION "21:0:4"
 
 
 /**
