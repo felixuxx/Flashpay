@@ -160,6 +160,12 @@ struct BatchDepositContext
    * @e policy_json is NULL and @e h_policy will be all zero.
    */
   bool has_no_policy;
+
+  /**
+   * KYC failed because a KYC auth transfer is needed
+   * to establish the merchant_pub.
+   */
+  bool bad_kyc_auth;
 };
 
 
@@ -488,7 +494,8 @@ static void
 bdc_phase_check_kyc_result (struct BatchDepositContext *bdc)
 {
   /* return final positive response */
-  if (! bdc->kyc.ok)
+  if ( (! bdc->kyc.ok) ||
+       (bdc->bad_kyc_auth) )
   {
     if (check_request_idempotent (bdc))
     {
@@ -501,7 +508,8 @@ bdc_phase_check_kyc_result (struct BatchDepositContext *bdc)
                  TEH_RESPONSE_reply_kyc_required (
                    bdc->rc->connection,
                    &bdc->bd.wire_target_h_payto,
-                   &bdc->kyc));
+                   &bdc->kyc,
+                   bdc->bad_kyc_auth));
     return;
   }
   bdc->phase = BDC_PHASE_TRANSACT;
@@ -538,6 +546,7 @@ deposit_legi_cb (
     return;
   }
   bdc->kyc = lcr->kyc;
+  bdc->bad_kyc_auth = lcr->bad_kyc_auth;
   bdc->phase = BDC_PHASE_CHECK_KYC_RESULT;
 }
 
@@ -604,15 +613,12 @@ bdc_phase_kyc (struct BatchDepositContext *bdc)
     bdc->phase++;
     return;
   }
-  /* FIXME: this fails to check that the
-     merchant_pub used in this request
-     matches the registered public key */
-  bdc->lch = TEH_legitimization_check (
+  bdc->lch = TEH_legitimization_check2 (
     &bdc->rc->async_scope_id,
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
     bdc->bd.receiver_wire_account,
     &bdc->bd.wire_target_h_payto,
-    NULL, /* account_pub */
+    &bdc->bd.merchant_pub,
     &deposit_amount_cb,
     bdc,
     &deposit_legi_cb,

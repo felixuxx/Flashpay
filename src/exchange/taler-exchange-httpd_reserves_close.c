@@ -343,7 +343,7 @@ reserve_close_transaction (
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
       rcc->payto_uri,
       &rcc->kyc_payto,
-      NULL, /* no account_pub */
+      NULL, /* no account_pub: this is about the origin/destination account */
       &amount_it,
       rcc,
       &reserve_close_legi_cb,
@@ -548,7 +548,8 @@ TEH_handler_reserves_close (
     return TEH_RESPONSE_reply_kyc_required (
       rc->connection,
       &rcc->kyc_payto,
-      &rcc->kyc);
+      &rcc->kyc,
+      false);
   }
 
   if (GNUNET_OK !=

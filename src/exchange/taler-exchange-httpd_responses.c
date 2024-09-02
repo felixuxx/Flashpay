@@ -338,9 +338,11 @@ TEH_RESPONSE_reply_purse_created (
 
 
 MHD_RESULT
-TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
-                                 const struct TALER_PaytoHashP *h_payto,
-                                 const struct TALER_EXCHANGEDB_KycStatus *kyc)
+TEH_RESPONSE_reply_kyc_required (
+  struct MHD_Connection *connection,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_EXCHANGEDB_KycStatus *kyc,
+  bool bad_kyc_auth)
 {
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
@@ -348,6 +350,18 @@ TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
     TALER_JSON_pack_ec (TALER_EC_EXCHANGE_GENERIC_KYC_REQUIRED),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_data_auto (
+        "account_pub",
+        (kyc->have_account_pub
+        ? &kyc->account_pub
+         : NULL))),
+    GNUNET_JSON_pack_allow_null (
+      bad_kyc_auth
+      ? GNUNET_JSON_pack_bool ("bad_kyc_auth",
+                               bad_kyc_auth)
+      : GNUNET_JSON_pack_string ("bad_kyc_auth",
+                                 NULL)),
     GNUNET_JSON_pack_uint64 ("requirement_row",
                              kyc->requirement_row));
 }

@@ -922,16 +922,19 @@ TEH_kyc_fallback (
   {
     json_t *jmeasures;
     enum GNUNET_DB_QueryStatus qs;
+    bool bad_kyc_auth;
 
     jmeasures = TALER_KYCLOGIC_check_to_measures (&kcc);
     qs = TEH_plugin->trigger_kyc_rule_for_account (
       TEH_plugin->cls,
       NULL, /* account_id is already in wire targets */
       account_id,
-      NULL,
+      NULL, /* account_pub */
+      NULL, /* merchant_pub */
       jmeasures,
       65536, /* high priority (does it matter?) */
-      &fb->requirement_row);
+      &fb->requirement_row,
+      &bad_kyc_auth);
     json_decref (jmeasures);
     fb->failure = (qs <= 0);
     fb->task = GNUNET_SCHEDULER_add_now (&return_fallback_result,
@@ -1043,9 +1046,18 @@ struct TEH_LegitimizationCheckHandle
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * Public key of the account.
+   * Public key of the account. Associates this public
+   * key with the account if @e have_account_pub is true.
    */
   union TALER_AccountPublicKeyP account_pub;
+
+  /**
+   * Public key of the merchant.  Checks that the KYC
+   * data was actually provided for this merchant if
+   * @e have_merchant_pub is true, and if not rejects
+   * the operation.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
    * Our request scope for logging.
@@ -1073,6 +1085,18 @@ struct TEH_LegitimizationCheckHandle
    * Do we have @e account_pub?
    */
   bool have_account_pub;
+
+  /**
+   * Do we have @e merchant_pub?
+   */
+  bool have_merchant_pub;
+
+  /**
+   * True if @a have_merchant_pub is true but the given
+   * merchant pub did not match the target_pub for the
+   * given @a h_payto.
+   */
+  bool bad_kyc_auth;
 };
 
 
@@ -1176,8 +1200,23 @@ legi_check_aml_trigger_cb (
 }
 
 
-struct TEH_LegitimizationCheckHandle *
-TEH_legitimization_check (
+/**
+ * Setup legitimization check.
+ *
+ * @param scope scope for logging
+ * @param et type of event we are checking
+ * @param payto_uri account we are checking for
+ * @param h_payto hash of @a payto_uri
+ * @param account_pub public key to enable for the
+ *    KYC authorization, NULL if not known
+ * @param ai callback to get amounts involved historically
+ * @param ai_cls closure for @a ai
+ * @param result_cb function to call with the result
+ * @param result_cb_cls closure for @a result_cb
+ * @return handle for the operation
+ */
+static struct TEH_LegitimizationCheckHandle *
+setup_legitimization_check (
   const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
   const char *payto_uri,
@@ -1204,6 +1243,63 @@ TEH_legitimization_check (
   lch->ai_cls = ai_cls;
   lch->result_cb = result_cb;
   lch->result_cb_cls = result_cb_cls;
+  return lch;
+}
+
+
+struct TEH_LegitimizationCheckHandle *
+TEH_legitimization_check (
+  const struct GNUNET_AsyncScopeId *scope,
+  enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const char *payto_uri,
+  const struct TALER_PaytoHashP *h_payto,
+  const union TALER_AccountPublicKeyP *account_pub,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls,
+  TEH_LegitimizationCheckCallback result_cb,
+  void *result_cb_cls)
+{
+  struct TEH_LegitimizationCheckHandle *lch;
+
+  lch = setup_legitimization_check (scope,
+                                    et,
+                                    payto_uri,
+                                    h_payto,
+                                    account_pub,
+                                    ai,
+                                    ai_cls,
+                                    result_cb,
+                                    result_cb_cls);
+  legitimization_check_run (lch);
+  return lch;
+}
+
+
+struct TEH_LegitimizationCheckHandle *
+TEH_legitimization_check2 (
+  const struct GNUNET_AsyncScopeId *scope,
+  enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const char *payto_uri,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls,
+  TEH_LegitimizationCheckCallback result_cb,
+  void *result_cb_cls)
+{
+  struct TEH_LegitimizationCheckHandle *lch;
+
+  lch = setup_legitimization_check (scope,
+                                    et,
+                                    payto_uri,
+                                    h_payto,
+                                    NULL,
+                                    ai,
+                                    ai_cls,
+                                    result_cb,
+                                    result_cb_cls);
+  lch->merchant_pub = *merchant_pub;
+  lch->have_merchant_pub = true;
   legitimization_check_run (lch);
   return lch;
 }
@@ -1396,9 +1492,11 @@ run_check (
       lch->payto_uri,
       &lch->h_payto,
       lch->have_account_pub ? &lch->account_pub : NULL,
+      lch->have_merchant_pub ? &lch->merchant_pub : NULL,
       jmeasures,
       0, /* no particular priority */
-      &lch->lcr.kyc.requirement_row);
+      &lch->lcr.kyc.requirement_row,
+      &lch->lcr.bad_kyc_auth);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -1428,6 +1526,74 @@ cleanup:
 }
 
 
+/**
+ * The KYC check failed because KYC auth is required
+ * to match and it does not.
+ *
+ * @param[in,out] lch legitimization check to fail
+ */
+static void
+fail_kyc_auth (struct TEH_LegitimizationCheckHandle *lch)
+{
+  lch->lcr.kyc.requirement_row = 0;
+  lch->lcr.kyc.ok = false;
+  lch->lcr.bad_kyc_auth = true;
+  lch->lcr.expiration_date
+    = GNUNET_TIME_UNIT_FOREVER_TS;
+  memset (&lch->lcr.next_threshold,
+          0,
+          sizeof (struct TALER_Amount));
+  lch->lcr.http_status = 0;
+  lch->lcr.response = NULL;
+  lch->async_task
+    = GNUNET_SCHEDULER_add_now (
+        &async_return_legi_result,
+        lch);
+}
+
+
+/**
+ * Function called to iterate over KYC-relevant
+ * transaction amounts for a particular time range.
+ * Called within a database transaction, so must
+ * not start a new one.
+ *
+ * Given that there *is* a KYC requirement, we also
+ * check if the kyc_auth_bad is set and react
+ * accordingly.
+ *
+ * @param cls closure, a `struct TEH_LegitimizationCheckHandle *`
+ * @param limit maximum time-range for which events
+ *        should be fetched (timestamp in the past)
+ * @param cb function to call on each event found,
+ *        events must be returned in reverse chronological
+ *        order
+ * @param cb_cls closure for @a cb
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+amount_iterator_wrapper_cb (
+  void *cls,
+  struct GNUNET_TIME_Absolute limit,
+  TALER_EXCHANGEDB_KycAmountCallback cb,
+  void *cb_cls)
+{
+  struct TEH_LegitimizationCheckHandle *lch = cls;
+
+  if (lch->bad_kyc_auth)
+  {
+    /* We *do* have applicable KYC rules *and* the
+       target_pub does not match the merchant_pub,
+       so we indeed have a problem! */
+    lch->lcr.bad_kyc_auth = true;
+  }
+  return lch->ai (lch->ai_cls,
+                  limit,
+                  cb,
+                  cb_cls);
+}
+
+
 static void
 legitimization_check_run (
   struct TEH_LegitimizationCheckHandle *lch)
@@ -1443,6 +1609,7 @@ legitimization_check_run (
     /* AML/KYC disabled, just immediately return success! */
     lch->lcr.kyc.requirement_row = 0;
     lch->lcr.kyc.ok = true;
+    lch->lcr.bad_kyc_auth = false;
     lch->lcr.expiration_date
       = GNUNET_TIME_UNIT_FOREVER_TS;
     memset (&lch->lcr.next_threshold,
@@ -1461,24 +1628,47 @@ legitimization_check_run (
   {
     json_t *jrules;
 
+
     qs = TEH_plugin->get_kyc_rules (TEH_plugin->cls,
                                     &lch->h_payto,
+                                    &lch->lcr.kyc.account_pub,
                                     &jrules);
-    if (qs < 0)
+    switch (qs)
     {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+    case GNUNET_DB_STATUS_SOFT_ERROR:
       GNUNET_break (0);
       legi_fail (lch,
                  TALER_EC_GENERIC_DB_FETCH_FAILED,
                  "get_kyc_rules");
       GNUNET_async_scope_restore (&old_scope);
       return;
-    }
-    if (qs > 0)
-    {
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      if (lch->have_merchant_pub)
+      {
+        // FIXME: not quite correct: the absence of custom *jrules* does NOT
+        // imply that we had no target_pub!
+        lch->lcr.bad_kyc_auth = true;
+      }
+      break;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      lch->lcr.kyc.have_account_pub
+        = ! GNUNET_is_zero (&lch->lcr.kyc.account_pub);
+      if ( (lch->have_merchant_pub) &&
+           (0 != GNUNET_memcmp (&lch->merchant_pub,
+                                &lch->lcr.kyc.account_pub.merchant_pub)) )
+      {
+        /* We have custom rules, but the target_pub for
+           those custom rules does not match the
+           merchant_pub. Fail the KYC process! */
+        fail_kyc_auth (lch);
+        return;
+      }
       lrs = TALER_KYCLOGIC_rules_parse (jrules);
       GNUNET_break (NULL != lrs);
       /* Fall back to default rules on parse error! */
       json_decref (jrules);
+      break;
     }
   }
 
@@ -1517,8 +1707,8 @@ legitimization_check_run (
   qs = TALER_KYCLOGIC_kyc_test_required (
     lch->et,
     lrs,
-    lch->ai,
-    lch->ai_cls,
+    &amount_iterator_wrapper_cb,
+    lch,
     &requirement,
     &lch->lcr.next_threshold);
   if (qs < 0)
@@ -1528,6 +1718,11 @@ legitimization_check_run (
                TALER_EC_GENERIC_DB_FETCH_FAILED,
                "kyc_test_required");
     GNUNET_async_scope_restore (&old_scope);
+    return;
+  }
+  if (lch->lcr.bad_kyc_auth)
+  {
+    fail_kyc_auth (lch);
     return;
   }
 
@@ -1606,9 +1801,11 @@ legitimization_check_run (
       lch->payto_uri,
       &lch->h_payto,
       lch->have_account_pub ? &lch->account_pub : NULL,
+      lch->have_merchant_pub ? &lch->merchant_pub : NULL,
       jmeasures,
       TALER_KYCLOGIC_rule2priority (requirement),
-      &lch->lcr.kyc.requirement_row);
+      &lch->lcr.kyc.requirement_row,
+      &lch->lcr.bad_kyc_auth);
     json_decref (jmeasures);
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)

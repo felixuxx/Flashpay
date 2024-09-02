@@ -14,30 +14,50 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE OR REPLACE FUNCTION exchange_do_trigger_kyc_rule_for_account(
+DROP FUNCTION IF EXISTS exchange_do_trigger_kyc_rule_for_account;
+
+CREATE FUNCTION exchange_do_trigger_kyc_rule_for_account(
   IN in_h_payto BYTEA,
   IN in_account_pub BYTEA, -- can be NULL
+  IN in_merchant_pub BYTEA, -- can be NULL
   IN in_payto_uri TEXT, -- can be NULL
   IN in_now INT8,
   IN in_jmeasures TEXT,
   IN in_display_priority INT4,
-  OUT out_legitimization_measure_serial_id INT8)
+  OUT out_legitimization_measure_serial_id INT8,
+  OUT out_bad_kyc_auth BOOL)
 LANGUAGE plpgsql
 AS $$
 DECLARE
+  my_rec RECORD;
   my_access_token BYTEA;
+  my_account_pub BYTEA;
 BEGIN
 -- Note: in_payto_uri is allowed to be NULL *if*
 -- in_h_payto is already in wire_targets
+
 SELECT
-  access_token
+   access_token
+  ,account_pub
 INTO
-  my_access_token
+  my_rec
 FROM wire_targets
   WHERE wire_target_h_payto=in_h_payto;
 
-IF NOT FOUND
+IF FOUND
 THEN
+  -- Extract details, determine if KYC auth matches.
+  my_access_token = my_rec.access_token;
+  my_account_pub = my_rec.account_pub;
+  IF in_merchant_pub IS NULL
+  THEN
+    out_bad_kyc_auth = FALSE;
+  ELSE
+    out_bad_kyc_auth = (my_account_pub = in_merchant_pub);
+  END IF;
+ELSE
+  -- No constraint on merchant_pub, just create
+  -- the wire_target.
   INSERT INTO wire_targets
     (payto_uri
     ,wire_target_h_payto
@@ -49,6 +69,7 @@ THEN
   RETURNING
     access_token
   INTO my_access_token;
+  out_bad_kyc_auth=TRUE;
 END IF;
 
 -- First check if a perfectly equivalent legi measure

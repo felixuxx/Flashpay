@@ -31,19 +31,24 @@ TEH_PG_trigger_kyc_rule_for_account (
   void *cls,
   const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
-  const union TALER_AccountPublicKeyP *account_pub,
+  const union TALER_AccountPublicKeyP *set_account_pub,
+  const struct TALER_MerchantPublicKeyP *check_merchant_pub,
   const json_t *jmeasures,
   uint32_t display_priority,
-  uint64_t *requirement_row)
+  uint64_t *requirement_row,
+  bool *bad_kyc_auth)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now
     = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    NULL == account_pub
+    NULL == set_account_pub
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_auto_from_type (account_pub),
+    : GNUNET_PQ_query_param_auto_from_type (set_account_pub),
+    NULL == check_merchant_pub
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (check_merchant_pub),
     NULL == payto_uri
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_string (payto_uri),
@@ -56,6 +61,9 @@ TEH_PG_trigger_kyc_rule_for_account (
     GNUNET_PQ_result_spec_uint64 (
       "legitimization_measure_serial_id",
       requirement_row),
+    GNUNET_PQ_result_spec_bool (
+      "bad_kyc_auth",
+      bad_kyc_auth),
     GNUNET_PQ_result_spec_end
   };
 
@@ -64,8 +72,10 @@ TEH_PG_trigger_kyc_rule_for_account (
            "SELECT"
            "  out_legitimization_measure_serial_id"
            "   AS legitimization_measure_serial_id"
+           " ,out_bad_kyc_auth"
+           "   AS bad_kyc_auth"
            " FROM exchange_do_trigger_kyc_rule_for_account"
-           "($1, $2, $3, $4, $5, $6);");
+           "($1, $2, $3, $4, $5, $6, $7);");
 
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

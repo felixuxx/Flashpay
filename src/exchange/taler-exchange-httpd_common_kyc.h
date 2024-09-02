@@ -212,6 +212,14 @@ struct TEH_LegitimizationCheckResult
   unsigned int http_status;
 
   /**
+   * Set to true if the merchant public key does not
+   * match the public key we have on file for this
+   * target account (and thus a new KYC AUTH is
+   * required).
+   */
+  bool bad_kyc_auth;
+
+  /**
    * Response to return. Note that the response must
    * be queued or destroyed by the callee.  NULL
    * if the legitimization check was successful and the handler should return
@@ -261,6 +269,36 @@ TEH_legitimization_check (
   const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *account_pub,
+  TALER_KYCLOGIC_KycAmountIterator ai,
+  void *ai_cls,
+  TEH_LegitimizationCheckCallback result_cb,
+  void *result_cb_cls);
+
+
+/**
+ * Do legitimization check and enforce that the current
+ * public key associated with the account is the given
+ * merchant public key.
+ *
+ * @param scope scope for logging
+ * @param et type of event we are checking
+ * @param payto_uri account we are checking for
+ * @param h_payto hash of @a payto_uri
+ * @param merchant_pub public key that must match the
+ *    KYC authorization
+ * @param ai callback to get amounts involved historically
+ * @param ai_cls closure for @a ai
+ * @param result_cb function to call with the result
+ * @param result_cb_cls closure for @a result_cb
+ * @return handle for the operation
+ */
+struct TEH_LegitimizationCheckHandle *
+TEH_legitimization_check2 (
+  const struct GNUNET_AsyncScopeId *scope,
+  enum TALER_KYCLOGIC_KycTriggerEvent et,
+  const char *payto_uri,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
   TEH_LegitimizationCheckCallback result_cb,

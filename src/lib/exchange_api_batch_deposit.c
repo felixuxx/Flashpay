@@ -473,6 +473,9 @@ handle_deposit_finished (void *cls,
         GNUNET_JSON_spec_uint64 (
           "requirement_row",
           &dr->details.unavailable_for_legal_reasons.requirement_row),
+        GNUNET_JSON_spec_bool (
+          "bad_kyc_auth",
+          &dr->details.unavailable_for_legal_reasons.bad_kyc_auth),
         GNUNET_JSON_spec_end ()
       };
 

@@ -34,11 +34,16 @@
  *    can be NULL if @a h_payto is already
  *    guaranteed to be in wire_targets
  * @param h_payto hash of @a payto_uri
- * @param account_pub public key to enable for the
+ * @param set_account_pub public key to enable for the
  *    KYC authorization, NULL if not known
+ * @param check_merchant_pub public key that must already
+ *    be enabled for a KYC authorzation for it to be
+ *   valid, NULL if not known
  * @param jmeasures serialized MeasureSet to put in place
  * @param display_priority priority of the rule
  * @param[out] requirement_row set to legitimization requirement row for this check
+ * @param[out] bad_kyc_auth set if @a check_account_pub
+ *     did not match the existing KYC auth
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -46,9 +51,11 @@ TEH_PG_trigger_kyc_rule_for_account (
   void *cls,
   const char *payto_uri,
   const struct TALER_PaytoHashP *h_payto,
-  const union TALER_AccountPublicKeyP *account_pub,
+  const union TALER_AccountPublicKeyP *set_account_pub,
+  const struct TALER_MerchantPublicKeyP *check_merchant_pub,
   const json_t *jmeasures,
   uint32_t display_priority,
-  uint64_t *requirement_row);
+  uint64_t *requirement_row,
+  bool *bad_kyc_auth);
 
 #endif

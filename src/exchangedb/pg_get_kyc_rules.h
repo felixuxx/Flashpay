@@ -31,6 +31,8 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param h_payto account identifier
+ * @param[out] account_pub account public key the rules
+ *   apply to (because this key was used in KYC auth)
  * @param[out] jrules set to the active KYC rules for the
  *    given account, set to NULL if no custom rules are active
  * @return transaction status code
@@ -39,6 +41,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_kyc_rules (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
+  union TALER_AccountPublicKeyP *account_pub,
   json_t **jrules);
 
 #endif

@@ -763,9 +763,11 @@ TEH_handler_purses_merge (
                                pmc->response);
   }
   if (! pmc->kyc.ok)
-    return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                            &pmc->h_payto,
-                                            &pmc->kyc);
+    return TEH_RESPONSE_reply_kyc_required (
+      rc->connection,
+      &pmc->h_payto,
+      &pmc->kyc,
+      false);
 
   /* execute merge transaction */
   {

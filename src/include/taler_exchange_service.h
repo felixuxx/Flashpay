@@ -36,7 +36,7 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00100002
+#define TALER_EXCHANGE_API_VERSION 0x00100003
 
 /**
  * Information returned when a client needs to pass
@@ -63,6 +63,11 @@ struct TALER_EXCHANGE_KycNeededRedirect
    */
   uint64_t requirement_row;
 
+  /**
+   * Set to true if the KYC AUTH public key known to the exchange does not
+   * match the merchant public key associated with the deposit operation.
+   */
+  bool bad_kyc_auth;
 };
 
 

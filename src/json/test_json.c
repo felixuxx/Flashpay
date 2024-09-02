@@ -76,9 +76,11 @@ path_cb (void *cls,
          json_t *parent)
 {
   struct TestPath_Closure *cmp = cls;
+  unsigned int i;
+
   if (NULL == cmp)
     return;
-  unsigned int i = cmp->results_length;
+  i = cmp->results_length;
   if ((0 != strcmp (cmp->object_ids[i],
                     object_id)) ||
       (1 != json_equal (cmp->parents[i],

@@ -850,9 +850,11 @@ TEH_handler_reserves_purse (
         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
         "requirement row not set");
     }
-    return TEH_RESPONSE_reply_kyc_required (connection,
-                                            &rpc->h_payto,
-                                            &rpc->kyc);
+    return TEH_RESPONSE_reply_kyc_required (
+      connection,
+      &rpc->h_payto,
+      &rpc->kyc,
+      false);
   }
 
   {

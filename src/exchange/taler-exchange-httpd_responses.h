@@ -89,12 +89,18 @@ TEH_RESPONSE_reply_reserve_age_restriction_required (
  * @param connection connection to the client
  * @param h_payto account identifier to include in reply
  * @param kyc details about the KYC requirements
+ * @param bad_kyc_auth true if the target_pub of the
+ *    @a h_payto account does not match the merchant_pub
+ *    from the operation and thus a KYC AUTH transfer is
+ *    required
  * @return MHD result code
  */
 MHD_RESULT
-TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
-                                 const struct TALER_PaytoHashP *h_payto,
-                                 const struct TALER_EXCHANGEDB_KycStatus *kyc);
+TEH_RESPONSE_reply_kyc_required (
+  struct MHD_Connection *connection,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_EXCHANGEDB_KycStatus *kyc,
+  bool bad_kyc_auth);
 
 
 /**

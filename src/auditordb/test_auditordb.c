@@ -185,6 +185,15 @@ run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   uint64_t rowid;
+  struct TALER_Amount value;
+  struct TALER_Amount fee_withdraw;
+  struct TALER_Amount fee_deposit;
+  struct TALER_Amount fee_refresh;
+  struct TALER_Amount fee_refund;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_DenominationPrivateKey denom_priv;
+  struct TALER_DenominationPublicKey denom_pub;
+  struct GNUNET_TIME_Timestamp date;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "loading database plugin\n");
@@ -219,12 +228,6 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "initializing\n");
 
-  struct TALER_Amount value;
-  struct TALER_Amount fee_withdraw;
-  struct TALER_Amount fee_deposit;
-  struct TALER_Amount fee_refresh;
-  struct TALER_Amount fee_refund;
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
                                          &value));
@@ -240,12 +243,6 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000014",
                                          &fee_refund));
-
-  struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_DenominationPrivateKey denom_priv;
-  struct TALER_DenominationPublicKey denom_pub;
-  struct GNUNET_TIME_Timestamp date;
-
   RND_BLK (&reserve_pub);
   RND_BLK (&rnd_hash);
   GNUNET_assert (GNUNET_OK ==

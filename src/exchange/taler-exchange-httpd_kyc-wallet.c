@@ -321,7 +321,8 @@ TEH_handler_kyc_wallet (
   }
   return TEH_RESPONSE_reply_kyc_required (rc->connection,
                                           &krc->h_payto,
-                                          &krc->kyc);
+                                          &krc->kyc,
+                                          false);
 }
 
 

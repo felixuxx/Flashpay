@@ -30,6 +30,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_kyc_rules (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
+  union TALER_AccountPublicKeyP *account_pub,
   json_t **jrules)
 {
   struct PostgresClosure *pg = cls;
@@ -41,16 +42,24 @@ TEH_PG_get_kyc_rules (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("target_pub",
+                                          account_pub),
     TALER_PQ_result_spec_json ("jnew_rules",
                                jrules),
     GNUNET_PQ_result_spec_end
   };
 
+  memset (account_pub,
+          0,
+          sizeof (*account_pub));
   PREPARE (pg,
            "get_kyc_rules",
            "SELECT"
-           "  jnew_rules"
-           "  FROM legitimization_outcomes"
+           "  wt.target_pub"
+           " ,lo.jnew_rules"
+           "  FROM legitimization_outcomes lo"
+           "  JOIN wire_targets wt"
+           "    ON (lo.h_payto = wt.wire_target_h_payto)"
            " WHERE h_payto=$1"
            "   AND expiration_time >= $2"
            "   AND is_active;");

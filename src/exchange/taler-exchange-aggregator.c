@@ -111,6 +111,12 @@ struct AggregationUnit
    */
   bool have_transient;
 
+  /**
+   * Is the wrong merchant public key associated with
+   * the KYC data?
+   */
+  bool bad_kyc_auth;
+
 };
 
 
@@ -515,9 +521,11 @@ legitimization_satisfied (struct AggregationUnit *au_active)
 
   {
     json_t *jrules;
+    union TALER_AccountPublicKeyP account_pub;
 
     qs = db_plugin->get_kyc_rules (db_plugin->cls,
                                    &au_active->h_payto,
+                                   &account_pub,
                                    &jrules);
     if (qs < 0)
     {
@@ -564,9 +572,11 @@ legitimization_satisfied (struct AggregationUnit *au_active)
     au_active->payto_uri,
     &au_active->h_payto,
     NULL,
+    &au_active->merchant_pub,
     jrule,
     TALER_KYCLOGIC_rule2priority (requirement),
-    &au_active->requirement_row);
+    &au_active->requirement_row,
+    &au_active->bad_kyc_auth);
   json_decref (jrule);
   if (qs < 0)
   {

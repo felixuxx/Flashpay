@@ -499,7 +499,8 @@ check_kyc_result (struct AgeWithdrawContext *awc)
                  TEH_RESPONSE_reply_kyc_required (
                    awc->rc->connection,
                    &awc->h_payto,
-                   &awc->kyc));
+                   &awc->kyc,
+                   false));
     return;
   }
   awc->phase++;
@@ -630,7 +631,7 @@ run_legi_check (struct AgeWithdrawContext *awc)
     TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
     payto_uri,
     &awc->h_payto,
-    NULL,
+    NULL, /* no account pub: this is about the origin account */
     &withdraw_amount_cb,
     awc,
     &withdraw_legi_cb,

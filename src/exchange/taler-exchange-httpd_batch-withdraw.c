@@ -571,7 +571,8 @@ check_kyc_result (struct BatchWithdrawContext *bwc)
                  TEH_RESPONSE_reply_kyc_required (
                    bwc->rc->connection,
                    &bwc->h_payto,
-                   &bwc->kyc));
+                   &bwc->kyc,
+                   false));
     return;
   }
   bwc->phase++;
@@ -702,7 +703,7 @@ run_legi_check (struct BatchWithdrawContext *bwc)
     TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
     payto_uri,
     &bwc->h_payto,
-    NULL,
+    NULL, /* no account pub: this is about the origin account */
     &withdraw_amount_cb,
     bwc,
     &withdraw_legi_cb,

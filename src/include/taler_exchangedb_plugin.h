@@ -2957,11 +2957,24 @@ struct TALER_EXCHANGEDB_CsRevealFreshCoinData
  */
 struct TALER_EXCHANGEDB_KycStatus
 {
+
+  /**
+   * Account public key that is currently associated
+   * with the account. Only set if @e have_account_pub
+   * is true.
+   */
+  union TALER_AccountPublicKeyP account_pub;
+
   /**
    * Number that identifies the KYC requirement the operation
    * was about.
    */
   uint64_t requirement_row;
+
+  /**
+   * True if @e account_pub is set.
+   */
+  bool have_account_pub;
 
   /**
    * True if the KYC status is "satisfied".
@@ -6898,11 +6911,16 @@ struct TALER_EXCHANGEDB_Plugin
    *    can be NULL if @a h_payto is already
    *    guaranteed to be in wire_targets
    * @param h_payto hash of @a payto_uri
-   * @param account_pub public key to enable for the
+   * @param set_account_pub public key to enable for the
    *    KYC authorization, NULL if not known
+   * @param check_merchant_pub public key that must already
+   *    be enabled for a KYC authorzation for it to be
+   *   valid, NULL if not known
    * @param jmeasures serialized MeasureSet to put in place
    * @param display_priority priority of the rule
    * @param[out] requirement_row set to legitimization requirement row for this check
+   * @param[out] bad_kyc_auth set if @a check_account_pub
+   *     did not match the existing KYC auth
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -6910,10 +6928,12 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const char *payto_uri,
     const struct TALER_PaytoHashP *h_payto,
-    const union TALER_AccountPublicKeyP *account_pub,
+    const union TALER_AccountPublicKeyP *set_account_pub,
+    const struct TALER_MerchantPublicKeyP *check_merchant_pub,
     const json_t *jmeasures,
     uint32_t display_priority,
-    uint64_t *requirement_row);
+    uint64_t *requirement_row,
+    bool *bad_kyc_auth);
 
 
   /**
@@ -7091,6 +7111,8 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param h_payto account identifier
+   * @param[out] account_pub account public key the rules
+   *   apply to (because this key was used in KYC auth)
    * @param[out] jrules set to the active KYC rules for the
    *    given account, set to NULL if no custom rules are active
    * @return transaction status code
@@ -7099,6 +7121,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*get_kyc_rules)(
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
+    union TALER_AccountPublicKeyP *account_pub,
     json_t **jrules);
 
 
