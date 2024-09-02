@@ -4391,6 +4391,19 @@ struct TALER_EXCHANGE_KycStatus
      */
     struct TALER_EXCHANGE_AccountKycStatus accepted;
 
+    /**
+     * Request was forbidden.
+     */
+    struct
+    {
+
+      /**
+       * Account pub that would have been authorized.
+       */
+      union TALER_AccountPublicKeyP expected_account_pub;
+
+    } forbidden;
+
   } details;
 
 };
@@ -4413,7 +4426,7 @@ typedef void
  *
  * @param ctx CURL context
  * @param url exchange base URL
- * @param requirement_row number identifying the KYC requirement
+ * @param h_payto hash of the account the KYC check is about
  * @param pk private key to authorize the request with
  * @param timeout how long to wait for a positive KYC status
  * @param cb function to call with the result
@@ -4424,7 +4437,7 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  uint64_t requirement_row,
+  const struct TALER_PaytoHashP *h_payto,
   const union TALER_AccountPrivateKeyP *pk,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,

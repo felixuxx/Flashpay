@@ -327,6 +327,10 @@ TEH_PG_internal_setup (struct PostgresClosure *pg)
  *         TALER_EXCHANGEDB_Plugin`
  */
 void *
+libtaler_plugin_exchangedb_postgres_init (void *cls);
+
+/* Declaration used to squash compiler warning */
+void *
 libtaler_plugin_exchangedb_postgres_init (void *cls)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
@@ -834,6 +838,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
  * @param cls a `struct TALER_EXCHANGEDB_Plugin`
  * @return NULL (always)
  */
+void *
+libtaler_plugin_exchangedb_postgres_done (void *cls);
+
+/* Declaration used to squash compiler warning */
 void *
 libtaler_plugin_exchangedb_postgres_done (void *cls)
 {

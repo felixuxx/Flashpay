@@ -164,6 +164,10 @@ struct TALER_Extension TE_age_restriction = {
  * @return pointer to TALER_Extension on success or NULL otherwise.
  */
 void *
+libtaler_extension_age_restriction_init (void *arg);
+
+/* Declaration used to squash compiler warning */
+void *
 libtaler_extension_age_restriction_init (void *arg)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = arg;
@@ -242,6 +246,10 @@ libtaler_extension_age_restriction_init (void *arg)
  * @param arg unused
  * @return pointer to TALER_Extension on success or NULL otherwise.
  */
+void *
+libtaler_extension_age_restriction_done (void *arg);
+
+/* Declaration used to squash compiler warning */
 void *
 libtaler_extension_age_restriction_done (void *arg)
 {

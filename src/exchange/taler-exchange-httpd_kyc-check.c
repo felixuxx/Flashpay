@@ -62,9 +62,9 @@ struct KycPoller
   struct GNUNET_DB_EventHandler *eh;
 
   /**
-   * Row of the requirement being checked.
+   * Account for which we perform the KYC check.
    */
-  uint64_t requirement_row;
+  struct TALER_PaytoHashP h_payto;
 
   /**
    * When will this request time out?
@@ -202,24 +202,18 @@ TEH_handler_kyc_check (
     rc->rh_ctx = kyp;
     rc->rh_cleaner = &kyp_cleanup;
 
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &kyp->h_payto,
+                                       sizeof (kyp->h_payto)))
     {
-      unsigned long long requirement_row;
-      char dummy;
-
-      if (1 !=
-          sscanf (args[0],
-                  "%llu%c",
-                  &requirement_row,
-                  &dummy))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (
-          rc->connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "requirement_row");
-      }
-      kyp->requirement_row = (uint64_t) requirement_row;
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PATH_SEGMENT_MALFORMED,
+        "h_payto");
     }
 
     TALER_MHD_parse_request_header_auto (
@@ -229,7 +223,26 @@ TEH_handler_kyc_check (
       sig_required);
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &kyp->timeout);
-  }
+
+    /* long polling needed? */
+    if (GNUNET_TIME_absolute_is_future (kyp->timeout))
+    {
+      struct TALER_KycCompletedEventP rep = {
+        .header.size = htons (sizeof (rep)),
+        .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+        .h_payto = kyp->h_payto
+      };
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Starting DB event listening\n");
+      kyp->eh = TEH_plugin->event_listen (
+        TEH_plugin->cls,
+        GNUNET_TIME_absolute_get_remaining (kyp->timeout),
+        &rep.header,
+        &db_event_cb,
+        rc);
+    }
+  } /* end initialization */
 
   if (! TEH_enable_kyc)
   {
@@ -247,11 +260,11 @@ TEH_handler_kyc_check (
     enum GNUNET_DB_QueryStatus qs;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Looking up KYC requirements by row %llu\n",
-                (unsigned long long) kyp->requirement_row);
+                "Looking up KYC requirements for account %s\n",
+                TALER_B2S (&kyp->h_payto));
     qs = TEH_plugin->lookup_kyc_requirement_by_row (
       TEH_plugin->cls,
-      kyp->requirement_row,
+      &kyp->h_payto,
       &account_pub,
       &reserve_pub.reserve_pub,
       &access_token,
@@ -286,9 +299,6 @@ TEH_handler_kyc_check (
          TALER_account_kyc_auth_verify (&reserve_pub,
                                         &kyp->account_sig)) ) )
   {
-    char *diag;
-    MHD_RESULT mret;
-
     json_decref (jrules);
     jrules = NULL;
     if (GNUNET_is_zero (&account_pub))
@@ -300,15 +310,13 @@ TEH_handler_kyc_check (
         TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_KEY_UNKNOWN,
         NULL);
     }
-    diag = GNUNET_STRINGS_data_to_string_alloc (&account_pub,
-                                                sizeof (account_pub));
-    mret = TALER_MHD_reply_with_error (
+    return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
-      diag);
-    GNUNET_free (diag);
-    return mret;
+      TALER_JSON_pack_ec (
+        TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED),
+      GNUNET_JSON_pack_data_auto ("expected_account_pub",
+                                  &account_pub));
   }
 
   jlimits = TALER_KYCLOGIC_rules_to_limits (jrules);
@@ -326,47 +334,9 @@ TEH_handler_kyc_check (
   json_decref (jrules);
   jrules = NULL;
 
-  /* long polling for positive result? */
-  if (kyc_required &&
-      GNUNET_TIME_absolute_is_future (kyp->timeout))
+  if ( (kyc_required) &&
+       GNUNET_TIME_absolute_is_future (kyp->timeout))
   {
-    enum GNUNET_DB_QueryStatus qs;
-    struct TALER_KycCompletedEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
-    };
-
-    json_decref (jlimits);
-    if (NULL == kyp->eh)
-    {
-      /* FIXME-Performance: consider modifying lookup_kyc_requirement_by_row
-         to immediately return h_payto as well... */
-      qs = TEH_plugin->lookup_h_payto_by_access_token (
-        TEH_plugin->cls,
-        &access_token,
-        &rep.h_payto);
-      if (qs < 0)
-      {
-        GNUNET_break (0);
-        return TALER_MHD_reply_with_ec (
-          rc->connection,
-          TALER_EC_GENERIC_DB_FETCH_FAILED,
-          "lookup_h_payto_by_access_token");
-      }
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Starting DB event listening\n");
-      kyp->eh = TEH_plugin->event_listen (
-        TEH_plugin->cls,
-        GNUNET_TIME_absolute_get_remaining (kyp->timeout),
-        &rep.header,
-        &db_event_cb,
-        rc);
-      /* goes again *immediately* (without suspending)
-         now that long-poller is in place; we will suspend
-         in the *next* iteration. */
-      return MHD_YES;
-    }
-
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Suspending HTTP request on timeout (%s) now...\n",
                 GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (
@@ -380,12 +350,9 @@ TEH_handler_kyc_check (
     MHD_suspend_connection (kyp->connection);
     return MHD_YES;
   }
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Returning KYC %s for row %llu\n",
-              kyc_required ? "required" : "optional",
-              (unsigned long long) kyp->requirement_row);
-
+              "Returning KYC %s\n",
+              kyc_required ? "required" : "optional");
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     kyc_required

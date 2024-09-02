@@ -120,7 +120,7 @@ check_kyc_run (void *cls,
   struct KycCheckGetState *kcg = cls;
   const struct TALER_TESTING_Command *res_cmd;
   const struct TALER_TESTING_Command *acc_cmd;
-  const uint64_t *requirement_row;
+  const struct TALER_PaytoHashP *h_payto;
   const union TALER_AccountPrivateKeyP *account_priv;
 
   (void) cmd;
@@ -144,9 +144,9 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_legi_requirement_row (
+      TALER_TESTING_get_trait_h_payto (
         res_cmd,
-        &requirement_row))
+        &h_payto))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
@@ -160,7 +160,7 @@ check_kyc_run (void *cls,
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
-  if (0 == *requirement_row)
+  if (0 == h_payto)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
@@ -169,7 +169,7 @@ check_kyc_run (void *cls,
   kcg->kwh = TALER_EXCHANGE_kyc_check (
     TALER_TESTING_interpreter_get_context (is),
     TALER_TESTING_get_exchange_url (is),
-    *requirement_row,
+    h_payto,
     account_priv,
     GNUNET_TIME_UNIT_ZERO,
     &check_kyc_cb,

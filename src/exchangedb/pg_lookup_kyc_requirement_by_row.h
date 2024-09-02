@@ -30,7 +30,7 @@
  * Lookup KYC requirement.
  *
  * @param cls closure
- * @param requirement_row identifies requirement to look up (in legitimization_measures table)
+ * @param h_payto identifies account to look up requirement for
  * @param[out] account_pub set to public key of the account
  *    needed to authorize access, all zeros if not known
  * @param[out] reserve_pub set to last reserve public key
@@ -50,7 +50,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_requirement_by_row (
   void *cls,
-  uint64_t requirement_row,
+  const struct TALER_PaytoHashP *h_payto,
   union TALER_AccountPublicKeyP *account_pub,
   struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_AccountAccessTokenP *access_token,

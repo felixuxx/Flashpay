@@ -15,8 +15,10 @@
 --
 -- @author: Christian Grothoff
 
-CREATE OR REPLACE FUNCTION exchange_do_lookup_kyc_requirement_by_row(
-  IN in_legitimization_serial_id INT8,
+DROP FUNCTION IF EXISTS exchange_do_lookup_kyc_requirement_by_row;
+
+CREATE FUNCTION exchange_do_lookup_kyc_requirement_by_row(
+  IN in_h_payto BYTEA,
   OUT out_account_pub BYTEA,  -- NULL allowed
   OUT out_reserve_pub BYTEA, -- NULL allowed
   OUT out_access_token BYTEA, -- NULL if 'out_not_found'
@@ -27,16 +29,16 @@ CREATE OR REPLACE FUNCTION exchange_do_lookup_kyc_requirement_by_row(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  my_h_payto BYTEA;
   my_wtrec RECORD;
   my_lorec RECORD;
 BEGIN
 
--- Find the access token.
+-- Find the access token and the current account public key.
 SELECT access_token
-  INTO out_access_token
-  FROM legitimization_measures
- WHERE legitimization_measure_serial_id=in_legitimization_serial_id;
+      ,target_pub
+  INTO my_wtrec
+  FROM wire_targets
+ WHERE wire_target_h_payto=in_h_payto;
 
 IF NOT FOUND
 THEN
@@ -46,15 +48,8 @@ THEN
 END IF;
 out_not_found = FALSE;
 
--- Find the payto hash and the current account public key.
-SELECT target_pub
-      ,wire_target_h_payto
-  INTO my_wtrec
-  FROM wire_targets
- WHERE access_token=out_access_token;
-
 out_account_pub = my_wtrec.target_pub;
-my_h_payto = my_wtrec.wire_target_h_payto;
+out_access_token = my_wtrec.access_token;
 
 -- Check if there are active measures for the account.
 SELECT NOT is_finished
@@ -75,7 +70,7 @@ SELECT jnew_rules
       ,to_investigate
   INTO my_lorec
   FROM legitimization_outcomes
- WHERE h_payto=my_h_payto
+ WHERE h_payto=in_h_payto
    AND is_active;
 
 IF FOUND
@@ -84,12 +79,12 @@ THEN
   out_aml_review=my_lorec.to_investigate;
 END IF;
 
--- Get most recent reserve_in wire transfer, we also
--- allow that one for authentication!
+-- Check most recent reserve_in wire transfer, we also
+-- allow that reserve public key for authentication!
 SELECT reserve_pub
   INTO out_reserve_pub
   FROM reserves_in
- WHERE wire_source_h_payto=my_h_payto
+ WHERE wire_source_h_payto=in_h_payto
  ORDER BY execution_date DESC
  LIMIT 1;
 

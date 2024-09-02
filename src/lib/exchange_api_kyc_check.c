@@ -203,8 +203,28 @@ handle_kyc_check_finished (void *cls,
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    ks.hr.ec = TALER_JSON_get_error_code (j);
-    break;
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto (
+          "expected_account_pub",
+          &ks.details.forbidden.expected_account_pub),
+        TALER_JSON_spec_ec ("code",
+                            &ks.hr.ec),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        ks.hr.http_status = 0;
+        ks.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        break;
+      }
+      break;
+    }
   case MHD_HTTP_NOT_FOUND:
     ks.hr.ec = TALER_JSON_get_error_code (j);
     break;
@@ -236,7 +256,7 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  uint64_t requirement_row,
+  const struct TALER_PaytoHashP *h_payto,
   const union TALER_AccountPrivateKeyP *account_priv,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
@@ -247,20 +267,24 @@ TALER_EXCHANGE_kyc_check (
   char arg_str[128];
   struct curl_slist *job_headers = NULL;
   unsigned long long tms;
+  char *hps;
 
+  hps = GNUNET_STRINGS_data_to_string_alloc (h_payto,
+                                             sizeof (*h_payto));
   tms = timeout.rel_value_us
         / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
   if (0 != tms)
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "kyc-check/%llu?timeout_ms=%llu",
-                     (unsigned long long) requirement_row,
+                     "kyc-check/%s?timeout_ms=%llu",
+                     hps,
                      tms);
   else
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "kyc-check/%llu",
-                     (unsigned long long) requirement_row);
+                     "kyc-check/%s",
+                     hps);
+  GNUNET_free (hps);
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
   kch->cb = cb;
   kch->cb_cls = cb_cls;

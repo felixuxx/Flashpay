@@ -65,13 +65,13 @@ struct KycWalletGetState
 
   /**
    * Set to the KYC requirement payto hash *if* the exchange replied with a
-   * request for KYC (#MHD_HTTP_OK).
+   * request for KYC (#MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS).
    */
   struct TALER_PaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
-   * a request for KYC (#MHD_HTTP_OK).
+   * request for KYC (#MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS).
    */
   uint64_t requirement_row;
 

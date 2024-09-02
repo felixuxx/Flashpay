@@ -171,6 +171,10 @@ merge_cb (void *cls,
     /* KYC required */
     ds->requirement_row =
       dr->details.unavailable_for_legal_reasons.requirement_row;
+    GNUNET_break (0 ==
+                  GNUNET_memcmp (
+                    &ds->h_payto,
+                    &dr->details.unavailable_for_legal_reasons.h_payto));
     break;
   }
 

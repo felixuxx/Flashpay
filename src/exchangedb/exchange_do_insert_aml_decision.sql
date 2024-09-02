@@ -79,8 +79,8 @@ ELSE
   out_last_date = 0;
 END IF;
 
--- Note: in_payto_uri is allowed to be NULL *if*
--- in_h_payto is already in wire_targets
+-- FIXME-9156: need in_payto_uri *in* case
+-- in_h_payto is not already in wire_targets!
 SELECT access_token
   INTO my_access_token
   FROM wire_targets

@@ -551,6 +551,10 @@ postgres_gc (void *cls)
  * @return NULL on error, otherwise a `struct TALER_AUDITORDB_Plugin`
  */
 void *
+libtaler_plugin_auditordb_postgres_init (void *cls);
+
+/* Declaration used to squash compiler warning */
+void *
 libtaler_plugin_auditordb_postgres_init (void *cls)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
@@ -850,6 +854,10 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
  * @param cls a `struct TALER_AUDITORDB_Plugin`
  * @return NULL (always)
  */
+void *
+libtaler_plugin_auditordb_postgres_done (void *cls);
+
+/* Declaration used to squash compiler warning */
 void *
 libtaler_plugin_auditordb_postgres_done (void *cls)
 {

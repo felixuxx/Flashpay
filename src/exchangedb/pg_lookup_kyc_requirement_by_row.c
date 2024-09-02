@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_requirement_by_row (
   void *cls,
-  uint64_t requirement_row,
+  const struct TALER_PaytoHashP *h_payto,
   union TALER_AccountPublicKeyP *account_pub,
   struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_AccountAccessTokenP *access_token,
@@ -39,7 +39,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&requirement_row),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_end
   };
   bool not_found;
