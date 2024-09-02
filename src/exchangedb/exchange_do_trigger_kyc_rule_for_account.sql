@@ -38,7 +38,7 @@ BEGIN
 
 SELECT
    access_token
-  ,account_pub
+  ,target_pub
 INTO
   my_rec
 FROM wire_targets
@@ -48,7 +48,7 @@ IF FOUND
 THEN
   -- Extract details, determine if KYC auth matches.
   my_access_token = my_rec.access_token;
-  my_account_pub = my_rec.account_pub;
+  my_account_pub = my_rec.target_pub;
   IF in_merchant_pub IS NULL
   THEN
     out_bad_kyc_auth = FALSE;

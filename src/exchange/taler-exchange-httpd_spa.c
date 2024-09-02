@@ -103,6 +103,10 @@ TEH_spa_init ()
 }
 
 
+/* Suppresses warning */
+void __attribute__ ((destructor))
+get_spa_fini (void);
+
 /**
  * Nicely shut down.
  */

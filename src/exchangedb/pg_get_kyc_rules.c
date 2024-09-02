@@ -42,13 +42,18 @@ TEH_PG_get_kyc_rules (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("target_pub",
-                                          account_pub),
-    TALER_PQ_result_spec_json ("jnew_rules",
-                               jrules),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("target_pub",
+                                            account_pub),
+      NULL),
+    GNUNET_PQ_result_spec_allow_null (
+      TALER_PQ_result_spec_json ("jnew_rules",
+                                 jrules),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
 
+  *jrules = NULL;
   memset (account_pub,
           0,
           sizeof (*account_pub));
@@ -57,12 +62,12 @@ TEH_PG_get_kyc_rules (
            "SELECT"
            "  wt.target_pub"
            " ,lo.jnew_rules"
-           "  FROM legitimization_outcomes lo"
-           "  JOIN wire_targets wt"
+           "  FROM wire_targets wt"
+           "  LEFT JOIN legitimization_outcomes lo"
            "    ON (lo.h_payto = wt.wire_target_h_payto)"
-           " WHERE h_payto=$1"
-           "   AND expiration_time >= $2"
-           "   AND is_active;");
+           " WHERE wt.wire_target_h_payto=$1"
+           "   AND lo.expiration_time >= $2"
+           "   AND lo.is_active;");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "get_kyc_rules",
