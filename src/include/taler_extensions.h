@@ -88,7 +88,7 @@ struct TALER_Extension
    * The name of the extension, must be unique among all loaded extensions.  It
    * is used in URLs for /extension/$NAME as well.
    */
-  char *name;
+  const char *name;
 
   /**
    * Criticality of the extension.  It has the same semantics as "critical" has
@@ -103,7 +103,7 @@ struct TALER_Extension
    * Version of the extension must be provided in Taler's protocol version ranges notation, see
    * https://docs.taler.net/core/api-common.html#protocol-version-ranges
    */
-  char *version;
+  const char *version;
 
   /**
    * If the extension is marked as enabled, it will be listed in the
