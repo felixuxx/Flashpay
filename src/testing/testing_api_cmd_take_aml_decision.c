@@ -149,7 +149,7 @@ take_aml_decision_run (void *cls,
   const json_t *jmeasures = NULL;
   struct GNUNET_TIME_Timestamp expiration_time
     = GNUNET_TIME_relative_to_timestamp (ds->expiration_delay);
-  const char *new_measure = NULL;
+  const char *new_measures = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("rules",
                                   &jrules),
@@ -158,8 +158,8 @@ take_aml_decision_run (void *cls,
                                      &jmeasures),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("new_measure",
-                               &new_measure),
+      GNUNET_JSON_spec_string ("new_measures",
+                               &new_measures),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -350,13 +350,13 @@ take_aml_decision_run (void *cls,
     }
     GNUNET_assert (off == num_measures);
 
-    ds->dh = TALER_EXCHANGE_add_aml_decision (
+    ds->dh = TALER_EXCHANGE_post_aml_decision (
       TALER_TESTING_interpreter_get_context (is),
       exchange_url,
       h_payto,
       now,
       ds->successor_measure,
-      new_measure,
+      new_measures,
       expiration_time,
       num_rules,
       rules,
@@ -402,7 +402,7 @@ take_aml_decision_cleanup (void *cls,
   {
     TALER_TESTING_command_incomplete (ds->is,
                                       cmd->label);
-    TALER_EXCHANGE_add_aml_decision_cancel (ds->dh);
+    TALER_EXCHANGE_post_aml_decision_cancel (ds->dh);
     ds->dh = NULL;
   }
   json_decref (ds->new_rules);

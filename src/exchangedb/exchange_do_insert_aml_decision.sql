@@ -36,7 +36,6 @@ AS $$
 DECLARE
   my_outcome_serial_id INT8;
   my_access_token BYTEA;
-  my_max_dp INT4;
 BEGIN
 
 out_account_unknown=FALSE;
@@ -94,28 +93,19 @@ THEN
   RETURN;
 END IF;
 
+-- AML decision: mark all active measures finished!
+UPDATE legitimization_measures
+   SET is_finished=TRUE
+ WHERE access_token=my_access_token
+   AND NOT is_finished;
+
 -- Did KYC measures get prescribed?
-IF in_jmeasures IS NULL
+IF in_jmeasures IS NOT NULL
 THEN
-  -- AML decision without measure: mark all
-  -- active measures finished!
-  UPDATE legitimization_measures
-     SET is_finished=TRUE
-   WHERE access_token=my_access_token
-     AND NOT is_finished;
-
-ELSE
-  -- Find current maximum DP
-  SELECT COALESCE(MAX(display_priority),0)
-    INTO my_max_dp
-    FROM legitimization_measures
-   WHERE access_token=my_access_token
-     AND NOT is_finished;
-
   -- First check if a perfectly equivalent legi measure
   -- already exists, to avoid creating tons of duplicates.
-  UPDATE legitimization_measures
-     SET display_priority=GREATEST(my_max_dp,display_priority)
+  PERFORM
+    FROM legitimization_measures
    WHERE access_token=my_access_token
      AND jmeasures=in_jmeasures
      AND NOT is_finished;
@@ -132,10 +122,10 @@ ELSE
       (my_access_token
       ,in_decision_time
       ,in_jmeasures
-      ,my_max_dp + 1);
+      ,1);
   END IF;
 
-  -- end if for where we had non-NULL in_jmeasures
+  -- end if for where we had in_jmeasures
 END IF;
 
 UPDATE legitimization_outcomes

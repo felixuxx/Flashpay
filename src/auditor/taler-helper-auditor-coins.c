@@ -2463,7 +2463,6 @@ recoup_refresh_cb (void *cls,
  * @param cls closure, pointer to `enum GNUNET_DB_QueryStatus`
  * @param denom_pub public key, sometimes NULL (!)
  * @param issue issuing information with value, fees and other info about the denomination.
- * @return transaction status
  */
 static void
 check_denomination (

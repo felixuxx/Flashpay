@@ -136,7 +136,7 @@ static struct TALER_TESTING_Timer timings[] = {
  * @param label string to add to the table
  * @return same string, now stored in the table
  */
-const char *
+static const char *
 add_label (char *label)
 {
   if (label_off == label_len)

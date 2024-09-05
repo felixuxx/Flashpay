@@ -52,17 +52,13 @@ out_account_pub = my_wtrec.target_pub;
 out_access_token = my_wtrec.access_token;
 
 -- Check if there are active measures for the account.
-SELECT NOT is_finished
-  INTO out_kyc_required
+PERFORM
   FROM legitimization_measures
  WHERE access_token=out_access_token
- ORDER BY start_time DESC
+   AND NOT is_finished
  LIMIT 1;
 
-IF NOT FOUND
-THEN
-  out_kyc_required=TRUE;
-END IF;
+out_kyc_required = FOUND;
 
 -- Get currently applicable rules.
 -- Only one should ever be active per account.

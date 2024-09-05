@@ -27,7 +27,7 @@ BEGIN
       ',access_token BYTEA NOT NULL CHECK (LENGTH(access_token)=32)'
       ',start_time INT8 NOT NULL'
       ',jmeasures TEXT NOT NULL'
-      ',display_priority INT4 NOT NULL'
+      ',display_priority INT4 NOT NULL' -- DEAD?
       ',is_finished BOOL NOT NULL DEFAULT(FALSE)'
     ') %s ;'
     ,'legitimization_measures'
@@ -64,7 +64,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Display priority of the rule that triggered this measure; if in the meantime another rule also triggers, the measure is only replaced if the new rule has a higher display priority'
+     'Display priority of the rule that triggered this measure; if in the meantime another rule also triggers, the measure is only replaced if the new rule has a higher display priority; probably not really useful, as right now there is only ever one set of legitimization_measures active at any time, might be removed in the future'
     ,'display_priority'
     ,'legitimization_measures'
     ,partition_suffix

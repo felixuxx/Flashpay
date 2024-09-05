@@ -7064,6 +7064,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Lookup KYC rules by account access token.
+   *
+   * @param cls closure
+   * @param h_payto account payto hash to look under
+   * @param[out] jnew_rules set to active LegitimizationRuleSet
+   * @param[out] rowid row of the last legitimization outcome
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_rules_by_access_token)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    json_t **jnew_rules,
+    uint64_t *rowid);
+
+
+  /**
    * Lookup KYC process meta data.
    *
    * @param cls closure
@@ -7609,6 +7626,26 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t legitimization_process_serial_id,
     uint32_t *measure_index,
     json_t **jmeasures);
+
+
+  /**
+   * Create new active legitimization measure.
+   *
+   *
+   * @param cls closure
+   * @param access_token access token that identifies the
+   *   account the legitimization measures apply to
+   * @param jmeasures new legitimization measures
+   * @param[out] legitimization_measure_serial_id
+   *    set to new row in legitimization_measures table
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*insert_active_legitimization_measure) (
+    void *cls,
+    const struct TALER_AccountAccessTokenP *access_token,
+    const json_t *jmeasures,
+    uint64_t *legitimization_measure_serial_id);
 
 
   /**

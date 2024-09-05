@@ -64,7 +64,13 @@ struct KycPoller
    * #MHD_HTTP_HEADER_IF_NONE_MATCH Etag value sent by the client.  0 for none
    * (or malformed).
    */
-  uint64_t etag_in;
+  uint64_t etag_outcome_in;
+
+  /**
+   * #MHD_HTTP_HEADER_IF_NONE_MATCH Etag value sent by the client.  0 for none
+   * (or malformed).
+   */
+  uint64_t etag_measure_in;
 
   /**
    * When will this request time out?
@@ -76,6 +82,11 @@ struct KycPoller
    * if @e have_token is true.
    */
   struct TALER_AccountAccessTokenP access_token;
+
+  /**
+   * Payto hash of the account matching @a access_token.
+   */
+  struct TALER_PaytoHashP h_payto;
 
   /**
    * True if we are still suspended.
@@ -198,14 +209,18 @@ add_response_headers (void *cls,
  * the LegitimizationMeasures.
  *
  * @param[in,out] kyp request to reply on
- * @param legitimization_measure_row_id etag to set for the response
+ * @param legitimization_measure_row_id part of etag to set for the response
+ * @param legitimization_outcome_row_id part of etag to set for the response
  * @param jmeasures measures to encode
+ * @param jvoluntary array of voluntary measures to encode, can be NULL
  * @return MHD status code
  */
 static MHD_RESULT
 generate_reply (struct KycPoller *kyp,
                 uint64_t legitimization_measure_row_id,
-                const json_t *jmeasures)
+                uint64_t legitimization_outcome_row_id,
+                const json_t *jmeasures,
+                const json_t *jvoluntary)
 {
   const json_t *measures;
   bool is_and_combinator = false;
@@ -289,23 +304,24 @@ generate_reply (struct KycPoller *kyp,
   }
 
   {
-    char etags[64];
+    char etags[128];
     struct MHD_Response *resp;
     MHD_RESULT res;
 
     GNUNET_snprintf (etags,
                      sizeof (etags),
-                     "\"%llu\"",
-                     (unsigned long long) legitimization_measure_row_id);
+                     "\"%llu-%llu\"",
+                     (unsigned long long) legitimization_measure_row_id,
+                     (unsigned long long) legitimization_outcome_row_id);
     resp = TALER_MHD_MAKE_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("requirements",
                                     kris),
       GNUNET_JSON_pack_bool ("is_and_combinator",
                              is_and_combinator),
       GNUNET_JSON_pack_allow_null (
-        /* TODO: support vATTEST-9048 */
-        GNUNET_JSON_pack_object_steal ("voluntary_checks",
-                                       NULL)));
+        GNUNET_JSON_pack_array_incref (
+          "voluntary_measures",
+          (json_t *) jvoluntary)));
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,
                                            MHD_HTTP_HEADER_ETAG,
@@ -331,7 +347,11 @@ TEH_handler_kyc_info (
   MHD_RESULT res;
   enum GNUNET_DB_QueryStatus qs;
   uint64_t legitimization_measure_last_row;
-  json_t *jmeasures;
+  uint64_t legitimization_outcome_last_row;
+  json_t *jmeasures = NULL;
+  json_t *jvoluntary = NULL;
+  json_t *jnew_rules;
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
 
   if (NULL == kyp)
   {
@@ -368,11 +388,13 @@ TEH_handler_kyc_info (
       if (NULL != etags)
       {
         char dummy;
-        unsigned long long ev;
+        unsigned long long ev1;
+        unsigned long long ev2;
 
-        if (1 != sscanf (etags,
-                         "\"%llu\"%c",
-                         &ev,
+        if (2 != sscanf (etags,
+                         "\"%llu-%llu\"%c",
+                         &ev1,
+                         &ev2,
                          &dummy))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -382,24 +404,17 @@ TEH_handler_kyc_info (
         }
         else
         {
-          kyp->etag_in = (uint64_t) ev;
+          kyp->etag_measure_in = (uint64_t) ev1;
+          kyp->etag_outcome_in = (uint64_t) ev2;
         }
       }
     } /* etag */
-  } /* one-time initialization */
 
-  if ( (NULL == kyp->eh) &&
-       GNUNET_TIME_absolute_is_future (kyp->timeout) )
-  {
-    struct TALER_KycCompletedEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED)
-    };
-
+    /* Check access token */
     qs = TEH_plugin->lookup_h_payto_by_access_token (
       TEH_plugin->cls,
       &kyp->access_token,
-      &rep.h_payto);
+      &kyp->h_payto);
     if (qs < 0)
     {
       GNUNET_break (0);
@@ -408,16 +423,63 @@ TEH_handler_kyc_info (
         TALER_EC_GENERIC_DB_FETCH_FAILED,
         "lookup_h_payto_by_access_token");
     }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_JSON_pack_ec (
+          TALER_EC_EXCHANGE_KYC_INFO_AUTHORIZATION_FAILED));
 
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Starting DB event listening\n");
-    kyp->eh = TEH_plugin->event_listen (
-      TEH_plugin->cls,
-      GNUNET_TIME_absolute_get_remaining (kyp->timeout),
-      &rep.header,
-      &db_event_cb,
-      rc);
+    }
+
+    if (GNUNET_TIME_absolute_is_future (kyp->timeout))
+    {
+      struct TALER_KycCompletedEventP rep = {
+        .header.size = htons (sizeof (rep)),
+        .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+        .h_payto = kyp->h_payto
+      };
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Starting DB event listening\n");
+      kyp->eh = TEH_plugin->event_listen (
+        TEH_plugin->cls,
+        GNUNET_TIME_absolute_get_remaining (kyp->timeout),
+        &rep.header,
+        &db_event_cb,
+        rc);
+    }
+  } /* end of one-time initialization */
+
+  qs = TEH_plugin->lookup_rules_by_access_token (
+    TEH_plugin->cls,
+    &kyp->h_payto,
+    &jnew_rules,
+    &legitimization_outcome_last_row);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_ec (
+      rc->connection,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "lookup_rules_by_access_token");
   }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    /* Nothing was triggered, return the measures
+       that apply for any amount. */
+    lrs = NULL;
+  }
+  else
+  {
+    lrs = TALER_KYCLOGIC_rules_parse (jnew_rules);
+    GNUNET_break (NULL != lrs);
+    json_decref (jnew_rules);
+  }
+  jvoluntary
+    = TALER_KYCLOGIC_voluntary_measures (lrs);
 
   qs = TEH_plugin->lookup_kyc_status_by_token (
     TEH_plugin->cls,
@@ -427,6 +489,7 @@ TEH_handler_kyc_info (
   if (qs < 0)
   {
     GNUNET_break (0);
+    TALER_KYCLOGIC_rules_free (lrs);
     return TALER_MHD_reply_with_ec (
       rc->connection,
       TALER_EC_GENERIC_DB_FETCH_FAILED,
@@ -434,17 +497,39 @@ TEH_handler_kyc_info (
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No KYC requirement open\n");
-    return TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_OK,
-      GNUNET_JSON_pack_allow_null (
-        /* TODO: support vATTEST-9048 */
-        GNUNET_JSON_pack_object_steal ("voluntary_checks",
-                                       NULL)));
+    jmeasures
+      = TALER_KYCLOGIC_zero_measures (lrs);
+    if (NULL == jmeasures)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "No KYC requirement open\n");
+      TALER_KYCLOGIC_rules_free (lrs);
+      return TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_OK,
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_array_steal ("voluntary_measures",
+                                        jvoluntary)));
+    }
+
+    qs = TEH_plugin->insert_active_legitimization_measure (
+      TEH_plugin->cls,
+      &kyp->access_token,
+      jmeasures,
+      &legitimization_measure_last_row);
+    if (qs < 0)
+    {
+      GNUNET_break (0);
+      TALER_KYCLOGIC_rules_free (lrs);
+      return TALER_MHD_reply_with_ec (
+        rc->connection,
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "insert_active_legitimization_measure");
+    }
   }
-  if ( (legitimization_measure_last_row == kyp->etag_in) &&
+  TALER_KYCLOGIC_rules_free (lrs);
+  if ( (legitimization_measure_last_row == kyp->etag_measure_in) &&
+       (legitimization_outcome_last_row == kyp->etag_outcome_in) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -461,15 +546,20 @@ TEH_handler_kyc_info (
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
   }
-  if (legitimization_measure_last_row == kyp->etag_in)
+  if ( (legitimization_measure_last_row ==
+        kyp->etag_measure_in) &&
+       (legitimization_outcome_last_row ==
+        kyp->etag_outcome_in) )
   {
-    char etags[64];
+    char etags[128];
 
     json_decref (jmeasures);
+    json_decref (jvoluntary);
     GNUNET_snprintf (etags,
                      sizeof (etags),
-                     "\"%llu\"",
-                     (unsigned long long) legitimization_measure_last_row);
+                     "\"%llu-%llu\"",
+                     (unsigned long long) legitimization_measure_last_row,
+                     (unsigned long long) legitimization_outcome_last_row);
     return TEH_RESPONSE_reply_not_modified (
       rc->connection,
       etags,
@@ -478,8 +568,11 @@ TEH_handler_kyc_info (
   }
   res = generate_reply (kyp,
                         legitimization_measure_last_row,
-                        jmeasures);
+                        legitimization_outcome_last_row,
+                        jmeasures,
+                        jvoluntary);
   json_decref (jmeasures);
+  json_decref (jvoluntary);
   return res;
 }
 

@@ -119,7 +119,7 @@ eval_probability (float probability)
  * @param x pointer to data to randomize
  */
 #define RANDOMIZE(x) \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE, x, sizeof (*x))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE, x, sizeof (*x))
 
 
 /**
@@ -342,7 +342,7 @@ add_deposit (const struct Merchant *m)
     }
   }
   if (GNUNET_YES ==
-      eval_probability (((float) refund_rate) / 100.0))
+      eval_probability (((float) refund_rate) / 100.0f))
     return add_refund (m,
                        &d);
   return true;

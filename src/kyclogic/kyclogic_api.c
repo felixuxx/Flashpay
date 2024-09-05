@@ -155,6 +155,10 @@ struct TALER_KYCLOGIC_Measure
    */
   json_t *context;
 
+  /**
+   * Can this measure be triggered voluntarily?
+   */
+  bool voluntary;
 };
 
 
@@ -628,7 +632,8 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
             GNUNET_break (0);
             goto cleanup;
           }
-          rule->next_measures[j] = GNUNET_strdup (str);
+          rule->next_measures[j]
+            = GNUNET_strdup (str);
         }
       }
     }
@@ -650,6 +655,7 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       const char *check_name;
       const char *prog_name;
       const json_t *context = NULL;
+      bool voluntary = false;
       struct TALER_KYCLOGIC_Measure *measure
         = &lrs->custom_measures[off++];
       struct GNUNET_JSON_Specification ispec[] = {
@@ -660,6 +666,10 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_array_const ("context",
                                         &context),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("voluntary",
+                                 &voluntary),
           NULL),
         GNUNET_JSON_spec_end ()
       };
@@ -678,6 +688,8 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         = GNUNET_strdup (check_name);
       measure->prog_name
         = GNUNET_strdup (prog_name);
+      measure->voluntary
+        = voluntary;
       if (NULL != context)
         measure->context
           = json_incref ((json_t*) context);
@@ -980,35 +992,105 @@ TALER_KYCLOGIC_rule_to_measures (
 
 
 json_t *
-TALER_KYCLOGIC_get_measure (
-  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
-  const char *measure_name)
+TALER_KYCLOGIC_zero_measures (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
 {
-  const struct TALER_KYCLOGIC_Measure *ms;
-  json_t *mi;
-  json_t *jmeasures;
+  json_t *zero_measures;
+  const struct TALER_KYCLOGIC_KycRule *rules;
+  unsigned int num_rules;
 
+  if (NULL == lrs)
+    lrs = &default_rules;
+  rules = lrs->kyc_rules;
+  num_rules = lrs->num_kyc_rules;
+  zero_measures = json_array ();
+  GNUNET_assert (NULL != zero_measures);
+  for (unsigned int i = 0; i<num_rules; i++)
+  {
+    const struct TALER_KYCLOGIC_KycRule *rule = &rules[i];
+
+    if (! rule->exposed)
+      continue;
+    if (rule->verboten)
+      continue; /* see: hard_limits */
+    if (! TALER_amount_is_zero (&rule->threshold))
+      continue;
+    for (unsigned int j = 0; j<rule->num_measures; j++)
+    {
+      const struct TALER_KYCLOGIC_Measure *ms;
+      json_t *mi;
+
+      ms = find_measure (lrs,
+                         rule->next_measures[j]);
+      if (NULL == ms)
+      {
+        GNUNET_break (0);
+        json_decref (zero_measures);
+        return NULL;
+      }
+      if (0 == strcasecmp ("verboten",
+                           ms->check_name))
+        continue; /* not a measure to be selected */
+      mi = GNUNET_JSON_PACK (
+        TALER_JSON_pack_kycte ("operation_type",
+                               rule->trigger),
+        GNUNET_JSON_pack_string ("check_name",
+                                 ms->check_name),
+        GNUNET_JSON_pack_string ("prog_name",
+                                 ms->prog_name),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_object_incref ("context",
+                                          ms->context)));
+      GNUNET_assert (0 ==
+                     json_array_append_new (zero_measures,
+                                            mi));
+    }
+  }
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("measures",
+                                  zero_measures),
+    /* Zero-measures are always OR */
+    GNUNET_JSON_pack_bool ("is_and_combinator",
+                           false),
+    /* OR means verboten measures do not matter */
+    GNUNET_JSON_pack_bool ("verboten",
+                           false));
+}
+
+
+/**
+ * Check if @a ms is a voluntary measure, and if so
+ * convert to JSON and append to @a voluntary_measures.
+ *
+ * @param[in,out] voluntary_measures JSON array of MeasureInformation
+ * @param ms a measure to possibly append
+ */
+static void
+append_voluntary_measure (
+  json_t *voluntary_measures,
+  const struct TALER_KYCLOGIC_Measure *ms)
+{
+#if 0
+  json_t *mj;
+#endif
+
+  if (! ms->voluntary)
+    return;
   if (0 == strcasecmp ("verboten",
-                       measure_name))
-  {
-    jmeasures = json_array ();
-    GNUNET_assert (NULL != jmeasures);
-    return GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_array_steal ("measures",
-                                    jmeasures),
-      GNUNET_JSON_pack_bool ("is_and_combinator",
-                             false),
-      GNUNET_JSON_pack_bool ("verboten",
-                             true));
-  }
-  ms = find_measure (lrs,
-                     measure_name);
-  if (NULL == ms)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  mi = GNUNET_JSON_PACK (
+                       ms->check_name))
+    return; /* very strange configuration */
+#if 0
+  /* TODO: support vATTEST-9048 (this API in kyclogic!) */
+  // NOTE: need to convert ms to "KycRequirementInformation"
+  // *and* in particular generate "id" values that
+  // are then understood to refer to the voluntary measures
+  // by the rest of the API (which is the hard part!)
+  // => need to change the API to encode the
+  // legitimization_outcomes row ID of the lrs from
+  // which the voluntary 'ms' originated, and
+  // then update the kyc-upload/kyc-start endpoints
+  // to recognize the new ID format!
+  mj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("check_name",
                              ms->check_name),
     GNUNET_JSON_pack_string ("prog_name",
@@ -1016,18 +1098,113 @@ TALER_KYCLOGIC_get_measure (
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_object_incref ("context",
                                       ms->context)));
+  GNUNET_assert (0 ==
+                 json_array_append_new (voluntary_measures,
+                                        mj));
+#endif
+}
+
+
+json_t *
+TALER_KYCLOGIC_voluntary_measures (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
+{
+  json_t *voluntary_measures;
+
+  voluntary_measures = json_array ();
+  GNUNET_assert (NULL != voluntary_measures);
+  if (NULL != lrs)
+  {
+    for (unsigned int i = 0; i<lrs->num_custom_measures; i++)
+    {
+      const struct TALER_KYCLOGIC_Measure *ms
+        = &lrs->custom_measures[i];
+
+      append_voluntary_measure (voluntary_measures,
+                                ms);
+    }
+  }
+  for (unsigned int i = 0; i<default_rules.num_custom_measures; i++)
+  {
+    const struct TALER_KYCLOGIC_Measure *ms
+      = &default_rules.custom_measures[i];
+
+    append_voluntary_measure (voluntary_measures,
+                              ms);
+  }
+  return voluntary_measures;
+}
+
+
+json_t *
+TALER_KYCLOGIC_get_measures (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measures_spec)
+{
+  json_t *jmeasures;
+  char *nm;
+  bool verboten = false;
+  bool is_and = false;
+
+  if ('+' == measures_spec[0])
+  {
+    nm = GNUNET_strdup (&measures_spec[1]);
+    is_and = true;
+  }
+  else
+  {
+    nm = GNUNET_strdup (measures_spec);
+  }
   jmeasures = json_array ();
   GNUNET_assert (NULL != jmeasures);
-  GNUNET_assert (0 ==
-                 json_array_append_new (jmeasures,
-                                        mi));
+  for (const char *tok = strtok (nm, " ");
+       NULL != tok;
+       tok = strtok (NULL, " "))
+  {
+    const struct TALER_KYCLOGIC_Measure *ms;
+    json_t *mi;
+
+    if (0 == strcasecmp ("verboten",
+                         tok))
+    {
+      verboten = true;
+      continue;
+    }
+    ms = find_measure (lrs,
+                       tok);
+    if (NULL == ms)
+    {
+      GNUNET_break (0);
+      GNUNET_free (nm);
+      json_decref (jmeasures);
+      return NULL;
+    }
+    if (0 == strcasecmp ("verboten",
+                         ms->check_name))
+    {
+      verboten = true;
+      continue;
+    }
+    mi = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("check_name",
+                               ms->check_name),
+      GNUNET_JSON_pack_string ("prog_name",
+                               ms->prog_name),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("context",
+                                        ms->context)));
+    GNUNET_assert (0 ==
+                   json_array_append_new (jmeasures,
+                                          mi));
+  }
+  GNUNET_free (nm);
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("measures",
                                   jmeasures),
     GNUNET_JSON_pack_bool ("is_and_combinator",
-                           false),
+                           is_and),
     GNUNET_JSON_pack_bool ("verboten",
-                           false));
+                           verboten));
 }
 
 
@@ -1487,7 +1664,6 @@ static enum GNUNET_GenericReturnValue
 add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
            const char *section)
 {
-  bool voluntary;
   enum TALER_KYCLOGIC_CheckType ct;
   char *description = NULL;
   json_t *description_i18n = NULL;
@@ -1505,11 +1681,6 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Parsing KYC check %s\n",
               section);
-  voluntary = (GNUNET_YES ==
-               GNUNET_CONFIGURATION_get_value_yesno (cfg,
-                                                     section,
-                                                     "VOLUNTARY"));
-
   {
     char *type_s;
 
@@ -1683,7 +1854,6 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
       break;
     }
     kc->check_name = GNUNET_strdup (&section[strlen ("kyc-check-")]);
-    kc->voluntary = voluntary;
     kc->description = description;
     kc->description_i18n = description_i18n;
     kc->fallback = fallback;
@@ -2066,6 +2236,7 @@ static enum GNUNET_GenericReturnValue
 add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
              const char *section)
 {
+  bool voluntary;
   char *check_name = NULL;
   char *context_str = NULL;
   char *program = NULL;
@@ -2094,6 +2265,11 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "PROGRAM");
     goto fail;
   }
+  voluntary = (GNUNET_YES ==
+               GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                                     section,
+                                                     "VOLUNTARY"));
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
@@ -2125,6 +2301,7 @@ add_measure (const struct GNUNET_CONFIGURATION_Handle *cfg,
     m.check_name = check_name;
     m.prog_name = program;
     m.context = context;
+    m.voluntary = voluntary;
     GNUNET_array_append (default_rules.custom_measures,
                          default_rules.num_custom_measures,
                          m);

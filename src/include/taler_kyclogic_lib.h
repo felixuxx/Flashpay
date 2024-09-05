@@ -164,11 +164,6 @@ struct TALER_KYCLOGIC_KycCheck
   unsigned int num_outputs;
 
   /**
-   * True if clients can voluntarily trigger this check.
-   */
-  bool voluntary;
-
-  /**
    * Type of the KYC check.
    */
   enum TALER_KYCLOGIC_CheckType type;
@@ -383,6 +378,32 @@ TALER_KYCLOGIC_get_zero_limits (void);
 
 
 /**
+ * Obtain set of all measures that
+ * could be triggered at an amount of zero and that
+ * thus might be requested before a client even
+ * has performed any operation.
+ *
+ * @param lrs rule set to investigate, NULL for default
+ * @return LegitimizationMeasures, NULL on error
+ */
+json_t *
+TALER_KYCLOGIC_zero_measures (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
+
+
+/**
+ * Obtain set of all voluntary measures that
+ * could be triggered by clients at will.
+ *
+ * @param lrs rule set to investigate, NULL for default
+ * @return array of MeasureInformation, never NULL
+ */
+json_t *
+TALER_KYCLOGIC_voluntary_measures (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
+
+
+/**
  * Get human-readable name of KYC rule.
  *
  * @param r rule to convert
@@ -564,17 +585,17 @@ TALER_KYCLOGIC_measure_to_requirement (
 
 
 /**
- * Lookup @a measure_name in @a lrs and create JSON
- * object with the corresponding LegitimizationMeasures.
+ * Lookup measures from @a measures_spec in @a lrs and create JSON object with
+ * the corresponding LegitimizationMeasures.
  *
  * @param lrs set of legitimization rules
- * @param measure_name name of a measure to trigger from @a lrs
+ * @param measures_spec space-separated set of a measures to trigger from @a lrs; "+"-prefixed if AND-cominbation applies
  * @return JSON object of type LegitimizationMeasures
  */
 json_t *
-TALER_KYCLOGIC_get_measure (
+TALER_KYCLOGIC_get_measures (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
-  const char *measure_name);
+  const char *measures_spec);
 
 /**
  * Lookup the provider for the given @a check_name.

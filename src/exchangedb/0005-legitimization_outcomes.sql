@@ -61,7 +61,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'name of the measure to trigger immediately, NULL for none'
+     'space-separated list of names of measures to trigger immediately, NULL for none, prefixed with a "+" to indicate AND combination for the measures'
     ,'new_measure_name'
     ,'legitimization_outcomes'
     ,partition_suffix

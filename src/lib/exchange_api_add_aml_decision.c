@@ -119,18 +119,18 @@ handle_add_aml_decision_finished (void *cls,
             &adr);
     wh->cb = NULL;
   }
-  TALER_EXCHANGE_add_aml_decision_cancel (wh);
+  TALER_EXCHANGE_post_aml_decision_cancel (wh);
 }
 
 
 struct TALER_EXCHANGE_AddAmlDecision *
-TALER_EXCHANGE_add_aml_decision (
+TALER_EXCHANGE_post_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
-  const char *new_measure,
+  const char *new_measures,
   struct GNUNET_TIME_Timestamp expiration_time,
   unsigned int num_rules,
   const struct TALER_EXCHANGE_AccountRule *rules,
@@ -229,7 +229,7 @@ TALER_EXCHANGE_add_aml_decision (
                                    h_payto,
                                    new_rules,
                                    properties,
-                                   new_measure,
+                                   new_measures,
                                    keep_investigating,
                                    officer_priv,
                                    &officer_sig);
@@ -274,8 +274,8 @@ TALER_EXCHANGE_add_aml_decision (
     GNUNET_JSON_pack_object_incref ("properties",
                                     (json_t *) properties),
     GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string ("new_measure",
-                               new_measure)),
+      GNUNET_JSON_pack_string ("new_measures",
+                               new_measures)),
     GNUNET_JSON_pack_bool ("keep_investigating",
                            keep_investigating),
     GNUNET_JSON_pack_data_auto ("officer_sig",
@@ -307,7 +307,7 @@ TALER_EXCHANGE_add_aml_decision (
                                   wh);
   if (NULL == wh->job)
   {
-    TALER_EXCHANGE_add_aml_decision_cancel (wh);
+    TALER_EXCHANGE_post_aml_decision_cancel (wh);
     return NULL;
   }
   return wh;
@@ -315,7 +315,7 @@ TALER_EXCHANGE_add_aml_decision (
 
 
 void
-TALER_EXCHANGE_add_aml_decision_cancel (
+TALER_EXCHANGE_post_aml_decision_cancel (
   struct TALER_EXCHANGE_AddAmlDecision *wh)
 {
   if (NULL != wh->job)

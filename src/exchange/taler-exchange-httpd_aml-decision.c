@@ -40,7 +40,7 @@ TEH_handler_post_aml_decision (
 {
   struct MHD_Connection *connection = rc->connection;
   const char *justification;
-  const char *new_measure = NULL;
+  const char *new_measures = NULL;
   bool to_investigate;
   struct GNUNET_TIME_Timestamp decision_time;
   const json_t *new_rules;
@@ -50,8 +50,8 @@ TEH_handler_post_aml_decision (
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_string (
-        "new_measure",
-        &new_measure),
+        "new_measures",
+        &new_measures),
       NULL),
     GNUNET_JSON_spec_string ("justification",
                              &justification),
@@ -96,7 +96,7 @@ TEH_handler_post_aml_decision (
         &h_payto,
         new_rules,
         properties,
-        new_measure,
+        new_measures,
         to_investigate,
         officer_pub,
         &officer_sig))
@@ -123,10 +123,11 @@ TEH_handler_post_aml_decision (
         "legitimization rule malformed");
     }
     expiration_time = TALER_KYCLOGIC_rules_get_expiration (lrs);
-    if (NULL != new_measure)
+    if (NULL != new_measures)
     {
-      jmeasures = TALER_KYCLOGIC_get_measure (lrs,
-                                              new_measure);
+      jmeasures
+        = TALER_KYCLOGIC_get_measures (lrs,
+                                       new_measures);
       if (NULL == jmeasures)
       {
         GNUNET_break_op (0);
@@ -136,7 +137,7 @@ TEH_handler_post_aml_decision (
           connection,
           MHD_HTTP_BAD_REQUEST,
           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "new_measure/new_rules");
+          "new_measures/new_rules");
       }
     }
     TALER_KYCLOGIC_rules_free (lrs);
@@ -148,6 +149,8 @@ TEH_handler_post_aml_decision (
     bool invalid_officer = true;
     bool unknown_account = false;
 
+    /* We keep 'new_measures' around mostly so that
+       the auditor can later verify officer_sig */
     qs = TEH_plugin->insert_aml_decision (TEH_plugin->cls,
                                           &h_payto,
                                           decision_time,
@@ -155,7 +158,7 @@ TEH_handler_post_aml_decision (
                                           properties,
                                           new_rules,
                                           to_investigate,
-                                          new_measure,
+                                          new_measures,
                                           jmeasures,
                                           justification,
                                           officer_pub,
@@ -202,8 +205,6 @@ TEH_handler_post_aml_decision (
         TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
         NULL);
     }
-
-
   }
   return TALER_MHD_reply_static (
     connection,

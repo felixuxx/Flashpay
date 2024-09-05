@@ -188,7 +188,7 @@ TALER_PQ_query_param_array_hash_code (
  * `struct TALER_DenominationHashP`
  *
  * @param num number of elements in @e hash_codes
- * @param hashes array of GNUNET_HashCode
+ * @param denom_hs array of denomination hashes to encode
  * @param db context for the db-connection
  */
 struct GNUNET_PQ_QueryParam

@@ -149,6 +149,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_iterate_active_auditors.h pg_iterate_active_auditors.c \
   pg_iterate_auditor_denominations.h pg_iterate_auditor_denominations.c \
   pg_reserves_get.h pg_reserves_get.c \
+  pg_lookup_rules_by_access_token.h pg_lookup_rules_by_access_token.c \
   pg_reserves_get_origin.h pg_reserves_get_origin.c \
   pg_drain_kyc_alert.h pg_drain_kyc_alert.c \
   pg_reserves_in_insert.h pg_reserves_in_insert.c \
@@ -211,6 +212,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_wire_prepare_data_mark_failed.h pg_wire_prepare_data_mark_failed.c \
   pg_wire_prepare_data_get.h pg_wire_prepare_data_get.c \
   pg_start_deferred_wire_out.h pg_start_deferred_wire_out.c \
+  pg_insert_active_legitimization_measure.h pg_insert_active_legitimization_measure.c \
   pg_store_wire_transfer_out.h pg_store_wire_transfer_out.c \
   pg_gc.h pg_gc.c \
   pg_lookup_kyc_status_by_token.h pg_lookup_kyc_status_by_token.c \

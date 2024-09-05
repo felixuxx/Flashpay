@@ -42,6 +42,7 @@
 #include "pg_do_reserve_open.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_get_expired_reserves.h"
+#include "pg_lookup_rules_by_access_token.h"
 #include "pg_lookup_h_payto_by_access_token.h"
 #include "pg_get_purse_request.h"
 #include "pg_get_reserve_history.h"
@@ -86,6 +87,7 @@
 #include "pg_update_kyc_process_by_row.h"
 #include "pg_insert_kyc_requirement_process.h"
 #include "pg_select_withdraw_amounts_for_kyc_check.h"
+#include "pg_insert_active_legitimization_measure.h"
 #include "pg_select_merge_amounts_for_kyc_check.h"
 #include "pg_profit_drains_set_finished.h"
 #include "pg_profit_drains_get_pending.h"
@@ -585,6 +587,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_iterate_active_auditors;
   plugin->iterate_auditor_denominations
     = &TEH_PG_iterate_auditor_denominations;
+  plugin->lookup_rules_by_access_token
+    = &TEH_PG_lookup_rules_by_access_token;
   plugin->reserves_get
     = &TEH_PG_reserves_get;
   plugin->reserves_get_origin
@@ -813,6 +817,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_test_aml_officer;
   plugin->lookup_aml_officer
     = &TEH_PG_lookup_aml_officer;
+  plugin->insert_active_legitimization_measure
+    = &TEH_PG_insert_active_legitimization_measure;
   plugin->trigger_aml_process
     = &TEH_PG_trigger_aml_process;
   plugin->insert_aml_decision

@@ -704,7 +704,7 @@ run (void *cls,
       "     ,\"verboten\":false"
       "   }"
       " ]" /* end new rules */
-      ",\"new_measure\":\"form-measure\""
+      ",\"new_measures\":\"form-measure\""
       ",\"custom_measures\":"
       "  {"
       "    \"form-measure\":"
