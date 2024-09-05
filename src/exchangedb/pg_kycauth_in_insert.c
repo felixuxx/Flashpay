@@ -38,27 +38,42 @@ TEH_PG_kycauth_in_insert (
 {
   struct PostgresClosure *pg = cls;
   struct TALER_PaytoHashP h_payto;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (account_pub),
-    GNUNET_PQ_query_param_uint64 (&serial_id),
-    TALER_PQ_query_param_amount (pg->conn,
-                                 credit_amount),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
-    GNUNET_PQ_query_param_string (debit_account_uri),
-    GNUNET_PQ_query_param_string (section_name),
-    GNUNET_PQ_query_param_timestamp (&execution_date),
-    GNUNET_PQ_query_param_end
-  };
 
-  PREPARE (pg,
-           "kycauth_in_insert",
-           "CALL"
-           " exchange_do_kycauth_in_insert"
-           " ($1,$2,$3,$4,$5,$6,$7);");
   TALER_payto_hash (debit_account_uri,
                     &h_payto);
-  return GNUNET_PQ_eval_prepared_non_select (
-    pg->conn,
-    "kycauth_in_insert",
-    params);
+
+  {
+    struct TALER_KycCompletedEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+      .h_payto = h_payto
+    };
+    char *notify_s
+      = GNUNET_PQ_get_event_notify_channel (&rep.header);
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (account_pub),
+      GNUNET_PQ_query_param_uint64 (&serial_id),
+      TALER_PQ_query_param_amount (pg->conn,
+                                   credit_amount),
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
+      GNUNET_PQ_query_param_string (debit_account_uri),
+      GNUNET_PQ_query_param_string (section_name),
+      GNUNET_PQ_query_param_timestamp (&execution_date),
+      GNUNET_PQ_query_param_string (notify_s),
+      GNUNET_PQ_query_param_end
+    };
+    enum GNUNET_DB_QueryStatus qs;
+
+    PREPARE (pg,
+             "kycauth_in_insert",
+             "CALL"
+             " exchange_do_kycauth_in_insert"
+             " ($1,$2,$3,$4,$5,$6,$7,$8);");
+    qs = GNUNET_PQ_eval_prepared_non_select (
+      pg->conn,
+      "kycauth_in_insert",
+      params);
+    GNUNET_free (notify_s);
+    return qs;
+  }
 }

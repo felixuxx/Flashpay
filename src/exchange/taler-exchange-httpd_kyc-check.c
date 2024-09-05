@@ -82,6 +82,12 @@ struct KycPoller
    */
   bool suspended;
 
+  /**
+   * True if we are long polling for a KYC authorization
+   * wire transfer.
+   */
+  bool await_auth;
+
 };
 
 
@@ -223,7 +229,15 @@ TEH_handler_kyc_check (
       sig_required);
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &kyp->timeout);
+    {
+      enum TALER_EXCHANGE_YesNoAll yna;
 
+      TALER_MHD_parse_request_yna (rc->connection,
+                                   "await_auth",
+                                   TALER_EXCHANGE_YNA_NO,
+                                   &yna);
+      kyc->await_auth = (TALER_EXCHANGE_YNA_YES == yna);
+    }
     /* long polling needed? */
     if (GNUNET_TIME_absolute_is_future (kyp->timeout))
     {
@@ -281,7 +295,23 @@ TEH_handler_kyc_check (
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
-      GNUNET_break_op (0);
+      /* account unknown */
+      if ( (kyp->await_auth) &&
+           (GNUNET_TIME_absolute_is_future (kyp->timeout)) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Suspending HTTP request on timeout (%s) now...\n",
+                    GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (
+                                              kyp->timeout),
+                                            true));
+        GNUNET_assert (NULL != kyp->eh);
+        kyp->suspended = true;
+        GNUNET_CONTAINER_DLL_insert (kyp_head,
+                                     kyp_tail,
+                                     kyp);
+        MHD_suspend_connection (kyp->connection);
+        return MHD_YES;
+      }
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_NOT_FOUND,
@@ -335,6 +365,7 @@ TEH_handler_kyc_check (
   jrules = NULL;
 
   if ( (kyc_required) &&
+       (! kyp->await_auth) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,

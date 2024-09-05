@@ -15,14 +15,16 @@
 --
 
 
-CREATE OR REPLACE PROCEDURE exchange_do_kycauth_in_insert(
+DROP PROCEDURE IF EXISTS exchange_do_kycauth_in_insert;
+CREATE PROCEDURE exchange_do_kycauth_in_insert(
   IN in_account_pub BYTEA,
   IN in_wire_reference INT8,
   IN in_credit taler_amount,
   IN in_wire_source_h_payto BYTEA,
   IN in_payto_uri TEXT,
   IN in_exchange_account_name TEXT,
-  IN in_execution_date INT8)
+  IN in_execution_date INT8,
+  IN in_notify_s TEXT)
 LANGUAGE plpgsql
 AS $$
 BEGIN
@@ -65,5 +67,9 @@ BEGIN
       ,in_payto_uri
       ,in_account_pub);
   END IF;
+
+  EXECUTE FORMAT (
+     'NOTIFY %s'
+    ,in_notify_s);
 
 END $$;
