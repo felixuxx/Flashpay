@@ -34,6 +34,7 @@
  * Function called with the results of select_historic_denom_revenue()
  *
  * @param cls closure
+ * @param serial_id row for the denomination revenue in the auditor database
  * @param denom_pub_hash hash of the denomination key
  * @param revenue_timestamp when did this profit get realized
  * @param revenue_balance what was the total profit made from
