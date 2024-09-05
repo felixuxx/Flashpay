@@ -236,7 +236,7 @@ TEH_handler_kyc_check (
                                    "await_auth",
                                    TALER_EXCHANGE_YNA_NO,
                                    &yna);
-      kyc->await_auth = (TALER_EXCHANGE_YNA_YES == yna);
+      kyp->await_auth = (TALER_EXCHANGE_YNA_YES == yna);
     }
     /* long polling needed? */
     if (GNUNET_TIME_absolute_is_future (kyp->timeout))
