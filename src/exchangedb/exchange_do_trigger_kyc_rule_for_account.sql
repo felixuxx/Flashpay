@@ -49,12 +49,7 @@ THEN
   -- Extract details, determine if KYC auth matches.
   my_access_token = my_rec.access_token;
   my_account_pub = my_rec.target_pub;
-  IF in_merchant_pub IS NULL
-  THEN
-    out_bad_kyc_auth = FALSE;
-  ELSE
-    out_bad_kyc_auth = (my_account_pub = in_merchant_pub);
-  END IF;
+  out_bad_kyc_auth = COALESCE ((my_account_pub = in_merchant_pub), TRUE);
 ELSE
   -- No constraint on merchant_pub, just create
   -- the wire_target.
