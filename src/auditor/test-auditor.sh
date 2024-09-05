@@ -2512,7 +2512,7 @@ then
         echo "Generation failed"
         exit 1
     fi
-    echo "To re-use this database in the future, use:"
+    echo "To reuse this database in the future, use:"
     echo "export REUSE_BASEDB_DIR=$MY_TMP_DIR"
 else
     echo "Reusing existing database from ${REUSE_BASEDB_DIR}"
