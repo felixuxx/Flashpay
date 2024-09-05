@@ -30,12 +30,19 @@
     \begin{callself}{wallet}{Review offer}{}
     \end{callself}
     \mess[0]{wallet}{Pay {(Coins)}}{merchant}
+    \prelevel
     \mess[0]{merchant}{Deposit {(Coins)}}{exchange}
+    \begin{sdblock}{KYC/AML required?}{}
+    \begin{callself}{exchange}{Figures~\ref{fig:proc:kyc}, \ref{fig:proc:aml}}{}
+    \end{callself}
+    \end{sdblock}
     \begin{sdblock}{Acceptable account?}{}
     \mess[0]{exchange}{{Refuse deposit}}{merchant}
-    \mess[0]{merchant}{{Refund purchase}}{wallet}
+    \prelevel
+    \mess[0]{merchant}{{Fail purchase}}{wallet}
     \end{sdblock}
     \mess[0]{exchange}{{Confirm deposit}}{merchant}
+    \prelevel
     \mess[0]{merchant}{Fulfill order}{wallet}
     \begin{callself}{exchange}{Aggregate transactions}{}
     \end{callself}
@@ -53,8 +60,12 @@
 \end{figure}
 
 {\bf Internal note:} The exchange refusing a deposit immediately based on
-unaccaptable merchant accounts may not be fully implemented (this is a very
-recent feature, after all); especially the merchant then automatically
-refunding the purchase to the customer is certainly missing.  However,
-the entire situation only arises when a merchant is incorrectly configured
-and in violation of the terms of service.
+unaccaptable merchant accounts can depend both on the target account
+(e.g. wire method not supported) or on the legitimization state of the
+merchant's target account (including lack of KYC authorization wire
+transfer, failure to accept terms of service, failure to provide KYC
+data, or some kind of AML/KYC rule being violated).  However, in general
+the merchant backend will know if it has performed some mandatory sign-up
+process and can thus avoid the entire situation by only offering exchanges
+where the merchant is in good standing in its contracts.  The central
+bug for supporting this in the merchant is \#9052.
