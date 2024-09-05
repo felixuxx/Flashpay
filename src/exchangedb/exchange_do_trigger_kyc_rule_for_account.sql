@@ -24,6 +24,7 @@ CREATE FUNCTION exchange_do_trigger_kyc_rule_for_account(
   IN in_now INT8,
   IN in_jmeasures TEXT,
   IN in_display_priority INT4,
+  IN in_notify_s TEXT,
   OUT out_legitimization_measure_serial_id INT8,
   OUT out_bad_kyc_auth BOOL)
 LANGUAGE plpgsql
@@ -94,5 +95,10 @@ THEN
     INTO
       out_legitimization_measure_serial_id;
 END IF;
+
+EXECUTE FORMAT (
+   'NOTIFY %s'
+  ,in_notify_s);
+
 
 END $$;

@@ -15,7 +15,7 @@
 --
 
 DROP FUNCTION IF EXISTS exchange_do_insert_aml_decision;
-CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
+CREATE FUNCTION exchange_do_insert_aml_decision(
   IN in_h_payto BYTEA,
   IN in_decision_time INT8,
   IN in_expiration_time INT8,

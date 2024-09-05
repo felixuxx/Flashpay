@@ -41,6 +41,13 @@ TEH_PG_trigger_kyc_rule_for_account (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now
     = GNUNET_TIME_absolute_get ();
+  struct TALER_KycCompletedEventP rep = {
+    .header.size = htons (sizeof (rep)),
+    .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+    .h_payto = *h_payto
+  };
+  char *notify_str
+    = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     NULL == set_account_pub
@@ -55,6 +62,7 @@ TEH_PG_trigger_kyc_rule_for_account (
     GNUNET_PQ_query_param_absolute_time (&now),
     TALER_PQ_query_param_json (jmeasures),
     GNUNET_PQ_query_param_uint32 (&display_priority),
+    GNUNET_PQ_query_param_string (notify_str),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -66,6 +74,7 @@ TEH_PG_trigger_kyc_rule_for_account (
       bad_kyc_auth),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
            "trigger_kyc_rule_for_account",
@@ -75,11 +84,13 @@ TEH_PG_trigger_kyc_rule_for_account (
            " ,out_bad_kyc_auth"
            "   AS bad_kyc_auth"
            " FROM exchange_do_trigger_kyc_rule_for_account"
-           "($1, $2, $3, $4, $5, $6, $7);");
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
 
-  return GNUNET_PQ_eval_prepared_singleton_select (
+  qs = GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "trigger_kyc_rule_for_account",
     params,
     rs);
+  GNUNET_free (notify_str);
+  return qs;
 }
