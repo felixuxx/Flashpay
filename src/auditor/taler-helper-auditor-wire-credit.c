@@ -848,7 +848,7 @@ history_credit_cb (void *cls,
     break;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Error fetching credit history of account %s: %u/%s!\n",
+              "Error fetching credit history of account %s: %u (%s)\n",
               wa->ai->section_name,
               chr->http_status,
               TALER_ErrorCode_get_hint (chr->ec));
@@ -1122,6 +1122,9 @@ run (void *cls,
                                "TINY_AMOUNT",
                                &tiny_amount))
   {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "auditor",
+                               "TINY_AMOUNT");
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
