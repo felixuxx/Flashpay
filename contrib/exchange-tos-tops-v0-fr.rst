@@ -31,7 +31,7 @@ Exigences techniques
 -----------------------------------
 
 Pour pouvoir bénéficier des services proposés, les utilisateurs doivent installer un portefeuille Taler (porte-monnaie
-électronique) comme application Taler sur leur smartphone ou comme extension dans un navigateur sur leur PC. Les
+électronique) soit sous la forme de l'application Taler sur leur smartphone soit sous la forme d'une extension dans un navigateur sur leur PC. Les
 utilisateurs sont libres de choisir leur application de portefeuille Taler. Les bénéficiaires sont également libres de
 choisir leur application de portefeuille Taler ou leur backend Taler. Différentes solutions sont proposées par divers
 fournisseurs. TOPS n'impose aucune restriction à cet égard et ne donne aucune garantie quant à la solution choisie. Les
@@ -52,7 +52,7 @@ pas autorisés. Les utilisateurs peuvent payer avec le portefeuille Taler instal
 navigateur web, dans les limites en vigueur, auprès de personnes physiques et morales qui acceptent cette option de
 paiement et qui ont un compte bancaire suisse pour recevoir de l'argent (p. ex. magasins, boutiques en ligne, apps et
 autres bénéficiaires). Lors d'un paiement, le montant correspondant est directement débité du portefeuille Taler. Il
-faut qu'au moins le montant de la transaction soit disponible dans le portefeuille Taler. Les utilisateurs acceptent
+faut qu'au moins le montant de la transaction soit disponible dans le portefeuille Taler. Les utilisateurs sont tenus responsables de
 tous les paiements effectués avec le portefeuille Taler depuis leur terminal numérique, même si ces paiements ont été
 effectués sans leur consentement. La personne qui a dépensé un jeton dans le portefeuille Taler a utilisé le valeur
 d'argent correspondant pour effectuer un paiement.
@@ -66,11 +66,11 @@ Tarifs, frais, commissions et limites
 
 TOPS peut modifier les frais à tout moment. Les modifications n'ont d'effet que sur les jetons achetés après la
 modification. Les portefeuilles Taler corrects informent les utilisateurs des changements de frais avant l'achat de
-nouveaux jetons. Le retrait de jetons de TOPS après une modification des frais vaut acceptation des conditions
-modifiées par l'utilisateur.
+nouveaux jetons. Le retrait de jetons de TOPS après une modification des frais vaut acceptation  par l'utilisateur des conditions
+modifiées.
 
-Il existent des limites de 3 000 CHF par mois et de 15 000 CHF par année civile pour le retrait de la monnaie électronique
-d'un compte courant ou pour la réception de paiements peer-to-peer (d'égal à égal) entre les portefeuilles Taler avec
+Des limites de 3 000 CHF par mois et de 15 000 CHF par année civile sont définies pour le retrait de la monnaie électronique
+d'un compte courant ou pour la réception de paiements peer-to-peer (d'égal à égal) entre les portefeuilles Taler ayant
 un numéro de portable suisse confirmé.
 
 
@@ -90,8 +90,7 @@ réglementaires.
 
 Il n'y a pas de création de compte des *utilisateurs* chez TOPS. TOPS enregistre cependant les comptes IBAN des
 utilisateurs qui transfèrent des CHF à TOPS pour acheter des jetons. Pour recevoir des paiements d'égal à égal (peer-to-peer),
-les utilisateurs ont besoin d'au moins un numéro de téléphone portable suisse pour recevoir des SMS pour l'effet
-d'identification.
+les utilisateurs ont besoin d'au moins un numéro de téléphone portable suisse pouvant recevoir des SMS qui serviront à leur identification.
 
 
 Devoir de diligence et autres obligations des utilisateurs
@@ -106,7 +105,7 @@ Lors de l'utilisation du service de paiement, les utilisateurs doivent notamment
 
 * Avant chaque exécution d'un paiement, les données relatives au bénéficiaire doivent être vérifiées afin d'éviter les transactions erronées.
 
-* Les utilisateurs sont responsables de leurs utilisation du système et assument toutes les conséquences qui en découlent.
+* Les utilisateurs sont responsables de leur utilisation du système et assument toutes les conséquences qui en découlent.
 
 * En particulier, les actions qu'une tierce personne effectue sans autorisation avec un portefeuille Taler sont imputées au propriétaire du portefeuille.
 
@@ -115,7 +114,7 @@ c'est-à-dire faire une sauvegarde des données du portefeuille.
 Les utilisateurs du portefeuille Taler sont donc tenus de sécuriser l'accès au terminal numérique et de le protéger contre tout accès non autorisé.
 Ils doivent enregistrer les données du portefeuille avec une copie de sauvegarde sur un autre appareil.
 La fonction d'exportation du portefeuille aide à créer et à enregistrer une sauvegarde des données du portefeuille.
-Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un autre appareil ou un autre support de données signifie une perte totale du débit.
+Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un autre appareil ou un autre support de données signifie une perte totale de l'avoir.
 
 3. Il faut veiller à ce que le terminal numérique sur lequel est installé un portefeuille Taler se connecte **dans un délai d'un an**
 après la dernière transaction **au service de paiement par Internet**, faute de quoi le crédit du portefeuille peut être perdu.
@@ -123,7 +122,7 @@ Le renouvellement du débit a lieu normalement un mois avant la fin de la validi
 
 4. La communication de TOPS avec les utilisateurs se fait en principe par le biais de notifications dans le protocole de GNU Taler.
 Il incombe aux utilisateurs de répondre aux notifications correspondantes. TOPS a le droit de ne pas effectuer de transactions jusqu'à ce que
-les utilisateurs fournissent les données légalement nécessaires demandées par ce biais.
+les utilisateurs aient fourni les données légalement nécessaires demandées par ce biais.
 
 
 Responsabilité
@@ -196,7 +195,7 @@ des données et l'ordonnance sur la protection des données.
 
 Toutes les données du système sont hébergées en premier lieu en Suisse.
 
-Le cas échéant, les processus KYC sont gérés par des prestataires de services. Ceux-ci sont également tenus de sécuriser
+Le cas échéant, les processus de connaissance du client (abrévié KYC en anglais) sont gérés par des prestataires de services. Ceux-ci sont également tenus de sécuriser
 les données conformément au droit et à la législation suisses. Les données proprement dites du système central sont
 stockées de manière redondante (c'est-à-dire avec une sauvegarde) sur des disques durs cryptés et ne sont accessibles
 qu'au personnel autorisé. Le personnel autorisé est soumis à un contrôle de sécurité par TOPS.
