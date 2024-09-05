@@ -7653,6 +7653,8 @@ struct TALER_EXCHANGEDB_Plugin
    * status.
    *
    * @param cls closure
+   * @param payto_uri full URI of the account, optional,
+   *    can be NULL if the backend already knows the account
    * @param h_payto account for which the attribute data is stored
    * @param decision_time when was the decision made
    * @param expiration_time when does the decision expire
@@ -7674,6 +7676,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*insert_aml_decision)(
     void *cls,
+    const char *payto_uri,
     const struct TALER_PaytoHashP *h_payto,
     struct GNUNET_TIME_Timestamp decision_time,
     struct GNUNET_TIME_Timestamp expiration_time,

@@ -354,6 +354,7 @@ take_aml_decision_run (void *cls,
       TALER_TESTING_interpreter_get_context (is),
       exchange_url,
       h_payto,
+      NULL, /* payto_uri */
       now,
       ds->successor_measure,
       new_measures,

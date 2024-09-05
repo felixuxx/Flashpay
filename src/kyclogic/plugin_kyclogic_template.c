@@ -384,6 +384,10 @@ template_webhook (void *cls,
  * @return NULL on error, otherwise a `struct TALER_KYCLOGIC_Plugin`
  */
 void *
+libtaler_plugin_kyclogic_template_init (void *cls);
+
+/* declaration to avoid compiler warning */
+void *
 libtaler_plugin_kyclogic_template_init (void *cls)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
@@ -445,6 +449,10 @@ libtaler_plugin_kyclogic_template_init (void *cls)
  * @param cls a `struct TALER_KYCLOGIC_Plugin`
  * @return NULL (always)
  */
+void *
+libtaler_plugin_kyclogic_template_done (void *cls);
+
+/* declaration to avoid compiler warning */
 void *
 libtaler_plugin_kyclogic_template_done (void *cls)
 {

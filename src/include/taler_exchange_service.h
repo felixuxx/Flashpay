@@ -6393,6 +6393,8 @@ struct TALER_EXCHANGE_AccountRule
  * @param url HTTP base URL for the exchange
  * @param h_payto payto URI hash of the account the
  *                      decision is about
+ * @param payto_uri payto URI of the account, can
+ *    be NULL if the exchange already knows the account
  * @param decision_time when was the decision made
  * @param successor_measure measure to activate after @a expiration_time if no rule applied
  * @param new_measures space-separated list of measures
@@ -6417,6 +6419,7 @@ TALER_EXCHANGE_post_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_PaytoHashP *h_payto,
+  const char *payto_uri,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
   const char *new_measures,

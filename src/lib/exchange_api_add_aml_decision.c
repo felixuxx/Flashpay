@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -128,6 +128,7 @@ TALER_EXCHANGE_post_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_PaytoHashP *h_payto,
+  const char *payto_uri,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
   const char *new_measures,
@@ -269,6 +270,9 @@ TALER_EXCHANGE_post_aml_decision (
                              justification),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("payto_uri",
+                               payto_uri)),
     GNUNET_JSON_pack_object_steal ("new_rules",
                                    new_rules),
     GNUNET_JSON_pack_object_incref ("properties",

@@ -16,14 +16,15 @@
 
 DROP FUNCTION IF EXISTS exchange_do_insert_aml_decision;
 CREATE FUNCTION exchange_do_insert_aml_decision(
+  IN in_payto_uri TEXT, -- can be NULL!
   IN in_h_payto BYTEA,
   IN in_decision_time INT8,
   IN in_expiration_time INT8,
-  IN in_properties TEXT,
+  IN in_properties TEXT, -- can be NULL
   IN in_new_rules TEXT,
   IN in_to_investigate BOOLEAN,
-  IN in_new_measure_name TEXT,
-  IN in_jmeasures TEXT,
+  IN in_new_measure_name TEXT, -- can be NULL
+  IN in_jmeasures TEXT, -- can be NULL
   IN in_justification TEXT,
   IN in_decider_pub BYTEA,
   IN in_decider_sig BYTEA,
@@ -78,17 +79,29 @@ ELSE
   out_last_date = 0;
 END IF;
 
--- FIXME-9156: need in_payto_uri *in* case
--- in_h_payto is not already in wire_targets!
 SELECT access_token
   INTO my_access_token
   FROM wire_targets
  WHERE wire_target_h_payto=in_h_payto;
 
--- Very strange, should never happen that we
--- take an AML decision on an unknown account!
 IF NOT FOUND
 THEN
+  IF in_payto_uri IS NULL
+  THEN
+    -- AML decision on an unknown account without payto_uri => fail.
+    out_account_unknown=TRUE;
+    RETURN;
+  END IF;
+
+  INSERT INTO wire_targets
+    (wire_target_h_payto
+    ,payto_uri)
+    VALUES
+    (in_h_payto
+    ,in_payto_uri)
+    RETURNING access_token
+      INTO my_access_token;
+
   out_account_unknown=TRUE;
   RETURN;
 END IF;
@@ -189,5 +202,5 @@ EXECUTE FORMAT (
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, BYTEA, BYTEA, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(TEXT, BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, BYTEA, BYTEA, TEXT)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

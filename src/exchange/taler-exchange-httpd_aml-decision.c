@@ -45,6 +45,7 @@ TEH_handler_post_aml_decision (
   struct GNUNET_TIME_Timestamp decision_time;
   const json_t *new_rules;
   const json_t *properties = NULL;
+  const char *payto_uri = NULL;
   struct TALER_PaytoHashP h_payto;
   struct TALER_AmlOfficerSignatureP officer_sig;
   struct GNUNET_JSON_Specification spec[] = {
@@ -55,6 +56,10 @@ TEH_handler_post_aml_decision (
       NULL),
     GNUNET_JSON_spec_string ("justification",
                              &justification),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("payto_uri",
+                               &payto_uri),
+      NULL),
     GNUNET_JSON_spec_fixed_auto ("h_payto",
                                  &h_payto),
     GNUNET_JSON_spec_object_const ("new_rules",
@@ -88,6 +93,25 @@ TEH_handler_post_aml_decision (
       return MHD_YES; /* failure */
     }
   }
+  if (NULL != payto_uri)
+  {
+    struct TALER_PaytoHashP h_payto2;
+
+    TALER_payto_hash (payto_uri,
+                      &h_payto2);
+    if (0 !=
+        GNUNET_memcmp (&h_payto,
+                       &h_payto2))
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "payto_uri");
+    }
+  }
+
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_officer_aml_decision_verify (
@@ -152,6 +176,7 @@ TEH_handler_post_aml_decision (
     /* We keep 'new_measures' around mostly so that
        the auditor can later verify officer_sig */
     qs = TEH_plugin->insert_aml_decision (TEH_plugin->cls,
+                                          payto_uri,
                                           &h_payto,
                                           decision_time,
                                           expiration_time,

@@ -1696,6 +1696,10 @@ oauth2_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
  * @return NULL on error, otherwise a `struct TALER_KYCLOGIC_Plugin`
  */
 void *
+libtaler_plugin_kyclogic_oauth2_init (void *cls);
+
+/* declaration to avoid compiler warning */
+void *
 libtaler_plugin_kyclogic_oauth2_init (void *cls)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
@@ -1756,6 +1760,10 @@ libtaler_plugin_kyclogic_oauth2_init (void *cls)
  * @param cls a `struct TALER_KYCLOGIC_Plugin`
  * @return NULL (always)
  */
+void *
+libtaler_plugin_kyclogic_oauth2_done (void *cls);
+
+/* declaration to avoid compiler warning */
 void *
 libtaler_plugin_kyclogic_oauth2_done (void *cls)
 {
