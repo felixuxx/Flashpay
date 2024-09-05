@@ -540,7 +540,7 @@ complain_in_not_found (void *cls,
   (void) key;
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "Incoming wire transfer #%llu claimed by exchange not found\n",
-              rii->rowid);
+              (unsigned long long) rii->rowid);
   GNUNET_assert (TALER_BANK_CT_RESERVE ==
                  rii->credit_details.type);
   qs = TALER_ARL_adb->insert_reserve_in_inconsistency (
