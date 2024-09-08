@@ -609,6 +609,12 @@ then
     taler-merchant-dbinit \
         -c "$CONF" \
         --reset &> taler-merchant-dbinit.log
+    $USE_VALGRIND taler-merchant-exchangekeyupdate \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-exchangekeyupdate.log &
+    $USE_VALGRIND taler-merchant-kyccheck \
+                  -c "$CONF" \
+                  -L "$LOGLEVEL" 2> taler-merchant-kyccheck.log &
     $USE_VALGRIND taler-merchant-httpd \
                   -c "$CONF" \
                   -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
