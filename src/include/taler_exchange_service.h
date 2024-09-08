@@ -4060,6 +4060,8 @@ struct TALER_EXCHANGE_GetDepositResponse
       /**
        * KYC legitimization requirement that the merchant should use to check
        * for its KYC status.
+       *
+       * @deprecated, no longer needed.
        */
       uint64_t requirement_row;
 
