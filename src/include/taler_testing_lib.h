@@ -1658,11 +1658,12 @@ TALER_TESTING_cmd_track_transfer (const char *label,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_transfer (const char *label,
-                                       const char *exchange_base_url,
-                                       const char *amount,
-                                       const char *debit_payto,
-                                       const char *credit_payto);
+TALER_TESTING_cmd_check_bank_transfer (
+  const char *label,
+  const char *exchange_base_url,
+  const char *amount,
+  const char *debit_payto,
+  const char *credit_payto);
 
 
 /**
@@ -1677,11 +1678,12 @@ TALER_TESTING_cmd_check_bank_transfer (const char *label,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_admin_transfer (const char *label,
-                                             const char *amount,
-                                             const char *debit_payto,
-                                             const char *credit_payto,
-                                             const char *reserve_pub_ref);
+TALER_TESTING_cmd_check_bank_admin_transfer (
+  const char *label,
+  const char *amount,
+  const char *debit_payto,
+  const char *credit_payto,
+  const char *reserve_pub_ref);
 
 
 /**
@@ -1696,8 +1698,9 @@ TALER_TESTING_cmd_check_bank_admin_transfer (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_transfer_with_ref (const char *label,
-                                                const char *deposit_reference);
+TALER_TESTING_cmd_check_bank_transfer_with_ref (
+  const char *label,
+  const char *deposit_reference);
 
 
 /**
@@ -2209,6 +2212,7 @@ TALER_TESTING_cmd_wallet_kyc_get (
  * @param label command label.
  * @param payment_target_reference command with a payment target to query
  * @param account_reference command with account private key to query
+ * @param lpt target for long polling
  * @param expected_response_code expected HTTP status
  * @return the command
  */
@@ -2217,6 +2221,7 @@ TALER_TESTING_cmd_check_kyc_get (
   const char *label,
   const char *payment_target_reference,
   const char *account_reference,
+  enum TALER_EXCHANGE_KycLongPollTarget lpt,
   unsigned int expected_response_code);
 
 

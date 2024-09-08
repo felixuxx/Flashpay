@@ -499,6 +499,7 @@ run (void *cls,
       "check-kyc-close-pending",
       "reserve-101-close-kyc",
       "setup-account-key",
+      TALER_EXCHANGE_KLPT_KYC_AUTH_TRANSFER,
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_get_kyc_info (
       "get-kyc-info",
@@ -519,6 +520,7 @@ run (void *cls,
       "check-kyc-close-ok",
       "reserve-101-close-kyc",
       "setup-account-key",
+      TALER_EXCHANGE_KLPT_KYC_OK,
       MHD_HTTP_OK),
     /* Now it should pass */
     TALER_TESTING_cmd_reserve_close (

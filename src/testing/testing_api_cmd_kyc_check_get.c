@@ -34,6 +34,22 @@ struct KycCheckGetState
 {
 
   /**
+   * Set to the KYC URL *if* the exchange replied with
+   * a request for KYC (#MHD_HTTP_ACCEPTED or #MHD_HTTP_OK).
+   */
+  struct TALER_AccountAccessTokenP access_token;
+
+  /**
+   * Handle to the "track transaction" pending operation.
+   */
+  struct TALER_EXCHANGE_KycCheckHandle *kwh;
+
+  /**
+   * Interpreter state.
+   */
+  struct TALER_TESTING_Interpreter *is;
+
+  /**
    * Command to get a reserve private key from.
    */
   const char *payment_target_reference;
@@ -49,20 +65,10 @@ struct KycCheckGetState
   unsigned int expected_response_code;
 
   /**
-   * Set to the KYC URL *if* the exchange replied with
-   * a request for KYC (#MHD_HTTP_ACCEPTED or #MHD_HTTP_OK).
+   * What are we waiting for when long-polling?
    */
-  struct TALER_AccountAccessTokenP access_token;
+  enum TALER_EXCHANGE_KycLongPollTarget lpt;
 
-  /**
-   * Handle to the "track transaction" pending operation.
-   */
-  struct TALER_EXCHANGE_KycCheckHandle *kwh;
-
-  /**
-   * Interpreter state.
-   */
-  struct TALER_TESTING_Interpreter *is;
 };
 
 
@@ -171,7 +177,10 @@ check_kyc_run (void *cls,
     TALER_TESTING_get_exchange_url (is),
     h_payto,
     account_priv,
-    GNUNET_TIME_UNIT_ZERO,
+    kcg->lpt,
+    TALER_EXCHANGE_KLPT_NONE == kcg->lpt
+    ? GNUNET_TIME_UNIT_ZERO
+    : GNUNET_TIME_UNIT_MINUTES,
     &check_kyc_cb,
     kcg);
   GNUNET_assert (NULL != kcg->kwh);
@@ -235,6 +244,7 @@ TALER_TESTING_cmd_check_kyc_get (
   const char *label,
   const char *payment_target_reference,
   const char *account_reference,
+  enum TALER_EXCHANGE_KycLongPollTarget lpt,
   unsigned int expected_response_code)
 {
   struct KycCheckGetState *kcg;
@@ -243,6 +253,7 @@ TALER_TESTING_cmd_check_kyc_get (
   kcg->payment_target_reference = payment_target_reference;
   kcg->account_reference = account_reference;
   kcg->expected_response_code = expected_response_code;
+  kcg->lpt = lpt;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = kcg,

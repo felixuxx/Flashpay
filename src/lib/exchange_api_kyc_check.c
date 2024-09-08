@@ -258,6 +258,7 @@ TALER_EXCHANGE_kyc_check (
   const char *url,
   const struct TALER_PaytoHashP *h_payto,
   const union TALER_AccountPrivateKeyP *account_priv,
+  enum TALER_EXCHANGE_KycLongPollTarget lpt,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
   void *cb_cls)
@@ -265,32 +266,49 @@ TALER_EXCHANGE_kyc_check (
   struct TALER_EXCHANGE_KycCheckHandle *kch;
   CURL *eh;
   char arg_str[128];
+  char timeout_ms[32];
+  char lpt_str[32];
   struct curl_slist *job_headers = NULL;
   unsigned long long tms;
-  char *hps;
 
-  hps = GNUNET_STRINGS_data_to_string_alloc (h_payto,
-                                             sizeof (*h_payto));
-  tms = timeout.rel_value_us
-        / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
-  if (0 != tms)
-    GNUNET_snprintf (arg_str,
-                     sizeof (arg_str),
-                     "kyc-check/%s?timeout_ms=%llu",
-                     hps,
-                     tms);
-  else
+  {
+    char *hps;
+
+    hps = GNUNET_STRINGS_data_to_string_alloc (
+      h_payto,
+      sizeof (*h_payto));
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
                      "kyc-check/%s",
                      hps);
-  GNUNET_free (hps);
+    GNUNET_free (hps);
+  }
+  tms = timeout.rel_value_us
+        / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
+  GNUNET_snprintf (timeout_ms,
+                   sizeof (timeout_ms),
+                   "%llu",
+                   tms);
+  GNUNET_snprintf (lpt_str,
+                   sizeof (lpt_str),
+                   "%d",
+                   (int) lpt);
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
   kch->cb = cb;
   kch->cb_cls = cb_cls;
-  kch->url = TALER_url_join (url,
-                             arg_str,
-                             NULL);
+  kch->url
+    = TALER_url_join (
+        url,
+        arg_str,
+        "timeout_ms",
+        GNUNET_TIME_relative_is_zero (timeout)
+        ? NULL
+        : timeout_ms,
+        "lpt",
+        TALER_EXCHANGE_KLPT_NONE == lpt
+        ? NULL
+        : lpt_str,
+        NULL);
   if (NULL == kch->url)
   {
     GNUNET_free (kch);
@@ -311,8 +329,10 @@ TALER_EXCHANGE_kyc_check (
                                     CURLOPT_TIMEOUT_MS,
                                     (long) (tms + 500L)));
   }
-  job_headers = curl_slist_append (job_headers,
-                                   "Content-Type: application/json");
+  job_headers
+    = curl_slist_append (
+        job_headers,
+        "Content-Type: application/json");
   {
     union TALER_AccountSignatureP account_sig;
     char *sig_hdr;
@@ -339,11 +359,12 @@ TALER_EXCHANGE_kyc_check (
       return NULL;
     }
   }
-  kch->job = GNUNET_CURL_job_add2 (ctx,
-                                   eh,
-                                   job_headers,
-                                   &handle_kyc_check_finished,
-                                   kch);
+  kch->job
+    = GNUNET_CURL_job_add2 (ctx,
+                            eh,
+                            job_headers,
+                            &handle_kyc_check_finished,
+                            kch);
   curl_slist_free_all (job_headers);
   return kch;
 }

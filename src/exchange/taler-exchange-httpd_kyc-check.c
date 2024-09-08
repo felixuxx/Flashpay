@@ -34,7 +34,6 @@
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_responses.h"
 
-
 /**
  * Reserve GET request that is long-polling.
  */
@@ -78,15 +77,14 @@ struct KycPoller
   union TALER_AccountSignatureP account_sig;
 
   /**
+   * What are we long-polling for (if anything)?
+   */
+  enum TALER_EXCHANGE_KycLongPollTarget lpt;
+
+  /**
    * True if we are still suspended.
    */
   bool suspended;
-
-  /**
-   * True if we are long polling for a KYC authorization
-   * wire transfer.
-   */
-  bool await_auth;
 
 };
 
@@ -198,6 +196,7 @@ TEH_handler_kyc_check (
   struct TALER_AccountAccessTokenP access_token;
   bool aml_review;
   bool kyc_required;
+  bool access_ok = false;
 
   if (NULL == kyp)
   {
@@ -230,13 +229,22 @@ TEH_handler_kyc_check (
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &kyp->timeout);
     {
-      enum TALER_EXCHANGE_YesNoAll yna;
+      uint64_t num = 0;
+      int val;
 
-      TALER_MHD_parse_request_yna (rc->connection,
-                                   "await_auth",
-                                   TALER_EXCHANGE_YNA_NO,
-                                   &yna);
-      kyp->await_auth = (TALER_EXCHANGE_YNA_YES == yna);
+      TALER_MHD_parse_request_number (rc->connection,
+                                      "lpt",
+                                      &num);
+      val = (int) num;
+      if ( (val < 0) ||
+           (val > TALER_EXCHANGE_KLPT_MAX) )
+      {
+        /* Protocol violation, but we can be graceful and
+           just ignore the long polling! */
+        GNUNET_break_op (0);
+        val = TALER_EXCHANGE_KLPT_NONE;
+      }
+      kyp->lpt = (enum TALER_EXCHANGE_KycLongPollTarget) val;
     }
     /* long polling needed? */
     if (GNUNET_TIME_absolute_is_future (kyp->timeout))
@@ -272,6 +280,7 @@ TEH_handler_kyc_check (
 
   {
     enum GNUNET_DB_QueryStatus qs;
+    bool do_suspend;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Looking up KYC requirements for account %s\n",
@@ -293,25 +302,72 @@ TEH_handler_kyc_check (
         TALER_EC_GENERIC_DB_STORE_FAILED,
         "lookup_kyc_requirement_by_row");
     }
+    do_suspend = false;
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       /* account unknown */
-      if ( (kyp->await_auth) &&
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Account unknown!\n");
+      if ( (TALER_EXCHANGE_KLPT_NONE != kyp->lpt) &&
+           (TALER_EXCHANGE_KLPT_KYC_OK != kyp->lpt) &&
            (GNUNET_TIME_absolute_is_future (kyp->timeout)) )
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Suspending HTTP request on timeout (%s) now...\n",
-                    GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (
-                                              kyp->timeout),
-                                            true));
-        GNUNET_assert (NULL != kyp->eh);
-        kyp->suspended = true;
-        GNUNET_CONTAINER_DLL_insert (kyp_head,
-                                     kyp_tail,
-                                     kyp);
-        MHD_suspend_connection (kyp->connection);
-        return MHD_YES;
+        do_suspend = true;
+        access_ok = true; /* for now */
       }
+    }
+    else
+    {
+      access_ok =
+        ( (! GNUNET_is_zero (&account_pub) &&
+           (GNUNET_OK ==
+            TALER_account_kyc_auth_verify (&account_pub,
+                                           &kyp->account_sig)) ) ||
+          (! GNUNET_is_zero (&reserve_pub) &&
+           (GNUNET_OK ==
+            TALER_account_kyc_auth_verify (&reserve_pub,
+                                           &kyp->account_sig)) ) );
+
+      if (GNUNET_TIME_absolute_is_future (kyp->timeout))
+      {
+        switch (kyp->lpt)
+        {
+        case TALER_EXCHANGE_KLPT_NONE:
+          break;
+        case TALER_EXCHANGE_KLPT_KYC_AUTH_TRANSFER:
+          if (! access_ok)
+            do_suspend = true;
+          break;
+        case TALER_EXCHANGE_KLPT_INVESTIGATION_DONE:
+          if (! aml_review)
+            do_suspend = true;
+          break;
+        case TALER_EXCHANGE_KLPT_KYC_OK:
+          if (kyc_required)
+            do_suspend = true;
+          break;
+        }
+      }
+    }
+
+    if (do_suspend && access_ok)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Suspending HTTP request on timeout (%s) for %d\n",
+                  GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (
+                                            kyp->timeout),
+                                          true),
+                  (int) kyp->lpt);
+      GNUNET_assert (NULL != kyp->eh);
+      kyp->suspended = true;
+      GNUNET_CONTAINER_DLL_insert (kyp_head,
+                                   kyp_tail,
+                                   kyp);
+      MHD_suspend_connection (kyp->connection);
+      return MHD_YES;
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_NOT_FOUND,
@@ -320,14 +376,7 @@ TEH_handler_kyc_check (
     }
   }
 
-  if ( (GNUNET_is_zero (&account_pub) ||
-        (GNUNET_OK !=
-         TALER_account_kyc_auth_verify (&account_pub,
-                                        &kyp->account_sig)) ) &&
-       (GNUNET_is_zero (&reserve_pub) ||
-        (GNUNET_OK !=
-         TALER_account_kyc_auth_verify (&reserve_pub,
-                                        &kyp->account_sig)) ) )
+  if (! access_ok)
   {
     json_decref (jrules);
     jrules = NULL;
@@ -364,31 +413,14 @@ TEH_handler_kyc_check (
   json_decref (jrules);
   jrules = NULL;
 
-  if ( (kyc_required) &&
-       (! kyp->await_auth) &&
-       GNUNET_TIME_absolute_is_future (kyp->timeout))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Suspending HTTP request on timeout (%s) now...\n",
-                GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (
-                                          kyp->timeout),
-                                        true));
-    GNUNET_assert (NULL != kyp->eh);
-    kyp->suspended = true;
-    GNUNET_CONTAINER_DLL_insert (kyp_head,
-                                 kyp_tail,
-                                 kyp);
-    MHD_suspend_connection (kyp->connection);
-    return MHD_YES;
-  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Returning KYC %s\n",
               kyc_required ? "required" : "optional");
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     kyc_required
-      ? MHD_HTTP_ACCEPTED
-      : MHD_HTTP_OK,
+    ? MHD_HTTP_ACCEPTED
+    : MHD_HTTP_OK,
     GNUNET_JSON_pack_bool ("aml_review",
                            aml_review),
     GNUNET_JSON_pack_data_auto ("access_token",

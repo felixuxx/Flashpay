@@ -36,7 +36,7 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00100003
+#define TALER_EXCHANGE_API_VERSION 0x00100004
 
 /**
  * Information returned when a client needs to pass
@@ -4430,7 +4430,8 @@ typedef void
  * @param url exchange base URL
  * @param h_payto hash of the account the KYC check is about
  * @param pk private key to authorize the request with
- * @param timeout how long to wait for a positive KYC status
+ * @param lpt target for long polling
+ * @param timeout how long to wait for an answer, including possibly long polling for the desired @a lpt status
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return NULL on error
@@ -4441,6 +4442,7 @@ TALER_EXCHANGE_kyc_check (
   const char *url,
   const struct TALER_PaytoHashP *h_payto,
   const union TALER_AccountPrivateKeyP *pk,
+  enum TALER_EXCHANGE_KycLongPollTarget lpt,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_KycStatusCallback cb,
   void *cb_cls);

@@ -597,6 +597,38 @@ TALER_iban_validate (const char *iban);
 
 
 /**
+ * Possible choices for long-polling for the KYC status.
+ */
+enum TALER_EXCHANGE_KycLongPollTarget
+{
+  /**
+   * No long polling.
+   */
+  TALER_EXCHANGE_KLPT_NONE = 0,
+
+  /**
+   * Wait for KYC auth transfer to be complete.
+   */
+  TALER_EXCHANGE_KLPT_KYC_AUTH_TRANSFER = 1,
+
+  /**
+   * Wait for AML investigation to be complete.
+   */
+  TALER_EXCHANGE_KLPT_INVESTIGATION_DONE = 2,
+
+  /**
+   * Wait for KYC status to be OK.
+   */
+  TALER_EXCHANGE_KLPT_KYC_OK = 3,
+
+  /**
+   * Maximum legal value in this enumeration.
+   */
+  TALER_EXCHANGE_KLPT_MAX = 3
+};
+
+
+/**
  * Possible values for a binary filter.
  */
 enum TALER_EXCHANGE_YesNoAll

@@ -301,6 +301,7 @@ run (void *cls,
       "check-kyc-withdraw",
       "withdraw-coin-1-lacking-kyc",
       "setup-account-key",
+      TALER_EXCHANGE_KLPT_KYC_AUTH_TRANSFER,
       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_get_kyc_info (
       "get-kyc-info",

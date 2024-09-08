@@ -245,6 +245,10 @@ handle_kyc_info_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
+  case MHD_HTTP_FORBIDDEN:
+    lr.hr.ec = TALER_JSON_get_error_code (j);
+    lr.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_NOT_FOUND:
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);
