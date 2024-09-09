@@ -245,6 +245,13 @@ TEH_handler_kyc_check (
         val = TALER_EXCHANGE_KLPT_NONE;
       }
       kyp->lpt = (enum TALER_EXCHANGE_KycLongPollTarget) val;
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Long polling for target %d with timeout %s\n",
+                  val,
+                  GNUNET_TIME_relative2s (
+                    GNUNET_TIME_absolute_get_remaining (
+                      kyp->timeout),
+                    true));
     }
     /* long polling needed? */
     if (GNUNET_TIME_absolute_is_future (kyp->timeout))
@@ -327,7 +334,6 @@ TEH_handler_kyc_check (
            (GNUNET_OK ==
             TALER_account_kyc_auth_verify (&reserve_pub,
                                            &kyp->account_sig)) ) );
-
       if (GNUNET_TIME_absolute_is_future (kyp->timeout))
       {
         switch (kyp->lpt)
@@ -350,7 +356,9 @@ TEH_handler_kyc_check (
       }
     }
 
-    if (do_suspend && access_ok)
+    if (do_suspend &&
+        (access_ok ||
+         (TALER_EXCHANGE_KLPT_KYC_AUTH_TRANSFER == kyp->lpt) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Suspending HTTP request on timeout (%s) for %d\n",
@@ -368,6 +376,8 @@ TEH_handler_kyc_check (
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Returning account unknown\n");
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_NOT_FOUND,
@@ -389,6 +399,8 @@ TEH_handler_kyc_check (
         TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_KEY_UNKNOWN,
         NULL);
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning authorization failed\n");
     return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_FORBIDDEN,
