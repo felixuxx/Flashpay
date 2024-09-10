@@ -1041,6 +1041,40 @@ TALER_EXCHANGE_test_account_allowed (
 
 
 /**
+ * Check the hard limits in @a keys for the given
+ * @a event and lower @a limit to the lowest applicable
+ * limit independent (!) of the timeframe.  Useful
+ * to determine the absolute transaction limit.
+ *
+ * @param keys exchange keys to evaluate
+ * @param event trigger type to evaluate
+ * @param[in,out] limit to lower to the minimum limit
+ *    that applies to @a event
+ */
+void
+TALER_EXCHANGE_keys_evaluate_hard_limits (
+  const struct TALER_EXCHANGE_Keys *keys,
+  enum TALER_KYCLOGIC_KycTriggerEvent event,
+  struct TALER_Amount *limit);
+
+
+/**
+ * Check if a (soft) limit of zero applies for the
+ * given @a event under @a keys.
+ *
+ * @param keys exchange keys to evaluate
+ * @param event trigger type to evaluate
+ * @return true if the operation is soft-limited and
+ *   thus KYC is required before the operation may be
+ *   accepted at the exchange
+ */
+bool
+TALER_EXCHANGE_keys_evaluate_zero_limits (
+  const struct TALER_EXCHANGE_Keys *keys,
+  enum TALER_KYCLOGIC_KycTriggerEvent event);
+
+
+/**
  * Obtain the denomination key details from the exchange.
  *
  * @param keys the exchange's key set

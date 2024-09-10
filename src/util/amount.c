@@ -293,6 +293,29 @@ TALER_amount_max (struct TALER_Amount *ma,
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_amount_min (struct TALER_Amount *mi,
+                  const struct TALER_Amount *a1,
+                  const struct TALER_Amount *a2)
+{
+  if (GNUNET_OK !=
+      TALER_amount_cmp_currency (a1,
+                                 a2))
+  {
+    memset (mi,
+            0,
+            sizeof (*mi));
+    return GNUNET_SYSERR;
+  }
+  if (1 == TALER_amount_cmp (a1,
+                             a2))
+    *mi = *a2;
+  else
+    *mi = *a1;
+  return GNUNET_OK;
+}
+
+
 bool
 TALER_amount_is_zero (const struct TALER_Amount *amount)
 {

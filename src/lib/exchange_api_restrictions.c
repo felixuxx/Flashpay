@@ -17,7 +17,7 @@
 /**
  * @file lib/exchange_api_restrictions.c
  * @brief convenience functions related to account restrictions
- * @author Christian Grothoff
+a * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_exchange_service.h"
@@ -95,4 +95,47 @@ TALER_EXCHANGE_test_account_allowed (
     }     /* end switch */
   }     /* end loop over restrictions */
   return GNUNET_YES;
+}
+
+
+void
+TALER_EXCHANGE_keys_evaluate_hard_limits (
+  const struct TALER_EXCHANGE_Keys *keys,
+  enum TALER_KYCLOGIC_KycTriggerEvent event,
+  struct TALER_Amount *limit)
+{
+  for (unsigned int i = 0; i<keys->hard_limits_length; i++)
+  {
+    const struct TALER_EXCHANGE_AccountLimit *al
+      = &keys->hard_limits[i];
+
+    if (event != al->operation_type)
+      continue;
+    if (al->soft_limit)
+      continue;
+    if (! TALER_amount_cmp_currency (limit,
+                                     &al->limit))
+      continue;
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_min (limit,
+                                    limit,
+                                    &al->limit));
+  }
+}
+
+
+bool
+TALER_EXCHANGE_keys_evaluate_zero_limits (
+  const struct TALER_EXCHANGE_Keys *keys,
+  enum TALER_KYCLOGIC_KycTriggerEvent event)
+{
+  for (unsigned int i = 0; i<keys->soft_limits_length; i++)
+  {
+    const struct TALER_EXCHANGE_ZeroLimitedOperation *zlo
+      = &keys->zero_limits[i];
+
+    if (event == zlo->operation_type)
+      return true;
+  }
+  return false;
 }
