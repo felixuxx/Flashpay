@@ -78,6 +78,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_reserves_get_attestable.c \
   exchange_api_reserves_history.c \
   exchange_api_reserves_open.c \
+  exchange_api_restrictions.c \
   exchange_api_stefan.c \
   exchange_api_transfers_get.c
 libtalerexchange_la_LIBADD = \

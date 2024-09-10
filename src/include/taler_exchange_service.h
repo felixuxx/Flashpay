@@ -36,7 +36,7 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00100004
+#define TALER_EXCHANGE_API_VERSION 0x00100005
 
 /**
  * Information returned when a client needs to pass
@@ -1016,6 +1016,28 @@ enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_test_signing_key (
   const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ExchangePublicKeyP *pub);
+
+
+/**
+ * Check if a wire transfer is allowed between
+ * @a account if the exchange and @a payto_uri.
+ *
+ * @param account exchange account to check
+ * @param check_credit true for credit (sending money
+ *   to the exchange), false for debit (receiving money
+ *   from the exchange)
+ * @param payto_uri other bank account (merchant, customer)
+ * @return
+ *   #GNUNET_YES if the exchange would allow this
+ *   #GNUNET_NO if this is not allowed
+ *   #GNUNET_SYSERR if data in @a account is malformed
+ *       or we experienced internal errors
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_test_account_allowed (
+  const struct TALER_EXCHANGE_WireAccount *account,
+  bool check_credit,
+  const char *payto_uri);
 
 
 /**
