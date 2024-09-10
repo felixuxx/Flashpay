@@ -45,8 +45,11 @@ eNetzBon-Konten, auf welche sie die ihnen übergebenen Bareinzahlungen von Nutze
 
 * Die Nutzer\*innen können eNetzBon durch zwei Verfahren erwerben bzw. das Guthaben auf ihrem Wallet erhöhen:
 
-  a. Per Bareinzahlung durch Nutzung der "Taler Cashier-App" bei Betrieben, bei denen Nutzer\*innen den abzuhebenden Betrag in CHF an das Personal bar übergeben und dann durch ihr Wallet den Betrag in eNetzBon abheben lassen.
-  b. Per Banküberweisung an das PostFinance-Konto des Vereins Soziale Ökonomie. Das Wallet hilft dabei den Nutzer\*innen, den Abhebevorgang einzuleiten, und gibt dazu einen Verwendungszweck an, d.h. eine mehrstellige Kombination aus Nummer und Buchstaben, die im Kontoauszug des persönlichen Girokontos der Nutzer\*innen als Buchungstext angezeigt wird. Mit diesem Verwendungszweck kann das Wallet den Betrag zuerst in CHF abheben und dann im Wallet in eNetzBon umtauschen.
+  a. 
+  Per Bareinzahlung durch Nutzung der "Taler Cashier-App" bei Betrieben, bei denen Nutzer\*innen den abzuhebenden Betrag in CHF an das Personal bar übergeben und dann durch ihr Wallet den Betrag in eNetzBon abheben lassen.
+ 
+  b. 
+  Per Banküberweisung an das PostFinance-Konto des Vereins Soziale Ökonomie. Das Wallet hilft dabei den Nutzer\*innen, den Abhebevorgang einzuleiten, und gibt dazu einen Verwendungszweck an, d.h. eine mehrstellige Kombination aus Nummer und Buchstaben, die im Kontoauszug des persönlichen Girokontos der Nutzer\*innen als Buchungstext angezeigt wird. Mit diesem Verwendungszweck kann das Wallet den Betrag zuerst in CHF abheben und dann im Wallet in eNetzBon umtauschen.
 
 * Der Preis eines eNetzBon beträgt 1 CHF. Bitte beachten Sie, dass eNetzBon für Nutzer\*innen nicht rückerstattbar sind, daher müssen sie ausgegeben werden. Betriebe können ihr Guthaben aus eNetzBon in CHF umtauschen.
 * Es werden keine Transaktionskosten von Nutzer\*innen erhoben. Bei der Bezahlung mit eNetzBon fallen daher keine Transaktionsgebühren an. Diese Allgemeinen Geschäftsbedingungen erlauben jedoch die Möglichkeit zukünftiger Änderungen der Gebührenordnung.
