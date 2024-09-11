@@ -2417,6 +2417,9 @@ TALER_KYCLOGIC_kyc_init (
       const char *measure_name = rule->next_measures[j];
       const struct TALER_KYCLOGIC_Measure *m;
 
+      if (0 == strcmp ("verboten",
+                       measure_name))
+        continue;
       m = find_measure (&default_rules,
                         measure_name);
       if (NULL == m)
