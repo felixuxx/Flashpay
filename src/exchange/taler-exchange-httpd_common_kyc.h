@@ -195,6 +195,12 @@ struct TEH_LegitimizationCheckResult
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
+   * Last reserve public key of a wire transfer from
+   * the account to the exchange.
+   */
+  union TALER_AccountPublicKeyP reserve_pub;
+
+  /**
    * Smallest amount (over any timeframe) that may
    * require additional KYC checks (if @a kyc.ok).
    */
@@ -207,9 +213,22 @@ struct TEH_LegitimizationCheckResult
   struct GNUNET_TIME_Timestamp expiration_date;
 
   /**
+   * Response to return. Note that the response must
+   * be queued or destroyed by the callee.  NULL
+   * if the legitimization check was successful and the handler should return
+   * a handler-specific result.
+   */
+  struct MHD_Response *response;
+
+  /**
    * HTTP status code for @a response, or 0
    */
   unsigned int http_status;
+
+  /**
+   * True if @e reserve_pub is set.
+   */
+  bool have_reserve_pub;
 
   /**
    * Set to true if the merchant public key does not
@@ -218,14 +237,6 @@ struct TEH_LegitimizationCheckResult
    * required).
    */
   bool bad_kyc_auth;
-
-  /**
-   * Response to return. Note that the response must
-   * be queued or destroyed by the callee.  NULL
-   * if the legitimization check was successful and the handler should return
-   * a handler-specific result.
-   */
-  struct MHD_Response *response;
 };
 
 

@@ -31,7 +31,12 @@
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param h_payto account identifier
- * @param[out] account_pub account public key the rules
+ * @param[out] no_account_pub set to true if no @a account_pub is available
+ * @param[out] account_pub set to account public key the rules
+ *   apply to (because this key was used in KYC auth)
+ * @param[out] no_reserve_pub set to true if no @a reserve_pub is available
+ * @param[out] reserve_pub set to last incoming reserve public key
+ *   of a wire transfer to the exchange from the given @a h_payto
  *   apply to (because this key was used in KYC auth)
  * @param[out] jrules set to the active KYC rules for the
  *    given account, set to NULL if no custom rules are active
@@ -41,7 +46,10 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_get_kyc_rules (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
+  bool *no_account_pub,
   union TALER_AccountPublicKeyP *account_pub,
+  bool *no_reserve_pub,
+  struct TALER_ReservePublicKeyP *reserve_pub,
   json_t **jrules);
 
 #endif

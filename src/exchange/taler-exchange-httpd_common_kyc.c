@@ -1632,11 +1632,17 @@ legitimization_check_run (
                             &old_scope);
   {
     json_t *jrules;
+    bool no_account_pub;
+    bool no_reserve_pub;
 
-    qs = TEH_plugin->get_kyc_rules (TEH_plugin->cls,
-                                    &lch->h_payto,
-                                    &lch->lcr.kyc.account_pub,
-                                    &jrules);
+    qs = TEH_plugin->get_kyc_rules (
+      TEH_plugin->cls,
+      &lch->h_payto,
+      &no_account_pub,
+      &lch->lcr.kyc.account_pub,
+      &no_reserve_pub,
+      &lch->lcr.reserve_pub.reserve_pub,
+      &jrules);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -1651,34 +1657,47 @@ legitimization_check_run (
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break;
     }
+
     lch->lcr.kyc.have_account_pub
-      = ! GNUNET_is_zero (&lch->lcr.kyc.account_pub);
-    if ( (NULL == jrules) &&
-         (lch->have_merchant_pub) &&
-         (0 != GNUNET_memcmp (&lch->merchant_pub,
-                              &lch->lcr.kyc.account_pub.merchant_pub)) )
+      = ! no_account_pub;
+    lch->lcr.have_reserve_pub
+      = ! no_reserve_pub;
+    if ( (lch->have_merchant_pub) &&
+         ( (! lch->lcr.kyc.have_account_pub) ||
+           (0 !=
+            GNUNET_memcmp (&lch->merchant_pub,
+                           &lch->lcr.kyc.account_pub.merchant_pub)) ) &&
+         ( (! lch->lcr.have_reserve_pub) ||
+           (0 !=
+            GNUNET_memcmp (&lch->merchant_pub,
+                           &lch->lcr.reserve_pub.merchant_pub)) ) )
     {
-      /* We do not have custom rules, defer enforcing merchant_pub
-         match until we actually have deposit constraints */
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "KYC: merchant_pub given but no target_pub known!\n");
-      lch->bad_kyc_auth = true;
-    }
-    if (NULL != jrules)
-    {
-      /* We have custom KYC rules */
-      if ( (lch->have_merchant_pub) &&
-           (0 != GNUNET_memcmp (&lch->merchant_pub,
-                                &lch->lcr.kyc.account_pub.merchant_pub)) )
+      if (NULL == jrules)
+      {
+        /* We do not have custom rules, defer enforcing merchant_pub
+           match until we actually have deposit constraints */
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "KYC: merchant_pub given but no known target_pub(%d)/reserve_pub(%d) match!\n",
+                    lch->lcr.kyc.have_account_pub,
+                    lch->lcr.have_reserve_pub);
+        lch->bad_kyc_auth = true;
+      }
+      else
       {
         /* We have custom rules, but the target_pub for
            those custom rules does not match the
            merchant_pub. Fail the KYC process! */
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "KYC: merchant_pub does not match target_pub of custom rules!\n");
+        json_decref (jrules);
         fail_kyc_auth (lch);
         return;
       }
+    }
+
+    /* parse and free jrules (if we had any) */
+    if (NULL != jrules)
+    {
       lrs = TALER_KYCLOGIC_rules_parse (jrules);
       GNUNET_break (NULL != lrs);
       /* Fall back to default rules on parse error! */
