@@ -107,6 +107,8 @@ TEH_PG_lookup_transfer_by_deposit (
                                                  "lookup_deposit_wtid",
                                                  params,
                                                  rs);
+  if (0 > qs)
+    return qs;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     struct TALER_MerchantWireHashP wh;
@@ -126,8 +128,6 @@ TEH_PG_lookup_transfer_by_deposit (
     qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
     GNUNET_PQ_cleanup_result (rs);
   }
-  if (0 > qs)
-    return qs;
   *pending = true;
   memset (wtid,
           0,
@@ -188,6 +188,8 @@ TEH_PG_lookup_transfer_by_deposit (
                                                    "get_deposit_without_wtid",
                                                    params,
                                                    rs2);
+    if (0 > qs)
+      return qs;
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     {
       struct TALER_MerchantWireHashP wh;

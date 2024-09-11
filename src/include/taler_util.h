@@ -597,6 +597,34 @@ TALER_iban_validate (const char *iban);
 
 
 /**
+ * Possible choices for long-polling for the deposit status.
+ */
+enum TALER_DepositGetLongPollTarget
+{
+  /**
+   * No long-polling.
+   */
+  TALER_DGLPT_NONE = 0,
+
+  /**
+   * Wait for KYC required/ACCEPTED state *or* for
+   * OK state.
+   */
+  TALER_DGLPT_KYC_REQUIRED_OR_OK = 1,
+
+  /**
+   * Wait for the OK-state only.
+   */
+  TALER_DGLPT_OK = 2,
+
+  /**
+   * Maximum allowed value.
+   */
+  TALER_DGLPT_MAX = 2
+};
+
+
+/**
  * Possible choices for long-polling for the KYC status.
  */
 enum TALER_EXCHANGE_KycLongPollTarget

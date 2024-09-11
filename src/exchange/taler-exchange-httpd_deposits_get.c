@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include "taler_dbevents.h"
 #include "taler_json_lib.h"
+#include "taler_util.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_keys.h"
@@ -131,17 +132,16 @@ struct DepositWtidContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
-   * Set to #GNUNET_YES by #handle_wtid if the wire transfer is still pending
-   * (and the above were not set).
-   * Set to #GNUNET_SYSERR if there was a serious error.
-   */
-  enum GNUNET_GenericReturnValue pending;
-
-  /**
    * #GNUNET_YES if we were suspended, #GNUNET_SYSERR
    * if we were woken up due to shutdown.
    */
   enum GNUNET_GenericReturnValue suspended;
+
+  /**
+   * What do we long-poll for? Defaults to
+   * #TALER_DGLPT_OK if not given.
+   */
+  enum TALER_DepositGetLongPollTarget lpt;
 };
 
 
@@ -180,15 +180,14 @@ TEH_deposits_get_cleanup ()
  * A merchant asked for details about a deposit.  Provide
  * them. Generates the 200 reply.
  *
- * @param connection connection to the client
  * @param ctx details to respond with
  * @return MHD result code
  */
 static MHD_RESULT
 reply_deposit_details (
-  struct MHD_Connection *connection,
   const struct DepositWtidContext *ctx)
 {
+  struct MHD_Connection *connection = ctx->rc->connection;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
   enum TALER_ErrorCode ec;
@@ -223,82 +222,6 @@ reply_deposit_details (
                                 &sig),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &pub));
-}
-
-
-/**
- * Execute a "deposits" GET.  Returns the transfer information
- * associated with the given deposit.
- *
- * If it returns a non-error code, the transaction logic MUST
- * NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
- * it returns the soft error code, the function MAY be called again to
- * retry and MUST NOT queue a MHD response.
- *
- * @param cls closure of type `struct DepositWtidContext *`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-deposits_get_transaction (void *cls,
-                          struct MHD_Connection *connection,
-                          MHD_RESULT *mhd_ret)
-{
-  struct DepositWtidContext *ctx = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  bool pending;
-  struct TALER_Amount fee;
-
-  qs = TEH_plugin->lookup_transfer_by_deposit (
-    TEH_plugin->cls,
-    &ctx->h_contract_terms,
-    &ctx->h_wire,
-    &ctx->coin_pub,
-    &ctx->merchant,
-    &pending,
-    &ctx->wtid,
-    &ctx->execution_time,
-    &ctx->coin_contribution,
-    &fee,
-    &ctx->kyc,
-    &ctx->account_pub);
-  if (0 > qs)
-  {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_INTERNAL_SERVER_ERROR,
-        TALER_EC_GENERIC_DB_FETCH_FAILED,
-        NULL);
-    }
-    return qs;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    *mhd_ret = TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_NOT_FOUND,
-      TALER_EC_EXCHANGE_DEPOSITS_GET_NOT_FOUND,
-      NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  if (0 >
-      TALER_amount_subtract (&ctx->coin_delta,
-                             &ctx->coin_contribution,
-                             &fee))
-  {
-    GNUNET_break (0);
-    ctx->pending = GNUNET_SYSERR;
-    return qs;
-  }
-  ctx->pending = (pending) ? GNUNET_YES : GNUNET_NO;
-  return qs;
 }
 
 
@@ -349,55 +272,82 @@ handle_track_transaction_request (
   struct DepositWtidContext *ctx)
 {
   struct MHD_Connection *connection = ctx->rc->connection;
+  enum GNUNET_DB_QueryStatus qs;
+  bool pending;
+  struct TALER_Amount fee;
 
-  if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&
-       (NULL == ctx->eh) )
+  qs = TEH_plugin->lookup_transfer_by_deposit (
+    TEH_plugin->cls,
+    &ctx->h_contract_terms,
+    &ctx->h_wire,
+    &ctx->coin_pub,
+    &ctx->merchant,
+    &pending,
+    &ctx->wtid,
+    &ctx->execution_time,
+    &ctx->coin_contribution,
+    &fee,
+    &ctx->kyc,
+    &ctx->account_pub);
+  if (0 > qs)
   {
-    struct TALER_CoinDepositEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
-      .merchant_pub = ctx->merchant
-    };
-
-    ctx->eh = TEH_plugin->event_listen (
-      TEH_plugin->cls,
-      GNUNET_TIME_absolute_get_remaining (ctx->timeout),
-      &rep.header,
-      &db_event_cb,
-      ctx);
-    GNUNET_break (NULL != ctx->eh);
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "lookup_transfer_by_deposit");
   }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    MHD_RESULT mhd_ret;
-
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "handle deposits GET",
-                                TEH_MT_REQUEST_OTHER,
-                                &mhd_ret,
-                                &deposits_get_transaction,
-                                ctx))
-      return mhd_ret;
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_NOT_FOUND,
+      TALER_EC_EXCHANGE_DEPOSITS_GET_NOT_FOUND,
+      NULL);
   }
-  if (GNUNET_SYSERR == ctx->pending)
+
+  if (0 >
+      TALER_amount_subtract (&ctx->coin_delta,
+                             &ctx->coin_contribution,
+                             &fee))
+  {
+    GNUNET_break (0);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_INTERNAL_SERVER_ERROR,
       TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
       "wire fees exceed aggregate in database");
-  if (GNUNET_YES == ctx->pending)
+  }
+  if (pending)
   {
-    if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&
-         (GNUNET_NO == ctx->suspended) )
+    if (GNUNET_TIME_absolute_is_future (ctx->timeout))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Suspending request handling\n");
-      GNUNET_CONTAINER_DLL_insert (dwc_head,
-                                   dwc_tail,
-                                   ctx);
-      ctx->suspended = GNUNET_YES;
-      MHD_suspend_connection (connection);
-      return MHD_YES;
+      bool do_suspend = false;
+      switch (ctx->lpt)
+      {
+      case TALER_DGLPT_NONE:
+        break;
+      case TALER_DGLPT_KYC_REQUIRED_OR_OK:
+        do_suspend = ! ctx->kyc.ok;
+        break;
+      case TALER_DGLPT_OK:
+        do_suspend = true;
+        break;
+      }
+      if (do_suspend)
+      {
+        GNUNET_assert (GNUNET_NO == ctx->suspended);
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Suspending request handling\n");
+        GNUNET_CONTAINER_DLL_insert (dwc_head,
+                                     dwc_tail,
+                                     ctx);
+        ctx->suspended = GNUNET_YES;
+        MHD_suspend_connection (connection);
+        return MHD_YES;
+      }
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC required with row %llu\n",
@@ -422,8 +372,7 @@ handle_track_transaction_request (
       GNUNET_JSON_pack_timestamp ("execution_time",
                                   ctx->execution_time));
   }
-  return reply_deposit_details (connection,
-                                ctx);
+  return reply_deposit_details (ctx);
 }
 
 
@@ -458,6 +407,7 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
   {
     ctx = GNUNET_new (struct DepositWtidContext);
     ctx->rc = rc;
+    ctx->lpt = TALER_DGLPT_OK; /* default */
     rc->rh_ctx = ctx;
     rc->rh_cleaner = &dwc_cleaner;
 
@@ -518,6 +468,31 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
                                         &ctx->merchant_sig);
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &ctx->timeout);
+    {
+      uint64_t num = 0;
+      int val;
+
+      TALER_MHD_parse_request_number (rc->connection,
+                                      "lpt",
+                                      &num);
+      val = (int) num;
+      if ( (val < 0) ||
+           (val > TALER_DGLPT_MAX) )
+      {
+        /* Protocol violation, but we can be graceful and
+           just ignore the long polling! */
+        GNUNET_break_op (0);
+        val = TALER_DGLPT_NONE;
+      }
+      ctx->lpt = (enum TALER_DepositGetLongPollTarget) val;
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Long polling for target %d with timeout %s\n",
+                  val,
+                  GNUNET_TIME_relative2s (
+                    GNUNET_TIME_absolute_get_remaining (
+                      ctx->timeout),
+                    true));
+    }
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
     {
       if (GNUNET_OK !=
@@ -534,6 +509,23 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
           TALER_EC_EXCHANGE_DEPOSITS_GET_MERCHANT_SIGNATURE_INVALID,
           NULL);
       }
+    }
+    if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&
+         (TALER_DGLPT_NONE != ctx->lpt) )
+    {
+      struct TALER_CoinDepositEventP rep = {
+        .header.size = htons (sizeof (rep)),
+        .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
+        .merchant_pub = ctx->merchant
+      };
+
+      ctx->eh = TEH_plugin->event_listen (
+        TEH_plugin->cls,
+        GNUNET_TIME_absolute_get_remaining (ctx->timeout),
+        &rep.header,
+        &db_event_cb,
+        ctx);
+      GNUNET_break (NULL != ctx->eh);
     }
   }
 
