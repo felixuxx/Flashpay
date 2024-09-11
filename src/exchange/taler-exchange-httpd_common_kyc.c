@@ -1515,6 +1515,12 @@ run_check (
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "trigger_kyc_rule_for_account on %d/%d returned %llu/%d\n",
+                lch->have_account_pub,
+                lch->have_merchant_pub,
+                (unsigned long long) lch->lcr.kyc.requirement_row,
+                lch->lcr.bad_kyc_auth);
     /* return success! */
     lch->async_task
       = GNUNET_SCHEDULER_add_now (
@@ -1839,6 +1845,13 @@ legitimization_check_run (
       TALER_KYCLOGIC_rule2priority (requirement),
       &lch->lcr.kyc.requirement_row,
       &lch->lcr.bad_kyc_auth);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "trigger_kyc_rule_for_account on %d/%d returned %d/%llu/%d\n",
+                lch->have_account_pub,
+                lch->have_merchant_pub,
+                (int) qs,
+                (unsigned long long) lch->lcr.kyc.requirement_row,
+                lch->lcr.bad_kyc_auth);
     json_decref (jmeasures);
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)

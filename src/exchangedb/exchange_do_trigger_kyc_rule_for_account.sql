@@ -33,9 +33,11 @@ DECLARE
   my_rec RECORD;
   my_access_token BYTEA;
   my_account_pub BYTEA;
+  my_reserve_pub BYTEA;
 BEGIN
 -- Note: in_payto_uri is allowed to be NULL *if*
 -- in_h_payto is already in wire_targets
+
 
 SELECT
    access_token
@@ -68,6 +70,24 @@ ELSE
   out_bad_kyc_auth=TRUE;
 END IF;
 
+IF out_bad_kyc_auth
+THEN
+  -- Check most recent reserve_in wire transfer, we also
+  -- allow that reserve public key for authentication!
+  SELECT reserve_pub
+    INTO my_reserve_pub
+    FROM reserves_in
+   WHERE wire_source_h_payto=in_h_payto
+   ORDER BY execution_date DESC
+   LIMIT 1;
+  IF FOUND
+  THEN
+    IF in_merchant_pub = my_reserve_pub
+    THEN
+      out_bad_kyc_auth = FALSE;
+    END IF;
+  END IF;
+END IF;
 -- First check if a perfectly equivalent legi measure
 -- already exists, to avoid creating tons of duplicates.
 UPDATE legitimization_measures
