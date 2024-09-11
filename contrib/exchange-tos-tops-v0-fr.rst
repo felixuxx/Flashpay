@@ -43,9 +43,8 @@ d'argent souhaitée, on choisit dans le portefeuille Taler le service de paiemen
 cette quantité d'argent sur le compte courant du service de paiement et duquel le portefeuille Taler retire finalement
 les jetons électroniques correspondant à la quantité d'argent envoyée. TOPS peut introduire d'autres options de
 rechargement ou ne plus proposer les mécanismes existants. Les éventuels frais de transaction ou autres frais liés à la
-recharge sont à la charge des utilisateurs. Le crédit des utilisateurs dans les portefeuilles électroniques ne porte
-pas d'intérêts. Les utilisateurs prennent connaissance du fait que le crédit n'est pas couvert par la garantie des
-dépôts des clients.
+recharge sont à la charge des utilisateurs. L'avoir des utilisateurs dans les portefeuilles électroniques ne porte pas d'intérêts.
+Les utilisateurs prennent connaissance du fait que l'avoir n'est pas couvert par la garantie des dépôts des clients.
 
 Le débit du portefeuille Taler doit être effectué sur un compte bancaire suisse. Les paiements internationaux ne sont
 pas autorisés. Les utilisateurs peuvent payer avec le portefeuille Taler installé dans leur smartphone ou leur
@@ -57,7 +56,7 @@ responsables de tous les paiements effectués avec le portefeuille Taler depuis 
 paiements ont été effectués sans leur consentement. La personne qui a dépensé un jeton dans le portefeuille Taler a 
 utilisé le valeur d'argent correspondant pour effectuer un paiement.
 
-Le processus de traitement pour augmenter ou diminuer le crédit stocké dans le portefeuille Taler peut prendre jusqu'à
+Le processus de traitement pour augmenter ou diminuer l'avoir stocké dans le portefeuille Taler peut prendre jusqu'à
 plusieurs jours, selon le mécanisme utilisé.
 
 
@@ -117,8 +116,8 @@ La fonction d'exportation du portefeuille aide à créer et à enregistrer une s
 Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un autre appareil ou un autre support de données signifie une perte totale de l'avoir.
 
 3. Il faut veiller à ce que le terminal numérique sur lequel est installé un portefeuille Taler se connecte **dans un délai d'un an**
-après la dernière transaction **au service de paiement par Internet**, faute de quoi le crédit du portefeuille peut être perdu.
-Le renouvellement du crédit a lieu normalement un mois avant la fin de la validité des jetons les plus vieux, qui est d'environ un an après leur retrait.
+après la dernière transaction **au service de paiement par Internet**, faute de quoi l'avoir du portefeuille peut être perdu.
+Le renouvellement des jetons a lieu normalement un mois avant la fin de leur validité, qui est d'environ un an après leur retrait.
 
 4. La communication de TOPS avec les utilisateurs se fait en principe par le biais de notifications dans le protocole de GNU Taler.
 Il incombe aux utilisateurs de répondre aux notifications correspondantes. TOPS a le droit de ne pas effectuer de transactions jusqu'à ce que
@@ -177,7 +176,7 @@ TOPS se réserve le droit de modifier, de limiter ou d'interrompre complètement
 notamment en raison d'exigences légales, de problèmes techniques, pour prévenir les abus, sur ordre des autorités ou pour
 des raisons de sécurité.
 
-TOPS peut transférer les relations contractuelles (y compris un crédit) à une autre société ou entreprise à tout moment et sans information préalable.
+TOPS peut transférer les relations contractuelles (y compris un avoir) à une autre société ou entreprise à tout moment et sans information préalable.
 
 
 Confidentialité et protection des données
@@ -216,11 +215,11 @@ Une résiliation écrite par TOPS est envoyée à l'une des dernières adresses 
 Si aucune transaction n'est effectuée vers les bénéficiaires pendant plus de 12 mois,
 la relation commerciale est considérée comme terminée.
 
-Les utilisateurs des portefeuilles Taler peuvent à tout moment faire transférer le crédit qu'ils détiennent dans les
-portefeuilles Taler sur des comptes bancaires en Suisse et ainsi solder leur crédit.
+Les utilisateurs des portefeuilles Taler peuvent à tout moment faire transférer l'avoir qu'ils détiennent dans les
+portefeuilles Taler sur des comptes bancaires en Suisse et ainsi solder leur avoir.
 En cas de cessation d'activité du service de paiement de TOPS, les utilisateurs sont informés de l'arrêt imminent
-du service de paiement par le protocole de Taler et sont invités par les portefeuilles Taler à solder le crédit existant.
-Les utilisateurs qui omettent de procéder à cette compensation perdent, au bout de 3 mois, le droit au crédit existant
+du service de paiement par le protocole de Taler et sont invités par les portefeuilles Taler à solder l'avoir existant.
+Les utilisateurs qui omettent de procéder à cette compensation perdent, au bout de 3 mois, le droit à l'avoir existant
 encore après cette période, lequel devient la propriété de TOPS.
 
 
