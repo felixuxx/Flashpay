@@ -784,85 +784,122 @@ TALER_KYCLOGIC_status2s (enum TALER_KYCLOGIC_KycStatus status)
 json_t *
 TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
 {
-  json_t *limits;
-  json_t *limit;
-  json_t *rule;
-  size_t idx;
-
-  limits = json_array ();
-  GNUNET_assert (NULL != limits);
-  json_array_foreach ((json_t *) jrules, idx, rule)
+  if (NULL == jrules)
   {
-    struct GNUNET_TIME_Relative timeframe;
-    struct TALER_Amount threshold;
-    bool exposed = false;
-    const json_t *jmeasures;
-    enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
-    struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_kycte ("operation_type",
-                             &operation_type),
-      GNUNET_JSON_spec_relative_time ("timeframe",
-                                      &timeframe),
-      TALER_JSON_spec_amount_any ("threshold",
-                                  &threshold),
-      GNUNET_JSON_spec_array_const ("measures",
-                                    &jmeasures),
-      GNUNET_JSON_spec_mark_optional (
-        GNUNET_JSON_spec_bool ("exposed",
-                               &exposed),
-        NULL),
-      GNUNET_JSON_spec_end ()
-    };
-    bool forbidden = false;
-    size_t i;
-    json_t *jmeasure;
+    /* default limits apply */
+    const struct TALER_KYCLOGIC_KycRule *rules
+      = default_rules.kyc_rules;
+    unsigned int num_rules
+      = default_rules.num_kyc_rules;
+    json_t *jlimits;
 
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (jrules,
-                           spec,
-                           NULL, NULL))
+    jlimits = json_array ();
+    GNUNET_assert (NULL != jlimits);
+    for (unsigned int i = 0; i<num_rules; i++)
     {
-      GNUNET_break_op (0);
-      json_decref (limits);
-      return NULL;
+      const struct TALER_KYCLOGIC_KycRule *rule = &rules[i];
+      json_t *limit;
+
+      if (! rule->exposed)
+        continue;
+      limit = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_bool ("soft_limit",
+                               ! rule->verboten),
+        TALER_JSON_pack_kycte ("operation_type",
+                               rule->trigger),
+        GNUNET_JSON_pack_time_rel ("timeframe",
+                                   rule->timeframe),
+        TALER_JSON_pack_amount ("threshold",
+                                &rule->threshold)
+        );
+      GNUNET_assert (0 ==
+                     json_array_append_new (jlimits,
+                                            limit));
     }
-    if (! exposed)
-      continue;
-    json_array_foreach (jmeasures, i, jmeasure)
-    {
-      const char *val;
+    return jlimits;
+  }
 
-      val = json_string_value (jmeasure);
-      if (NULL == val)
+  {
+    json_t *limits;
+    json_t *limit;
+    json_t *rule;
+    size_t idx;
+
+    limits = json_array ();
+    GNUNET_assert (NULL != limits);
+    json_array_foreach ((json_t *) jrules, idx, rule)
+    {
+      struct GNUNET_TIME_Relative timeframe;
+      struct TALER_Amount threshold;
+      bool exposed = false;
+      const json_t *jmeasures;
+      enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_kycte ("operation_type",
+                               &operation_type),
+        GNUNET_JSON_spec_relative_time ("timeframe",
+                                        &timeframe),
+        TALER_JSON_spec_amount_any ("threshold",
+                                    &threshold),
+        GNUNET_JSON_spec_array_const ("measures",
+                                      &jmeasures),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("exposed",
+                                 &exposed),
+          NULL),
+        GNUNET_JSON_spec_end ()
+      };
+      bool forbidden = false;
+      size_t i;
+      json_t *jmeasure;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (jrules,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         json_decref (limits);
         return NULL;
       }
-      if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
-                           val))
-        forbidden = true;
-    }
+      if (! exposed)
+        continue;
+      json_array_foreach (jmeasures, i, jmeasure)
+      {
+        const char *val;
 
-    limit = GNUNET_JSON_PACK (
-      TALER_JSON_pack_kycte (
-        "operation_type",
-        operation_type),
-      GNUNET_JSON_pack_time_rel (
-        "timeframe",
-        timeframe),
-      TALER_JSON_pack_amount (
-        "threshold",
-        &threshold),
-      /* optional since v21, defaults to 'false' */
-      GNUNET_JSON_pack_bool (
-        "soft_limit",
-        ! forbidden));
-    GNUNET_assert (0 ==
-                   json_array_append_new (limits,
-                                          limit));
+        val = json_string_value (jmeasure);
+        if (NULL == val)
+        {
+          GNUNET_break_op (0);
+          json_decref (limits);
+          return NULL;
+        }
+        if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
+                             val))
+          forbidden = true;
+      }
+
+      limit = GNUNET_JSON_PACK (
+        TALER_JSON_pack_kycte (
+          "operation_type",
+          operation_type),
+        GNUNET_JSON_pack_time_rel (
+          "timeframe",
+          timeframe),
+        TALER_JSON_pack_amount (
+          "threshold",
+          &threshold),
+        /* optional since v21, defaults to 'false' */
+        GNUNET_JSON_pack_bool (
+          "soft_limit",
+          ! forbidden));
+      GNUNET_assert (0 ==
+                     json_array_append_new (limits,
+                                            limit));
+    }
+    return limits;
   }
-  return limits;
 }
 
 
