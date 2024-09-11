@@ -101,9 +101,6 @@ THEN
     ,in_payto_uri)
     RETURNING access_token
       INTO my_access_token;
-
-  out_account_unknown=TRUE;
-  RETURN;
 END IF;
 
 -- AML decision: mark all active measures finished!
