@@ -330,7 +330,7 @@ handle_track_transaction_request (
       case TALER_DGLPT_NONE:
         break;
       case TALER_DGLPT_KYC_REQUIRED_OR_OK:
-        do_suspend = ! ctx->kyc.ok;
+        do_suspend = ctx->kyc.ok;
         break;
       case TALER_DGLPT_OK:
         do_suspend = true;
