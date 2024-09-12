@@ -91,20 +91,27 @@ TALER_FAKEBANK_make_admin_transfer_ (
     *timestamp = t->date;
   t->type = T_CREDIT;
   t->subject.credit.reserve_pub = *reserve_pub;
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->rpubs_lock));
+  if (GNUNET_OK !=
+      GNUNET_CONTAINER_multipeermap_put (
+        h->rpubs,
+        pid,
+        t,
+        GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+  {
+    /* duplicate reserve public key not allowed */
+    GNUNET_break_op (0);
+    GNUNET_free (t);
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->rpubs_lock));
+  }
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->rpubs_lock));
   TALER_FAKEBANK_transact_ (h,
                             t);
   if (NULL != row_id)
     *row_id = t->row_id;
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&h->rpubs_lock));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multipeermap_put (
-                   h->rpubs,
-                   pid,
-                   t,
-                   GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&h->rpubs_lock));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Making transfer from %s to %s over %s and subject %s at row %llu\n",
               debit_account,
@@ -152,19 +159,6 @@ TALER_FAKEBANK_make_kycauth_transfer_ (
   credit_acc = TALER_FAKEBANK_lookup_account_ (h,
                                                credit_account,
                                                credit_account);
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&h->rpubs_lock));
-  t = GNUNET_CONTAINER_multipeermap_get (h->rpubs,
-                                         pid);
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&h->rpubs_lock));
-  if (NULL != t)
-  {
-    /* duplicate reserve public key not allowed */
-    GNUNET_break_op (0);
-    return GNUNET_NO;
-  }
-
   t = GNUNET_new (struct Transaction);
   t->unchecked = true;
   t->debit_account = debit_acc;
@@ -179,16 +173,6 @@ TALER_FAKEBANK_make_kycauth_transfer_ (
                             t);
   if (NULL != row_id)
     *row_id = t->row_id;
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&h->rpubs_lock));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multipeermap_put (
-                   h->rpubs,
-                   pid,
-                   t,
-                   GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&h->rpubs_lock));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Making transfer from %s to %s over %s and subject %s at row %llu\n",
               debit_account,
