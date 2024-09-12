@@ -118,6 +118,18 @@ extern struct TALER_Amount TEH_stefan_abs;
 extern struct TALER_Amount TEH_stefan_log;
 
 /**
+ * Smallest amount that can be transferred. Used for the
+ * KYC auth transfers by default.
+ */
+extern struct TALER_Amount TEH_tiny_amount;
+
+/**
+ * URL where users can discover shops accepting digital cash
+ * issued by this exchange. Can be NULL.
+ */
+extern char *TEH_shopping_url;
+
+/**
  * Linear STEFAN parameter.
  */
 extern float TEH_stefan_lin;

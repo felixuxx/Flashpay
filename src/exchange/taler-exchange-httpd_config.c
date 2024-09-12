@@ -63,6 +63,9 @@ TEH_handler_config (struct TEH_RequestContext *rc,
         GNUNET_JSON_pack_array_steal (
           "wallet_balance_limit_without_kyc",
           TALER_KYCLOGIC_get_wallet_thresholds ())),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("shopping_url",
+                                 TEH_shopping_url)),
       /* Deprecate? */
       GNUNET_JSON_pack_array_steal (
         "supported_kyc_requirements",

@@ -96,7 +96,7 @@
  * Above what request latency do we start to log?
  */
 #define WARN_LATENCY GNUNET_TIME_relative_multiply ( \
-          GNUNET_TIME_UNIT_MILLISECONDS, 500)
+    GNUNET_TIME_UNIT_MILLISECONDS, 500)
 
 /**
  * Are clients allowed to request /keys for times other than the
@@ -166,6 +166,12 @@ struct TALER_Amount TEH_stefan_abs;
 struct TALER_Amount TEH_stefan_log;
 
 /**
+ * Smallest amount that can be transferred. Used for the
+ * KYC auth transfers by default.
+ */
+struct TALER_Amount TEH_tiny_amount;
+
+/**
  * Linear STEFAN parameter.
  */
 float TEH_stefan_lin;
@@ -179,6 +185,12 @@ json_t *TEH_hard_limits;
  * JSON array with zero limits for /keys response.
  */
 json_t *TEH_zero_limits;
+
+/**
+ * URL where users can discover shops accepting digital cash
+ * issued by this exchange. Can be NULL.
+ */
+char *TEH_shopping_url;
 
 /**
  * Where to redirect users from "/"?
@@ -2245,6 +2257,24 @@ exchange_serve_process_config (const char *cfg_fn)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &TEH_tiny_amount));
+  if ( (GNUNET_OK !=
+        TALER_config_get_amount (TEH_cfg,
+                                 "exchange",
+                                 "TINY_AMOUNT",
+                                 &TEH_tiny_amount)) &&
+       (GNUNET_OK !=
+        TALER_config_get_amount (TEH_cfg,
+                                 "auditor",
+                                 "TINY_AMOUNT",
+                                 &TEH_tiny_amount)) )
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchange",
+                               "TINY_AMOUNT");
+  }
   TEH_stefan_lin = 0.0f;
   if (GNUNET_SYSERR ==
       GNUNET_CONFIGURATION_get_value_float (TEH_cfg,
@@ -2267,11 +2297,32 @@ exchange_serve_process_config (const char *cfg_fn)
                                "BASE_URL");
     return GNUNET_SYSERR;
   }
-  if (! TALER_url_valid_charset (TEH_base_url))
+  if ( (! TALER_url_valid_charset (TEH_base_url)) ||
+       (! TALER_is_web_url (TEH_base_url) ) )
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL",
+                               "invalid URL");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "SHOPPING_URL",
+                                             &TEH_shopping_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "SHOPPING_URL");
+    return GNUNET_SYSERR;
+  }
+  if ( (NULL != TEH_shopping_url) &&
+       (! TALER_is_web_url (TEH_shopping_url)) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "SHOPPING_URL",
                                "invalid URL");
     return GNUNET_SYSERR;
   }

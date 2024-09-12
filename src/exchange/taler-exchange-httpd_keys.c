@@ -2458,6 +2458,15 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       GNUNET_JSON_pack_array_steal (
         "wallet_balance_limit_without_kyc",
         TALER_KYCLOGIC_get_wallet_thresholds ())),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("shopping_url",
+                               TEH_shopping_url)),
+    GNUNET_JSON_pack_allow_null (
+      TALER_amount_is_zero (&TEH_tiny_amount)
+      ? GNUNET_JSON_pack_string ("dummy",
+                                 NULL)
+      : TALER_JSON_pack_amount ("tiny_amount",
+                                &TEH_tiny_amount)),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &exchange_pub),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
