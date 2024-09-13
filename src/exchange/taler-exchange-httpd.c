@@ -2306,16 +2306,15 @@ exchange_serve_process_config (const char *cfg_fn)
                                "invalid URL");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_SYSERR !=
+  if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
                                              "exchange",
                                              "SHOPPING_URL",
                                              &TEH_shopping_url))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                "exchange",
                                "SHOPPING_URL");
-    return GNUNET_SYSERR;
   }
   if ( (NULL != TEH_shopping_url) &&
        (! TALER_is_web_url (TEH_shopping_url)) )
