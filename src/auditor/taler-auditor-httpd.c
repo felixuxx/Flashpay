@@ -343,8 +343,8 @@ extract_token (const char **auth)
 }
 
 
-enum GNUNET_GenericReturnValue
-TMH_check_auth (const char *token)
+static enum GNUNET_GenericReturnValue
+check_auth (const char *token)
 {
   struct GNUNET_HashCode val;
 
@@ -888,7 +888,7 @@ handle_mhd_request (void *cls,
         "' prefix or 'Bearer' missing in 'Authorization' header");
 
     if (GNUNET_OK !=
-        TMH_check_auth (auth))
+        check_auth (auth))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
@@ -918,7 +918,7 @@ not_found:
   }
 
 #define NOT_FOUND \
-        "<html><title>404: not found</title><body>auditor endpoints have been moved to /monitoring/...</body></html>"
+  "<html><title>404: not found</title><body>auditor endpoints have been moved to /monitoring/...</body></html>"
   return TALER_MHD_reply_static (connection,
                                  MHD_HTTP_NOT_FOUND,
                                  "text/html",

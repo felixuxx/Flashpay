@@ -70,6 +70,10 @@ TAH_spa_init ()
  * Nicely shut down.
  */
 void __attribute__ ((destructor))
+get_spa_fini (void);
+
+/* declaration to suppress compiler warning */
+void __attribute__ ((destructor))
 get_spa_fini ()
 {
   if (NULL != spa)

@@ -68,11 +68,12 @@ refreshes_hanging_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_RefreshesHanging dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
-                                    &serial_id),
+                                    &dc.row_id),
+      GNUNET_PQ_result_spec_uint64 ("problem_row_id",
+                                    &dc.problem_row_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &dc.amount),
       GNUNET_PQ_result_spec_end
@@ -90,7 +91,6 @@ refreshes_hanging_cb (void *cls,
     }
     dcc->qs = i + 1;
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -127,6 +127,7 @@ TAH_PG_get_refreshes_hanging (
            "auditor_refreshes_hanging_get_desc",
            "SELECT"
            " row_id"
+           ",problem_row_id"
            ",amount"
            " FROM auditor_refreshes_hanging"
            " WHERE (row_id < $1)"
@@ -138,6 +139,7 @@ TAH_PG_get_refreshes_hanging (
            "auditor_refreshes_hanging_get_asc",
            "SELECT"
            " row_id"
+           ",problem_row_id"
            ",amount"
            " FROM auditor_refreshes_hanging"
            " WHERE (row_id > $1)"

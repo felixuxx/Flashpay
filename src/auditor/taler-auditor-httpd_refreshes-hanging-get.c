@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -26,18 +24,17 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_refreshes-hanging-get.h"
 
+
 /**
  * Add refreshes-hanging to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
  * @param dc struct of inconsistencies
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 process_refreshes_hanging (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_RefreshesHanging *dc)
 {
   json_t *list = cls;
@@ -46,6 +43,8 @@ process_refreshes_hanging (
   obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("amount",
                             &dc->amount),
+    GNUNET_JSON_pack_uint64 ("serial_id",
+                             dc->row_id),
     GNUNET_JSON_pack_uint64 ("problem_row",
                              dc->problem_row_id)
     );
