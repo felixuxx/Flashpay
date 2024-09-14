@@ -29,7 +29,7 @@ TAH_PG_insert_wire_format_inconsistency (
     TALER_PQ_query_param_amount (pg->conn,
                                  &dc->amount),
     GNUNET_PQ_query_param_uint64 (&dc->wire_offset),
-    GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
+    GNUNET_PQ_query_param_string (dc->diagnostic),
     GNUNET_PQ_query_param_end
   };
 

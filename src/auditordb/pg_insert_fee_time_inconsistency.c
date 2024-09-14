@@ -36,9 +36,9 @@ TAH_PG_insert_fee_time_inconsistency (
   PREPARE (pg,
            "auditor_fee_time_inconsistency_insert",
            "INSERT INTO auditor_fee_time_inconsistency "
-           "(type"
+           "(fee_type"
            ",problem_row_id"
-           ",time"
+           ",fee_time"
            ",diagnostic"
            ") VALUES ($1,$2,$3,$4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,

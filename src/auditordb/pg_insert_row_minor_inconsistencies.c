@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_row_minor_inconsistencies.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_row_minor_inconsistencies (
@@ -30,7 +28,7 @@ TAH_PG_insert_row_minor_inconsistencies (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&dc->row_table),
     GNUNET_PQ_query_param_uint64 (&dc->problem_row),
-    GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
+    GNUNET_PQ_query_param_string (dc->diagnostic),
     GNUNET_PQ_query_param_end
   };
 

@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_reserve_in_inconsistency.h"
 
 
@@ -69,23 +66,26 @@ reserve_in_inconsistency_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_ReserveInInconsistency dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &serial_id),
+      GNUNET_PQ_result_spec_uint64 ("bank_row_id",
+                                    &dc.bank_row_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_exchange_expected",
                                    &dc.amount_exchange_expected),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_wired",  &dc.amount_wired),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",  &dc.reserve_pub),
-      GNUNET_PQ_result_spec_absolute_time ("timestamp",  &dc.timestamp),
-      GNUNET_PQ_result_spec_auto_from_type ("account",  &dc.account),
-      GNUNET_PQ_result_spec_auto_from_type ("diagnostic",  &dc.diagnostic),
-      GNUNET_PQ_result_spec_bool ("suppressed",  &dc.suppressed),
-
-
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_wired",
+                                   &dc.amount_wired),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &dc.reserve_pub),
+      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+                                           &dc.timestamp),
+      GNUNET_PQ_result_spec_string ("account",
+                                    &dc.account),
+      GNUNET_PQ_result_spec_string ("diagnostic",
+                                    &dc.diagnostic),
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -117,14 +117,12 @@ TAH_PG_get_reserve_in_inconsistency (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,             // maybe not needed
+  bool return_suppressed,
   TALER_AUDITORDB_ReserveInInconsistencyCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
@@ -142,13 +140,14 @@ TAH_PG_get_reserve_in_inconsistency (
            "auditor_reserve_in_inconsistency_get_desc",
            "SELECT"
            " row_id,"
-           " amount_exchange_expected,"
-           " amount_wired,"
-           " reserve_pub,"
-           " timestamp,"
-           " account,"
-           " diagnostic,"
-           " suppressed"
+           ",bank_row_id"
+           ",amount_exchange_expected"
+           ",amount_wired"
+           ",reserve_pub"
+           ",timestamp"
+           ",account"
+           ",diagnostic"
+           ",suppressed"
            " FROM auditor_reserve_in_inconsistency"
            " WHERE (row_id < $1)"
            " AND ($2 OR suppressed is false)"
@@ -158,30 +157,29 @@ TAH_PG_get_reserve_in_inconsistency (
   PREPARE (pg,
            "auditor_reserve_in_inconsistency_get_asc",
            "SELECT"
-           " row_id,"
-           " amount_exchange_expected,"
-           " amount_wired,"
-           " reserve_pub,"
-           " timestamp,"
-           " account,"
-           " diagnostic,"
-           " suppressed"
+           " row_id"
+           ",bank_row_id"
+           ",amount_exchange_expected"
+           ",amount_wired"
+           ",reserve_pub"
+           ",timestamp"
+           ",account"
+           ",diagnostic"
+           ",suppressed"
            " FROM auditor_reserve_in_inconsistency"
            " WHERE (row_id > $1)"
            " AND ($2 OR suppressed is false)"
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ?
-                                             "auditor_reserve_in_inconsistency_get_asc"
-                                             :
-                                             "auditor_reserve_in_inconsistency_get_desc",
-                                             params,
-                                             &reserve_in_inconsistency_cb,
-                                             &dcc);
-
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_reserve_in_inconsistency_get_asc"
+    : "auditor_reserve_in_inconsistency_get_desc",
+    params,
+    &reserve_in_inconsistency_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

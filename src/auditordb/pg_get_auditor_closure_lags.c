@@ -71,6 +71,8 @@ closure_lags_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
                                     &serial_id),
+      GNUNET_PQ_result_spec_uint64 ("problem_row_id",
+                                    &dc.problem_row_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &dc.amount),
       GNUNET_PQ_result_spec_absolute_time ("deadline",
@@ -131,6 +133,7 @@ TAH_PG_get_auditor_closure_lags (
            "auditor_closure_lags_get_desc",
            "SELECT"
            " row_id"
+           ",problem_row_id"
            ",amount"
            ",deadline"
            ",wtid"
@@ -145,6 +148,7 @@ TAH_PG_get_auditor_closure_lags (
            "auditor_closure_lags_get_asc",
            "SELECT"
            " row_id"
+           ",problem_row_id"
            ",amount"
            ",deadline"
            ",wtid"

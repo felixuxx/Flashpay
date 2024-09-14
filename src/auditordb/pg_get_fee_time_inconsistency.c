@@ -13,15 +13,13 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_fee_time_inconsistency.h"
+
 
 /**
  * Closure for #feetimeinconsistency_cb().
@@ -66,22 +64,21 @@ fee_time_inconsistency_cb (void *cls,
                            unsigned int num_results)
 {
   struct FeeTimeInconsistencyContext *dcc = cls;
-  // struct PostgresClosure *pg = dcc->pg;
-
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
-
     struct TALER_AUDITORDB_FeeTimeInconsistency dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-
-      GNUNET_PQ_result_spec_string ("type",  &dc.type),
-      GNUNET_PQ_result_spec_absolute_time ("time", &dc.time),
-      GNUNET_PQ_result_spec_string ("diagnostic", &dc.diagnostic),
-
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &serial_id),
+      GNUNET_PQ_result_spec_uint64 ("problem_row_id",
+                                    &dc.problem_row_id),
+      GNUNET_PQ_result_spec_string ("fee_type",
+                                    &dc.type),
+      GNUNET_PQ_result_spec_absolute_time ("fee_time",
+                                           &dc.time),
+      GNUNET_PQ_result_spec_string ("diagnostic",
+                                    &dc.diagnostic),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -95,9 +92,7 @@ fee_time_inconsistency_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
                     serial_id,
                     &dc);
@@ -113,14 +108,12 @@ TAH_PG_get_fee_time_inconsistency (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,            // maybe not needed
+  bool return_suppressed,
   TALER_AUDITORDB_FeeTimeInconsistencyCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
@@ -138,8 +131,9 @@ TAH_PG_get_fee_time_inconsistency (
            "auditor_fee_time_inconsistency_get_desc",
            "SELECT"
            " row_id"
-           ",type"
-           ",time"
+           ",problem_row_id"
+           ",fee_type"
+           ",fee_time"
            ",diagnostic"
            " FROM auditor_fee_time_inconsistency"
            " WHERE (row_id < $1)"
@@ -151,8 +145,9 @@ TAH_PG_get_fee_time_inconsistency (
            "auditor_fee_time_inconsistency_get_asc",
            "SELECT"
            " row_id"
-           ",type"
-           ",time"
+           ",problem_row_id"
+           ",fee_type"
+           ",fee_time"
            ",diagnostic"
            " FROM auditor_fee_time_inconsistency"
            " WHERE (row_id > $1)"
@@ -160,15 +155,14 @@ TAH_PG_get_fee_time_inconsistency (
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0) ?
-                                             "auditor_fee_time_inconsistency_get_asc"
-  :
-                                             "auditor_fee_time_inconsistency_get_desc",
-                                             params,
-                                             &fee_time_inconsistency_cb,
-                                             &dcc);
-
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_fee_time_inconsistency_get_asc"
+    : "auditor_fee_time_inconsistency_get_desc",
+    params,
+    &fee_time_inconsistency_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS auditor_closure_lags
     amount taler_amount NOT NULL,
     deadline BIGINT NOT NULL,
     wtid BYTEA NOT NULL CHECK (LENGTH(wtid)=32),
-    account BYTEA NOT NULL,
+    account TEXT NOT NULL,
     suppressed BOOLEAN NOT NULL DEFAULT FALSE
 );
 COMMENT ON TABLE auditor_closure_lags

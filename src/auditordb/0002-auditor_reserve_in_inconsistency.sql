@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS auditor_reserve_in_inconsistency
     amount_wired taler_amount NOT NULL,
     reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32),
     timestamp BIGINT NOT NULL,
-    account BYTEA NOT NULL,
-    diagnostic BYTEA NOT NULL,
+    account TEXT NOT NULL,
+    diagnostic TEXT NOT NULL,
     suppressed BOOLEAN NOT NULL DEFAULT FALSE
 );
 COMMENT ON TABLE auditor_reserve_in_inconsistency

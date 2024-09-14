@@ -61,7 +61,6 @@ row_minor_inconsistencies_cb (void *cls,
                               unsigned int num_results)
 {
   struct RowMinorInconsistenciesContext *dcc = cls;
-  // struct PostgresClosure *pg = dcc->pg;
 
   for (unsigned int i = 0; i < num_results; i++)
   {
@@ -73,8 +72,8 @@ row_minor_inconsistencies_cb (void *cls,
                                             &dc.row_table),
       GNUNET_PQ_result_spec_uint64 ("problem_row",
                                     &dc.problem_row),
-      GNUNET_PQ_result_spec_auto_from_type ("diagnostic",
-                                            &dc.diagnostic),
+      GNUNET_PQ_result_spec_string ("diagnostic",
+                                    &dc.diagnostic),
       GNUNET_PQ_result_spec_bool ("suppressed",
                                   &dc.suppressed),
       GNUNET_PQ_result_spec_end

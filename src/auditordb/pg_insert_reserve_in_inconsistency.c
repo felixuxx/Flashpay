@@ -13,13 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_insert_reserve_in_inconsistency.h"
+
 
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_reserve_in_inconsistency (
@@ -35,8 +33,8 @@ TAH_PG_insert_reserve_in_inconsistency (
                                  &dc->amount_wired),
     GNUNET_PQ_query_param_auto_from_type (&dc->reserve_pub),
     GNUNET_PQ_query_param_absolute_time (&dc->timestamp),
-    GNUNET_PQ_query_param_auto_from_type (&dc->account),
-    GNUNET_PQ_query_param_auto_from_type (&dc->diagnostic),
+    GNUNET_PQ_query_param_string (dc->account),
+    GNUNET_PQ_query_param_string (dc->diagnostic),
     GNUNET_PQ_query_param_end
   };
 

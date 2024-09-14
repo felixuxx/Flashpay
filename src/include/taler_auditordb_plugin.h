@@ -893,7 +893,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_ReserveNotClosedInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_ReserveNotClosedInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue
@@ -949,7 +948,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_WireFormatInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_WireFormatInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue

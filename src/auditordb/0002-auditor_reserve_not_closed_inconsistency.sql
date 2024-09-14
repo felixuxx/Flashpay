@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS auditor_reserve_not_closed_inconsistency
     reserve_pub BYTEA PRIMARY KEY NOT NULL CHECK (LENGTH(reserve_pub)=32),
     balance taler_amount NOT NULL,
     expiration_time BIGINT,
-    diagnostic BYTEA,
+    diagnostic TEXT,
     suppressed BOOLEAN NOT NULL DEFAULT FALSE
 );
 COMMENT ON TABLE auditor_reserve_not_closed_inconsistency
