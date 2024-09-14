@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_emergency.h"
 
 /**
@@ -70,18 +67,24 @@ emergency_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
-
     struct TALER_AUDITORDB_Emergency dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-      GNUNET_PQ_result_spec_auto_from_type ("denompub_h",  &dc.denompub_h),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk",  &dc.denom_risk),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss",  &dc.denom_loss),
-      GNUNET_PQ_result_spec_absolute_time ("deposit_start", &dc.deposit_start),
-      GNUNET_PQ_result_spec_absolute_time ("deposit_end", &dc.deposit_end),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("value",  &dc.value),
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &dc.row_id),
+      GNUNET_PQ_result_spec_auto_from_type ("denompub_h",
+                                            &dc.denompub_h),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk",
+                                   &dc.denom_risk),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss",
+                                   &dc.denom_loss),
+      GNUNET_PQ_result_spec_absolute_time ("deposit_start",
+                                           &dc.deposit_start),
+      GNUNET_PQ_result_spec_absolute_time ("deposit_end",
+                                           &dc.deposit_end),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("value",
+                                   &dc.value),
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -95,11 +98,8 @@ emergency_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -113,16 +113,15 @@ TAH_PG_get_emergency (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,            // maybe not needed
+  bool return_suppressed,
   TALER_AUDITORDB_EmergencyCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
+    GNUNET_PQ_query_param_bool (return_suppressed),
     GNUNET_PQ_query_param_uint64 (&plimit),
     GNUNET_PQ_query_param_end
   };
@@ -143,10 +142,12 @@ TAH_PG_get_emergency (
            ",deposit_start"
            ",deposit_end"
            ",value"
+           ",suppressed"
            " FROM auditor_emergency"
            " WHERE (row_id < $1)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id DESC"
-           " LIMIT $2"
+           " LIMIT $3"
            );
   PREPARE (pg,
            "auditor_emergency_get_asc",
@@ -158,18 +159,21 @@ TAH_PG_get_emergency (
            ",deposit_start"
            ",deposit_end"
            ",value"
+           ",suppressed"
            " FROM auditor_emergency"
            " WHERE (row_id > $1)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id ASC"
-           " LIMIT $2"
+           " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0) ?
-                                             "auditor_emergency_get_asc" :
-                                             "auditor_emergency_get_desc",
-                                             params,
-                                             &emergency_cb,
-                                             &dcc);
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_emergency_get_asc"
+    : "auditor_emergency_get_desc",
+    params,
+    &emergency_cb,
+    &dcc);
 
   if (qs > 0)
     return dcc.qs;

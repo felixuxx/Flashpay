@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -26,38 +24,37 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_fee-time-inconsistency-get.h"
 
+
 /**
-* Add fee-time-inconsistency to the list.
-*
-* @param[in,out] cls a `json_t *` array to extend
-* @param serial_id location of the @a dc in the database
-* @param dc struct of inconsistencies
-* @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
-*/
+ * Add fee-time-inconsistency to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param dc struct of inconsistencies
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
 static enum GNUNET_GenericReturnValue
 process_fee_time_inconsistency (
   void *cls,
-  uint64_t serial_id,
-  const struct
-  TALER_AUDITORDB_FeeTimeInconsistency
-  *dc)
+  const struct TALER_AUDITORDB_FeeTimeInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
-    GNUNET_JSON_pack_string ("type", dc->type),
-    TALER_JSON_pack_time_abs_human ("time", dc->time),
-    GNUNET_JSON_pack_string ("diagnostic", dc->diagnostic)
-
-
+    GNUNET_JSON_pack_uint64 ("row_id",
+                             dc->row_id),
+    GNUNET_JSON_pack_uint64 ("problem_row_id",
+                             dc->problem_row_id),
+    GNUNET_JSON_pack_string ("type",
+                             dc->type),
+    TALER_JSON_pack_time_abs_human ("time",
+                                    dc->time),
+    GNUNET_JSON_pack_string ("diagnostic",
+                             dc->diagnostic)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -73,6 +70,9 @@ TAH_FEE_TIME_INCONSISTENCY_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
+  bool return_suppressed = false;
 
   (void) rh;
   (void) connection_cls;
@@ -87,34 +87,29 @@ TAH_FEE_TIME_INCONSISTENCY_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-  const char *ret_s = MHD_lookup_connection_value (connection,
-                                                   MHD_GET_ARGUMENT_KIND,
-                                                   "return_suppressed");
-  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
   {
-    return_suppressed = true;
+    const char *ret_s
+      = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "return_suppressed");
+    if (ret_s != NULL && strcmp (ret_s, "true") == 0)
+    {
+      return_suppressed = true;
+    }
   }
 
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_fee_time_inconsistency (
     TAH_plugin->cls,
     limit,
@@ -122,7 +117,6 @@ TAH_FEE_TIME_INCONSISTENCY_handler_get (
     return_suppressed,
     &process_fee_time_inconsistency,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
@@ -137,6 +131,6 @@ TAH_FEE_TIME_INCONSISTENCY_handler_get (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("fee-time-inconsistency",
+    GNUNET_JSON_pack_array_steal ("fee_time_inconsistency",
                                   ja));
 }

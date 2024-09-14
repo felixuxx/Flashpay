@@ -1502,29 +1502,23 @@ function test_18() {
     run_audit
     check_auditor_running
 
+    echo -n "Testing bad reserve balance summary reporting ... "
+    # note: we check "suppressed" to only check the *existence* here.
+    check_report \
+        "reserve-balance-summary-wrong-inconsistency" \
+        "suppressed" "false"
     echo -n "Testing emergency detection... "
-    call_endpoint "reserve-balance-summary-wrong-inconsistency"
-    jq -e .reserve_balance_summary_wrong_inconsistency[0] \
-       < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json" \
-       > /dev/null \
-        || exit_fail "Reserve balance inconsistency not detected"
-    call_endpoint "emergency"
-    jq -e .emergency[0] \
-       < "${MY_TMP_DIR}/emergency.json" \
-       > /dev/null \
-        || exit_fail "Emergency not detected"
-    call_endpoint "emergency-by-count"
-    jq -e .emergency_by_count[0] \
-       < "${MY_TMP_DIR}/emergency-by-count.json" \
-       > /dev/null \
-        || exit_fail "Emergency by count not detected"
-    call_endpoint "amount-arithmetic-inconsistency"
-    jq -e .amount_arithmetic_inconsistency[0] \
-       < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json" \
-       > /dev/null \
-        || exit_fail "Escrow balance calculation impossibility not detected"
-    echo "PASS"
-
+    check_report \
+        "emergency" \
+        "suppressed" "false"
+    echo -n "Testing emergency detection by count... "
+    check_report \
+        "emergency-by-count"
+        "suppressed" "false"
+    echo -n "Testing escrow balance calculation impossibility... "
+    check_report \
+        "amount-arithmetic-inconsistency" \
+        "suppressed" "false"
     echo -n "Testing loss calculation by count... "
     check_not_balance \
         "coins_emergencies_loss_by_count" \

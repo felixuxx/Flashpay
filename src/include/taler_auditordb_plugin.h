@@ -286,6 +286,7 @@ struct TALER_AUDITORDB_Emergency
   struct GNUNET_TIME_Absolute deposit_start;
   struct GNUNET_TIME_Absolute deposit_end;
   struct TALER_Amount value;
+  bool suppressed;
 };
 
 /**
@@ -301,6 +302,7 @@ struct TALER_AUDITORDB_EmergenciesByCount
   struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Absolute deposit_end;
   struct TALER_Amount value;
+  bool suppressed;
 };
 
 /**
@@ -366,6 +368,7 @@ struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency
   struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
   bool inconsistency_gain;
   struct TALER_Amount inconsistency_amount;
+  bool suppressed;
 };
 
 /**
@@ -483,7 +486,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_EmergencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_Emergency *dc);
 
 /**
@@ -498,7 +500,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_EmergenciesByCountCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_EmergenciesByCount *dc);
 
 
@@ -527,7 +528,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_FeeTimeInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_FeeTimeInconsistency *dc);
 
 /**
@@ -566,14 +566,12 @@ typedef enum GNUNET_GenericReturnValue
  * the auditor's database.
  *
  * @param cls closure
- * @param serial_id location of the @a dc in the database
  * @param dc the structure itself
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_ReserveBalanceInsufficientInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue
@@ -943,12 +941,6 @@ typedef enum GNUNET_GenericReturnValue
   void *cls,
   const struct TALER_AUDITORDB_RowMinorInconsistencies *dc);
 
-
-typedef enum GNUNET_GenericReturnValue
-(*TALER_AUDITORDB_FeeTimeInconsistencyCallback)(
-  void *cls,
-  uint64_t serial_id,
-  const struct TALER_AUDITORDB_FeeTimeInconsistency *dc);
 
 /**
  * @brief The plugin API, returned from the plugin's "init" function.
