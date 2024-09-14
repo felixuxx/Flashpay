@@ -336,7 +336,7 @@ function run_audit () {
             sleep 0.1
             OK=0
             # exchange
-            wget "http://localhost:8081/seed" \
+            wget "http://localhost:8081/version" \
                  -o /dev/null \
                  -O /dev/null \
                  >/dev/null \
@@ -406,7 +406,7 @@ function run_auditor_httpd() {
               taler-auditor-httpd \
                   -c "${CONF}" \
                   -L INFO \
-                  2> "${MY_TMP_DIR}/auditor-httpd-drain.err" &
+                  2> "${MY_TMP_DIR}/auditor-httpd.err" &
               APID=$!
 
               # Wait for all services to be available
@@ -415,8 +415,8 @@ function run_auditor_httpd() {
                   echo -n "."
                   sleep 0.1
                   OK=0
-                  # exchange
-                  wget "http://localhost:8083/seed" \
+                  # auditor
+                  wget "http://localhost:8083/version" \
                        -o /dev/null \
                        -O /dev/null \
                        >/dev/null \
@@ -478,6 +478,37 @@ function check_not_balance() {
     if [ "$BAL" = "$2" ]
     then
         exit_fail "$3 (got $BAL, wanted NOT $2)"
+    fi
+    echo "PASS"
+}
+
+
+function check_report() {
+    call_endpoint "$1"
+    VAL=$(jq -r .\"${1}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
+    if [ "$VAL" != "$3" ]
+    then
+        exit_fail "$1::$2 (got $VAL, wanted $3)"
+    fi
+    echo "PASS"
+}
+
+function check_row() {
+    call_endpoint "$1"
+    NAME="$1"
+    if [ -n "${3+x}" ]
+    then
+        RID="$2"
+        WANT="$3"
+    else
+        RID="row_id"
+        WANT="$2"
+    fi
+
+    ROW=$(jq -r .\"${NAME}\"[0].\"${RID}\" < "${MY_TMP_DIR}/${1}.json")
+    if [ "$ROW" != "$WANT" ]
+    then
+        exit_fail "Row ${1} wrong (got ${ROW}, wanted ${WANT})"
     fi
     echo "PASS"
 }
@@ -673,42 +704,39 @@ function test_1() {
 function test_2() {
 
     echo "===========2: reserves_in inconsistency ==========="
+    echo -n "Modifying database: "
     echo "UPDATE exchange.reserves_in SET credit.val=5 WHERE reserve_in_serial_id=1" \
         | psql -At "$DB"
 
     run_audit
     check_auditor_running
 
-    #echo -n "Testing inconsistency detection... "
-    #ROW=$(jq .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json")
-    #if [ "$ROW" != 1 ]
-    #then
-    #    exit_fail "Row $ROW is wrong"
-    #fi
-    #WIRED=$(jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Amount wrong"
-    #fi
-    #EXPECTED=$(jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json")
-    #if [ "$EXPECTED" != "TESTKUDOS:5" ]
-    #then
-    #    exit_fail "Expected amount wrong"
-    #fi
-#
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-    #fi
-    #DELTA=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
-    #if [ "$DELTA" != "TESTKUDOS:5" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $DELTA"
-    #fi
-    #echo "PASS"
+    echo -n "Testing inconsistency detection ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "row_id" 1
+    echo -n "Testing inconsistency detection amount wired ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_wired" "TESTKUDOS:10"
+    echo -n "Testing inconsistency detection amount expected ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_exchange_expected" "TESTKUDOS:5"
 
-    # Undo database modification
+    call_endpoint "balances"
+    echo -n "Checking wire credit balance minus ... "
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:0" \
+        "Wrong total_bad_amount_in_minus"
+    echo -n "Checking wire credit balance plus ... "
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:5" \
+        "Expected total_bad_amount_in_plus wrong"
+
+    echo -n "Undoing database modification "
     echo "UPDATE exchange.reserves_in SET credit.val=10 WHERE reserve_in_serial_id=1" \
         | psql -Aqt "$DB"
     stop_auditor_httpd
@@ -917,13 +945,7 @@ function test_6() {
     run_audit
     check_auditor_running
 
-    call_endpoint "bad-sig-losses"
-    ROW=$(jq -e .bad_sig_losses[0].row_id < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$ROW" != "1" ]
-    then
-        exit_fail "Row wrong, got $ROW"
-    fi
-
+    check_row "bad-sig-losses" 1
     LOSS=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
     if [ "$LOSS" == "TESTKUDOS:0" ]
     then
