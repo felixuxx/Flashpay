@@ -858,7 +858,9 @@ handle_mhd_request (void *cls,
   }
   if (NULL == match)
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Could not find handler for `%s'\n",
+                url);
     goto not_found;
   }
   if (match->requires_auth &&
