@@ -336,7 +336,7 @@ function run_audit () {
             sleep 0.1
             OK=0
             # exchange
-            wget "http://localhost:8081/version" \
+            wget "http://localhost:8081/config" \
                  -o /dev/null \
                  -O /dev/null \
                  >/dev/null \
@@ -403,40 +403,40 @@ function full_reload()
 
 function run_auditor_httpd() {
   echo -n "Starting auditor..."
-              taler-auditor-httpd \
-                  -c "${CONF}" \
-                  -L INFO \
-                  2> "${MY_TMP_DIR}/auditor-httpd.err" &
-              APID=$!
+  taler-auditor-httpd \
+      -c "${CONF}" \
+      -L INFO \
+      2> "${MY_TMP_DIR}/auditor-httpd.err" &
+  APID=$!
 
-              # Wait for all services to be available
-              for n in $(seq 1 50)
-              do
-                  echo -n "."
-                  sleep 0.1
-                  OK=0
-                  # auditor
-                  wget "http://localhost:8083/version" \
-                       -o /dev/null \
-                       -O /dev/null \
-                       >/dev/null \
-                      || continue
-                  OK=1
-                  break
-              done
-              echo "... DONE."
-              export CONF
+  # Wait for auditor service to be available
+  for n in $(seq 1 50)
+  do
+      echo -n "."
+      sleep 0.2
+      OK=0
+      # auditor
+      wget "http://localhost:8083/config" \
+           -o /dev/null \
+           -O /dev/null \
+           >/dev/null \
+          || continue
+      OK=1
+      break
+  done
+  echo "... DONE."
+  export CONF
 }
 
 function stop_auditor_httpd() {
-if [ -n "${APID:-}" ]
-    then
-        echo -n "Stopping auditor $APID..."
-        kill -TERM "$APID"
-        wait "$APID" || true
-        echo "DONE"
-        unset APID
-    fi
+  if [ -n "${APID:-}" ]
+  then
+      echo -n "Stopping auditor $APID..."
+      kill -TERM "$APID"
+      wait "$APID" || true
+      echo "DONE"
+      unset APID
+  fi
 }
 
 function check_auditor_running() {
