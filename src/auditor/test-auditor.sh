@@ -771,13 +771,9 @@ function test_3() {
     check_report \
         "reserve-balance-summary-wrong-inconsistency" \
         "auditor_amount" "TESTKUDOS:5.01"
-
-    EXPECTED=$(jq -e .reserve_balance_summary_wrong_inconsistency[0].exchange_amount \
-                           < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json")
-    if [ "$EXPECTED" != '"TESTKUDOS:0.01"' ]
-    then
-        exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
-    fi
+    check_report \
+        "reserve-balance-summary-wrong-inconsistency" \
+        "exchange_amount" "TESTKUDOS:0.01"
 
     #TODO: we receive 22.96 instead of 0 - check what it should be
     #call_endpoint "balances" "reserves_reserve_loss"
