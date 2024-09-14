@@ -139,7 +139,7 @@ TAH_PG_get_reserve_in_inconsistency (
   PREPARE (pg,
            "auditor_reserve_in_inconsistency_get_desc",
            "SELECT"
-           " row_id,"
+           " row_id"
            ",bank_row_id"
            ",amount_exchange_expected"
            ",amount_wired"
