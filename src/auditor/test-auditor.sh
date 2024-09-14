@@ -65,7 +65,7 @@ function cleanup()
         echo "DONE"
         unset EPID
     fi
-    stop_libeufin
+    stop_libeufin &> /dev/null
 }
 
 # Cleanup to run whenever we exit
@@ -309,7 +309,6 @@ function post_audit () {
         -g \
         || exit_fail "exchange DB GC failed"
     cleanup
-    echo " DONE"
 }
 
 
@@ -329,7 +328,7 @@ function run_audit () {
             2> "${MY_TMP_DIR}/exchange-httpd-drain.err" &
         EPID=$!
 
-        # Wait for all services to be available
+        # Wait for exchange service to be available
         for n in $(seq 1 50)
         do
             echo -n "."
@@ -488,6 +487,17 @@ function check_report() {
     NAME=$(echo "$1" | tr '-' '_')
     VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
     if [ "$VAL" != "$3" ]
+    then
+        exit_fail "$1::$2 (got $VAL, wanted $3)"
+    fi
+    echo "PASS"
+}
+
+function check_report_neg() {
+    call_endpoint "$1"
+    NAME=$(echo "$1" | tr '-' '_')
+    VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
+    if [ "$VAL" == "$3" ]
     then
         exit_fail "$1::$2 (got $VAL, wanted $3)"
     fi
@@ -762,14 +772,6 @@ function test_3() {
         "reserve-balance-summary-wrong-inconsistency" \
         "auditor_amount" "TESTKUDOS:5.01"
 
-    call_endpoint "reserve-balance-summary-wrong-inconsistency"
-    EXPECTED=$(jq -e .reserve_balance_summary_wrong_inconsistency[0].auditor_amount \
-                       < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json")
-    if [ "$EXPECTED" != '"TESTKUDOS:5.01"' ]
-    then
-        exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
-    fi
-
     EXPECTED=$(jq -e .reserve_balance_summary_wrong_inconsistency[0].exchange_amount \
                            < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json")
     if [ "$EXPECTED" != '"TESTKUDOS:0.01"' ]
@@ -951,27 +953,23 @@ function test_6() {
     run_audit
     check_auditor_running
 
+    echo -n "Checking bad-signature-loss detected ..."
     check_row "bad-sig-losses" 1
-    LOSS=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$LOSS" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong deposit bad signature loss, got $LOSS"
-    fi
+    echo -n "Checking bad-signature-loss amount detected ..."
+    check_report_neg \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:0"
+    echo -n "Checking bad-signature-loss operation detected ..."
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
+    echo -n "Checking bad-signature-loss balance update ..."
+    check_not_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss"
 
-    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "melt" ] && [ "$OP" != "deposit" ]
-    then
-        exit_fail "Wrong operation, got $OP"
-    fi
-
-    call_endpoint "balances" "coin_irregular_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coin_irregular_loss.json")
-    if [ "$LOSS" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss, got $LOSS"
-    fi
-
-     #Undo
+    echo -n "Undo database change ... "
     echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt "$DB"
     stop_auditor_httpd
     full_reload
