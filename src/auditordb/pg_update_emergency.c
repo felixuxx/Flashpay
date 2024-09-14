@@ -13,17 +13,14 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_update_emergency.h"
 
-/*
-Update a given resource – for now this only means suppressing
-*/
+/**
+ * Update a given resource – for now this only means suppressing
+ */
 enum GNUNET_DB_QueryStatus
 TAH_PG_update_emergency (
   void *cls,
@@ -35,7 +32,6 @@ TAH_PG_update_emergency (
     GNUNET_PQ_query_param_bool (gu->suppressed),
     GNUNET_PQ_query_param_end
   };
-
 
   PREPARE (pg,
            "update_emergency",

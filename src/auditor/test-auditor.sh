@@ -1513,7 +1513,7 @@ function test_18() {
         "suppressed" "false"
     echo -n "Testing emergency detection by count... "
     check_report \
-        "emergency-by-count"
+        "emergency-by-count" \
         "suppressed" "false"
     echo -n "Testing escrow balance calculation impossibility... "
     check_report \

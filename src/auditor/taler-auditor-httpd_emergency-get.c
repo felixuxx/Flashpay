@@ -42,7 +42,7 @@ process_emergency (
 
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("row_id",
-                             &dc->row_id),
+                             dc->row_id),
     GNUNET_JSON_pack_data_auto ("denompub_h",
                                 &dc->denompub_h),
     TALER_JSON_pack_amount ("denom_risk",
@@ -56,7 +56,7 @@ process_emergency (
     TALER_JSON_pack_amount ("value",
                             &dc->value),
     GNUNET_JSON_pack_bool ("suppressed",
-                           &dc->suppressed)
+                           dc->suppressed)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
