@@ -485,7 +485,8 @@ function check_not_balance() {
 
 function check_report() {
     call_endpoint "$1"
-    VAL=$(jq -r .\"${1}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
+    NAME=$(echo "$1" | tr '-' '_')
+    VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
     if [ "$VAL" != "$3" ]
     then
         exit_fail "$1::$2 (got $VAL, wanted $3)"
@@ -495,7 +496,7 @@ function check_report() {
 
 function check_row() {
     call_endpoint "$1"
-    NAME="$1"
+    NAME=$(echo "$1" | tr '-' '_')
     if [ -n "${3+x}" ]
     then
         RID="$2"
@@ -755,6 +756,11 @@ function test_3() {
 
     run_audit
     check_auditor_running
+
+    echo "Checking reserve balance summary inconsistency detection ..."
+    check_report \
+        "reserve-balance-summary-wrong-inconsistency" \
+        "auditor_amount" "TESTKUDOS:5.01"
 
     call_endpoint "reserve-balance-summary-wrong-inconsistency"
     EXPECTED=$(jq -e .reserve_balance_summary_wrong_inconsistency[0].auditor_amount \

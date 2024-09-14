@@ -24,34 +24,31 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_progress-get.h"
 
+
 /**
  * Add progress to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
- * @param dc struct of inconsistencies
+ * @param dc struct with progress data
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 process_progress (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_Progress *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
-    GNUNET_JSON_pack_string ("progress_key", dc->progress_key),
-    GNUNET_JSON_pack_int64 ("progress_offset", dc->progress_offset)
-
+    GNUNET_JSON_pack_string ("progress_key",
+                             dc->progress_key),
+    GNUNET_JSON_pack_int64 ("progress_offset",
+                            dc->progress_offset)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -67,6 +64,7 @@ TAH_PROGRESS_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  const char *progress_key;
 
   (void) rh;
   (void) connection_cls;
@@ -81,42 +79,21 @@ TAH_PROGRESS_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
+  progress_key
+    = MHD_lookup_connection_value (connection,
+                                   MHD_GET_ARGUMENT_KIND,
+                                   "progress_key");
   ja = json_array ();
   GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
-  TALER_MHD_parse_request_snumber (connection,
-                                   "limit",
-                                   &limit);
-
-  if (limit < 0)
-    offset = INT64_MAX;
-  else
-    offset = 0;
-
-  TALER_MHD_parse_request_number (connection,
-                                  "offset",
-                                  &offset);
-
-  bool return_suppressed = false;
-
-
-  qs = TAH_plugin->get_progress (
+  qs = TAH_plugin->get_progress_points (
     TAH_plugin->cls,
-    limit,
-    offset,
-    return_suppressed,
+    progress_key,
     &process_progress,
     ja);
-
   if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    GNUNET_break (0);
     json_decref (ja);
-    TALER_LOG_WARNING (
-      "Failed to handle GET /progress\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,

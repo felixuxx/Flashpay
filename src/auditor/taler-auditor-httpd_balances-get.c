@@ -28,22 +28,18 @@
  * Add balance to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
- * @param dc struct of inconsistencies
+ * @param dc struct of with balance data
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 process_balances (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_Balances *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_uint64 ("row_id",
-                             serial_id),
     GNUNET_JSON_pack_string ("balance_key",
                              dc->balance_key),
     TALER_JSON_pack_amount ("balance_value",
@@ -52,8 +48,6 @@ process_balances (
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -69,8 +63,6 @@ TAH_BALANCES_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
-  int64_t limit = -20;
-  uint64_t offset;
   const char *balance_key;
 
   (void) rh;
@@ -86,17 +78,6 @@ TAH_BALANCES_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  TALER_MHD_parse_request_snumber (connection,
-                                   "limit",
-                                   &limit);
-
-  if (limit < 0)
-    offset = INT64_MAX;
-  else
-    offset = 0;
-  TALER_MHD_parse_request_number (connection,
-                                  "offset",
-                                  &offset);
   balance_key
     = MHD_lookup_connection_value (connection,
                                    MHD_GET_ARGUMENT_KIND,
@@ -105,8 +86,6 @@ TAH_BALANCES_handler_get (
   GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_balances (
     TAH_plugin->cls,
-    limit,
-    offset,
     balance_key,
     &process_balances,
     ja);

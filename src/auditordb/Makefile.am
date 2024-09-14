@@ -77,6 +77,7 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_insert_balance.c pg_insert_balance.h \
   pg_insert_denomination_balance.c pg_insert_denomination_balance.h \
   pg_insert_deposit_confirmation.c pg_insert_deposit_confirmation.h \
+  pg_get_progress_points.h pg_get_progress_points.c \
   pg_insert_historic_reserve_revenue.c pg_insert_historic_reserve_revenue.h \
   pg_insert_pending_deposit.c pg_insert_pending_deposit.h \
   pg_insert_purse_info.c pg_insert_purse_info.h \

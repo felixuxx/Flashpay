@@ -304,11 +304,10 @@ struct TALER_AUDITORDB_EmergenciesByCount
 };
 
 /**
- * Information about a refreshes hanging
+ * Information about progress of the audit.
  */
 struct TALER_AUDITORDB_Progress
 {
-  uint64_t row_id;
   char *progress_key;
   uint64_t progress_offset;
 };
@@ -502,20 +501,6 @@ typedef enum GNUNET_GenericReturnValue
   uint64_t serial_id,
   const struct TALER_AUDITORDB_EmergenciesByCount *dc);
 
-/**
- * Function called with progress stored in
- * the auditor's database.
- *
- * @param cls closure
- * @param serial_id location of the @a dc in the database
- * @param dc the structure itself
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
- */
-typedef enum GNUNET_GenericReturnValue
-(*TALER_AUDITORDB_ProgressCallback)(
-  void *cls,
-  uint64_t serial_id,
-  const struct TALER_AUDITORDB_Progress *dc);
 
 /**
  * Function called with refreshes hanging stored in
@@ -591,20 +576,15 @@ typedef enum GNUNET_GenericReturnValue
   uint64_t serial_id,
   const struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency *dc);
 
-/**
- * Function called with reserve balance insufficient inconsistency stored in
- * the auditor's database.
- *
- * @param cls closure
- * @param serial_id location of the @a dc in the database
- * @param dc the balance itself
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
- */
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_BalancesCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_Balances *dc);
+
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ProgressPointsCallback)(
+  void *cls,
+  const struct TALER_AUDITORDB_Progress *pp);
 
 /**
  * Balance values for a reserve (or all reserves).
@@ -898,14 +878,11 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_DenominationsWithoutSigsCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_DenominationsWithoutSigs *dc);
-
 
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_MisattributionInInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_MisattributionInInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue
@@ -1224,10 +1201,7 @@ struct TALER_AUDITORDB_Plugin
    * Get information about balances from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param limit number of balances to return at most,
-   *        negative value to descend from @a offset
-   * @param offset row/serial ID where to start the iteration (0 from
-   *               the start, exclusive, i.e. serial_ids must start from 1)
+   * @param balance_key only return this particular balance
    * @param cb function to call with results
    * @param cb_cls closure for @a cb
    * @return query result status
@@ -1235,10 +1209,24 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_balances)(
     void *cls,
-    int64_t limit,
-    uint64_t offset,
     const char *balance_key,
     TALER_AUDITORDB_BalancesCallback cb,
+    void *cb_cls);
+
+  /**
+   * Get information about progress from the database.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param progress_key only return this particular progress point
+   * @param cb function to call with results
+   * @param cb_cls closure for @a cb
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_progress_points)(
+    void *cls,
+    const char *progress_key,
+    TALER_AUDITORDB_ProgressPointsCallback cb,
     void *cb_cls);
 
   /**
@@ -1391,8 +1379,7 @@ struct TALER_AUDITORDB_Plugin
     int64_t limit,
     uint64_t offset,
     bool return_suppressed,
-    bool filter_spec_pub,
-    struct GNUNET_CRYPTO_EddsaPublicKey op_spec_pub,
+    const struct GNUNET_CRYPTO_EddsaPublicKey *op_spec_pub,
     const char *op,
     TALER_AUDITORDB_BadSigLossesCallback cb,
     void *cb_cls);
@@ -1404,15 +1391,6 @@ struct TALER_AUDITORDB_Plugin
     uint64_t offset,
     bool return_suppressed,
     TALER_AUDITORDB_ClosureLagsCallback cb,
-    void *cb_cls);
-
-  enum GNUNET_DB_QueryStatus
-  (*get_progress)(
-    void *cls,
-    int64_t limit,
-    uint64_t offset,
-    bool return_suppressed,
-    TALER_AUDITORDB_ProgressCallback cb,
     void *cb_cls);
 
   enum GNUNET_DB_QueryStatus
@@ -1549,12 +1527,6 @@ struct TALER_AUDITORDB_Plugin
   (*insert_auditor_closure_lags)(
     void *cls,
     const struct TALER_AUDITORDB_ClosureLags *dc);
-
-
-  enum GNUNET_DB_QueryStatus
-  (*insert_progress)(
-    void *cls,
-    const struct TALER_AUDITORDB_Progress *dc);
 
   enum GNUNET_DB_QueryStatus
   (*insert_refreshes_hanging)(

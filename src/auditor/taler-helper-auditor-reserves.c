@@ -580,7 +580,8 @@ handle_reserve_out (
                                  <,
                                  execution_date))
   {
-    struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency dkvwi ={
+    struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency dkvwi =
+    {
       .problem_row_id = rowid,
       .execution_date = execution_date.abs_time,
       .denompub_h = *&h_denom_pub,
@@ -1540,8 +1541,8 @@ verify_reserve_balance (void *cls,
         struct TALER_AUDITORDB_ReserveNotClosedInconsistency rnci = {
           .reserve_pub = rs->reserve_pub,
           .expiration_time = rs->a_expiration_date.abs_time,
-          .balance = nbalance
-
+          .balance = nbalance,
+          .diagnostic = rs->sender_account
         };
 
         /* remaining balance (according to us) exceeds closing fee */
@@ -1712,18 +1713,18 @@ verify_reserve_balance (void *cls,
 
 
 #define CHECK_DB() do {                                       \
-          if (qs < 0) {                                       \
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs); \
-            return qs;                                        \
-          }                                                   \
-          if (global_qs < 0) {                                \
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == global_qs); \
-            return global_qs;                                        \
-          }                                                          \
-          if (rc.qs < 0) {                                           \
-            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == rc.qs);     \
-            return rc.qs;                                            \
-          }                                                          \
+    if (qs < 0) {                                       \
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs); \
+      return qs;                                        \
+    }                                                   \
+    if (global_qs < 0) {                                \
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == global_qs); \
+      return global_qs;                                        \
+    }                                                          \
+    if (rc.qs < 0) {                                           \
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == rc.qs);     \
+      return rc.qs;                                            \
+    }                                                          \
 } while (0)
 
 
