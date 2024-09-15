@@ -1783,7 +1783,6 @@ function test_23() {
 
 # Test for missing deposits in exchange database.
 function test_24() {
-#TODO needs to be rebuild probably
     echo "===========24: deposits missing ==========="
     # Modify denom_sig, so it is wrong
     CNT=$(echo "SELECT COUNT(*) FROM auditor.auditor_deposit_confirmations;" | psql -Aqt "$DB")
@@ -2130,22 +2129,15 @@ function test_32() {
     check_auditor_running
 
     echo -n "Testing inconsistency detection... "
+    check_report \
+        "bad-sig-losses" \
+        "operation" "wire"
+    echo -n "Testing inconsistency balance update... "
+    check_not_balance \
+        "aggregation_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Missed updating aggregation_total_bad_sig_loss"
 
-    call_endpoint "bad-sig-losses"
-
-    AMOUNT=$(jq -r .total_bad_sig_loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported total amount wrong: $AMOUNT"
-    fi
-
-    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "wire" ]
-    then
-        exit_fail "Reported wrong operation: $OP"
-    fi
-
-    echo "OK"
     # Cannot undo aggregation, do full reload
     stop_auditor_httpd
     full_reload
