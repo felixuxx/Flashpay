@@ -1975,7 +1975,6 @@ function test_28() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
-# FIXME: test-29 not modernized
 function test_29() {
     echo "===========29: withdraw fee inconsistency ================="
 
@@ -1984,22 +1983,15 @@ function test_29() {
     run_audit
     check_auditor_running
 
-    call_endpoint "balances" "total_balance_summary_delta_minus"
-    call_endpoint "amount-arithmetic-inconsistency"
-
     echo -n "Testing inconsistency detection... "
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/total_balance_summary_delta_minus.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported total amount wrong: $AMOUNT"
-    fi
-
-    PROFIT=$(jq -r .amount_arithmetic_inconsistency[0].profitable < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json")
-    if [ "$PROFIT" != "true" ]
-    then
-        exit_fail "Reported wrong profitability: $PROFIT"
-    fi
-    echo "OK"
+    check_not_balance \
+        "total_balance_summary_delta_minus" \
+        "TESTKUDOS:0" \
+        "Reported total amount wrong"
+    echo -n "Checking report that delta was profitable... "
+    check_report \
+        "amount-arithmetic-inconsistency" \
+        "profitable" "true"
     # Undo
     echo "UPDATE exchange.denominations SET fee_withdraw.frac=2000000 WHERE (coin).val=1;" | psql -Aqt "$DB"
     full_reload
