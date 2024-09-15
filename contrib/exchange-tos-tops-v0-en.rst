@@ -1,15 +1,14 @@
-﻿General Terms and Conditions of Taler Operations AG
+﻿Terms of Service of Taler Operations AG
 ===================================================
 
-These General Terms and Conditions (hereinafter **GTC**) of Taler Operations AG
-regulate the rights and obligations of users and recipients (beneficiaries) of the payment service offered.
-By using the payment service, users automatically accept these GTC.
+These Terms of Service (hereinafter **ToS**) of Taler Operations AG regulate the rights and obligations of users and 
+recipients (beneficiaries) of the payment service offered. By using the payment service, users automatically accept these ToS.
 
 
 Service; scope of application
 ----------------------------------------------
 
-GNU Taler is a technical system that enables cashless payments. Taler Operations AG (collectively **TOPS**),
+GNU Taler is a technical system that enables cashless payments. Taler Operations AG (hereinafter **TOPS**),
 headquartered in Biel/Bienne, Switzerland, provides a **payment system** based on GNU Taler for users in Switzerland.
 TOPS is a member of VQF, a FINMA-accredited self-regulating organisation. Consequently, TOPS will therefore not be
 directly supervised by the Swiss financial services regulation authority FINMA, but operates a financial service  in
@@ -60,25 +59,28 @@ the mechanism.
 Prices, fees and limits
 -----------------------------------
 
-TOPS may change the fees at any time. Fee changes only have effect on tokens withdrawn after the change. Correct Taler
-wallets will inform users about fee changes before they withdraw new tokens. The withdrawal of tokens issued by TOPS
-after the fees have been changed is deemed to be a user's consent to the conditions after the change.
+TOPS may change the fees at any time. Fee changes only have effect on tokens withdrawn after the change. Taler wallets 
+compliant to the GNU Taler protocol will inform users about fee changes before they withdraw new tokens. The withdrawal of tokens 
+issued by TOPS after the fees have been changed is deemed to be a user's consent to the conditions after the change.
 
 There are limits of CHF 3,000 per month and CHF 15,000 per calendar year for withdrawing e-money from a bank account
 or for receiving peer-to-peer payments between Taler wallets with a confirmed Swiss mobile number.
 
 
-General obligations to cooperate
-----------------------------------------------------
+Legal and regulatory requirements
+-------------------------------------------------------
 
-In order to use the payment service, users and beneficiaries are obliged to support TOPS with the fulfillment of
-regulatory and legal requirements. In particular, TOPS may request information about the identity of beneficial owners.
-TOPS has the right and, where applicable, the legal obligation to exclude users and beneficiaries from using the
-payment service, if they refuse to provide the required information or provide false information.
+In order to use the payment service, users and beneficiaries are obliged to support TOPS with the fulfillment of legal 
+and regulatory requirements. TOPS complies with all applicable anti-money laundering (AML) and know-your-customer (KYC) 
+regulations. TOPS will ensure that all personal data is processed in accordance with Swiss privacy laws, including the 
+Federal Act on Data Protection and the Ordinance on Data Protection. 
+TOPS has the right and, where applicable, the legal obligation to exclude users and beneficiaries from using the payment service, 
+if they refuse to provide the required information or provide false information.
 
-In order to use the payment service, *beneficiaries* enter into a business relationship with TOPS and, where
-applicable, may be required to register with TOPS and provide the requested information for this purpose. TOPS reserves
-the right to request further information at any time to fulfill regulatory compliance.
+*Beneficiaries* may be required to provide identity verification documents. They will be notified of any KYC information requests 
+and will have 30 days to respond. In order to use the payment service, beneficiaries enter into a business relationship with TOPS 
+and, where applicable, may be required to register with TOPS and provide the requested information for this purpose. 
+TOPS reserves the right to request further information at any time to fulfill regulatory compliance.
 
 No accounts are created for *users* at TOPS. However, the bank accounts of users who transfer CHF to TOPS in order to
 purchase tokens are recorded. To receive peer-to-peer payments, users need at least a Swiss cell phone number to receive
@@ -124,7 +126,7 @@ the use of GNU Taler, in particular not for loss or damage
 
 * due to transmission errors, technical malfunctions or defects, failures and unauthorized access to or interference with the digital end device,
 
-* which are due in whole or in part to a breach by the user of these GTC or applicable laws,
+* which are due in whole or in part to a breach by the user of these ToS or applicable laws,
 
 * due to a malfunction or error in the software or hardware used,
 
@@ -135,14 +137,14 @@ the use of GNU Taler, in particular not for loss or damage
 * due to acts or omissions of third parties (including auxiliary persons of TOPS),
 
 unless these losses or damages are attributable to gross negligence or willful misconduct on the part of TOPS.
-TOPS shall compensate property damage and financial losses per loss event up to a maximum of CHF 1,000.
+Liability caps are set at CHF 1,000 for certain loss events.
 Liability for consequential damages, loss of profit or loss of data is - to the extent permitted by law - excluded in any case.
 
 
 Use; misuse
 --------------------
 
-Users shall indemnify TOPS for any damages or losses incurred by TOPS due to non-compliance with these GTC
+Users shall indemnify TOPS for any damages or losses incurred by TOPS due to non-compliance with these ToS
 or legal requirements, due to incorrect or incomplete information provided by users or the incorrect execution of
 instructions.
 
@@ -153,12 +155,12 @@ and without compensation and, if necessary, demand compensation for damages and 
 TOPS reserves the right to withhold payments to beneficiaries in the event of a breach of rules or abuse.
 
 
-Reservations regarding changes to these GTC
+Reservations regarding changes to these ToS
 -------------------------------------------------------------------------
 
-TOPS may amend the GTC at any time. Amendments only have effect on tokens withdrawn after the change.
-Correct Taler wallets inform users about changes before new tokens are withdrawn. The withdrawal of tokens
-issued by TOPS after the GTC have been amended shall be deemed to constitute acceptance of the amended conditions.
+TOPS may amend the ToS at any time. Amendments only have effect on tokens withdrawn after the change.
+Taler wallets compliant to the GNU Taler protocol inform users about changes before new tokens are withdrawn. The withdrawal of tokens
+issued by TOPS after the ToS have been amended shall be deemed to constitute acceptance of the amended conditions.
 
 Any legal provisions governing the operation and use of digital devices, payment services, the Internet and other
 infrastructure remain reserved and shall also apply to the TOPS services.
@@ -203,12 +205,13 @@ TOPS may terminate the business relationship with the beneficiaries at any time 
 with immediate effect.
 Written notice of termination by TOPS shall be sent to one of the last addresses provided by the business partners
 (e.g. by e-mail or letter).
-If no transactions are made to the beneficiaries for more than 12 months, the business relationship shall be deemed terminated.
+If no transactions are made to the beneficiaries for more than 12 months, the business relationship shall be automatically 
+deemed terminated.
 
 The users of Taler wallets can return the existing credit in these wallets at any time to bank accounts in Switzerland
 and thus balance the credit.
 If the TOPS payment service is discontinued, users will be informed of the discontinuation of the payment
-service via the Taler protocol and requested by the Taler wallets to balance the existing credit.
+service via the GNU Taler protocol and requested by the Taler wallets to balance the existing credit.
 Users who fail to balance the credit will lose their entitlement to the claim to the remaining credit after 3 months,
 which becomes the property of TOPS.
 
