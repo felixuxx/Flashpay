@@ -1800,7 +1800,6 @@ function test_24() {
 
         echo -n "Testing inconsistency detection... "
         call_endpoint "balances"
-        # FIXME: this fails!
         check_report \
             "deposit-confirmation" \
             "suppressed" "false"
