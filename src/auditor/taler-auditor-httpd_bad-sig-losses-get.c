@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -26,14 +24,15 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_bad-sig-losses-get.h"
 
+
 /**
-* Add bad-sig-losses to the list.
-*
-* @param[in,out] cls a `json_t *` array to extend
-* @param serial_id location of the @a dc in the database
-* @param dc struct of inconsistencies
-* @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
-*/
+ * Add bad-sig-losses to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param serial_id location of the @a dc in the database
+ * @param dc struct of inconsistencies
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
 static enum GNUNET_GenericReturnValue
 add_bad_sig_losses (
   void *cls,
@@ -44,18 +43,18 @@ add_bad_sig_losses (
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
-    GNUNET_JSON_pack_uint64 ("row_id", serial_id),
-    GNUNET_JSON_pack_string ("operation", dc->operation),
-    TALER_JSON_pack_amount ("loss", &dc->loss),
+    GNUNET_JSON_pack_uint64 ("row_id",
+                             serial_id),
+    GNUNET_JSON_pack_string ("operation",
+                             dc->operation),
+    TALER_JSON_pack_amount ("loss",
+                            &dc->loss),
     GNUNET_JSON_pack_data_auto ("operation_specific_pub",
                                 &dc->operation_specific_pub)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
-
-
   return GNUNET_OK;
 }
 
@@ -71,6 +70,12 @@ TAH_BAD_SIG_LOSSES_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
+  bool return_suppressed = false;
+  struct GNUNET_CRYPTO_EddsaPublicKey op_spec_pub;
+  bool filter_spec_pub = false;
+  const char *op;
 
   (void) rh;
   (void) connection_cls;
@@ -85,12 +90,6 @@ TAH_BAD_SIG_LOSSES_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
@@ -103,88 +102,39 @@ TAH_BAD_SIG_LOSSES_handler_get (
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-  const char *ret_s = MHD_lookup_connection_value (connection,
-                                                   MHD_GET_ARGUMENT_KIND,
-                                                   "return_suppressed");
-  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
   {
-    return_suppressed = true;
-  }
-
-  const char *op = MHD_lookup_connection_value (connection,
-                                                MHD_GET_ARGUMENT_KIND,
-                                                "op");
-
-
-  struct GNUNET_CRYPTO_EddsaPublicKey op_spec_pub;
-  memset (&op_spec_pub,0, sizeof(op_spec_pub));
-
-  bool filter_spec_pub = false;
-  const char *ret_osp = MHD_lookup_connection_value (connection,
+    const char *ret_s = MHD_lookup_connection_value (connection,
                                                      MHD_GET_ARGUMENT_KIND,
-                                                     "use_op_spec_pub");
-  if (ret_osp != NULL && strcmp (ret_osp, "true") == 0)
-  {
-    filter_spec_pub = true;
-
-
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_fixed_auto ("operation_specific_pub", &op_spec_pub),
-      GNUNET_JSON_spec_end ()
-    };
-
-
-    json_t *json;
+                                                     "return_suppressed");
+    if (ret_s != NULL && strcmp (ret_s, "true") == 0)
     {
-      enum GNUNET_GenericReturnValue res;
-
-      res = TALER_MHD_parse_post_json (connection,
-                                       connection_cls,
-                                       upload_data,
-                                       upload_data_size,
-                                       &json);
-      if (GNUNET_SYSERR == res)
-        return MHD_NO;
-      if ((GNUNET_NO == res) ||
-          (NULL == json))
-        return MHD_YES;
-      res = TALER_MHD_parse_json_data (connection,
-                                       json,
-                                       spec);
-      if (GNUNET_SYSERR == res)
-      {
-        json_decref (json);
-        return MHD_NO;                     /* hard failure */
-      }
-      if (GNUNET_NO == res)
-      {
-        json_decref (json);
-        return MHD_YES;                     /* failure */
-      }
+      return_suppressed = true;
     }
-
   }
 
-
+  op = MHD_lookup_connection_value (connection,
+                                    MHD_GET_ARGUMENT_KIND,
+                                    "op");
+  TALER_MHD_parse_request_arg_auto (connection,
+                                    "op_spec_pub",
+                                    &op_spec_pub,
+                                    filter_spec_pub);
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_bad_sig_losses (
     TAH_plugin->cls,
     limit,
     offset,
     return_suppressed,
-    filter_spec_pub,
-    op_spec_pub,
+    filter_spec_pub ? &op_spec_pub : NULL,
     op,
     &add_bad_sig_losses,
     ja);
 
   if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    GNUNET_break (0);
     json_decref (ja);
-    TALER_LOG_WARNING (
-      "Failed to handle GET /bad-sig-losses\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,

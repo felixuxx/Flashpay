@@ -13,21 +13,26 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
+/**
+ * @file auditordb/pg_get_progress_points.c
+ * @brief Implementation of the get_progress_points function for Postgres
+ * @author Christian Grothoff
+ */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
+#include "pg_get_progress_points.h"
 #include "pg_helper.h"
-#include "pg_get_balances.h"
 
 
-struct BalancesContext
+struct ProgressContext
 {
 
   /**
-   * Function to call for each bad sig loss.
+   * Function to call for each progress point.
    */
-  TALER_AUDITORDB_BalancesCallback cb;
+  TALER_AUDITORDB_ProgressPointsCallback cb;
 
   /**
    * Closure for @e cb
@@ -47,30 +52,29 @@ struct BalancesContext
 
 
 /**
- * Helper function for #TAH_PG_get_balances().
+ * Helper function for #TAH_PG_get_progress_points().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
- * @param cls closure of type `struct BalancesContext *`
+ * @param cls closure of type `struct ProgressContext *`
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-balances_cb (void *cls,
+progress_cb (void *cls,
              PGresult *result,
              unsigned int num_results)
 {
-  struct BalancesContext *dcc = cls;
-  struct PostgresClosure *pg = dcc->pg;
+  struct ProgressContext *dcc = cls;
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    struct TALER_AUDITORDB_Balances dc;
+    struct TALER_AUDITORDB_Progress dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_string ("balance_key",
-                                    &dc.balance_key),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("balance_value",
-                                   &dc.balance_value),
+      GNUNET_PQ_result_spec_string ("progress_key",
+                                    &dc.progress_key),
+      GNUNET_PQ_result_spec_uint64 ("progress_offset",
+                                    &dc.progress_offset),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -95,20 +99,20 @@ balances_cb (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TAH_PG_get_balances (
+TAH_PG_get_progress_points (
   void *cls,
-  const char *balance_key,
-  TALER_AUDITORDB_BalancesCallback cb,
+  const char *progress_key,
+  TALER_AUDITORDB_ProgressPointsCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    NULL == balance_key
+    NULL == progress_key
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (balance_key),
+    : GNUNET_PQ_query_param_string (progress_key),
     GNUNET_PQ_query_param_end
   };
-  struct BalancesContext dcc = {
+  struct ProgressContext dcc = {
     .cb = cb,
     .cb_cls = cb_cls,
     .pg = pg
@@ -116,18 +120,18 @@ TAH_PG_get_balances (
   enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
-           "auditor_balances_get",
+           "auditor_progress_points_get",
            "SELECT"
-           " balance_key"
-           ",balance_value"
-           " FROM auditor_balances"
-           " WHERE ($1::TEXT IS NULL OR balance_key = $1)"
+           " progress_key"
+           ",progress_offset"
+           " FROM auditor_progress"
+           " WHERE ($1::TEXT IS NULL OR progress_key = $1)"
            );
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
-    "auditor_balances_get",
+    "auditor_progress_points_get",
     params,
-    &balances_cb,
+    &progress_cb,
     &dcc);
   if (qs > 0)
     return dcc.qs;

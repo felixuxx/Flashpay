@@ -66,8 +66,6 @@
 #include "taler-auditor-httpd_closure-lags-get.h"
 #include "taler-auditor-httpd_closure-lags-del.h"
 
-#include "taler-auditor-httpd_progress-get.h"
-
 #include "taler-auditor-httpd_refreshes-hanging-get.h"
 #include "taler-auditor-httpd_refreshes-hanging-del.h"
 
@@ -134,6 +132,8 @@
 #include "taler-auditor-httpd_fee-time-inconsistency-upd.h"
 
 #include "taler-auditor-httpd_balances-get.h"
+#include "taler-auditor-httpd_progress-get.h"
+
 
 /**
  * Auditor protocol version string.
@@ -542,11 +542,6 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_update,
       MHD_HTTP_OK, true },
-    { "/monitoring/progress", MHD_HTTP_METHOD_GET,
-      "application/json",
-      NULL, 0,
-      &TAH_PROGRESS_handler_get,
-      MHD_HTTP_OK, true },
     { "/monitoring/reserve-balance-insufficient-inconsistency",
       MHD_HTTP_METHOD_GET,
       "application/json",
@@ -768,6 +763,11 @@ handle_mhd_request (void *cls,
       NULL, 0,
       &TAH_BALANCES_handler_get,
       MHD_HTTP_OK, true },
+    { "/monitoring/progress", MHD_HTTP_METHOD_GET,
+      "application/json",
+      NULL, 0,
+      &TAH_PROGRESS_handler_get,
+      MHD_HTTP_OK, true },
     { "/config", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
       &handle_config, MHD_HTTP_OK, false },
@@ -858,7 +858,9 @@ handle_mhd_request (void *cls,
   }
   if (NULL == match)
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Could not find handler for `%s'\n",
+                url);
     goto not_found;
   }
   if (match->requires_auth &&

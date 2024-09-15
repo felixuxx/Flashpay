@@ -129,7 +129,7 @@ TAH_PG_get_reserve_not_closed_inconsistency (
   PREPARE (pg,
            "auditor_reserve_not_closed_inconsistency_get_desc",
            "SELECT"
-           " row_id,"
+           " row_id"
            ",reserve_pub"
            ",balance"
            ",expiration_time"

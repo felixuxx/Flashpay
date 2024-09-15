@@ -13,37 +13,14 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef SRC_TALER_AUDITOR_HTTPD_PROGRESS_GET_H
-#define SRC_TALER_AUDITOR_HTTPD_PROGRESS_GET_H
+#ifndef TALER_AUDITOR_HTTPD_PROGRESS_GET_H
+#define TALER_AUDITOR_HTTPD_PROGRESS_GET_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler-auditor-httpd.h"
 
-/**
-* Initialize subsystem.
-*/
-void
-TEAH_PROGRESS_GET_init (void);
 
-/**
-* Shut down subsystem.
-*/
-void
-TEAH_PROGRESS_GET_done (void);
-
-/**
- * Handle a "/progress" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @param args NULL-terminated array of remaining parts of the URI broken up at '/'
- * @return MHD result code
- */
-// FIXME: very bad name!
 MHD_RESULT
 TAH_PROGRESS_handler_get (
   struct TAH_RequestHandler *rh,
@@ -52,6 +29,5 @@ TAH_PROGRESS_handler_get (
   const char *upload_data,
   size_t *upload_data_size,
   const char *const args[]);
-
 
 #endif

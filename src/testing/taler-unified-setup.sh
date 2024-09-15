@@ -823,7 +823,7 @@ do
 done
 if [ 1 != "$OK" ]
 then
-    exit_skip "Failed to launch (some) Taler services"
+    exit_skip "Failed to launch (some) Taler services (E: $E_DONE, M: $M_DONE, S: $S_DONE, K: $K_DONE, A: $A_DONE)"
 fi
 echo " OK"
 

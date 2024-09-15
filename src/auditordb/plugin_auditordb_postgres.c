@@ -49,6 +49,7 @@
 #include "pg_insert_reserve_info.h"
 #include "pg_select_historic_denom_revenue.h"
 #include "pg_select_historic_reserve_revenue.h"
+#include "pg_get_progress_points.h"
 #include "pg_select_pending_deposits.h"
 #include "pg_select_purse_expired.h"
 #include "pg_update_generic_suppressed.h"
@@ -769,6 +770,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_get_denominations_without_sigs;
   plugin->update_denominations_without_sigs =
     &TAH_PG_update_denominations_without_sigs;
+
+  plugin->get_progress_points
+    = &TAH_PG_get_progress_points;
 
 
   plugin->delete_misattribution_in_inconsistency =

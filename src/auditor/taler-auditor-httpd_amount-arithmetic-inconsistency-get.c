@@ -13,7 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -30,30 +29,32 @@
  * Add deposit confirmation to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
  * @param dc struct of inconsistencies
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 add_amount_arithmetic_inconsistency (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_AmountArithmeticInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_int64 ("row_id",
-                            serial_id),
-    GNUNET_JSON_pack_data_auto ("operation",
-                                &dc->operation),
+    GNUNET_JSON_pack_uint64 ("row_id",
+                             dc->row_id),
+    GNUNET_JSON_pack_uint64 ("problem_row_id",
+                             dc->problem_row_id),
+    GNUNET_JSON_pack_string ("operation",
+                             dc->operation),
     TALER_JSON_pack_amount ("exchange_amount",
                             &dc->exchange_amount),
     TALER_JSON_pack_amount ("auditor_amount",
                             &dc->auditor_amount),
     GNUNET_JSON_pack_bool ("profitable",
-                           dc->profitable)
+                           dc->profitable),
+    GNUNET_JSON_pack_bool ("suppressed",
+                           dc->suppressed)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
@@ -123,7 +124,6 @@ TAH_AMOUNT_ARITHMETIC_INCONSISTENCY_handler_get (
     return_suppressed,
     &add_amount_arithmetic_inconsistency,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);

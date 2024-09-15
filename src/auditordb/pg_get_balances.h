@@ -24,8 +24,6 @@
  * Get information about balances from the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param limit return at most this number of results, negative to descend from @a offset
- * @param offset row from which to return @a limit results
  * @param balance_key key to filter by, NULL to match all balance keys
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
@@ -34,8 +32,6 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_get_balances (
   void *cls,
-  int64_t limit,
-  uint64_t offset,
   const char *balance_key,
   TALER_AUDITORDB_BalancesCallback cb,
   void *cb_cls);

@@ -132,10 +132,8 @@ TAH_RESERVE_IN_INCONSISTENCY_handler_get (
     ja);
   if (0 > qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    GNUNET_break (0);
     json_decref (ja);
-    TALER_LOG_WARNING (
-      "Failed to handle GET /reserve-in-inconsistency");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
@@ -144,6 +142,6 @@ TAH_RESERVE_IN_INCONSISTENCY_handler_get (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("reserve-in-inconsistency",
+    GNUNET_JSON_pack_array_steal ("reserve_in_inconsistency",
                                   ja));
 }

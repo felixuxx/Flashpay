@@ -41,16 +41,16 @@ process_reserve_not_closed_inconsistency (
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_int64 ("row_id",
-                            dc->row_id),
+    GNUNET_JSON_pack_uint64 ("row_id",
+                             dc->row_id),
     GNUNET_JSON_pack_data_auto ("reserve_pub",
                                 &dc->reserve_pub),
     TALER_JSON_pack_amount ("balance",
                             &dc->balance),
     TALER_JSON_pack_time_abs_human ("expiration_time",
                                     dc->expiration_time),
-    GNUNET_JSON_pack_data_auto ("diagnostic",
-                                &dc->diagnostic),
+    GNUNET_JSON_pack_string ("diagnostic",
+                             dc->diagnostic),
     GNUNET_JSON_pack_bool ("suppressed",
                            dc->suppressed)
     );

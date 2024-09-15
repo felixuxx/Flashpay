@@ -66,11 +66,10 @@ fee_time_inconsistency_cb (void *cls,
   struct FeeTimeInconsistencyContext *dcc = cls;
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_FeeTimeInconsistency dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
-                                    &serial_id),
+                                    &dc.row_id),
       GNUNET_PQ_result_spec_uint64 ("problem_row_id",
                                     &dc.problem_row_id),
       GNUNET_PQ_result_spec_string ("fee_type",
@@ -94,7 +93,6 @@ fee_time_inconsistency_cb (void *cls,
     }
     dcc->qs = i + 1;
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -137,7 +135,7 @@ TAH_PG_get_fee_time_inconsistency (
            ",diagnostic"
            " FROM auditor_fee_time_inconsistency"
            " WHERE (row_id < $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id DESC"
            " LIMIT $3"
            );
@@ -151,7 +149,7 @@ TAH_PG_get_fee_time_inconsistency (
            ",diagnostic"
            " FROM auditor_fee_time_inconsistency"
            " WHERE (row_id > $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );

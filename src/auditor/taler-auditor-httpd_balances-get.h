@@ -13,24 +13,13 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
-#define SRC_TALER_AUDITOR_HTTPD_BALANCES_GET_H
+#ifndef TALER_AUDITOR_HTTPD_BALANCES_GET_H
+#define TALER_AUDITOR_HTTPD_BALANCES_GET_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler-auditor-httpd.h"
 
-/**
-* Initialize subsystem.
-*/
-void
-TEAH_BALANCES_GET_init (void);
-
-/**
-* Shut down subsystem.
-*/
-void
-TEAH_BAD_BALANCES_GET_done (void);
 
 /**
  * Handle a "/balances" request.

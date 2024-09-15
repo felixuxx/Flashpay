@@ -65,7 +65,7 @@ function cleanup()
         echo "DONE"
         unset EPID
     fi
-    stop_libeufin
+    stop_libeufin &> /dev/null
 }
 
 # Cleanup to run whenever we exit
@@ -309,7 +309,6 @@ function post_audit () {
         -g \
         || exit_fail "exchange DB GC failed"
     cleanup
-    echo " DONE"
 }
 
 
@@ -329,14 +328,14 @@ function run_audit () {
             2> "${MY_TMP_DIR}/exchange-httpd-drain.err" &
         EPID=$!
 
-        # Wait for all services to be available
+        # Wait for exchange service to be available
         for n in $(seq 1 50)
         do
             echo -n "."
             sleep 0.1
             OK=0
             # exchange
-            wget "http://localhost:8081/seed" \
+            wget "http://localhost:8081/config" \
                  -o /dev/null \
                  -O /dev/null \
                  >/dev/null \
@@ -403,40 +402,40 @@ function full_reload()
 
 function run_auditor_httpd() {
   echo -n "Starting auditor..."
-              taler-auditor-httpd \
-                  -c "${CONF}" \
-                  -L INFO \
-                  2> "${MY_TMP_DIR}/auditor-httpd-drain.err" &
-              APID=$!
+  taler-auditor-httpd \
+      -c "${CONF}" \
+      -L INFO \
+      2> "${MY_TMP_DIR}/auditor-httpd.err" &
+  APID=$!
 
-              # Wait for all services to be available
-              for n in $(seq 1 50)
-              do
-                  echo -n "."
-                  sleep 0.1
-                  OK=0
-                  # exchange
-                  wget "http://localhost:8083/seed" \
-                       -o /dev/null \
-                       -O /dev/null \
-                       >/dev/null \
-                      || continue
-                  OK=1
-                  break
-              done
-              echo "... DONE."
-              export CONF
+  # Wait for auditor service to be available
+  for n in $(seq 1 50)
+  do
+      echo -n "."
+      sleep 0.2
+      OK=0
+      # auditor
+      wget "http://localhost:8083/config" \
+           -o /dev/null \
+           -O /dev/null \
+           >/dev/null \
+          || continue
+      OK=1
+      break
+  done
+  echo "... DONE."
+  export CONF
 }
 
 function stop_auditor_httpd() {
-if [ -n "${APID:-}" ]
-    then
-        echo -n "Stopping auditor $APID..."
-        kill -TERM "$APID"
-        wait "$APID" || true
-        echo "DONE"
-        unset APID
-    fi
+  if [ -n "${APID:-}" ]
+  then
+      echo -n "Stopping auditor $APID..."
+      kill -TERM "$APID"
+      wait "$APID" || true
+      echo "DONE"
+      unset APID
+  fi
 }
 
 function check_auditor_running() {
@@ -478,6 +477,49 @@ function check_not_balance() {
     if [ "$BAL" = "$2" ]
     then
         exit_fail "$3 (got $BAL, wanted NOT $2)"
+    fi
+    echo "PASS"
+}
+
+
+function check_report() {
+    call_endpoint "$1"
+    NAME=$(echo "$1" | tr '-' '_')
+    VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
+    if [ "$VAL" != "$3" ]
+    then
+        exit_fail "$1::$2 (got $VAL, wanted $3)"
+    fi
+    echo "PASS"
+}
+
+function check_report_neg() {
+    call_endpoint "$1"
+    NAME=$(echo "$1" | tr '-' '_')
+    VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
+    if [ "$VAL" == "$3" ]
+    then
+        exit_fail "$1::$2 (got $VAL, wanted $3)"
+    fi
+    echo "PASS"
+}
+
+function check_row() {
+    call_endpoint "$1"
+    NAME=$(echo "$1" | tr '-' '_')
+    if [ -n "${3+x}" ]
+    then
+        RID="$2"
+        WANT="$3"
+    else
+        RID="row_id"
+        WANT="$2"
+    fi
+
+    ROW=$(jq -r .\"${NAME}\"[0].\"${RID}\" < "${MY_TMP_DIR}/${1}.json")
+    if [ "$ROW" != "$WANT" ]
+    then
+        exit_fail "Row ${1} wrong (got ${ROW}, wanted ${WANT})"
     fi
     echo "PASS"
 }
@@ -673,42 +715,39 @@ function test_1() {
 function test_2() {
 
     echo "===========2: reserves_in inconsistency ==========="
+    echo -n "Modifying database: "
     echo "UPDATE exchange.reserves_in SET credit.val=5 WHERE reserve_in_serial_id=1" \
         | psql -At "$DB"
 
     run_audit
     check_auditor_running
 
-    #echo -n "Testing inconsistency detection... "
-    #ROW=$(jq .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json")
-    #if [ "$ROW" != 1 ]
-    #then
-    #    exit_fail "Row $ROW is wrong"
-    #fi
-    #WIRED=$(jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Amount wrong"
-    #fi
-    #EXPECTED=$(jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json")
-    #if [ "$EXPECTED" != "TESTKUDOS:5" ]
-    #then
-    #    exit_fail "Expected amount wrong"
-    #fi
-#
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-    #fi
-    #DELTA=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
-    #if [ "$DELTA" != "TESTKUDOS:5" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $DELTA"
-    #fi
-    #echo "PASS"
+    echo -n "Testing inconsistency detection ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "row_id" 1
+    echo -n "Testing inconsistency detection amount wired ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_wired" "TESTKUDOS:10"
+    echo -n "Testing inconsistency detection amount expected ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_exchange_expected" "TESTKUDOS:5"
 
-    # Undo database modification
+    call_endpoint "balances"
+    echo -n "Checking wire credit balance minus ... "
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:0" \
+        "Wrong total_bad_amount_in_minus"
+    echo -n "Checking wire credit balance plus ... "
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:5" \
+        "Expected total_bad_amount_in_plus wrong"
+
+    echo -n "Undoing database modification "
     echo "UPDATE exchange.reserves_in SET credit.val=10 WHERE reserve_in_serial_id=1" \
         | psql -Aqt "$DB"
     stop_auditor_httpd
@@ -728,58 +767,43 @@ function test_3() {
     run_audit
     check_auditor_running
 
-    call_endpoint "reserve-balance-summary-wrong-inconsistency"
-    EXPECTED=$(jq -e .reserve_balance_summary_wrong_inconsistency[0].auditor_amount \
-                       < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json")
-    if [ "$EXPECTED" != '"TESTKUDOS:5.01"' ]
-    then
-        exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
-    fi
+    echo "Checking reserve balance summary inconsistency detection ..."
+    check_report \
+        "reserve-balance-summary-wrong-inconsistency" \
+        "auditor_amount" "TESTKUDOS:5.01"
+    check_report \
+        "reserve-balance-summary-wrong-inconsistency" \
+        "exchange_amount" "TESTKUDOS:0.01"
 
-    EXPECTED=$(jq -e .reserve_balance_summary_wrong_inconsistency[0].exchange_amount \
-                           < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json")
-    if [ "$EXPECTED" != '"TESTKUDOS:0.01"' ]
-    then
-        exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
-    fi
+    call_endpoint "balances"
+    check_balance \
+        "reserves_reserve_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total loss from insufficient balance"
 
-    #TODO: we receive 22.96 instead of 0 - check what it should be
-    #call_endpoint "balances" "reserves_reserve_loss"
-    #WIRED=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_reserve_loss.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Wrong total loss from insufficient balance, got $WIRED"
-    #fi
-    #TODO: fix helper wire
-    #ROW=$(jq -e .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json")
-    #if [ "$ROW" != 1 ]
-    #then
-    #    exit_fail "Row wrong, got $ROW"
-    #fi
+    echo -n "Testing inconsistency detection ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "row_id" 1
+    echo -n "Testing inconsistency detection amount wired ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_wired" "TESTKUDOS:10"
+    echo -n "Testing inconsistency detection amount expected ... "
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_exchange_expected" "TESTKUDOS:15"
 
-    #WIRED=$(jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:15" ]
-    #then
-    #    exit_fail "Wrong amount_exchange_expected, got $WIRED"
-    #fi
-
-    #WIRED=$(jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Wrong amount_wired, got $WIRED"
-    #fi
-
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:5" ]
-    #then
-    #    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-    #fi
-
-    #WIRED=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Wrong total wire_in_delta_plus, got $WIRED"
-    #fi
+    echo -n "Checking wire credit balance minus ... "
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:5" \
+        "Wrong total_bad_amount_in_minus"
+    echo -n "Checking wire credit balance plus ... "
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:0" \
+        "Wrong total_bad_amount_in_plus"
 
     # Undo database modification
     echo "UPDATE exchange.reserves_in SET credit.val=10 WHERE reserve_in_serial_id=1" | psql -Aqt "$DB"
@@ -917,33 +941,23 @@ function test_6() {
     run_audit
     check_auditor_running
 
-    call_endpoint "bad-sig-losses"
-    ROW=$(jq -e .bad_sig_losses[0].row_id < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$ROW" != "1" ]
-    then
-        exit_fail "Row wrong, got $ROW"
-    fi
+    echo -n "Checking bad-signature-loss detected ..."
+    check_row "bad-sig-losses" 1
+    echo -n "Checking bad-signature-loss amount detected ..."
+    check_report_neg \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:0"
+    echo -n "Checking bad-signature-loss operation detected ..."
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
+    echo -n "Checking bad-signature-loss balance update ..."
+    check_not_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss"
 
-    LOSS=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$LOSS" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong deposit bad signature loss, got $LOSS"
-    fi
-
-    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "melt" ] && [ "$OP" != "deposit" ]
-    then
-        exit_fail "Wrong operation, got $OP"
-    fi
-
-    call_endpoint "balances" "coin_irregular_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coin_irregular_loss.json")
-    if [ "$LOSS" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss, got $LOSS"
-    fi
-
-     #Undo
+    echo -n "Undo database change ... "
     echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt "$DB"
     stop_auditor_httpd
     full_reload
@@ -969,20 +983,11 @@ function test_7() {
     run_audit
     check_auditor_running
 
-    call_endpoint "bad-sig-losses"
-    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "withdraw" ]
-    then
-        exit_fail "Wrong operation, got $OP"
-    fi
-
-    call_endpoint "balances" "reserves_total_bad_sig_loss"
-    LOSS=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    LOSS_TOTAL=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_bad_sig_loss.json")
-    if [ "$LOSS" != "$LOSS_TOTAL" ]
-    then
-        exit_fail "Expected loss $LOSS and total loss $LOSS_TOTAL do not match"
-    fi
+    echo -n "Checking bad signature was detected ..."
+    check_report \
+        "bad-sig-losses" \
+        "operation" "withdraw"
+    echo -n "Checking loss was reported ..."
     if [ "$A_FRAC" != 0 ]
     then
         if [ "$A_FRAC" -lt 10 ]
@@ -991,16 +996,18 @@ function test_7() {
         else
             A_PREV=""
         fi
-        if [ "$LOSS" != "TESTKUDOS:$A_VAL.$A_PREV$A_FRAC" ]
-        then
-            exit_fail "Expected loss TESTKUDOS:$A_VAL.$A_PREV$A_FRAC but got $LOSS"
-        fi
+        EXPECTED_LOSS="TESTKUDOS:$A_VAL.$A_PREV$A_FRAC"
     else
-        if [ "$LOSS" != "TESTKUDOS:$A_VAL" ]
-        then
-            exit_fail "Expected loss TESTKUDOS:$A_VAL but got $LOSS"
-        fi
+        EXPECTED_LOSS="TESTKUDOS:$A_VAL"
     fi
+    check_report \
+        "bad-sig-losses" \
+        "loss" "$EXPECTED_LOSS"
+    echo "Checking loss was totaled up ..."
+    check_balance \
+        "reserves_total_bad_sig_loss" \
+        "$EXPECTED_LOSS" \
+        "wrong total bad sig loss"
 
     # Undo:
     echo "UPDATE exchange.reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt "$DB"
@@ -1250,22 +1257,16 @@ function test_12() {
     run_audit
     check_auditor_running
 
-    echo -n "Testing hung refresh detection... "
-
-    call_endpoint "refreshes-hanging"
     call_endpoint "balances"
-    call_endpoint "balances" "total_refresh_hanging"
-    HANG=$(jq -er .refreshes_hanging[0].amount < "${MY_TMP_DIR}/refreshes-hanging.json")
-    TOTAL_HANG=$(jq -er .balances[0].balance_value < "${MY_TMP_DIR}/total_refresh_hanging.json")
-    if [ "$HANG" = "TESTKUDOS:0" ]
-    then
-        exit_fail "Hanging amount zero"
-    fi
-    if [ "$TOTAL_HANG" = "TESTKUDOS:0" ]
-    then
-        exit_fail "Total hanging amount zero"
-    fi
-    echo "PASS"
+    echo -n "Checking hanging refresh detected ... "
+    check_report_neg \
+        "refreshes-hanging" \
+        "amount" "TESTKUDOS:0"
+    echo -n "Checking total balance updated ... "
+    check_not_balance \
+        "total_refresh_hanging" \
+        "TESTKUDOS:0" \
+        "Hanging amount zero"
 
     # cannot easily undo DELETE, hence full reload
     full_reload
@@ -1289,27 +1290,18 @@ function test_13() {
 
     echo -n "Testing inconsistency detection... "
 
-    call_endpoint "bad-sig-losses"
-    call_endpoint "balances" "coin_irregular_loss"
-
-    OP=$(jq -er .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "melt" ]
-    then
-        exit_fail "Operation wrong, got $OP"
-    fi
-
-    LOSS=$(jq -er .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    TOTAL_LOSS=$(jq -er .balances[0].balance_value < "${MY_TMP_DIR}/coin_irregular_loss.json")
-    if [ "$LOSS" != "$TOTAL_LOSS" ]
-    then
-        exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
-    fi
-    if [ "$TOTAL_LOSS" = "TESTKUDOS:0" ]
-    then
-        exit_fail "Loss zero"
-    fi
-
-    echo "PASS"
+    check_report \
+        "bad-sig-losses" \
+        "operation" "melt"
+    echo -n "Checking loss amount reported ..."
+    check_report \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:3.96"
+    echo -n "Checking loss amount totaled ..."
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:3.96" \
+        "Loss inconsistent"
 
     # cannot easily undo DELETE, hence full reload
     full_reload
@@ -1332,20 +1324,14 @@ function test_14() {
     post_audit
     check_auditor_running
 
-    call_endpoint "row-inconsistency"
-
-    echo -n "Testing inconsistency detection... "
-    TABLE=$(jq -r .row_inconsistency[0].row_table < "${MY_TMP_DIR}/row-inconsistency.json")
-    if [ "$TABLE" != "wire-fee" ]
-    then
-        exit_fail "Reported table wrong: $TABLE"
-    fi
-    DIAG=$(jq -r .row_inconsistency[0].diagnostic < "${MY_TMP_DIR}/row-inconsistency.json")
-    if [ "$DIAG" != "wire fee signature invalid at given time" ]
-    then
-        exit_fail "Reported diagnostic wrong: $DIAG"
-    fi
-    echo "PASS"
+    echo -n "Checking wire-fee inconsistency was detected ..."
+    check_report \
+        "row-inconsistency" \
+        "row_table" "wire-fee"
+    echo -n "Checking diagnostic was set correctly ..."
+    check_report \
+        "row-inconsistency" \
+        "diagnostic" "wire fee signature invalid at given time"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
@@ -1367,15 +1353,10 @@ function test_15() {
     run_audit
     check_auditor_running
 
-    call_endpoint "bad-sig-losses"
-
-    echo -n "Testing inconsistency detection... "
-    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "deposit" ]
-    then
-        exit_fail "Reported operation wrong: $OP"
-    fi
-    echo "PASS"
+    echo -n "Checking broken deposit signature detected ..."
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
 
     # Restore DB
     echo "UPDATE exchange.batch_deposits SET wire_salt='$SALT' WHERE batch_deposit_serial_id=1;" \
@@ -1521,45 +1502,33 @@ function test_18() {
     run_audit
     check_auditor_running
 
-    call_endpoint "reserve-balance-summary-wrong-inconsistency"
-    call_endpoint "emergency"
-    call_endpoint "emergency-by-count"
-    call_endpoint "amount-arithmetic-inconsistency"
-    call_endpoint "balances" "coins_emergencies_loss_by_count"
-    call_endpoint "balances" "coins_emergencies_loss"
-
+    echo -n "Testing bad reserve balance summary reporting ... "
+    # note: we check "suppressed" to only check the *existence* here.
+    check_report \
+        "reserve-balance-summary-wrong-inconsistency" \
+        "suppressed" "false"
     echo -n "Testing emergency detection... "
-    jq -e .reserve_balance_summary_wrong_inconsistency[0] \
-       < "${MY_TMP_DIR}/reserve-balance-summary-wrong-inconsistency.json" \
-       > /dev/null \
-        || exit_fail "Reserve balance inconsistency not detected"
-    jq -e .emergency[0] \
-       < "${MY_TMP_DIR}/emergency.json" \
-       > /dev/null \
-        || exit_fail "Emergency not detected"
-    jq -e .emergency_by_count[0] \
-       < "${MY_TMP_DIR}/emergency-by-count.json" \
-       > /dev/null \
-        || exit_fail "Emergency by count not detected"
-    jq -e .amount_arithmetic_inconsistency[0] \
-       < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json" \
-       > /dev/null \
-        || exit_fail "Escrow balance calculation impossibility not detected"
-    echo "PASS"
-
+    check_report \
+        "emergency" \
+        "suppressed" "false"
+    echo -n "Testing emergency detection by count... "
+    check_report \
+        "emergency-by-count" \
+        "suppressed" "false"
+    echo -n "Testing escrow balance calculation impossibility... "
+    check_report \
+        "amount-arithmetic-inconsistency" \
+        "suppressed" "false"
+    echo -n "Testing loss calculation by count... "
+    check_not_balance \
+        "coins_emergencies_loss_by_count" \
+        "TESTKUDOS:0" \
+        "Emergency by count loss not reported"
     echo -n "Testing loss calculation... "
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coins_emergencies_loss_by_count.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported amount wrong: $AMOUNT"
-    fi
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coins_emergencies_loss.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported amount wrong: $AMOUNT"
-    fi
-    echo "PASS"
-
+    check_not_balance \
+        "coins_emergencies_loss" \
+        "TESTKUDOS:0" \
+        "Emergency loss not reported"
     # cannot easily undo broad DELETE operation, hence full reload
     full_reload
     stop_auditor_httpd
@@ -1728,13 +1697,11 @@ function test_22() {
     run_audit
     check_auditor_running
 
-    call_endpoint "denomination-key-validity-withdraw-inconsistency"
-
     echo -n "Testing inconsistency detection... "
-    jq -e .denomination_key_validity_withdraw_inconsistency[0] < "${MY_TMP_DIR}/denomination-key-validity-withdraw-inconsistency.json" \
-     > /dev/null || exit_fail "Denomination key withdraw inconsistency for $S_DENOM not detected"
-
-    echo "PASS"
+    check_report \
+        "denomination-key-validity-withdraw-inconsistency" \
+        "suppressed" "false"
+    call_endpoint "denomination-key-validity-withdraw-inconsistency"
 
     # Undo modification
     echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt "$DB"

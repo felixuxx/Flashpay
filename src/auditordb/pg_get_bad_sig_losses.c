@@ -108,27 +108,23 @@ TAH_PG_get_bad_sig_losses (
   int64_t limit,
   uint64_t offset,
   bool return_suppressed,
-  bool filter_spec_pub,
-  struct GNUNET_CRYPTO_EddsaPublicKey op_spec_pub,
+  const struct GNUNET_CRYPTO_EddsaPublicKey *op_spec_pub,
   const char *op,
   TALER_AUDITORDB_BadSigLossesCallback cb,
   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-  /*if true, does not filter for an operation specific key*/
-  bool any_spec_pub = ! filter_spec_pub;
-  /*if true, does not filter for an operation*/
-  bool any_op = (NULL == op) ? true : false;
-  const char *o = (NULL == op) ? "" : op;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
     GNUNET_PQ_query_param_uint64 (&plimit),
-    GNUNET_PQ_query_param_bool (any_spec_pub),
-    GNUNET_PQ_query_param_auto_from_type (&op_spec_pub),
-    GNUNET_PQ_query_param_bool (any_op),
-    GNUNET_PQ_query_param_string (o),
+    NULL == op_spec_pub
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (op_spec_pub),
+    NULL == op
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (op),
     GNUNET_PQ_query_param_end
   };
   struct BadSigLossesContext dcc = {
@@ -147,9 +143,9 @@ TAH_PG_get_bad_sig_losses (
            ",operation_specific_pub"
            " FROM auditor_bad_sig_losses"
            " WHERE (row_id < $1)"
-           " AND ($2 OR suppressed is false)"
-           " AND ($4 OR operation_specific_pub = $5)"
-           " AND ($6 OR operation = $7)"
+           " AND ($2 OR suppressed IS FALSE)"
+           " AND ($4::BYTEA IS NULL OR operation_specific_pub = $4)"
+           " AND ($5::TEXT IS NULL OR operation = $5)"
            " ORDER BY row_id DESC"
            " LIMIT $3"
            );
@@ -162,20 +158,20 @@ TAH_PG_get_bad_sig_losses (
            ",operation_specific_pub"
            " FROM auditor_bad_sig_losses"
            " WHERE (row_id > $1)"
-           " AND ($2 OR suppressed is false)"
-           " AND ($4 OR operation_specific_pub = $5)"
-           " AND ($6 OR operation = $7)"
+           " AND ($2 OR suppressed IS FALSE)"
+           " AND ($4::BYTEA IS NULL OR operation_specific_pub = $4)"
+           " AND ($5::TEXT IS NULL OR operation = $5)"
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ? "auditor_bad_sig_losses_get_asc"
-                                             : "auditor_bad_sig_losses_get_desc",
-                                             params,
-                                             &bad_sig_losses_cb,
-                                             &dcc);
-
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_bad_sig_losses_get_asc"
+    : "auditor_bad_sig_losses_get_desc",
+    params,
+    &bad_sig_losses_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
