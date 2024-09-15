@@ -1728,34 +1728,23 @@ function test_23() {
     check_auditor_running
 
     echo -n "Testing inconsistency detection... "
-
-    call_endpoint "wire-out-inconsistency"
-
-    jq -e .wire_out_inconsistency[0] \
-       < "${MY_TMP_DIR}/wire-out-inconsistency.json" \
-       > /dev/null \
-        || exit_fail "Wire out inconsistency not detected"
-
-    ROW=$(jq .wire_out_inconsistency[0].wire_out_row_id < "${MY_TMP_DIR}/wire-out-inconsistency.json")
-    if [ "$ROW" != 1 ]
-    then
-        exit_fail "Row '$ROW' is wrong"
-    fi
-
-    call_endpoint "balances" "aggregation_total_wire_out_delta_plus"
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_wire_out_delta_plus.json")
-    if [ "$AMOUNT" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported amount wrong: '$AMOUNT'"
-    fi
-
-    call_endpoint "balances" "aggregation_total_wire_out_delta_minus"
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_wire_out_delta_minus.json")
-    if [ "$AMOUNT" != "TESTKUDOS:0.01" ]
-    then
-        exit_fail "Reported total amount wrong: '$AMOUNT'"
-    fi
-    echo "PASS"
+    check_report \
+        "wire-out-inconsistency" \
+        "suppressed" "false"
+    echo -n "Testing inconsistency row report... "
+    check_report \
+        "wire-out-inconsistency" \
+        "wire_out_row_id" "1"
+    echo -n "Testing inconsistency balance... "
+    check_balance \
+        "aggregation_total_wire_out_delta_plus" \
+        "TESTKUDOS:0" \
+        "Reported aggregation_total_wire_out_delta_plus wrong"
+    echo -n "Testing inconsistency balance change ... "
+    check_balance \
+        "aggregation_total_wire_out_delta_minus" \
+        "TESTKUDOS:0.01" \
+        "Reported aggregation_total_wire_out_delta_minus wrong"
 
     echo "Second pass: changing how amount is wrong to other direction"
     NEW_AMOUNT=$(( OLD_AMOUNT + 1000000 ))
@@ -1767,29 +1756,24 @@ function test_23() {
 
     echo -n "Testing inconsistency detection... "
 
-    call_endpoint "wire-out-inconsistency"
-    jq -e .wire_out_inconsistency[0] < "${MY_TMP_DIR}/wire-out-inconsistency.json" > /dev/null || exit_fail "Wire out inconsistency not detected"
-
-    ROW=$(jq .wire_out_inconsistency[0].wire_out_row_id < "${MY_TMP_DIR}/wire-out-inconsistency.json")
-    if [ "$ROW" != 1 ]
-    then
-        exit_fail "Row '$ROW' is wrong"
-    fi
-
-    call_endpoint "balances" "aggregation_total_wire_out_delta_minus"
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_wire_out_delta_minus.json")
-    if [ "$AMOUNT" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported amount wrong: '$AMOUNT'"
-    fi
-
-    call_endpoint "balances" "aggregation_total_wire_out_delta_plus"
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_wire_out_delta_plus.json")
-    if [ "$AMOUNT" != "TESTKUDOS:0.01" ]
-    then
-        exit_fail "Reported total amount wrong: '$AMOUNT'"
-    fi
-    echo "PASS"
+    echo -n "Testing inconsistency detection... "
+    check_report \
+        "wire-out-inconsistency" \
+        "suppressed" "false"
+    echo -n "Testing inconsistency row report... "
+    check_report \
+        "wire-out-inconsistency" \
+        "wire_out_row_id" "1"
+    echo -n "Testing inconsistency balance... "
+    check_balance \
+        "aggregation_total_wire_out_delta_plus" \
+        "TESTKUDOS:0.01" \
+        "Reported aggregation_total_wire_out_delta_plus wrong"
+    echo -n "Testing inconsistency balance change ... "
+    check_balance \
+        "aggregation_total_wire_out_delta_minus" \
+        "TESTKUDOS:0" \
+        "Reported aggregation_total_wire_out_delta_minus wrong"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
