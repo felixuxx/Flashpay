@@ -1996,13 +1996,11 @@ function test_29() {
     echo "UPDATE exchange.denominations SET fee_withdraw.frac=2000000 WHERE (coin).val=1;" | psql -Aqt "$DB"
     full_reload
     stop_auditor_httpd
-
 }
 
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
-# FIXME: test-30 not modernized
 function test_30() {
     echo "===========30: melt fee inconsistency ================="
 
@@ -2011,31 +2009,22 @@ function test_30() {
     run_audit
     check_auditor_running
 
-    call_endpoint "bad-sig-losses"
-    call_endpoint "amount-arithmetic-inconsistency"
-    call_endpoint "emergency"
-
     echo -n "Testing inconsistency detection... "
-    AMOUNT=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported total amount wrong: $AMOUNT"
-    fi
+    check_report_neg \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:0"
+    echo -n "Testing inconsistency was reported as profitable... "
+    check_report \
+        "amount-arithmetic-inconsistency" \
+        "profitable" "true"
+    echo -n "Testing no emergency was raised... "
+    check_no_report "emergency"
 
-    PROFIT=$(jq -r .amount_arithmetic_inconsistency[0].profitable < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json")
-    if [ "$PROFIT" != "true" ]
-    then
-        exit_fail "Reported profitability wrong: $PROFIT"
-    fi
-
-    jq -e .emergency[0] < "${MY_TMP_DIR}/emergency.json" > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
-    echo "OK"
     # Undo
     echo "UPDATE exchange.denominations SET fee_refresh.frac=3000000 WHERE (coin).val=10;" | psql -Aqt "$DB"
 
     full_reload
     stop_auditor_httpd
-
 }
 
 
