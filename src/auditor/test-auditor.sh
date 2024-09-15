@@ -493,6 +493,16 @@ function check_report() {
     echo "PASS"
 }
 
+function check_no_report() {
+    call_endpoint "$1"
+    NAME=$(echo "$1" | tr '-' '_')
+    jq -e .\"${NAME}\"[0] \
+       < "${MY_TMP_DIR}/${1}.json" \
+       > /dev/null \
+       && exit_fail "Wanted empty report for $1, but got incidents"
+    echo "PASS"
+}
+
 function check_report_neg() {
     call_endpoint "$1"
     NAME=$(echo "$1" | tr '-' '_')
@@ -535,22 +545,14 @@ function test_0() {
 
     # if an emergency was detected, that is a bug and we should fail
     echo -n "Test for emergencies... "
-    call_endpoint "emergency"
-    jq -e .emergency[0] < "${MY_TMP_DIR}/emergency.json" > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
-    echo "PASS"
-    echo -n "Test for deposit confirmation emergencies... "
-    call_endpoint "deposit-confirmation"
-    jq -e .deposit_confirmation[0] < "${MY_TMP_DIR}/deposit-confirmation.json" > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected"
-    echo "PASS"
+    check_no_report "emergency"
     echo -n "Test for emergencies by count... "
-    call_endpoint "emergency-by-count"
-    jq -e .emergency_by_count[0] < "${MY_TMP_DIR}/emergency-by-count.json" > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run"
-    echo "PASS"
-
+    check_no_report "emergency-by-count"
     echo -n "Test for wire inconsistencies... "
-    call_endpoint "denomination-key-validity-withdraw-inconsistency"
-    jq -e .denomination_key_validity_withdraw_inconsistency[0] < "${MY_TMP_DIR}/denomination-key-validity-withdraw-inconsistency.json" > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-    echo "PASS"
+    check_no_report "denomination-key-validity-withdraw-inconsistency"
+# FIXME: test fails!
+    echo -n "Test for deposit confirmation problems... "
+    check_no_report "deposit-confirmation"
 
     # Just to test the endpoint and for logging ...
     call_endpoint "balances"
@@ -664,21 +666,11 @@ function test_1() {
     call_endpoint "balances"
 
     echo -n "Test for emergencies... "
-    call_endpoint "emergency"
-    jq -e .emergency[0] \
-        < "${MY_TMP_DIR}/emergency.json" \
-        > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
-
+    check_no_report "emergency"
     echo -n "Test for emergencies by count... "
-    call_endpoint "emergency-by-count"
-    jq -e .emergency_by_count[0] \
-        < "${MY_TMP_DIR}/emergency-by-count.json" \
-        > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
-
+    check_no_report "emergency-by-count"
     echo -n "Test for wire inconsistencies... "
-    call_endpoint "denomination-key-validity-withdraw-inconsistency"
-    jq -e .denomination_key_validity_withdraw_inconsistency[0] < "${MY_TMP_DIR}/denomination-key-validity-withdraw-inconsistency.json" > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-    echo "PASS"
+    check_no_report "denomination-key-validity-withdraw-inconsistency"
 
     # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
     # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
@@ -815,6 +807,7 @@ function test_3() {
 
 # Check for incoming wire transfer amount given being
 # lower than what exchange claims to have received.
+# FIXME: test-4 not implemented
 function test_4() {
 # TODO : may need to be restructured, as db seems to have done
     echo "===========4: deposit wire target wrong================="
@@ -883,6 +876,7 @@ function test_4() {
 
 # Test where h_contract_terms in the deposit table is wrong
 # (=> bad signature)
+# FIXME: test-5 not implemented
 function test_5() {
     echo "===========5: deposit contract hash wrong================="
     # TODO: may need to be restructured
@@ -1018,6 +1012,7 @@ function test_7() {
 
 
 # Test wire transfer subject disagreement!
+# FIXME: test-8 not implemented
 function test_8() {
 
     echo "===========8: wire-transfer-subject disagreement==========="
@@ -1101,6 +1096,7 @@ function test_8() {
 
 
 # Test wire origin disagreement!
+# FIXME: test-9 not implemented
 function test_9() {
 
     echo "===========9: wire-origin disagreement==========="
@@ -1141,6 +1137,7 @@ function test_9() {
 
 
 # Test wire_in timestamp disagreement!
+# FIXME: test-10 not implemented
 function test_10() {
     NOW_MS=$(date +%s)000
     echo "===========10: wire-timestamp disagreement==========="
@@ -1181,6 +1178,7 @@ function test_10() {
 # Test for extra outgoing wire transfer.
 # In case of changing the subject in the Nexus
 # ingested table: '.batches[0].batchTransactions[0].details.unstructuredRemittanceInformation'
+# FIXME: test-11 not implemented
 function test_11() {
     echo "===========11: spurious outgoing transfer ==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
@@ -1367,6 +1365,7 @@ function test_15() {
 
 
 # Test where wired amount (wire out) is wrong
+# FIXME: test-16 not implemented
 function test_16() {
     echo "===========16: incorrect wire_out amount================="
 
@@ -1451,6 +1450,7 @@ function test_16() {
 
 
 # Test where wire-out timestamp is wrong
+# FIXME: test-17 not implemented
 function test_17() {
     echo "===========17: incorrect wire_out timestamp================="
 
@@ -1536,6 +1536,7 @@ function test_18() {
 
 
 # Test where reserve closure was done properly
+# FIXME: test-19 partially implemented
 function test_19() {
     echo "===========19: reserve closure done properly ================="
 
@@ -1579,6 +1580,7 @@ function test_19() {
 
 
 # Test where reserve closure was not done properly
+# FIXME: test-20 not modernized
 function test_20() {
     echo "===========20: reserve closure missing ================="
 
@@ -1624,6 +1626,7 @@ function test_20() {
 
 
 # Test reserve closure reported but wire transfer missing detection
+# FIXME: test-21 not implemented
 function test_21() {
     echo "===========21: reserve closure missreported ================="
 
@@ -1814,6 +1817,7 @@ function test_24() {
 
 
 # Test for inconsistent coin history.
+# FIXME: test-25 not implemented
 function test_25() {
 
     echo "=========25: inconsistent coin history========="
@@ -1866,6 +1870,7 @@ function test_25() {
 
 
 # Test for deposit wire target malformed
+# FIXME: test-26 not implemented
 function test_26() {
     echo "===========26: deposit wire target malformed ================="
     #TODO needs to be rebuild
@@ -1917,6 +1922,7 @@ function test_26() {
 }
 
 # Test for duplicate wire transfer subject
+# FIXME: test-27 not implemented
 function test_27() {
     echo "===========27: duplicate WTID detection ================="
 #TODO libeufin fix
@@ -1952,6 +1958,7 @@ function test_27() {
 
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature) AND the coin is used in aggregation
+# FIXME: test-28 not modernized
 function test_28() {
 
     echo "===========28: known_coins signature wrong================="
@@ -2004,6 +2011,7 @@ function test_28() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
+# FIXME: test-29 not modernized
 function test_29() {
     echo "===========29: withdraw fee inconsistency ================="
 
@@ -2038,6 +2046,7 @@ function test_29() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
+# FIXME: test-30 not modernized
 function test_30() {
     echo "===========30: melt fee inconsistency ================="
 
@@ -2076,6 +2085,7 @@ function test_30() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
+# FIXME: test-31 not modernized
 function test_31() {
 
     echo "===========31: deposit fee inconsistency ================="
@@ -2146,6 +2156,7 @@ function test_32() {
 
 
 
+# FIXME: test-33 not implemented
 function test_33() {
 
     echo "===========33: normal run with aggregator and profit drain==========="
@@ -2157,7 +2168,7 @@ function test_33() {
     echo -n "Test for emergencies... "
     call_endpoint "emergency"
     jq -e .emergency[0] < "${MY_TMP_DIR}/emergency.json" > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
-    echo -n "Test for deposit confirmation emergencies... "
+    echo -n "Test for deposit confirmation detection... "
     call_endpoint "deposit-confirmation"
     jq -e .deposit_confirmation[0] < "${MY_TMP_DIR}/deposit-confirmation.json" > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
     echo -n "Test for emergencies by count... "
