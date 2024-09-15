@@ -1564,7 +1564,6 @@ function test_19() {
 
 
 # Test where reserve closure was not done properly
-# FIXME: test-20 not modernized
 function test_20() {
     echo "===========20: reserve closure missing ================="
 
@@ -1582,21 +1581,15 @@ function test_20() {
     run_audit
     check_auditor_running
 
-    call_endpoint "reserve-not-closed-inconsistency"
-    call_endpoint "balances" "total_balance_reserve_not_closed"
-
     echo -n "Testing reserve closure missing detected... "
-    jq -e .reserve_not_closed_inconsistency[0] \
-       < "${MY_TMP_DIR}/reserve-not-closed-inconsistency.json" \
-       > /dev/null  \
-        || exit_fail "Reserve not closed inconsistency not detected"
-    echo "PASS"
-
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/total_balance_reserve_not_closed.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported total amount wrong: $AMOUNT"
-    fi
+    check_report \
+        "reserve-not-closed-inconsistency" \
+        "suppressed" "false"
+    echo -n "Testing balance updated correctly... "
+    check_not_balance \
+        "total_balance_reserve_not_closed" \
+        "TESTKUDOS:0" \
+        "Reported total amount wrong"
 
     # Undo
     echo "UPDATE exchange.reserves_in SET execution_date='${OLD_TIME}',credit.val=${OLD_VAL} WHERE reserve_in_serial_id=1;" \
