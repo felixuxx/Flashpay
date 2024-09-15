@@ -44,9 +44,9 @@ TAH_PG_insert_exchange_signkey (
   PREPARE (pg,
            "auditor_insert_exchange_signkey",
            "INSERT INTO auditor_exchange_signkeys "
-           "(ep_start"
-           ",ep_expire"
-           ",ep_end"
+           "(ep_valid_from"
+           ",ep_expire_sign"
+           ",ep_expire_legal"
            ",exchange_pub"
            ",master_sig"
            ") VALUES ($1,$2,$3,$4,$5);"
