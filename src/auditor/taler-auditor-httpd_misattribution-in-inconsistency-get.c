@@ -29,7 +29,6 @@
  * Add misattribution-in-inconsistency to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
  * @param dc struct of inconsistencies
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */

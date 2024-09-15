@@ -478,7 +478,6 @@ typedef enum GNUNET_GenericReturnValue
  * the auditor's database.
  *
  * @param cls closure
- * @param serial_id location of the @a dc in the database
  * @param dc the structure itself
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
@@ -492,7 +491,6 @@ typedef enum GNUNET_GenericReturnValue
  * the auditor's database.
  *
  * @param cls closure
- * @param serial_id location of the @a dc in the database
  * @param dc the structure itself
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
@@ -520,7 +518,6 @@ typedef enum GNUNET_GenericReturnValue
  * the auditor's database.
  *
  * @param cls closure
- * @param serial_id location of the @a dc in the database
  * @param dc the structure itself
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */

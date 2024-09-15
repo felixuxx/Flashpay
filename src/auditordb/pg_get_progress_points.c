@@ -52,7 +52,7 @@ struct ProgressContext
 
 
 /**
- * Helper function for #TAH_PG_get_progress().
+ * Helper function for #TAH_PG_get_progress_points().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
