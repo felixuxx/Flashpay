@@ -96,20 +96,18 @@ static enum GNUNET_DB_QueryStatus eqs;
  * in #TALER_ARL_edb.  Update the deposit confirmation context accordingly.
  *
  * @param cls our `struct DepositConfirmationContext`
- * @param serial_id row of the @a dc in the database
  * @param dc the deposit confirmation we know
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 test_dc (void *cls,
-         uint64_t serial_id,
          const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
   bool missing = false;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) cls;
-  TALER_ARL_USE_PP (deposit_confirmation_serial_id) = serial_id;
+  TALER_ARL_USE_PP (deposit_confirmation_serial_id) = dc->row_id;
   for (unsigned int i = 0; i < dc->num_coins; i++)
   {
     struct GNUNET_TIME_Timestamp exchange_timestamp;
@@ -123,7 +121,12 @@ test_dc (void *cls,
                                        dc->refund_deadline,
                                        &deposit_fee,
                                        &exchange_timestamp);
-    missing |= (0 == qs);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Status for deposit confirmation %llu-%u is %d\n",
+                (unsigned long long) dc->row_id,
+                i,
+                qs);
+    missing |= (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
     if (qs < 0)
     {
       GNUNET_break (0); /* DB error, complain */
@@ -135,9 +138,9 @@ test_dc (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Deleting matching deposit confirmation %llu\n",
-                (unsigned long long) serial_id);
+                (unsigned long long) dc->row_id);
     qs = TALER_ARL_adb->delete_deposit_confirmation (TALER_ARL_adb->cls,
-                                                     serial_id);
+                                                     dc->row_id);
     if (qs < 0)
     {
       GNUNET_break (0); /* DB error, complain */

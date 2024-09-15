@@ -550,7 +550,6 @@ function test_0() {
     check_no_report "emergency-by-count"
     echo -n "Test for wire inconsistencies... "
     check_no_report "denomination-key-validity-withdraw-inconsistency"
-# FIXME: test fails!
     echo -n "Test for deposit confirmation problems... "
     check_no_report "deposit-confirmation"
 
