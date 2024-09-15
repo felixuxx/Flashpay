@@ -806,68 +806,45 @@ function test_3() {
 # lower than what exchange claims to have received.
 # FIXME: test-4 not implemented
 function test_4() {
-# TODO : may need to be restructured, as db seems to have done
     echo "===========4: deposit wire target wrong================="
-#    # Original target bank account was 43, changing to 44
-#    # TODO: ask grothoff check if I correctly chose table coin_deposit
-#
-#    SERIALE=$(echo "SELECT coin_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
-#
-#    #SERIAL=$(echo "SELECT coin_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 AND (amount_with_fee).frac=0 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
-#    echo $SERIALE
-#    OLD_WIRE_ID=$(echo "SELECT coin_sig FROM exchange.coin_deposits WHERE coin_deposit_serial_id=${SERIALE};"  | psql "$DB" -Aqt)
-#    #OLD_WIRE_ID=$(echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql "$DB" -Aqt)
+
+    SERIALE=$(echo "SELECT coin_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
+    OLD_COIN_SIG=$(echo "SELECT coin_sig FROM exchange.coin_deposits WHERE coin_deposit_serial_id=${SERIALE};"  | psql "$DB" -Aqt)
+    echo -n "Manipulating row ${SERIALE} ..."
+# shellcheck disable=SC2028
+    echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');" \
+        | psql -Aqt "$DB"
 ## shellcheck disable=SC2028
-#    echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');" \
-#        | psql "$DB" \
-#               -Aqt \
-#               > /dev/null
-## shellcheck disable=SC2028
-#    #echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" \
-#     #   | psql -Aqt "$DB"
-#    echo "UPDATE exchange.coin_deposits SET coin_sig='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE coin_deposit_serial_id=${SERIALE}" \
-#        | psql -Aqt "$DB"
-#
-#    run_audit
-#    check_auditor_running
-#
-#    echo -n "Testing inconsistency detection... "
-#
-#    call_endpoint "bad-sig-losses"
-#    jq -e .bad_sig_losses[0] < "${MY_TMP_DIR}/bad-sig-losses.json" > /dev/null || exit_fail "Bad signature not detected"
-#
-#    ROW=$(jq -e .bad_sig_losses[0].row < "${MY_TMP_DIR}/bad-sig-losses.json")
-#    if [ $ROW != "${SERIALE}" ]
-#    then
-#        exit_fail "Row wrong, got $ROW"
-#    fi
-#
-#    LOSS=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-#    if [ $LOSS != '"TESTKUDOS:3"' ]
-#    then
-#        exit_fail "Wrong deposit bad signature loss, got $LOSS"
-#    fi
-#
-#    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-#    if [ $OP != "deposit" ]
-#    then
-#        exit_fail "Wrong operation, got $OP"
-#    fi
-#
-#    #LOSS=$(jq -r .irregular_loss < test-audit-coins.json")
-#    #if [ "$LOSS" != "TESTKUDOS:3" ]
-#    #then
-#    #    exit_fail "Wrong total bad sig loss, got $LOSS"
-#    #fi
-#
-#    echo PASS
-#    # Undo:
-#    #echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt "$DB"
-#    echo "UPDATE exchange.deposits SET coin_sig='$OLD_WIRE_ID' WHERE coin_deposit_serial_id=${SERIALE}" | psql -Aqt "$DB"
-#
-#    stop_auditor_httpd
-#    full_reload
-#    cleanup
+    echo "UPDATE exchange.coin_deposits SET coin_sig='\x0f29b2ebf3cd1ecbb3e1f2a7888872058fc870c28c0065d4a7d457f2fee9eb5ec376958fc52460c8c540e583be10cf67491a6651a62c1bda68051c62dbe9130c' WHERE coin_deposit_serial_id=${SERIALE}" \
+        | psql -Aqt "$DB"
+    echo " DONE"
+
+    run_audit
+    check_auditor_running
+
+    echo -n "Testing inconsistency detection... "
+    check_report \
+        "bad-sig-losses" \
+        "problem_row_id" "${SERIALE}"
+    echo -n "Testing loss report... "
+    check_report \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:3.02"
+    echo -n "Testing loss operation attribution... "
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
+    echo -n "Testing total coin_irregular_loss balance update... "
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:3.02" \
+        "wrong total coin_irregular_loss"
+    # Undo:
+    echo "UPDATE exchange.coin_deposits SET coin_sig='$OLD_COIN_SIG' WHERE coin_deposit_serial_id=${SERIALE}" | psql -Aqt "$DB"
+
+    stop_auditor_httpd
+    full_reload
+    cleanup
 }
 
 

@@ -62,22 +62,23 @@ bad_sig_losses_cb (void *cls,
 {
   struct BadSigLossesContext *dcc = cls;
   struct PostgresClosure *pg = dcc->pg;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "---found badsiglosses...\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "---num_results: %u\n", num_results);
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_BadSigLosses dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
-                                    &serial_id),
+                                    &dc.row_id),
+      GNUNET_PQ_result_spec_uint64 ("problem_row_id",
+                                    &dc.problem_row_id),
       GNUNET_PQ_result_spec_string ("operation",
                                     &dc.operation),
       TALER_PQ_RESULT_SPEC_AMOUNT ("loss",
                                    &dc.loss),
       GNUNET_PQ_result_spec_auto_from_type ("operation_specific_pub",
                                             &dc.operation_specific_pub),
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -93,7 +94,6 @@ bad_sig_losses_cb (void *cls,
     }
     dcc->qs = i + 1;
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -138,12 +138,14 @@ TAH_PG_get_bad_sig_losses (
            "auditor_bad_sig_losses_get_desc",
            "SELECT"
            " row_id"
+           ",problem_row_id"
            ",operation"
            ",loss"
            ",operation_specific_pub"
+           ",suppressed"
            " FROM auditor_bad_sig_losses"
            " WHERE (row_id < $1)"
-           " AND ($2 OR suppressed IS FALSE)"
+           " AND ($2 OR NOT suppressed)"
            " AND ($4::BYTEA IS NULL OR operation_specific_pub = $4)"
            " AND ($5::TEXT IS NULL OR operation = $5)"
            " ORDER BY row_id DESC"
@@ -153,12 +155,14 @@ TAH_PG_get_bad_sig_losses (
            "auditor_bad_sig_losses_get_asc",
            "SELECT"
            " row_id"
+           ",problem_row_id"
            ",operation"
            ",loss"
            ",operation_specific_pub"
+           ",suppressed"
            " FROM auditor_bad_sig_losses"
            " WHERE (row_id > $1)"
-           " AND ($2 OR suppressed IS FALSE)"
+           " AND ($2 OR NOT suppressed)"
            " AND ($4::BYTEA IS NULL OR operation_specific_pub = $4)"
            " AND ($5::TEXT IS NULL OR operation = $5)"
            " ORDER BY row_id ASC"

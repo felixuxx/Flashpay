@@ -13,7 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
@@ -66,11 +65,10 @@ closure_lags_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_ClosureLags dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
-                                    &serial_id),
+                                    &dc.row_id),
       GNUNET_PQ_result_spec_uint64 ("problem_row_id",
                                     &dc.problem_row_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
@@ -81,6 +79,8 @@ closure_lags_cb (void *cls,
                                             &dc.wtid),
       GNUNET_PQ_result_spec_string ("account",
                                     &dc.account),
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -96,7 +96,6 @@ closure_lags_cb (void *cls,
     }
     dcc->qs = i + 1;
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -138,9 +137,10 @@ TAH_PG_get_auditor_closure_lags (
            ",deadline"
            ",wtid"
            ",account"
+           ",suppressed"
            " FROM auditor_closure_lags"
            " WHERE (row_id < $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id DESC"
            " LIMIT $3"
            );
@@ -153,9 +153,10 @@ TAH_PG_get_auditor_closure_lags (
            ",deadline"
            ",wtid"
            ",account"
+           ",suppressed"
            " FROM auditor_closure_lags"
            " WHERE (row_id > $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );
@@ -167,7 +168,6 @@ TAH_PG_get_auditor_closure_lags (
     params,
     &closure_lags_cb,
     &dcc);
-
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

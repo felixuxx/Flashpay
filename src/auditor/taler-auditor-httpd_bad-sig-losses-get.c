@@ -45,12 +45,16 @@ add_bad_sig_losses (
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("row_id",
                              serial_id),
+    GNUNET_JSON_pack_uint64 ("problem_row_id",
+                             dc->problem_row_id),
     GNUNET_JSON_pack_string ("operation",
                              dc->operation),
     TALER_JSON_pack_amount ("loss",
                             &dc->loss),
     GNUNET_JSON_pack_data_auto ("operation_specific_pub",
-                                &dc->operation_specific_pub)
+                                &dc->operation_specific_pub),
+    GNUNET_JSON_pack_bool ("suppressed",
+                           dc->suppressed)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
@@ -93,12 +97,10 @@ TAH_BAD_SIG_LOSSES_handler_get (
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
@@ -130,7 +132,6 @@ TAH_BAD_SIG_LOSSES_handler_get (
     op,
     &add_bad_sig_losses,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (0);
