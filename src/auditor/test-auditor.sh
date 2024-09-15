@@ -2030,9 +2030,7 @@ function test_30() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
-# FIXME: test-31 not modernized
 function test_31() {
-
     echo "===========31: deposit fee inconsistency ================="
 
     echo "UPDATE exchange.denominations SET fee_deposit.frac=5000000 WHERE (coin).val=8;" | psql -Aqt "$DB"
@@ -2042,23 +2040,13 @@ function test_31() {
 
     echo -n "Testing inconsistency detection... "
 
-    call_endpoint "balances" "coin_irregular_loss"
-    call_endpoint "bad-sig-losses"
-
-    AMOUNT=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coin_irregular_loss.json")
-    if [ "$AMOUNT" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Reported total amount wrong: $AMOUNT"
-    fi
-
-    OP=$(jq -r --arg dep "deposit" '.bad_sig_losses[] | select(.operation == $dep) | .operation' \
-        < "${MY_TMP_DIR}/bad-sig-losses.json" | head -n1)
-    if [ "$OP" != "deposit" ]
-    then
-        exit_fail "Reported wrong operation: $OP"
-    fi
-
-    echo "OK"
+    check_not_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:0" \
+        "Reported total coin_irregular_loss wrong"
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
     # Undo
     echo "UPDATE exchange.denominations SET fee_deposit.frac=2000000 WHERE (coin).val=8;" | psql -Aqt "$DB"
     stop_auditor_httpd
@@ -2071,7 +2059,6 @@ function test_31() {
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature)
 function test_32() {
-
     echo "===========32: known_coins signature wrong w. aggregation================="
     # Modify denom_sig, so it is wrong
     OLD_SIG=$(echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql "$DB" -Aqt)
