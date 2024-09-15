@@ -1935,7 +1935,6 @@ function test_27() {
 
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature) AND the coin is used in aggregation
-# FIXME: test-28 not modernized
 function test_28() {
 
     echo "===========28: known_coins signature wrong================="
@@ -1949,36 +1948,24 @@ function test_28() {
     run_audit aggregator
     check_auditor_running
 
-    call_endpoint "bad-sig-losses"
-
     echo -n "Testing inconsistency detection... "
-    LOSS=$(jq -r .bad_sig_losses[0].loss < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$LOSS" == "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong deposit bad signature loss, got $LOSS"
-    fi
+    check_report_neg \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:0"
+    echo -n "Testing inconsistency detection operation attribution... "
+    check_report \
+        "bad-sig-losses" \
+        "operation" "wire"
+    echo -n "Testing table attribution for inconsistency... "
+    check_report \
+        "row-inconsistency" \
+        "row_table" "deposit"
+    echo -n "Check signature loss was accumulated ..."
+    check_not_balance \
+        "aggregation_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong aggregation_total_bad_sig_loss"
 
-    OP=$(jq -r .bad_sig_losses[0].operation < "${MY_TMP_DIR}/bad-sig-losses.json")
-    if [ "$OP" != "wire" ]
-    then
-        exit_fail "Wrong operation, got $OP"
-    fi
-
-    call_endpoint "row-inconsistency"
-    TAB=$(jq -r .row_inconsistency[0].row_table < "${MY_TMP_DIR}/row-inconsistency.json")
-    if [ "$TAB" != "deposit" ]
-    then
-        exit_fail "Wrong table for row inconsistency, got $TAB"
-    fi
-
-    #TODO test seems to be wrong, original auditor logic seems to not spot it
-    #LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/total_bad_sig_loss.json")
-    #if [ "$LOSS" == "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Wrong total bad sig loss, got $LOSS"
-    #fi
-
-    echo "OK"
     # cannot easily undo aggregator, hence full reload
     full_reload
     stop_auditor_httpd
