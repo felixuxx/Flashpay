@@ -1697,13 +1697,11 @@ function test_22() {
     run_audit
     check_auditor_running
 
-    call_endpoint "denomination-key-validity-withdraw-inconsistency"
-
     echo -n "Testing inconsistency detection... "
-    jq -e .denomination_key_validity_withdraw_inconsistency[0] < "${MY_TMP_DIR}/denomination-key-validity-withdraw-inconsistency.json" \
-     > /dev/null || exit_fail "Denomination key withdraw inconsistency for $S_DENOM not detected"
-
-    echo "PASS"
+    check_report \
+        "denomination-key-validity-withdraw-inconsistency" \
+        "suppressed" "false"
+    call_endpoint "denomination-key-validity-withdraw-inconsistency"
 
     # Undo modification
     echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt "$DB"

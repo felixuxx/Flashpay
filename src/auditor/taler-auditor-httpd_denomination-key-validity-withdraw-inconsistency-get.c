@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -28,28 +26,33 @@
   "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-get.h"
 
 /**
-* Add denomination-key-validity-withdraw-inconsistency to the list.
-*
-* @param[in,out] cls a `json_t *` array to extend
-* @param serial_id location of the @a dc in the database
-* @param dc struct of inconsistencies
-* @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
-*/
+ * Add denomination-key-validity-withdraw-inconsistency to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param dc struct of inconsistencies
+ * @return #GNUNET_OK to continue to iterate
+ */
 static enum GNUNET_GenericReturnValue
 process_denomination_key_validity_withdraw_inconsistency (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-
-    TALER_JSON_pack_time_abs_human ("execution_date", dc->execution_date),
-    GNUNET_JSON_pack_data_auto ("reserve_pub", &dc->reserve_pub),
-    GNUNET_JSON_pack_data_auto ("denompub_h", &dc->denompub_h)
-
+    GNUNET_JSON_pack_uint64 ("row_id",
+                             dc->row_id),
+    GNUNET_JSON_pack_uint64 ("problem_row_id",
+                             dc->problem_row_id),
+    TALER_JSON_pack_time_abs_human ("execution_date",
+                                    dc->execution_date),
+    GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                &dc->reserve_pub),
+    GNUNET_JSON_pack_data_auto ("denompub_h",
+                                &dc->denompub_h),
+    GNUNET_JSON_pack_bool ("suppressed",
+                           dc->suppressed)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
@@ -71,6 +74,9 @@ TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_get (
 {
   json_t *ja;
   enum GNUNET_DB_QueryStatus qs;
+  int64_t limit = -20;
+  uint64_t offset;
+  bool return_suppressed = false;
 
   (void) rh;
   (void) connection_cls;
@@ -85,34 +91,28 @@ TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_get (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  ja = json_array ();
-  GNUNET_break (NULL != ja);
-  int64_t limit = -20;
-  uint64_t offset;
-
   TALER_MHD_parse_request_snumber (connection,
                                    "limit",
                                    &limit);
-
   if (limit < 0)
     offset = INT64_MAX;
   else
     offset = 0;
-
   TALER_MHD_parse_request_number (connection,
                                   "offset",
                                   &offset);
-
-  bool return_suppressed = false;
-  const char *ret_s = MHD_lookup_connection_value (connection,
-                                                   MHD_GET_ARGUMENT_KIND,
-                                                   "return_suppressed");
-  if (ret_s != NULL && strcmp (ret_s, "true") == 0)
   {
-    return_suppressed = true;
+    const char *ret_s
+      = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "return_suppressed");
+    if (ret_s != NULL && strcmp (ret_s, "true") == 0)
+    {
+      return_suppressed = true;
+    }
   }
-
-
+  ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->get_denomination_key_validity_withdraw_inconsistency (
     TAH_plugin->cls,
     limit,
@@ -120,7 +120,6 @@ TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_get (
     return_suppressed,
     &process_denomination_key_validity_withdraw_inconsistency,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);

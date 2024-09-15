@@ -347,6 +347,7 @@ struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_DenominationHashP denompub_h;
+  bool suppressed;
 };
 
 /**
@@ -531,14 +532,12 @@ typedef enum GNUNET_GenericReturnValue
  * the auditor's database.
  *
  * @param cls closure
- * @param serial_id location of the @a dc in the database
  * @param dc the structure itself
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct
   TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency *dc);
 
