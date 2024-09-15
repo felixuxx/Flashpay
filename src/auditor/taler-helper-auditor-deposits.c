@@ -131,16 +131,19 @@ test_dc (void *cls,
       return GNUNET_SYSERR;
     }
   }
-  qs = TALER_ARL_adb->delete_deposit_confirmation (TALER_ARL_adb->cls,
-                                                   serial_id);
-  if (qs < 0)
-  {
-    GNUNET_break (0); /* DB error, complain */
-    eqs = qs;
-    return GNUNET_SYSERR;
-  }
   if (! missing)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Deleting matching deposit confirmation %llu\n",
+                (unsigned long long) serial_id);
+    qs = TALER_ARL_adb->delete_deposit_confirmation (TALER_ARL_adb->cls,
+                                                     serial_id);
+    if (qs < 0)
+    {
+      GNUNET_break (0); /* DB error, complain */
+      eqs = qs;
+      return GNUNET_SYSERR;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Found deposit %s in exchange database\n",
                 GNUNET_h2s (&dc->h_contract_terms.hash));

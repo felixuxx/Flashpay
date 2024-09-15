@@ -74,7 +74,6 @@ deposit_confirmation_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_DepositConfirmation dc = { 0 };
     struct TALER_CoinSpendPublicKeyP *coin_pubs = NULL;
     struct TALER_CoinSpendSignatureP *coin_sigs = NULL;
@@ -82,15 +81,13 @@ deposit_confirmation_cb (void *cls,
     size_t num_sigs = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("deposit_confirmation_serial_id",
-                                    &serial_id),
-
+                                    &dc.row_id),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &dc.h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("h_policy",
                                             &dc.h_policy),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
-
       GNUNET_PQ_result_spec_timestamp ("exchange_timestamp",
                                        &dc.exchange_timestamp),
       GNUNET_PQ_result_spec_timestamp ("refund_deadline",
@@ -99,7 +96,6 @@ deposit_confirmation_cb (void *cls,
                                        &dc.wire_deadline),
       TALER_PQ_RESULT_SPEC_AMOUNT ("total_without_fee",
                                    &dc.total_without_fee),
-
       GNUNET_PQ_result_spec_auto_array_from_type (pg->conn,
                                                   "coin_pubs",
                                                   &num_pubs,
@@ -116,7 +112,8 @@ deposit_confirmation_cb (void *cls,
                                             &dc.exchange_pub),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &dc.master_sig),
-
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -142,7 +139,6 @@ deposit_confirmation_cb (void *cls,
     dc.coin_sigs = coin_sigs;
     dc.num_coins = num_sigs;
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -160,10 +156,8 @@ TAH_PG_get_deposit_confirmations (
   TALER_AUDITORDB_DepositConfirmationCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
@@ -194,9 +188,10 @@ TAH_PG_get_deposit_confirmations (
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"
+           ",suppressed"
            " FROM auditor_deposit_confirmations"
            " WHERE (deposit_confirmation_serial_id < $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY deposit_confirmation_serial_id DESC"
            " LIMIT $3"
            );
@@ -217,20 +212,21 @@ TAH_PG_get_deposit_confirmations (
            ",exchange_sig"
            ",exchange_pub"
            ",master_sig"
+           ",suppressed"
            " FROM auditor_deposit_confirmations"
            " WHERE (deposit_confirmation_serial_id > $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY deposit_confirmation_serial_id ASC"
            " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0) ?
-                                             "auditor_deposit_confirmation_select_asc"
-                                                         :
-                                             "auditor_deposit_confirmation_select_desc",
-                                             params,
-                                             &deposit_confirmation_cb,
-                                             &dcc);
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_deposit_confirmation_select_asc"
+    : "auditor_deposit_confirmation_select_desc",
+    params,
+    &deposit_confirmation_cb,
+    &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);

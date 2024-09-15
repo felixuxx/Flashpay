@@ -299,11 +299,9 @@ TAH_DEPOSIT_CONFIRMATION_handler (
       NULL),
     GNUNET_JSON_spec_timestamp ("wire_deadline",
                                 &dc.wire_deadline),
-
     TALER_JSON_spec_amount ("total_without_fee",
                             TAH_currency,
                             &dc.total_without_fee),
-
     GNUNET_JSON_spec_array_const ("coin_pubs",
                                   &jcoin_pubs),
     GNUNET_JSON_spec_array_const ("coin_sigs",
@@ -344,6 +342,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (
     if ((GNUNET_NO == res) ||
         (NULL == json))
       return MHD_YES;
+    dc.master_sig = es.master_sig;
     res = TALER_MHD_parse_json_data (connection,
                                      json,
                                      spec);

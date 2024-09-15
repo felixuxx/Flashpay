@@ -13,14 +13,12 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-auditor-httpd_deposit-confirmation-get.c
  * @brief Handle /deposit-confirmation requests; return list of deposit confirmations from merchant
  * that were not received from the exchange, by auditor.
  * @author Nic Eigel
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -32,18 +30,17 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
 
+
 /**
  * Add deposit confirmation to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
  * @param dc struct of deposit confirmation
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 add_deposit_confirmation (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
   json_t *list = cls;
@@ -74,7 +71,7 @@ add_deposit_confirmation (
 
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_int64 ("deposit_confirmation_serial_id",
-                            serial_id),
+                            dc->row_id),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &dc->h_contract_terms),
     GNUNET_JSON_pack_data_auto ("h_policy",
@@ -100,7 +97,9 @@ add_deposit_confirmation (
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &dc->exchange_pub),
     GNUNET_JSON_pack_data_auto ("master_sig",
-                                &dc->master_sig)
+                                &dc->master_sig),
+    GNUNET_JSON_pack_bool ("suppressed",
+                           dc->suppressed)
     );
   GNUNET_break (0 ==
                 json_array_append_new (list,
@@ -167,7 +166,6 @@ TAH_DEPOSIT_CONFIRMATION_handler_get (
     return_suppressed,
     &add_deposit_confirmation,
     ja);
-
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);

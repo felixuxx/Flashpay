@@ -160,11 +160,6 @@ struct TALER_AUDITORDB_DepositConfirmation
   struct TALER_Amount total_without_fee;
 
   /**
-   * Length of the @e coin_pubs and @e coin_sigs arrays.
-   */
-  unsigned int num_coins;
-
-  /**
    * Array of the coin public keys involved in the
    * batch deposit operation.
    */
@@ -196,6 +191,18 @@ struct TALER_AUDITORDB_DepositConfirmation
    * Exchange master signature over @e exchange_sig.
    */
   struct TALER_MasterSignatureP master_sig;
+
+  /**
+   * Row of this entry in the auditor database.
+   */
+  uint64_t row_id;
+
+  /**
+   * Length of the @e coin_pubs and @e coin_sigs arrays.
+   */
+  unsigned int num_coins;
+
+  bool suppressed;
 
 };
 
@@ -817,7 +824,6 @@ struct TALER_AUDITORDB_ReserveNotClosedInconsistency
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_DepositConfirmationCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_DepositConfirmation *dc);
 
 

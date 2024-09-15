@@ -1799,27 +1799,16 @@ function test_24() {
         check_auditor_running
 
         echo -n "Testing inconsistency detection... "
-
         call_endpoint "balances"
-
-        call_endpoint "deposit-confirmation"
-        jq -e .deposit_confirmation_inconsistencies[0] \
-           < test-audit-deposits.json \
-           > /dev/null \
-            || exit_fail "Deposit confirmation inconsistency NOT detected"
-        AMOUNT=$(jq -er .missing_deposit_confirmation_total < "${MY_TMP_DIR}/test-audit-deposits.json")
-        if [ "$AMOUNT" = "TESTKUDOS:0" ]
-        then
-            exit_fail "Expected non-zero total missing deposit confirmation amount"
-        fi
-        COUNT=$(jq -er .missing_deposit_confirmation_count < "${MY_TMP_DIR}/test-audit-deposits.json")
-        if [ "$AMOUNT" = "0" ]
-        then
-            exit_fail "Expected non-zero total missing deposit confirmation count"
-        fi
-
-        echo "PASS"
-
+        # FIXME: this fails!
+        check_report \
+            "deposit-confirmation" \
+            "suppressed" "false"
+        echo -n "Testing inconsistency detection balance change ... "
+        check_not_balance \
+            "total_missed_deposit_confirmations" \
+            "TESTKUDOS:0" \
+            "Expected non-zero total missing deposit confirmation amount"
         # cannot easily undo DELETE, hence full reload
         full_reload
     fi
