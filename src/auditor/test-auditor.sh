@@ -641,9 +641,7 @@ function test_0() {
         "Wrong arithmetic delta minus from reserves"
 
     echo -n "Checking for unexpected wire out differences "
-    call_endpoint "wire-out-inconsistency"
-    jq -e .wire_out_inconsistency[0] < "${MY_TMP_DIR}/wire-out-inconsistency.json" > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
-    echo "PASS"
+    check_no_report "wire-out-inconsistency"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
@@ -1535,7 +1533,6 @@ function test_18() {
 
 
 # Test where reserve closure was done properly
-# FIXME: test-19 partially implemented
 function test_19() {
     echo "===========19: reserve closure done properly ================="
 
@@ -1551,30 +1548,19 @@ function test_19() {
         | psql -Aqt "$DB"
     echo "UPDATE exchange.reserves SET current_balance.val=${VAL_DELTA}+(current_balance).val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" \
         | psql -Aqt "$DB"
-#TODO fix helper wire
     # Need to run with the aggregator so the reserve closure happens
-        #run_audit aggregator
-        check_auditor_running
+    run_audit aggregator
+    check_auditor_running
 
-        call_endpoint "reserve-not-closed-inconsistency"
+    echo -n "Testing reserve closure was done correctly... "
+    check_no_report "reserve-not-closed-inconsistency"
+# FIXME: test-19 fails here:
+    echo -n "Testing no bogus transfers detected... "
+    check_no_report "wire-out-inconsistency"
 
-        echo -n "Testing reserve closure was done correctly... "
-
-        jq -e .reserve_not_closed_inconsistencies[0] \
-          < "${MY_TMP_DIR}/reserve-not-closed-inconsistency.json" > /dev/null \
-        && exit_fail "Unexpected reserve not closed inconsistency detected"
-
-        echo "PASS"
-
-    #TODO fix helepr wire
-        #echo -n "Testing no bogus transfers detected... "
-        #jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in run with reserve closure"
-
-        echo "PASS"
-
-        # cannot easily undo aggregator, hence full reload
-        full_reload
-        stop_auditor_httpd
+    # cannot easily undo aggregator, hence full reload
+    full_reload
+    stop_auditor_httpd
 }
 
 

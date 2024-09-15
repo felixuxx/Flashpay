@@ -54,24 +54,24 @@
  * created by imperfect clock synchronization and network delay.
  */
 #define TIME_TOLERANCE GNUNET_TIME_relative_multiply ( \
-          GNUNET_TIME_UNIT_MINUTES, \
-          15)
+    GNUNET_TIME_UNIT_MINUTES, \
+    15)
 
 
 /**
  * How long do we try to long-poll for bank wire transfers?
  */
 #define MAX_LONGPOLL_DELAY GNUNET_TIME_relative_multiply ( \
-          GNUNET_TIME_UNIT_HOURS, \
-          1)
+    GNUNET_TIME_UNIT_HOURS, \
+    1)
 
 
 /**
  * How long do we wait between polling for bank wire transfers at the minimum?
  */
 #define MIN_LONGPOLL_DELAY GNUNET_TIME_relative_multiply ( \
-          GNUNET_TIME_UNIT_MINUTES, \
-          5)
+    GNUNET_TIME_UNIT_MINUTES, \
+    5)
 
 
 /**
@@ -806,8 +806,11 @@ check_reported_inconsistency (struct ReserveOutInfo *roi)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Deletion of wire out inconsistency %llu failed: not reported missing!\n",
-                (unsigned long long) roi->details.serial_id);
+                "Deletion of wire out inconsistency %llu (%s, %s, %s) failed: not reported missing!\n",
+                (unsigned long long) roi->details.serial_id,
+                roi->details.credit_account_uri,
+                diag,
+                TALER_amount2s (&roi->details.amount));
     return GNUNET_NO;
   }
   TALER_ARL_amount_subtract (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
@@ -1000,6 +1003,10 @@ complain_out_not_found (void *cls,
   hash_rc (roi->details.credit_account_uri,
            &roi->details.wtid,
            &rkey);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking for reserve closure %s benefiting %s\n",
+              GNUNET_h2s (&rkey),
+              roi->details.credit_account_uri);
   GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
                                               &rkey,
                                               &check_rc_matches,
@@ -1540,9 +1547,15 @@ reserve_closed_cb (
   rc->wtid = *wtid;
   rc->execution_date = execution_date;
   rc->rowid = rowid;
-  hash_rc (receiver_account,
+  hash_rc (rc->receiver_account,
            wtid,
            &key);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Discovered reserve closure %llu (%s) over %s benefiting %s\n",
+              (unsigned long long) rowid,
+              GNUNET_h2s (&key),
+              TALER_amount2s (amount_with_fee),
+              receiver_account);
   (void) GNUNET_CONTAINER_multihashmap_put (
     reserve_closures,
     &key,
@@ -1664,7 +1677,8 @@ begin_transaction (void)
                 "Resuming wire debit audit at %llu\n",
                 (unsigned long long) TALER_ARL_USE_PP (wire_reserve_close_id));
   }
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Iterating over reserve closures\n");
   qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (wire_reserve_close_id),
