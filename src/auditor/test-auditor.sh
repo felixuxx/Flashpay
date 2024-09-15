@@ -804,7 +804,6 @@ function test_3() {
 
 # Check for incoming wire transfer amount given being
 # lower than what exchange claims to have received.
-# FIXME: test-4 not implemented
 function test_4() {
     echo "===========4: deposit wire target wrong================="
 
