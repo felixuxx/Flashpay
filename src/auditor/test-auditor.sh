@@ -1554,7 +1554,6 @@ function test_19() {
 
     echo -n "Testing reserve closure was done correctly... "
     check_no_report "reserve-not-closed-inconsistency"
-# FIXME: test-19 fails here:
     echo -n "Testing no bogus transfers detected... "
     check_no_report "wire-out-inconsistency"
 
