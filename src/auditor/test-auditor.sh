@@ -997,7 +997,7 @@ function test_8() {
     NEW_WTID="\x77b4e23a41a0158299cdbe4d3247b42f907836d76dbc45c585c6a9beb196e6ca"
     echo -n "Modifying $OLD_ID ..."
     echo "UPDATE libeufin_bank.taler_exchange_incoming SET reserve_pub='$NEW_WTID' WHERE exchange_incoming_id='$OLD_ID';" \
-        | psql "${DB}" -q \
+        | psql "${DB}" -At \
         || exit_fail "Failed to update taler_exchange_incoming"
     echo "DONE"
 
@@ -1037,40 +1037,34 @@ function test_8() {
 
 
 # Test wire origin disagreement!
-# FIXME: test-9 not implemented
 function test_9() {
 
     echo "===========9: wire-origin disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    #TODO: see FIXME
-    echo "FIXME: test needs update to new libeufin-bank schema"
-    #exit 0
-    #OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
-    #OLD_ACC=$(echo 'SELECT "incomingPaytoUri" FROM TalerIncomingPayments WHERE payment='"'$OLD_ID';" | psql "${DB}" -Aqt)
-    #echo "UPDATE TalerIncomingPayments SET \"incomingPaytoUri\"='payto://iban/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" \
-    #    | psql "${DB}" -q
+    OLD_ID=$(echo "SELECT bank_transaction FROM libeufin_bank.taler_exchange_incoming JOIN libeufin_bank.bank_account_transactions ON (bank_transaction=bank_transaction_id) WHERE (amount).val=10 ORDER BY bank_transaction LIMIT 1;" | psql "${DB}" -Aqt) \
+        || exit_fail "Failed to SELECT FROM libeufin_bank.bank_account_transactions!"
+    OLD_ACC=$(echo "SELECT debtor_payto_uri FROM libeufin_bank.bank_account_transactions WHERE bank_transaction_id='$OLD_ID';" | psql "${DB}" -Aqt)
+
+    echo -n "Modifying $OLD_ID ..."
+    echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto_uri='payto://iban/DE144373' WHERE bank_transaction_id='$OLD_ID';" \
+        | psql "${DB}" -At
 
     run_audit
     check_auditor_running
 
-    #TODO: fix helper wire
-    #echo -n "Testing inconsistency detection... "
-    #AMOUNT=$(jq -r .misattribution_in_inconsistencies[0].amount < test-audit-wire.json")
-    #if test "x$AMOUNT" != "xTESTKUDOS:10"
-    #then
-    #    exit_fail "Reported amount wrong: $AMOUNT"
-    #fi
-    #AMOUNT=$(jq -r .total_misattribution_in < test-audit-wire.json")
-    #if test "x$AMOUNT" != "xTESTKUDOS:10"
-    #then
-    #    exit_fail "Reported total amount wrong: $AMOUNT"
-    #fi
-    echo PASS
-
+    echo -n "Testing inconsistency detection... "
+    check_report \
+        misattribution-in-inconsistency \
+        "amount" "TESTKUDOS:10"
+    echo -n "Testing balance update... "
+    check_balance \
+        "total_misattribution_in" \
+        "TESTKUDOS:10" \
+        "Reported total_misattribution_in wrong"
     # Undo database modification
-    #echo "UPDATE TalerIncomingPayments SET \"incomingPaytoUri\"='$OLD_ACC' WHERE payment='$OLD_ID';" \
-    #    | psql "${DB}" -q
+    echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto_uri='$OLD_ACC' WHERE bank_transaction_id='$OLD_ID';" \
+        | psql "${DB}" -Atq
     stop_auditor_httpd
     full_reload
     cleanup
