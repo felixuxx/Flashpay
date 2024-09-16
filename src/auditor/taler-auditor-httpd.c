@@ -32,42 +32,29 @@
 #include "taler_exchangedb_lib.h"
 #include "taler-auditor-httpd_spa.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
-#include "taler-auditor-httpd_deposit-confirmation-del.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-get.h"
-#include "taler-auditor-httpd_amount-arithmetic-inconsistency-del.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h"
 #include "taler-auditor-httpd_coin-inconsistency-get.h"
-#include "taler-auditor-httpd_coin-inconsistency-del.h"
 #include "taler-auditor-httpd_row-inconsistency-get.h"
-#include "taler-auditor-httpd_row-inconsistency-del.h"
 
 #include "taler-auditor-httpd_emergency-get.h"
-#include "taler-auditor-httpd_emergency-del.h"
 
 #include "taler-auditor-httpd_emergency-by-count-get.h"
-#include "taler-auditor-httpd_emergency-by-count-del.h"
 
 #include \
   "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-get.h"
-#include \
-  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-del.h"
 
 #include "taler-auditor-httpd_purse-not-closed-inconsistencies-get.h"
-#include "taler-auditor-httpd_purse-not-closed-inconsistencies-del.h"
 
 #include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h"
-#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-del.h"
 
 #include "taler-auditor-httpd_bad-sig-losses-get.h"
-#include "taler-auditor-httpd_bad-sig-losses-del.h"
 #include "taler-auditor-httpd_bad-sig-losses-upd.h"
 
 #include "taler-auditor-httpd_closure-lags-get.h"
-#include "taler-auditor-httpd_closure-lags-del.h"
 
 #include "taler-auditor-httpd_refreshes-hanging-get.h"
-#include "taler-auditor-httpd_refreshes-hanging-del.h"
 
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
@@ -86,19 +73,15 @@
 #include "taler-auditor-httpd_closure-lags-upd.h"
 #include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
 
-#include "taler-auditor-httpd_reserve-in-inconsistency-del.h"
 #include "taler-auditor-httpd_reserve-in-inconsistency-get.h"
 #include "taler-auditor-httpd_reserve-in-inconsistency-upd.h"
 
-#include "taler-auditor-httpd_reserve-not-closed-inconsistency-del.h"
 #include "taler-auditor-httpd_reserve-not-closed-inconsistency-get.h"
 #include "taler-auditor-httpd_reserve-not-closed-inconsistency-upd.h"
 
-#include "taler-auditor-httpd_denominations-without-sigs-del.h"
 #include "taler-auditor-httpd_denominations-without-sigs-get.h"
 #include "taler-auditor-httpd_denominations-without-sigs-upd.h"
 
-#include "taler-auditor-httpd_misattribution-in-inconsistency-del.h"
 #include "taler-auditor-httpd_misattribution-in-inconsistency-get.h"
 #include "taler-auditor-httpd_misattribution-in-inconsistency-upd.h"
 
@@ -108,27 +91,21 @@
 #include "taler-auditor-httpd_historic-denomination-revenue-get.h"
 #include "taler-auditor-httpd_historic-reserve-summary-get.h"
 
-#include "taler-auditor-httpd_denomination-pending-del.h"
 #include "taler-auditor-httpd_denomination-pending-get.h"
 #include "taler-auditor-httpd_denomination-pending-upd.h"
 
-#include "taler-auditor-httpd_wire-format-inconsistency-del.h"
 #include "taler-auditor-httpd_wire-format-inconsistency-get.h"
 #include "taler-auditor-httpd_wire-format-inconsistency-upd.h"
 
-#include "taler-auditor-httpd_wire-out-inconsistency-del.h"
 #include "taler-auditor-httpd_wire-out-inconsistency-get.h"
 #include "taler-auditor-httpd_wire-out-inconsistency-upd.h"
 
-#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-del.h"
 #include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-get.h"
 #include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-upd.h"
 
-#include "taler-auditor-httpd_row-minor-inconsistencies-del.h"
 #include "taler-auditor-httpd_row-minor-inconsistencies-get.h"
 #include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
 
-#include "taler-auditor-httpd_fee-time-inconsistency-del.h"
 #include "taler-auditor-httpd_fee-time-inconsistency-get.h"
 #include "taler-auditor-httpd_fee-time-inconsistency-upd.h"
 
@@ -441,7 +418,7 @@ handle_mhd_request (void *cls,
       &TAH_patch_handler_generic_suppressed,
       MHD_HTTP_OK,
       true,
-      .table = TALER_AUDITORDB_AMOUNT_ARITHMETIC_INCONSISTENCY_SUPPRESS
+      .table = TALER_AUDITORDB_AMOUNT_ARITHMETIC_INCONSISTENCY
     },
     { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",

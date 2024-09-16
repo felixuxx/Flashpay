@@ -75,71 +75,53 @@
 
 #include "pg_update_balance.h"
 
-#include "pg_del_amount_arithmetic_inconsistency.h"
-#include "pg_del_coin_inconsistency.h"
-#include "pg_del_row_inconsistency.h"
 
 #include "pg_insert_coin_inconsistency.h"
 #include "pg_insert_row_inconsistency.h"
 #include "pg_insert_amount_arithmetic_inconsistency.h"
 
 #include "pg_get_auditor_closure_lags.h"
-#include "pg_del_auditor_closure_lags.h"
 #include "pg_insert_auditor_closure_lags.h"
 
 #include "pg_get_emergency_by_count.h"
-#include "pg_del_emergency_by_count.h"
 #include "pg_insert_emergency_by_count.h"
 
 #include "pg_get_emergency.h"
-#include "pg_del_emergency.h"
 #include "pg_insert_emergency.h"
 
-#include "pg_del_auditor_progress.h"
-
 #include "pg_get_bad_sig_losses.h"
-#include "pg_del_bad_sig_losses.h"
 #include "pg_insert_bad_sig_losses.h"
 #include "pg_update_bad_sig_losses.h"
 
 #include "pg_get_denomination_key_validity_withdraw_inconsistency.h"
-#include "pg_del_denomination_key_validity_withdraw_inconsistency.h"
 #include "pg_insert_denomination_key_validity_withdraw_inconsistency.h"
 
 #include "pg_get_fee_time_inconsistency.h"
-#include "pg_del_fee_time_inconsistency.h"
 #include "pg_insert_fee_time_inconsistency.h"
 #include "pg_update_fee_time_inconsistency.h"
 
 #include "pg_get_purse_not_closed_inconsistencies.h"
-#include "pg_del_purse_not_closed_inconsistencies.h"
 #include "pg_insert_purse_not_closed_inconsistencies.h"
 
 #include "pg_get_refreshes_hanging.h"
-#include "pg_del_refreshes_hanging.h"
 #include "pg_insert_refreshes_hanging.h"
 
 #include "pg_get_reserve_balance_insufficient_inconsistency.h"
-#include "pg_del_reserve_balance_insufficient_inconsistency.h"
 #include "pg_insert_reserve_balance_insufficient_inconsistency.h"
 
 #include "pg_get_reserve_in_inconsistency.h"
-#include "pg_del_reserve_in_inconsistency.h"
 #include "pg_insert_reserve_in_inconsistency.h"
 #include "pg_update_reserve_in_inconsistency.h"
 
 #include "pg_get_reserve_not_closed_inconsistency.h"
-#include "pg_del_reserve_not_closed_inconsistency.h"
 #include "pg_insert_reserve_not_closed_inconsistency.h"
 #include "pg_update_reserve_not_closed_inconsistency.h"
 
 #include "pg_get_denominations_without_sigs.h"
-#include "pg_del_denominations_without_sigs.h"
 #include "pg_insert_denominations_without_sigs.h"
 #include "pg_update_denominations_without_sigs.h"
 
 #include "pg_get_misattribution_in_inconsistency.h"
-#include "pg_del_misattribution_in_inconsistency.h"
 #include "pg_insert_misattribution_in_inconsistency.h"
 #include "pg_update_misattribution_in_inconsistency.h"
 
@@ -147,30 +129,25 @@
 #include "pg_get_purses.h"
 
 #include "pg_get_denomination_pending.h"
-#include "pg_del_denomination_pending.h"
 #include "pg_insert_denomination_pending.h"
 #include "pg_update_denomination_pending.h"
 
 #include "pg_get_exchange_signkeys.h"
 
 #include "pg_get_wire_format_inconsistency.h"
-#include "pg_del_wire_format_inconsistency.h"
 #include "pg_insert_wire_format_inconsistency.h"
 #include "pg_update_wire_format_inconsistency.h"
 
 #include "pg_get_wire_out_inconsistency.h"
-#include "pg_del_wire_out_inconsistency.h"
 #include "pg_insert_wire_out_inconsistency.h"
 #include "pg_delete_wire_out_inconsistency_if_matching.h"
 #include "pg_update_wire_out_inconsistency.h"
 
 #include "pg_get_reserve_balance_summary_wrong_inconsistency.h"
-#include "pg_del_reserve_balance_summary_wrong_inconsistency.h"
 #include "pg_insert_reserve_balance_summary_wrong_inconsistency.h"
 #include "pg_update_reserve_balance_summary_wrong_inconsistency.h"
 
 #include "pg_get_row_minor_inconsistencies.h"
-#include "pg_del_row_minor_inconsistencies.h"
 #include "pg_insert_row_minor_inconsistencies.h"
 #include "pg_update_row_minor_inconsistencies.h"
 
@@ -622,14 +599,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_get_row_inconsistency;
 
 
-  plugin->delete_row_inconsistency
-    = &TAH_PG_del_row_inconsistency;
-  plugin->delete_coin_inconsistency
-    = &TAH_PG_del_coin_inconsistency;
-  plugin->delete_amount_arithmetic_inconsistency
-    = &TAH_PG_del_amount_arithmetic_inconsistency;
-
-
   plugin->insert_amount_arithmetic_inconsistency
     = &TAH_PG_insert_amount_arithmetic_inconsistency;
   plugin->insert_coin_inconsistency
@@ -685,51 +654,37 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_select_historic_reserve_revenue;
 
 
-  plugin->delete_emergency = &TAH_PG_del_emergency;
   plugin->insert_emergency = &TAH_PG_insert_emergency;
   plugin->get_emergency = &TAH_PG_get_emergency;
 
-  plugin->delete_emergency_by_count = &TAH_PG_del_emergency_by_count;
   plugin->insert_emergency_by_count = &TAH_PG_insert_emergency_by_count;
   plugin->get_emergency_by_count = &TAH_PG_get_emergency_by_count;
 
 
-  plugin->delete_denomination_key_validity_withdraw_inconsistency =
-    &TAH_PG_del_denomination_key_validity_withdraw_inconsistency;
   plugin->insert_denomination_key_validity_withdraw_inconsistency =
     &TAH_PG_insert_denomination_key_validity_withdraw_inconsistency;
   plugin->get_denomination_key_validity_withdraw_inconsistency =
     &TAH_PG_get_denomination_key_validity_withdraw_inconsistency;
 
-  plugin->delete_purse_not_closed_inconsistencies =
-    &TAH_PG_del_purse_not_closed_inconsistencies;
   plugin->insert_purse_not_closed_inconsistencies =
     &TAH_PG_insert_purse_not_closed_inconsistencies;
   plugin->get_purse_not_closed_inconsistencies =
     &TAH_PG_get_purse_not_closed_inconsistencies;
 
 
-  plugin->delete_reserve_balance_insufficient_inconsistency =
-    &TAH_PG_del_reserve_balance_insufficient_inconsistency;
   plugin->insert_reserve_balance_insufficient_inconsistency =
     &TAH_PG_insert_reserve_balance_insufficient_inconsistency;
   plugin->get_reserve_balance_insufficient_inconsistency =
     &TAH_PG_get_reserve_balance_insufficient_inconsistency;
 
-  plugin->delete_bad_sig_losses = &TAH_PG_del_bad_sig_losses;
   plugin->insert_bad_sig_losses = &TAH_PG_insert_bad_sig_losses;
   plugin->get_bad_sig_losses = &TAH_PG_get_bad_sig_losses;
   plugin->update_bad_sig_losses = &TAH_PG_update_bad_sig_losses;
 
-  plugin->delete_auditor_closure_lags = &TAH_PG_del_auditor_closure_lags;
   plugin->insert_auditor_closure_lags = &TAH_PG_insert_auditor_closure_lags;
   plugin->get_auditor_closure_lags = &TAH_PG_get_auditor_closure_lags;
 
 
-  plugin->delete_progress = &TAH_PG_del_progress;
-
-
-  plugin->delete_refreshes_hanging = &TAH_PG_del_refreshes_hanging;
   plugin->insert_refreshes_hanging = &TAH_PG_insert_refreshes_hanging;
   plugin->get_refreshes_hanging = &TAH_PG_get_refreshes_hanging;
 
@@ -747,8 +702,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_closure_lags = &TAH_PG_update_closure_lags;
 
 
-  plugin->delete_reserve_in_inconsistency =
-    &TAH_PG_del_reserve_in_inconsistency;
   plugin->insert_reserve_in_inconsistency =
     &TAH_PG_insert_reserve_in_inconsistency;
   plugin->get_reserve_in_inconsistency = &TAH_PG_get_reserve_in_inconsistency;
@@ -756,8 +709,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_update_reserve_in_inconsistency;
 
 
-  plugin->delete_reserve_not_closed_inconsistency =
-    &TAH_PG_del_reserve_not_closed_inconsistency;
   plugin->insert_reserve_not_closed_inconsistency =
     &TAH_PG_insert_reserve_not_closed_inconsistency;
   plugin->get_reserve_not_closed_inconsistency =
@@ -766,8 +717,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_update_reserve_not_closed_inconsistency;
 
 
-  plugin->delete_denominations_without_sigs =
-    &TAH_PG_del_denominations_without_sigs;
   plugin->insert_denominations_without_sigs =
     &TAH_PG_insert_denominations_without_sigs;
   plugin->get_denominations_without_sigs =
@@ -779,8 +728,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_get_progress_points;
 
 
-  plugin->delete_misattribution_in_inconsistency =
-    &TAH_PG_del_misattribution_in_inconsistency;
   plugin->insert_misattribution_in_inconsistency =
     &TAH_PG_insert_misattribution_in_inconsistency;
   plugin->get_misattribution_in_inconsistency =
@@ -791,15 +738,12 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->get_reserves = &TAH_PG_get_reserves;
   plugin->get_purses = &TAH_PG_get_purses;
 
-  plugin->delete_denomination_pending = &TAH_PG_del_denomination_pending;
   plugin->insert_denomination_pending = &TAH_PG_insert_denomination_pending;
   plugin->get_denomination_pending = &TAH_PG_get_denomination_pending;
   plugin->update_denomination_pending = &TAH_PG_update_denomination_pending;
 
   plugin->get_exchange_signkeys = &TAH_PG_get_exchange_signkeys;
 
-  plugin->delete_wire_format_inconsistency =
-    &TAH_PG_del_wire_format_inconsistency;
   plugin->insert_wire_format_inconsistency =
     &TAH_PG_insert_wire_format_inconsistency;
   plugin->get_wire_format_inconsistency = &TAH_PG_get_wire_format_inconsistency;
@@ -807,19 +751,13 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_update_wire_format_inconsistency;
 
 
-  plugin->delete_wire_out_inconsistency
-    = &TAH_PG_del_wire_out_inconsistency;
   plugin->insert_wire_out_inconsistency
     = &TAH_PG_insert_wire_out_inconsistency;
-  plugin->delete_wire_out_inconsistency_if_matching
-    = &TAH_PG_delete_wire_out_inconsistency_if_matching;
   plugin->get_wire_out_inconsistency
     = &TAH_PG_get_wire_out_inconsistency;
   plugin->update_wire_out_inconsistency
     = &TAH_PG_update_wire_out_inconsistency;
 
-  plugin->delete_reserve_balance_summary_wrong_inconsistency =
-    &TAH_PG_del_reserve_balance_summary_wrong_inconsistency;
   plugin->insert_reserve_balance_summary_wrong_inconsistency =
     &TAH_PG_insert_reserve_balance_summary_wrong_inconsistency;
   plugin->get_reserve_balance_summary_wrong_inconsistency =
@@ -828,15 +766,12 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_update_reserve_balance_summary_wrong_inconsistency;
 
 
-  plugin->delete_row_minor_inconsistencies =
-    &TAH_PG_del_row_minor_inconsistencies;
   plugin->insert_row_minor_inconsistencies =
     &TAH_PG_insert_row_minor_inconsistencies;
   plugin->get_row_minor_inconsistencies = &TAH_PG_get_row_minor_inconsistencies;
   plugin->update_row_minor_inconsistencies =
     &TAH_PG_update_row_minor_inconsistencies;
 
-  plugin->delete_fee_time_inconsistency = &TAH_PG_del_fee_time_inconsistency;
   plugin->insert_fee_time_inconsistency = &TAH_PG_insert_fee_time_inconsistency;
   plugin->get_fee_time_inconsistency = &TAH_PG_get_fee_time_inconsistency;
   plugin->update_fee_time_inconsistency = &TAH_PG_update_fee_time_inconsistency;
