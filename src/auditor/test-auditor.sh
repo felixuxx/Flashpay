@@ -488,6 +488,7 @@ function check_not_balance() {
 function check_report() {
     call_endpoint "$1"
     NAME=$(echo "$1" | tr '-' '_')
+    # shellcheck disable=SC2086
     VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
     if [ "$VAL" != "$3" ]
     then
@@ -499,6 +500,7 @@ function check_report() {
 function check_no_report() {
     call_endpoint "$1"
     NAME=$(echo "$1" | tr '-' '_')
+    # shellcheck disable=SC2086
     jq -e .\"${NAME}\"[0] \
        < "${MY_TMP_DIR}/${1}.json" \
        > /dev/null \
@@ -509,6 +511,7 @@ function check_no_report() {
 function check_report_neg() {
     call_endpoint "$1"
     NAME=$(echo "$1" | tr '-' '_')
+    # shellcheck disable=SC2086
     VAL=$(jq -r .\"${NAME}\"[0].\"$2\" < "${MY_TMP_DIR}/${1}.json")
     if [ "$VAL" == "$3" ]
     then
@@ -528,7 +531,7 @@ function check_row() {
         RID="row_id"
         WANT="$2"
     fi
-
+    # shellcheck disable=SC2086
     ROW=$(jq -r .\"${NAME}\"[0].\"${RID}\" < "${MY_TMP_DIR}/${1}.json")
     if [ "$ROW" != "$WANT" ]
     then
@@ -816,7 +819,7 @@ function test_4() {
 # shellcheck disable=SC2028
     echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');" \
         | psql -Aqt "$DB"
-## shellcheck disable=SC2028
+# shellcheck disable=SC2028
     echo "UPDATE exchange.coin_deposits SET coin_sig='\x0f29b2ebf3cd1ecbb3e1f2a7888872058fc870c28c0065d4a7d457f2fee9eb5ec376958fc52460c8c540e583be10cf67491a6651a62c1bda68051c62dbe9130c' WHERE coin_deposit_serial_id=${SERIALE}" \
         | psql -Aqt "$DB"
     echo " DONE"
@@ -988,17 +991,14 @@ function test_8() {
     echo "===========8: wire-transfer-subject disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    #TODO: see fixme
-    echo "FIXME: test needs update to new libeufin-bank schema"
-    #exit 0
-    #OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt) \
-    #    || exit_fail "Failed to SELECT FROM NexusBankTransactions nexus DB!"
-    #OLD_WTID=$(echo "SELECT \"reservePublicKey\" FROM TalerIncomingPayments WHERE payment='$OLD_ID';" \
-    #               | psql "${DB}" -Aqt)
-    #NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
-    #echo "UPDATE TalerIncomingPayments SET \"reservePublicKey\"='$NEW_WTID' WHERE payment='$OLD_ID';" \
-    #    | psql "${DB}" -q \
-    #    || exit_fail "Failed to update TalerIncomingPayments"
+    OLD_ID=$(echo "SELECT exchange_incoming_id FROM libeufin_bank.taler_exchange_incoming JOIN libeufin_bank.bank_account_transactions ON (bank_transaction=bank_transaction_id) WHERE (amount).val=10 ORDER BY exchange_incoming_id LIMIT 1;" | psql "${DB}" -Aqt) \
+        || exit_fail "Failed to SELECT FROM libeufin_bank.bank_account_transactions!"
+    OLD_WTID=$(echo "SELECT reserve_pub FROM libeufin_bank.taler_exchange_incoming WHERE exchange_incoming_id='$OLD_ID';" \
+                   | psql "${DB}" -Aqt)
+    NEW_WTID="\x77b4e23a41a0158299cdbe4d3247b42f907836d76dbc45c585c6a9beb196e6ca"
+    echo "UPDATE libeufin_bank.taler_exchange_incoming SET reserve_pub='$NEW_WTID' WHERE exchange_incoming_id='$OLD_ID';" \
+        | psql "${DB}" -q \
+        || exit_fail "Failed to update taler_exchange_incoming"
 
     run_audit
     check_auditor_running
@@ -1057,8 +1057,8 @@ function test_8() {
     #echo "PASS"
 
     # Undo database modification
-    #echo "UPDATE TalerIncomingPayments SET \"reservePublicKey\"='$OLD_WTID' WHERE payment='$OLD_ID';" \
-    #    | psql "${DB}" -q
+    echo "UPDATE libeufin_bank.taler_exchange_incoming SET reserve_pub='$OLD_WTID' WHERE exchange_incoming_id='$OLD_ID';" \
+        | psql "${DB}" -q
     stop_auditor_httpd
     full_reload
     cleanup
