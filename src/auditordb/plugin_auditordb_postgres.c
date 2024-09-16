@@ -23,6 +23,7 @@
 #include "taler_pq_lib.h"
 #include <pthread.h>
 #include <libpq-fe.h>
+#include "pg_delete_generic.h"
 #include "pg_delete_deposit_confirmations.h"
 #include "pg_delete_pending_deposit.h"
 #include "pg_delete_purse_info.h"
@@ -599,6 +600,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_insert_balance;
   plugin->update_generic_suppressed
     = &TAH_PG_update_generic_suppressed;
+  plugin->delete_generic
+    = &TAH_PG_delete_generic;
+
 
   plugin->update_auditor_progress
     = &TAH_PG_update_auditor_progress;

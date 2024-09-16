@@ -33,7 +33,7 @@
 enum GNUNET_DB_QueryStatus
 TAH_PG_update_generic_suppressed (
   void *cls,
-  enum TALER_AUDITORDB_SuppressableTables table,
+  enum TALER_AUDITORDB_DeletableSuppressableTables table,
   uint64_t row_id,
   bool suppressed);
 

@@ -16,7 +16,7 @@
 #include "platform.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-#include "pg_update_generic_suppressed.h"
+#include "pg_delete_generic.h"
 
 struct Preparations
 {
@@ -32,18 +32,15 @@ struct Preparations
 
 };
 
-
 enum GNUNET_DB_QueryStatus
-TAH_PG_update_generic_suppressed (
+TAH_PG_delete_generic (
   void *cls,
-  enum TALER_AUDITORDB_SuppressableTables table,
-  uint64_t row_id,
-  bool suppressed)
+  enum TALER_AUDITORDB_DeletableSuppressableTables table,
+  uint64_t row_id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&row_id),
-    GNUNET_PQ_query_param_bool (suppressed),
     GNUNET_PQ_query_param_end
   };
   static struct Preparations preps[
@@ -55,7 +52,7 @@ TAH_PG_update_generic_suppressed (
 
   GNUNET_snprintf (statement_name,
                    sizeof (statement_name),
-                   "update_%s",
+                   "delete_%s",
                    table_name);
   if ( (pg != prep->pg) ||
        (prep->cnt < pg->prep_gen) )
@@ -69,8 +66,7 @@ TAH_PG_update_generic_suppressed (
 
     GNUNET_snprintf (sql,
                      sizeof (sql),
-                     "UPDATE %s SET"
-                     " suppressed=$2"
+                     "DELETE FROM %s"
                      " WHERE row_id=$1",
                      table_name);
     if (GNUNET_OK !=

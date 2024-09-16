@@ -27,7 +27,7 @@
 
 // FIXME: comment
 const char *
-TAH_PG_get_table_name (enum TALER_AUDITORDB_SuppressableTables table);
+TAH_PG_get_deletable_suppressable_table_name (enum TALER_AUDITORDB_DeletableSuppressableTables table);
 
 
 /**

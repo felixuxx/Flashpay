@@ -108,7 +108,7 @@ struct TAH_RequestHandler
    */
   bool requires_auth;
 
-  enum TALER_AUDITORDB_SuppressableTables table;
+  enum TALER_AUDITORDB_DeletableSuppressableTables table;
 };
 
 

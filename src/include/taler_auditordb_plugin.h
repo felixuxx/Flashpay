@@ -1529,10 +1529,15 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*update_generic_suppressed)(
     void *cls,
-    enum TALER_AUDITORDB_SuppressableTables table,
+    enum TALER_AUDITORDB_DeletableSuppressableTables table,
     uint64_t row_id,
     bool suppressed);
 
+  enum GNUNET_DB_QueryStatus
+    (*delete_generic)(
+    void *cls,
+    enum TALER_AUDITORDB_DeletableSuppressableTables table,
+    uint64_t row_id);
 
   enum GNUNET_DB_QueryStatus
   (*update_emergency_by_count)(

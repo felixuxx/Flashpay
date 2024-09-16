@@ -26,15 +26,37 @@
 
 
 const char *
-TAH_PG_get_table_name (enum TALER_AUDITORDB_SuppressableTables table)
+TAH_PG_get_deletable_suppressable_table_name (enum TALER_AUDITORDB_DeletableSuppressableTables table)
 {
   const char *tables[] = {
     "auditor_amount_arithmetic_inconsistency",
+    "auditor_closure_lags",
+    "auditor_progress",
+    "auditor_bad_sig_losses",
+    "auditor_coin_inconsistency",
+    "auditor_denomination_key_validity_withdraw_inconsistency",
+    "auditor_denomination_pending",
+    "auditor_denomination_without_sig",
+    "auditor_deposit_confirmation",
+    "auditor_emergency",
+   "auditor_emergency_by_count",
+   "auditor_fee_time_inconsistency",
+   "auditor_misattribution_in_inconsistency",
+   "auditor_purse_not_closed_inconsistency",
+   "auditor_refreshes_haning",
+   "auditor_reserve_balance_insufficient_inconsistency",
+   "auditor_reserve_balance_summary_wrong_inconsistency",
+   "auditor_reserve_in_inconsistency",
+   "auditor_reserve_not_closed_inconsistency",
+   "auditor_row_inconsistency",
+   "auditor_row_minor_inconsistency",
+   "auditor_wire_format_inconsistency",
+   "auditor_wire_out_inconsistency",
     NULL,
   };
 
   if ( (table < 0) ||
-       (table >= TALER_AUDITORDB_SUPPRESSABLE_TABLES_MAX))
+       (table >= TALER_AUDITORDB_DELETABLESUPPRESSABLE_TABLES_MAX))
   {
     GNUNET_break (0);
     return NULL;

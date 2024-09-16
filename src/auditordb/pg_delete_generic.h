@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2024 Taler Systems SA
+   Copyright (C) 2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -13,30 +13,26 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
+/**
+ * @file pg_delete_generic.h
+ * @brief implementation of the delete_generic function
+ * @author Nic Eigel
+ */
+#ifndef PG_DELETE_GENERIC_H
+#define PG_DELETE_GENERIC_H
 
-#include "pg_del_auditor_progress.h"
+#include "taler_util.h"
+#include "taler_json_lib.h"
+#include "taler_auditordb_plugin.h"
 
-
-#include "taler_pq_lib.h"
-#include "pg_helper.h"
-
+/**
+   // FIXME: add comments
+ * @return transaction status code
+ */
 enum GNUNET_DB_QueryStatus
-TAH_PG_del_progress (
+TAH_PG_delete_generic (
   void *cls,
-  uint64_t row_id)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&row_id),
-    GNUNET_PQ_query_param_end
-  };
+  enum TALER_AUDITORDB_DeletableSuppressableTables table,
+  uint64_t row_id);
 
-  PREPARE (pg,
-           "auditor_delete_auditor_closure_lags",
-           "DELETE"
-           " FROM auditor_progress"
-           " WHERE row_id=$1;");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "auditor_delete_auditor_closure_lags",
-                                             params);
-}
+#endif

@@ -15,22 +15,23 @@
  */
 
 
-#ifndef SRC_PG_DEL_ROW_MINOR_INCONSISTENCIES_H
-#define SRC_PG_DEL_ROW_MINOR_INCONSISTENCIES_H
+#ifndef TALER_AUDITOR_HTTPD_DELETE_GENERIC_H
+#define TALER_AUDITOR_HTTPD_DELETE_GENERIC_H
 
-#include "taler_util.h"
-#include "taler_auditordb_plugin.h"
+#include <gnunet/gnunet_util_lib.h>
+#include <microhttpd.h>
+#include "taler-auditor-httpd.h"
 
-/**
- * Delete a row from the bad sig losses table.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param row_id row to delete
- * @return query transaction status
+/*
+ * FIXME: add comment
  */
-enum GNUNET_DB_QueryStatus
-TAH_PG_del_row_minor_inconsistencies (
-  void *cls,
-  uint64_t row_id);
+MHD_RESULT
+TAH_delete_handler_generic(
+  struct TAH_RequestHandler *rh,
+  struct MHD_Connection *connection,
+  void **connection_cls,
+  const char *upload_data,
+  size_t *upload_data_size,
+  const char *const args[]);
 
-#endif // SRC_PG_DEL_ROW_MINOR_INCONSISTENCIES_H
+#endif

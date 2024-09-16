@@ -61,8 +61,6 @@ endif
 libtaler_plugin_auditordb_postgres_la_SOURCES = \
   plugin_auditordb_postgres.c \
   pg_helper.h pg_helper.c \
-  pg_delete_deposit_confirmations.c pg_delete_deposit_confirmations.h \
-  pg_delete_pending_deposit.c pg_delete_pending_deposit.h \
   pg_delete_purse_info.c pg_delete_purse_info.h \
   pg_del_denomination_balance.h pg_del_denomination_balance.c \
   pg_del_reserve_info.c pg_del_reserve_info.h \
@@ -98,32 +96,21 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_insert_amount_arithmetic_inconsistency.c pg_insert_amount_arithmetic_inconsistency.h \
   pg_insert_coin_inconsistency.c pg_insert_coin_inconsistency.h \
   pg_insert_row_inconsistency.c pg_insert_row_inconsistency.h \
-  pg_del_amount_arithmetic_inconsistency.c pg_del_amount_arithmetic_inconsistency.h \
-  pg_del_coin_inconsistency.c pg_del_coin_inconsistency.h \
-  pg_del_row_inconsistency.c pg_del_row_inconsistency.h \
-  pg_del_emergency.c pg_del_emergency.h \
   pg_insert_emergency.c pg_insert_emergency.h \
   pg_get_emergency.c pg_get_emergency.h \
-  pg_del_emergency_by_count.c pg_del_emergency_by_count.h \
   pg_insert_emergency_by_count.c pg_insert_emergency_by_count.h \
   pg_get_emergency_by_count.c pg_get_emergency_by_count.h \
-  pg_del_denomination_key_validity_withdraw_inconsistency.c pg_del_denomination_key_validity_withdraw_inconsistency.h \
   pg_insert_denomination_key_validity_withdraw_inconsistency.c pg_insert_denomination_key_validity_withdraw_inconsistency.h \
   pg_get_denomination_key_validity_withdraw_inconsistency.c pg_get_denomination_key_validity_withdraw_inconsistency.h \
-  pg_del_purse_not_closed_inconsistencies.c pg_del_purse_not_closed_inconsistencies.h \
   pg_insert_purse_not_closed_inconsistencies.c pg_insert_purse_not_closed_inconsistencies.h \
   pg_get_purse_not_closed_inconsistencies.c pg_get_purse_not_closed_inconsistencies.h \
-  pg_del_reserve_balance_insufficient_inconsistency.c pg_del_reserve_balance_insufficient_inconsistency.h \
 pg_insert_reserve_balance_insufficient_inconsistency.c pg_insert_reserve_balance_insufficient_inconsistency.h \
 pg_get_reserve_balance_insufficient_inconsistency.c pg_get_reserve_balance_insufficient_inconsistency.h \
-pg_del_bad_sig_losses.c pg_del_bad_sig_losses.h \
 pg_insert_bad_sig_losses.c pg_insert_bad_sig_losses.h \
 pg_get_bad_sig_losses.c pg_get_bad_sig_losses.h \
 pg_update_bad_sig_losses.c pg_update_bad_sig_losses.h \
-pg_del_auditor_closure_lags.c pg_del_auditor_closure_lags.h \
 pg_insert_auditor_closure_lags.c pg_insert_auditor_closure_lags.h \
 pg_get_auditor_closure_lags.c pg_get_auditor_closure_lags.h \
-pg_del_refreshes_hanging.c pg_del_refreshes_hanging.h \
 pg_insert_refreshes_hanging.c pg_insert_refreshes_hanging.h \
 pg_get_refreshes_hanging.c pg_get_refreshes_hanging.h \
 pg_update_emergency_by_count.c pg_update_emergency_by_count.h \
@@ -136,19 +123,15 @@ pg_update_refreshes_hanging.c pg_update_refreshes_hanging.h \
 pg_update_emergency.c pg_update_emergency.h \
 pg_update_closure_lags.c pg_update_closure_lags.h \
 pg_get_reserve_in_inconsistency.c pg_get_reserve_in_inconsistency.h \
-pg_del_reserve_in_inconsistency.c pg_del_reserve_in_inconsistency.h \
 pg_insert_reserve_in_inconsistency.c pg_insert_reserve_in_inconsistency.h \
 pg_update_reserve_in_inconsistency.c pg_update_reserve_in_inconsistency.h \
 pg_get_reserve_not_closed_inconsistency.c pg_get_reserve_not_closed_inconsistency.h \
-pg_del_reserve_not_closed_inconsistency.c pg_del_reserve_not_closed_inconsistency.h \
 pg_insert_reserve_not_closed_inconsistency.c pg_insert_reserve_not_closed_inconsistency.h \
 pg_update_reserve_not_closed_inconsistency.c pg_update_reserve_not_closed_inconsistency.h \
 pg_get_denominations_without_sigs.c pg_get_denominations_without_sigs.h \
-pg_del_denominations_without_sigs.c pg_del_denominations_without_sigs.h \
 pg_insert_denominations_without_sigs.c pg_insert_denominations_without_sigs.h \
 pg_update_denominations_without_sigs.c pg_update_denominations_without_sigs.h \
 pg_get_misattribution_in_inconsistency.c pg_get_misattribution_in_inconsistency.h \
-pg_del_misattribution_in_inconsistency.c pg_del_misattribution_in_inconsistency.h \
 pg_insert_misattribution_in_inconsistency.c pg_insert_misattribution_in_inconsistency.h \
 pg_update_misattribution_in_inconsistency.c pg_update_misattribution_in_inconsistency.h \
 pg_update_balance.c pg_update_balance.h \
@@ -156,30 +139,23 @@ pg_get_reserves.c pg_get_reserves.h \
 pg_get_purses.c pg_get_purses.h \
 pg_insert_historic_denom_revenue.c pg_insert_historic_denom_revenue.h \
 pg_get_denomination_pending.c pg_get_denomination_pending.h \
-pg_del_denomination_pending.c pg_del_denomination_pending.h \
 pg_insert_denomination_pending.c pg_insert_denomination_pending.h \
 pg_update_denomination_pending.c pg_update_denomination_pending.h \
 pg_get_exchange_signkeys.c pg_get_exchange_signkeys.h \
 pg_get_wire_format_inconsistency.c pg_get_wire_format_inconsistency.h \
-pg_del_wire_format_inconsistency.c pg_del_wire_format_inconsistency.h \
 pg_insert_wire_format_inconsistency.c pg_insert_wire_format_inconsistency.h \
 pg_update_wire_format_inconsistency.c pg_update_wire_format_inconsistency.h \
 pg_get_wire_out_inconsistency.c pg_get_wire_out_inconsistency.h \
-pg_del_wire_out_inconsistency.c pg_del_wire_out_inconsistency.h \
 pg_insert_wire_out_inconsistency.c pg_insert_wire_out_inconsistency.h \
 pg_delete_wire_out_inconsistency_if_matching.c pg_delete_wire_out_inconsistency_if_matching.h \
 pg_update_wire_out_inconsistency.c pg_update_wire_out_inconsistency.h \
 pg_get_reserve_balance_summary_wrong_inconsistency.c pg_get_reserve_balance_summary_wrong_inconsistency.h \
-pg_del_reserve_balance_summary_wrong_inconsistency.c pg_del_reserve_balance_summary_wrong_inconsistency.h \
 pg_insert_reserve_balance_summary_wrong_inconsistency.c pg_insert_reserve_balance_summary_wrong_inconsistency.h \
 pg_update_reserve_balance_summary_wrong_inconsistency.c pg_update_reserve_balance_summary_wrong_inconsistency.h \
 pg_get_row_minor_inconsistencies.c pg_get_row_minor_inconsistencies.h \
-pg_del_row_minor_inconsistencies.c pg_del_row_minor_inconsistencies.h \
 pg_insert_row_minor_inconsistencies.c pg_insert_row_minor_inconsistencies.h \
 pg_update_row_minor_inconsistencies.c pg_update_row_minor_inconsistencies.h \
-pg_del_auditor_progress.c pg_del_auditor_progress.h \
 pg_get_fee_time_inconsistency.c pg_get_fee_time_inconsistency.h \
-pg_del_fee_time_inconsistency.c pg_del_fee_time_inconsistency.h \
 pg_insert_fee_time_inconsistency.c pg_insert_fee_time_inconsistency.h \
 pg_update_fee_time_inconsistency.c pg_update_fee_time_inconsistency.h \
 pg_get_balances.c pg_get_balances.h \
