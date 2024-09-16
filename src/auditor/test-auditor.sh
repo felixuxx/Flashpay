@@ -854,10 +854,12 @@ function test_5() {
     echo "===========5: deposit contract hash wrong================="
     # TODO: may need to be restructured
     # Modify h_wire hash, so it is inconsistent with 'wire'
-#    SERIAL=$(echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql "$DB" -Aqt)
-#    OLD_H=$(echo "SELECT h_contract_terms FROM exchange.deposits WHERE deposit_serial_id=$SERIAL;" | psql "$DB" -Aqt)
+#    SERIAL=$(echo "SELECT coin_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
+
+#    OLD_H=$(echo "SELECT h_contract_terms FROM exchange.coin_deposits WHERE deposit_serial_id=$SERIAL;" | psql "$DB" -Aqt)
 ## shellcheck disable=SC2028
-#    echo "UPDATE exchange.deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" \
+    echo -n "Manipulating row ${SERIALE} ..."
+    #    echo "UPDATE exchange.deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" \
 #        | psql -Aqt "$DB"
 #
 #    run_audit

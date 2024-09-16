@@ -29,14 +29,12 @@
  * Add bad-sig-losses to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
  * @param dc struct of inconsistencies
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 add_bad_sig_losses (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_BadSigLosses *dc)
 {
   json_t *list = cls;
@@ -44,7 +42,7 @@ add_bad_sig_losses (
 
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("row_id",
-                             serial_id),
+                             dc->row_id),
     GNUNET_JSON_pack_uint64 ("problem_row_id",
                              dc->problem_row_id),
     GNUNET_JSON_pack_string ("operation",
