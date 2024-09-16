@@ -985,7 +985,6 @@ function test_7() {
 
 
 # Test wire transfer subject disagreement!
-# FIXME: test-8 not implemented
 function test_8() {
 
     echo "===========8: wire-transfer-subject disagreement==========="
@@ -996,65 +995,37 @@ function test_8() {
     OLD_WTID=$(echo "SELECT reserve_pub FROM libeufin_bank.taler_exchange_incoming WHERE exchange_incoming_id='$OLD_ID';" \
                    | psql "${DB}" -Aqt)
     NEW_WTID="\x77b4e23a41a0158299cdbe4d3247b42f907836d76dbc45c585c6a9beb196e6ca"
+    echo -n "Modifying $OLD_ID ..."
     echo "UPDATE libeufin_bank.taler_exchange_incoming SET reserve_pub='$NEW_WTID' WHERE exchange_incoming_id='$OLD_ID';" \
         | psql "${DB}" -q \
         || exit_fail "Failed to update taler_exchange_incoming"
+    echo "DONE"
 
     run_audit
     check_auditor_running
 
-    #TODO: fix audit wire
-    #echo -n "Testing inconsistency detection... "
-    #DIAG=$(jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-audit-wire.json")
-    #if [ "x$DIAG" != "xwire subject does not match" ]
-    #then
-    #    exit_fail "Diagnostic wrong: $DIAG (0)"
-    #fi
-    #WTID=$(jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-audit-wire.json")
-    #if [ "$WTID" != "$OLD_WTID" ] && [ "$WTID" != "$NEW_WTID" ]
-    #then
-    #    exit_fail "WTID reported wrong: $WTID (wanted $OLD_WTID or $NEW_WTID)"
-    #fi
-    #EX_A=$(jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json")
-    #if [ "$WTID" = "$OLD_WTID" ] && [ "$EX_A" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Amount reported wrong: $EX_A"
-    #fi
-    #if [ "$WTID" = "$NEW_WTID" ] && [ "$EX_A" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Amount reported wrong: $EX_A"
-    #fi
-    #DIAG=$(jq -r .reserve_in_amount_inconsistencies[1].diagnostic < test-audit-wire.json")
-    #if [ "$DIAG" != "wire subject does not match" ]
-    #then
-    #    exit_fail "Diagnostic wrong: $DIAG (1)"
-    #fi
-    #WTID=$(jq -r .reserve_in_amount_inconsistencies[1].reserve_pub < test-audit-wire.json")
-    #if [ "$WTID" != "$OLD_WTID" ] && [ "$WTID" != "$NEW_WTID" ]
-    #then
-    #    exit_fail "WTID reported wrong: $WTID (wanted: $NEW_WTID or $OLD_WTID)"
-    #fi
-    #EX_A=$(jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-audit-wire.json")
-    #if [ "$WTID" = "$OLD_WTID" ] && [ "$EX_A" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Amount reported wrong: $EX_A"
-    #fi
-    #if [ "$WTID" = "$NEW_WTID" ] && [ "$EX_A" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Amount reported wrong: $EX_A"
-    #fi
-#
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-    #fi
-    #DELTA=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
-    #if [ "$DELTA" != "TESTKUDOS:10" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $DELTA"
-    #fi
-    #echo "PASS"
+    echo -n "Checking inconsistency diagnostic ..."
+    check_report \
+        "reserve-in-inconsistency" \
+        "diagnostic" "wire subject does not match"
+    echo -n "Checking expected balance report ..."
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_exchange_expected" "TESTKUDOS:10"
+    echo -n "Checking actual incoming balance report ..."
+    check_report \
+        "reserve-in-inconsistency" \
+        "amount_wired" "TESTKUDOS:0"
+    echo -n "Checking balance update (bad plus)..."
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:10" \
+        "Wrong total_bad_amount_in_plus"
+    echo -n "Checking balance update (bad minus)..."
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:10" \
+        "Wrong total_bad_amount_in_plus"
 
     # Undo database modification
     echo "UPDATE libeufin_bank.taler_exchange_incoming SET reserve_pub='$OLD_WTID' WHERE exchange_incoming_id='$OLD_ID';" \
