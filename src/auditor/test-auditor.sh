@@ -71,17 +71,18 @@ function cleanup()
 # Cleanup to run whenever we exit
 function exit_cleanup()
 {
-    echo "Running exit-cleanup"
     if [ -n "${POSTGRES_PATH:-}" ]
     then
-        echo "Stopping Postgres at ${POSTGRES_PATH}"
+        echo -n "Stopping Postgres at ${POSTGRES_PATH} ..."
         "${POSTGRES_PATH}/pg_ctl" \
                         -D "$TMPDIR" \
                         -l /dev/null \
                         stop \
             &> /dev/null \
             || true
+        echo "DONE"
     fi
+    echo -n "Running exit-cleanup ..."
     cleanup
     for n in $(jobs -p)
     do
@@ -451,12 +452,14 @@ function check_auditor_running() {
 }
 
 function call_endpoint() {
-  if [ -n "${2+x}" ]
-   then
-     curl -s -H "Accept: application/json" -H "Authorization: Bearer ${TALER_AUDITOR_TOKEN}" -o "${MY_TMP_DIR}/${2}.json" "localhost:8083/monitoring/${1}?limit=50&balance_key=${2}"
-   else
-     curl -s -H "Accept: application/json" -H "Authorization: Bearer ${TALER_AUDITOR_TOKEN}" -o "${MY_TMP_DIR}/${1}.json" "localhost:8083/monitoring/${1}?limit=50"
-   fi
+    if [ -n "${2+x}" ]
+    then
+        curl -s -H "Accept: application/json" -H "Authorization: Bearer ${TALER_AUDITOR_TOKEN}" -o "${MY_TMP_DIR}/${2}.json" "localhost:8083/monitoring/${1}?limit=50&balance_key=${2}"
+        echo -n "CD... "
+    else
+        curl -s -H "Accept: application/json" -H "Authorization: Bearer ${TALER_AUDITOR_TOKEN}" -o "${MY_TMP_DIR}/${1}.json" "localhost:8083/monitoring/${1}?limit=50"
+        echo -n "CD... "
+    fi
 }
 
 
@@ -849,49 +852,41 @@ function test_4() {
 
 # Test where h_contract_terms in the deposit table is wrong
 # (=> bad signature)
-# FIXME: test-5 not implemented
 function test_5() {
     echo "===========5: deposit contract hash wrong================="
-    # TODO: may need to be restructured
     # Modify h_wire hash, so it is inconsistent with 'wire'
-#    SERIAL=$(echo "SELECT coin_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
+    CSERIAL=$(echo "SELECT coin_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
+    SERIAL=$(echo "SELECT batch_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY coin_deposit_serial_id LIMIT 1;" | psql "$DB" -Aqt)
+    OLD_H=$(echo "SELECT h_contract_terms FROM exchange.batch_deposits WHERE batch_deposit_serial_id=$SERIAL;" | psql "$DB" -Aqt)
+    echo -n "Manipulating row ${SERIAL} ..."
+# shellcheck disable=SC2028
+    echo "UPDATE exchange.batch_deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE batch_deposit_serial_id=${SERIAL}" \
+        | psql -At "$DB"
+#
+    run_audit
+    check_auditor_running
 
-#    OLD_H=$(echo "SELECT h_contract_terms FROM exchange.coin_deposits WHERE deposit_serial_id=$SERIAL;" | psql "$DB" -Aqt)
-## shellcheck disable=SC2028
-    echo -n "Manipulating row ${SERIALE} ..."
-    #    echo "UPDATE exchange.deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" \
-#        | psql -Aqt "$DB"
-#
-#    run_audit
-#
-#    echo -n "Checking bad signature detection... "
-#    ROW=$(jq -e .bad_sig_losses[0].row < test-audit-coins.json")
-#    if [ "$ROW" != "$SERIAL" ]
-#    then
-#        exit_fail "Row wrong, got $ROW"
-#    fi
-#
-#    LOSS=$(jq -r .bad_sig_losses[0].loss < test-audit-coins.json")
-#    if [ "$LOSS" != "TESTKUDOS:3" ]
-#    then
-#        exit_fail "Wrong deposit bad signature loss, got $LOSS"
-#    fi
-#
-#    OP=$(jq -r .bad_sig_losses[0].operation < test-audit-coins.json")
-#    if [ "$OP" != "deposit" ]
-#    then
-#        exit_fail "Wrong operation, got $OP"
-#    fi
-#
-#    LOSS=$(jq -r .irregular_loss < test-audit-coins.json")
-#    if [ "$LOSS" != "TESTKUDOS:3" ]
-#    then
-#        exit_fail "Wrong total bad sig loss, got $LOSS"
-#    fi
-#    echo PASS
-#
-#    # Undo:
-#    echo "UPDATE exchange.deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=$SERIAL" | psql -Aqt "$DB"
+    echo -n "Checking bad signature detection... "
+    check_report \
+        "bad-sig-losses" \
+        "problem_row_id" "$CSERIAL"
+    echo -n "Testing loss report... "
+    check_report \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:3.02"
+    echo -n "Testing loss operation attribution... "
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
+    echo -n "Testing total coin_irregular_loss balance update... "
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:3.02" \
+        "wrong total coin_irregular_loss"
+
+    # Undo:
+    echo "UPDATE exchange.batch_deposits SET h_contract_terms='${OLD_H}' WHERE batch_deposit_serial_id=$SERIAL" \
+        | psql -Aqt "$DB"
 
 }
 
