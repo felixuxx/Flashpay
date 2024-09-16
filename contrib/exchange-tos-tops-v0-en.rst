@@ -1,5 +1,5 @@
 ﻿Terms of Service of Taler Operations AG
-===================================================
+============================================
 
 These Terms of Service (hereinafter **ToS**) of Taler Operations AG regulate the rights and obligations of users and 
 recipients (beneficiaries) of the payment service offered. By using the payment service, users automatically accept these ToS.
@@ -15,8 +15,8 @@ directly supervised by the Swiss financial services regulation authority FINMA, 
 accordance with Art. 6 para. 2 Banking Ordinance without commercial banking status (non-bank) and therefore without
 customer deposit protection.
 
-**Users** are the owners of tokens signed by TOPS and denominated in CHF (e-money), which users are storing in Taler
-wallets under the users' own responsibility and with which the users can effectuate payments.
+**Users** are the owners of tokens signed by TOPS, denominated in CHF (e-money), which they store in their Taler
+wallets under their own responsibility. These tokens can be used by the users to make payments.
 
 **Taler-Wallets** are products that, in accordance with the GNU Taler protocol, manage digital cash (e-money) , which a
 payment service issues and redeems for payments to beneficiaries. The tokens issued by TOPS (e-CHF) can be used as a
@@ -43,14 +43,14 @@ wiring or with withdrawals shall be borne by the users. The users' funds do not 
 are given for balances in Taler wallets. Users acknowledge that their credit balance is not covered by customer deposit
 protection.
 
-For the purpose of unloading a Taler wallet users have to send its funds to a Swiss bank account. International payments
-are not permitted. With the Taler wallet installed in the smartphone or web browser users can pay within applicable
-limits to natural persons and legal entities who accept this payment option and have a Swiss bank account for receiving
-money (e.g. stores, web shops, apps, and other beneficiaries). When users make payments, the corresponding amount of
-e-money is debited directly from the Taler wallet. At least the transaction amount must be available in the Taler
-wallet's balance. Users consent to all payments made with the Taler wallet from their digital end device, even if these
-payments were made without their agreement. Anyone who redeems a token in the Taler wallet has used its represented
-value of the credit for payment.
+To unload a Taler wallet, users must transfer their funds to a Swiss bank account. International payments
+are not permitted. With the Taler wallet installed in the smartphone or web browser, users can make payments 
+(within applicable limits) to natural persons and legal entities that accept this payment method and have a 
+Swiss bank account to receive the funds (e.g., stores, web shops, apps, and other beneficiaries). 
+When users make payments, the corresponding amount of e-money is debited directly from the Taler wallet. 
+At least the transaction amount must be available in the Taler wallet's balance. Users consent to all payments made 
+with the Taler wallet from their digital end device, even if these payments were made without their agreement. 
+Anyone who redeems a token in the Taler wallet has used its represented value of the credit for payment.
 
 The procedure for increasing and decreasing the credit balance in the Taler wallet can take several days, depending on
 the mechanism.
@@ -59,20 +59,20 @@ the mechanism.
 Prices, fees and limits
 -----------------------------------
 
-TOPS may change the fees at any time. Fee changes only have effect on tokens withdrawn after the change. Taler wallets 
-compliant to the GNU Taler protocol will inform users about fee changes before they withdraw new tokens. The withdrawal of tokens 
-issued by TOPS after the fees have been changed is deemed to be a user's consent to the conditions after the change.
+TOPS may change the fees at any time. Fee changes only apply to tokens withdrawn after the change takes effect. 
+Taler wallets compliant to the GNU Taler protocol will inform users about fee changes before they withdraw new tokens. 
+Withdrawing tokens issued by TOPS after a fee change is considered the user’s consent to the updated conditions.
 
 There are limits of CHF 3,000 per month and CHF 15,000 per calendar year for withdrawing e-money from a bank account
-or for receiving peer-to-peer payments between Taler wallets with a confirmed Swiss mobile number.
+or receiving peer-to-peer payments between Taler wallets with a confirmed Swiss mobile number.
 
 
 Legal and regulatory requirements
 -------------------------------------------------------
 
-In order to use the payment service, users and beneficiaries are obliged to support TOPS with the fulfillment of legal 
-and regulatory requirements. TOPS complies with all applicable anti-money laundering (AML) and know-your-customer (KYC) 
-regulations. TOPS will ensure that all personal data is processed in accordance with Swiss privacy laws, including the 
+In order to use the payment service, users and beneficiaries are obliged to support TOPS in fulfilling legal and regulatory requirements. 
+TOPS complies with all applicable anti-money laundering (AML) and know-your-customer (KYC) regulations. 
+TOPS will ensure that all personal data is processed in accordance with Swiss privacy laws, including the 
 Federal Act on Data Protection and the Ordinance on Data Protection. 
 TOPS has the right and, where applicable, the legal obligation to exclude users and beneficiaries from using the payment service, 
 if they refuse to provide the required information or provide false information.
@@ -83,7 +83,7 @@ and, where applicable, may be required to register with TOPS and provide the req
 TOPS reserves the right to request further information at any time to fulfill regulatory compliance.
 
 No accounts are created for *users* at TOPS. However, the bank accounts of users who transfer CHF to TOPS in order to
-purchase tokens are recorded. To receive peer-to-peer payments, users need at least a Swiss cell phone number to receive
+purchase tokens are recorded. To accept peer-to-peer payments, users must have a Swiss cell phone number to receive 
 SMS for identification purposes.
 
 
@@ -188,8 +188,8 @@ the Federal Act on Data Protection and the Ordinance on Data Protection.
 All system data is primarily hosted in Switzerland.
 
 KYC processes may be controlled by service providers. These are also obliged to secure the data in accordance with Swiss law.
-The actual data of the core system is stored redundantly on encrypted hard disks redundantly (i.e. with backup) and
-are only accessible to authorized personnel. Authorized personnel are subjected to security checks by TOPS.
+The core system’s data is stored on encrypted hard disks with redundancy (including backups) and is accessible only to authorized personnel. 
+Authorized personnel are subjected to security checks by TOPS.
 The entire design of the GNU Taler payment service has been strictly developed according to the principles of
 “Privacy-by-Design” and “Privacy-by-Default”.
 
@@ -208,19 +208,19 @@ Written notice of termination by TOPS shall be sent to one of the last addresses
 If no transactions are made to the beneficiaries for more than 12 months, the business relationship shall be automatically 
 deemed terminated.
 
-The users of Taler wallets can return the existing credit in these wallets at any time to bank accounts in Switzerland
-and thus balance the credit.
-If the TOPS payment service is discontinued, users will be informed of the discontinuation of the payment
-service via the GNU Taler protocol and requested by the Taler wallets to balance the existing credit.
-Users who fail to balance the credit will lose their entitlement to the claim to the remaining credit after 3 months,
-which becomes the property of TOPS.
+Users of Taler wallets can return the existing credit in these wallets to bank accounts in Switzerland at any time, 
+thereby balancing the credit.
+If the TOPS payment service is discontinued, users will be notified through the GNU Taler protocol and prompted 
+by their Taler wallets to balance any remaining credit.
+Users who fail to balance the credit within 3 months will lose their entitlement to the remaining amount, 
+which will become the property of TOPS.
 
 
 Applicable law and place of jurisdiction
 ---------------------------------------------------------------
 
 To the extent permitted by law, all legal relationships between TOPS and users shall be governed exclusively by
-substantive Swiss law, to the exclusion of conflict of laws and to the exclusion of international treaties.
+substantive Swiss law, excluding conflict of laws and international treaties.
 
-Subject to any mandatory statutory provisions to the contrary Biel is the exclusive place of jurisdiction and the place of performance.
+Subject to any mandatory statutory provisions to the contrary, Biel is the exclusive place of jurisdiction and the place of performance.
 For users and beneficiaries domiciled outside Switzerland, Biel/Bienne is also the place of debt collection.
