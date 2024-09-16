@@ -367,6 +367,7 @@ struct TALER_AUDITORDB_PurseNotClosedInconsistencies
   struct GNUNET_CRYPTO_EddsaPublicKey purse_pub;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute expiration_date;
+  bool suppressed;
 };
 
 /**
@@ -550,14 +551,12 @@ typedef enum GNUNET_GenericReturnValue
  * the auditor's database.
  *
  * @param cls closure
- * @param serial_id location of the @a dc in the database
  * @param dc the structure itself
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_PurseNotClosedInconsistenciesCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_PurseNotClosedInconsistencies *dc);
 
 /**

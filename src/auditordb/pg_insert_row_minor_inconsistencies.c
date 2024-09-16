@@ -26,7 +26,7 @@ TAH_PG_insert_row_minor_inconsistencies (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&dc->row_table),
+    GNUNET_PQ_query_param_string (dc->row_table),
     GNUNET_PQ_query_param_uint64 (&dc->problem_row),
     GNUNET_PQ_query_param_string (dc->diagnostic),
     GNUNET_PQ_query_param_end

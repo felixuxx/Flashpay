@@ -1072,38 +1072,32 @@ function test_9() {
 
 
 # Test wire_in timestamp disagreement!
-# FIXME: test-10 not implemented
 function test_10() {
     NOW_MS=$(date +%s)000
     echo "===========10: wire-timestamp disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    #TODO: see fixme
-    #echo "FIXME: test needs update to new libeufin-bank schema"
-    #exit 0
-    #OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
-    #OLD_DATE=$(echo "SELECT \"timestampMs\" FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | psql "${DB}" -Aqt)
-    #echo "UPDATE TalerIncomingPayments SET \"timestampMs\"=$NOW_MS WHERE payment=$OLD_ID;" | psql "${DB}" -q
+    OLD_ID=$(echo "SELECT bank_transaction FROM libeufin_bank.taler_exchange_incoming JOIN libeufin_bank.bank_account_transactions ON (bank_transaction=bank_transaction_id) WHERE (amount).val=10 ORDER BY exchange_incoming_id LIMIT 1;" | psql "${DB}" -Aqt) \
+        || exit_fail "Failed to SELECT FROM libeufin_bank.bank_account_transactions!"
+    OLD_DATE=$(echo "SELECT transaction_date FROM libeufin_bank.bank_account_transactions WHERE bank_transaction_id='$OLD_ID';" | psql "${DB}" -Aqt)
+    echo -n "Modifying $OLD_ID ..."
+    echo "UPDATE libeufin_bank.bank_account_transactions SET transaction_date=$NOW_MS WHERE bank_transaction_id=$OLD_ID;" \
+        | psql "${DB}" -At
 
     run_audit
     check_auditor_running
 
-    #TODO: fix helper wire
-    #echo -n "Testing inconsistency detection... "
-    #DIAG=$(jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json")
-    #if test "x$DIAG" != "xexecution date mismatch"
-    #then
-    #    exit_fail "Reported diagnostic wrong: $DIAG"
-    #fi
-    #TABLE=$(jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json")
-    #if test "x$TABLE" != "xreserves_in"
-    #then
-    #    exit_fail "Reported table wrong: $TABLE"
-    #fi
-    #echo "PASS"
-
+    echo -n "Testing inconsistency detection diagnostic... "
+    check_report \
+        row-minor-inconsistencies \
+        "diagnostic" "execution date mismatch"
+    echo -n "Testing inconsistency detection table... "
+    check_report \
+        row-minor-inconsistencies \
+        "row_table" "reserves_in"
     # Undo database modification
-    #echo "UPDATE TalerIncomingPayments SET \"timestampMs\"='$OLD_DATE' WHERE payment=$OLD_ID;" | psql "${DB}" -q
+    echo "UPDATE libeufin_bank.bank_account_transactions SET transaction_date=$OLD_DATE WHERE bank_transaction_id=$OLD_ID;" \
+        | psql "${DB}" -Aqt
     stop_auditor_httpd
     full_reload
     cleanup

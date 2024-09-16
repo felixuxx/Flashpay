@@ -68,8 +68,8 @@ row_minor_inconsistencies_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
                                     &dc.row_id),
-      GNUNET_PQ_result_spec_auto_from_type ("row_table",
-                                            &dc.row_table),
+      GNUNET_PQ_result_spec_string ("row_table",
+                                    &dc.row_table),
       GNUNET_PQ_result_spec_uint64 ("problem_row",
                                     &dc.problem_row),
       GNUNET_PQ_result_spec_string ("diagnostic",
@@ -126,10 +126,11 @@ TAH_PG_get_row_minor_inconsistencies (
   PREPARE (pg,
            "auditor_row_minor_inconsistencies_get_desc",
            "SELECT"
-           " row_id,"
-           " row_table,"
-           " diagnostic,"
-           " suppressed"
+           " row_id"
+           ",problem_row"
+           ",row_table"
+           ",diagnostic"
+           ",suppressed"
            " FROM auditor_row_minor_inconsistencies"
            " WHERE (row_id < $1)"
            " AND ($2 OR NOT suppressed)"
@@ -139,10 +140,11 @@ TAH_PG_get_row_minor_inconsistencies (
   PREPARE (pg,
            "auditor_row_minor_inconsistencies_get_asc",
            "SELECT"
-           " row_id,"
-           " row_table,"
-           " diagnostic,"
-           " suppressed"
+           " row_id"
+           ",problem_row"
+           ",row_table"
+           ",diagnostic"
+           ",suppressed"
            " FROM auditor_row_minor_inconsistencies"
            " WHERE (row_id > $1)"
            " AND ($2 OR NOT suppressed)"

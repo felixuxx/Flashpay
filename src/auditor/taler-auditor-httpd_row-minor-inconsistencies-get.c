@@ -135,6 +135,6 @@ TAH_ROW_MINOR_INCONSISTENCIES_handler_get (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("row-minor-inconsistencies",
+    GNUNET_JSON_pack_array_steal ("row_minor_inconsistencies",
                                   ja));
 }

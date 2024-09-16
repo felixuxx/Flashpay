@@ -127,11 +127,11 @@ TAH_CLOSURE_LAGS_handler_get (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                       "closure-lags");
+                                       "get_auditor_closure_lags");
   }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("closure-lags",
+    GNUNET_JSON_pack_array_steal ("closure_lags",
                                   ja));
 }

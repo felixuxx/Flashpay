@@ -25,13 +25,13 @@
 #include "taler-auditor-httpd_denomination-pending-get.h"
 
 /**
-* Add denomination-pending to the list.
-*
-* @param[in,out] cls a `json_t *` array to extend
-* @param serial_id location of the @a dc in the database
-* @param dc struct of inconsistencies
-* @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
-*/
+ * Add denomination-pending to the list.
+ *
+ * @param[in,out] cls a `json_t *` array to extend
+ * @param serial_id location of the @a dc in the database
+ * @param dc struct of inconsistencies
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
+ */
 static enum GNUNET_GenericReturnValue
 process_denomination_pending (
   void *cls,
@@ -123,6 +123,6 @@ TAH_DENOMINATION_PENDING_handler_get (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("denomination-pending",
+    GNUNET_JSON_pack_array_steal ("denomination_pending",
                                   ja));
 }

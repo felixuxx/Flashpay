@@ -133,6 +133,6 @@ TAH_WIRE_FORMAT_INCONSISTENCY_handler_get (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("wire-format-inconsistency",
+    GNUNET_JSON_pack_array_steal ("wire_format_inconsistency",
                                   ja));
 }
