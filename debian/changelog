@@ -1,3 +1,9 @@
+taler-exchange (0.14.0) unstable; urgency=low
+
+  * Release version 0.14.0
+
+ -- Christian Grothoff <grothoff@taler.net>  Tue, 17 Sep 2024 16:35:43 +0200
+
 taler-exchange (0.13.0) unstable; urgency=low
 
   * Release version 0.13.0
