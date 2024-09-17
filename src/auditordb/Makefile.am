@@ -61,6 +61,9 @@ endif
 libtaler_plugin_auditordb_postgres_la_SOURCES = \
   plugin_auditordb_postgres.c \
   pg_helper.h pg_helper.c \
+  pg_delete_generic.c pg_delete_generic.h \
+  pg_delete_deposit_confirmations.c pg_delete_deposit_confirmations.h \
+  pg_delete_pending_deposit.c pg_delete_pending_deposit.h \
   pg_delete_purse_info.c pg_delete_purse_info.h \
   pg_del_denomination_balance.h pg_del_denomination_balance.c \
   pg_del_reserve_info.c pg_del_reserve_info.h \
