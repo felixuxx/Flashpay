@@ -18,20 +18,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 msgid "Terms of Service"
-msgstr "Allgemeine Geschäftsbedingungen"
+msgstr "Allgemeine Geschäftsbedingungen der Taler Operations AG"
 
-msgid "Last Updated: 27.11.2023"
-msgstr ""
+msgid "Last update: 26.4.2024"
+msgstr "Datum: 26.4.2024"
 
 msgid ""
 "Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment service "
 "through our Internet presence (collectively the “Services”). Before using "
 "our Services, please read the Terms of Service (the “Terms” or the "
 "“Agreement”) carefully."
-msgstr ""
+msgstr "Diese Allgemeinen Geschäftsbedingungen (nachfolgend **AGB**) der Taler Operations AG regeln die Rechte und Pflichten von Nutzern und Zahlungsempfängern (Begünstigten) des angebotenen Zahlungsdiensts. Mit der Nutzung des Zahlungsdiensts akzeptieren die Nutzer automatisch diese AGB."
 
 msgid "Overview"
-msgstr ""
+msgstr "Dienstleistung; Geltungsbereich"
 
 msgid ""
 "This section provides a brief summary of the highlights of this Agreement. "
@@ -41,7 +41,10 @@ msgid ""
 "Wallet’s self-hosted personal payment application. When using the Taler "
 "Wallet to interact with our Services, you are agreeing to our Terms, so "
 "please read carefully."
-msgstr ""
+msgstr "GNU Taler ist ein technisches System, das bargeldlose Zahlungen ermöglicht. Taler Operations AG (nachfolgend **TOPS**) mit Sitz in Biel/Bienne, Schweiz, bietet einen **Zahlungsdienst** auf Basis von GNU Taler für Nutzer in der Schweiz an. TOPS ist Mitglied im VQF, einer FINMA-akkreditierten Selbstregulierungsorganisation. TOPS wird daher nicht direkt von der FINMA beaufsichtigt, sondern betreibt eine Finanzdienstleistung nach Art. 6 Abs. 2 BankV ohne gewerbsmässige Bankeneigenschaft (Nichtbank) und somit ohne Kundeneinlagensicherung."
+"**Nutzer** sind Eigentümer von durch TOPS signierten und in CHF denominierten Wertmarken (e-Geld), welche in Taler-Wallets in Eigenverantwortung der Nutzer gespeichert werden und mit denen die Nutzer bezahlen können."
+
+"**Taler-Wallets** sind Produkte, die digitales Bargeld (e-Geld) nach dem GNU Taler-Protokoll verwalten, welches ein Zahlungsdienst emittiert und zur Zahlung an Begünstigte wieder einlöst. Die von TOPS emittierten Wertmarken (e-CHF) können als Zahlungsmittel im stationären Handel, an Automaten, online und in Apps bei autorisierten Händlern oder Dienstleistungsanbietern, die dieses Zahlungsmittel akzeptieren (nachfolgend **Begünstigte**), eingesetzt werden. Nutzer können auch Zahlungen an andere Nutzer durchführen oder das e-Geld auf ein Schweizer Bankkonto zurückübertragen."
 
 msgid "Highlights:"
 msgstr ""
