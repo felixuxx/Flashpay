@@ -24,7 +24,6 @@
 #include <pthread.h>
 #include <libpq-fe.h>
 #include "pg_delete_generic.h"
-#include "pg_delete_deposit_confirmations.h"
 #include "pg_delete_pending_deposit.h"
 #include "pg_delete_purse_info.h"
 #include "pg_del_denomination_balance.h"
@@ -62,17 +61,6 @@
 #include "pg_get_amount_arithmetic_inconsistency.h"
 #include "pg_get_coin_inconsistency.h"
 #include "pg_get_row_inconsistency.h"
-#include "pg_update_emergency_by_count.h"
-#include "pg_update_row_inconsistency.h"
-#include "pg_update_purse_not_closed_inconsistencies.h"
-#include "pg_update_reserve_balance_insufficient_inconsistency.h"
-#include "pg_update_coin_inconsistency.h"
-#include "pg_update_denomination_key_validity_withdraw_inconsistency.h"
-#include "pg_update_refreshes_hanging.h"
-#include "pg_update_emergency.h"
-#include "pg_update_closure_lags.h"
-#include "pg_update_row_minor_inconsistencies.h"
-
 #include "pg_update_balance.h"
 
 
@@ -91,14 +79,12 @@
 
 #include "pg_get_bad_sig_losses.h"
 #include "pg_insert_bad_sig_losses.h"
-#include "pg_update_bad_sig_losses.h"
 
 #include "pg_get_denomination_key_validity_withdraw_inconsistency.h"
 #include "pg_insert_denomination_key_validity_withdraw_inconsistency.h"
 
 #include "pg_get_fee_time_inconsistency.h"
 #include "pg_insert_fee_time_inconsistency.h"
-#include "pg_update_fee_time_inconsistency.h"
 
 #include "pg_get_purse_not_closed_inconsistencies.h"
 #include "pg_insert_purse_not_closed_inconsistencies.h"
@@ -111,48 +97,36 @@
 
 #include "pg_get_reserve_in_inconsistency.h"
 #include "pg_insert_reserve_in_inconsistency.h"
-#include "pg_update_reserve_in_inconsistency.h"
 
 #include "pg_get_reserve_not_closed_inconsistency.h"
 #include "pg_insert_reserve_not_closed_inconsistency.h"
-#include "pg_update_reserve_not_closed_inconsistency.h"
 
 #include "pg_get_denominations_without_sigs.h"
 #include "pg_insert_denominations_without_sigs.h"
-#include "pg_update_denominations_without_sigs.h"
 
 #include "pg_get_misattribution_in_inconsistency.h"
 #include "pg_insert_misattribution_in_inconsistency.h"
-#include "pg_update_misattribution_in_inconsistency.h"
 
 #include "pg_get_reserves.h"
 #include "pg_get_purses.h"
 
 #include "pg_get_denomination_pending.h"
 #include "pg_insert_denomination_pending.h"
-#include "pg_update_denomination_pending.h"
 
 #include "pg_get_exchange_signkeys.h"
 
 #include "pg_get_wire_format_inconsistency.h"
 #include "pg_insert_wire_format_inconsistency.h"
-#include "pg_update_wire_format_inconsistency.h"
 
 #include "pg_get_wire_out_inconsistency.h"
 #include "pg_insert_wire_out_inconsistency.h"
 #include "pg_delete_wire_out_inconsistency_if_matching.h"
-#include "pg_update_wire_out_inconsistency.h"
 
 #include "pg_get_reserve_balance_summary_wrong_inconsistency.h"
 #include "pg_insert_reserve_balance_summary_wrong_inconsistency.h"
-#include "pg_update_reserve_balance_summary_wrong_inconsistency.h"
 
 #include "pg_get_row_minor_inconsistencies.h"
 #include "pg_insert_row_minor_inconsistencies.h"
-#include "pg_update_row_minor_inconsistencies.h"
-
-#include "pg_update_amount_arithmetic_inconsistency.h"
-#include "pg_update_deposit_confirmations.h"
 
 #define LOG(kind,...) GNUNET_log_from (kind, "taler-auditordb-postgres", \
                                        __VA_ARGS__)
@@ -587,9 +561,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_insert_deposit_confirmation;
   plugin->get_deposit_confirmations
     = &TAH_PG_get_deposit_confirmations;
-  plugin->delete_deposit_confirmation
-    = &TAH_PG_delete_deposit_confirmation;
-
 
   plugin->get_amount_arithmetic_inconsistency
     = &TAH_PG_get_amount_arithmetic_inconsistency;

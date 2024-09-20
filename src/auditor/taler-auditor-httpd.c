@@ -34,81 +34,35 @@
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_deposit-confirmation-get.h"
 #include "taler-auditor-httpd_amount-arithmetic-inconsistency-get.h"
-#include "taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h"
 #include "taler-auditor-httpd_coin-inconsistency-get.h"
 #include "taler-auditor-httpd_row-inconsistency-get.h"
-
 #include "taler-auditor-httpd_emergency-get.h"
-
 #include "taler-auditor-httpd_emergency-by-count-get.h"
-
 #include \
   "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-get.h"
-
 #include "taler-auditor-httpd_purse-not-closed-inconsistencies-get.h"
-
 #include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-get.h"
-
 #include "taler-auditor-httpd_bad-sig-losses-get.h"
-#include "taler-auditor-httpd_bad-sig-losses-upd.h"
-
 #include "taler-auditor-httpd_closure-lags-get.h"
-
 #include "taler-auditor-httpd_refreshes-hanging-get.h"
-
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
-
 #include "taler-auditor-httpd_delete_generic.h"
 #include "taler-auditor-httpd_patch_generic_suppressed.h"
-#include "taler-auditor-httpd_emergency-by-count-upd.h"
-#include "taler-auditor-httpd_row-inconsistency-upd.h"
-#include "taler-auditor-httpd_purse-not-closed-inconsistencies-upd.h"
-#include "taler-auditor-httpd_reserve-balance-insufficient-inconsistency-upd.h"
-#include "taler-auditor-httpd_coin-inconsistency-upd.h"
-#include \
-  "taler-auditor-httpd_denomination-key-validity-withdraw-inconsistency-upd.h"
-#include "taler-auditor-httpd_refreshes-hanging-upd.h"
-#include "taler-auditor-httpd_emergency-upd.h"
-#include "taler-auditor-httpd_closure-lags-upd.h"
-#include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
-
 #include "taler-auditor-httpd_reserve-in-inconsistency-get.h"
-#include "taler-auditor-httpd_reserve-in-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_reserve-not-closed-inconsistency-get.h"
-#include "taler-auditor-httpd_reserve-not-closed-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_denominations-without-sigs-get.h"
-#include "taler-auditor-httpd_denominations-without-sigs-upd.h"
-
 #include "taler-auditor-httpd_misattribution-in-inconsistency-get.h"
-#include "taler-auditor-httpd_misattribution-in-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_reserves-get.h"
 #include "taler-auditor-httpd_purses-get.h"
-
 #include "taler-auditor-httpd_historic-denomination-revenue-get.h"
 #include "taler-auditor-httpd_historic-reserve-summary-get.h"
-
 #include "taler-auditor-httpd_denomination-pending-get.h"
-#include "taler-auditor-httpd_denomination-pending-upd.h"
-
 #include "taler-auditor-httpd_wire-format-inconsistency-get.h"
-#include "taler-auditor-httpd_wire-format-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_wire-out-inconsistency-get.h"
-#include "taler-auditor-httpd_wire-out-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-get.h"
-#include "taler-auditor-httpd_reserve-balance-summary-wrong-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_row-minor-inconsistencies-get.h"
-#include "taler-auditor-httpd_row-minor-inconsistencies-upd.h"
-
 #include "taler-auditor-httpd_fee-time-inconsistency-get.h"
-#include "taler-auditor-httpd_fee-time-inconsistency-upd.h"
-
 #include "taler-auditor-httpd_balances-get.h"
 #include "taler-auditor-httpd_progress-get.h"
 
@@ -432,7 +386,8 @@ handle_mhd_request (void *cls,
     { "/monitoring/coin-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_COIN_INCONSISTENCY_handler_update, MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed, MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_COIN_INCONSISTENCY },
     { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -445,7 +400,8 @@ handle_mhd_request (void *cls,
     { "/monitoring/row-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_ROW_INCONSISTENCY_handler_update, MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed, MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_ROW_INCONSISTENCY },
     { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -460,8 +416,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/bad-sig-losses", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_BAD_SIG_LOSSES_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_BAD_SIG_LOSSES },
     { "/monitoring/closure-lags", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -476,8 +433,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/closure-lags", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_CLOSURE_LAGS_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_CLOSURE_LAGS },
     { "/monitoring/emergency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -492,8 +450,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/emergency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_EMERGENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_EMERGENCY  },
     { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -508,8 +467,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/refreshes-hanging", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_REFRESHES_HANGING_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_REFRESHES_HANGING  },
     { "/monitoring/denomination-key-validity-withdraw-inconsistency",
       MHD_HTTP_METHOD_GET,
       "application/json",
@@ -527,8 +487,9 @@ handle_mhd_request (void *cls,
       MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_DENOMINATION_KEY_VALIDITY_WITHDRAW_INCONSISTENCY },
     { "/monitoring/reserve-balance-insufficient-inconsistency",
       MHD_HTTP_METHOD_GET,
       "application/json",
@@ -546,8 +507,9 @@ handle_mhd_request (void *cls,
       MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_RESERVE_BALANCE_INSUFFICIENT_INCONSISTENCY },
     { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -562,8 +524,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/purse-not-closed-inconsistencies", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_PURSE_NOT_CLOSED_INCONSISTENCIES_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_PURSE_NOT_CLOSED_INCONSISTENCY  },
     { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -578,8 +541,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/emergency-by-count", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_EMERGENCY_BY_COUNT_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_EMERGENCY_BY_COUNT },
     { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -594,8 +558,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/reserve-in-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_RESERVE_IN_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_RESERVE_IN_INCONSISTENCY  },
     { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -610,8 +575,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/reserve-not-closed-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_RESERVE_NOT_CLOSED_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_RESERVE_NOT_CLOSED_INCONSISTENCY },
     { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -626,8 +592,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/denominations-without-sigs", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_DENOMINATIONS_WITHOUT_SIGS_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_DENOMINATIONS_WITHOUT_SIG },
     { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -642,8 +609,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/misattribution-in-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_MISATTRIBUTION_IN_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_MISATTRIBUTION_IN_INCONSISTENCY },
     { "/monitoring/reserves", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -689,8 +657,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/wire-format-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_WIRE_FORMAT_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_WIRE_FORMAT_INCONSISTENCY },
     { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -705,8 +674,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/wire-out-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_WIRE_OUT_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_WIRE_OUT_INCONSISTENCY },
     { "/monitoring/reserve-balance-summary-wrong-inconsistency",
       MHD_HTTP_METHOD_GET,
       "application/json",
@@ -724,8 +694,9 @@ handle_mhd_request (void *cls,
       MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_RESERVE_BALANCE_SUMMARY_WRONG_INCONSISTENCY },
     { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -740,8 +711,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/row-minor-inconsistencies", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_ROW_MINOR_INCONSISTENCIES_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_ROW_MINOR_INCONSISTENCY },
     { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,
@@ -756,8 +728,9 @@ handle_mhd_request (void *cls,
     { "/monitoring/fee-time-inconsistency", MHD_HTTP_METHOD_PATCH,
       "application/json",
       NULL, 0,
-      &TAH_FEE_TIME_INCONSISTENCY_handler_update,
-      MHD_HTTP_OK, true },
+      &TAH_patch_handler_generic_suppressed,
+      MHD_HTTP_OK, true,
+            .table = TALER_AUDITORDB_FEE_TIME_INCONSISTENCY  },
     { "/monitoring/balances", MHD_HTTP_METHOD_GET,
       "application/json",
       NULL, 0,

@@ -24,7 +24,6 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-auditor-httpd.h"
-#include "taler-auditor-httpd_amount-arithmetic-inconsistency-upd.h"
 
 
 MHD_RESULT
