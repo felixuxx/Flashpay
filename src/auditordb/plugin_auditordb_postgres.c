@@ -650,7 +650,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
 
   plugin->insert_bad_sig_losses = &TAH_PG_insert_bad_sig_losses;
   plugin->get_bad_sig_losses = &TAH_PG_get_bad_sig_losses;
-  plugin->update_bad_sig_losses = &TAH_PG_update_bad_sig_losses;
 
   plugin->insert_auditor_closure_lags = &TAH_PG_insert_auditor_closure_lags;
   plugin->get_auditor_closure_lags = &TAH_PG_get_auditor_closure_lags;
@@ -659,41 +658,19 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->insert_refreshes_hanging = &TAH_PG_insert_refreshes_hanging;
   plugin->get_refreshes_hanging = &TAH_PG_get_refreshes_hanging;
 
-  plugin->update_emergency_by_count = &TAH_PG_update_emergency_by_count;
-  plugin->update_row_inconsistency = &TAH_PG_update_row_inconsistency;
-  plugin->update_purse_not_closed_inconsistencies =
-    &TAH_PG_update_purse_not_closed_inconsistencies;
-  plugin->update_reserve_balance_insufficient_inconsistency =
-    &TAH_PG_update_reserve_balance_insufficient_inconsistency;
-  plugin->update_coin_inconsistency = &TAH_PG_update_coin_inconsistency;
-  plugin->update_denomination_key_validity_withdraw_inconsistency =
-    &TAH_PG_update_denomination_key_validity_withdraw_inconsistency;
-  plugin->update_refreshes_hanging = &TAH_PG_update_refreshes_hanging;
-  plugin->update_emergency = &TAH_PG_update_emergency;
-  plugin->update_closure_lags = &TAH_PG_update_closure_lags;
-
-
   plugin->insert_reserve_in_inconsistency =
     &TAH_PG_insert_reserve_in_inconsistency;
   plugin->get_reserve_in_inconsistency = &TAH_PG_get_reserve_in_inconsistency;
-  plugin->update_reserve_in_inconsistency =
-    &TAH_PG_update_reserve_in_inconsistency;
-
 
   plugin->insert_reserve_not_closed_inconsistency =
     &TAH_PG_insert_reserve_not_closed_inconsistency;
   plugin->get_reserve_not_closed_inconsistency =
     &TAH_PG_get_reserve_not_closed_inconsistency;
-  plugin->update_reserve_not_closed_inconsistency =
-    &TAH_PG_update_reserve_not_closed_inconsistency;
-
 
   plugin->insert_denominations_without_sigs =
     &TAH_PG_insert_denominations_without_sigs;
   plugin->get_denominations_without_sigs =
     &TAH_PG_get_denominations_without_sigs;
-  plugin->update_denominations_without_sigs =
-    &TAH_PG_update_denominations_without_sigs;
 
   plugin->get_progress_points
     = &TAH_PG_get_progress_points;
@@ -703,60 +680,42 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     &TAH_PG_insert_misattribution_in_inconsistency;
   plugin->get_misattribution_in_inconsistency =
     &TAH_PG_get_misattribution_in_inconsistency;
-  plugin->update_misattribution_in_inconsistency =
-    &TAH_PG_update_misattribution_in_inconsistency;
 
   plugin->get_reserves = &TAH_PG_get_reserves;
   plugin->get_purses = &TAH_PG_get_purses;
 
   plugin->insert_denomination_pending = &TAH_PG_insert_denomination_pending;
   plugin->get_denomination_pending = &TAH_PG_get_denomination_pending;
-  plugin->update_denomination_pending = &TAH_PG_update_denomination_pending;
 
   plugin->get_exchange_signkeys = &TAH_PG_get_exchange_signkeys;
 
   plugin->insert_wire_format_inconsistency =
     &TAH_PG_insert_wire_format_inconsistency;
   plugin->get_wire_format_inconsistency = &TAH_PG_get_wire_format_inconsistency;
-  plugin->update_wire_format_inconsistency =
-    &TAH_PG_update_wire_format_inconsistency;
-
 
   plugin->insert_wire_out_inconsistency
     = &TAH_PG_insert_wire_out_inconsistency;
   plugin->get_wire_out_inconsistency
     = &TAH_PG_get_wire_out_inconsistency;
-  plugin->update_wire_out_inconsistency
-    = &TAH_PG_update_wire_out_inconsistency;
 
   plugin->insert_reserve_balance_summary_wrong_inconsistency =
     &TAH_PG_insert_reserve_balance_summary_wrong_inconsistency;
   plugin->get_reserve_balance_summary_wrong_inconsistency =
     &TAH_PG_get_reserve_balance_summary_wrong_inconsistency;
-  plugin->update_reserve_balance_summary_wrong_inconsistency =
-    &TAH_PG_update_reserve_balance_summary_wrong_inconsistency;
 
 
   plugin->insert_row_minor_inconsistencies =
     &TAH_PG_insert_row_minor_inconsistencies;
   plugin->get_row_minor_inconsistencies = &TAH_PG_get_row_minor_inconsistencies;
-  plugin->update_row_minor_inconsistencies =
-    &TAH_PG_update_row_minor_inconsistencies;
 
   plugin->insert_fee_time_inconsistency = &TAH_PG_insert_fee_time_inconsistency;
   plugin->get_fee_time_inconsistency = &TAH_PG_get_fee_time_inconsistency;
-  plugin->update_fee_time_inconsistency = &TAH_PG_update_fee_time_inconsistency;
 
   plugin->update_balance
     = &TAH_PG_update_balance;
 
   plugin->insert_exchange_signkey
     = &TAH_PG_insert_exchange_signkey;
-
-  plugin->update_deposit_confirmations
-    = &TAH_PG_update_deposit_confirmations;
-  plugin->update_amount_arithmetic_inconsistency
-    = &TAH_PG_update_amount_arithmetic_inconsistency;
 
   return plugin;
 }

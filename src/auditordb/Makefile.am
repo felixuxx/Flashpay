@@ -141,7 +141,7 @@ pg_insert_row_minor_inconsistencies.c pg_insert_row_minor_inconsistencies.h \
 pg_get_fee_time_inconsistency.c pg_get_fee_time_inconsistency.h \
 pg_insert_fee_time_inconsistency.c pg_insert_fee_time_inconsistency.h \
 pg_get_balances.c pg_get_balances.h \
-pg_insert_exchange_signkey.c pg_insert_exchange_signkey.h \
+pg_insert_exchange_signkey.c pg_insert_exchange_signkey.h 
 
 libtaler_plugin_auditordb_postgres_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS)
