@@ -120,6 +120,8 @@ TALER_FAKEBANK_tbi_get_withdrawal_operation_ (
                              wc->wo->confirmation_done),
       GNUNET_JSON_pack_string ("status",
                                status_string),
+      GNUNET_JSON_pack_string ("sender_wire",
+                               wc->wo->debit_account->payto_uri),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string ("suggested_exchange",
                                  h->exchange_url)),
