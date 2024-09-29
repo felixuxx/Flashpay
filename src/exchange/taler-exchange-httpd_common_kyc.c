@@ -1046,8 +1046,11 @@ struct TEH_LegitimizationCheckHandle
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * Public key of the account. Associates this public
-   * key with the account if @e have_account_pub is true.
+   * Public key of the account. We should associate this public
+   * key with the account if @e have_account_pub is true.  Do not
+   * confuse with @e lcr.kyc.have_account_pub which refers to us
+   * already having an @e lcr.kyc.account_pub in the database for
+   * the given @e h_payto.
    */
   union TALER_AccountPublicKeyP account_pub;
 
@@ -1091,12 +1094,6 @@ struct TEH_LegitimizationCheckHandle
    */
   bool have_merchant_pub;
 
-  /**
-   * True if @a have_merchant_pub is true but the given
-   * merchant pub did not match the target_pub for the
-   * given @a h_payto.
-   */
-  bool bad_kyc_auth;
 };
 
 
@@ -1516,9 +1513,10 @@ run_check (
       break;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "trigger_kyc_rule_for_account on %d/%d returned %llu/%d\n",
+                "trigger_kyc_rule_for_account-2 on %d/%d returned %d/%llu/%d\n",
                 lch->have_account_pub,
                 lch->have_merchant_pub,
+                (int) qs,
                 (unsigned long long) lch->lcr.kyc.requirement_row,
                 lch->lcr.bad_kyc_auth);
     /* return success! */
@@ -1589,14 +1587,13 @@ amount_iterator_wrapper_cb (
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC: Checking amounts until %s\n",
               GNUNET_TIME_absolute2s (limit));
-  if (lch->bad_kyc_auth)
+  if (lch->lcr.bad_kyc_auth)
   {
     /* We *do* have applicable KYC rules *and* the
        target_pub does not match the merchant_pub,
        so we indeed have a problem! */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC: Mismatch between merchant_pub and target_pub is relevant!\n");
-    lch->lcr.bad_kyc_auth = true;
   }
   return lch->ai (lch->ai_cls,
                   limit,
@@ -1663,6 +1660,11 @@ legitimization_check_run (
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "get_kyc_rules returned %d/%d/%d\n",
+                (int) qs,
+                ! no_account_pub,
+                ! no_reserve_pub);
 
     lch->lcr.kyc.have_account_pub
       = ! no_account_pub;
@@ -1683,10 +1685,11 @@ legitimization_check_run (
         /* We do not have custom rules, defer enforcing merchant_pub
            match until we actually have deposit constraints */
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "KYC: merchant_pub given but no known target_pub(%d)/reserve_pub(%d) match!\n",
+                    "KYC: merchant_pub given but no known target_pub(%d)/reserve_pub(%d) match (%d)!\n",
                     lch->lcr.kyc.have_account_pub,
-                    lch->lcr.have_reserve_pub);
-        lch->bad_kyc_auth = true;
+                    lch->lcr.have_reserve_pub,
+                    (int) qs);
+        lch->lcr.bad_kyc_auth = true;
       }
       else
       {
@@ -1846,7 +1849,7 @@ legitimization_check_run (
       &lch->lcr.kyc.requirement_row,
       &lch->lcr.bad_kyc_auth);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "trigger_kyc_rule_for_account on %d/%d returned %d/%llu/%d\n",
+                "trigger_kyc_rule_for_account-1 on %d/%d returned %d/%llu/%d\n",
                 lch->have_account_pub,
                 lch->have_merchant_pub,
                 (int) qs,

@@ -18,7 +18,7 @@ DROP FUNCTION IF EXISTS exchange_do_trigger_kyc_rule_for_account;
 
 CREATE FUNCTION exchange_do_trigger_kyc_rule_for_account(
   IN in_h_payto BYTEA,
-  IN in_account_pub BYTEA, -- can be NULL
+  IN in_account_pub BYTEA, -- can be NULL, if given, should be SET
   IN in_merchant_pub BYTEA, -- can be NULL
   IN in_payto_uri TEXT, -- can be NULL
   IN in_now INT8,
@@ -52,7 +52,7 @@ THEN
   -- Extract details, determine if KYC auth matches.
   my_access_token = my_rec.access_token;
   my_account_pub = my_rec.target_pub;
-  out_bad_kyc_auth = COALESCE ((my_account_pub = in_merchant_pub), TRUE);
+  out_bad_kyc_auth = COALESCE ((my_account_pub != in_merchant_pub), TRUE);
 ELSE
   -- No constraint on merchant_pub, just create
   -- the wire_target.

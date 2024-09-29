@@ -998,8 +998,6 @@ bdc_phase_parse (struct BatchDepositContext *bdc,
   TALER_merchant_wire_signature_hash (bd->receiver_wire_account,
                                       &bd->wire_salt,
                                       &bdc->h_wire);
-
-
   bd->num_cdis = json_array_size (coins);
   if (0 == bd->num_cdis)
   {
