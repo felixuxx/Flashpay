@@ -34,9 +34,9 @@
 
 #if MHD_VERSION < 0x00097701
 #define MHD_create_response_from_buffer_static(s, b)            \
-        MHD_create_response_from_buffer (s,                     \
-                                         (const char *) b,      \
-                                         MHD_RESPMEM_PERSISTENT)
+  MHD_create_response_from_buffer (s,                     \
+                                   (const char *) b,      \
+                                   MHD_RESPMEM_PERSISTENT)
 #endif
 
 /**
@@ -64,16 +64,16 @@
 
 /* Define logging functions */
 #define TALER_LOG_DEBUG(...)                                  \
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, __VA_ARGS__)
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, __VA_ARGS__)
 
 #define TALER_LOG_INFO(...)                                  \
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO, __VA_ARGS__)
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, __VA_ARGS__)
 
 #define TALER_LOG_WARNING(...)                                \
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING, __VA_ARGS__)
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING, __VA_ARGS__)
 
 #define TALER_LOG_ERROR(...)                                  \
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, __VA_ARGS__)
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, __VA_ARGS__)
 
 
 /**
@@ -84,11 +84,11 @@
  * @param reason string to print as warning
  */
 #define TALER_assert_as(EXP, reason)                           \
-        do {                                                          \
-          if (EXP) break;                                             \
-          TALER_LOG_ERROR ("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
-          abort ();                                                    \
-        } while (0)
+  do {                                                          \
+    if (EXP) break;                                             \
+    TALER_LOG_ERROR ("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
+    abort ();                                                    \
+  } while (0)
 
 
 /**
@@ -119,11 +119,11 @@
 
 
 #define TALER_gcry_ok(cmd) \
-        do {int rc; rc = cmd; if (! rc) break; \
-            TALER_LOG_ERROR ("A Gcrypt call failed at %s:%d with error: %s\n", \
-                             __FILE__, \
-                             __LINE__, gcry_strerror (rc)); abort (); } while (0 \
-                                                                               )
+  do {int rc; rc = cmd; if (! rc) break; \
+      TALER_LOG_ERROR ("A Gcrypt call failed at %s:%d with error: %s\n", \
+                       __FILE__, \
+                       __LINE__, gcry_strerror (rc)); abort (); } while (0 \
+                                                                         )
 
 
 /**
@@ -843,7 +843,7 @@ TALER_get_lowest_age (
  * @return lowest age for the largest age group
  */
 #define TALER_adult_age(mask) \
-        sizeof((mask)->bits) * 8 - __builtin_clz ((mask)->bits) - 1
+  sizeof((mask)->bits) * 8 - __builtin_clz ((mask)->bits) - 1
 
 
 #undef __TALER_UTIL_LIB_H_INSIDE__
