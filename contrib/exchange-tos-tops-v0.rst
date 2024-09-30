@@ -53,9 +53,8 @@ Geldmenge vom Girokonto überweist und von dem schliesslich das Taler-Wallet die
 elektronischen Repräsentanten der Geldmenge abhebt. TOPS kann weitere
 Aufladeoptionen einführen oder auch bestehende Mechanismen nicht mehr anbieten.
 Allfällige mit der Aufladung verbundene Transaktionsgebühren oder sonstige Gebühren
-sind durch die Nutzer zu tragen. Das Guthaben der Nutzer in Wallets wird nicht
-verzinst. Die Nutzer nehmen zur Kenntnis, dass das Guthaben nicht von der
-Einlagensicherung gedeckt ist.
+sind durch die Nutzer zu tragen. Das Guthaben der Nutzer wird nicht verzinst.
+Die Nutzer nehmen zur Kenntnis, dass das Guthaben nicht von der Einlagensicherung gedeckt ist.
 
 Das Entladen des Taler-Wallet muss auf ein Schweizer Bankkonto
 erfolgen. Internationale Zahlungen sind nicht erlaubt. Die Nutzer können mit
@@ -78,9 +77,9 @@ Preise, Gebühren und Limiten
 ----------------------------
 
 TOPS kann die Gebühren jederzeit ändern. Änderungen haben nur Wirkung auf nach
-der Änderung bezogene Wertmarken. Korrekte Taler-Wallets informieren Nutzer
-über Gebührenänderungen vor dem Bezug von neuen Wertmarken. Der Bezug von
-Wertmarken der TOPS nach Änderung der Gebühren gilt als Zustimmung zu den
+der Änderung bezogene Wertmarken. Mit dem GNU Taler-Protokoll konforme Taler-Wallets 
+informieren Nutzer über Gebührenänderungen vor dem Bezug von neuen Wertmarken. 
+Der Bezug von Wertmarken der TOPS nach Änderung der Gebühren gilt als Zustimmung zu den
 geänderten Bedingungen.
 
 Es bestehen Limiten von CHF 3.000 pro Monat und CHF 15.000 pro Kalenderjahr
@@ -94,6 +93,11 @@ Allgemeine Mitwirkungspflichten
 
 Zur Nutzung des Zahlungsdiensts sind Nutzer und Begünstigte verpflichtet, TOPS
 bei der Erfüllung regulatorischer und gesetzlicher Vorgaben zu unterstützen.
+TOPS hält sich an alle geltenden Gesetze zur Bekämpfung der Geldwäsche (AML) 
+und zur Feststellung wirtschaftlich Berechtigter. 
+TOPS stellt sicher, dass alle privaten Daten im Einklang mit den Schweizerischen 
+Datenschutzbestimmungen, insbesondere dem Schweizer Datenschutzgesetz (DSG) 
+und der Verordnung über den Datenschutz (DSV), behandelt werden.
 Insbesondere kann TOPS über die Identität von wirtschaftlich Berechtigten
 Auskunft verlangen. TOPS hat das Recht und ggf. die gesetzliche Pflicht,
 Nutzer und Begünstigte von der Nutzung des Zahlungsdiensts auszuschliessen,
@@ -102,9 +106,10 @@ machen.
 
 Zur Nutzung des Zahlungsdiensts gehen *Begünstigte* eine Geschäftsbeziehung
 mit TOPS ein und können ggf. verpflichtet sein, sich bei TOPS zu registrieren
-und die dabei verlangten Informationen zur Verfügung zu stellen. TOPS behält
-sich vor, zur Erfüllung regulatorischer Vorgaben jederzeit weitere
-Informationen zu verlangen.
+und die dabei verlangten Informationen zur Verfügung zu stellen. 
+Die Begünstigten können aufgefordert werden, Dokumente zur ihrer Identitätsprüfung vorzulegen. 
+Für KYC-Anfragen haben sie 30 Tage Zeit, auf diese zu antworten. 
+TOPS behält sich vor, zur Erfüllung regulatorischer Vorgaben jederzeit weitere Informationen zu verlangen.
 
 Es erfolgt keine Kontenanlage der *Nutzer* bei TOPS. Erfasst werden jedoch
 die IBAN-Konten von Nutzern, die CHF an TOPS überweisen, um Wertmarken zu
@@ -192,9 +197,10 @@ Vorbehalte zu Änderungen an diesen AGB
 --------------------------------------
 
 TOPS kann die AGB jederzeit ändern. Änderungen haben nur Wirkung auf nach der
-Änderung bezogene Wertmarken. Korrekte Taler-Wallets informieren Nutzer über
-Änderungen vor dem Bezug von neuen Wertmarken. Der Bezug von Wertmarken der
-TOPS nach Änderung der AGB gilt als Zustimmung zu den geänderten Bedingungen.
+Änderung bezogene Wertmarken. Mit dem GNU Taler-Protokoll konforme Taler-Wallets 
+informieren Nutzer über Änderungen vor dem Bezug von neuen Wertmarken. 
+Der Bezug von Wertmarken der TOPS nach Änderung der AGB gilt als Zustimmung 
+zu den geänderten Bedingungen.
 
 Allfällige Gesetzesbestimmungen, die den Betrieb und die Nutzung von digitalen
 Endgeräten, Zahlungsdiensten, des Internets und sonstiger Infrastruktur
@@ -254,7 +260,7 @@ jederzeit - insbesondere in Missbrauchsfällen mit sofortiger Wirkung -
 kündigen. Eine schriftliche Kündigung durch TOPS erfolgt an eine der zuletzt
 bekanntgegebenen Adressen der Geschäftspartner (z.B. per E-Mail oder
 Brief). Sollten für über 12 Monate keine Transaktionen an die Begünstigen
-erfolgen, gilt die Geschäftsbeziehung als beendet.
+erfolgen, gilt die Geschäftsbeziehung automatisch als beendet.
 
 Die Nutzer von Taler-Wallets können das Guthaben in diesen jederzeit an
 Bankkonten in der Schweiz zurücküberweisen lassen und so das Guthaben

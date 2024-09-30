@@ -39,9 +39,8 @@ The Taler wallet is topped up by users through mechanisms foreseen for the purpo
 wallet withdraw the desired amount of money, users select from within the Taler wallet the payment service provider
 operated by TOPS and wire this amount of money to the bank account of the payment service provider. TOPS may introduce
 further withdrawal options or cease to offer existing mechanisms. Any transaction fees or other fees associated with
-wiring or with withdrawals shall be borne by the users. The users' funds do not receive interest and no interest rates
-are given for balances in Taler wallets. Users acknowledge that their credit balance is not covered by customer deposit
-protection.
+wiring or with withdrawals shall be borne by the users. Users’ funds do not earn interest. 
+Users acknowledge that their credit balance is not covered by customer deposit protection.
 
 To unload a Taler wallet, users must transfer their funds to a Swiss bank account. International payments
 are not permitted. With the Taler wallet installed in the smartphone or web browser, users can make payments 
@@ -73,13 +72,14 @@ Legal and regulatory requirements
 In order to use the payment service, users and beneficiaries are obliged to support TOPS in fulfilling legal and regulatory requirements. 
 TOPS complies with all applicable anti-money laundering (AML) and know-your-customer (KYC) regulations. 
 TOPS will ensure that all personal data is processed in accordance with Swiss privacy laws, including the 
-Federal Act on Data Protection and the Ordinance on Data Protection. 
+new Swiss Data Protection Act (nFADP) and the Ordinance on Data Protection (DPO). 
 TOPS has the right and, where applicable, the legal obligation to exclude users and beneficiaries from using the payment service, 
 if they refuse to provide the required information or provide false information.
 
-*Beneficiaries* may be required to provide identity verification documents. They will be notified of any KYC information requests 
-and will have 30 days to respond. In order to use the payment service, beneficiaries enter into a business relationship with TOPS 
-and, where applicable, may be required to register with TOPS and provide the requested information for this purpose. 
+In order to use the payment service, *beneficiaries* enter into a business relationship with TOPS and, where applicable, 
+may be required to register with TOPS and provide the requested information for this purpose. 
+Beneficiaries may be required to provide identity verification documents. 
+They will be notified of any KYC information requests and will have 30 days to respond. 
 TOPS reserves the right to request further information at any time to fulfill regulatory compliance.
 
 No accounts are created for *users* at TOPS. However, the bank accounts of users who transfer CHF to TOPS in order to

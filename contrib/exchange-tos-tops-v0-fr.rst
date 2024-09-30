@@ -43,7 +43,7 @@ d'argent souhaitée, on choisit dans le portefeuille Taler le service de paiemen
 cette quantité d'argent sur le compte courant du service de paiement et duquel le portefeuille Taler retire finalement
 les jetons électroniques correspondant à la quantité d'argent envoyée. TOPS peut introduire d'autres options de
 rechargement ou ne plus proposer les mécanismes existants. Les éventuels frais de transaction ou autres frais liés à la
-recharge sont à la charge des utilisateurs. L'avoir des utilisateurs dans les portefeuilles électroniques ne porte pas d'intérêts.
+recharge sont à la charge des utilisateurs. L'avoir des utilisateurs ne porte pas d'intérêts.
 Les utilisateurs prennent connaissance du fait que l'avoir n'est pas couvert par la garantie des dépôts des clients.
 
 Le débit du portefeuille Taler doit être effectué sur un compte bancaire suisse. Les paiements internationaux ne sont
@@ -64,9 +64,9 @@ Tarifs, frais, commissions et limites
 ---------------------------------------------------------
 
 TOPS peut modifier les frais à tout moment. Les modifications n'ont d'effet que sur les jetons achetés après la
-modification. Les portefeuilles Taler corrects informent les utilisateurs des changements de frais avant l'achat de
-nouveaux jetons. Le retrait de jetons de TOPS après une modification des frais vaut acceptation par l'utilisateur des 
-conditions modifiées.
+modification. Les portefeuilles Taler conformes au protocole GNU Taler informent les utilisateurs des changements 
+de frais avant que de nouveaux jetons ne soient retirés. 
+Le retrait de jetons de TOPS après une modification des frais vaut acceptation par l'utilisateur des conditions modifiées.
 
 Des limites de 3 000 CHF par mois et de 15 000 CHF par année civile sont définies pour le retrait de la monnaie électronique
 d'un compte courant ou pour la réception de paiements peer-to-peer (d'égal à égal) entre les portefeuilles Taler ayant
@@ -77,15 +77,20 @@ Obligations générales de coopération
 ------------------------------------------------------------
 
 Pour utiliser le service de paiement, l'utilisateur et le bénéficiaire sont tenus d'aider TOPS à satisfaire aux
-exigences réglementaires et légales. En particulier, TOPS peut demander des informations sur l'identité des
-bénéficiaires effectifs. TOPS a le droit et, le cas échéant, l'obligation légale d'exclure les utilisateurs et les
-bénéficiaires de l'utilisation du service de paiement s'ils refusent de fournir les informations requises ou s'ils
-fournissent des informations fausses.
+exigences réglementaires et légales. TOPS se conforme à toutes les réglementations applicables en matière de 
+lutte contre le blanchiment d'argent (AML) et de connaissance des bénéficiaires effectifs. 
+TOPS veillera à ce que toutes les données personnelles soient traitées conformément aux lois suisses sur 
+la protection des données, y compris la nouvelle loi suisse sur la protection des données (nLPD) et 
+l'ordonnance sur la protection des données (OPDo). 
+En particulier, TOPS peut demander des informations sur l'identité des bénéficiaires effectifs. 
+TOPS a le droit et, le cas échéant, l'obligation légale d'exclure les utilisateurs et les bénéficiaires de l'utilisation 
+du service de paiement s'ils refusent de fournir les informations requises ou s'ils fournissent des informations fausses.
 
 Pour utiliser le service de paiement, les *bénéficiaires* établissent une relation commerciale avec TOPS et peuvent être
-tenus, le cas échéant, de s'enregistrer auprès de TOPS et de fournir les informations demandées à cette occasion. TOPS
-se réserve le droit de demander à tout moment des informations supplémentaires pour satisfaire aux exigences
-réglementaires.
+tenus, le cas échéant, de s'enregistrer auprès de TOPS et de fournir les informations demandées à cette occasion. 
+Les bénéficiaires peuvent être amenés à fournir des documents de vérification d'identité. 
+Ils seront informés de toute demande d'informations KYC et disposeront de 30 jours pour y répondre. 
+TOPS se réserve le droit de demander à tout moment des informations supplémentaires pour satisfaire aux exigences réglementaires.
 
 Il n'y a pas de création de compte des *utilisateurs* chez TOPS. TOPS enregistre cependant les comptes IBAN des
 utilisateurs qui transfèrent des CHF à TOPS pour acheter des jetons. Pour recevoir des paiements d'égal à égal (peer-to-peer),
@@ -117,7 +122,7 @@ Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un 
 
 3. Il faut veiller à ce que le terminal numérique sur lequel est installé un portefeuille Taler se connecte **dans un délai d'un an**
 après la dernière transaction **au service de paiement par Internet**, faute de quoi l'avoir du portefeuille peut être perdu.
-Le renouvellement des jetons a lieu normalement un mois avant la fin de leur validité, qui est d'environ un an après leur retrait.
+Le renouvellement de l'avoir a lieu normalement un mois avant la fin de leur validité, qui est d'environ un an après leur retrait.
 
 4. La communication de TOPS avec les utilisateurs se fait en principe par le biais de notifications dans le protocole de GNU Taler.
 Il incombe aux utilisateurs de répondre aux notifications correspondantes. TOPS a le droit de ne pas effectuer de transactions jusqu'à ce que
@@ -166,7 +171,8 @@ Réserves concernant les modifications apportées aux présentes CGU
 ---------------------------------------------------------------------------------------------------------------
 
 TOPS peut modifier les CGU à tout moment. Les modifications n'ont d'effet que sur les jetons obtenus après la modification.
-Les portefeuilles Taler électroniques corrects informent les utilisateurs des modifications avant l'achat de nouveaux jetons.
+Les portefeuilles Taler conformes au protocole GNU Taler informent les utilisateurs des changements avant que de nouveaux 
+jetons ne soient retirés.
 Le retrait de jetons de TOPS après une modification des CGU est considéré comme une acceptation des conditions modifiées.
 
 Les éventuelles dispositions légales régissant le fonctionnement et l'utilisation des terminaux numériques, des services de paiement,
@@ -212,8 +218,8 @@ réguliers des virements du service de paiement vers les comptes IBAN des béné
 TOPS peut à tout moment - notamment en cas d'abus avec effet immédiat - résilier la relation commerciale avec les bénéficiaires.
 Une résiliation écrite par TOPS est envoyée à l'une des dernières adresses communiquées par les partenaires commerciaux
 (par ex. par e-mail ou par lettre).
-Si aucune transaction n'est effectuée vers les bénéficiaires pendant plus de 12 mois,
-la relation commerciale est considérée comme terminée.
+Si aucune transaction n'est effectuée en faveur les bénéficiaires pendant plus de 12 mois, la relation commerciale est 
+automatiquement considérée comme terminée.
 
 Les utilisateurs des portefeuilles Taler peuvent à tout moment faire transférer l'avoir qu'ils détiennent dans les
 portefeuilles Taler sur des comptes bancaires en Suisse et ainsi solder leur avoir.
