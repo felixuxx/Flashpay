@@ -156,7 +156,7 @@ TALER_TESTING_interpreter_get_command (struct TALER_TESTING_Interpreter *is,
   cmd = GNUNET_CONTAINER_multihashmap_get (is->vars,
                                            &h_name);
   if (NULL == cmd)
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Command not found by name: %s\n",
                 name);
   return cmd;
@@ -264,6 +264,30 @@ TALER_TESTING_interpreter_get_current_label (
 }
 
 
+void
+TALER_TESTING_update_variables_ (
+  struct TALER_TESTING_Interpreter *is,
+  struct TALER_TESTING_Command *cmd)
+{
+  struct GNUNET_HashCode h_name;
+
+  if (NULL == cmd->name)
+    return;
+  GNUNET_CRYPTO_hash (cmd->name,
+                      strlen (cmd->name),
+                      &h_name);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Storing command %s under variable `%s'\n",
+              cmd->label,
+              cmd->name);
+  (void) GNUNET_CONTAINER_multihashmap_put (
+    is->vars,
+    &h_name,
+    cmd,
+    GNUNET_CONTAINER_MULTIHASHMAPOPTION_REPLACE);
+}
+
+
 static void
 interpreter_run (void *cls)
 {
@@ -288,20 +312,9 @@ interpreter_run (void *cls)
     = GNUNET_TIME_absolute_get ();
   if (0 == cmd->num_tries)
     cmd->start_time = cmd->last_req_time;
-  cmd->num_tries = 1;
-  if (NULL != cmd->name)
-  {
-    struct GNUNET_HashCode h_name;
-
-    GNUNET_CRYPTO_hash (cmd->name,
-                        strlen (cmd->name),
-                        &h_name);
-    (void) GNUNET_CONTAINER_multihashmap_put (
-      is->vars,
-      &h_name,
-      cmd,
-      GNUNET_CONTAINER_MULTIHASHMAPOPTION_REPLACE);
-  }
+  cmd->num_tries++;
+  TALER_TESTING_update_variables_ (is,
+                                   cmd);
   cmd->run (cmd->cls,
             cmd,
             is);

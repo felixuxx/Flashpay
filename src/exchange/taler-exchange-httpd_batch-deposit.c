@@ -339,7 +339,7 @@ batch_deposit_transaction (void *cls,
     &balance_ok,
     &bad_balance_coin_index,
     &in_conflict);
-  if (qs < 0)
+  if (qs <= 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
       return qs;
@@ -352,7 +352,7 @@ batch_deposit_transaction (void *cls,
       "batch-deposit");
     return qs;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "do_deposit returned: %d / %s[%u] / %s\n",
               qs,
               balance_ok ? "balance ok" : "balance insufficient",
@@ -945,6 +945,9 @@ bdc_phase_parse (struct BatchDepositContext *bdc,
   }
   bdc->policy_json
     = json_incref ((json_t *) policy_json);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Batch deposit into contract %s\n",
+              GNUNET_h2s (&bd->h_contract_terms.hash));
 
   /* validate merchant's wire details (as far as we can) */
   {

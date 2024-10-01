@@ -98,7 +98,13 @@ struct DepositState
    * Set (by the interpreter) to a fresh private key.  This
    * key will be used to sign the deposit request.
    */
-  struct TALER_MerchantPrivateKeyP merchant_priv;
+  union TALER_AccountPrivateKeyP account_priv;
+
+  /**
+   * Set (by the interpreter) to the public key
+   * corresponding to @e account_priv.
+   */
+  union TALER_AccountPublicKeyP account_pub;
 
   /**
    * Deposit handle while operation is running.
@@ -297,11 +303,11 @@ deposit_run (void *cls,
 {
   struct DepositState *ds = cls;
   const struct TALER_TESTING_Command *coin_cmd;
+  const struct TALER_TESTING_Command *acc_var;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_AgeCommitmentHash *phac;
   const struct TALER_DenominationSignature *denom_pub_sig;
-  struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHashP h_contract_terms;
   enum TALER_ErrorCode ec;
   struct TALER_WireSaltP wire_salt;
@@ -363,7 +369,8 @@ deposit_run (void *cls,
     ds->refund_deadline = ods->refund_deadline;
     ds->wire_deadline = ods->wire_deadline;
     ds->amount = ods->amount;
-    ds->merchant_priv = ods->merchant_priv;
+    ds->account_priv = ods->account_priv;
+    ds->account_pub = ods->account_pub;
     ds->command_initialized = true;
   }
   else if (NULL != ds->merchant_priv_reference)
@@ -389,7 +396,38 @@ deposit_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    ds->merchant_priv = *merchant_priv;
+    ds->account_priv.merchant_priv = *merchant_priv;
+    GNUNET_CRYPTO_eddsa_key_get_public (
+      &ds->account_priv.merchant_priv.eddsa_priv,
+      &ds->account_pub.merchant_pub.eddsa_pub);
+  }
+  else if (NULL != (acc_var
+                      = TALER_TESTING_interpreter_get_command (
+                          is,
+                          "account-priv")))
+  {
+    const union TALER_AccountPrivateKeyP *account_priv;
+
+    if ( (GNUNET_OK !=
+          TALER_TESTING_get_trait_account_priv (acc_var,
+                                                &account_priv)) )
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    ds->account_priv = *account_priv;
+    GNUNET_CRYPTO_eddsa_key_get_public (
+      &ds->account_priv.merchant_priv.eddsa_priv,
+      &ds->account_pub.merchant_pub.eddsa_pub);
+  }
+  else
+  {
+    GNUNET_CRYPTO_eddsa_key_create (
+      &ds->account_priv.merchant_priv.eddsa_priv);
+    GNUNET_CRYPTO_eddsa_key_get_public (
+      &ds->account_priv.merchant_priv.eddsa_priv,
+      &ds->account_pub.merchant_pub.eddsa_pub);
   }
   GNUNET_assert (NULL != ds->wire_details);
   if (GNUNET_OK !=
@@ -413,7 +451,13 @@ deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
+#if DUMP_CONTRACT
+  fprintf (stderr,
+           "Using contract:\n");
+  json_dumpf (ds->contract_terms,
+              stderr,
+              JSON_INDENT (2));
+#endif
   if ( (GNUNET_OK !=
         TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                            ds->coin_index,
@@ -443,8 +487,6 @@ deposit_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
-                                      &merchant_pub.eddsa_pub);
   {
     struct TALER_MerchantWireHashP h_wire;
 
@@ -460,7 +502,7 @@ deposit_run (void *cls,
                                NULL, /* hash of extensions */
                                &ds->denom_pub->h_key,
                                ds->wallet_timestamp,
-                               &merchant_pub,
+                               &ds->account_pub.merchant_pub,
                                ds->refund_deadline,
                                coin_priv,
                                &ds->coin_sig);
@@ -471,7 +513,7 @@ deposit_run (void *cls,
     ds->che.details.deposit.no_h_policy = true;
     ds->che.details.deposit.no_wallet_data_hash = true;
     ds->che.details.deposit.wallet_timestamp = ds->wallet_timestamp;
-    ds->che.details.deposit.merchant_pub = merchant_pub;
+    ds->che.details.deposit.merchant_pub = ds->account_pub.merchant_pub;
     ds->che.details.deposit.refund_deadline = ds->refund_deadline;
     ds->che.details.deposit.sig = ds->coin_sig;
     ds->che.details.deposit.no_hac = true;
@@ -493,7 +535,7 @@ deposit_run (void *cls,
       .wire_salt = wire_salt,
       .h_contract_terms = h_contract_terms,
       .wallet_timestamp = ds->wallet_timestamp,
-      .merchant_pub = merchant_pub,
+      .merchant_pub = ds->account_pub.merchant_pub,
       .refund_deadline = ds->refund_deadline
     };
 
@@ -639,7 +681,10 @@ deposit_traits (void *cls,
                                                  h_age_commitment),
       TALER_TESTING_make_trait_wire_details (ds->wire_details),
       TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
-      TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),
+      TALER_TESTING_make_trait_merchant_priv (&ds->account_priv.merchant_priv),
+      TALER_TESTING_make_trait_merchant_pub (&ds->account_pub.merchant_pub),
+      TALER_TESTING_make_trait_account_priv (&ds->account_priv),
+      TALER_TESTING_make_trait_account_pub (&ds->account_pub),
       TALER_TESTING_make_trait_deposit_amount (0,
                                                &ds->amount),
       TALER_TESTING_make_trait_deposit_fee_amount (0,
@@ -684,7 +729,6 @@ TALER_TESTING_cmd_deposit (
   ds->contract_terms = json_loads (contract_terms,
                                    JSON_REJECT_DUPLICATES,
                                    NULL);
-  GNUNET_CRYPTO_eddsa_key_create (&ds->merchant_priv.eddsa_priv);
   if (NULL == ds->contract_terms)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

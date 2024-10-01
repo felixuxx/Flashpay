@@ -315,10 +315,10 @@ struct TALER_TESTING_Command
    * @return #GNUNET_OK on success
    */
   enum GNUNET_GenericReturnValue
-    (*traits)(void *cls,
-              const void **ret,
-              const char *trait,
-              unsigned int index);
+  (*traits)(void *cls,
+            const void **ret,
+            const char *trait,
+            unsigned int index);
 
   /**
    * When did the execution of this command start?
@@ -354,8 +354,9 @@ struct TALER_TESTING_Command
  * @return the command, if it is found, or NULL.
  */
 const struct TALER_TESTING_Command *
-TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
-                                          const char *label);
+TALER_TESTING_interpreter_lookup_command (
+  struct TALER_TESTING_Interpreter *is,
+  const char *label);
 
 
 /**
@@ -366,8 +367,9 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
  * @return the command, if it is found, or NULL.
  */
 const struct TALER_TESTING_Command *
-TALER_TESTING_interpreter_get_command (struct TALER_TESTING_Interpreter *is,
-                                       const char *name);
+TALER_TESTING_interpreter_get_command (
+  struct TALER_TESTING_Interpreter *is,
+  const char *name);
 
 
 /**
@@ -624,6 +626,19 @@ TALER_TESTING_cmd_end (void);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_set_var (const char *name,
                            struct TALER_TESTING_Command cmd);
+
+
+/**
+ * Update interpeter @a is variable state due to execution of @a cmd.
+ *
+ * @param[in,out] is interpreter to update
+ * @param[in,out] cmd command that we are exeucting and that
+ *   needs to be checked for side-effects on the variable state
+ */
+void
+TALER_TESTING_update_variables_ (
+  struct TALER_TESTING_Interpreter *is,
+  struct TALER_TESTING_Command *cmd);
 
 
 /**
@@ -2641,7 +2656,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         enum GNUNET_GenericReturnValue                          \
         TALER_TESTING_get_trait_ ## name (                    \
           const struct TALER_TESTING_Command *cmd,              \
-          type **ret);                                          \
+          type * *ret);                                          \
         struct TALER_TESTING_Trait                              \
         TALER_TESTING_make_trait_ ## name (                   \
           type * value);
@@ -2684,11 +2699,11 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         TALER_TESTING_get_trait_ ## name (                    \
           const struct TALER_TESTING_Command *cmd,              \
           unsigned int index,                                   \
-          type **ret);                                          \
+          type * *ret);                                          \
         struct TALER_TESTING_Trait                              \
         TALER_TESTING_make_trait_ ## name (                   \
           unsigned int index,                                   \
-          type *value);
+          type * value);
 
 
 /**

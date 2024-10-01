@@ -62,27 +62,30 @@ batch_run (void *cls,
            struct TALER_TESTING_Interpreter *is)
 {
   struct BatchState *bs = cls;
+  struct TALER_TESTING_Command *bcmd = &bs->batch[bs->batch_ip];
 
   bs->cmd = cmd;
-  if (NULL != bs->batch[bs->batch_ip].label)
+  if (NULL != bcmd->label)
     TALER_LOG_INFO ("Running batched command: %s\n",
-                    bs->batch[bs->batch_ip].label);
+                    bcmd->label);
 
   /* hit end command, leap to next top-level command.  */
-  if (NULL == bs->batch[bs->batch_ip].label)
+  if (NULL == bcmd->label)
   {
     TALER_LOG_INFO ("Exiting from batch: %s\n",
                     cmd->label);
     TALER_TESTING_interpreter_next (is);
     return;
   }
-  bs->batch[bs->batch_ip].start_time
-    = bs->batch[bs->batch_ip].last_req_time
+  bcmd->start_time
+    = bcmd->last_req_time
       = GNUNET_TIME_absolute_get ();
-  bs->batch[bs->batch_ip].num_tries = 1;
-  bs->batch[bs->batch_ip].run (bs->batch[bs->batch_ip].cls,
-                               &bs->batch[bs->batch_ip],
-                               is);
+  bcmd->num_tries++;
+  TALER_TESTING_update_variables_ (is,
+                                   bcmd);
+  bcmd->run (bcmd->cls,
+             bcmd,
+             is);
 }
 
 

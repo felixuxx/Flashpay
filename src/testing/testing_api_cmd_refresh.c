@@ -1021,12 +1021,12 @@ melt_run (void *cls,
           const struct TALER_TESTING_Command *cmd,
           struct TALER_TESTING_Interpreter *is)
 {
-  struct RefreshMeltState *rms = cls;
-  unsigned int num_fresh_coins;
-  const char *default_melt_fresh_amounts[] = {
+  static const char *default_melt_fresh_amounts[] = {
     "EUR:1", "EUR:1", "EUR:1", "EUR:0.1",
     NULL
   };
+  struct RefreshMeltState *rms = cls;
+  unsigned int num_fresh_coins;
   const char **melt_fresh_amounts;
 
   rms->cmd = cmd;

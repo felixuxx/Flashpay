@@ -436,24 +436,82 @@ handle_deposit_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     {
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                     &dr->details.conflict.coin_pub),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        dr->hr.http_status = 0;
-        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        break;
-      }
       dr->hr.ec = TALER_JSON_get_error_code (j);
       dr->hr.hint = TALER_JSON_get_error_hint (j);
+      switch (dr->hr.ec)
+      {
+      case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
+        {
+          struct GNUNET_JSON_Specification spec[] = {
+            GNUNET_JSON_spec_fixed_auto (
+              "coin_pub",
+              &dr->details.conflict.details
+              .insufficient_funds.coin_pub),
+            GNUNET_JSON_spec_end ()
+          };
+
+          if (GNUNET_OK !=
+              GNUNET_JSON_parse (j,
+                                 spec,
+                                 NULL, NULL))
+          {
+            GNUNET_break_op (0);
+            dr->hr.http_status = 0;
+            dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+        }
+        break;
+      case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH:
+        {
+          struct GNUNET_JSON_Specification spec[] = {
+            GNUNET_JSON_spec_fixed_auto (
+              "coin_pub",
+              &dr->details.conflict.details
+              .coin_conflicting_age_hash.coin_pub),
+            GNUNET_JSON_spec_end ()
+          };
+
+          if (GNUNET_OK !=
+              GNUNET_JSON_parse (j,
+                                 spec,
+                                 NULL, NULL))
+          {
+            GNUNET_break_op (0);
+            dr->hr.http_status = 0;
+            dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+        }
+        break;
+      case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
+        {
+          struct GNUNET_JSON_Specification spec[] = {
+            GNUNET_JSON_spec_fixed_auto (
+              "coin_pub",
+              &dr->details.conflict.details
+              .coin_conflicting_denomination_key.coin_pub),
+            GNUNET_JSON_spec_end ()
+          };
+
+          if (GNUNET_OK !=
+              GNUNET_JSON_parse (j,
+                                 spec,
+                                 NULL, NULL))
+          {
+            GNUNET_break_op (0);
+            dr->hr.http_status = 0;
+            dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+        }
+        break;
+      case TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT:
+        break;
+      default:
+        GNUNET_break_op (0);
+        break;
+      }
     }
     break;
   case MHD_HTTP_GONE:

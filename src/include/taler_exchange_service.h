@@ -1347,9 +1347,35 @@ struct TALER_EXCHANGE_BatchDepositResult
     struct
     {
       /**
-       * The coin that had a conflict.
+       * Details depending on the @e hr.ec.
        */
-      struct TALER_CoinSpendPublicKeyP coin_pub;
+      union
+      {
+        struct
+        {
+          /**
+           * The coin that had a conflict.
+           */
+          struct TALER_CoinSpendPublicKeyP coin_pub;
+        } insufficient_funds;
+
+        struct
+        {
+          /**
+           * The coin that had a conflict.
+           */
+          struct TALER_CoinSpendPublicKeyP coin_pub;
+        } coin_conflicting_age_hash;
+
+        struct
+        {
+          /**
+           * The coin that had a conflict.
+           */
+          struct TALER_CoinSpendPublicKeyP coin_pub;
+        } coin_conflicting_denomination_key;
+
+      } details;
 
     } conflict;
 
