@@ -124,6 +124,25 @@ run (void *cls,
       "EUR:5",
       0,                                  /* age restriction off */
       MHD_HTTP_OK),
+    TALER_TESTING_cmd_set_var (
+      "account-priv",
+      TALER_TESTING_cmd_deposit (
+        "refresh-deposit-partial-fail-kyc",
+        "refresh-withdraw-coin",
+        0,
+        cred.user42_payto,
+        "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
+        GNUNET_TIME_UNIT_ZERO,
+        "EUR:1",
+        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS)),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "kyc-auth-transfer",
+      "EUR:0.01",
+      &cred.ba,
+      cred.user42_payto,
+      "refresh-deposit-partial-fail-kyc"),
+    CMD_EXEC_WIREWATCH (
+      "import-kyc-account-withdraw"),
     TALER_TESTING_cmd_deposit (
       "refresh-deposit-partial",
       "refresh-withdraw-coin",

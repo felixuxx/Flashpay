@@ -48,6 +48,21 @@ static struct TALER_TESTING_Credentials cred;
 
 
 /**
+ * Execute the taler-exchange-wirewatch command with
+ * our configuration file.
+ *
+ * @param label label to use for the command.
+ */
+static struct TALER_TESTING_Command
+CMD_EXEC_WIREWATCH (const char *label)
+{
+  return TALER_TESTING_cmd_exec_wirewatch2 (label,
+                                            config_file,
+                                            "exchange-account-2");
+}
+
+
+/**
  * Main function that will tell the interpreter what commands to
  * run.
  *
@@ -86,9 +101,7 @@ run (void *cls,
     /**
      * Run wire-watch to trigger the reserve creation.
      */
-    TALER_TESTING_cmd_exec_wirewatch2 ("wirewatch-4",
-                                       config_file,
-                                       "exchange-account-2"),
+    CMD_EXEC_WIREWATCH ("wirewatch-4"),
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-1",
                                        "create-reserve-1",
@@ -103,23 +116,44 @@ run (void *cls,
                                        MHD_HTTP_OK),
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in full)
      * (merchant would receive EUR:0.99 due to 1 ct deposit fee) *///
-    TALER_TESTING_cmd_deposit ("deposit-partial",
-                               "withdraw-revocation-coin-1",
-                               0,
-                               cred.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:1",
-                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_set_var (
+      "account-priv",
+      TALER_TESTING_cmd_deposit (
+        "deposit-partial-fail-kyc",
+        "withdraw-revocation-coin-1",
+        0,
+        cred.user42_payto,
+        "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
+        GNUNET_TIME_UNIT_ZERO,
+        "EUR:1",
+        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS)),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "kyc-auth-transfer",
+      "EUR:0.01",
+      &cred.ba,
+      cred.user42_payto,
+      "deposit-partial-fail-kyc"),
+    CMD_EXEC_WIREWATCH (
+      "import-kyc-account-withdraw"),
+    TALER_TESTING_cmd_deposit (
+      "deposit-partial",
+      "withdraw-revocation-coin-1",
+      0,
+      cred.user42_payto,
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:2\"}]}",
+      GNUNET_TIME_UNIT_ZERO,
+      "EUR:1",
+      MHD_HTTP_OK),
     /* Deposit another coin in full */
-    TALER_TESTING_cmd_deposit ("deposit-full",
-                               "withdraw-revocation-coin-2",
-                               0,
-                               cred.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:5\"}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit (
+      "deposit-full",
+      "withdraw-revocation-coin-2",
+      0,
+      cred.user42_payto,
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_ZERO,
+      "EUR:5",
+      MHD_HTTP_OK),
     /**
      * Melt SOME of the rest of the coin's value
      * (EUR:3.17 = 3x EUR:1.03 + 7x EUR:0.13)
