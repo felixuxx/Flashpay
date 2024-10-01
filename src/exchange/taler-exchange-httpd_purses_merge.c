@@ -33,7 +33,6 @@
 #include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_purses_merge.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
 

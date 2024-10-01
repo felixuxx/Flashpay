@@ -30,7 +30,6 @@
 #include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_close.h"
-#include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 
 

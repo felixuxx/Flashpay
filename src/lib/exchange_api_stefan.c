@@ -125,7 +125,7 @@ TALER_EXCHANGE_keys_stefan_b2n (
   min = get_unit (keys);
   if (NULL == min)
     return GNUNET_SYSERR;
-  if (1.0d <= keys->stefan_lin)
+  if (1.0 <= keys->stefan_lin)
   {
     /* This cannot work, linear STEFAN fee estimate always
        exceed any gross amount. */
@@ -273,7 +273,7 @@ TALER_EXCHANGE_keys_stefan_n2b (
   min = get_unit (keys);
   if (NULL == min)
     return GNUNET_SYSERR;
-  if (1.0d <= keys->stefan_lin)
+  if (1.0 <= keys->stefan_lin)
   {
     /* This cannot work, linear STEFAN fee estimate always
        exceed any gross amount. */
