@@ -673,6 +673,11 @@ run_legi_check (struct BatchWithdrawContext *bwc)
   enum GNUNET_DB_QueryStatus qs;
   char *payto_uri;
 
+  if (GNUNET_YES != TEH_enable_kyc)
+  {
+    bwc->phase = BWC_PHASE_PREPARE_TRANSACTION;
+    return;
+  }
   /* Check if the money came from a wire transfer */
   qs = TEH_plugin->reserves_get_origin (
     TEH_plugin->cls,
