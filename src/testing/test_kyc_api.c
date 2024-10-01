@@ -187,6 +187,31 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command spend[] = {
+    TALER_TESTING_cmd_set_var (
+      "account-priv",
+      TALER_TESTING_cmd_deposit (
+        "deposit-simple-fail-kyc",
+        "withdraw-coin-1",
+        0,
+        cred.user43_payto,
+        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+        GNUNET_TIME_UNIT_ZERO,
+        "EUR:5",
+        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS)),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "kyc-auth-transfer",
+      "EUR:0.01",
+      &cred.ba,
+      cred.user42_payto,
+      "deposit-simple-fail-kyc"),
+    TALER_TESTING_cmd_admin_add_kycauth (
+      "kyc-auth-transfer",
+      "EUR:0.01",
+      &cred.ba,
+      cred.user43_payto,
+      "deposit-simple-fail-kyc"),
+    CMD_EXEC_WIREWATCH (
+      "import-kyc-account"),
     TALER_TESTING_cmd_deposit (
       "deposit-simple",
       "withdraw-coin-1",
