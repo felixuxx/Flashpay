@@ -225,7 +225,7 @@ run (void *cls,
       "withdraw-coin-1x",
       0,
       cred.user42_payto,
-      "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+      "{\"items\":[{\"name\":\"conflicting ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
       uses_cs
@@ -510,7 +510,9 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_transfer (
       "check_bank_transfer-42-aggregate",
       cred.exchange_url,
-      "EUR:13.92",
+      /* In case of CS, one transaction above succeeded that
+         failed for RSA, hence we get a larger amount here */
+      uses_cs ? "EUR:14.91" : "EUR:13.92",
       cred.exchange_payto,
       cred.user42_payto),
     TALER_TESTING_cmd_check_bank_transfer (
@@ -519,18 +521,6 @@ run (void *cls,
       "EUR:0.17",
       cred.exchange_payto,
       cred.user43_payto),
-    /* In case of CS, one transaction above succeeded that
-       failed for RSA, hence we need to check for an extra transfer here */
-    uses_cs
-    ? TALER_TESTING_cmd_check_bank_transfer (
-      "check_bank_transfer-98c",
-      cred.exchange_url,
-      "EUR:0.98",
-      cred.exchange_payto,
-      cred.user42_payto)
-    : TALER_TESTING_cmd_sleep (
-      "dummy",
-      0),
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
     TALER_TESTING_cmd_deposits_get (
       "deposit-wtid-ok",
@@ -542,7 +532,7 @@ run (void *cls,
       "wire-deposit-success-bank",
       "check_bank_transfer-42-aggregate",
       MHD_HTTP_OK,
-      "EUR:13.92",
+      uses_cs ? "EUR:14.91" : "EUR:13.92",
       "EUR:0.01"),
     TALER_TESTING_cmd_track_transfer (
       "wire-deposits-success-wtid",
