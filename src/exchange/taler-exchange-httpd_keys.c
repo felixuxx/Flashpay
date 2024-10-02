@@ -41,8 +41,10 @@
 
 /**
  * When do we forcefully timeout a /keys request?
+ * Matches the 120s hard-coded into exchange_api_handle.c
  */
-#define KEYS_TIMEOUT GNUNET_TIME_UNIT_MINUTES
+#define KEYS_TIMEOUT \
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 2)
 
 
 /**

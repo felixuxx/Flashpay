@@ -1830,7 +1830,7 @@ TALER_EXCHANGE_get_keys (
                              ? last_date
                              : NULL,
                              NULL);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting keys with URL `%s'.\n",
               gkh->url);
   eh = TALER_EXCHANGE_curl_easy_get_ (gkh->url);
