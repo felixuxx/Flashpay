@@ -53,7 +53,7 @@ TEH_PG_insert_active_legitimization_measure (
            "SELECT"
            " out_legitimization_measure_serial_id"
            " FROM exchange_do_insert_active_legitimization_measure"
-           "($1, $2);");
+           "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "do_insert_active_legitimization_measure",
