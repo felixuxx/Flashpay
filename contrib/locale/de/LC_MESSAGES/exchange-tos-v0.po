@@ -20,8 +20,8 @@ msgstr ""
 msgid "Terms of Service"
 msgstr "Allgemeine Geschäftsbedingungen der Taler Operations AG"
 
-msgid "Last update: 26.4.2024"
-msgstr "Datum: 26.4.2024"
+msgid "Last update: 3.10.2024"
+msgstr "Datum: 3.10.2024"
 
 msgid ""
 "Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment service "
