@@ -72,7 +72,7 @@ TALER_FAKEBANK_bank_main_ (
       connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string ("version",
-                               "4:1:4"), /* not sure, API versions are not properly marked up! */
+                               "4:1:4"),
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
       GNUNET_JSON_pack_string ("implementation",

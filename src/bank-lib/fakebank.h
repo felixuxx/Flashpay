@@ -159,7 +159,7 @@ struct WithdrawalOperation
   uint64_t row_id;
 
   /**
-   * Amount transferred.
+   * Amount transferred, NULL if still unknown.
    */
   struct TALER_Amount *amount;
 

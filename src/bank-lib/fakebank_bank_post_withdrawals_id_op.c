@@ -41,6 +41,7 @@
  * @param connection the connection
  * @param account name of the account
  * @param withdrawal_id the withdrawal operation identifier
+ * @param body uploaded JSON body, NULL if none
  * @return MHD result code
  */
 static MHD_RESULT
@@ -48,10 +49,32 @@ bank_withdrawals_confirm (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
   const char *account,
-  const char *withdrawal_id)
+  const char *withdrawal_id,
+  const json_t *body)
 {
   const struct Account *acc;
   struct WithdrawalOperation *wo;
+  struct TALER_Amount amount;
+  bool amount_missing = true;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_mark_optional (
+      TALER_JSON_spec_amount ("amount",
+                              h->currency,
+                              &amount),
+      &amount_missing),
+    GNUNET_JSON_spec_end ()
+  };
+  enum GNUNET_GenericReturnValue ret;
+
+  if ( (NULL != body) &&
+       (GNUNET_OK !=
+        (ret = TALER_MHD_parse_json_data (connection,
+                                          body,
+                                          spec))) )
+  {
+    GNUNET_break_op (0);
+    return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
+  }
 
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
@@ -91,14 +114,33 @@ bank_withdrawals_confirm (
                                        TALER_EC_BANK_POST_WITHDRAWAL_OPERATION_REQUIRED,
                                        NULL);
   }
-  if (NULL == wo->amount)
+  if ( (NULL != wo->amount) &&
+       (! amount_missing) &&
+       (0 != TALER_amount_cmp (&amount,
+                               wo->amount)) )
   {
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_BANK_POST_WITHDRAWAL_OPERATION_REQUIRED,
-                                       NULL);
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_CONFIRM_ABORT_CONFLICT,
+                                       "amount inconsistent");
+  }
+  if ( (NULL == wo->amount) &&
+       (amount_missing) )
+  {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_CONFIRM_ABORT_CONFLICT,
+                                       "amount required");
+  }
+  if (NULL == wo->amount)
+  {
+    GNUNET_assert (! amount_missing);
+    wo->amount = GNUNET_new (struct TALER_Amount);
+    *wo->amount = amount;
   }
   if (wo->aborted)
   {
@@ -152,6 +194,7 @@ bank_withdrawals_confirm (
  * @param connection the connection
  * @param account name of the account
  * @param withdrawal_id the withdrawal operation identifier
+ * @param body uploaded JSON body, NULL if none
  * @return MHD result code
  */
 static MHD_RESULT
@@ -159,7 +202,8 @@ bank_withdrawals_abort (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
   const char *account,
-  const char *withdrawal_id)
+  const char *withdrawal_id,
+  const json_t *body)
 {
   struct WithdrawalOperation *wo;
   const struct Account *acc;
@@ -226,23 +270,71 @@ TALER_FAKEBANK_bank_withdrawals_id_op_ (
   size_t *upload_data_size,
   void **con_cls)
 {
+  struct ConnectionContext *cc = *con_cls;
+  json_t *json = NULL;
+
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &GNUNET_JSON_post_parser_cleanup;
+    *con_cls = cc;
+  }
+  if (0 != *upload_data_size)
+  {
+    enum GNUNET_JSON_PostResult pr;
+
+    pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                  connection,
+                                  &cc->ctx,
+                                  upload_data,
+                                  upload_data_size,
+                                  &json);
+    switch (pr)
+    {
+    case GNUNET_JSON_PR_OUT_OF_MEMORY:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_CONTINUE:
+      return MHD_YES;
+    case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_JSON_INVALID:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_SUCCESS:
+      break;
+    }
+  }
+
   if (0 == strcmp (op,
                    "/confirm"))
   {
-    return bank_withdrawals_confirm (h,
-                                     connection,
-                                     account,
-                                     withdrawal_id);
+    MHD_RESULT res;
+
+    res = bank_withdrawals_confirm (h,
+                                    connection,
+                                    account,
+                                    withdrawal_id,
+                                    json);
+    json_decref (json);
+    return res;
   }
   if (0 == strcmp (op,
                    "/abort"))
   {
-    return bank_withdrawals_abort (h,
-                                   connection,
-                                   account,
-                                   withdrawal_id);
+    MHD_RESULT res;
+
+    res = bank_withdrawals_abort (h,
+                                  connection,
+                                  account,
+                                  withdrawal_id,
+                                  json);
+    json_decref (json);
+    return res;
   }
   GNUNET_break_op (0);
+  json_decref (json);
   return TALER_MHD_reply_with_error (connection,
                                      MHD_HTTP_NOT_FOUND,
                                      TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
