@@ -36,7 +36,7 @@ INSERT INTO legitimization_measures
   ,display_priority)
   VALUES
   (in_access_token
-  ,in_decision_time
+  ,in_start_time
   ,in_jmeasures
   ,1)
   RETURNING
