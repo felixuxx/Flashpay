@@ -2248,6 +2248,8 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
   json_t *accounts;
   json_t *global_fees;
   json_t *wblwk = NULL;
+  json_t *hard_limits;
+  json_t *zero_limits;
 
   now = GNUNET_TIME_timestamp_get ();
   signkeys = json_array ();
@@ -2545,6 +2547,44 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                      TALER_JSON_from_amount (a)));
   }
 
+  hard_limits = json_array ();
+  for (unsigned int i = 0; i < kd->hard_limits_length; i++)
+  {
+    const struct TALER_EXCHANGE_AccountLimit *al
+      = &kd->hard_limits[i];
+    json_t *j;
+
+    j = GNUNET_JSON_PACK (
+      TALER_JSON_pack_amount ("threshold",
+                              &al->threshold),
+      GNUNET_JSON_pack_time_rel ("timeframe",
+                                 al->timeframe),
+      TALER_JSON_pack_kycte ("operation_type",
+                             al->operation_type)
+      );
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     hard_limits,
+                     j));
+  }
+
+  zero_limits = json_array ();
+  for (unsigned int i = 0; i < kd->zero_limits_length; i++)
+  {
+    const struct TALER_EXCHANGE_ZeroLimitedOperation *zol
+      = &kd->zero_limits[i];
+    json_t *j;
+
+    j = GNUNET_JSON_PACK (
+      TALER_JSON_pack_kycte ("operation_type",
+                             zol->operation_type)
+      );
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     zero_limits,
+                     j));
+  }
+
   keys = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("version",
                              kd->version),
@@ -2577,6 +2617,10 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                   accounts),
     GNUNET_JSON_pack_array_steal ("wads",
                                   json_array ()),
+    GNUNET_JSON_pack_array_steal ("hard_limits",
+                                  hard_limits),
+    GNUNET_JSON_pack_array_steal ("zero_limits",
+                                  zero_limits),
     GNUNET_JSON_pack_array_steal ("denominations",
                                   denominations_by_group),
     GNUNET_JSON_pack_allow_null (
