@@ -1707,10 +1707,17 @@ legitimization_check_run (
     /* parse and free jrules (if we had any) */
     if (NULL != jrules)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "KYC: have custom KYC rules for this account!\n");
       lrs = TALER_KYCLOGIC_rules_parse (jrules);
       GNUNET_break (NULL != lrs);
       /* Fall back to default rules on parse error! */
       json_decref (jrules);
+    }
+    else
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "KYC: default KYC rules apply to this account!\n");
     }
   }
 
@@ -1755,6 +1762,7 @@ legitimization_check_run (
     &lch->lcr.next_threshold);
   if (qs < 0)
   {
+    GNUNET_break (0);
     TALER_KYCLOGIC_rules_free (lrs);
     legi_fail (lch,
                TALER_EC_GENERIC_DB_FETCH_FAILED,
@@ -1764,12 +1772,16 @@ legitimization_check_run (
   }
   if (lch->lcr.bad_kyc_auth)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC auth required\n");
     fail_kyc_auth (lch);
     return;
   }
 
   if (NULL == requirement)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC check passed\n");
     lch->lcr.kyc.ok = true;
     lch->lcr.expiration_date
       = TALER_KYCLOGIC_rules_get_expiration (lrs);

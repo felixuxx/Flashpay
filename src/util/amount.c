@@ -243,17 +243,23 @@ enum GNUNET_GenericReturnValue
 TALER_amount_set_zero (const char *cur,
                        struct TALER_Amount *amount)
 {
+  char tmp[TALER_CURRENCY_LEN];
   size_t slen;
 
   if (GNUNET_OK !=
       TALER_check_currency (cur))
     return GNUNET_SYSERR;
   slen = strlen (cur);
+  /* make a copy of 'cur' to 'tmp' as the memset may clobber cur
+     if cur aliases &amount->currency! */
+  memcpy (tmp,
+          cur,
+          slen);
   memset (amount,
           0,
           sizeof (struct TALER_Amount));
   for (unsigned int i = 0; i<slen; i++)
-    amount->currency[i] = cur[i];
+    amount->currency[i] = tmp[i];
   return GNUNET_OK;
 }
 

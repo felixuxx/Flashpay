@@ -599,6 +599,11 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         GNUNET_break_op (0);
         goto cleanup;
       }
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Parsed KYC rule %u for %d with threshold %s\n",
+                  (unsigned int) off,
+                  (int) rule->trigger,
+                  TALER_amount2s (&rule->threshold));
       rule->lrs = lrs;
       rule->num_measures = json_array_size (jmeasures);
       rule->next_measures
@@ -2042,8 +2047,10 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Adding KYC rule %s\n",
-              section);
+              "Adding KYC rule %s for trigger %d with threshold %s\n",
+              section,
+              (int) ot,
+              TALER_amount2s (&threshold));
   {
     struct TALER_KYCLOGIC_KycRule kt = {
       .lrs = &default_rules,
@@ -2947,7 +2954,14 @@ TALER_KYCLOGIC_kyc_test_required (
       = &lrs->kyc_rules[i];
 
     if (event != rule->trigger)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Rule %u is for a different trigger (%d/%d)\n",
+                  i,
+                  (int) event,
+                  (int) rule->trigger);
       continue;
+    }
     if (have_threshold)
     {
       GNUNET_assert (GNUNET_OK ==
@@ -2961,16 +2975,19 @@ TALER_KYCLOGIC_kyc_test_required (
       have_threshold = true;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Matched rule %u with timeframe %s\n",
+                "Matched rule %u with timeframe %s and threshold %s\n",
                 i,
                 GNUNET_TIME_relative2s (rule->timeframe,
-                                        true));
+                                        true),
+                TALER_amount2s (&rule->threshold));
     range = GNUNET_TIME_relative_max (range,
                                       rule->timeframe);
   }
 
   if (! have_threshold)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No rules apply\n");
     *triggered_rule = NULL;
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
