@@ -211,7 +211,7 @@ add_response_headers (void *cls,
  * @param[in,out] kyp request to reply on
  * @param legitimization_measure_row_id part of etag to set for the response
  * @param legitimization_outcome_row_id part of etag to set for the response
- * @param jmeasures measures to encode
+ * @param jmeasures a `LegitimizationMeasures` object to encode
  * @param jvoluntary array of voluntary measures to encode, can be NULL
  * @return MHD status code
  */
@@ -222,7 +222,7 @@ generate_reply (struct KycPoller *kyp,
                 const json_t *jmeasures,
                 const json_t *jvoluntary)
 {
-  const json_t *measures;
+  const json_t *measures; /* array of MeasureInformation */
   bool is_and_combinator = false;
   bool verboten;
   struct GNUNET_JSON_Specification spec[] = {
@@ -241,7 +241,7 @@ generate_reply (struct KycPoller *kyp,
   unsigned int eline;
   json_t *kris;
   size_t i;
-  json_t *mi;
+  json_t *mi; /* a MeasureInformation object */
 
   ret = GNUNET_JSON_parse (jmeasures,
                            spec,
@@ -261,11 +261,14 @@ generate_reply (struct KycPoller *kyp,
   {
     const char *check_name;
     const char *prog_name;
+    const json_t *context;
     struct GNUNET_JSON_Specification ispec[] = {
       GNUNET_JSON_spec_string ("check_name",
                                &check_name),
       GNUNET_JSON_spec_string ("prog_name",
                                &prog_name),
+      GNUNET_JSON_spec_object_const ("context",
+                                     &context),
       GNUNET_JSON_spec_end ()
     };
     json_t *kri;
@@ -286,6 +289,7 @@ generate_reply (struct KycPoller *kyp,
     kri = TALER_KYCLOGIC_measure_to_requirement (
       check_name,
       prog_name,
+      context,
       &kyp->access_token,
       i,
       legitimization_measure_row_id);

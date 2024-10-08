@@ -3020,6 +3020,7 @@ json_t *
 TALER_KYCLOGIC_measure_to_requirement (
   const char *check_name,
   const char *prog_name,
+  const json_t *context,
   const struct TALER_AccountAccessTokenP *access_token,
   size_t offset,
   uint64_t legitimization_measure_row_id)
@@ -3067,6 +3068,9 @@ TALER_KYCLOGIC_measure_to_requirement (
                                kc->details.form.name),
       GNUNET_JSON_pack_string ("id",
                                xids),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_object_incref ("context",
+                                        (json_t *) context)),
       GNUNET_JSON_pack_string ("description",
                                kc->description),
       GNUNET_JSON_pack_allow_null (
