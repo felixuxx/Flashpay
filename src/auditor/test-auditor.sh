@@ -1375,7 +1375,6 @@ function test_16() {
 
 
 # Test where wire-out timestamp is wrong
-# FIXME: test-17 not implemented
 function test_17() {
     echo "===========17: incorrect wire_out timestamp================="
 
