@@ -96,13 +96,7 @@ function exit_cleanup()
 trap exit_cleanup EXIT
 
 
-# Operations to run before the actual audit
-function pre_audit () {
-    # Launch bank
-    echo -n "Launching libeufin-bank"
-    export CONF
-    export MY_TMP_DIR
-    launch_libeufin
+function await_bank () {
     for n in $(seq 1 80)
     do
         echo -n "."
@@ -119,6 +113,16 @@ function pre_audit () {
     then
         exit_skip "Failed to launch libeufin-bank"
     fi
+ }
+
+# Operations to run before the actual audit
+function pre_audit () {
+    # Launch bank
+    echo -n "Launching libeufin-bank"
+    export CONF
+    export MY_TMP_DIR
+    launch_libeufin
+    await_bank
     echo " DONE"
 
     if [ "${1:-no}" = "aggregator" ]
@@ -1105,71 +1109,56 @@ function test_10() {
 
 
 # Test for extra outgoing wire transfer.
-# In case of changing the subject in the Nexus
-# ingested table: '.batches[0].batchTransactions[0].details.unstructuredRemittanceInformation'
-# FIXME: test-11 not implemented
 function test_11() {
     echo "===========11: spurious outgoing transfer ==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    echo "FIXME: test needs update to new libeufin-bank schema"
-    #TODO: see fixme
-    #exit 0
-    #OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
-    #OLD_TX=$(echo "SELECT \"transactionJson\" FROM NexusBankTransactions WHERE id='$OLD_ID';" | psql "${DB}" -Aqt)
-    # Change wire transfer to be FROM the exchange (#2) to elsewhere!
-    # (Note: this change also causes a missing incoming wire transfer, but
-    #  this test is only concerned about the outgoing wire transfer
-    #  being detected as such, and we simply ignore the other
-    #  errors being reported.)
-    #OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}" -Aqt)
-    #NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'"$OTHER_IBAN"'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
-    #echo -e "UPDATE NexusBankTransactions SET \"transactionJson\"='""$NEW_TX""' WHERE id=$OLD_ID" \
-    #    | psql "${DB}" -q
-    # Now fake that the exchange prepared this payment (= it POSTed to /transfer)
-    # This step is necessary, because the TWG table that accounts for outgoing
-    # payments needs it.  Worth noting here is the column 'rawConfirmation' that
-    # points to the transaction from the main Nexus ledger; without that column set,
-    # a prepared payment won't appear as actually outgoing.
-    #echo -e "INSERT INTO PaymentInitiations (\"bankAccount\",\"preparationDate\",\"submissionDate\",sum,currency,\"endToEndId\",\"paymentInformationId\",\"instructionId\",subject,\"creditorIban\",\"creditorBic\",\"creditorName\",submitted,\"messageId\",\"rawConfirmation\") VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','""$OTHER_IBAN""','SANDBOXX','Forty Two',false,1,$OLD_ID)" \
-    #    | psql "${DB}" -q
-    # Now populate the TWG table that accounts for outgoing payments, in
-    # order to let /history/outgoing return one result.
-    #echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/""$OTHER_IBAN""?receiver-name=Forty+Two')" \
-    #    | psql "${DB}" -q
+    launch_libeufin
+    OTHER_IBAN=$(echo -e "SELECT internal_payto FROM libeufin_bank.bank_accounts ba JOIN libeufin_bank.customers bc ON (ba.owning_customer_id = bc.customer_id) WHERE username='fortytwo'" | psql "${DB}" -Aqt)
+
+    await_bank
+    echo -n "Creating bogus transfer... "
+    STATUS=$(curl -H "Content-Type: application/json" -X POST \
+      -u 'exchange:x' \
+      http://localhost:8082/accounts/exchange/taler-wire-gateway/transfer \
+      -d '{"credit_account":"'"$OTHER_IBAN"'","exchange_base_url":"http://exchange.example.com/","amount":"TESTKUDOS:10","wtid":"7X93HVKPHE0KAQ6KHSB3921KJGSVDMQFHMQV17885YJDMZ20XS9G","request_uid":"7X93HKPHE0KAQ6KHSB3921KJGSVDMQFHMQV17885YJDMZ20XS9G7X93HVKPHE0KAQ6KHSB3921KJGSVDMQFHMQV17885YJDMZ20XS9G"}' \
+      -w "%{http_code}" -s -o /dev/null)
+
+    if [ "$STATUS" != "200" ]
+    then
+        exit_fail "Expected 200 OK. Got: $STATUS"
+    fi
+    echo "DONE"
+    stop_libeufin
 
     run_audit
     check_auditor_running
 
-    #TODO: fix helper wire
-    #echo -n "Testing inconsistency detection... "
-    #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json")
-    #if [ "x$AMOUNT" != "xTESTKUDOS:10" ]
-    #then
-    #    exit_fail "Reported wired amount wrong: $AMOUNT"
-    #fi
-    #AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json")
-    #if [ "x$AMOUNT" != "xTESTKUDOS:10" ]
-    #then
-    #    exit_fail "Reported total plus amount wrong: $AMOUNT"
-    #fi
-    #AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json")
-    #if [ "x$AMOUNT" != "xTESTKUDOS:0" ]
-    #then
-    #    exit_fail "Reported total minus amount wrong: $AMOUNT"
-    #fi
-    #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json")
-    #if [ "x$AMOUNT" != "xTESTKUDOS:0" ]
-    #then
-    #    exit_fail "Reported justified amount wrong: $AMOUNT"
-    #fi
-    #DIAG=$(jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-audit-wire.json")
-    #if [ "x$DIAG" != "xjustification for wire transfer not found" ]
-    #then
-    #    exit_fail "Reported diagnostic wrong: $DIAG"
-    #fi
-    #echo "PASS"
-
+    echo -n "Testing inconsistency detection... "
+    check_report \
+        "wire-out-inconsistency" \
+        "claimed" \
+        "TESTKUDOS:10"
+    echo -n "Testing bad_amount_plus balance reporting... "
+    check_balance \
+        "total_bad_amount_out_plus" \
+        "TESTKUDOS:10" \
+        "reported total_bad_amount_plus wrong"
+    echo -n "Testing bad_amount_minus balance reporting... "
+    check_balance \
+        "total_bad_amount_out_minus" \
+        "TESTKUDOS:0" \
+        "reported total_bad_amount_minus wrong"
+    echo -n "Testing expected amount is correct... "
+    check_report \
+        "wire-out-inconsistency" \
+        "expected" \
+        "TESTKUDOS:0"
+    echo -n "Testing diagnostic message is correct... "
+    check_report \
+        "wire-out-inconsistency" \
+        "diagnostic" \
+        "missing justification for outgoing wire transfer"
     stop_auditor_httpd
     full_reload
 }
@@ -1315,12 +1304,20 @@ function test_16() {
     #check_auditor_running
 #
     #echo -n "Testing inconsistency detection... "
-#
+    check_report \
+        "wire-out-inconsistency" \
+        "expected" \
+        "$OLD_AMOUNT"
+
     #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json)
     #if [ "$AMOUNT" != "$OLD_AMOUNT" ]
     #then
     #    exit_fail "Reported justified amount wrong: $AMOUNT"
     #fi
+    check_report \
+        "wire-out-inconsistency" \
+        "claimed" \
+        "$NEW_AMOUNT"
     #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json)
     #if [ "$AMOUNT" != "$NEW_AMOUNT" ]
     #then
@@ -1331,13 +1328,25 @@ function test_16() {
     #then
     #    exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT"
     #fi
+    echo -n "Testing bad_amount_minus balance reporting... "
+    check_not_balance \
+        "total_bad_amount_out_minus" \
+        "TESTKUDOS:0" \
+        "reported total_bad_amount_minus wrong"
+
     #TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json)
     #if [ "$TOTAL_AMOUNT" = "TESTKUDOS:0" ]
     #then
     #    exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
     #fi
     #echo "PASS"
-#
+
+    echo -n "Testing bad_amount_plus balance reporting... "
+    check_not_balance \
+        "total_bad_amount_out_plus" \
+        "TESTKUDOS:0" \
+        "reported total_bad_amount_plus wrong"
+
     #stop_libeufin
     #echo "Second modification: wire nothing"
     #NEW_AMOUNT="TESTKUDOS:0"
@@ -2041,6 +2050,7 @@ function test_33() {
 
     echo -n "Test for wire inconsistencies... "
     #TODO: fix wire
+
     #jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
     #jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
     #jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"

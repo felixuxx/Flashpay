@@ -70,16 +70,15 @@ function get_payto_uri() {
 # Stop libeufin-bank (if running)
 function stop_libeufin()
 {
-    echo -n "Stopping libeufin... "
     if [ -f "${MY_TMP_DIR:-/}/libeufin-bank.pid" ]
     then
         PID=$(cat "${MY_TMP_DIR}/libeufin-bank.pid" 2> /dev/null)
-        echo "Killing libeufin-bank $PID"
+        echo -n "Stopping libeufin $PID... "
         rm "${MY_TMP_DIR}/libeufin-bank.pid"
         kill "$PID" 2> /dev/null || true
         wait "$PID" || true
+        echo "DONE"
     fi
-    echo "DONE"
 }
 
 
