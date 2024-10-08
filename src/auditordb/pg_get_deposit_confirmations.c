@@ -80,7 +80,7 @@ deposit_confirmation_cb (void *cls,
     size_t num_pubs = 0;
     size_t num_sigs = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("deposit_confirmation_serial_id",
+      GNUNET_PQ_result_spec_uint64 ("row_id",
                                     &dc.row_id),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &dc.h_contract_terms),
@@ -174,7 +174,7 @@ TAH_PG_get_deposit_confirmations (
   PREPARE (pg,
            "auditor_deposit_confirmation_select_desc",
            "SELECT"
-           " deposit_confirmation_serial_id"
+           " row_id"
            ",h_contract_terms"
            ",h_policy"
            ",h_wire"
@@ -190,15 +190,15 @@ TAH_PG_get_deposit_confirmations (
            ",master_sig"
            ",suppressed"
            " FROM auditor_deposit_confirmations"
-           " WHERE (deposit_confirmation_serial_id < $1)"
+           " WHERE (row_id < $1)"
            " AND ($2 OR NOT suppressed)"
-           " ORDER BY deposit_confirmation_serial_id DESC"
+           " ORDER BY row_id DESC"
            " LIMIT $3"
            );
   PREPARE (pg,
            "auditor_deposit_confirmation_select_asc",
            "SELECT"
-           " deposit_confirmation_serial_id"
+           " row_id"
            ",h_contract_terms"
            ",h_policy"
            ",h_wire"
@@ -214,9 +214,9 @@ TAH_PG_get_deposit_confirmations (
            ",master_sig"
            ",suppressed"
            " FROM auditor_deposit_confirmations"
-           " WHERE (deposit_confirmation_serial_id > $1)"
+           " WHERE (row_id > $1)"
            " AND ($2 OR NOT suppressed)"
-           " ORDER BY deposit_confirmation_serial_id ASC"
+           " ORDER BY row_id ASC"
            " LIMIT $3"
            );
   qs = GNUNET_PQ_eval_prepared_multi_select (
