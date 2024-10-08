@@ -903,7 +903,8 @@ function test_5() {
 function test_6() {
     echo "===========6: known_coins signature wrong================="
     # Modify denom_sig, so it is wrong
-    OLD_SIG=$(echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql "$DB" -Aqt)
+    OLD_ROW=$(echo "SELECT known_coin_id FROM exchange.known_coins LIMIT 1;" | psql "$DB" -Aqt)
+    OLD_SIG=$(echo "SELECT denom_sig FROM exchange.known_coins WHERE known_coin_id=$OLD_ROW;" | psql "$DB" -Aqt)
     COIN_PUB=$(echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql "$DB" -Aqt)
 # shellcheck disable=SC2028
     echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" \
@@ -913,7 +914,9 @@ function test_6() {
     check_auditor_running
 
     echo -n "Checking bad-signature-loss detected ..."
-    check_row "bad-sig-losses" 1
+    check_row \
+        "bad-sig-losses" \
+        "$OLD_ROW"
     echo -n "Checking bad-signature-loss amount detected ..."
     check_report_neg \
         "bad-sig-losses" \
