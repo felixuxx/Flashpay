@@ -139,8 +139,10 @@ test_dc (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Deleting matching deposit confirmation %llu\n",
                 (unsigned long long) dc->row_id);
-    qs = TALER_ARL_adb->delete_deposit_confirmation (TALER_ARL_adb->cls,
-                                                     dc->row_id);
+    qs = TALER_ARL_adb->delete_deposit_generic (
+      TALER_ARL_adb->cls,
+      TALER_AUDITORDB_DEPOSIT_CONFIRMATION,
+      dc->row_id);
     if (qs < 0)
     {
       GNUNET_break (0); /* DB error, complain */
