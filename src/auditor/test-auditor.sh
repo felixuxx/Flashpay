@@ -1044,10 +1044,10 @@ function test_9() {
     stop_libeufin
     OLD_ID=$(echo "SELECT bank_transaction FROM libeufin_bank.taler_exchange_incoming JOIN libeufin_bank.bank_account_transactions ON (bank_transaction=bank_transaction_id) WHERE (amount).val=10 ORDER BY bank_transaction LIMIT 1;" | psql "${DB}" -Aqt) \
         || exit_fail "Failed to SELECT FROM libeufin_bank.bank_account_transactions!"
-    OLD_ACC=$(echo "SELECT debtor_payto_uri FROM libeufin_bank.bank_account_transactions WHERE bank_transaction_id='$OLD_ID';" | psql "${DB}" -Aqt)
+    OLD_ACC=$(echo "SELECT debtor_payto FROM libeufin_bank.bank_account_transactions WHERE bank_transaction_id='$OLD_ID';" | psql "${DB}" -Aqt)
 
     echo -n "Modifying $OLD_ID ..."
-    echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto_uri='payto://iban/DE144373' WHERE bank_transaction_id='$OLD_ID';" \
+    echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto='payto://iban/DE144373' WHERE bank_transaction_id='$OLD_ID';" \
         | psql "${DB}" -At
 
     run_audit
@@ -1063,7 +1063,7 @@ function test_9() {
         "TESTKUDOS:10" \
         "Reported total_misattribution_in wrong"
     # Undo database modification
-    echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto_uri='$OLD_ACC' WHERE bank_transaction_id='$OLD_ID';" \
+    echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto='$OLD_ACC' WHERE bank_transaction_id='$OLD_ID';" \
         | psql "${DB}" -Atq
     stop_auditor_httpd
     full_reload

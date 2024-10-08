@@ -553,6 +553,8 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_update_generic_suppressed;
   plugin->delete_generic
     = &TAH_PG_delete_generic;
+  plugin->delete_wire_out_inconsistency_if_matching
+    = &TAH_PG_delete_wire_out_inconsistency_if_matching;
 
 
   plugin->update_auditor_progress
