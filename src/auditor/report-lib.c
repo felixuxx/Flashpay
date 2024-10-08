@@ -133,7 +133,7 @@ add_denomination (
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info_by_hash (
   const struct TALER_DenominationHashP *dh,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issue)
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issuep)
 {
   enum GNUNET_DB_QueryStatus qs;
 
@@ -147,7 +147,7 @@ TALER_ARL_get_denomination_info_by_hash (
     if (0 > qs)
     {
       GNUNET_break (0);
-      *issue = NULL;
+      *issuep = NULL;
       return qs;
     }
   }
@@ -159,7 +159,7 @@ TALER_ARL_get_denomination_info_by_hash (
     if (NULL != i)
     {
       /* cache hit */
-      *issue = i;
+      *issuep = i;
       return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
   }
@@ -191,7 +191,7 @@ TALER_ARL_get_denomination_info_by_hash (
     if (NULL != i)
     {
       /* cache hit */
-      *issue = i;
+      *issuep = i;
       return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
   }

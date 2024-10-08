@@ -13,8 +13,6 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
@@ -24,6 +22,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-auditor-httpd.h"
+#include "taler-auditor-httpd_patch_generic_suppressed.h"
 
 
 MHD_RESULT

@@ -227,11 +227,6 @@ report_emergency_by_amount (
   const struct TALER_Amount *risk,
   const struct TALER_Amount *loss)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Reporting emergency on denomination `%s' over loss of %s\n",
-              GNUNET_h2s (&issue->denom_hash.hash),
-              TALER_amount2s (loss));
-
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AUDITORDB_Emergency emergency = {
     .denom_loss = *loss,
@@ -242,10 +237,13 @@ report_emergency_by_amount (
     .value = *&issue->value
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Reporting emergency on denomination `%s' over loss of %s\n",
+              GNUNET_h2s (&issue->denom_hash.hash),
+              TALER_amount2s (loss));
   qs = TALER_ARL_adb->insert_emergency (
     TALER_ARL_adb->cls,
     &emergency);
-
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

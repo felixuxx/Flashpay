@@ -135,14 +135,14 @@ extern struct GNUNET_TIME_Absolute start_time;
  * Obtain information about a @a denom_pub.
  *
  * @param dh hash of the denomination public key to look up
- * @param[out] issue set to detailed information about @a denom_pub, NULL if not found, must
+ * @param[out] issuep set to detailed information about @a denom_pub, NULL if not found, must
  *                 NOT be freed by caller
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info_by_hash (
   const struct TALER_DenominationHashP *dh,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issue);
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issuep);
 
 
 /**
