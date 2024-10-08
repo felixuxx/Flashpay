@@ -146,8 +146,6 @@ TEH_PG_select_reserve_closed_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Used in #postgres_select_reserve_closed_above_serial_id() to
-     obtain information about closed reserves */
   PREPARE (
     pg,
     "reserves_close_get_incr",

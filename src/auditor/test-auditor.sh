@@ -1548,42 +1548,38 @@ function test_21() {
         | psql -Aqt "$DB"
     echo "UPDATE exchange.reserves SET current_balance.val=${VAL_DELTA}+(current_balance).val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" \
         | psql -Aqt "$DB"
-#TODO FIX AUDITOR wire
-    # Need to first run the aggregator so the transfer is marked as done exists
-#    pre_audit aggregator
-#    stop_libeufin
-#    # remove transaction from bank DB
-#    # Currently emulating this (to be deleted):
-#    echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" \
-#        | psql "${DB}" -q
-#    launch_libeufin
-#    audit_only
-#    post_audit
-#    check_auditor_running
-#
-#    call_endpoint "reserve-not-closed-inconsistency"
-#
-#
-#    echo -n "Testing lack of reserve closure transaction detected... "
-#
-#    jq -e .reserve_lag_details[0] \
-#       < test-audit-wire.json" \
-#       > /dev/null \
-#        || exit_fail "Reserve closure lag not detected"
-#
-#    AMOUNT=$(jq -r .reserve_lag_details[0].amount < test-audit-wire.json")
-#    if [ "$AMOUNT" != "TESTKUDOS:${VAL_DELTA}" ]
-#    then
-#        exit_fail "Reported total amount wrong: $AMOUNT"
-#    fi
-#    AMOUNT=$(jq -r .total_closure_amount_lag < test-audit-wire.json")
-#    if [ "$AMOUNT" != "TESTKUDOS:${VAL_DELTA}" ]
-#    then
-#        exit_fail "Reported total amount wrong: $AMOUNT"
-#    fi
 
-    echo "PASS"
+    # Need to first run the aggregator so the transfer is marked as done
+    pre_audit aggregator
+    stop_libeufin
 
+    # remove wire transfer from bank DB
+    echo "DELETE FROM libeufin_bank.bank_account_transactions WHERE debtor_name='Exchange Company';" \
+        | psql "${DB}" -q
+
+    launch_libeufin
+    audit_only
+    post_audit
+    check_auditor_running
+
+    echo -n "Testing reserve_in inconsistency detection... "
+    check_report \
+        row-minor-inconsistencies \
+        "row_table" "reserves_in"
+
+    echo -n "Testing lack of reserve closure transaction detected... "
+    check_report \
+        "closure-lags" \
+        "suppressed" "false"
+    echo -n "Checking closure lag amount ..."
+    check_report \
+        "closure-lags" \
+        "amount" "TESTKUDOS:${VAL_DELTA}"
+    echo -n "Checking closure lag total balance ..."
+    check_balance \
+        "total_closure_amount_lag" \
+        "TESTKUDOS:${VAL_DELTA}" \
+        "Reported total_closure_amount_lag wrong"
     # cannot easily undo aggregator, hence full reload
     full_reload
 }

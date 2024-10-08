@@ -444,9 +444,9 @@ check_pending_rc (void *cls,
 
   (void) cls;
   (void) key;
-  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_closure_amount_lag),
-                        &TALER_ARL_USE_AB (total_closure_amount_lag),
-                        &rc->amount);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Missing wire transfer for closed reserve with balance %s\n",
+              TALER_amount2s (&rc->amount));
   if (! TALER_amount_is_zero (&rc->amount))
   {
     struct TALER_AUDITORDB_ClosureLags cl = {
@@ -458,6 +458,8 @@ check_pending_rc (void *cls,
     };
     enum GNUNET_DB_QueryStatus qs;
 
+    /* FIXME: where do we *undo* this if the wire transfer is
+       found later? */
     qs = TALER_ARL_adb->insert_auditor_closure_lags (
       TALER_ARL_adb->cls,
       &cl);
@@ -467,10 +469,12 @@ check_pending_rc (void *cls,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
+    /* FIXME: where do we *undo* this if the wire transfer is
+       found later? */
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_closure_amount_lag),
+                          &TALER_ARL_USE_AB (total_closure_amount_lag),
+                          &rc->amount);
   }
-  TALER_ARL_USE_PP (wire_reserve_close_id)
-    = GNUNET_MIN (TALER_ARL_USE_PP (wire_reserve_close_id),
-                  rc->rowid);
   return GNUNET_OK;
 }
 
@@ -520,6 +524,9 @@ begin_transaction (void);
 static void
 commit (enum GNUNET_DB_QueryStatus qs)
 {
+  GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
+                                         &check_pending_rc,
+                                         NULL);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Transaction logic ended with status %d\n",
               qs);
@@ -581,9 +588,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
                 (unsigned long long) wa->last_wire_out_serial_id,
                 wa->ai->section_name);
   }
-  GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
-                                         &check_pending_rc,
-                                         NULL);
   qs = TALER_ARL_adb->update_auditor_progress (
     TALER_ARL_adb->cls,
     TALER_ARL_SET_PP (wire_reserve_close_id),
@@ -1527,6 +1531,8 @@ reserve_closed_cb (
 
   (void) cls;
   (void) close_request_row;
+  GNUNET_assert (TALER_ARL_USE_PP (wire_reserve_close_id) <= rowid);
+  TALER_ARL_USE_PP (wire_reserve_close_id) = rowid + 1;
   rc = GNUNET_new (struct ReserveClosure);
   if (TALER_ARL_SR_INVALID_NEGATIVE ==
       TALER_ARL_amount_subtract_neg (&rc->amount,
@@ -1552,9 +1558,6 @@ reserve_closed_cb (
     GNUNET_free (rc);
     return GNUNET_OK;
   }
-  TALER_ARL_USE_PP (wire_reserve_close_id)
-    = GNUNET_MAX (TALER_ARL_USE_PP (wire_reserve_close_id),
-                  rowid + 1);
   rc->receiver_account = TALER_payto_normalize (receiver_account);
   rc->wtid = *wtid;
   rc->execution_date = execution_date;
@@ -1690,7 +1693,8 @@ begin_transaction (void)
                 (unsigned long long) TALER_ARL_USE_PP (wire_reserve_close_id));
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Iterating over reserve closures\n");
+              "Iterating over reserve closures from %llu\n",
+              (unsigned long long) TALER_ARL_USE_PP (wire_reserve_close_id));
   qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
     TALER_ARL_edb->cls,
     TALER_ARL_USE_PP (wire_reserve_close_id),
