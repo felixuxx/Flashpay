@@ -1532,7 +1532,6 @@ function test_20() {
 
 
 # Test reserve closure reported but wire transfer missing detection
-# FIXME: test-21 not implemented
 function test_21() {
     echo "===========21: reserve closure missreported ================="
 
