@@ -32,13 +32,34 @@ SET search_path TO auditor;
 -- latest requirements for dropping tables.
 
 DELETE FROM auditor_amount_arithmetic_inconsistency;
+DELETE FROM auditor_bad_sig_losses;
 DELETE FROM auditor_balances;
+DELETE FROM auditor_closure_lags;
+DELETE FROM auditor_coin_inconsistency;
+DELETE FROM auditor_denomination_key_validity_withdraw_inconsistency;
 DELETE FROM auditor_denomination_pending;
+DELETE FROM auditor_denominations_without_sigs;
+DELETE FROM auditor_emergency;
+DELETE FROM auditor_emergency_by_count;
+DELETE FROM auditor_fee_time_inconsistency;
 DELETE FROM auditor_historic_denomination_revenue;
 DELETE FROM auditor_historic_reserve_summary;
+DELETE FROM auditor_misattribution_in_inconsistency;
+DELETE FROM auditor_pending_deposits;
 DELETE FROM auditor_progress;
+DELETE FROM auditor_purse_not_closed_inconsistencies;
 DELETE FROM auditor_purses;
+DELETE FROM auditor_refreshes_hanging;
+DELETE FROM auditor_reserve_balance_insufficient_inconsistency;
+DELETE FROM auditor_reserve_balance_summary_wrong_inconsistency;
+DELETE FROM auditor_reserve_in_inconsistency;
+DELETE FROM auditor_reserve_not_closed_inconsistency;
 DELETE FROM auditor_reserves;
+DELETE FROM auditor_row_inconsistency;
+DELETE FROM auditor_row_minor_inconsistencies;
+DELETE FROM auditor_wire_format_inconsistency;
+DELETE FROM auditor_wire_out_inconsistency;
+
 
 -- And we're out of here...
 COMMIT;

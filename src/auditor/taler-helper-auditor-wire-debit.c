@@ -54,24 +54,24 @@
  * created by imperfect clock synchronization and network delay.
  */
 #define TIME_TOLERANCE GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MINUTES, \
-    15)
+          GNUNET_TIME_UNIT_MINUTES, \
+          15)
 
 
 /**
  * How long do we try to long-poll for bank wire transfers?
  */
 #define MAX_LONGPOLL_DELAY GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_HOURS, \
-    1)
+          GNUNET_TIME_UNIT_HOURS, \
+          1)
 
 
 /**
  * How long do we wait between polling for bank wire transfers at the minimum?
  */
 #define MIN_LONGPOLL_DELAY GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MINUTES, \
-    5)
+          GNUNET_TIME_UNIT_MINUTES, \
+          5)
 
 
 /**
@@ -714,14 +714,16 @@ check_rc_matches (void *cls,
 {
   struct CheckMatchContext *cmx = cls;
   struct ReserveClosure *rc = value;
+  char *ra = TALER_payto_normalize (rc->receiver_account);
 
   if ((0 == GNUNET_memcmp (&cmx->roi->details.wtid,
                            &rc->wtid)) &&
-      (0 == strcasecmp (rc->receiver_account,
+      (0 == strcasecmp (ra,
                         cmx->roi->details.credit_account_uri)) &&
       (0 == TALER_amount_cmp (&rc->amount,
                               &cmx->roi->details.amount)))
   {
+    GNUNET_free (ra);
     if (! check_time_difference ("reserves_closures",
                                  rc->rowid,
                                  rc->execution_date,
@@ -738,6 +740,7 @@ check_rc_matches (void *cls,
              rc);
     return GNUNET_NO;
   }
+  GNUNET_free (ra);
   return GNUNET_OK;
 }
 
@@ -1072,6 +1075,7 @@ wire_out_cb (
   struct WireAccount *wa = cls;
   struct GNUNET_HashCode key;
   struct ReserveOutInfo *roi;
+  char *np = TALER_payto_normalize (payto_uri);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Exchange wire OUT #%llu at %s of %s with WTID %s\n",
@@ -1098,7 +1102,7 @@ wire_out_cb (
        May be cleared later by check_reported_inconsistency() */
     char diag[MAX_DIAG_LEN];
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .destination_account = (char *) payto_uri,
+      .destination_account = np,
       .diagnostic = diag,
       .wire_out_row_id = rowid,
       .expected = *amount,
@@ -1114,6 +1118,7 @@ wire_out_cb (
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
       &woi);
+    GNUNET_free (np);
     if (qs < 0)
     {
       global_qs = qs;
@@ -1125,59 +1130,61 @@ wire_out_cb (
                           amount);
     return GNUNET_OK;
   }
-  {
-    char *np = TALER_payto_normalize (payto_uri);
 
-    if (0 != strcasecmp (np,
-                         roi->details.credit_account_uri))
-    {
-      /* Destination bank account is wrong in actual wire transfer, so
-         we should count the wire transfer as entirely spurious, and
-         additionally consider the justified wire transfer as missing. */
-      struct TALER_AUDITORDB_WireOutInconsistency woi = {
-        .wire_out_row_id = rowid,
-        .destination_account = (char *) payto_uri,
-        .diagnostic = "receiver account mismatch",
-        .expected = *amount,
-        .claimed = zero,
-      };
-      enum GNUNET_DB_QueryStatus qs;
-
-      GNUNET_free (np);
-      qs = TALER_ARL_adb->insert_wire_out_inconsistency (
-        TALER_ARL_adb->cls,
-        &woi);
-      if (qs < 0)
-      {
-        global_qs = qs;
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        return GNUNET_SYSERR;
-      }
-      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                            &TALER_ARL_USE_AB (total_bad_amount_out_plus),
-                            &roi->details.amount);
-      TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
-                            &TALER_ARL_USE_AB (total_bad_amount_out_minus),
-                            amount);
-      return GNUNET_OK;
-    }
-    GNUNET_free (np);
-  }
-  if (0 != TALER_amount_cmp (&roi->details.amount,
-                             amount))
+  if (0 != strcasecmp (np,
+                       roi->details.credit_account_uri))
   {
+    /* Destination bank account is wrong in actual wire transfer, so
+       we should count the wire transfer as entirely spurious, and
+       additionally consider the justified wire transfer as missing. */
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
-      .destination_account = (char *) payto_uri,
-      .diagnostic = "wire amount does not match",
       .wire_out_row_id = rowid,
+      .destination_account = np,
+      .diagnostic = "receiver account mismatch",
       .expected = *amount,
-      .claimed = zero,
+      .claimed = roi->details.amount,
     };
     enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_adb->insert_wire_out_inconsistency (
       TALER_ARL_adb->cls,
       &woi);
+    GNUNET_free (np);
+    if (qs < 0)
+    {
+      global_qs = qs;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return GNUNET_SYSERR;
+    }
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                          &TALER_ARL_USE_AB (total_bad_amount_out_plus),
+                          &roi->details.amount);
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                          &TALER_ARL_USE_AB (total_bad_amount_out_minus),
+                          amount);
+    GNUNET_assert (GNUNET_OK ==
+                   free_roi (NULL,
+                             &key,
+                             roi));
+    return GNUNET_OK;
+  }
+
+  if (0 != TALER_amount_cmp (&roi->details.amount,
+                             amount))
+  {
+    struct TALER_AUDITORDB_WireOutInconsistency woi = {
+      .destination_account = np,
+      .diagnostic = "wire amount does not match",
+      .wire_out_row_id = rowid,
+      .expected = *amount,
+      .claimed = roi->details.amount,
+    };
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TALER_ARL_adb->insert_wire_out_inconsistency (
+      TALER_ARL_adb->cls,
+      &woi);
+    GNUNET_free (np);
     if (qs < 0)
     {
       global_qs = qs;
@@ -1209,6 +1216,10 @@ wire_out_cb (
                             &TALER_ARL_USE_AB (total_bad_amount_out_plus),
                             &delta);
     }
+    GNUNET_assert (GNUNET_OK ==
+                   free_roi (NULL,
+                             &key,
+                             roi));
     return GNUNET_OK;
   }
 
@@ -1231,6 +1242,7 @@ wire_out_cb (
                    free_roi (NULL,
                              &key,
                              roi));
+    GNUNET_free (np);
     return ret;
   }
 }

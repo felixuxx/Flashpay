@@ -1283,103 +1283,90 @@ function test_15() {
 
 
 # Test where wired amount (wire out) is wrong
-# FIXME: test-16 not implemented
 function test_16() {
     echo "===========16: incorrect wire_out amount================="
-
-    # Check wire transfer lag reported (no aggregator!)
 
     # First, we need to run the aggregator so we even
     # have a wire_out to modify.
     pre_audit aggregator
     check_auditor_running
-#TODO FIX LIBEUFIN
-    #stop_libeufin
-    #OLD_AMOUNT=$(echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | psql "${DB}" -Aqt)
-    #NEW_AMOUNT="TESTKUDOS:50"
-    #echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" \
-    #    | psql "${DB}" -q
-    #launch_libeufin
-    #audit_only
-    #check_auditor_running
-#
-    #echo -n "Testing inconsistency detection... "
+    stop_libeufin
+    OLD_AMOUNT_VAL=$(echo "SELECT (amount).val FROM libeufin_bank.bank_account_transactions WHERE debtor_name='Exchange Company' AND direction='debit';" | psql "${DB}" -Aqt)
+    OLD_AMOUNT_FRAC=$(echo "SELECT (amount).frac FROM libeufin_bank.bank_account_transactions WHERE debtor_name='Exchange Company' AND direction='debit';" | psql "${DB}" -Aqt)
+    if [[ 0 = "$OLD_AMOUNT_FRAC" ]]
+    then
+        OLD_AMOUNT="TESTKUDOS:${OLD_AMOUNT_VAL}"
+    else
+        OLD_AMOUNT_CENTS=$(($OLD_AMOUNT_FRAC / 1000000))
+        if [[ 10 -gt "$OLD_AMOUNT_CENTS" ]]
+        then
+            OLD_AMOUNT="TESTKUDOS:${OLD_AMOUNT_VAL}.0${OLD_AMOUNT_CENTS}"
+        else
+            OLD_AMOUNT="TESTKUDOS:${OLD_AMOUNT_VAL}.${OLD_AMOUNT_CENTS}"
+        fi
+    fi
+    NEW_AMOUNT="TESTKUDOS:50"
+    echo "UPDATE libeufin_bank.bank_account_transactions SET amount=(50,0) WHERE debtor_name='Exchange Company';" \
+        | psql "${DB}" -q
+    launch_libeufin
+    await_bank
+
+    audit_only
+    check_auditor_running
+
+    echo -n "Testing wire-out-inconsistency-expected... "
     check_report \
         "wire-out-inconsistency" \
         "expected" \
         "$OLD_AMOUNT"
-
-    #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json)
-    #if [ "$AMOUNT" != "$OLD_AMOUNT" ]
-    #then
-    #    exit_fail "Reported justified amount wrong: $AMOUNT"
-    #fi
+    echo -n "Testing wire-out-inconsistency-claimed... "
     check_report \
         "wire-out-inconsistency" \
         "claimed" \
         "$NEW_AMOUNT"
-    #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json)
-    #if [ "$AMOUNT" != "$NEW_AMOUNT" ]
-    #then
-    #    exit_fail "Reported wired amount wrong: $AMOUNT"
-    #fi
-    #TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json)
-    #if [ "$TOTAL_AMOUNT" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT"
-    #fi
     echo -n "Testing bad_amount_minus balance reporting... "
-    check_not_balance \
+    check_balance \
         "total_bad_amount_out_minus" \
         "TESTKUDOS:0" \
         "reported total_bad_amount_minus wrong"
-
-    #TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json)
-    #if [ "$TOTAL_AMOUNT" = "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
-    #fi
-    #echo "PASS"
-
     echo -n "Testing bad_amount_plus balance reporting... "
     check_not_balance \
         "total_bad_amount_out_plus" \
         "TESTKUDOS:0" \
         "reported total_bad_amount_plus wrong"
 
-    #stop_libeufin
-    #echo "Second modification: wire nothing"
-    #NEW_AMOUNT="TESTKUDOS:0"
-    #echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" \
-    #    | psql "${DB}" -q
-    #launch_libeufin
-    #audit_only
-    #stop_libeufin
-    #echo -n "Testing inconsistency detection... "
-#
-    #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json)
-    #if [ "$AMOUNT" != "$OLD_AMOUNT" ]
-    #then
-    #    exit_fail "Reported justified amount wrong: $AMOUNT"
-    #fi
-    #AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json)
-    #if [ "$AMOUNT" != "$NEW_AMOUNT" ]
-    #then
-    #    exit_fail "Reported wired amount wrong: $AMOUNT"
-    #fi
-    #TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json)
-    #if [ "$TOTAL_AMOUNT" != "$OLD_AMOUNT" ]
-    #then
-    #    exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT (wanted $OLD_AMOUNT)"
-    #fi
-    #TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json)
-    #if [ "$TOTAL_AMOUNT" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
-    #fi
-    #echo "PASS"
-#
-    #post_audit
+    stop_libeufin
+    echo "Second modification: wire nothing"
+    NEW_AMOUNT="TESTKUDOS:0"
+    echo "UPDATE libeufin_bank.bank_account_transactions SET amount=(0,0) WHERE debtor_name='Exchange Company';" \
+        | psql "${DB}" -q
+    launch_libeufin
+    audit_only
+    stop_libeufin
+    bash
+
+    echo -n "Testing wire-out-inconsistency-expected... "
+    check_report \
+        "wire-out-inconsistency" \
+        "expected" \
+        "$OLD_AMOUNT"
+    echo -n "Testing wire-out-inconsistency-claimed... "
+    check_report \
+        "wire-out-inconsistency" \
+        "claimed" \
+        "$NEW_AMOUNT"
+    echo -n "Testing bad_amount_minus balance reporting... "
+    check_balance \
+        "total_bad_amount_out_minus" \
+        "$OLD_AMOUNT" \
+        "reported total_bad_amount_minus wrong"
+    echo -n "Testing bad_amount_plus balance reporting... "
+    check_balance \
+        "total_bad_amount_out_plus" \
+        "TESTKUDOS:0" \
+        "reported total_bad_amount_plus wrong"
+
+    post_audit
 
     # cannot easily undo aggregator, hence full reload
     full_reload
