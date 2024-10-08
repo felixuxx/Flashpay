@@ -1381,39 +1381,41 @@ function test_17() {
 
     # First, we need to run the aggregator so we even
     # have a wire_out to modify.
-#TODO FIX libeufin
-#    pre_audit aggregator
-#    stop_libeufin
-#    OLD_ID=1
-#    OLD_PREP=$(echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
-#    OLD_DATE=$(echo "SELECT \"preparationDate\" FROM PaymentInitiations WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
-#    # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
-#    # (due to rounding, if this machine is fast...)
-#    NOW_1HR=$(( $(date +%s) - 3600))
-#    echo "UPDATE PaymentInitiations SET \"preparationDate\"='$NOW_1HR' WHERE id='${OLD_PREP}';" \
-#        | psql "${DB}" -q
-#    launch_libeufin
-#    echo "DONE"
-#    audit_only
-#    post_audit
-#    check_auditor_running
-#
-#    echo -n "Testing inconsistency detection... "
-#    TABLE=$(jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json)
-#    if [ "$TABLE" != "wire_out" ]
-#    then
-#        exit_fail "Reported table wrong: $TABLE"
-#    fi
-#    DIAG=$(jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json)
-#    DIAG=$(echo "$DIAG" | awk '{print $1 " " $2 " " $3}')
-#    if [ "$DIAG" != "execution date mismatch" ]
-#    then
-#        exit_fail "Reported diagnostic wrong: $DIAG"
-#    fi
-#    echo "PASS"
-#
-#    # cannot easily undo aggregator, hence full reload
-#    full_reload
+    pre_audit aggregator
+    stop_libeufin
+
+    echo -n "Modifying timestamp of existing wire_out transaction... "
+    OLD_DATE=$(echo "SELECT transaction_date FROM libeufin_bank.bank_account_transactions WHERE debtor_name='Exchange Company' AND direction='debit';" | psql "${DB}" -Aqt)
+    # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
+    # (due to rounding, if this machine is fast...)
+    NOW_1HR=$(( $(date +%s) - 3600))
+
+    echo "UPDATE libeufin_bank.bank_account_transactions SET transaction_date='${NOW_1HR}000000' WHERE debtor_name='Exchange Company';" \
+        | psql "${DB}" -q
+    echo "DONE"
+
+    launch_libeufin
+    await_bank
+    audit_only
+    post_audit
+    check_auditor_running
+
+    echo -n "Testing inconsistency detection... "
+    check_report \
+        row-minor-inconsistencies \
+        "row_table" "wire_out"
+
+    echo -n "Testing inconsistency diagnostic... "
+    call_endpoint "row-minor-inconsistencies"
+    DIAG=$(jq -r .row_minor_inconsistencies[0].diagnostic < "${MY_TMP_DIR}/row-minor-inconsistencies.json" | awk '{print $1 " " $2 " " $3}')
+    if [ "$DIAG" != "execution date mismatch" ]
+    then
+        exit_fail "Reported diagnostic wrong: $DIAG"
+    fi
+    echo "PASS"
+
+    # cannot easily undo aggregator, hence full reload
+    full_reload
 }
 
 
