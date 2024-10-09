@@ -1,286 +1,226 @@
-﻿Allgemeine Geschäftsbedingungen der Taler Operations AG
-==========================================================
+﻿Terms of Service of Taler Operations AG
+============================================
 
-Diese Allgemeinen Geschäftsbedingungen (nachfolgend **AGB**) der Taler
-Operations AG regeln die Rechte und Pflichten von Nutzern und
-Zahlungsempfängern (Begünstigten) des angebotenen Zahlungsdiensts.
-Mit der Nutzung des Zahlungsdiensts akzeptieren die Nutzer automatisch diese AGB.
+These Terms of Service (hereinafter **ToS**) of Taler Operations AG regulate the rights and obligations of users and 
+recipients (beneficiaries) of the payment service offered. By using the payment service, users automatically accept these ToS.
 
 
-Dienstleistung; Geltungsbereich
---------------------------------
+Service; scope of application
+----------------------------------------------
 
-GNU Taler ist ein technisches System, das bargeldlose Zahlungen ermöglicht.
-Taler Operations AG (nachfolgend **TOPS**) mit Sitz in Biel/Bienne, Schweiz,
-bietet einen **Zahlungsdienst** auf Basis von GNU Taler für Nutzer in der
-Schweiz an. TOPS ist Mitglied im VQF, einer FINMA-akkreditierten
-Selbstregulierungsorganisation. TOPS wird daher nicht direkt von der FINMA
-beaufsichtigt, sondern betreibt eine Finanzdienstleistung nach Art. 6 Abs. 2
-BankV ohne gewerbsmässige Bankeneigenschaft (Nichtbank) und somit ohne
-Kundeneinlagensicherung.
+GNU Taler is a technical system that enables cashless payments. Taler Operations AG (hereinafter **TOPS**),
+headquartered in Biel/Bienne, Switzerland, provides a **payment system** based on GNU Taler for users in Switzerland.
+TOPS is a member of VQF, a FINMA-accredited self-regulating organisation. Consequently, TOPS will therefore not be
+directly supervised by the Swiss financial services regulation authority FINMA, but operates a financial service  in
+accordance with Art. 6 para. 2 Banking Ordinance without commercial banking status (non-bank) and therefore without
+customer deposit protection.
 
-**Nutzer** sind Eigentümer von durch TOPS signierten und in CHF denominierten
-Wertmarken (e-Geld), welche in Taler-Wallets in Eigenverantwortung der Nutzer
-gespeichert werden und mit denen die Nutzer bezahlen können.
+**Users** are the owners of tokens signed by TOPS, denominated in CHF (e-money), which they store in their Taler
+wallets under their own responsibility. These tokens can be used by the users to make payments.
 
-**Taler-Wallets** sind Produkte, die digitales Bargeld (e-Geld) nach dem GNU
-Taler-Protokoll verwalten, welches ein Zahlungsdienst emittiert und zur
-Zahlung an Begünstigte wieder einlöst. Die von TOPS emittierten Wertmarken
-(e-CHF) können als Zahlungsmittel im stationären Handel, an Automaten, online
-und in Apps bei autorisierten Händlern oder Dienstleistungsanbietern, die
-dieses Zahlungsmittel akzeptieren (nachfolgend **Begünstigte**), eingesetzt
-werden. Nutzer können auch Zahlungen an andere Nutzer durchführen oder
-das e-Geld auf ein Schweizer Bankkonto zurückübertragen.
+**Taler-Wallets** are products that, in accordance with the GNU Taler protocol, manage digital cash (e-money) , which a
+payment service issues and redeems for payments to beneficiaries. The tokens issued by TOPS (e-CHF) can be used as a
+means of payment in bricks-and-mortar shops, at vending machines, in online shops, and in apps at authorized merchants
+or service providers that accept this means of payment (hereinafter **beneficiaries**). Users can also make payments to
+other users or transfer the e-money back to a Swiss bank account.
 
 
-Technische Voraussetzungen
---------------------------
-
-Um die angebotenen Dienste wahrnehmen zu können, müssen Nutzer ein Taler-Wallet
-(elektronische Geldbörse) als Taler-App auf ihrem Smartphone oder als
-Erweiterung in einem Browser auf dem PC installieren. Die Nutzer sind frei in
-der Wahl ihrer Taler-Wallet-Anwendung. Begünstigte sind ebenfalls frei in der
-Wahl ihrer Taler-Wallet-Anwendung bzw. ihres Taler-Backends. Verschiedene
-Lösungen werden von diversen Anbietern bereitgestellt. TOPS macht hier keine
-Einschränkungen und übernimmt keine Gewährleistung für die gewählte Lösung. Die
-Nutzer sind eigenverantwortlich für die Sicherheit ihrer Taler-Wallets bzw.
-Taler-Backends und der darin gespeicherten Wertmarken bzw. Transaktionsdaten.
-
-Das Taler-Wallet wird von den Nutzern über die hierfür vorgesehenen
-Mechanismen aufgeladen. Zum Aufbuchen der gewünschten Geldmenge wählt man im
-Taler-Wallet den von TOPS betriebenen Zahlungsdienst, an den man diese
-Geldmenge vom Girokonto überweist und von dem schliesslich das Taler-Wallet die
-elektronischen Repräsentanten der Geldmenge abhebt. TOPS kann weitere
-Aufladeoptionen einführen oder auch bestehende Mechanismen nicht mehr anbieten.
-Allfällige mit der Aufladung verbundene Transaktionsgebühren oder sonstige Gebühren
-sind durch die Nutzer zu tragen. Das Guthaben der Nutzer wird nicht verzinst.
-Die Nutzer nehmen zur Kenntnis, dass das Guthaben nicht von der Einlagensicherung gedeckt ist.
-
-Das Entladen des Taler-Wallet muss auf ein Schweizer Bankkonto
-erfolgen. Internationale Zahlungen sind nicht erlaubt. Die Nutzer können mit
-dem im Smartphone oder Webbrowser installierten Taler-Wallet innerhalb der
-geltenden Limiten bei natürlichen und juristischen Personen bezahlen, die
-diese Bezahloption akzeptieren und ein Schweizer Bankkonto zum Geldempfang
-führen (z.B. Ladengeschäfte, Webshops, Apps und sonstige Begünstigte). Bei
-einer Bezahlung wird der entsprechende Betrag direkt vom Taler-Wallet
-abgebucht. Es muss im Taler-Wallet mindestens der Transaktionsbetrag verfügbar
-sein. Die Nutzer anerkennen sämtliche getätigten Zahlungen, welche mit dem
-Taler-Wallet von ihrem digitalen Endgerät erfolgten, selbst wenn diese
-Zahlungen ohne ihre Zustimmung erfolgt sind. Wer ein Guthaben im Taler-Wallet
-einlöst, hat den Wert des Guthabens zur Zahlung verwendet.
-
-Der Verarbeitungsprozess für das Erhöhen und Verringern des Guthabens im
-Taler-Wallet kann je nach Mechanismus mehrere Tage in Anspruch nehmen.
-
-
-Preise, Gebühren und Limiten
-----------------------------
-
-TOPS kann die Gebühren jederzeit ändern. Änderungen haben nur Wirkung auf nach
-der Änderung bezogene Wertmarken. Mit dem GNU Taler-Protokoll konforme Taler-Wallets 
-informieren Nutzer über Gebührenänderungen vor dem Bezug von neuen Wertmarken. 
-Der Bezug von Wertmarken der TOPS nach Änderung der Gebühren gilt als Zustimmung zu den
-geänderten Bedingungen.
-
-Es bestehen Limiten von CHF 3.000 pro Monat und CHF 15.000 pro Kalenderjahr
-für das Abheben von e-Geld von einem Girokonto bzw. für den Empfang von
-Peer-to-Peer-Zahlungen zwischen Taler-Wallets mit bestätigter Schweizer
-Mobilfunknummer.
-
-
-Allgemeine Mitwirkungspflichten
--------------------------------
-
-Zur Nutzung des Zahlungsdiensts sind Nutzer und Begünstigte verpflichtet, TOPS
-bei der Erfüllung regulatorischer und gesetzlicher Vorgaben zu unterstützen.
-TOPS hält sich an alle geltenden Gesetze zur Bekämpfung der Geldwäsche (AML) 
-und zur Feststellung wirtschaftlich Berechtigter. 
-TOPS stellt sicher, dass alle privaten Daten im Einklang mit den Schweizerischen 
-Datenschutzbestimmungen, insbesondere dem Schweizer Datenschutzgesetz (DSG) 
-und der Verordnung über den Datenschutz (DSV), behandelt werden.
-Insbesondere kann TOPS über die Identität von wirtschaftlich Berechtigten
-Auskunft verlangen. TOPS hat das Recht und ggf. die gesetzliche Pflicht,
-Nutzer und Begünstigte von der Nutzung des Zahlungsdiensts auszuschliessen,
-sollten diese die erforderlichen Auskünfte verweigern oder unwahre Angaben
-machen.
-
-Zur Nutzung des Zahlungsdiensts gehen *Begünstigte* eine Geschäftsbeziehung
-mit TOPS ein und können ggf. verpflichtet sein, sich bei TOPS zu registrieren
-und die dabei verlangten Informationen zur Verfügung zu stellen. 
-Die Begünstigten können aufgefordert werden, Dokumente zur ihrer Identitätsprüfung vorzulegen. 
-Für KYC-Anfragen haben sie 30 Tage Zeit, auf diese zu antworten. 
-TOPS behält sich vor, zur Erfüllung regulatorischer Vorgaben jederzeit weitere Informationen zu verlangen.
-
-Es erfolgt keine Kontenanlage der *Nutzer* bei TOPS. Erfasst werden jedoch
-die IBAN-Konten von Nutzern, die CHF an TOPS überweisen, um Wertmarken zu
-kaufen. Die Nutzer brauchen zum Empfang von Peer-to-Peer-Zahlungen mindestens
-eine Schweizer Mobiltelefonnummer zum Empfang von SMS zur Identifizierung.
-
-
-Sorgfaltspflichten und andere Pflichten der Nutzer
----------------------------------------------------------------------
-
-1.
-Beim Umgang mit dem Zahlungsdienst sind insbesondere folgende Sorgfaltspflichten von Nutzern einzuhalten:
-
-* Das Smartphone, PC, Notebook etc. ist vor unbefugter Benutzung oder Manipulation zu schützen (z.B. mittels Geräte- bzw. Displaysperre).
-
-* Im Schadenfall haben die Nutzer nach bestem Wissen zur Aufklärung des Falls und zur Schadensminderung beizutragen. Bei strafbaren Handlungen ist Anzeige bei der Polizei zu erstatten.
-
-* Vor jeder Ausführung einer Zahlung sind die Angaben zum Zahlungsempfänger zu überprüfen, um Fehltransaktionen zu verhindern.
-
-* Die Nutzer sind für die Nutzung verantwortlich und tragen sämtliche Folgen, die sich aus der Verwendung ergeben.
-
-* Insbesondere werden Handlungen, die eine Drittperson unberechtigt mit dem Taler-Wallet vornimmt, dem Eigentümer des Wallet zugerechnet.
-
-2. Die Nutzer müssen sich darüber im klaren sein, **elektronisches Geld wie Bargeld zu behandeln** und ebenso zu
-sichern, d.h. ein Backup der Wallet-Daten anzulegen.
-Die Nutzer der Taler-App sind daher verpflichtet, den Zugang zum digitalen Endgerät zu sichern und vor unbefugtem Zugriff zu bewahren.
-Sie müssen die Wallet-Daten mit einer Sicherungskopie auf einem anderen Gerät speichern.
-Die Exportfunktion des Wallet hilft dabei, ein Backup der Wallet-Daten anzulegen und zu speichern.
-Ein verlorenes Nutzergerät mit einem Wallet darauf ohne Backup auf einem anderen Gerät oder Datenträger bedeutet einen Totalverlust des Guthabens.
-
-3. Es ist dafür zu sorgen, dass sich das Endgerät mit einem darauf installierten Taler-Wallet **innerhalb eines Jahres**
-nach der letzten Transaktion **mit dem Zahlungsdienst über das Internet verbindet**, ansonsten kann das Guthaben im
-Wallet verloren werden. Ein Erneuern des Guthabens erfolgt regulär einen Monat vor dem Ende der Gültigkeit des
-elektronischen Bargelds, die zum Abhebezeitpunkt ca. ein Jahr beträgt.
-
-4. Die Kommunikation von TOPS zu Nutzern erfolgt grundsätzlich über Benachrichtigungen im Protokoll von GNU Taler.
-Die Nutzer sind dafür verantwortlich, auf entsprechende Benachrichtigungen zu reagieren.
-TOPS hat das Recht, Transaktionen solange nicht auszuführen, bis die Nutzer auf diesem Weg angeforderte rechtlich notwendige Daten bereitstellen.
-
-
-Haftung
--------
-
-TOPS haftet nicht für entstandene Verluste oder Schäden der Nutzer aufgrund
-der Verwendung von GNU Taler, insbesondere nicht für Verluste oder Schäden
-
-* aufgrund von Übermittlungsfehlern, technischen Störungen oder Defekten, Ausfällen und unberechtigten Zugriffen oder Eingriffen auf das digitale Endgerät,
-
-* die ganz oder teilweise auf einen Verstoss der Nutzer gegen diese AGB oder anwendbare Gesetze zurückzuführen sind,
-
-* aufgrund einer Störung oder eines Fehlers der Software oder der verwendeten Hardware,
-
-* aufgrund von Störungen, Unterbrechungen (einschliesslich Systemwartungsarbeiten) oder Überlastungen der relevanten Informatiksysteme bzw. Netze,
-
-* aufgrund von Zahlungen, die nicht oder verzögert verarbeitet werden,
-
-* die auf Handlungen oder Unterlassungen von Dritten (inkl. Hilfspersonen der TOPS) zurückzuführen sind,
-
-es sei denn, diese Verluste oder Schäden sind auf grobe Fahrlässigkeit oder
-vorsätzliches Verschulden von TOPS zurückzuführen. TOPS ersetzt Sach- und
-Vermögensschäden je Schadenereignis bis höchstens CHF 1.000. Die Haftung für
-Folgeschäden, entgangenen Gewinn oder Datenverluste ist - soweit gesetzlich
-zulässig - in jedem Fall ausgeschlossen.
-
-
-Nutzung; Missbräuche
---------------------
-
-Nutzer halten TOPS schadlos für Schäden oder Verluste, die TOPS aufgrund der
-Nichteinhaltung dieser AGB oder gesetzlicher Vorgaben, aufgrund fehlerhafter
-oder unvollständiger Angaben der Nutzer oder der fehlerhaften Ausführung von
-Anweisungen entstehen.
-
-Weicht die Nutzung erheblich vom üblichen Gebrauch ab oder bestehen Anzeichen
-eines rechts- oder vertragswidrigen Verhaltens, kann TOPS die Nutzer zur
-rechts- und vertragskonformen Nutzung anhalten, die Leistungserbringung ohne
-Vorankündigung entschädigungslos ändern, einschränken oder einstellen, die
-Geschäftsbeziehung fristlos und entschädigungslos auflösen und gegebenenfalls
-Schadenersatz sowie die Freistellung von Ansprüchen Dritter verlangen. TOPS
-behält sich vor, bei Verletzung von Regeln oder Missbrauch Zahlungen an
-Begünstigte zurückzuhalten.
-
-
-Vorbehalte zu Änderungen an diesen AGB
+Technical requirements
 --------------------------------------
 
-TOPS kann die AGB jederzeit ändern. Änderungen haben nur Wirkung auf nach der
-Änderung bezogene Wertmarken. Mit dem GNU Taler-Protokoll konforme Taler-Wallets 
-informieren Nutzer über Änderungen vor dem Bezug von neuen Wertmarken. 
-Der Bezug von Wertmarken der TOPS nach Änderung der AGB gilt als Zustimmung 
-zu den geänderten Bedingungen.
+In order to use the services offered, users must have a Taler wallet (an electronic wallet) as a Taler application on
+their smartphone or as an extension in a browser on the PC. Users are free to choose  their Taler wallet application.
+Beneficiaries are also free to choose their Taler wallet application or Taler backend. Various solutions are provided
+by various providers. TOPS does not impose any restrictions and does not provide any guarantee for the chosen solution.
+The users are responsible for the security of their Taler wallets or Taler backends and the tokens or transaction data
+stored in them.
 
-Allfällige Gesetzesbestimmungen, die den Betrieb und die Nutzung von digitalen
-Endgeräten, Zahlungsdiensten, des Internets und sonstiger Infrastruktur
-regeln, bleiben vorbehalten und gelten ab ihrer Inkraftsetzung auch für die
-TOPS-Dienstleistungen.
+The Taler wallet is topped up by users through mechanisms foreseen for the purpose of withdrawals. In order to let the
+wallet withdraw the desired amount of money, users select from within the Taler wallet the payment service provider
+operated by TOPS and wire this amount of money to the bank account of the payment service provider. TOPS may introduce
+further withdrawal options or cease to offer existing mechanisms. Any transaction fees or other fees associated with
+wiring or with withdrawals shall be borne by the users. Users’ funds do not earn interest. 
+Users acknowledge that their credit balance is not covered by customer deposit protection.
 
-TOPS behält sich vor, das Angebot von Dienstleistungen jederzeit und ohne
-vorherige Ankündigung zu ändern, zu beschränken oder vollständig einzustellen,
-insbesondere aufgrund rechtlicher Anforderungen, technischer Probleme, zur
-Verhinderung von Missbräuchen, auf behördliche Anordnung oder aus
-Sicherheitsgründen.
+To unload a Taler wallet, users must transfer their funds to a Swiss bank account. International payments
+are not permitted. With the Taler wallet installed in the smartphone or web browser, users can make payments 
+(within applicable limits) to natural persons and legal entities that accept this payment method and have a 
+Swiss bank account to receive the funds (e.g., stores, web shops, apps, and other beneficiaries). 
+When users make payments, the corresponding amount of e-money is debited directly from the Taler wallet. 
+At least the transaction amount must be available in the Taler wallet's balance. Users consent to all payments made 
+with the Taler wallet from their digital end device, even if these payments were made without their agreement. 
+Anyone who redeems a token in the Taler wallet has used its represented value of the credit for payment.
 
-TOPS kann die Vertragsbeziehungen (einschliesslich eines Guthabens) jederzeit
-und ohne vorherige Information auf eine andere Gesellschaft übertragen.
-
-
-Geheimhaltung und Datenschutz
------------------------------
-
-Personenbezogene Daten werden von TOPS nur im Rahmen der Erfüllung
-gesetzlicher Verpflichtungen erhoben, verarbeitet, aufbewahrt oder
-weitergegeben. Beim Bezahlvorgang mit e-Geld werden keine Daten zur Identität
-der Nutzer erfasst.
-
-TOPS stellt Nutzern auf Anfrage technischen Support zur Verfügung. An der
-Erbringung dieses Supports können Dritte beteiligt sein. Diese erhalten
-hierfür Zugriff auf notwendige personenbezogene Daten zur Kommunikation mit
-den Nutzern.
-
-TOPS verpflichtet sich hinsichtlich der Beschaffung, Bearbeitung und Nutzung
-personenbezogener Daten von Nutzern die Bestimmungen der schweizerischen
-Datenschutzgesetzgebung, insbesondere des Bundesgesetzes über den Datenschutz
-und der Verordnung über den Datenschutz, einzuhalten.
-
-Alle Systemdaten werden primär in der Schweiz gehostet.
-
-KYC-Prozesse werden ggf. durch Dienstleister gesteuert. Diese sind ebenfalls
-verpflichtet, die Daten nach Recht und Gesetz der Schweiz zu sichern. Die
-eigentlichen Daten des Kernsystems werden auf verschlüsselten Festplatten
-redundant (d.h. mit Backup) gespeichert und sind nur autorisiertem Personal
-zugänglich. Autorisiertes Personal wird von TOPS einer Sicherheitsprüfung
-unterzogen. Das gesamte Design des Zahlungsdiensts GNU Taler wurde strikt nach
-den Grundsätzen "Privacy-by-Design" und "Privacy-by-Default" umgesetzt.
-
-Weitere Informationen zu den Datenverarbeitungen finden sich in der
-Datenschutzerklärung auf der Webseite der TOPS (www.taler-ops.ch).
+The procedure for increasing and decreasing the credit balance in the Taler wallet can take several days, depending on
+the mechanism.
 
 
-Dauer und Kündigung
--------------------
-
-Die Geschäftsbeziehung zwischen TOPS und Begünstigten (Händler, Betriebe,
-Verkäufer und sonstige regelmässige Empfänger von Überweisungen des
-Zahlungsdiensts an die begünstigten IBAN-Konten) wird auf eine unbestimmte
-Dauer abgeschlossen. TOPS kann die Geschäftsbeziehung mit den Begünstigten
-jederzeit - insbesondere in Missbrauchsfällen mit sofortiger Wirkung -
-kündigen. Eine schriftliche Kündigung durch TOPS erfolgt an eine der zuletzt
-bekanntgegebenen Adressen der Geschäftspartner (z.B. per E-Mail oder
-Brief). Sollten für über 12 Monate keine Transaktionen an die Begünstigen
-erfolgen, gilt die Geschäftsbeziehung automatisch als beendet.
-
-Die Nutzer von Taler-Wallets können das Guthaben in diesen jederzeit an
-Bankkonten in der Schweiz zurücküberweisen lassen und so das Guthaben
-saldieren. Bei einer
-Betriebsaufgabe des Zahlungsdiensts der TOPS werden die Nutzer über die
-bevorstehende Einstellung des Zahlungsdiensts durch das Taler-Protokoll
-informiert und von den Taler-Wallets aufgefordert, das bestehende Guthaben zu
-saldieren. Nutzer, die diese Saldierung unterlassen, verlieren nach 3 Monaten
-den Anspruch auf das danach noch bestehende Guthaben, welches in das Eigentum
-der TOPS übergeht.
-
-
-Anwendbares Recht und Gerichtsstand
+Prices, fees and limits
 -----------------------------------
 
-Soweit gesetzlich zulässig unterstehen alle Rechtsbeziehungen zwischen TOPS
-und Nutzern ausschliesslich dem materiellen schweizerischen Recht, unter
-Ausschluss von Kollisionsrecht und unter Ausschluss von Staatsverträgen.
+TOPS may change the fees at any time. Fee changes only apply to tokens withdrawn after the change takes effect. 
+Taler wallets compliant to the GNU Taler protocol will inform users about fee changes before they withdraw new tokens. 
+Withdrawing tokens issued by TOPS after a fee change is considered the user’s consent to the updated conditions.
 
-Unter dem Vorbehalt von entgegenstehenden zwingenden gesetzlichen
-Bestimmungen ist Biel ausschliesslicher Gerichtsstand und Erfüllungsort. Für
-Nutzer und Begünstigte mit einem Wohnsitz ausserhalb der Schweiz ist Biel
-sodann auch Betreibungsort.
+There are limits of CHF 3,000 per month and CHF 15,000 per calendar year for withdrawing e-money from a bank account
+or receiving peer-to-peer payments between Taler wallets with a confirmed Swiss mobile number.
+
+
+Legal and regulatory requirements
+-------------------------------------------------------
+
+In order to use the payment service, users and beneficiaries are obliged to support TOPS in fulfilling legal and regulatory requirements. 
+TOPS complies with all applicable anti-money laundering (AML) and know-your-customer (KYC) regulations. 
+TOPS will ensure that all personal data is processed in accordance with Swiss privacy laws, including the 
+new Swiss Data Protection Act (nFADP) and the Ordinance on Data Protection (DPO). 
+TOPS has the right and, where applicable, the legal obligation to exclude users and beneficiaries from using the payment service, 
+if they refuse to provide the required information or provide false information.
+
+In order to use the payment service, *beneficiaries* enter into a business relationship with TOPS and, where applicable, 
+may be required to register with TOPS and provide the requested information for this purpose. 
+Beneficiaries may be required to provide identity verification documents. 
+They will be notified of any KYC information requests and will have 30 days to respond. 
+TOPS reserves the right to request further information at any time to fulfill regulatory compliance.
+
+No accounts are created for *users* at TOPS. However, the bank accounts of users who transfer CHF to TOPS in order to
+purchase tokens are recorded. To accept peer-to-peer payments, users must have a Swiss cell phone number to receive 
+SMS for identification purposes.
+
+
+Duty of care and other obligations of users
+--------------------------------------------------------------------
+
+1.
+Users must comply with the following duties of care when using the payment service:
+
+* The smartphone, PC, notebook, etc. must be protected against unauthorized use or manipulation (e.g. by means of a device lock or display lock).
+
+* In the event of damage, users must contribute to the best of their knowledge to help clarify the case and minimizing the damage. Criminal acts must be reported to the police.
+
+* Before each payment is made, the details of the payee must be double-checked in order to prevent incorrect transactions.
+
+* Users are responsible for their use of the system and bear all consequences arising from such use.
+
+* In particular, any unauthorized use of the Taler wallet by a third party shall be attributed to the owner of the wallet.
+
+2. Users must be aware of the need to **treat electronic money like cash** and to secure it in the same way, i.e. to create a backup of the wallet data.
+The users of the Taler app are therefore obliged to secure access to the digital end device and protect it from unauthorized access.
+They must save the wallet's data with a backup copy on another device. The wallet's export function helps to create and save a backup of the wallet data.
+A lost user device with a wallet on it without a backup on another device or data carrier means a total loss of the credit.
+
+3. It must be ensured that the end device with a Taler wallet installed on it connects to the payment service via the Internet **within one year**
+after the last transaction, otherwise the credit balance in the wallet may be lost.
+The credit balance is usually renewed one month before the end of the validity of the electronic cash,
+which is approximately one year after its withdrawal.
+
+4. Communication from TOPS to users is generally carried out via notifications in the GNU Taler protocol.
+Users are responsible for responding to such notifications.
+TOPS has the right not to execute transactions until the users provide legally required data.
+
+
+Liability
+------------
+
+TOPS is not liable for any loss or damage incurred by users as a result of
+the use of GNU Taler, in particular not for loss or damage
+
+* due to transmission errors, technical malfunctions or defects, failures and unauthorized access to or interference with the digital end device,
+
+* which are due in whole or in part to a breach by the user of these ToS or applicable laws,
+
+* due to a malfunction or error in the software or hardware used,
+
+* due to malfunctions, interruptions (including system maintenance work) or overloads of the relevant IT systems or networks,
+
+* due to payments that are not processed or are delayed,
+
+* due to acts or omissions of third parties (including auxiliary persons of TOPS),
+
+unless these losses or damages are attributable to gross negligence or willful misconduct on the part of TOPS.
+Liability caps are set at CHF 1,000 for certain loss events.
+Liability for consequential damages, loss of profit or loss of data is - to the extent permitted by law - excluded in any case.
+
+
+Use; misuse
+--------------------
+
+Users shall indemnify TOPS for any damages or losses incurred by TOPS due to non-compliance with these ToS
+or legal requirements, due to incorrect or incomplete information provided by users or the incorrect execution of
+instructions.
+
+If the use deviates significantly from normal use or if there are signs of illegal or non-contractual behavior, TOPS
+may require users to act in accordance with the law and the contract, to suspend, restrict or discontinue the provision
+of services without prior notice and without compensation, terminate the business relationship without prior notice
+and without compensation and, if necessary, demand compensation for damages and indemnification from third-party claims.
+TOPS reserves the right to withhold payments to beneficiaries in the event of a breach of rules or abuse.
+
+
+Reservations regarding changes to these ToS
+-------------------------------------------------------------------------
+
+TOPS may amend the ToS at any time. Amendments only have effect on tokens withdrawn after the change.
+Taler wallets compliant to the GNU Taler protocol inform users about changes before new tokens are withdrawn. The withdrawal of tokens
+issued by TOPS after the ToS have been amended shall be deemed to constitute acceptance of the amended conditions.
+
+Any legal provisions governing the operation and use of digital devices, payment services, the Internet and other
+infrastructure remain reserved and shall also apply to the TOPS services.
+
+TOPS reserves the right to change, restrict, modify or completely discontinue its range of services at any time
+and without prior notice, in particular due to legal requirements, technical problems, prevention of misuse,
+by order of the authorities or for security reasons.
+
+TOPS may transfer the contractual relationship (including a credit balance) to another company
+at any time and without prior notification.
+
+
+Confidentiality and data protection
+-------------------------------------------------------
+
+Personal data is only collected, processed, stored or used by TOPS within the scope of legal obligations.
+When paying with e-money, no data on the identity of the user is recorded.
+
+TOPS provides users with technical support on request. In the provision of this support third parties may be involved.
+They will receive access to the personal data required for communication with users.
+
+TOPS undertakes to comply with the provisions of Swiss law with regard to the personal data of users, in particular
+the Federal Act on Data Protection and the Ordinance on Data Protection.
+
+All system data is primarily hosted in Switzerland.
+
+KYC processes may be controlled by service providers. These are also obliged to secure the data in accordance with Swiss law.
+The core system’s data is stored on encrypted hard disks with redundancy (including backups) and is accessible only to authorized personnel. 
+Authorized personnel are subjected to security checks by TOPS.
+The entire design of the GNU Taler payment service has been strictly developed according to the principles of
+“Privacy-by-Design” and “Privacy-by-Default”.
+
+Further information on data processing can be found in the privacy policy on the TOPS website (www.taler-ops.ch).
+
+
+Duration and termination
+----------------------------------------
+
+The business relationship between TOPS and beneficiaries (merchants, businesses, and other regular recipients
+of transfers from the payment service to the beneficiary IBAN accounts) is concluded for an indefinite period.
+TOPS may terminate the business relationship with the beneficiaries at any time - in particular in cases of abuse
+with immediate effect.
+Written notice of termination by TOPS shall be sent to one of the last addresses provided by the business partners
+(e.g. by e-mail or letter).
+If no transactions are made to the beneficiaries for more than 12 months, the business relationship shall be automatically 
+deemed terminated.
+
+Users of Taler wallets can return the existing credit in these wallets to bank accounts in Switzerland at any time, 
+thereby balancing the credit.
+If the TOPS payment service is discontinued, users will be notified through the GNU Taler protocol and prompted 
+by their Taler wallets to balance any remaining credit.
+Users who fail to balance the credit within 3 months will lose their entitlement to the remaining amount, 
+which will become the property of TOPS.
+
+
+Applicable law and place of jurisdiction
+---------------------------------------------------------------
+
+To the extent permitted by law, all legal relationships between TOPS and users shall be governed exclusively by
+substantive Swiss law, excluding conflict of laws and international treaties.
+
+Subject to any mandatory statutory provisions to the contrary, Biel is the exclusive place of jurisdiction and the place of performance.
+For users and beneficiaries domiciled outside Switzerland, Biel/Bienne is also the place of debt collection.
