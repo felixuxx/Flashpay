@@ -45,6 +45,8 @@ bin_SCRIPTS = \
 
 EXTRA_DIST = \
   locale/de/LC_MESSAGES/exchange-tos-v0.po \
+  locale/de/LC_MESSAGES/exchange-tos-tops-v0.po \
+  locale/fr/LC_MESSAGES/exchange-tos-tops-v0.po \
   $(bin_SCRIPTS) \
   gana-generate.sh \
   gana/gnu-taler-error-codes/registry.rec \
