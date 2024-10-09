@@ -18,11 +18,14 @@ msgstr ""
 
 #: ../../../../../../tmp/taler-terms-HcTwZN/exchange-tos-tops-v0.rst:2
 msgid "Terms of Service of Taler Operations AG"
-msgstr "Geschaeftbedingungen der Taler Operations AG"
+msgstr "Allgemeine Geschäftsbedingungen der Taler Operations AG"
 
 #: ../../../../../../tmp/taler-terms-HcTwZN/exchange-tos-tops-v0.rst:4
 msgid "These Terms of Service (hereinafter **ToS**) of Taler Operations AG regulate the rights and obligations of users and recipients (beneficiaries) of the payment service offered. By using the payment service, users automatically accept these ToS."
-msgstr ""
+msgstr "Diese Allgemeinen Geschäftsbedingungen (nachfolgend **AGB**) der Taler
+Operations AG regeln die Rechte und Pflichten von Nutzern und
+Zahlungsempfängern (Begünstigten) des angebotenen Zahlungsdiensts.
+Mit der Nutzung des Zahlungsdiensts akzeptieren die Nutzer automatisch diese AGB."
 
 #: ../../../../../../tmp/taler-terms-HcTwZN/exchange-tos-tops-v0.rst:9
 msgid "Service; scope of application"
