@@ -3709,6 +3709,12 @@ TALER_KYCLOGIC_run_aml_program2 (
       GNUNET_JSON_pack_array_incref ("kyc_history",
                                      (json_t *) kyc_history)
       );
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running AML program %s\n",
+                prog->command);
+    json_dumpf (input,
+                stderr,
+                JSON_INDENT (2));
     aprh->proc = TALER_JSON_external_conversion_start (
       input,
       &handle_aml_output,

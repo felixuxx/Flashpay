@@ -345,6 +345,9 @@ TALER_JSON_external_conversion_start (const json_t *input,
                 GNUNET_DISK_pipe_close (pipe_stdout));
   ec->write_buf = json_dumps (input, JSON_COMPACT);
   ec->write_size = strlen (ec->write_buf);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Passing %llu bytes to JSON conversion tool\n",
+              (unsigned long long) ec->write_size);
   ec->read_task
     = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
                                       ec->chld_stdout,

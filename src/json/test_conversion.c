@@ -65,6 +65,7 @@ conv_cb (void *cls,
     GNUNET_JSON_pack_string ("foo",
                              "arg")
     );
+  GNUNET_assert (NULL != expect);
   if (1 == json_equal (expect,
                        result))
   {
@@ -119,6 +120,7 @@ run (void *cls)
     GNUNET_JSON_pack_string ("key",
                              "foo")
     );
+  GNUNET_assert (NULL != input);
   ec = TALER_JSON_external_conversion_start (input,
                                              &conv_cb,
                                              NULL,
@@ -140,7 +142,7 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-conversion",
-                    "WARNING",
+                    "INFO",
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
   global_ret = 1;
