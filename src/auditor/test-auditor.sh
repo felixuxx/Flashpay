@@ -358,7 +358,7 @@ function run_audit () {
             -L DEBUG \
             -c "${CONF}" \
             drain TESTKUDOS:0.1 \
-            exchange-account-1 payto://iban/DE360679?receiver-name=Exchange+Drain \
+            exchange-account-1 payto://iban/DE474361?receiver-name=Merchant43 \
             upload \
             2> "${MY_TMP_DIR}/taler-exchange-offline-drain.log" \
             || exit_fail "offline draining failed"
@@ -1991,7 +1991,6 @@ function test_32() {
 }
 
 
-
 # FIXME: test-33 not implemented
 function test_33() {
 
@@ -2002,149 +2001,185 @@ function test_33() {
     echo "Checking output"
     # if an emergency was detected, that is a bug and we should fail
     echo -n "Test for emergencies... "
-    call_endpoint "emergency"
-    jq -e .emergency[0] < "${MY_TMP_DIR}/emergency.json" > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+    check_no_report "emergency"
     echo -n "Test for deposit confirmation detection... "
-    call_endpoint "deposit-confirmation"
-    jq -e .deposit_confirmation[0] < "${MY_TMP_DIR}/deposit-confirmation.json" > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
+    check_no_report "deposit-confirmation"
     echo -n "Test for emergencies by count... "
-    call_endpoint "emergency-by-count"
-    jq -e .emergency_by_count[0] < "${MY_TMP_DIR}/emergency-by-count.json" > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+    check_no_report "emergency-by-count"
 
-    echo -n "Test for wire inconsistencies... "
-    #TODO: fix wire
+    echo -n "Testing bad sig loss balance... "
+    check_balance \
+        "aggregation_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from aggregation, got unexpected loss"
 
-    #jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-    #jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-    #jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
-    #jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
-    #jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-    #jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-    #jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
-    #jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+    echo -n "Testing coin irregular loss balances... "
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from coins"
 
+    echo -n "Testing reserves bad sig loss balances... "
+    check_balance \
+        "reserves_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from reserves"
 
-    # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
-    # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
+    echo -n "Test for aggregation wire out delta plus... "
+    check_balance \
+        "aggregation_total_wire_out_delta_plus" \
+        "TESTKUDOS:0" \
+        "Expected total wire out delta plus wrong"
 
-    echo "PASS"
+    echo -n "Test for aggregation wire out delta minus... "
+    check_balance \
+        "aggregation_total_wire_out_delta_minus" \
+        "TESTKUDOS:0" \
+        "Expected total wire out delta minus wrong"
 
-    echo "Testing for aggregation bad sig loss"
-    call_endpoint "balances" "aggregation_total_bad_sig_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_bad_sig_loss.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
-    fi
-    call_endpoint "balances" "coin_irregular_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coin_irregular_loss.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
-    fi
-    call_endpoint "balances" "reserves_total_bad_sig_loss"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_bad_sig_loss.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
-    fi
+    echo -n "Test for bad incoming delta plus... "
+    check_balance \
+        "total_bad_amount_in_plus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta plus wrong"
 
-    echo -n "Test for wire amounts... "
-    #WIRED=$(jq -r .total_wire_in_delta_plus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_in_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-    #fi
-    #WIRED=$(jq -r .total_misattribution_in < test-audit-wire.json")
-    #if [ "$WIRED" != "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected total misattribution in wrong, got $WIRED"
-    #fi
-    echo "PASS"
+    echo -n "Test for total misattribution in ... "
+    check_balance \
+        "total_misattribution_in" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta plus wrong"
 
-    echo -n "Checking for unexpected arithmetic differences... "
-    call_endpoint "balances" "aggregation_total_arithmetic_delta_plus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_arithmetic_delta_plus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
-    fi
-    call_endpoint "balances" "aggregation_total_arithmetic_delta_minus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_arithmetic_delta_minus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
-    fi
-    call_endpoint "balances" "coins_total_arithmetic_delta_plus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coins_total_arithmetic_delta_plus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
-    fi
-    call_endpoint "balances" "coins_total_arithmetic_delta_minus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/coins_total_arithmetic_delta_minus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
-    fi
-    call_endpoint "balances" "reserves_total_arithmetic_delta_plus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_arithmetic_delta_plus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
-    fi
-    call_endpoint "balances" "reserves_total_arithmetic_delta_minus"
-    LOSS=$(jq -r .balances[0].balance_value < "${MY_TMP_DIR}/reserves_total_arithmetic_delta_minus.json")
-    if [ "$LOSS" != "TESTKUDOS:0" ]
-    then
-        exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
-    fi
+    echo -n "Test for bad incoming delta minus... "
+    check_balance \
+        "total_bad_amount_in_minus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta minus wrong"
 
-    #DRAINED=$(jq -r .total_drained < test-audit-wire.json")
-    #if [ "$DRAINED" != "TESTKUDOS:0.1" ]
-    #then
-    #    exit_fail "Wrong amount drained, got unexpected drain of $DRAINED"
-    #fi
+    echo -n "Test for bad outgoing delta plus... "
+    check_balance \
+        "total_bad_amount_out_plus" \
+        "TESTKUDOS:0" \
+        "Expected total wire out delta plus wrong"
 
-#TODO: fix AAI
-    call_endpoint "amount-arithmetic-inconsistency"
-#    jq -e .amount_arithmetic_inconsistency[0] \
-#       < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json" \
-#       > /dev/null \
-#        && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
-#    jq -e .amount_arithmetic_inconsistency[0] \
-#       < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json" \
-#       > /dev/null \
-#        && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
-#    jq -e .amount_arithmetic_inconsistency[0] \
-#       < "${MY_TMP_DIR}/amount-arithmetic-inconsistency.json" \
-#       > /dev/null \
-#        && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
-    echo "PASS"
+    echo -n "Test for bad outgoing delta minus... "
+    check_balance \
+        "total_bad_amount_out_minus" \
+        "TESTKUDOS:0" \
+        "Expected total wire in delta minus wrong"
 
-    echo -n "Checking for unexpected wire out differences... "
-    call_endpoint "wire-out-inconsistency"
-    jq -e .wire_out_inconsistency[0] \
-       < "${MY_TMP_DIR}/wire-out-inconsistency.json" \
-       > /dev/null \
-        && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
-    echo "PASS"
+    echo -n "Test for misattribution amounts... "
+    check_balance \
+        "total_misattribution_in" \
+        "TESTKUDOS:0" \
+        "Expected total misattribution in wrong"
 
+    echo -n "Checking for unexpected aggregation delta plus differences... "
+    check_balance \
+        "aggregation_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from aggregations"
+
+    echo -n "Checking for unexpected aggregation delta minus differences... "
+    check_balance \
+        "aggregation_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from aggregations"
+
+    echo -n "Checking for unexpected coin delta plus differences... "
+    check_balance \
+        "coins_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from coins"
+
+    echo -n "Checking for unexpected coin delta minus differences... "
+    check_balance \
+        "coins_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from coins"
+
+    echo -n "Checking for unexpected reserves delta plus... "
+    check_balance \
+        "reserves_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from reserves"
+
+    echo -n "Checking for unexpected reserves delta minus... "
+    check_balance \
+        "reserves_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from reserves"
+
+    echo -n "Checking for unexpected wire out differences "
+    check_no_report "wire-out-inconsistency"
+
+    # Just to test the endpoint and for logging ...
+    call_endpoint "balances"
+
+    echo -n "Testing for aggregation bad sig loss"
+    check_balance \
+        "aggregation_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from aggregation, got unexpected loss"
+
+    echo -n "Testing for coin bad sig loss"
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from coins, got unexpected loss"
+
+    echo -n "Testing for reserves bad sig loss"
+    check_balance \
+        "reserves_total_bad_sig_loss" \
+        "TESTKUDOS:0" \
+        "Wrong total bad sig loss from reserves, got unexpected loss"
+
+    echo -n "Checking for unexpected aggregation delta plus differences... "
+    check_balance \
+        "aggregation_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from aggregations"
+
+    echo -n "Checking for unexpected aggregation delta minus differences... "
+    check_balance \
+        "aggregation_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from aggregations"
+
+    echo -n "Checking for unexpected coin delta plus differences... "
+    check_balance \
+        "coins_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from coins"
+
+    echo -n "Checking for unexpected coin delta minus differences... "
+    check_balance \
+        "coins_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from coins"
+
+    echo -n "Checking for unexpected reserves delta plus... "
+    check_balance \
+        "reserves_total_arithmetic_delta_plus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta plus from reserves"
+
+    echo -n "Checking for unexpected reserves delta minus... "
+    check_balance \
+        "reserves_total_arithmetic_delta_minus" \
+        "TESTKUDOS:0" \
+        "Wrong arithmetic delta minus from reserves"
+
+    echo -n "Checking amount arithmetic inconsistency"
+    check_no_report "amount-arithmetic-inconsistency"
+
+    echo -n "Checking for unexpected wire out differences "
+    check_no_report "wire-out-inconsistency"
+
+    echo -n "Checking total drained... "
+    check_balance \
+        "total_drained" \
+        "TESTKUDOS:0.1" \
+        "Wrong total drained amount reported"
     # cannot easily undo aggregator, hence full reload
     full_reload
 }
