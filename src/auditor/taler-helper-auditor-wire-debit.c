@@ -718,16 +718,14 @@ check_rc_matches (void *cls,
 {
   struct CheckMatchContext *cmx = cls;
   struct ReserveClosure *rc = value;
-  char *ra = TALER_payto_normalize (rc->receiver_account);
 
   if ((0 == GNUNET_memcmp (&cmx->roi->details.wtid,
                            &rc->wtid)) &&
-      (0 == strcasecmp (ra,
+      (0 == strcasecmp (rc->receiver_account,
                         cmx->roi->details.credit_account_uri)) &&
       (0 == TALER_amount_cmp (&rc->amount,
                               &cmx->roi->details.amount)))
   {
-    GNUNET_free (ra);
     if (! check_time_difference ("reserves_closures",
                                  rc->rowid,
                                  rc->execution_date,
@@ -744,7 +742,6 @@ check_rc_matches (void *cls,
              rc);
     return GNUNET_NO;
   }
-  GNUNET_free (ra);
   return GNUNET_OK;
 }
 

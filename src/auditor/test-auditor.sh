@@ -71,14 +71,15 @@ function cleanup()
 # Cleanup to run whenever we exit
 function exit_cleanup()
 {
+    jobs
     if [ -n "${POSTGRES_PATH:-}" ]
     then
         echo -n "Stopping Postgres at ${POSTGRES_PATH} ..."
         "${POSTGRES_PATH}/pg_ctl" \
                         -D "$TMPDIR" \
-                        -l /dev/null \
+                        --log="${MY_TMP_DIR}/pg_ctl.log" \
                         stop \
-            &> /dev/null \
+            &> ${MY_TMP_DIR}/pg_ctl.out \
             || true
         echo "DONE"
     fi
@@ -386,11 +387,23 @@ function run_audit () {
 }
 
 
+function stop_auditor_httpd() {
+  if [ -n "${APID:-}" ]
+  then
+      echo -n "Stopping auditor $APID..."
+      kill -TERM "$APID"
+      wait "$APID" || true
+      echo "DONE"
+      unset APID
+  fi
+}
+
+
 # Do a full reload of the (original) database
 function full_reload()
 {
     echo -n "Doing full reload of the database (loading ${BASEDB}.sql into $DB at $PGHOST)... "
-    dropdb -f "$DB" 2> /dev/null || true
+    dropdb -f "$DB" &>> ${MY_TMP_DIR}/drop.log || true
     createdb -T template0 "$DB" \
         || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
@@ -398,16 +411,17 @@ function full_reload()
          -q \
          -1 \
          -f "${BASEDB}.sql" \
-         > /dev/null \
+         &>> ${MY_TMP_DIR}/postgresql-reload.log \
         || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
     echo "DONE"
     # Technically, this call shouldn't be needed as libeufin should already be stopped here...
     stop_libeufin
+    stop_auditor_httpd
 }
 
 function run_auditor_httpd() {
   echo -n "Starting auditor..."
-  taler-auditor-httpd \
+  $VALGRIND taler-auditor-httpd \
       -c "${CONF}" \
       -L INFO \
       2> "${MY_TMP_DIR}/auditor-httpd.err" &
@@ -429,19 +443,8 @@ function run_auditor_httpd() {
       break
   done
   echo "... DONE."
-  export CONF
 }
 
-function stop_auditor_httpd() {
-  if [ -n "${APID:-}" ]
-  then
-      echo -n "Stopping auditor $APID..."
-      kill -TERM "$APID"
-      wait "$APID" || true
-      echo "DONE"
-      unset APID
-  fi
-}
 
 function check_auditor_running() {
   ARUNSTATUS=$(curl -Is http://localhost:8083/config | head -1)
@@ -749,7 +752,6 @@ function test_2() {
     echo -n "Undoing database modification "
     echo "UPDATE exchange.reserves_in SET credit.val=10 WHERE reserve_in_serial_id=1" \
         | psql -Aqt "$DB"
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -806,7 +808,6 @@ function test_3() {
 
     # Undo database modification
     echo "UPDATE exchange.reserves_in SET credit.val=10 WHERE reserve_in_serial_id=1" | psql -Aqt "$DB"
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -851,7 +852,6 @@ function test_4() {
     # Undo:
     echo "UPDATE exchange.coin_deposits SET coin_sig='$OLD_COIN_SIG' WHERE coin_deposit_serial_id=${SERIALE}" | psql -Aqt "$DB"
 
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -933,10 +933,8 @@ function test_6() {
 
     echo -n "Undo database change ... "
     echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt "$DB"
-    stop_auditor_httpd
     full_reload
     cleanup
-
 }
 
 
@@ -985,7 +983,6 @@ function test_7() {
 
     # Undo:
     echo "UPDATE exchange.reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt "$DB"
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -1037,7 +1034,6 @@ function test_8() {
     # Undo database modification
     echo "UPDATE libeufin_bank.taler_exchange_incoming SET reserve_pub='$OLD_WTID' WHERE exchange_incoming_id='$OLD_ID';" \
         | psql "${DB}" -q
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -1072,7 +1068,6 @@ function test_9() {
     # Undo database modification
     echo "UPDATE libeufin_bank.bank_account_transactions SET debtor_payto='$OLD_ACC' WHERE bank_transaction_id='$OLD_ID';" \
         | psql "${DB}" -Atq
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -1105,7 +1100,6 @@ function test_10() {
     # Undo database modification
     echo "UPDATE libeufin_bank.bank_account_transactions SET transaction_date=$OLD_DATE WHERE bank_transaction_id=$OLD_ID;" \
         | psql "${DB}" -Aqt
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -1162,7 +1156,6 @@ function test_11() {
         "wire-out-inconsistency" \
         "diagnostic" \
         "missing justification for outgoing wire transfer"
-    stop_auditor_httpd
     full_reload
 }
 
@@ -1189,7 +1182,6 @@ function test_12() {
 
     # cannot easily undo DELETE, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1224,7 +1216,6 @@ function test_13() {
 
     # cannot easily undo DELETE, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1254,7 +1245,6 @@ function test_14() {
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1372,7 +1362,6 @@ function test_16() {
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1459,7 +1448,6 @@ function test_18() {
         "Emergency loss not reported"
     # cannot easily undo broad DELETE operation, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1490,7 +1478,6 @@ function test_19() {
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1529,7 +1516,6 @@ function test_20() {
         | psql -Aqt "$DB"
 
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1613,7 +1599,6 @@ function test_22() {
     echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt "$DB"
 
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1683,7 +1668,6 @@ function test_23() {
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1768,7 +1752,6 @@ function test_25() {
 
     # cannot easily undo DELETE, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1894,7 +1877,6 @@ function test_28() {
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1921,7 +1903,6 @@ function test_29() {
     # Undo
     echo "UPDATE exchange.denominations SET fee_withdraw.frac=2000000 WHERE (coin).val=1;" | psql -Aqt "$DB"
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1950,7 +1931,6 @@ function test_30() {
     echo "UPDATE exchange.denominations SET fee_refresh.frac=3000000 WHERE (coin).val=10;" | psql -Aqt "$DB"
 
     full_reload
-    stop_auditor_httpd
 }
 
 
@@ -1975,7 +1955,6 @@ function test_31() {
         "operation" "deposit"
     # Undo
     echo "UPDATE exchange.denominations SET fee_deposit.frac=2000000 WHERE (coin).val=8;" | psql -Aqt "$DB"
-    stop_auditor_httpd
     full_reload
 }
 
@@ -2007,7 +1986,6 @@ function test_32() {
         "Missed updating aggregation_total_bad_sig_loss"
 
     # Cannot undo aggregation, do full reload
-    stop_auditor_httpd
     full_reload
     cleanup
 }
@@ -2169,8 +2147,6 @@ function test_33() {
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-    stop_auditor_httpd
-
 }
 
 
@@ -2183,6 +2159,7 @@ function check_with_database()
 {
     BASEDB="$1"
     CONF="$1.conf"
+    export CONF
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE="${BASEDB}.mpriv"
     taler-config \
