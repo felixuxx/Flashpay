@@ -916,7 +916,7 @@ function test_6() {
     echo -n "Checking bad-signature-loss detected ..."
     check_row \
         "bad-sig-losses" \
-        "$OLD_ROW"
+        "problem_row_id" "1" # Row reported is that of deposits or melt table, not known_coins
     echo -n "Checking bad-signature-loss amount detected ..."
     check_report_neg \
         "bad-sig-losses" \
@@ -1346,7 +1346,6 @@ function test_16() {
     launch_libeufin
     audit_only
     stop_libeufin
-    bash
 
     echo -n "Testing wire-out-inconsistency-expected... "
     check_report \

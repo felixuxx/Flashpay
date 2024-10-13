@@ -13,14 +13,11 @@
    You should have received a copy of the GNU General Public License along with
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
-
-
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_helper.h"
-
 #include "pg_get_reserve_balance_summary_wrong_inconsistency.h"
 
 
@@ -65,26 +62,21 @@ reserve_balance_summary_wrong_inconsistency_cb (void *cls,
 {
   struct ReserveBalanceSummaryWrongInconsistencyContext *dcc = cls;
   struct PostgresClosure *pg = dcc->pg;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "---found rbswi's in reserveblanace...\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "---num_results: %u\n", num_results);
-
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
-
     struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency dc;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-
-      GNUNET_PQ_result_spec_uint64 ("row_id", &serial_id),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",  &dc.reserve_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("exchange_amount",  &dc.exchange_amount),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("auditor_amount",  &dc.auditor_amount),
-      GNUNET_PQ_result_spec_bool ("suppressed",  &dc.suppressed),
-
-
+      GNUNET_PQ_result_spec_uint64 ("row_id",
+                                    &dc.row_id),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &dc.reserve_pub),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("exchange_amount",
+                                   &dc.exchange_amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("auditor_amount",
+                                   &dc.auditor_amount),
+      GNUNET_PQ_result_spec_bool ("suppressed",
+                                  &dc.suppressed),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;
@@ -98,11 +90,8 @@ reserve_balance_summary_wrong_inconsistency_cb (void *cls,
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
-
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)
@@ -116,14 +105,12 @@ TAH_PG_get_reserve_balance_summary_wrong_inconsistency (
   void *cls,
   int64_t limit,
   uint64_t offset,
-  bool return_suppressed,             // maybe not needed
+  bool return_suppressed,
   TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistencyCallback cb,
   void *cb_cls)
 {
-
-  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
-
   struct PostgresClosure *pg = cls;
+  uint64_t plimit = (uint64_t) ((limit < 0) ? -limit : limit);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&offset),
     GNUNET_PQ_query_param_bool (return_suppressed),
@@ -140,41 +127,39 @@ TAH_PG_get_reserve_balance_summary_wrong_inconsistency (
   PREPARE (pg,
            "auditor_reserve_balance_summary_wrong_inconsistency_get_desc",
            "SELECT"
-           " row_id,"
-           " reserve_pub,"
-           " exchange_amount,"
-           " auditor_amount,"
-           " suppressed"
+           " row_id"
+           ",reserve_pub"
+           ",exchange_amount"
+           ",auditor_amount"
+           ",suppressed"
            " FROM auditor_reserve_balance_summary_wrong_inconsistency"
            " WHERE (row_id < $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id DESC"
            " LIMIT $3"
            );
   PREPARE (pg,
            "auditor_reserve_balance_summary_wrong_inconsistency_get_asc",
            "SELECT"
-           " row_id,"
-           " reserve_pub,"
-           " exchange_amount,"
-           " auditor_amount,"
-           " suppressed"
+           " row_id"
+           ",reserve_pub"
+           ",exchange_amount"
+           ",auditor_amount"
+           ",suppressed"
            " FROM auditor_reserve_balance_summary_wrong_inconsistency"
            " WHERE (row_id > $1)"
-           " AND ($2 OR suppressed is false)"
+           " AND ($2 OR NOT suppressed)"
            " ORDER BY row_id ASC"
            " LIMIT $3"
            );
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             (limit > 0)
-                                             ?
-                                             "auditor_reserve_balance_summary_wrong_inconsistency_get_asc"
-                                             :
-                                             "auditor_reserve_balance_summary_wrong_inconsistency_get_desc",
-                                             params,
-                                             &
-                                             reserve_balance_summary_wrong_inconsistency_cb,
-                                             &dcc);
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    (limit > 0)
+    ? "auditor_reserve_balance_summary_wrong_inconsistency_get_asc"
+    : "auditor_reserve_balance_summary_wrong_inconsistency_get_desc",
+    params,
+    &reserve_balance_summary_wrong_inconsistency_cb,
+    &dcc);
 
   if (qs > 0)
     return dcc.qs;
