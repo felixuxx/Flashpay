@@ -1991,7 +1991,6 @@ function test_32() {
 }
 
 
-# FIXME: test-33 not implemented
 function test_33() {
 
     echo "===========33: normal run with aggregator and profit drain==========="
