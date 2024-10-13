@@ -29,21 +29,19 @@
  * Add reserve-balance-summary-wrong-inconsistency to the list.
  *
  * @param[in,out] cls a `json_t *` array to extend
- * @param serial_id location of the @a dc in the database
  * @param dc struct of inconsistencies
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static enum GNUNET_GenericReturnValue
 process_reserve_balance_summary_wrong_inconsistency (
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency *dc)
 {
   json_t *list = cls;
   json_t *obj;
 
   obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_int64 ("row_id", serial_id),
+    GNUNET_JSON_pack_int64 ("row_id", dc->row_id),
     GNUNET_JSON_pack_data_auto ("reserve_pub", &dc->reserve_pub),
     TALER_JSON_pack_amount ("exchange_amount", &dc->exchange_amount),
     TALER_JSON_pack_amount ("auditor_amount", &dc->auditor_amount),

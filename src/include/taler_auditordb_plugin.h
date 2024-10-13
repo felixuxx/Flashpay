@@ -929,7 +929,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_ReserveBalanceSummaryWrongInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue
