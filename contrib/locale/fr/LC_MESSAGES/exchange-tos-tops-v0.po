@@ -1,5 +1,5 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2014-2023 Taler Systems SA (GPLv3+ or GFDL 1.3+)
+# Copyright (C) 2014-2024 Taler Systems SA (GPLv3+ or GFDL 1.3+)
 # This file is distributed under the same license as the exchange-tos-tops-v0 package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
@@ -11,239 +11,239 @@ msgstr ""
 "POT-Creation-Date: 2024-10-09 15:17+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language-Team: LANGUAGE <languages@taler.net>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:2
 msgid "Terms of Service of Taler Operations AG"
-msgstr ""
+msgstr "Conditions générales d'utilisation de Taler Operations AG"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:4
 msgid "These Terms of Service (hereinafter **ToS**) of Taler Operations AG regulate the rights and obligations of users and recipients (beneficiaries) of the payment service offered. By using the payment service, users automatically accept these ToS."
-msgstr ""
+msgstr "Les présentes conditions générales d'utilisation (ci-après **CGU**) de l'entreprise Taler Operations AG régissent les droits et obligations des utilisateurs et des bénéficiaires du service de paiement proposé. En utilisant le service de paiement, les utilisateurs acceptent automatiquement les présentes CGU."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:9
 msgid "Service; scope of application"
-msgstr ""
+msgstr "Prestation de services ; champ d'application"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:11
-msgid "GNU Taler is a technical system that enables cashless payments. Taler Operations AG (hereinafter **TOPS**), headquartered in Biel/Bienne, Switzerland, provides a **payment system** based on GNU Taler for users in Switzerland. TOPS is a member of VQF, a FINMA-accredited self-regulating organisation. Consequently, TOPS will therefore not be directly supervised by the Swiss financial services regulation authority FINMA, but operates a financial service  in accordance with Art. 6 para. 2 Banking Ordinance without commercial banking status (non-bank) and therefore without customer deposit protection."
-msgstr ""
+msgid "GNU Taler is a technical system that enables cashless payments. Taler Operations AG (hereinafter **TOPS**), headquartered in Biel/Bienne, Switzerland, provides a **payment system** based on GNU Taler for users in Switzerland. TOPS is a member of VQF, a FINMA-accredited self-regulating organisation. Consequently, TOPS will therefore not be directly supervised by the Swiss financial services regulation authority FINMA, but operates a financial service in accordance with Art. 6 para. 2 Banking Ordinance without commercial banking status (non-bank) and therefore without customer deposit protection."
+msgstr "GNU Taler est un système technique qui permet d'effectuer des paiements sans argent liquide. Taler Operations AG (ci-après **TOPS**), dont le siège est à Biel/Bienne, Suisse, propose un **service de paiement** basé sur GNU Taler pour les utilisateurs en Suisse. TOPS est membre du VQF, un organisme d'autorégulation accrédité par la FINMA. TOPS n'est donc pas directement surveillée par la FINMA, mais exploite un service financier selon l'art. 6 al. 2 OB sans être une banque à titre professionnel (non-banque) et donc sans garantie des dépôts des clients."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:18
 msgid "**Users** are the owners of tokens signed by TOPS, denominated in CHF (e-money), which they store in their Taler wallets under their own responsibility. These tokens can be used by the users to make payments."
-msgstr ""
+msgstr "**Les utilisateurs** sont propriétaires de jetons (monnaie électronique) signés par TOPS et libellés en CHF, qui sont stockés dans des portefeuilles Taler sous la responsabilité des utilisateurs et avec lesquels les utilisateurs peuvent payer."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:21
 msgid "**Taler-Wallets** are products that, in accordance with the GNU Taler protocol, manage digital cash (e-money) , which a payment service issues and redeems for payments to beneficiaries. The tokens issued by TOPS (e-CHF) can be used as a means of payment in bricks-and-mortar shops, at vending machines, in online shops, and in apps at authorized merchants or service providers that accept this means of payment (hereinafter **beneficiaries**). Users can also make payments to other users or transfer the e-money back to a Swiss bank account."
-msgstr ""
+msgstr "Les **portefeuilles Taler** sont des produits qui gèrent des jetons (espèces numériques), monnaie électronique selon le protocole GNU Taler, qu'un service de paiement émet et rachète pour payer des bénéficiaires. Les jetons émis par TOPS (e-CHF) peuvent être utilisés comme moyen de paiement dans les commerces fixes, dans les distributeurs automatiques, dans les boutiques en ligne et dans les applications auprès de commerçants ou de prestataires de services autorisés qui acceptent ce moyen de paiement (ci-après **bénéficiaires**). Les utilisateurs peuvent également effectuer des paiements à d'autres utilisateurs ou retransférer la monnaie électronique sur un compte bancaire suisse."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:29
 msgid "Technical requirements"
-msgstr ""
+msgstr "Exigences techniques"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:31
-msgid "In order to use the services offered, users must have a Taler wallet (an electronic wallet) as a Taler application on their smartphone or as an extension in a browser on the PC. Users are free to choose  their Taler wallet application. Beneficiaries are also free to choose their Taler wallet application or Taler backend. Various solutions are provided by various providers. TOPS does not impose any restrictions and does not provide any guarantee for the chosen solution. The users are responsible for the security of their Taler wallets or Taler backends and the tokens or transaction data stored in them."
-msgstr ""
+msgid "In order to use the services offered, users must have a Taler wallet (an electronic wallet) as a Taler application on their smartphone or as an extension in a browser on the PC. Users are free to choose their Taler wallet application. Beneficiaries are also free to choose their Taler wallet application or Taler backend. Various solutions are provided by various providers. TOPS does not impose any restrictions and does not provide any guarantee for the chosen solution. The users are responsible for the security of their Taler wallets or Taler backends and the tokens or transaction data stored in them."
+msgstr "Pour pouvoir bénéficier des services proposés, les utilisateurs doivent installer un portefeuille Taler (porte-monnaie électronique) soit sous la forme de l'application Taler sur leur smartphone soit sous la forme d'une extension dans un navigateur sur leur PC. Les utilisateurs sont libres de choisir leur application de portefeuille Taler. Les bénéficiaires sont également libres de choisir leur application de portefeuille Taler ou leur backend Taler. Différentes solutions sont proposées par divers fournisseurs. TOPS n'impose aucune restriction à cet égard et ne donne aucune garantie quant à la solution choisie. Les utilisateurs sont responsables de la sécurité de leurs portefeuilles Taler ou backends Taler et des jetons ou données de transaction qui y sont enregistrés."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:38
 msgid "The Taler wallet is topped up by users through mechanisms foreseen for the purpose of withdrawals. In order to let the wallet withdraw the desired amount of money, users select from within the Taler wallet the payment service provider operated by TOPS and wire this amount of money to the bank account of the payment service provider. TOPS may introduce further withdrawal options or cease to offer existing mechanisms. Any transaction fees or other fees associated with wiring or with withdrawals shall be borne by the users. Users’ funds do not earn interest. Users acknowledge that their credit balance is not covered by customer deposit protection."
-msgstr ""
+msgstr "Le portefeuille Taler est chargé par les utilisateurs via les mécanismes prévus à cet effet. Pour créditer la quantité d'argent souhaitée, on choisit dans le portefeuille Taler le service de paiement exploité par TOPS, auquel on transfère cette quantité d'argent sur le compte courant du service de paiement et duquel le portefeuille Taler retire finalement les jetons électroniques correspondant à la quantité d'argent envoyée. TOPS peut introduire d'autres options de rechargement ou ne plus proposer les mécanismes existants. Les éventuels frais de transaction ou autres frais liés à la recharge sont à la charge des utilisateurs. L'avoir des utilisateurs ne porte pas d'intérêts. Les utilisateurs prennent connaissance du fait que l'avoir n'est pas couvert par la garantie des dépôts des clients."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:45
 msgid "To unload a Taler wallet, users must transfer their funds to a Swiss bank account. International payments are not permitted. With the Taler wallet installed in the smartphone or web browser, users can make payments (within applicable limits) to natural persons and legal entities that accept this payment method and have a Swiss bank account to receive the funds (e.g., stores, web shops, apps, and other beneficiaries). When users make payments, the corresponding amount of e-money is debited directly from the Taler wallet. At least the transaction amount must be available in the Taler wallet's balance. Users consent to all payments made with the Taler wallet from their digital end device, even if these payments were made without their agreement. Anyone who redeems a token in the Taler wallet has used its represented value of the credit for payment."
-msgstr ""
+msgstr "Le débit du portefeuille Taler doit être effectué sur un compte bancaire suisse. Les paiements internationaux ne sont pas autorisés. Les utilisateurs peuvent payer avec le portefeuille Taler installé dans leur smartphone ou leur navigateur web, dans les limites en vigueur, auprès de personnes physiques et morales qui acceptent cette option de paiement et qui ont un compte bancaire suisse pour recevoir de l'argent (p. ex. magasins, boutiques en ligne, apps et autres bénéficiaires). Lors d'un paiement, le montant correspondant est directement débité du portefeuille Taler. Il faut qu'au moins le montant de la transaction soit disponible dans le portefeuille Taler. Les utilisateurs sont tenus responsables de tous les paiements effectués avec le portefeuille Taler depuis leur terminal numérique, même si ces paiements ont été effectués sans leur consentement. La personne qui a dépensé un jeton dans le portefeuille Taler a utilisé le valeur d'argent correspondant pour effectuer un paiement."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:54
 msgid "The procedure for increasing and decreasing the credit balance in the Taler wallet can take several days, depending on the mechanism."
-msgstr ""
+msgstr "Le processus de traitement pour augmenter ou diminuer l'avoir stocké dans le portefeuille Taler peut prendre jusqu'à plusieurs jours, selon le mécanisme utilisé."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:59
 msgid "Prices, fees and limits"
-msgstr ""
+msgstr "Tarifs, frais, commissions et limites"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:61
 msgid "TOPS may change the fees at any time. Fee changes only apply to tokens withdrawn after the change takes effect. Taler wallets compliant to the GNU Taler protocol will inform users about fee changes before they withdraw new tokens. Withdrawing tokens issued by TOPS after a fee change is considered the user’s consent to the updated conditions."
-msgstr ""
+msgstr "TOPS peut modifier les frais à tout moment. Les modifications n'ont d'effet que sur les jetons achetés après la modification. Les portefeuilles Taler conformes au protocole GNU Taler informent les utilisateurs des changements de frais avant que de nouveaux jetons ne soient retirés. Le retrait de jetons de TOPS après une modification des frais vaut acceptation par l'utilisateur des conditions modifiées."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:65
 msgid "There are limits of CHF 3,000 per month and CHF 15,000 per calendar year for withdrawing e-money from a bank account or receiving peer-to-peer payments between Taler wallets with a confirmed Swiss mobile number."
-msgstr ""
+msgstr "Des limites de 3 000 CHF par mois et de 15 000 CHF par année civile sont définies pour le retrait de la monnaie électronique d'un compte courant ou pour la réception de paiements peer-to-peer (d'égal à égal) entre les portefeuilles Taler ayant un numéro de portable suisse confirmé."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:70
 msgid "Legal and regulatory requirements"
-msgstr ""
+msgstr "Obligations générales de coopération"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:72
 msgid "In order to use the payment service, users and beneficiaries are obliged to support TOPS in fulfilling legal and regulatory requirements. TOPS complies with all applicable anti-money laundering (AML) and know-your-customer (KYC) regulations. TOPS will ensure that all personal data is processed in accordance with Swiss privacy laws, including the new Swiss Data Protection Act (nFADP) and the Ordinance on Data Protection (DPO). TOPS has the right and, where applicable, the legal obligation to exclude users and beneficiaries from using the payment service, if they refuse to provide the required information or provide false information."
-msgstr ""
+msgstr "Pour utiliser le service de paiement, l'utilisateur et le bénéficiaire sont tenus d'aider TOPS à satisfaire aux exigences réglementaires et légales. TOPS se conforme à toutes les réglementations applicables en matière de lutte contre le blanchiment d'argent (AML) et de connaissance des bénéficiaires effectifs. TOPS veillera à ce que toutes les données personnelles soient traitées conformément aux lois suisses sur la protection des données, y compris la nouvelle loi suisse sur la protection des données (nLPD) et l'ordonnance sur la protection des données (OPDo). En particulier, TOPS peut demander des informations sur l'identité des bénéficiaires effectifs. TOPS a le droit et, le cas échéant, l'obligation légale d'exclure les utilisateurs et les bénéficiaires de l'utilisation du service de paiement s'ils refusent de fournir les informations requises ou s'ils fournissent des informations fausses."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:79
 msgid "In order to use the payment service, *beneficiaries* enter into a business relationship with TOPS and, where applicable, may be required to register with TOPS and provide the requested information for this purpose. Beneficiaries may be required to provide identity verification documents. They will be notified of any KYC information requests and will have 30 days to respond. TOPS reserves the right to request further information at any time to fulfill regulatory compliance."
-msgstr ""
+msgstr "Pour utiliser le service de paiement, les *bénéficiaires* établissent une relation commerciale avec TOPS et peuvent être tenus, le cas échéant, de s'enregistrer auprès de TOPS et de fournir les informations demandées à cette occasion. Les bénéficiaires peuvent être amenés à fournir des documents de vérification d'identité. Ils seront informés de toute demande d'informations KYC et disposeront de 30 jours pour y répondre. TOPS se réserve le droit de demander à tout moment des informations supplémentaires pour satisfaire aux exigences réglementaires."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:85
 msgid "No accounts are created for *users* at TOPS. However, the bank accounts of users who transfer CHF to TOPS in order to purchase tokens are recorded. To accept peer-to-peer payments, users must have a Swiss cell phone number to receive SMS for identification purposes."
-msgstr ""
+msgstr "Il n'y a pas de création de compte des *utilisateurs* chez TOPS. TOPS enregistre cependant les comptes IBAN des utilisateurs qui transfèrent des CHF à TOPS pour acheter des jetons. Pour recevoir des paiements d'égal à égal (peer-to-peer), les utilisateurs ont besoin d'au moins un numéro de téléphone portable suisse pouvant recevoir des SMS qui serviront à leur identification."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:91
 msgid "Duty of care and other obligations of users"
-msgstr ""
+msgstr "Devoir de diligence et autres obligations des utilisateurs"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:93
 msgid "1. Users must comply with the following duties of care when using the payment service:"
-msgstr ""
+msgstr "1. Lors de l'utilisation du service de paiement, les utilisateurs doivent notamment respecter les obligations de diligence suivantes :"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:96
 msgid "The smartphone, PC, notebook, etc. must be protected against unauthorized use or manipulation (e.g. by means of a device lock or display lock)."
-msgstr ""
+msgstr "Le smartphone, le PC, l'ordinateur portable, etc. doivent être protégés contre toute utilisation ou manipulation non autorisée (p. ex. au moyen d'un verrouillage de l'appareil ou de l'écran)."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:98
 msgid "In the event of damage, users must contribute to the best of their knowledge to help clarify the case and minimizing the damage. Criminal acts must be reported to the police."
-msgstr ""
+msgstr "En cas de dommage, les utilisateurs doivent contribuer de leur mieux à l'élucidation du cas et à la réduction du dommage. En cas d'actes délictueux, ils doivent porter plainte auprès de la police."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:100
 msgid "Before each payment is made, the details of the payee must be double-checked in order to prevent incorrect transactions."
-msgstr ""
+msgstr "Avant chaque exécution d'un paiement, les données relatives au bénéficiaire doivent être vérifiées afin d'éviter les transactions erronées."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:102
 msgid "Users are responsible for their use of the system and bear all consequences arising from such use."
-msgstr ""
+msgstr "Les utilisateurs sont responsables de leur utilisation du système et assument toutes les conséquences qui en découlent."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:104
 msgid "In particular, any unauthorized use of the Taler wallet by a third party shall be attributed to the owner of the wallet."
-msgstr ""
+msgstr "En particulier, les actions qu'une tierce personne effectue sans autorisation avec un portefeuille Taler sont imputées au propriétaire du portefeuille."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:106
 msgid "2. Users must be aware of the need to **treat electronic money like cash** and to secure it in the same way, i.e. to create a backup of the wallet data. The users of the Taler app are therefore obliged to secure access to the digital end device and protect it from unauthorized access. They must save the wallet's data with a backup copy on another device. The wallet's export function helps to create and save a backup of the wallet data. A lost user device with a wallet on it without a backup on another device or data carrier means a total loss of the credit."
-msgstr ""
+msgstr "2. Les utilisateurs doivent être conscients de la nécessité de **traiter la monnaie électronique comme des espèces** et de la sécuriser comme celle-ci, c'est-à-dire faire une sauvegarde des données du portefeuille. Les utilisateurs du portefeuille Taler sont donc tenus de sécuriser l'accès au terminal numérique et de le protéger contre tout accès non autorisé. Ils doivent enregistrer les données du portefeuille avec une copie de sauvegarde sur un autre appareil. La fonction d'exportation du portefeuille aide à créer et à enregistrer une sauvegarde des données du portefeuille. Un terminal numérique perdu avec un portefeuille dessus sans sauvegarde sur un autre appareil ou un autre support de données signifie une perte totale de l'avoir."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:111
 msgid "3. It must be ensured that the end device with a Taler wallet installed on it connects to the payment service via the Internet **within one year** after the last transaction, otherwise the credit balance in the wallet may be lost. The credit balance is usually renewed one month before the end of the validity of the electronic cash, which is approximately one year after its withdrawal."
-msgstr ""
+msgstr "3. Il faut veiller à ce que le terminal numérique sur lequel est installé un portefeuille Taler se connecte **dans un délai d'un an** après la dernière transaction **au service de paiement par Internet**, faute de quoi l'avoir du portefeuille peut être perdu. Le renouvellement de l'avoir a lieu normalement un mois avant la fin de leur validité, qui est d'environ un an après leur retrait."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:116
 msgid "4. Communication from TOPS to users is generally carried out via notifications in the GNU Taler protocol. Users are responsible for responding to such notifications. TOPS has the right not to execute transactions until the users provide legally required data."
-msgstr ""
+msgstr "4. La communication de TOPS avec les utilisateurs se fait en principe par le biais de notifications dans le protocole de GNU Taler. Il incombe aux utilisateurs de répondre aux notifications correspondantes. TOPS a le droit de ne pas effectuer de transactions jusqu'à ce que les utilisateurs aient fourni les données légalement nécessaires demandées par ce biais."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:122
 msgid "Liability"
-msgstr ""
+msgstr "Responsabilité"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:124
 msgid "TOPS is not liable for any loss or damage incurred by users as a result of the use of GNU Taler, in particular not for loss or damage"
-msgstr ""
+msgstr "TOPS n'est pas responsable des pertes ou des dommages subis par les utilisateurs en raison de l'utilisation de GNU Taler, en particulier des pertes ou des dommages"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:127
 msgid "due to transmission errors, technical malfunctions or defects, failures and unauthorized access to or interference with the digital end device,"
-msgstr ""
+msgstr "en raison d'erreurs de transmission, de pannes techniques ou de défauts, de défaillances et d'accès ou d'interventions non autorisés sur le terminal numérique,"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:129
 msgid "which are due in whole or in part to a breach by the user of these ToS or applicable laws,"
-msgstr ""
+msgstr "résultant en tout ou en partie d'une violation des présentes CGU ou des lois applicables par les utilisateurs,"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:131
 msgid "due to a malfunction or error in the software or hardware used,"
-msgstr ""
+msgstr "en raison d'un dysfonctionnement ou d'un défaut du logiciel ou du matériel utilisé,"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:133
 msgid "due to malfunctions, interruptions (including system maintenance work) or overloads of the relevant IT systems or networks,"
-msgstr ""
+msgstr "en raison de perturbations, d'interruptions (y compris les travaux de maintenance du système) ou de surcharges des systèmes informatiques ou des réseaux concernés,"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:135
 msgid "due to payments that are not processed or are delayed,"
-msgstr ""
+msgstr "en raison de paiements qui ne sont pas traités ou qui sont traités avec retard,"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:137
 msgid "due to acts or omissions of third parties (including auxiliary persons of TOPS),"
-msgstr ""
+msgstr "résultant d'actions ou d'omissions de tiers (y compris des auxiliaires de TOPS),"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:139
 msgid "unless these losses or damages are attributable to gross negligence or willful misconduct on the part of TOPS. Liability caps are set at CHF 1,000 for certain loss events. Liability for consequential damages, loss of profit or loss of data is - to the extent permitted by law - excluded in any case."
-msgstr ""
+msgstr "à moins que ces pertes ou dommages ne soient dus à une négligence grave ou à une faute intentionnelle de TOPS. TOPS indemnise les dommages matériels et pécuniaires à hauteur de 1 000 CHF maximum par événement. La responsabilité pour les dommages consécutifs, le manque à gagner ou la perte de données est exclue dans tous les cas - dans la mesure où la loi le permet."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:145
 msgid "Use; misuse"
-msgstr ""
+msgstr "Utilisation ; abus"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:147
 msgid "Users shall indemnify TOPS for any damages or losses incurred by TOPS due to non-compliance with these ToS or legal requirements, due to incorrect or incomplete information provided by users or the incorrect execution of instructions."
-msgstr ""
+msgstr "Les utilisateurs indemnisent TOPS en cas de dommages ou de pertes subis par TOPS en raison du non-respect des présentes CGU ou des dispositions légales, en raison d'informations erronées ou incomplètes fournies par les utilisateurs ou en raison d'une exécution incorrecte des instructions."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:151
 msgid "If the use deviates significantly from normal use or if there are signs of illegal or non-contractual behavior, TOPS may require users to act in accordance with the law and the contract, to suspend, restrict or discontinue the provision of services without prior notice and without compensation, terminate the business relationship without prior notice and without compensation and, if necessary, demand compensation for damages and indemnification from third-party claims. TOPS reserves the right to withhold payments to beneficiaries in the event of a breach of rules or abuse."
-msgstr ""
+msgstr "Si l'utilisation s'écarte considérablement de l'usage habituel ou s'il existe des signes d'un comportement contraire à la loi ou au contrat, TOPS peut exiger des utilisateurs qu'ils utilisent les services conformément à la loi et au contrat, modifier, restreindre ou suspendre la fourniture des services sans préavis et sans indemnité, résilier la relation commerciale sans préavis et sans indemnité et, le cas échéant, exiger la compensation des dommages et intérêts ainsi que l'exonération des créances de tiers. TOPS se réserve le droit de retenir les paiements aux bénéficiaires en cas de violation des règles ou d'abus."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:159
 msgid "Reservations regarding changes to these ToS"
-msgstr ""
+msgstr "Réserves concernant les modifications apportées aux présentes CGU"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:161
 msgid "TOPS may amend the ToS at any time. Amendments only have effect on tokens withdrawn after the change. Taler wallets compliant to the GNU Taler protocol inform users about changes before new tokens are withdrawn. The withdrawal of tokens issued by TOPS after the ToS have been amended shall be deemed to constitute acceptance of the amended conditions."
-msgstr ""
+msgstr "TOPS peut modifier les CGU à tout moment. Les modifications n'ont d'effet que sur les jetons obtenus après la modification. Les portefeuilles Taler conformes au protocole GNU Taler informent les utilisateurs des changements avant que de nouveaux jetons ne soient retirés. Le retrait de jetons de TOPS après une modification des CGU est considéré comme une acceptation des conditions modifiées."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:165
 msgid "Any legal provisions governing the operation and use of digital devices, payment services, the Internet and other infrastructure remain reserved and shall also apply to the TOPS services."
-msgstr ""
+msgstr "Les éventuelles dispositions légales régissant le fonctionnement et l'utilisation des terminaux numériques, des services de paiement, de l'Internet et d'autres infrastructures demeurent réservées et s'appliquent également aux services TOPS dès leur entrée en vigueur."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:168
 msgid "TOPS reserves the right to change, restrict, modify or completely discontinue its range of services at any time and without prior notice, in particular due to legal requirements, technical problems, prevention of misuse, by order of the authorities or for security reasons."
-msgstr ""
+msgstr "TOPS se réserve le droit de modifier, de limiter ou d'interrompre complètement l'offre de services à tout moment et sans préavis, notamment en raison d'exigences légales, de problèmes techniques, pour prévenir les abus, sur ordre des autorités ou pour des raisons de sécurité."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:172
 msgid "TOPS may transfer the contractual relationship (including a credit balance) to another company at any time and without prior notification."
-msgstr ""
+msgstr "TOPS peut transférer les relations contractuelles (y compris un avoir) à une autre société ou entreprise à tout moment et sans information préalable."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:177
 msgid "Confidentiality and data protection"
-msgstr ""
+msgstr "Confidentialité et protection des données"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:179
 msgid "Personal data is only collected, processed, stored or used by TOPS within the scope of legal obligations. When paying with e-money, no data on the identity of the user is recorded."
-msgstr ""
+msgstr "Les données personnelles ne sont collectées, traitées, conservées ou transmises par TOPS que dans le cadre du respect des obligations légales. Aucune donnée relative à l'identité de l'utilisateur n'est collectée lors du processus de paiement par monnaie électronique."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:182
 msgid "TOPS provides users with technical support on request. In the provision of this support third parties may be involved. They will receive access to the personal data required for communication with users."
-msgstr ""
+msgstr "TOPS fournit une assistance technique aux utilisateurs qui en font la demande. Des tiers peuvent participer à la fourniture de cette assistance. Ceux-ci ont accès aux données personnelles nécessaires pour communiquer avec les utilisateurs."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:185
 msgid "TOPS undertakes to comply with the provisions of Swiss law with regard to the personal data of users, in particular the Federal Act on Data Protection and the Ordinance on Data Protection."
-msgstr ""
+msgstr "En ce qui concerne la collecte, le traitement et l'utilisation des données personnelles des utilisateurs, TOPS s'engage à respecter les dispositions de la législation suisse sur la protection des données, notamment la loi fédérale sur la protection des données et l'ordonnance sur la protection des données."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:188
 msgid "All system data is primarily hosted in Switzerland."
-msgstr ""
+msgstr "Toutes les données du système sont hébergées en premier lieu en Suisse."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:190
 msgid "KYC processes may be controlled by service providers. These are also obliged to secure the data in accordance with Swiss law. The core system’s data is stored on encrypted hard disks with redundancy (including backups) and is accessible only to authorized personnel. Authorized personnel are subjected to security checks by TOPS. The entire design of the GNU Taler payment service has been strictly developed according to the principles of “Privacy-by-Design” and “Privacy-by-Default”."
-msgstr ""
+msgstr "Le cas échéant, les processus de connaissance du client (abrévié KYC en anglais) sont gérés par des prestataires de services. Ceux-ci sont également tenus de sécuriser les données conformément au droit et à la législation suisses. Les données proprement dites du système central sont stockées de manière redondante (c'est-à-dire avec une sauvegarde) sur des disques durs cryptés et ne sont accessibles qu'au personnel autorisé. Le personnel autorisé est soumis à un contrôle de sécurité par TOPS. L'ensemble du design du service de paiement GNU Taler a été strictement mis en œuvre selon les principes « Privacy-by-Design » et « Privacy-by-Default »."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:196
 msgid "Further information on data processing can be found in the privacy policy on the TOPS website (www.taler-ops.ch)."
-msgstr ""
+msgstr "Pour plus d'informations sur le traitement des données, veuillez consulter la déclaration de confidentialité sur le site web de TOPS (www.taler-ops.ch)."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:200
 msgid "Duration and termination"
-msgstr ""
+msgstr "Durée et résiliation"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:202
 msgid "The business relationship between TOPS and beneficiaries (merchants, businesses, and other regular recipients of transfers from the payment service to the beneficiary IBAN accounts) is concluded for an indefinite period. TOPS may terminate the business relationship with the beneficiaries at any time - in particular in cases of abuse with immediate effect. Written notice of termination by TOPS shall be sent to one of the last addresses provided by the business partners (e.g. by e-mail or letter). If no transactions are made to the beneficiaries for more than 12 months, the business relationship shall be automatically deemed terminated."
-msgstr ""
+msgstr "La relation commerciale entre TOPS et les bénéficiaires (commerçants, entreprises, vendeurs et autres destinataires réguliers des virements du service de paiement vers les comptes IBAN des bénéficiaires) est conclue pour une durée indéterminée. TOPS peut à tout moment - notamment en cas d'abus avec effet immédiat - résilier la relation commerciale avec les bénéficiaires. Une résiliation écrite par TOPS est envoyée à l'une des dernières adresses communiquées par les partenaires commerciaux (par ex. par e-mail ou par lettre). Si aucune transaction n'est effectuée en faveur les bénéficiaires pendant plus de 12 mois, la relation commerciale est automatiquement considérée comme terminée."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:211
 msgid "Users of Taler wallets can return the existing credit in these wallets to bank accounts in Switzerland at any time, thereby balancing the credit. If the TOPS payment service is discontinued, users will be notified through the GNU Taler protocol and prompted by their Taler wallets to balance any remaining credit. Users who fail to balance the credit within 3 months will lose their entitlement to the remaining amount, which will become the property of TOPS."
-msgstr ""
+msgstr "Les utilisateurs des portefeuilles Taler peuvent à tout moment faire transférer l'avoir qu'ils détiennent dans les portefeuilles Taler sur des comptes bancaires en Suisse et ainsi solder leur avoir. En cas de cessation d'activité du service de paiement de TOPS, les utilisateurs sont informés de l'arrêt imminent du service de paiement par le protocole de Taler et sont invités par les portefeuilles Taler à solder l'avoir existant. Les utilisateurs qui omettent de procéder à cette compensation perdent, au bout de 3 mois, le droit à l'avoir existant encore après cette période, lequel devient la propriété de TOPS."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:220
 msgid "Applicable law and place of jurisdiction"
-msgstr ""
+msgstr "Droit applicable et juridiction compétente"
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:222
 msgid "To the extent permitted by law, all legal relationships between TOPS and users shall be governed exclusively by substantive Swiss law, excluding conflict of laws and international treaties."
-msgstr ""
+msgstr "Dans la mesure où la loi le permet, toutes les relations juridiques entre TOPS et les utilisateurs sont exclusivement soumises au droit matériel suisse, à l'exclusion des règles de conflit de lois et à l'exclusion des traités internationaux."
 
 #: ../../../../../../tmp/taler-terms-ZgSjPo/exchange-tos-tops-v0.rst:225
 msgid "Subject to any mandatory statutory provisions to the contrary, Biel is the exclusive place of jurisdiction and the place of performance. For users and beneficiaries domiciled outside Switzerland, Biel/Bienne is also the place of debt collection."
-msgstr ""
+msgstr "Sous réserve de dispositions légales impératives contraires, Bienne est le for exclusif et le lieu d'exécution. Pour les utilisateurs et les bénéficiaires domiciliés en dehors de la Suisse, Bienne est également le lieu de poursuite."
