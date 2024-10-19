@@ -11,7 +11,7 @@ Service; scope of application
 GNU Taler is a technical system that enables cashless payments. Taler Operations AG (hereinafter **TOPS**),
 headquartered in Biel/Bienne, Switzerland, provides a **payment system** based on GNU Taler for users in Switzerland.
 TOPS is a member of VQF, a FINMA-accredited self-regulating organisation. Consequently, TOPS will therefore not be
-directly supervised by the Swiss financial services regulation authority FINMA, but operates a financial service  in
+directly supervised by the Swiss financial services regulation authority FINMA, but operates a financial service in
 accordance with Art. 6 para. 2 Banking Ordinance without commercial banking status (non-bank) and therefore without
 customer deposit protection.
 
@@ -29,7 +29,7 @@ Technical requirements
 --------------------------------------
 
 In order to use the services offered, users must have a Taler wallet (an electronic wallet) as a Taler application on
-their smartphone or as an extension in a browser on the PC. Users are free to choose  their Taler wallet application.
+their smartphone or as an extension in a browser on the PC. Users are free to choose their Taler wallet application.
 Beneficiaries are also free to choose their Taler wallet application or Taler backend. Various solutions are provided
 by various providers. TOPS does not impose any restrictions and does not provide any guarantee for the chosen solution.
 The users are responsible for the security of their Taler wallets or Taler backends and the tokens or transaction data
