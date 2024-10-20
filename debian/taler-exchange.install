@@ -24,6 +24,7 @@ usr/share/man/man1/taler-exchange-dbinit*
 usr/share/man/man1/taler-exchange-drain*
 usr/share/man/man1/taler-exchange-expire*
 usr/share/man/man1/taler-exchange-httpd*
+usr/share/man/man1/taler-exchange-kyc-trigger*
 usr/share/man/man1/taler-exchange-kyc-aml-pep-trigger*
 usr/share/man/man1/taler-exchange-router*
 usr/share/man/man1/taler-exchange-secmod-cs*

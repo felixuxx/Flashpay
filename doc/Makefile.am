@@ -27,6 +27,7 @@ man_MANS = \
   prebuilt/man/taler-exchange-httpd.1       \
   prebuilt/man/taler-exchange-kyc-aml-pep-trigger.1 \
   prebuilt/man/taler-exchange-kyc-tester.1       \
+  prebuilt/man/taler-exchange-kyc-trigger.1       \
   prebuilt/man/taler-exchange-offline.1    \
   prebuilt/man/taler-exchange-router.1\
   prebuilt/man/taler-exchange-secmod-cs.1\
