@@ -14,6 +14,7 @@ endif
 
 bin_PROGRAMS = \
   taler-auditor-offline \
+  taler-exchange-kyc-trigger \
   taler-exchange-offline \
   taler-exchange-dbinit
 
@@ -25,6 +26,18 @@ taler_exchange_offline_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -ljansson \
+  -lgnunetutil \
+  $(XLIB)
+
+taler_exchange_kyc_trigger_SOURCES = \
+  taler-exchange-kyc-trigger.c
+taler_exchange_kyc_trigger_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetcurl \
   -ljansson \

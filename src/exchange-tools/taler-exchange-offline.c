@@ -130,7 +130,7 @@
 static struct TALER_MasterPrivateKeyP master_priv;
 
 /**
- * Our private key, initialized in #load_offline_key().
+ * Our public key, initialized in #load_offline_key().
  */
 static struct TALER_MasterPublicKeyP master_pub;
 
@@ -575,7 +575,6 @@ static struct GNUNET_SCHEDULER_Task *nxt;
  * Handle for #do_download.
  */
 static struct TALER_EXCHANGE_ManagementGetKeysHandle *mgkh;
-
 
 /**
  * Active AML staff change requests.
