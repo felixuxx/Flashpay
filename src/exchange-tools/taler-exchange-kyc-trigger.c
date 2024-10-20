@@ -28,12 +28,12 @@
 /**
  * Our private key.
  */
-static union TALER_AccountPrivateKeyP account_priv;
+static struct TALER_ReservePrivateKeyP reserve_priv;
 
 /**
  * Our public key.
  */
-static union TALER_AccountPublicKeyP account_pub;
+static struct TALER_ReservePublicKeyP reserve_pub;
 
 /**
  * Our context for making HTTP requests.
@@ -52,9 +52,13 @@ static const struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 /**
  * Handle for exchange interaction.
- * FIXME: wrong type...
  */
-static struct TALER_EXCHANGE_ManagementGetKeysHandle *mgkh;
+static struct TALER_EXCHANGE_KycWalletHandle *kwh;
+
+/**
+ * Balance threshold to report to the exchange.
+ */
+static struct TALER_Amount balance;
 
 /**
  * Return value from main().
@@ -72,6 +76,55 @@ static char *currency;
  */
 static char *CFG_exchange_url;
 
+
+/**
+ * Function called with the result for a wallet looking
+ * up its KYC payment target.
+ *
+ * @param cls closure
+ * @param ks the wallets KYC payment target details
+ */
+static void
+kyc_wallet_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_WalletKycResponse *ks)
+{
+  kwh = NULL;
+  switch (ks->hr.http_status)
+  {
+  case MHD_HTTP_OK:
+    fprintf (stdout,
+             "OK, next treshold at %s\n",
+             TALER_amount2s (&ks->details.ok.next_threshold));
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    {
+      const struct TALER_EXCHANGE_KycNeededRedirect *knr
+        = &ks->details.unavailable_for_legal_reasons;
+      char *ps;
+
+      ps = GNUNET_STRINGS_data_to_string_alloc (&knr->h_payto,
+                                                sizeof (knr->h_payto));
+      fprintf (stderr,
+               "KYC needed (%llu, %s) for %s\n",
+               (unsigned long long) knr->requirement_row,
+               knr->bad_kyc_auth
+               ? "KYC auth needed"
+               : "KYC auth OK",
+               ps);
+      GNUNET_free (ps);
+    }
+    break;
+  default:
+    fprintf (stdout,
+             "Unexpected HTTP status %u\n",
+             ks->hr.http_status);
+    break;
+  }
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
 /**
  * Shutdown task. Invoked when the application is being terminated.
  *
@@ -81,10 +134,10 @@ static void
 do_shutdown (void *cls)
 {
   (void) cls;
-  if (NULL != mgkh)
+  if (NULL != kwh)
   {
-    TALER_EXCHANGE_get_management_keys_cancel (mgkh);
-    mgkh = NULL;
+    TALER_EXCHANGE_kyc_wallet_cancel (kwh);
+    kwh = NULL;
   }
   if (NULL != ctx)
   {
@@ -100,52 +153,52 @@ do_shutdown (void *cls)
 
 
 /**
- * Load the account key.
+ * Load the reserve key.
  *
  * @param do_create #GNUNET_YES if the key may be created
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-load_account_key (int do_create)
+load_reserve_key (int do_create)
 {
-  int ret;
   char *fn;
 
-  if (GNUNET_OK !=
+  if (GNUNET_OK ==
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
                                                "exchange-testing",
-                                               "ACCOUNT_PRIV_FILE",
+                                               "RESERVE_PRIV_FILE",
                                                &fn))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-testing",
-                               "ACCOUNT_PRIV_FILE");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_YES !=
-      GNUNET_DISK_file_test (fn))
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Account private key `%s' does not exist yet, creating it!\n",
-                fn);
-  ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           do_create,
-                                           &account_priv.reserve_priv.eddsa_priv
-                                           );
-  if (GNUNET_SYSERR == ret)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize master key from file `%s': %s\n",
-                fn,
-                "could not create file");
+    enum GNUNET_GenericReturnValue ret;
+
+    if (GNUNET_YES !=
+        GNUNET_DISK_file_test (fn))
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Account private key `%s' does not exist yet, creating it!\n",
+                  fn);
+    ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
+                                             do_create,
+                                             &reserve_priv.eddsa_priv);
+    if (GNUNET_SYSERR == ret)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to initialize master key from file `%s': %s\n",
+                  fn,
+                  "could not create file");
+      GNUNET_free (fn);
+      return GNUNET_SYSERR;
+    }
     GNUNET_free (fn);
-    return GNUNET_SYSERR;
   }
-  GNUNET_free (fn);
-  GNUNET_CRYPTO_eddsa_key_get_public (&account_priv.reserve_priv.eddsa_priv,
-                                      &account_pub.reserve_pub.eddsa_pub);
+  else
+  {
+    GNUNET_CRYPTO_eddsa_key_create (&reserve_priv.eddsa_priv);
+  }
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv.eddsa_priv,
+                                      &reserve_pub.eddsa_pub);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Using account public key %s\n",
-              TALER_B2S (&account_pub));
+              "Using reserve public key %s\n",
+              TALER_B2S (&reserve_pub));
   return GNUNET_OK;
 }
 
@@ -169,8 +222,9 @@ run (void *cls,
   kcfg = cfg;
 
   if (GNUNET_OK !=
-      load_account_key (GNUNET_YES))
+      load_reserve_key (GNUNET_YES))
   {
+    GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     return;
   }
@@ -179,6 +233,17 @@ run (void *cls,
                                  &currency))
   {
     global_ret = EXIT_NOTCONFIGURED;
+    return;
+  }
+  if ( (GNUNET_OK !=
+        TALER_amount_is_valid (&balance)) ||
+       (0 != strcmp (balance.currency,
+                     currency)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid balance threshold `%s'\n",
+                TALER_amount2s (&balance));
+    global_ret = EXIT_FAILURE;
     return;
   }
   if ( (NULL == CFG_exchange_url) &&
@@ -200,7 +265,17 @@ run (void *cls,
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
-  mgkh = NULL; // FIXME: start exchange interaction!
+  kwh = TALER_EXCHANGE_kyc_wallet (ctx,
+                                   CFG_exchange_url,
+                                   &reserve_priv,
+                                   &balance,
+                                   &kyc_wallet_cb,
+                                   NULL);
+  if (NULL == kwh)
+  {
+    GNUNET_break (0);
+    GNUNET_SCHEDULER_shutdown ();
+  }
 }
 
 
@@ -216,6 +291,11 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
+    TALER_getopt_get_amount ('b',
+                             "balance",
+                             "AMOUNT",
+                             "balance threshold to report to the exchange",
+                             &balance),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
