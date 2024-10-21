@@ -385,7 +385,7 @@ then
     echo "OK"
     echo -n "Set admin password..."
     AUSER="admin"
-    APASS="secret"
+    APASS="secret-password"
     libeufin-bank \
       passwd \
       -c "$CONF" \
@@ -450,13 +450,13 @@ STAGE="accounts"
 if [ "1" = "$START_FAKEBANK" ]
 then
     echo -n "Register Fakebank users ..."
-    register_fakebank_account fortytwo x
-    register_fakebank_account fortythree x
-    register_fakebank_account exchange x
-    register_fakebank_account tor x
-    register_fakebank_account gnunet x
-    register_fakebank_account tutorial x
-    register_fakebank_account survey x
+    register_fakebank_account fortytwo password
+    register_fakebank_account fortythree password
+    register_fakebank_account exchange password
+    register_fakebank_account tor password
+    register_fakebank_account gnunet password
+    register_fakebank_account tutorial password
+    register_fakebank_account survey password
     echo " DONE"
 fi
 
@@ -467,13 +467,13 @@ then
     # the C helper for the add-incoming call.  Without this value,
     # libeufin-bank  won't find the target account to debit along a /add-incoming
     # call.
-    register_bank_account fortytwo x "User42" FR7630006000011234567890189
-    register_bank_account fortythree x "Forty Three"
-    register_bank_account exchange x "Exchange Company" DE989651
-    register_bank_account tor x "Tor Project"
-    register_bank_account gnunet x "GNUnet"
-    register_bank_account tutorial x "Tutorial"
-    register_bank_account survey x "Survey"
+    register_bank_account fortytwo password "User42" FR7630006000011234567890189
+    register_bank_account fortythree password "Forty Three"
+    register_bank_account exchange password "Exchange Company" DE989651
+    register_bank_account tor password "Tor Project"
+    register_bank_account gnunet password "GNUnet"
+    register_bank_account tutorial password "Tutorial"
+    register_bank_account survey password "Survey"
     echo " DONE"
 fi
 

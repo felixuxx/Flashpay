@@ -97,7 +97,7 @@ libeufin-bank create-account \
               --config="${CONF}" \
               --name="Merchant43" \
               --username="Merchant43" \
-              --password="X" \
+              --password="password" \
               --payto_uri="payto://iban/DE474361?receiver-name=Merchant43"
 
 echo " DONE"
