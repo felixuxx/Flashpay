@@ -1180,6 +1180,8 @@ TALER_KYCLOGIC_get_instant_measure (
   char *nm;
   const struct TALER_KYCLOGIC_Measure *ret = NULL;
 
+  GNUNET_assert (NULL != measures_spec);
+
   if ('+' == measures_spec[0])
   {
     nm = GNUNET_strdup (&measures_spec[1]);

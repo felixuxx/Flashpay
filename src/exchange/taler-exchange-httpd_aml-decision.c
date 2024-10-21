@@ -379,10 +379,14 @@ TEH_handler_post_aml_decision (
   }
   /* Run instant measure if necessary */
   {
-    const struct TALER_KYCLOGIC_Measure *instant_ms;
+    const struct TALER_KYCLOGIC_Measure *instant_ms = NULL;
     struct MHD_Response *empty_response;
 
-    instant_ms = TALER_KYCLOGIC_get_instant_measure (lrs, new_measures);
+    if (NULL != new_measures)
+    {
+      instant_ms = TALER_KYCLOGIC_get_instant_measure (lrs, new_measures);
+    }
+
     if (NULL != instant_ms)
     {
       /* We have an 'instant' measure which means we must run the
