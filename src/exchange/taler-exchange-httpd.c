@@ -53,6 +53,7 @@
 #include "taler-exchange-httpd_kyc-upload.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_kyc-webhook.h"
+#include "taler-exchange-httpd_aml-decision.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
@@ -96,7 +97,7 @@
  * Above what request latency do we start to log?
  */
 #define WARN_LATENCY GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 500)
+          GNUNET_TIME_UNIT_MILLISECONDS, 500)
 
 /**
  * Are clients allowed to request /keys for times other than the
@@ -2657,6 +2658,7 @@ do_shutdown (void *cls)
   TEH_kyc_info_cleanup ();
   TEH_kyc_proof_cleanup ();
   TEH_kyc_start_cleanup ();
+  TEH_aml_decision_cleanup ();
   TALER_KYCLOGIC_kyc_done ();
   if (NULL != my_mhd)
   {

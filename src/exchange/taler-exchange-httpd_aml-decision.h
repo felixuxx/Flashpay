@@ -58,5 +58,10 @@ TEH_handler_aml_decisions_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[]);
 
+/**
+ * Clean up running POST /aml/$OFFICER_PUB/decisions requests.
+ */
+void
+TEH_aml_decision_cleanup ();
 
 #endif
