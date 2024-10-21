@@ -342,6 +342,51 @@ generate_reply (struct KycPoller *kyp,
 }
 
 
+/**
+ * Check if measures contain an instant
+ * measure.
+ *
+ * @param jmeasures measures JSON object
+ * @returns true if @a jmeasures contains an instant measure
+ */
+bool
+contains_instant_measure (const json_t *jmeasures)
+{
+  size_t i;
+  json_t *mi; /* a MeasureInformation object */
+  const char *ename;
+  unsigned int eline;
+  enum GNUNET_GenericReturnValue ret;
+
+  json_array_foreach ((json_t *) jmeasures, i, mi)
+  {
+    const char *check_name;
+
+    struct GNUNET_JSON_Specification ispec[] = {
+      GNUNET_JSON_spec_string ("check_name",
+                               &check_name),
+      GNUNET_JSON_spec_end ()
+    };
+
+    ret = GNUNET_JSON_parse (mi,
+                             ispec,
+                             &ename,
+                             &eline);
+    if (GNUNET_OK != ret)
+    {
+      GNUNET_break (0);
+      continue;
+    }
+    if (0 == strcasecmp (check_name, "SKIP"))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 MHD_RESULT
 TEH_handler_kyc_info (
   struct TEH_RequestContext *rc,
@@ -549,6 +594,15 @@ TEH_handler_kyc_info (
                                  kyp);
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
+  }
+  if (contains_instant_measure (jmeasures))
+  {
+    json_decref (jmeasures);
+    json_decref (jvoluntary);
+    return TALER_MHD_reply_with_ec (
+      rc->connection,
+      TALER_EC_EXCHANGE_KYC_INFO_BUSY,
+      "waiting for KYC program");
   }
   if ( (legitimization_measure_last_row ==
         kyp->etag_measure_in) &&
