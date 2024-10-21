@@ -1172,6 +1172,57 @@ TALER_KYCLOGIC_voluntary_measures (
 }
 
 
+const struct TALER_KYCLOGIC_Measure *
+TALER_KYCLOGIC_get_instant_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measures_spec)
+{
+  char *nm;
+  const struct TALER_KYCLOGIC_Measure *ret = NULL;
+
+  if ('+' == measures_spec[0])
+  {
+    nm = GNUNET_strdup (&measures_spec[1]);
+  }
+  else
+  {
+    nm = GNUNET_strdup (measures_spec);
+  }
+  for (const char *tok = strtok (nm, " ");
+       NULL != tok;
+       tok = strtok (NULL, " "))
+  {
+    const struct TALER_KYCLOGIC_Measure *ms;
+
+    if (0 == strcasecmp ("verboten",
+                         tok))
+    {
+      continue;
+    }
+    ms = find_measure (lrs,
+                       tok);
+    if (NULL == ms)
+    {
+      GNUNET_break (0);
+      continue;
+    }
+    if (0 == strcasecmp ("verboten",
+                         ms->check_name))
+    {
+      continue;
+    }
+    if (0 == strcasecmp ("SKIP", ms->check_name))
+    {
+      ret = ms;
+      goto done;
+    }
+  }
+done:
+  GNUNET_free (nm);
+  return ret;
+}
+
+
 json_t *
 TALER_KYCLOGIC_get_measures (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,

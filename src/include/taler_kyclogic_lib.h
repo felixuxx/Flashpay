@@ -772,6 +772,22 @@ TALER_KYCLOGIC_rule_get_instant_measure (
 
 
 /**
+ * Check if there is a measure in @a lrs
+ * that is included in @a measure_spec
+ * and a SKIP measure, and thus should be immediately
+ * executed.
+ *
+ * @param rls legitimization rule set
+ * @param measures_spec measures spec
+ * @returns NULL if there is no instant measure
+ */
+const struct TALER_KYCLOGIC_Measure *
+TALER_KYCLOGIC_get_instant_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measures_spec);
+
+
+/**
  * Handle to manage a running AML program.
  */
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle;

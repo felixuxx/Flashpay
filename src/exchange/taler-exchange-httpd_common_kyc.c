@@ -477,33 +477,7 @@ add_kyc_history_entry (
 }
 
 
-/**
- * We have finished a KYC process and obtained new
- * @a attributes for a given @a account_id.
- * Check with the KYC-AML trigger to see if we need
- * to initiate an AML process, and store the attributes
- * in the database. Then call @a cb.
- *
- * @param scope the HTTP request logging scope
- * @param process_row legitimization process the data provided is about,
- *          or must be 0 if instant_ms is given
- * @param instant_ms instant measure to run, used if @a process_row is 0,
- *          otherwise must be NULL
- * @param account_id account the webhook was about
- * @param provider_name name of the provider with the logic that was run
- * @param provider_user_id set to user ID at the provider, or
- *         NULL if not supported or unknown
- * @param provider_legitimization_id set to legitimization process ID at the provider,
- *         or NULL if not supported or unknown
- * @param expiration until when is the KYC check valid
- * @param attributes user attributes returned by the provider
- * @param http_status HTTP status code of @a response
- * @param[in] response to return to the HTTP client, can be NULL
- * @param cb function to call with the result
- * @param cb_cls closure for @a cb
- * @return handle to cancel the operation
- */
-static struct TEH_KycAmlTrigger *
+struct TEH_KycAmlTrigger *
 TEH_kyc_finished2 (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
