@@ -62,6 +62,6 @@ TEH_handler_aml_decisions_get (
  * Clean up running POST /aml/$OFFICER_PUB/decisions requests.
  */
 void
-TEH_aml_decision_cleanup ();
+TEH_aml_decision_cleanup (void);
 
 #endif
