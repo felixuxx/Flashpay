@@ -261,14 +261,16 @@ generate_reply (struct KycPoller *kyp,
   {
     const char *check_name;
     const char *prog_name;
-    const json_t *context;
+    const json_t *context = NULL;
     struct GNUNET_JSON_Specification ispec[] = {
       GNUNET_JSON_spec_string ("check_name",
                                &check_name),
       GNUNET_JSON_spec_string ("prog_name",
                                &prog_name),
-      GNUNET_JSON_spec_object_const ("context",
-                                     &context),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_object_const ("context",
+                                       &context),
+        NULL),
       GNUNET_JSON_spec_end ()
     };
     json_t *kri;
