@@ -663,8 +663,8 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
         GNUNET_JSON_spec_string ("prog_name",
                                  &prog_name),
         GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_array_const ("context",
-                                        &context),
+          GNUNET_JSON_spec_object_const ("context",
+                                         &context),
           NULL),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_bool ("voluntary",
