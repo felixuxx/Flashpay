@@ -929,7 +929,7 @@ typedef void
  * @param cb function to call on the result
  * @param cb_cls closure for @a cb
  * @param binary name of the binary to execute
- * @param ... NULL-terminated list of arguments for the @a binary,
+ * @param argv NULL-terminated list of arguments for the @a binary,
  *        usually starting with again the name of the binary
  * @return handle to cancel the operation (and kill the helper)
  */
@@ -939,7 +939,7 @@ TALER_JSON_external_conversion_start (
   TALER_JSON_JsonCallback cb,
   void *cb_cls,
   const char *binary,
-  ...);
+  const char **argv);
 
 /**
  * Abort external conversion, killing the process and preventing

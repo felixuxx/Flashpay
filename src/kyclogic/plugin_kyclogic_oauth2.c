@@ -1084,6 +1084,10 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
                            const json_t *j)
 {
   const struct TALER_KYCLOGIC_ProviderDetails *pd = ph->pd;
+  const char *argv[] = {
+    pd->conversion_binary,
+    NULL,
+  };
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Calling converter `%s' with JSON\n",
@@ -1096,8 +1100,7 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     &converted_proof_cb,
     ph,
     pd->conversion_binary,
-    pd->conversion_binary,
-    NULL);
+    argv);
   if (NULL != ph->ec)
     return;
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

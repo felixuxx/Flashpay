@@ -298,12 +298,11 @@ TALER_JSON_external_conversion_start (const json_t *input,
                                       TALER_JSON_JsonCallback cb,
                                       void *cb_cls,
                                       const char *binary,
-                                      ...)
+                                      const char **argv)
 {
   struct TALER_JSON_ExternalConversion *ec;
   struct GNUNET_DISK_PipeHandle *pipe_stdin;
   struct GNUNET_DISK_PipeHandle *pipe_stdout;
-  va_list ap;
 
   ec = GNUNET_new (struct TALER_JSON_ExternalConversion);
   ec->cb = cb;
@@ -312,15 +311,12 @@ TALER_JSON_external_conversion_start (const json_t *input,
   GNUNET_assert (NULL != pipe_stdin);
   pipe_stdout = GNUNET_DISK_pipe (GNUNET_DISK_PF_BLOCKING_WRITE);
   GNUNET_assert (NULL != pipe_stdout);
-  va_start (ap,
-            binary);
-  ec->helper = GNUNET_OS_start_process_va (GNUNET_OS_INHERIT_STD_ERR,
-                                           pipe_stdin,
-                                           pipe_stdout,
-                                           NULL,
-                                           binary,
-                                           ap);
-  va_end (ap);
+  ec->helper = GNUNET_OS_start_process_vap (GNUNET_OS_INHERIT_STD_ERR,
+                                            pipe_stdin,
+                                            pipe_stdout,
+                                            NULL,
+                                            binary,
+                                            (char *const *) argv);
   if (NULL == ec->helper)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

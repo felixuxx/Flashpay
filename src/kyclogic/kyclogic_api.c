@@ -3750,6 +3750,12 @@ TALER_KYCLOGIC_run_aml_program2 (
 
   {
     json_t *input;
+    const char *args[] = {
+      prog->command,
+      "-c",
+      cfg_filename,
+      NULL,
+    };
 
     input = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_allow_null (
@@ -3773,10 +3779,7 @@ TALER_KYCLOGIC_run_aml_program2 (
       &handle_aml_output,
       aprh,
       prog->command,
-      prog->command,
-      "-c",
-      cfg_filename,
-      NULL);
+      args);
     json_decref (input);
   }
   return aprh;
