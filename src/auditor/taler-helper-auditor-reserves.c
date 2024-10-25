@@ -580,8 +580,7 @@ handle_reserve_out (
                                  <,
                                  execution_date))
   {
-    struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency dkvwi =
-    {
+    struct TALER_AUDITORDB_DenominationKeyValidityWithdrawInconsistency dkvwi ={
       .problem_row_id = rowid,
       .execution_date = execution_date.abs_time,
       .denompub_h = *&h_denom_pub,
@@ -1713,18 +1712,18 @@ verify_reserve_balance (void *cls,
 
 
 #define CHECK_DB() do {                                       \
-    if (qs < 0) {                                       \
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs); \
-      return qs;                                        \
-    }                                                   \
-    if (global_qs < 0) {                                \
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == global_qs); \
-      return global_qs;                                        \
-    }                                                          \
-    if (rc.qs < 0) {                                           \
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == rc.qs);     \
-      return rc.qs;                                            \
-    }                                                          \
+          if (qs < 0) {                                       \
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs); \
+            return qs;                                        \
+          }                                                   \
+          if (global_qs < 0) {                                \
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == global_qs); \
+            return global_qs;                                        \
+          }                                                          \
+          if (rc.qs < 0) {                                           \
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == rc.qs);     \
+            return rc.qs;                                            \
+          }                                                          \
 } while (0)
 
 
@@ -2129,10 +2128,6 @@ main (int argc,
      not do this, the linker may "optimize" libtalerutil
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                    &argc, &argv))
-    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,
@@ -2141,7 +2136,6 @@ main (int argc,
     options,
     &run,
     NULL);
-  GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
     return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)

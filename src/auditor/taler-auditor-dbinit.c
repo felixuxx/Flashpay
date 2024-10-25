@@ -139,10 +139,6 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                    &argc, &argv))
-    return EXIT_INVALIDARGUMENT;
   /* force linker to link against libtalerutil; if we do
      not do this, the linker may "optimize" libtalerutil
      away and skip #TALER_OS_init(), which we do need */
@@ -153,7 +149,6 @@ main (int argc,
     gettext_noop ("Initialize Taler auditor database"),
     options,
     &run, NULL);
-  GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
     return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)

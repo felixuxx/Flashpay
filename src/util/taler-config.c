@@ -47,10 +47,6 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                    &argc, &argv))
-    return EXIT_FAILURE;
   TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (argc,
                             argv,
@@ -60,7 +56,6 @@ main (int argc,
                             options,
                             &GNUNET_CONFIGURATION_config_tool_run,
                             &cs);
-  GNUNET_free_nz ((void *) argv);
   GNUNET_CONFIGURATION_config_settings_free (&cs);
   if (GNUNET_NO == ret)
     return 0;

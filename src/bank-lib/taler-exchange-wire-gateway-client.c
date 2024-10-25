@@ -747,10 +747,6 @@ main (int argc,
      not do this, the linker may "optimize" libtalerutil
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                    &argc, &argv))
-    return 4;
   global_ret = 1;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
@@ -758,7 +754,6 @@ main (int argc,
     gettext_noop ("Client tool of the Taler Wire Gateway"),
     options,
     &run, NULL);
-  GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
     return 3;
   if (GNUNET_NO == ret)

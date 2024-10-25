@@ -549,10 +549,6 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                    &argc, &argv))
-    return EXIT_INVALIDARGUMENT;
   TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (
     argc, argv,
@@ -560,7 +556,6 @@ main (int argc,
     gettext_noop ("background process that closes expired reserves"),
     options,
     &run, NULL);
-  GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
     return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
