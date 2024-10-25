@@ -1340,6 +1340,88 @@ TALER_KYCLOGIC_rule2priority (
 
 
 /**
+ * Perform very primitive word splitting of a command.
+ *
+ * @args command command to split
+ * @args extra_args extra arguments to append after the word
+ * @returns NULL-terminated array of words
+ */
+static char **
+split_words (const char *command, const char **extra_args)
+{
+  unsigned int i = 0;
+  unsigned int j = 0;
+  unsigned int n = 0;
+  char **res = NULL;
+
+  /* Result is always NULL-terminated */
+  GNUNET_array_append (res, n, NULL);
+
+  /* Split command into words */
+  while (1)
+  {
+    char *c;
+
+    /* Skip initial whitespace before word */
+    while (' ' == command[i])
+      i++;
+
+    /* Start of new word */
+    j = i;
+
+    /* Scan to end of word */
+    while ( (0 != command[j]) && (' ' != command[j]) )
+      j++;
+
+    /* No new word found */
+    if (i == j)
+      break;
+
+    /* Append word to result */
+    c = GNUNET_malloc (j - i + 1);
+    memcpy (c, &command[i], j - i);
+    c[j - i] = 0;
+    res[n - 1] = c;
+    GNUNET_array_append (res, n, NULL);
+
+    /* Continue at end of word */
+    i = j;
+  }
+
+  /* Append extra args */
+  if (NULL != extra_args)
+  {
+    for (const char **m = extra_args; *m; m++)
+    {
+      res[n - 1] = GNUNET_strdup (*m);
+      GNUNET_array_append (res, n, NULL);
+    }
+  }
+
+  return res;
+}
+
+
+/**
+ * Free arguments allocated with split_words.
+ *
+ * @param args NULL-terminated array of strings to free.
+ */
+static void
+destroy_words (char **args)
+{
+  if (NULL == args)
+    return;
+  for (char **m = args; *m; m++)
+  {
+    GNUNET_free (*m);
+    *m = NULL;
+  }
+  GNUNET_free (args);
+}
+
+
+/**
  * Run @a command with @a argument and return the
  * respective output from stdout.
  *
@@ -1357,6 +1439,12 @@ command_output (const char *command,
   ssize_t ret;
   int sout[2];
   pid_t chld;
+  const char *extra_args[] = {
+    argument,
+    "-c",
+    cfg_filename,
+    NULL,
+  };
 
   if (0 != pipe (sout))
   {
@@ -1373,6 +1461,11 @@ command_output (const char *command,
   }
   if (0 == chld)
   {
+    char **argv;
+
+    argv = split_words (command,
+                        extra_args);
+
     GNUNET_break (0 ==
                   close (sout[0]));
     GNUNET_break (0 ==
@@ -1382,12 +1475,9 @@ command_output (const char *command,
                          STDOUT_FILENO));
     GNUNET_break (0 ==
                   close (sout[1]));
-    execlp (command,
-            command,
-            argument,
-            "-c",
-            cfg_filename,
-            NULL);
+    execvp (argv[0],
+            argv);
+    destroy_words (argv);
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                               "exec",
                               command);
@@ -3750,6 +3840,13 @@ TALER_KYCLOGIC_run_aml_program2 (
 
   {
     json_t *input;
+    const char *extra_args[] = {
+      "-c",
+      cfg_filename,
+      NULL,
+    };
+
+    char **args;
 
     input = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_allow_null (
@@ -3765,6 +3862,9 @@ TALER_KYCLOGIC_run_aml_program2 (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Running AML program %s\n",
                 prog->command);
+    args = split_words (prog->command, extra_args);
+    GNUNET_assert (NULL != args);
+    GNUNET_assert (NULL != args[0]);
     json_dumpf (input,
                 stderr,
                 JSON_INDENT (2));
@@ -3772,11 +3872,9 @@ TALER_KYCLOGIC_run_aml_program2 (
       input,
       &handle_aml_output,
       aprh,
-      prog->command,
-      prog->command,
-      "-c",
-      cfg_filename,
-      NULL);
+      args[0],
+      (const char **) args);
+    destroy_words (args);
     json_decref (input);
   }
   return aprh;

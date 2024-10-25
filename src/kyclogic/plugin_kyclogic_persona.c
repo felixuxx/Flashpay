@@ -1022,6 +1022,13 @@ start_conversion (const struct TALER_KYCLOGIC_ProviderDetails *pd,
                   TALER_JSON_JsonCallback cb,
                   void *cb_cls)
 {
+  const char *argv[] = {
+    pd->conversion_binary,
+    "-a",
+    pd->auth_token,
+    NULL,
+  };
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Calling converter `%s' with JSON\n",
               pd->conversion_binary);
@@ -1033,11 +1040,7 @@ start_conversion (const struct TALER_KYCLOGIC_ProviderDetails *pd,
     cb,
     cb_cls,
     pd->conversion_binary,
-    pd->conversion_binary,
-    "-a",
-    pd->auth_token,
-    NULL
-    );
+    argv);
 }
 
 
