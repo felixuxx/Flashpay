@@ -188,11 +188,6 @@ db_event_cb (void *cls,
 
   (void) extra;
   (void) extra_size;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Waking up on %p - %p - %s\n",
-              rc,
-              gc,
-              gc->suspended ? "suspended" : "active");
   if (NULL == gc)
     return; /* event triggered while main transaction
                was still running */
@@ -202,7 +197,10 @@ db_event_cb (void *cls,
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Resuming from long-polling on purse\n");
+              "Waking up on %p - %p - %s\n",
+              rc,
+              gc,
+              gc->suspended ? "suspended" : "active");
   TEH_check_invariants ();
   GNUNET_CONTAINER_DLL_remove (gc_head,
                                gc_tail,
@@ -271,8 +269,11 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
       };
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Starting DB event listening on purse %s\n",
-                  TALER_B2S (&gc->purse_pub));
+                  "Starting DB event listening on purse %s (%s)\n",
+                  TALER_B2S (&gc->purse_pub),
+                  gc->wait_for_merge
+                  ? "waiting for merge"
+                  : "waiting for deposit");
       gc->eh = TEH_plugin->event_listen (
         TEH_plugin->cls,
         GNUNET_TIME_absolute_get_remaining (gc->timeout),
@@ -315,6 +316,11 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                    &gc->merge_timestamp,
                                    &purse_deleted,
                                    &purse_refunded);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "select_purse %s returned %d (%s)\n",
+                args[0],
+                (int) qs,
+                GNUNET_TIME_timestamp2s (gc->merge_timestamp));
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -347,14 +353,20 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                        MHD_HTTP_GONE,
                                        purse_deleted
                                        ? TALER_EC_EXCHANGE_GENERIC_PURSE_DELETED
-                                       : TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+                                       : TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED
+                                       ,
                                        GNUNET_TIME_timestamp2s (
                                          gc->purse_expiration));
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Deposited amount is %s\n",
-              TALER_amount2s (&gc->deposited));
+              "Deposited amount is %s (%d/%d/%d)\n",
+              TALER_amount2s (&gc->deposited),
+              GNUNET_TIME_absolute_is_future (gc->timeout),
+              GNUNET_TIME_absolute_is_never (gc->merge_timestamp.abs_time),
+              (0 <
+               TALER_amount_cmp (&gc->amount,
+                                 &gc->deposited)));
   if (GNUNET_TIME_absolute_is_future (gc->timeout) &&
       ( ((gc->wait_for_merge) &&
          GNUNET_TIME_absolute_is_never (gc->merge_timestamp.abs_time)) ||

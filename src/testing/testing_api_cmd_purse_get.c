@@ -128,15 +128,9 @@ purse_status_cb (void *cls,
   ss->pgh = NULL;
   if (ss->expected_response_code != rs->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected HTTP response code: %d in %s:%u\n",
-                rs->hr.http_status,
-                __FILE__,
-                __LINE__);
-    json_dumpf (rs->hr.reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ss->is);
+    TALER_TESTING_unexpected_status (is,
+                                     rs->hr.http_status,
+                                     ss->expected_response_code);
     return;
   }
   if (MHD_HTTP_OK == ss->expected_response_code)

@@ -46,6 +46,8 @@ main (int argc,
   GNUNET_log_setup ("test-payto",
                     "WARNING",
                     NULL);
+  GNUNET_assert (GNUNET_TIME_absolute_is_never (
+                   GNUNET_TIME_UNIT_FOREVER_TS.abs_time));
   GNUNET_assert (NULL ==
                  TALER_iban_validate ("FR1420041010050500013M02606"));
   GNUNET_assert (NULL ==

@@ -325,14 +325,14 @@ run (void *cls,
         GNUNET_TIME_UNIT_SECONDS,
         1), /* expiration */
       "withdraw-coin-1",
-      "EUR:1.01",
+      "EUR:1.02",
       NULL),
     TALER_TESTING_cmd_purse_poll (
       "push-poll-purse-before-expire",
       MHD_HTTP_GONE,
       "purse-with-deposit-expire",
       "EUR:1",
-      true,
+      true, /* wait for merge */
       GNUNET_TIME_UNIT_MINUTES),
     /* This should fail, as too much of the coin
        is already spend / in a purse */

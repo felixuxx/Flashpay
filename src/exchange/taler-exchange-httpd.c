@@ -2641,6 +2641,8 @@ do_shutdown (void *cls)
   struct MHD_Daemon *my_mhd;
   (void) cls;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Shutdown of taler-exchange-httpd\n");
   my_mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
   TEH_batch_deposit_cleanup ();

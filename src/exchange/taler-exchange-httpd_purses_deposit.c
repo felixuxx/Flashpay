@@ -359,8 +359,9 @@ TEH_handler_purses_deposit (
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TEH_currency,
                                         &pcc.deposit_total));
-  pcc.num_coins = json_array_size (deposits);
+  pcc.num_coins = (unsigned int) json_array_size (deposits);
   if ( (0 == pcc.num_coins) ||
+       (((size_t) pcc.num_coins) != json_array_size (deposits)) ||
        (pcc.num_coins > TALER_MAX_FRESH_COINS) )
   {
     GNUNET_break_op (0);
