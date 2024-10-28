@@ -341,12 +341,11 @@ run (void *cls)
   }
 
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Test: insert_denomination_balance\n");
-
     struct TALER_AUDITORDB_DenominationCirculationData dcd;
     struct TALER_AUDITORDB_DenominationCirculationData dcd2;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Test: insert_denomination_balance\n");
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":12.345678",
                                            &dcd.denom_balance));

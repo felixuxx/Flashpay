@@ -178,56 +178,68 @@ run (void *cls)
    * Test2 = 123
    * Test3 = 245
    * Let's make sure that's the case! */
-  uint64_t value;
-  uint64_t valueNX;
-  uint64_t value3;
-  GNUNET_assert (
-    3 ==
-    plugin->get_auditor_progress (
-      plugin->cls,
-      "Test",
-      &value,
-      "TestNX",
-      &valueNX,
-      "Test3",
-      &value3,
-      NULL)
-    );
-  GNUNET_assert (value == 42);
-  GNUNET_assert (valueNX == 0);
-  GNUNET_assert (value3 == 245);
+  {
+    uint64_t value;
+    uint64_t valueNX;
+    uint64_t value3;
 
+    GNUNET_assert (
+      3 ==
+      plugin->get_auditor_progress (
+        plugin->cls,
+        "Test",
+        &value,
+        "TestNX",
+        &valueNX,
+        "Test3",
+        &value3,
+        NULL)
+      );
+    GNUNET_assert (value == 42);
+    GNUNET_assert (valueNX == 0);
+    GNUNET_assert (value3 == 245);
+  }
   /* Ensure the rest are also at their expected values */
-  GNUNET_assert (
-    GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-    plugin->get_auditor_progress (
-      plugin->cls,
-      "Test2",
-      &value,
-      NULL)
-    );
-  GNUNET_assert (value == 123);
-  GNUNET_assert (
-    GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-    plugin->get_auditor_progress (
-      plugin->cls,
-      "Test3",
-      &value,
-      NULL)
-    );
-  GNUNET_assert (value == 245);
+  {
+    uint64_t value;
 
-  /* Try fetching value that does not exist */
-  GNUNET_assert (
-    GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-    plugin->get_auditor_progress (
-      plugin->cls,
-      "TestNX",
-      &value,
-      NULL)
-    );
-  GNUNET_assert (0 == value);
+    GNUNET_assert (
+      GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+      plugin->get_auditor_progress (
+        plugin->cls,
+        "Test2",
+        &value,
+        NULL)
+      );
+    GNUNET_assert (value == 123);
+  }
+  {
+    uint64_t value;
 
+    GNUNET_assert (
+      GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+      plugin->get_auditor_progress (
+        plugin->cls,
+        "Test3",
+        &value,
+        NULL)
+      );
+    GNUNET_assert (value == 245);
+  }
+  {
+    uint64_t value;
+
+    /* Try fetching value that does not exist */
+    GNUNET_assert (
+      GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+      plugin->get_auditor_progress (
+        plugin->cls,
+        "TestNX",
+        &value,
+        NULL)
+      );
+    GNUNET_assert (0 == value);
+  }
 
   /* Test inserting a blank value, should tell us one result */
   GNUNET_assert (
