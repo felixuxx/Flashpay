@@ -112,6 +112,11 @@ static void
 run (void *cls)
 {
   json_t *input;
+  const char *argv[] = {
+    "test_conversion.sh",
+    "arg",
+    NULL
+  };
 
   (void) cls;
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -125,9 +130,7 @@ run (void *cls)
                                              &conv_cb,
                                              NULL,
                                              "./test_conversion.sh",
-                                             "test_conversion.sh",
-                                             "arg",
-                                             NULL);
+                                             argv);
   json_decref (input);
   GNUNET_assert (NULL != ec);
 }
