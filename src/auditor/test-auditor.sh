@@ -1116,7 +1116,7 @@ function test_11() {
     await_bank
     echo -n "Creating bogus transfer... "
     STATUS=$(curl -H "Content-Type: application/json" -X POST \
-      -u 'exchange:x' \
+      -u 'exchange:password' \
       http://localhost:8082/accounts/exchange/taler-wire-gateway/transfer \
       -d '{"credit_account":"'"$OTHER_IBAN"'","exchange_base_url":"http://exchange.example.com/","amount":"TESTKUDOS:10","wtid":"7X93HVKPHE0KAQ6KHSB3921KJGSVDMQFHMQV17885YJDMZ20XS9G","request_uid":"7X93HKPHE0KAQ6KHSB3921KJGSVDMQFHMQV17885YJDMZ20XS9G7X93HVKPHE0KAQ6KHSB3921KJGSVDMQFHMQV17885YJDMZ20XS9G"}' \
       -w "%{http_code}" -s -o /dev/null)
