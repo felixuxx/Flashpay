@@ -2108,25 +2108,25 @@ function test_33() {
         "TESTKUDOS:0" \
         "Wrong arithmetic delta minus from reserves"
 
-    echo -n "Checking for unexpected wire out differences "
+    echo -n "Checking for unexpected wire out differences... "
     check_no_report "wire-out-inconsistency"
 
     # Just to test the endpoint and for logging ...
     call_endpoint "balances"
 
-    echo -n "Testing for aggregation bad sig loss"
+    echo -n "Testing for aggregation bad sig loss... "
     check_balance \
         "aggregation_total_bad_sig_loss" \
         "TESTKUDOS:0" \
         "Wrong total bad sig loss from aggregation, got unexpected loss"
 
-    echo -n "Testing for coin bad sig loss"
+    echo -n "Testing for coin bad sig loss... "
     check_balance \
         "coin_irregular_loss" \
         "TESTKUDOS:0" \
         "Wrong total bad sig loss from coins, got unexpected loss"
 
-    echo -n "Testing for reserves bad sig loss"
+    echo -n "Testing for reserves bad sig loss... "
     check_balance \
         "reserves_total_bad_sig_loss" \
         "TESTKUDOS:0" \
