@@ -1744,56 +1744,45 @@ function test_25() {
 
 
 # Test for deposit wire target malformed
-# FIXME: test-26 not implemented
 function test_26() {
     echo "===========26: deposit wire target malformed ================="
-    #TODO needs to be rebuild
-#    # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
-#    SERIAL=$(echo "SELECT deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 AND (amount_with_fee).frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql "$DB" -Aqt)
-#    OLD_WIRE_ID=$(echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql "$DB" -Aqt)
-## shellcheck disable=SC2028
-#    echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');" \
-#        | psql "$DB" -Aqt
-## shellcheck disable=SC2028
-#    echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" \
-#        | psql -Aqt "$DB"
-#
-#    run_audit
-#    check_auditor_running
-#
-#    echo -n "Testing inconsistency detection... "
-#
-#    jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
-#
-#    ROW=$(jq -e .bad_sig_losses[0].row < test-audit-coins.json")
-#    if [ "$ROW" != "${SERIAL}" ]
-#    then
-#        exit_fail "Row wrong, got $ROW"
-#    fi
-#
-#    LOSS=$(jq -r .bad_sig_losses[0].loss < test-audit-coins.json")
-#    if [ "$LOSS" != "TESTKUDOS:3" ]
-#    then
-#        exit_fail "Wrong deposit bad signature loss, got $LOSS"
-#    fi
-#
-#    OP=$(jq -r .bad_sig_losses[0].operation < test-audit-coins.json")
-#    if [ "$OP" != "deposit" ]
-#    then
-#        exit_fail "Wrong operation, got $OP"
-#    fi
-#
-#    LOSS=$(jq -r .irregular_loss < test-audit-coins.json")
-#    if [ "$LOSS" != "TESTKUDOS:3" ]
-#    then
-#        exit_fail "Wrong total bad sig loss, got $LOSS"
-#    fi
-#
-#    echo "PASS"
-#    # Undo:
-#    echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" \
-#        | psql -Aqt "$DB"
+
+    # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
+    SERIAL=$(echo "SELECT batch_deposit_serial_id FROM exchange.coin_deposits WHERE (amount_with_fee).val=3 ORDER BY batch_deposit_serial_id LIMIT 1" | psql "$DB" -Aqt)
+    OLD_WIRE_ID=$(echo "SELECT wire_target_h_payto FROM exchange.batch_deposits WHERE batch_deposit_serial_id=${SERIAL};"  | psql "$DB" -Aqt)
+# shellcheck disable=SC2028
+    echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');" \
+        | psql "$DB" -Aqt
+# shellcheck disable=SC2028
+    echo "UPDATE exchange.batch_deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE batch_deposit_serial_id=${SERIAL};" \
+        | psql -Aqt "$DB"
+
+    run_audit
+    check_auditor_running
+
+    check_balance \
+        "coin_irregular_loss" \
+        "TESTKUDOS:3.02" \
+        "wrong total irregular coin loss"
+    call_endpoint "bad_sig_losses"
+    echo -n "Checking correct operation of loss reported... "
+    check_report \
+        "bad-sig-losses" \
+        "operation" "deposit"
+    echo -n "Checking correct loss reported... "
+    check_report \
+        "bad-sig-losses" \
+        "loss" "TESTKUDOS:3.02"
+    echo -n "Checking correct problem row ID reported... "
+    check_report \
+        "bad-sig-losses" \
+        "problem_row_id" "$SERIAL"
+
+    # Undo:
+    echo "UPDATE exchange.batch_deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE batch_deposit_serial_id=${SERIAL}" \
+        | psql -Aqt "$DB"
 }
+
 
 # Test for duplicate wire transfer subject
 # FIXME: test-27 not implemented
