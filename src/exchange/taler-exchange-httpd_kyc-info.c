@@ -359,8 +359,24 @@ contains_instant_measure (const json_t *jmeasures)
   const char *ename;
   unsigned int eline;
   enum GNUNET_GenericReturnValue ret;
+  const json_t *measures;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_array_const ("measures",
+                                  &measures),
+    GNUNET_JSON_spec_end ()
+  };
 
-  json_array_foreach ((json_t *) jmeasures, i, mi)
+  ret = GNUNET_JSON_parse (jmeasures,
+                           spec,
+                           &ename,
+                           &eline);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    return false;
+  }
+
+  json_array_foreach ((json_t *) measures, i, mi)
   {
     const char *check_name;
 
@@ -601,6 +617,8 @@ TEH_handler_kyc_info (
   {
     json_decref (jmeasures);
     json_decref (jvoluntary);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Still waiting for KYC program.\n");
     return TALER_MHD_reply_with_ec (
       rc->connection,
       TALER_EC_EXCHANGE_KYC_INFO_BUSY,
@@ -626,6 +644,8 @@ TEH_handler_kyc_info (
       &add_response_headers,
       NULL);
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Generating success reply to kyc-info query\n");
   res = generate_reply (kyp,
                         legitimization_measure_last_row,
                         legitimization_outcome_last_row,
