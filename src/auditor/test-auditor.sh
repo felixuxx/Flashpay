@@ -30,7 +30,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=$(seq 0 33)
+ALL_TESTS=$(seq 0 32)
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -1784,46 +1784,11 @@ function test_26() {
 }
 
 
-# Test for duplicate wire transfer subject
-# FIXME: test-27 not implemented
-function test_27() {
-    echo "===========27: duplicate WTID detection ================="
-#TODO libeufin fix
- #   pre_audit aggregator
- #   stop_libeufin
- #   # Obtain data to duplicate.
- #   WTID=$(echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | psql "${DB}" -Aqt)
- #   OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}" -Aqt)
- #   # 'rawConfirmation' is set to 2 here, that doesn't
- #   # point to any record.  That's only needed to set a non null value.
- #   echo -e "INSERT INTO PaymentInitiations (\"bankAccount\",\"preparationDate\",\"submissionDate\",sum,currency,\"endToEndId\",\"paymentInformationId\",\"instructionId\",subject,\"creditorIban\",\"creditorBic\",\"creditorName\",submitted,\"messageId\",\"rawConfirmation\") VALUES (1,$(date +%s),$(( $(date +%s) + 2)),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two',false,1,2)" \
- #       | psql "${DB}" -q
- #   echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/$OTHER_IBAN?receiver-name=Forty+Two')" \
- #       | psql "${DB}" -q
- #   launch_libeufin
- #   audit_only
- #   post_audit
-#
- #   echo -n "Testing inconsistency detection... "
-#
- #   AMOUNT=$(jq -r .wire_format_inconsistencies[0].amount < test-audit-wire.json")
- #   if [ "${AMOUNT}" != "TESTKUDOS:1" ]
- #   then
- #       exit_fail "Amount wrong, got ${AMOUNT}"
- #   fi
- #
- #   # cannot easily undo aggregator, hence full reload
- #   full_reload
-}
-
-
-
-
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature) AND the coin is used in aggregation
-function test_28() {
+function test_27() {
 
-    echo "===========28: known_coins signature wrong================="
+    echo "===========27: known_coins signature wrong================="
     # Modify denom_sig, so it is wrong
     OLD_SIG=$(echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql "$DB" -Aqt)
     COIN_PUB=$(echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql "$DB" -Aqt)
@@ -1860,8 +1825,8 @@ function test_28() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
-function test_29() {
-    echo "===========29: withdraw fee inconsistency ================="
+function test_28() {
+    echo "===========28: withdraw fee inconsistency ================="
 
     echo "UPDATE exchange.denominations SET fee_withdraw.frac=5000000 WHERE (coin).val=1;" | psql -Aqt "$DB"
 
@@ -1885,8 +1850,8 @@ function test_29() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
-function test_30() {
-    echo "===========30: melt fee inconsistency ================="
+function test_29() {
+    echo "===========29: melt fee inconsistency ================="
 
     echo "UPDATE exchange.denominations SET fee_refresh.frac=5000000 WHERE (coin).val=10;" | psql -Aqt "$DB"
 
@@ -1913,8 +1878,8 @@ function test_30() {
 
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
-function test_31() {
-    echo "===========31: deposit fee inconsistency ================="
+function test_30() {
+    echo "===========30: deposit fee inconsistency ================="
 
     echo "UPDATE exchange.denominations SET fee_deposit.frac=5000000 WHERE (coin).val=8;" | psql -Aqt "$DB"
 
@@ -1940,8 +1905,8 @@ function test_31() {
 
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature)
-function test_32() {
-    echo "===========32: known_coins signature wrong w. aggregation================="
+function test_31() {
+    echo "===========31: known_coins signature wrong w. aggregation================="
     # Modify denom_sig, so it is wrong
     OLD_SIG=$(echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql "$DB" -Aqt)
     COIN_PUB=$(echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql "$DB" -Aqt)
@@ -1968,9 +1933,9 @@ function test_32() {
 }
 
 
-function test_33() {
+function test_32() {
 
-    echo "===========33: normal run with aggregator and profit drain==========="
+    echo "===========32: normal run with aggregator and profit drain==========="
     run_audit aggregator drain
     check_auditor_running
 
