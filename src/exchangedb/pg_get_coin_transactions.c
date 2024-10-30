@@ -786,7 +786,7 @@ handle_history_entry (void *cls,
                   (int) qs,
                   (unsigned long long) serial_id,
                   table_name);
-      if (0 >= qs)
+      if (0 > qs)
         chc->failed = true;
       break;
     }

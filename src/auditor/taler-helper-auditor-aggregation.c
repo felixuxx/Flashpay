@@ -1418,6 +1418,7 @@ analyze_aggregations (void *cls)
     TALER_ARL_GET_AB (aggregation_total_wire_out_delta_plus),
     TALER_ARL_GET_AB (aggregation_total_wire_out_delta_minus),
     TALER_ARL_GET_AB (aggregation_total_coin_delta_plus),
+    TALER_ARL_GET_AB (aggregation_total_coin_delta_minus),
     NULL);
   if (0 > qs)
   {
@@ -1468,6 +1469,7 @@ analyze_aggregations (void *cls)
     TALER_ARL_SET_AB (aggregation_total_wire_out_delta_plus),
     TALER_ARL_SET_AB (aggregation_total_wire_out_delta_minus),
     TALER_ARL_SET_AB (aggregation_total_coin_delta_plus),
+    TALER_ARL_SET_AB (aggregation_total_coin_delta_minus),
     NULL);
   if (0 > qs)
   {
@@ -1485,6 +1487,7 @@ analyze_aggregations (void *cls)
     TALER_ARL_SET_AB (aggregation_total_wire_out_delta_plus),
     TALER_ARL_SET_AB (aggregation_total_wire_out_delta_minus),
     TALER_ARL_SET_AB (aggregation_total_coin_delta_plus),
+    TALER_ARL_SET_AB (aggregation_total_coin_delta_minus),
     NULL);
   if (0 > qs)
   {

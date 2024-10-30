@@ -40,12 +40,11 @@ TAH_PG_insert_coin_inconsistency (
            "auditor_coin_inconsistency_insert",
            "INSERT INTO auditor_coin_inconsistency "
            "(operation"
-           ",problem_row_id"
            ",exchange_amount"
            ",auditor_amount"
            ",coin_pub"
            ",profitable"
-           ") VALUES ($1,$2,$3,$4,$5,$6)"
+           ") VALUES ($1,$2,$3,$4,$5)"
            );
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_coin_inconsistency_insert",

@@ -1704,12 +1704,12 @@ function test_24() {
 
 
 # Test for inconsistent coin history.
-# FIXME: test-25 not implemented
 function test_25() {
 
     echo "=========25: inconsistent coin history========="
 
     # Drop refund, so coin history is bogus.
+    echo -n "Dropping refund from DB... "
     echo "DELETE FROM exchange.refunds WHERE refund_serial_id=1;" \
         | psql -At "$DB"
 
@@ -1717,39 +1717,27 @@ function test_25() {
     check_auditor_running
 
     echo -n "Testing inconsistency detection... "
-
-    call_endpoint "coin-inconsistency"
-    call_endpoint "emergency"
-    call_endpoint "balances" "coins_reported_emergency_risk_by_amount"
-
-#TODO: doesn't find any
-    #jq -e .coin_inconsistency[0] \
-    #   < "${MY_TMP_DIR}/coin-inconsistency.json" \
-    #   > /dev/null \
-    #    || exit_fail "Coin inconsistency NOT detected"
-
-    # Note: if the wallet withdrew much more than it spent, this might indeed
-    # go legitimately unnoticed.
-    #jq -e .emergency[0] \
-    #   < "${MY_TMP_DIR}/emergency.json" \
-    #   > /dev/null \
-    #    || exit_fail "Denomination value emergency NOT reported"
-#TODO: find's only wrong amount
-    call_endpoint "balances" "aggregation_total_coin_delta_minus"
-    #AMOUNT=$(jq -er .balances[0].balance_value < "${MY_TMP_DIR}/aggregation_total_coin_delta_minus.json")
-    #if [ "$AMOUNT" = "TESTKUDOS:0" ]
-    #then
-    #    exit_fail "Expected non-zero total inconsistency amount from coins"
-    #fi
-    # Note: if the wallet withdrew much more than it spent, this might indeed
-    # go legitimately unnoticed.
-    #COUNT=$(jq -er .balances[0].balance_value < "${MY_TMP_DIR}/coins_reported_emergency_risk_by_amount.json")
-    #if [ "$COUNT" = "TESTKUDOS:0" ]
-    #then
-       # exit_fail "Expected non-zero emergency-by-amount"
-    #fi
-    #echo "PASS"
-
+    check_report \
+        "coin-inconsistency" \
+        "profitable" "true"
+    echo -n "Testing emergency risk reporting... "
+    check_report \
+        "emergency" \
+        "denom_risk" "TESTKUDOS:10"
+    echo -n "Testing emergency loss reporting... "
+    check_report \
+        "emergency" \
+        "denom_loss" "TESTKUDOS:5.98"
+    echo -n "Testing double-spending reporting... "
+    check_balance \
+        "coins_reported_emergency_risk_by_amount" \
+        "TESTKUDOS:10" \
+        "double-spending not detected"
+    echo -n "Testing balance loss update... "
+    check_balance \
+        "aggregation_total_coin_delta_minus" \
+        "TESTKUDOS:5.98" \
+        "aggregation total coin delta minus not reported"
     # cannot easily undo DELETE, hence full reload
     full_reload
 }
