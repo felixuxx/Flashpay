@@ -618,6 +618,12 @@ run (void *cls,
     {
       auth.method = TALER_BANK_AUTH_BASIC;
     }
+    else if ( (NULL != auth.wire_gateway_url) &&
+              (NULL != auth.details.bearer.token) )
+    {
+      auth.method = TALER_BANK_AUTH_BEARER;
+    }
+
     else if (NULL == auth.wire_gateway_url)
     {
       fprintf (stderr,

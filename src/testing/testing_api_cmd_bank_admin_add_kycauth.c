@@ -149,6 +149,11 @@ confirmation_cb (void *cls,
                   "Basic authentication (%s) failed.\n",
                   fts->auth.details.basic.username);
       break;
+    case TALER_BANK_AUTH_BEARER:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Bearer authentication (%s) failed.\n",
+                  fts->auth.details.bearer.token);
+      break;
     }
     break;
   case MHD_HTTP_CONFLICT:

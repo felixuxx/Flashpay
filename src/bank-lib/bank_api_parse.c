@@ -33,9 +33,10 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
     const char *m;
     enum TALER_BANK_AuthenticationMethod e;
   } methods[] = {
-    { "NONE",  TALER_BANK_AUTH_NONE  },
-    { "BASIC", TALER_BANK_AUTH_BASIC },
-    { NULL, TALER_BANK_AUTH_NONE     }
+    { "NONE",  TALER_BANK_AUTH_NONE    },
+    { "BASIC", TALER_BANK_AUTH_BASIC   },
+    { "BEARER", TALER_BANK_AUTH_BEARER },
+    { NULL, TALER_BANK_AUTH_NONE       }
   };
   char *method;
 
@@ -106,6 +107,23 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
         auth->method = TALER_BANK_AUTH_BASIC;
         GNUNET_free (method);
         return GNUNET_OK;
+      case TALER_BANK_AUTH_BEARER:
+        if (GNUNET_OK !=
+            GNUNET_CONFIGURATION_get_value_string (cfg,
+                                                   section,
+                                                   "TOKEN",
+                                                   &auth->details.bearer.token))
+        {
+          GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                     section,
+                                     "TOKEN");
+          GNUNET_free (method);
+          GNUNET_free (auth->wire_gateway_url);
+          return GNUNET_SYSERR;
+        }
+        auth->method = TALER_BANK_AUTH_BEARER;
+        GNUNET_free (method);
+        return GNUNET_OK;
       }
     }
   }
@@ -133,7 +151,15 @@ TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth)
       auth->details.basic.password = NULL;
     }
     break;
+  case TALER_BANK_AUTH_BEARER:
+    if (NULL != auth->details.bearer.token)
+    {
+      GNUNET_free (auth->details.bearer.token);
+      auth->details.bearer.token = NULL;
+    }
+    break;
   }
+  
   GNUNET_free (auth->wire_gateway_url);
   auth->wire_gateway_url = NULL;
 }

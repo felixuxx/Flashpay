@@ -48,6 +48,11 @@ enum TALER_BANK_AuthenticationMethod
    * Basic authentication with cleartext username and password.
    */
   TALER_BANK_AUTH_BASIC,
+
+  /**
+   * Bearer token authentication.
+   */
+  TALER_BANK_AUTH_BEARER,
 };
 
 
@@ -89,6 +94,18 @@ struct TALER_BANK_AuthenticationData
        */
       char *password;
     } basic;
+
+    /**
+     * Details for #TALER_BANK_AUTH_BEARER.
+     */
+    struct
+    {
+      /**
+       * Token to use.
+       */
+      char *token;
+
+    } bearer;
 
   } details;
 

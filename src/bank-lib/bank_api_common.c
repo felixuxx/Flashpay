@@ -54,6 +54,19 @@ TALER_BANK_setup_auth_ (CURL *easy,
       GNUNET_free (up);
       break;
     }
+  case TALER_BANK_AUTH_BEARER:
+    {
+      if ( (CURLE_OK !=
+            curl_easy_setopt (easy,
+                              CURLOPT_HTTPAUTH,
+                              CURLAUTH_BEARER)) ||
+           (CURLE_OK !=
+            curl_easy_setopt (easy,
+                              CURLOPT_XOAUTH2_BEARER,
+                              auth->details.bearer.token)) )
+        ret = GNUNET_SYSERR;
+      break;
+    }
   }
   return ret;
 }
