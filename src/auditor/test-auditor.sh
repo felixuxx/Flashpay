@@ -1111,7 +1111,7 @@ function test_11() {
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
     launch_libeufin
-    OTHER_IBAN=$(echo -e "SELECT internal_payto FROM libeufin_bank.bank_accounts ba JOIN libeufin_bank.customers bc ON (ba.owning_customer_id = bc.customer_id) WHERE username='fortytwo'" | psql "${DB}" -Aqt)
+    OTHER_IBAN=$(echo "SELECT internal_payto FROM libeufin_bank.bank_accounts ba JOIN libeufin_bank.customers bc ON (ba.owning_customer_id = bc.customer_id) WHERE username='fortytwo'" | psql "${DB}" -Aqt)
 
     await_bank
     echo -n "Creating bogus transfer... "
