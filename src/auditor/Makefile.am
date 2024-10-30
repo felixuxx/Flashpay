@@ -264,8 +264,8 @@ check_SCRIPTS = \
 
 TESTS = \
   test-revocation.sh \
-  test-sync.sh
-#  test-auditor.sh
+  test-sync.sh \
+  test-auditor.sh
 
 
 EXTRA_DIST = \
