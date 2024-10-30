@@ -265,15 +265,6 @@ kyc_aml_finished (
     GNUNET_async_scope_restore (&old_scope);
     return;
   }
-
-  if (0 == strcasecmp (kat->provider_name, "SKIP"))
-  {
-    /* Instant measure, means we don't have a legi id */
-    goto RETURN_RESULT;
-  }
-
-  GNUNET_assert (0 != kat->provider_legitimization_id);
-
   {
     const char *birthdate;
 
