@@ -322,7 +322,7 @@ kyc_aml_finished (
               "Stored encrypted KYC process #%llu attributes: %d\n",
               (unsigned long long) kat->process_row,
               qs);
-  if (qs <= 0)
+  if (qs < 0)
   {
     GNUNET_break (0);
     if (NULL != kat->response)

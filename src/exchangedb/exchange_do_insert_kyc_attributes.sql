@@ -68,20 +68,23 @@ RETURNING
 INTO
   my_trigger_outcome_serial;
 
-INSERT INTO kyc_attributes
-  (h_payto
-  ,collection_time
-  ,expiration_time
-  ,encrypted_attributes
-  ,legitimization_serial
-  ,trigger_outcome_serial
- ) VALUES
-  (in_h_payto
-  ,in_collection_time_ts
-  ,in_expiration_time_ts
-  ,in_enc_attributes
-  ,in_process_row
-  ,my_trigger_outcome_serial);
+IF in_process_row IS NOT NULL
+THEN
+  INSERT INTO kyc_attributes
+    (h_payto
+    ,collection_time
+    ,expiration_time
+    ,encrypted_attributes
+    ,legitimization_serial
+    ,trigger_outcome_serial
+   ) VALUES
+    (in_h_payto
+    ,in_collection_time_ts
+    ,in_expiration_time_ts
+    ,in_enc_attributes
+    ,in_process_row
+    ,my_trigger_outcome_serial);
+END IF;
 
 UPDATE legitimization_processes
   SET provider_user_id=in_provider_account_id

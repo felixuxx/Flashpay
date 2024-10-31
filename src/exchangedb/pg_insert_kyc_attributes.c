@@ -26,6 +26,13 @@
 #include "pg_helper.h"
 
 
+/*
+ * FIXME:
+ * This function does *so* much more than inserting KYC attributes.
+ * Sometimes it doesn't even insert KYC attributes at all.
+ * => Rename?
+ */
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_attributes (
   void *cls,
@@ -56,7 +63,9 @@ TEH_PG_insert_kyc_attributes (
   char *kyc_completed_notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&process_row),
+    (0 == process_row)
+      ? GNUNET_PQ_query_param_null ()
+      : GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_uint32 (&birthday),
     GNUNET_PQ_query_param_string (provider_name),
