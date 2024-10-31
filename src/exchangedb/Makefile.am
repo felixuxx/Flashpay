@@ -26,7 +26,8 @@ sqlinputs = \
   exchange-0003.sql.in \
   exchange-0004.sql.in \
   exchange-0005.sql.in \
-  exchange-0006.sql.in
+  exchange-0006.sql.in \
+  exchange-0007.sql.in
 
 sql_DATA = \
   benchmark-0001.sql \
@@ -38,6 +39,7 @@ sql_DATA = \
   exchange-0004.sql \
   exchange-0005.sql \
   exchange-0006.sql \
+  exchange-0007.sql \
   drop.sql \
   procedures.sql
 
@@ -53,6 +55,7 @@ CLEANFILES = \
   exchange-0004.sql \
   exchange-0005.sql \
   exchange-0006.sql \
+  exchange-0007.sql \
   procedures.sql
 
 procedures.sql: procedures.sql.in exchange_do_*.sql
@@ -83,6 +86,11 @@ exchange-0005.sql: exchange-0005.sql.in 0005-*.sql
 exchange-0006.sql: exchange-0006.sql.in 0006-*.sql
 	chmod +w $@ 2> /dev/null || true
 	gcc -E -P -undef - < exchange-0006.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
+	chmod ugo-w $@
+
+exchange-0007.sql: exchange-0007.sql.in 0007-*.sql
+	chmod +w $@ 2> /dev/null || true
+	gcc -E -P -undef - < exchange-0007.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 check_SCRIPTS = \

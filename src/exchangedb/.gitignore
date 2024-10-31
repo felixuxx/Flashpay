@@ -16,3 +16,4 @@ test-exchangedb-populate-select-refunds-by-coin-postgres
 exchange-0004.sql
 exchange-0005.sql
 exchange-0006.sql
+exchange-0007.sql
