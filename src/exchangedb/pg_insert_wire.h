@@ -24,6 +24,8 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Insert information about an wire account used by this exchange.
  *
@@ -42,7 +44,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire (void *cls,
-                    const char *payto_uri,
+                    const struct TALER_FullPayto payto_uri,
                     const char *conversion_url,
                     const json_t *debit_restrictions,
                     const json_t *credit_restrictions,

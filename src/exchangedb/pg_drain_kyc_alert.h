@@ -35,6 +35,6 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_drain_kyc_alert (void *cls,
                         uint32_t trigger_type,
-                        struct TALER_PaytoHashP *h_payto);
+                        struct TALER_NormalizedPaytoHashP *h_payto);
 
 #endif

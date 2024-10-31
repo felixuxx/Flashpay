@@ -221,7 +221,6 @@
 #include "pg_select_purse_by_merge_pub.h"
 #include "pg_set_purse_balance.h"
 #include "pg_reserves_update.h"
-#include "pg_setup_wire_target.h"
 #include "pg_compute_shard.h"
 #include "pg_insert_kyc_attributes.h"
 #include "pg_select_kyc_attributes.h"

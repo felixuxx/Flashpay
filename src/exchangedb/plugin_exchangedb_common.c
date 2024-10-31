@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2020 Taler Systems SA
+  Copyright (C) 2015, 2016, 2020, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -38,7 +38,7 @@ TEH_COMMON_free_reserve_history (
         struct TALER_EXCHANGEDB_BankTransfer *bt;
 
         bt = rh->details.bank;
-        GNUNET_free (bt->sender_account_details);
+        GNUNET_free (bt->sender_account_details.full_payto);
         GNUNET_free (bt);
         break;
       }
@@ -65,7 +65,7 @@ TEH_COMMON_free_reserve_history (
         struct TALER_EXCHANGEDB_ClosingTransfer *closing;
 
         closing = rh->details.closing;
-        GNUNET_free (closing->receiver_account_details);
+        GNUNET_free (closing->receiver_account_details.full_payto);
         GNUNET_free (closing);
         break;
       }
@@ -128,7 +128,7 @@ TEH_COMMON_free_coin_transaction_list (
         struct TALER_EXCHANGEDB_DepositListEntry *deposit;
 
         deposit = tl->details.deposit;
-        GNUNET_free (deposit->receiver_wire_account);
+        GNUNET_free (deposit->receiver_wire_account.full_payto);
         GNUNET_free (deposit);
         break;
       }

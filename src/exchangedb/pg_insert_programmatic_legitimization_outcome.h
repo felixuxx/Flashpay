@@ -43,7 +43,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_programmatic_legitimization_outcome (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Absolute expiration_time,
   const json_t *account_properties,

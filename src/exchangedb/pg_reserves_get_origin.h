@@ -37,7 +37,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_get_origin (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct TALER_PaytoHashP *h_payto,
-  char **payto_uri);
+  struct TALER_FullPaytoHashP *h_payto,
+  struct TALER_FullPayto *payto_uri);
 
 #endif

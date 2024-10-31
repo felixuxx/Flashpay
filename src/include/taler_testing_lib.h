@@ -153,17 +153,17 @@ struct TALER_TESTING_Credentials
   /**
    * RFC 8905 URI of the exchange.
    */
-  char *exchange_payto;
+  struct TALER_FullPayto exchange_payto;
 
   /**
    * RFC 8905 URI of a user.
    */
-  char *user42_payto;
+  struct TALER_FullPayto user42_payto;
 
   /**
    * RFC 8905 URI of a user.
    */
-  char *user43_payto;
+  struct TALER_FullPayto user43_payto;
 };
 
 
@@ -200,12 +200,12 @@ TALER_TESTING_get_credentials (
  * Allocate and return a piece of wire-details.  Combines
  * a @a payto -URL and adds some salt to create the JSON.
  *
- * @param payto payto://-URL to encapsulate
+ * @param fpayto payto://-URL to encapsulate
  * @return JSON describing the account, including the
  *         payto://-URL of the account, must be manually decref'd
  */
 json_t *
-TALER_TESTING_make_wire_details (const char *payto);
+TALER_TESTING_make_wire_details (const struct TALER_FullPayto fpayto);
 
 
 /**
@@ -315,10 +315,10 @@ struct TALER_TESTING_Command
    * @return #GNUNET_OK on success
    */
   enum GNUNET_GenericReturnValue
-  (*traits)(void *cls,
-            const void **ret,
-            const char *trait,
-            unsigned int index);
+    (*traits)(void *cls,
+              const void **ret,
+              const char *trait,
+              unsigned int index);
 
   /**
    * When did the execution of this command start?
@@ -776,8 +776,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer (const char *label,
                             const char *amount,
                             const struct TALER_BANK_AuthenticationData *auth,
-                            const char *payto_debit_account,
-                            const char *payto_credit_account,
+                            const struct TALER_FullPayto payto_debit_account,
+                            const struct TALER_FullPayto payto_credit_account,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             const char *exchange_base_url);
 
@@ -864,7 +864,7 @@ TALER_TESTING_cmd_admin_add_incoming (
   const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account);
+  const struct TALER_FullPayto payto_debit_account);
 
 
 /**
@@ -884,7 +884,7 @@ TALER_TESTING_cmd_admin_add_kycauth (
   const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
+  const struct TALER_FullPayto payto_debit_account,
   const char *account_ref);
 
 
@@ -908,7 +908,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (
   const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
+  const struct TALER_FullPayto payto_debit_account,
   const char *ref,
   unsigned int http_status);
 
@@ -1298,10 +1298,11 @@ TALER_TESTING_cmd_reserve_poll_finish (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_reserve_history (const char *label,
-                                   const char *reserve_reference,
-                                   const char *expected_balance,
-                                   unsigned int expected_response_code);
+TALER_TESTING_cmd_reserve_history (
+  const char *label,
+  const char *reserve_reference,
+  const char *expected_balance,
+  unsigned int expected_response_code);
 
 
 /**
@@ -1314,10 +1315,11 @@ TALER_TESTING_cmd_reserve_history (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_coin_history (const char *label,
-                                const char *coin_reference,
-                                const char *expected_balance,
-                                unsigned int expected_response_code);
+TALER_TESTING_cmd_coin_history (
+  const char *label,
+  const char *coin_reference,
+  const char *expected_balance,
+  unsigned int expected_response_code);
 
 
 /**
@@ -1333,13 +1335,14 @@ TALER_TESTING_cmd_coin_history (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_reserve_open (const char *label,
-                                const char *reserve_reference,
-                                const char *reserve_pay,
-                                struct GNUNET_TIME_Relative expiration_time,
-                                uint32_t min_purses,
-                                unsigned int expected_response_code,
-                                ...);
+TALER_TESTING_cmd_reserve_open (
+  const char *label,
+  const char *reserve_reference,
+  const char *reserve_pay,
+  struct GNUNET_TIME_Relative expiration_time,
+  uint32_t min_purses,
+  unsigned int expected_response_code,
+  ...);
 
 
 /**
@@ -1352,10 +1355,11 @@ TALER_TESTING_cmd_reserve_open (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_reserve_get_attestable (const char *label,
-                                          const char *reserve_reference,
-                                          unsigned int expected_response_code,
-                                          ...);
+TALER_TESTING_cmd_reserve_get_attestable (
+  const char *label,
+  const char *reserve_reference,
+  unsigned int expected_response_code,
+  ...);
 
 
 /**
@@ -1368,10 +1372,11 @@ TALER_TESTING_cmd_reserve_get_attestable (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_reserve_attest (const char *label,
-                                  const char *reserve_reference,
-                                  unsigned int expected_response_code,
-                                  ...);
+TALER_TESTING_cmd_reserve_attest (
+  const char *label,
+  const char *reserve_reference,
+  unsigned int expected_response_code,
+  ...);
 
 
 /**
@@ -1384,10 +1389,11 @@ TALER_TESTING_cmd_reserve_attest (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_reserve_close (const char *label,
-                                 const char *reserve_reference,
-                                 const char *target_account,
-                                 unsigned int expected_response_code);
+TALER_TESTING_cmd_reserve_close (
+  const char *label,
+  const char *reserve_reference,
+  const char *target_account,
+  unsigned int expected_response_code);
 
 
 /**
@@ -1410,14 +1416,15 @@ TALER_TESTING_cmd_reserve_close (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit (const char *label,
-                           const char *coin_reference,
-                           unsigned int coin_index,
-                           const char *target_account_payto,
-                           const char *contract_terms,
-                           struct GNUNET_TIME_Relative refund_deadline,
-                           const char *amount,
-                           unsigned int expected_response_code);
+TALER_TESTING_cmd_deposit (
+  const char *label,
+  const char *coin_reference,
+  unsigned int coin_index,
+  const struct TALER_FullPayto target_account_payto,
+  const char *contract_terms,
+  struct GNUNET_TIME_Relative refund_deadline,
+  const char *amount,
+  unsigned int expected_response_code);
 
 /**
  * Create a "deposit" command that references an existing merchant key.
@@ -1444,15 +1451,16 @@ TALER_TESTING_cmd_deposit (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_with_ref (const char *label,
-                                    const char *coin_reference,
-                                    unsigned int coin_index,
-                                    const char *target_account_payto,
-                                    const char *contract_terms,
-                                    struct GNUNET_TIME_Relative refund_deadline,
-                                    const char *amount,
-                                    unsigned int expected_response_code,
-                                    const char *merchant_priv_reference);
+TALER_TESTING_cmd_deposit_with_ref (
+  const char *label,
+  const char *coin_reference,
+  unsigned int coin_index,
+  const struct TALER_FullPayto target_account_payto,
+  const char *contract_terms,
+  struct GNUNET_TIME_Relative refund_deadline,
+  const char *amount,
+  unsigned int expected_response_code,
+  const char *merchant_priv_reference);
 
 /**
  * Modify a deposit command to enable retries when we get transient
@@ -1497,12 +1505,13 @@ TALER_TESTING_cmd_deposit_replay (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_batch_deposit (const char *label,
-                                 const char *target_account_payto,
-                                 const char *contract_terms,
-                                 struct GNUNET_TIME_Relative refund_deadline,
-                                 unsigned int expected_response_code,
-                                 ...);
+TALER_TESTING_cmd_batch_deposit (
+  const char *label,
+  const struct TALER_FullPayto target_account_payto,
+  const char *contract_terms,
+  struct GNUNET_TIME_Relative refund_deadline,
+  unsigned int expected_response_code,
+  ...);
 
 
 /**
@@ -1677,8 +1686,8 @@ TALER_TESTING_cmd_check_bank_transfer (
   const char *label,
   const char *exchange_base_url,
   const char *amount,
-  const char *debit_payto,
-  const char *credit_payto);
+  const struct TALER_FullPayto debit_payto,
+  const struct TALER_FullPayto credit_payto);
 
 
 /**
@@ -1696,8 +1705,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_admin_transfer (
   const char *label,
   const char *amount,
-  const char *debit_payto,
-  const char *credit_payto,
+  const struct TALER_FullPayto debit_payto,
+  const struct TALER_FullPayto credit_payto,
   const char *reserve_pub_ref);
 
 
@@ -2075,7 +2084,7 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire_add (const char *label,
-                            const char *payto_uri,
+                            const struct TALER_FullPayto payto_uri,
                             unsigned int expected_http_status,
                             bool bad_sig);
 
@@ -2092,7 +2101,7 @@ TALER_TESTING_cmd_wire_add (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire_del (const char *label,
-                            const char *payto_uri,
+                            const struct TALER_FullPayto payto_uri,
                             unsigned int expected_http_status,
                             bool bad_sig);
 
@@ -2656,7 +2665,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         enum GNUNET_GenericReturnValue                          \
         TALER_TESTING_get_trait_ ## name (                    \
           const struct TALER_TESTING_Command *cmd,              \
-          type * *ret);                                          \
+          type **ret);                                          \
         struct TALER_TESTING_Trait                              \
         TALER_TESTING_make_trait_ ## name (                   \
           type * value);
@@ -2699,11 +2708,11 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         TALER_TESTING_get_trait_ ## name (                    \
           const struct TALER_TESTING_Command *cmd,              \
           unsigned int index,                                   \
-          type * *ret);                                          \
+          type **ret);                                          \
         struct TALER_TESTING_Trait                              \
         TALER_TESTING_make_trait_ ## name (                   \
           unsigned int index,                                   \
-          type * value);
+          type *value);
 
 
 /**
@@ -2757,7 +2766,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
         op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
         op (reserve_sig, const struct TALER_ReserveSignatureP)           \
-        op (h_payto, const struct TALER_PaytoHashP)                      \
+        op (h_full_payto, const struct TALER_FullPaytoHashP)             \
+        op (h_normalized_payto, const struct TALER_NormalizedPaytoHashP) \
         op (account_access_token, const struct TALER_AccountAccessTokenP) \
         op (account_priv, const union TALER_AccountPrivateKeyP)          \
         op (account_pub, const union TALER_AccountPublicKeyP)            \
@@ -2775,14 +2785,15 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
         op (auditor_url, const char)                                     \
         op (exchange_bank_account_url, const char)                       \
         op (taler_uri, const char)                                       \
-        op (payto_uri, const char)                                       \
+        op (full_payto_uri, const struct TALER_FullPayto)                \
+        op (normalized_payto_uri, const struct TALER_NormalizedPayto)    \
         op (kyc_url, const char)                                         \
         op (web_url, const char)                                         \
         op (row, const uint64_t)                                         \
         op (legi_requirement_row, const uint64_t)                        \
         op (array_length, const unsigned int)                            \
-        op (credit_payto_uri, const char)                                \
-        op (debit_payto_uri, const char)                                 \
+        op (credit_payto_uri, const struct TALER_FullPayto)              \
+        op (debit_payto_uri, const struct TALER_FullPayto)               \
         op (order_id, const char)                                        \
         op (amount, const struct TALER_Amount)                           \
         op (amount_with_fee, const struct TALER_Amount)                  \

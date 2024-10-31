@@ -154,7 +154,7 @@ TALER_BANK_admin_add_kycauth (
   const struct TALER_BANK_AuthenticationData *auth,
   const union TALER_AccountPublicKeyP *account_pub,
   const struct TALER_Amount *amount,
-  const char *debit_account,
+  const struct TALER_FullPayto debit_account,
   TALER_BANK_AdminAddKycauthCallback res_cb,
   void *res_cb_cls)
 {
@@ -162,7 +162,7 @@ TALER_BANK_admin_add_kycauth (
   json_t *admin_obj;
   CURL *eh;
 
-  if (NULL == debit_account)
+  if (NULL == debit_account.full_payto)
   {
     GNUNET_break (0);
     return NULL;
@@ -182,8 +182,8 @@ TALER_BANK_admin_add_kycauth (
                                 account_pub),
     TALER_JSON_pack_amount ("amount",
                             amount),
-    GNUNET_JSON_pack_string ("debit_account",
-                             debit_account));
+    TALER_JSON_pack_full_payto ("debit_account",
+                                debit_account));
   if (NULL == admin_obj)
   {
     GNUNET_break (0);

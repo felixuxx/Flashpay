@@ -36,7 +36,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_find_aggregation_transient (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   TALER_EXCHANGEDB_TransientAggregationCallback cb,
   void *cb_cls);
 

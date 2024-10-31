@@ -204,7 +204,7 @@ TALER_BANK_admin_add_incoming (
   const struct TALER_BANK_AuthenticationData *auth,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *amount,
-  const char *debit_account,
+  const struct TALER_FullPayto debit_account,
   TALER_BANK_AdminAddIncomingCallback res_cb,
   void *res_cb_cls);
 
@@ -310,7 +310,7 @@ TALER_BANK_admin_add_kycauth (
   const struct TALER_BANK_AuthenticationData *auth,
   const union TALER_AccountPublicKeyP *account_pub,
   const struct TALER_Amount *amount,
-  const char *debit_account,
+  const struct TALER_FullPayto debit_account,
   TALER_BANK_AdminAddKycauthCallback res_cb,
   void *res_cb_cls);
 
@@ -342,7 +342,7 @@ TALER_BANK_admin_add_kycauth_cancel (
  */
 void
 TALER_BANK_prepare_transfer (
-  const char *destination_account_payto_uri,
+  const struct TALER_FullPayto destination_account_payto_uri,
   const struct TALER_Amount *amount,
   const char *exchange_base_url,
   const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -519,7 +519,7 @@ struct TALER_BANK_CreditDetails
   /**
    * payto://-URL of the source account that send the funds.
    */
-  const char *debit_account_uri;
+  struct TALER_FullPayto debit_account_uri;
 
   /**
    * Details that depend on the @e type.
@@ -614,7 +614,7 @@ struct TALER_BANK_CreditHistoryResponse
       /**
        * payto://-URL of the target account that received the funds.
        */
-      const char *credit_account_uri;
+      struct TALER_FullPayto credit_account_uri;
 
       /**
        * Array of transactions received.
@@ -728,7 +728,7 @@ struct TALER_BANK_DebitDetails
   /**
    * payto://-URI of the target account that received the funds.
    */
-  const char *credit_account_uri;
+  struct TALER_FullPayto credit_account_uri;
 
 };
 
@@ -771,7 +771,7 @@ struct TALER_BANK_DebitHistoryResponse
       /**
        * payto://-URI of the source account that send the funds.
        */
-      const char *debit_account_uri;
+      struct TALER_FullPayto debit_account_uri;
 
       /**
        * Array of transactions initiated.

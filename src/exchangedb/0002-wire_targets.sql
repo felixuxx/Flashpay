@@ -37,13 +37,13 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Can be a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)'
+     'Full payto URI. Can identify a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)'
     ,'payto_uri'
     ,'wire_targets'
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Unsalted hash of payto_uri'
+     'Unsalted hash of (full) payto_uri'
     ,'wire_target_h_payto'
     ,'wire_targets'
     ,partition_suffix

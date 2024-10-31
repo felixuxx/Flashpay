@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018, 2021 Taler Systems SA
+  Copyright (C) 2018, 2021, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -28,11 +28,11 @@ enum GNUNET_GenericReturnValue
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct TALER_MerchantWireHashP *hc)
 {
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct TALER_WireSaltP salt;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("salt",
                                  &salt),
     GNUNET_JSON_spec_end ()
@@ -48,7 +48,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Validating `%s'\n",
-              payto_uri);
+              payto_uri.full_payto);
   {
     char *err;
 
@@ -57,7 +57,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "URI `%s' ill-formed: %s\n",
-                  payto_uri,
+                  payto_uri.full_payto,
                   err);
       GNUNET_free (err);
       return GNUNET_SYSERR;
@@ -70,11 +70,14 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
 }
 
 
-char *
+struct TALER_FullPayto
 TALER_JSON_wire_to_payto (const json_t *wire_s)
 {
   json_t *payto_o;
   const char *payto_str;
+  struct TALER_FullPayto payto = {
+    NULL
+  };
   char *err;
 
   payto_o = json_object_get (wire_s,
@@ -84,19 +87,21 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Malformed wire record encountered: lacks payto://-url\n");
-    return NULL;
+    return payto;
   }
+  payto.full_payto = GNUNET_strdup (payto_str);
   if (NULL !=
-      (err = TALER_payto_validate (payto_str)))
+      (err = TALER_payto_validate (payto)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Malformed wire record encountered: payto URI `%s' invalid: %s\n",
                 payto_str,
                 err);
+    GNUNET_free (payto.full_payto);
     GNUNET_free (err);
-    return NULL;
+    return payto;
   }
-  return GNUNET_strdup (payto_str);
+  return payto;
 }
 
 

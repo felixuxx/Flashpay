@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021-2023 Taler Systems SA
+  Copyright (C) 2021-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -539,91 +539,6 @@ TALER_exchange_online_key_set_verify (
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * @brief Signature by which an exchange affirms that an account
- * successfully passed the KYC checks.
- */
-struct TALER_ExchangeAccountSetupSuccessPS
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS.  Signed by a
-   * `struct TALER_ExchangePublicKeyP` using EdDSA.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the payto for which the signature was made.
-   */
-  struct TALER_PaytoHashP h_payto;
-
-  /**
-   * Hash over details on *which* KYC obligations were discharged!
-   */
-  struct GNUNET_HashCode h_kyc;
-
-  /**
-   * When was the signature made.
-   */
-  struct GNUNET_TIME_TimestampNBO timestamp;
-
-};
-
-GNUNET_NETWORK_STRUCT_END
-
-
-enum TALER_ErrorCode
-TALER_exchange_online_account_setup_success_sign (
-  TALER_ExchangeSignCallback scb,
-  const struct TALER_PaytoHashP *h_payto,
-  const json_t *kyc,
-  struct GNUNET_TIME_Timestamp timestamp,
-  struct TALER_ExchangePublicKeyP *pub,
-  struct TALER_ExchangeSignatureP *sig)
-{
-  struct TALER_ExchangeAccountSetupSuccessPS kyc_purpose = {
-    .purpose.size = htonl (sizeof (kyc_purpose)),
-    .purpose.purpose = htonl (
-      TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
-    .h_payto = *h_payto,
-    .timestamp = GNUNET_TIME_timestamp_hton (timestamp)
-  };
-
-  TALER_json_hash (kyc,
-                   &kyc_purpose.h_kyc);
-  return scb (&kyc_purpose.purpose,
-              pub,
-              sig);
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_exchange_online_account_setup_success_verify (
-  const struct TALER_PaytoHashP *h_payto,
-  const json_t *kyc,
-  struct GNUNET_TIME_Timestamp timestamp,
-  const struct TALER_ExchangePublicKeyP *pub,
-  const struct TALER_ExchangeSignatureP *sig)
-{
-  struct TALER_ExchangeAccountSetupSuccessPS kyc_purpose = {
-    .purpose.size = htonl (sizeof (kyc_purpose)),
-    .purpose.purpose = htonl (
-      TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
-    .h_payto = *h_payto,
-    .timestamp = GNUNET_TIME_timestamp_hton (timestamp)
-  };
-
-  TALER_json_hash (kyc,
-                   &kyc_purpose.h_kyc);
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS,
-                                &kyc_purpose,
-                                &sig->eddsa_signature,
-                                &pub->eddsa_pub);
-}
-
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
  * @brief Format internally used for packing the detailed information
  * to generate the signature for /track/transfer signatures.
  */
@@ -716,7 +631,7 @@ struct TALER_WireDepositDataPS
   /**
    * Hash of bank account of the merchant.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   /**
    * Hash of the individual deposits that were aggregated,
@@ -735,7 +650,7 @@ TALER_exchange_online_wire_deposit_sign (
   const struct TALER_Amount *total,
   const struct TALER_Amount *wire_fee,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const char *payto,
+  const struct TALER_FullPayto payto,
   const struct GNUNET_HashCode *h_details,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig)
@@ -751,8 +666,8 @@ TALER_exchange_online_wire_deposit_sign (
                      total);
   TALER_amount_hton (&wdp.wire_fee,
                      wire_fee);
-  TALER_payto_hash (payto,
-                    &wdp.h_payto);
+  TALER_full_payto_hash (payto,
+                         &wdp.h_payto);
   return scb (&wdp.purpose,
               pub,
               sig);
@@ -764,7 +679,7 @@ TALER_exchange_online_wire_deposit_verify (
   const struct TALER_Amount *total,
   const struct TALER_Amount *wire_fee,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct GNUNET_HashCode *h_details,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig)
@@ -781,11 +696,11 @@ TALER_exchange_online_wire_deposit_verify (
                      total);
   TALER_amount_hton (&wdp.wire_fee,
                      wire_fee);
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
-                                &wdp,
-                                &sig->eddsa_signature,
-                                &pub->eddsa_pub);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
+    &wdp,
+    &sig->eddsa_signature,
+    &pub->eddsa_pub);
 }
 
 
@@ -1298,7 +1213,7 @@ struct TALER_ReserveCloseConfirmationPS
   /**
    * Hash of the receiver's bank account.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   /**
    * Wire transfer subject.
@@ -1315,7 +1230,7 @@ TALER_exchange_online_reserve_closed_sign (
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_Amount *closing_amount,
   const struct TALER_Amount *closing_fee,
-  const char *payto,
+  const struct TALER_FullPayto payto,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_ExchangePublicKeyP *pub,
@@ -1333,8 +1248,8 @@ TALER_exchange_online_reserve_closed_sign (
                      closing_amount);
   TALER_amount_hton (&rcc.closing_fee,
                      closing_fee);
-  TALER_payto_hash (payto,
-                    &rcc.h_payto);
+  TALER_full_payto_hash (payto,
+                         &rcc.h_payto);
   return scb (&rcc.purpose,
               pub,
               sig);
@@ -1346,7 +1261,7 @@ TALER_exchange_online_reserve_closed_verify (
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_Amount *closing_amount,
   const struct TALER_Amount *closing_fee,
-  const char *payto,
+  const struct TALER_FullPayto payto,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ExchangePublicKeyP *pub,
@@ -1364,13 +1279,13 @@ TALER_exchange_online_reserve_closed_verify (
                      closing_amount);
   TALER_amount_hton (&rcc.closing_fee,
                      closing_fee);
-  TALER_payto_hash (payto,
-                    &rcc.h_payto);
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED,
-                                &rcc,
-                                &sig->eddsa_signature,
-                                &pub->eddsa_pub);
+  TALER_full_payto_hash (payto,
+                         &rcc.h_payto);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED,
+    &rcc,
+    &sig->eddsa_signature,
+    &pub->eddsa_pub);
 }
 
 
@@ -1478,11 +1393,11 @@ TALER_exchange_online_purse_created_verify (
                      amount_without_fee);
   TALER_amount_hton (&dc.total_deposited,
                      total_deposited);
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_CREATION,
-                                &dc,
-                                &sig->eddsa_signature,
-                                &pub->eddsa_pub);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_CREATION,
+    &dc,
+    &sig->eddsa_signature,
+    &pub->eddsa_pub);
 }
 
 
@@ -1572,11 +1487,11 @@ TALER_exchange_online_purse_refund_verify (
                      amount_without_fee);
   TALER_amount_hton (&dc.refund_fee,
                      refund_fee);
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_REFUND,
-                                &dc,
-                                &sig->eddsa_signature,
-                                &pub->eddsa_pub);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_REFUND,
+    &dc,
+    &sig->eddsa_signature,
+    &pub->eddsa_pub);
 }
 
 

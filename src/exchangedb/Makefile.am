@@ -108,7 +108,6 @@ endif
 
 libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_common.c plugin_exchangedb_common.h \
-  pg_setup_wire_target.h pg_setup_wire_target.c \
   pg_compute_shard.h pg_compute_shard.c \
   plugin_exchangedb_postgres.c plugin_exchangedb_postgres.h \
   pg_helper.h \
@@ -307,11 +306,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
   pg_lookup_kyc_requirement_by_row.h pg_lookup_kyc_requirement_by_row.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
-
-#  pg_select_justification_for_missing_wire.h pg_select_justification_for_missing_wire.c
-#  pg_select_aml_process.h pg_select_aml_process.c
-#  pg_select_aml_history.h pg_select_aml_history.c
-#  pg_select_aml_threshold.h pg_select_aml_threshold.c
 
 
 libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \

@@ -24,6 +24,8 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Check the last date an exchange wire account was modified.
  *
@@ -34,7 +36,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_wire_timestamp (void *cls,
-                              const char *payto_uri,
+                              const struct TALER_FullPayto payto_uri,
                               struct GNUNET_TIME_Timestamp *last_date);
 
 #endif

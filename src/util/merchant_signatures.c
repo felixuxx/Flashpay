@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -214,7 +214,7 @@ struct TALER_MerchantWireDetailsPS
 
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPublicKeyP *merch_pub,
   const struct TALER_MerchantSignatureP *merch_sig)
@@ -236,7 +236,7 @@ TALER_merchant_wire_signature_check (
 
 void
 TALER_merchant_wire_signature_make (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
   struct TALER_MerchantSignatureP *merch_sig)
@@ -345,5 +345,6 @@ TALER_merchant_contract_sign (
                             &pdps,
                             merch_sig);
 }
+
 
 /* end of merchant_signatures.c */

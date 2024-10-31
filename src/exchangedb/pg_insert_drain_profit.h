@@ -42,7 +42,7 @@ TEH_PG_insert_drain_profit (
   void *cls,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp request_timestamp,
   const struct TALER_Amount *amount,
   const struct TALER_MasterSignatureP *master_sig);

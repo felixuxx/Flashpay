@@ -38,7 +38,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_trigger_aml_process (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const struct TALER_Amount *threshold_crossed);
 
 

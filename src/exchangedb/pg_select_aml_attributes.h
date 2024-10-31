@@ -41,7 +41,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_aml_attributes (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t offset,
   int64_t limit,
   TALER_EXCHANGEDB_AmlAttributeCallback cb,

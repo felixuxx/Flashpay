@@ -319,7 +319,7 @@ TALER_EXCHANGE_account_merge (
   json_t *merge_obj;
   CURL *eh;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
-  char *reserve_url;
+  struct TALER_NormalizedPayto reserve_url;
 
   pch = GNUNET_new (struct TALER_EXCHANGE_AccountMergeHandle);
   pch->merge_priv = *merge_priv;
@@ -353,7 +353,7 @@ TALER_EXCHANGE_account_merge (
   }
   reserve_url = TALER_reserve_make_payto (pch->provider_url,
                                           &pch->reserve_pub);
-  if (NULL == reserve_url)
+  if (NULL == reserve_url.normalized_payto)
   {
     GNUNET_break (0);
     GNUNET_free (pch->provider_url);
@@ -366,7 +366,7 @@ TALER_EXCHANGE_account_merge (
   if (NULL == pch->url)
   {
     GNUNET_break (0);
-    GNUNET_free (reserve_url);
+    GNUNET_free (reserve_url.normalized_payto);
     GNUNET_free (pch->provider_url);
     GNUNET_free (pch);
     return NULL;

@@ -32,7 +32,6 @@
 #include "pg_rollback.h"
 #include "pg_reserves_get.h"
 #include "pg_reserves_update.h"
-#include "pg_setup_wire_target.h"
 #include "pg_event_notify.h"
 
 

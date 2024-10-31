@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2023 Taler Systems SA
+  Copyright (C) 2020-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -676,7 +676,7 @@ struct TALER_MasterAddWirePS
   /**
    * Hash over the exchange's payto URI.
    */
-  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
+  struct TALER_FullPaytoHashP h_payto GNUNET_PACKED;
 
   /**
    * Hash over the conversion URL, all zeros if there
@@ -700,7 +700,7 @@ GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_exchange_offline_wire_add_sign (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -714,8 +714,8 @@ TALER_exchange_offline_wire_add_sign (
     .start_date = GNUNET_TIME_timestamp_hton (now),
   };
 
-  TALER_payto_hash (payto_uri,
-                    &kv.h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &kv.h_payto);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
                         strlen (conversion_url) + 1,
@@ -732,7 +732,7 @@ TALER_exchange_offline_wire_add_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -746,8 +746,8 @@ TALER_exchange_offline_wire_add_verify (
     .start_date = GNUNET_TIME_timestamp_hton (sign_time),
   };
 
-  TALER_payto_hash (payto_uri,
-                    &aw.h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &aw.h_payto);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
                         strlen (conversion_url) + 1,
@@ -788,7 +788,7 @@ struct TALER_MasterDelWirePS
   /**
    * Hash over the exchange's payto URI.
    */
-  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
+  struct TALER_FullPaytoHashP h_payto GNUNET_PACKED;
 
 };
 
@@ -797,7 +797,7 @@ GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_exchange_offline_wire_del_sign (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
@@ -808,8 +808,8 @@ TALER_exchange_offline_wire_del_sign (
     .end_date = GNUNET_TIME_timestamp_hton (now),
   };
 
-  TALER_payto_hash (payto_uri,
-                    &kv.h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -818,7 +818,7 @@ TALER_exchange_offline_wire_del_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_del_verify (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
@@ -830,8 +830,8 @@ TALER_exchange_offline_wire_del_verify (
     .end_date = GNUNET_TIME_timestamp_hton (sign_time),
   };
 
-  TALER_payto_hash (payto_uri,
-                    &aw.h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &aw.h_payto);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_MASTER_DEL_WIRE,
     &aw,
@@ -1131,7 +1131,7 @@ struct TALER_MasterWireDetailsPS
   /**
    * Hash over the account holder's payto:// URL.
    */
-  struct TALER_PaytoHashP h_wire_details GNUNET_PACKED;
+  struct TALER_FullPaytoHashP h_wire_details GNUNET_PACKED;
 
   /**
    * Hash over the conversion URL, all zeros if there
@@ -1156,7 +1156,7 @@ GNUNET_NETWORK_STRUCT_END
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -1168,8 +1168,8 @@ TALER_exchange_wire_signature_check (
     .purpose.size = htonl (sizeof (wd))
   };
 
-  TALER_payto_hash (payto_uri,
-                    &wd.h_wire_details);
+  TALER_full_payto_hash (payto_uri,
+                         &wd.h_wire_details);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
                         strlen (conversion_url) + 1,
@@ -1187,7 +1187,7 @@ TALER_exchange_wire_signature_check (
 
 void
 TALER_exchange_wire_signature_make (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -1199,8 +1199,8 @@ TALER_exchange_wire_signature_make (
     .purpose.size = htonl (sizeof (wd))
   };
 
-  TALER_payto_hash (payto_uri,
-                    &wd.h_wire_details);
+  TALER_full_payto_hash (payto_uri,
+                         &wd.h_wire_details);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
                         strlen (conversion_url) + 1,
@@ -1318,7 +1318,7 @@ struct TALER_DrainProfitPS
   struct GNUNET_TIME_TimestampNBO date;
   struct TALER_AmountNBO amount;
   struct GNUNET_HashCode h_section;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -1330,7 +1330,7 @@ TALER_exchange_offline_profit_drain_sign (
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_Amount *amount,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -1344,8 +1344,8 @@ TALER_exchange_offline_profit_drain_sign (
   GNUNET_CRYPTO_hash (account_section,
                       strlen (account_section) + 1,
                       &wd.h_section);
-  TALER_payto_hash (payto_uri,
-                    &wd.h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &wd.h_payto);
   TALER_amount_hton (&wd.amount,
                      amount);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
@@ -1360,7 +1360,7 @@ TALER_exchange_offline_profit_drain_verify (
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_Amount *amount,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -1374,8 +1374,8 @@ TALER_exchange_offline_profit_drain_verify (
   GNUNET_CRYPTO_hash (account_section,
                       strlen (account_section) + 1,
                       &wd.h_section);
-  TALER_payto_hash (payto_uri,
-                    &wd.h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &wd.h_payto);
   TALER_amount_hton (&wd.amount,
                      amount);
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DRAIN_PROFIT,

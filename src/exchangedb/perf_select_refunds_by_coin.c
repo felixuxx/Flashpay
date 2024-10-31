@@ -358,8 +358,8 @@ run (void *cls)
       .wallet_timestamp = ts,
       .refund_deadline = deadline,
       .wire_deadline = deadline,
-      .receiver_wire_account
-        = "payto://iban/DE67830654080004822650?receiver-name=Test"
+      .receiver_wire_account.full_payto
+        = (char *) "payto://iban/DE67830654080004822650?receiver-name=Test"
     };
 
     if (i >= ROUNDS)

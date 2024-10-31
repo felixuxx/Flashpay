@@ -45,7 +45,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_kyc_rules (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   bool *no_account_pub,
   union TALER_AccountPublicKeyP *account_pub,
   bool *no_reserve_pub,

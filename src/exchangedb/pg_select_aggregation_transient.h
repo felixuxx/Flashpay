@@ -39,9 +39,11 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_aggregation_transient (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *exchange_account_section,
   struct TALER_WireTransferIdentifierRawP *wtid,
   struct TALER_Amount *total);
+
+
 #endif

@@ -41,7 +41,7 @@ TEH_PG_store_wire_transfer_out (
   void *cls,
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_WireTransferIdentifierRawP *wtid,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const char *exchange_account_section,
   const struct TALER_Amount *amount);
 

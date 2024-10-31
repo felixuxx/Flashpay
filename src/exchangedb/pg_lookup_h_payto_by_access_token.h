@@ -40,6 +40,6 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_h_payto_by_access_token (
   void *cls,
   const struct TALER_AccountAccessTokenP *access_token,
-  struct TALER_PaytoHashP *h_payto);
+  struct TALER_NormalizedPaytoHashP *h_payto);
 
 #endif

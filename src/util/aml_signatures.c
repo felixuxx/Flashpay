@@ -44,7 +44,7 @@ struct TALER_AmlDecisionPS
   /**
    * Hash of the account identifier to which the decision applies.
    */
-  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
+  struct TALER_NormalizedPaytoHashP h_payto GNUNET_PACKED;
 
   /**
    * Hash over the justification text.
@@ -78,7 +78,7 @@ void
 TALER_officer_aml_decision_sign (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
   const char *new_measure,
@@ -116,7 +116,7 @@ enum GNUNET_GenericReturnValue
 TALER_officer_aml_decision_verify (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
   const char *new_measure,

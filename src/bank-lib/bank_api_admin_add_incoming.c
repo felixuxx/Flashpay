@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015--2023 Taler Systems SA
+  Copyright (C) 2015--2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -159,7 +159,7 @@ TALER_BANK_admin_add_incoming (
   const struct TALER_BANK_AuthenticationData *auth,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *amount,
-  const char *debit_account,
+  const struct TALER_FullPayto debit_account,
   TALER_BANK_AdminAddIncomingCallback res_cb,
   void *res_cb_cls)
 {
@@ -167,7 +167,7 @@ TALER_BANK_admin_add_incoming (
   json_t *admin_obj;
   CURL *eh;
 
-  if (NULL == debit_account)
+  if (NULL == debit_account.full_payto)
   {
     GNUNET_break (0);
     return NULL;
@@ -187,8 +187,8 @@ TALER_BANK_admin_add_incoming (
                                 reserve_pub),
     TALER_JSON_pack_amount ("amount",
                             amount),
-    GNUNET_JSON_pack_string ("debit_account",
-                             debit_account));
+    TALER_JSON_pack_full_payto ("debit_account",
+                                debit_account));
   if (NULL == admin_obj)
   {
     GNUNET_break (0);

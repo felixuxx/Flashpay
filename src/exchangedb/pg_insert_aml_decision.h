@@ -56,8 +56,8 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_aml_decision (
   void *cls,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Timestamp expiration_time,
   const json_t *properties,

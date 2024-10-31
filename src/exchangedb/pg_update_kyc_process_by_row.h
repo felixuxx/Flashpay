@@ -47,7 +47,7 @@ TEH_PG_update_kyc_process_by_row (
   void *cls,
   uint64_t process_row,
   const char *provider_name,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,
   const char *redirect_url,

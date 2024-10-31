@@ -39,7 +39,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_history (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   TALER_EXCHANGEDB_KycHistoryCallback cb,
   void *cb_cls);
 

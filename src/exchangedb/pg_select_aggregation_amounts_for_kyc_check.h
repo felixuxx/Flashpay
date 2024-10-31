@@ -40,7 +40,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_aggregation_amounts_for_kyc_check (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls);

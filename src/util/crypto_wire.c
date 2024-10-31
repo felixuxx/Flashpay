@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -24,7 +24,7 @@
 
 
 void
-TALER_merchant_wire_signature_hash (const char *payto_uri,
+TALER_merchant_wire_signature_hash (const struct TALER_FullPayto payto_uri,
                                     const struct TALER_WireSaltP *salt,
                                     struct TALER_MerchantWireHashP *hc)
 {
@@ -33,8 +33,8 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
                                     sizeof (*hc),
                                     salt,
                                     sizeof (*salt),
-                                    payto_uri,
-                                    strlen (payto_uri) + 1,
+                                    payto_uri.full_payto,
+                                    strlen (payto_uri.full_payto) + 1,
                                     "merchant-wire-signature",
                                     strlen ("merchant-wire-signature"),
                                     NULL, 0));

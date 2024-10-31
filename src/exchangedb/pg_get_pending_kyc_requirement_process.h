@@ -38,7 +38,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_pending_kyc_requirement_process (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *provider_name,
   char **redirect_url);
 

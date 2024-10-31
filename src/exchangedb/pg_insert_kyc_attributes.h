@@ -52,7 +52,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_attributes (
   void *cls,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   uint32_t birthday,
   struct GNUNET_TIME_Timestamp collection_time,
   const char *provider_name,

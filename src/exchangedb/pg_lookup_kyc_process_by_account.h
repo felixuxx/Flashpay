@@ -42,7 +42,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_process_by_account (
   void *cls,
   const char *provider_name,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t *process_row,
   struct GNUNET_TIME_Absolute *expiration,
   char **provider_account_id,

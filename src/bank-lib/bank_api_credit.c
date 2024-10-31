@@ -86,8 +86,8 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_array_const ("incoming_transactions",
                                   &history_array),
-    TALER_JSON_spec_payto_uri ("credit_account",
-                               &chr.details.ok.credit_account_uri),
+    TALER_JSON_spec_full_payto_uri ("credit_account",
+                                    &chr.details.ok.credit_account_uri),
     GNUNET_JSON_spec_end ()
   };
 
@@ -118,8 +118,8 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
                                     &td->execution_date),
         GNUNET_JSON_spec_uint64 ("row_id",
                                  &td->serial_id),
-        TALER_JSON_spec_payto_uri ("debit_account",
-                                   &td->debit_account_uri),
+        TALER_JSON_spec_full_payto_uri ("debit_account",
+                                        &td->debit_account_uri),
         GNUNET_JSON_spec_end ()
       };
       json_t *transaction = json_array_get (history_array,

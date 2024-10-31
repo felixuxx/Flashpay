@@ -38,7 +38,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_kyc_attributes (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   TALER_EXCHANGEDB_AttributeCallback cb,
   void *cb_cls);
 

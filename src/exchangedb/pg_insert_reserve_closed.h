@@ -24,6 +24,8 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Insert reserve close operation into database.
  *
@@ -42,7 +44,7 @@ TEH_PG_insert_reserve_closed (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct GNUNET_TIME_Timestamp execution_date,
-  const char *receiver_account,
+  const struct TALER_FullPayto receiver_account,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *closing_fee,

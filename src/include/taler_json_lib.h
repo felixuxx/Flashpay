@@ -184,6 +184,34 @@ TALER_JSON_pack_amount (
 
 /**
  * Generate packer instruction for a JSON field of type
+ * full payto.
+ *
+ * @param name name of the field to add to the object
+ * @param payto payto URI to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_full_payto (
+  const char *name,
+  const struct TALER_FullPayto payto);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * normalized payto.
+ *
+ * @param name name of the field to add to the object
+ * @param payto payto URI to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_normalized_payto (
+  const char *name,
+  const struct TALER_NormalizedPayto payto);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
  * encrypted contract.
  *
  * @param name name of the field to add to the object
@@ -451,8 +479,9 @@ TALER_JSON_spec_web_url (const char *field,
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_payto_uri (const char *field,
-                           const char **payto_uri);
+TALER_JSON_spec_full_payto_uri (
+  const char *field,
+  struct TALER_FullPayto *payto_uri);
 
 
 /**
@@ -861,7 +890,7 @@ TALER_JSON_wire_to_method (
  *
  * @return NULL on error
  */
-char *
+struct TALER_FullPayto
 TALER_JSON_wire_to_payto (
   const json_t *wire_s);
 

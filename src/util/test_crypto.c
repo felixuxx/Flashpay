@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015, 2020-2023 Taler Systems SA
+  (C) 2015, 2020-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -322,7 +322,14 @@ test_planchets (uint8_t age)
 static int
 test_exchange_sigs (void)
 {
-  const char *pt = "payto://x-taler-bank/localhost/Account";
+  const struct TALER_FullPayto pt = {
+    .full_payto
+      = (char *) "payto://x-taler-bank/localhost/Account?receiver-name=ACC"
+  };
+  const struct TALER_FullPayto pto = {
+    .full_payto
+      = (char *) "payto://x-taler-bank/localhost/Other?receiver-name=OTH"
+  };
   struct TALER_MasterPrivateKeyP priv;
   struct TALER_MasterPublicKeyP pub;
   struct TALER_MasterSignatureP sig;
@@ -352,7 +359,7 @@ test_exchange_sigs (void)
   }
   if (GNUNET_OK ==
       TALER_exchange_wire_signature_check (
-        "payto://x-taler-bank/localhost/Other",
+        pto,
         NULL,
         rest,
         rest,
@@ -382,7 +389,14 @@ test_exchange_sigs (void)
 static int
 test_merchant_sigs (void)
 {
-  const char *pt = "payto://x-taler-bank/localhost/Account";
+  const struct TALER_FullPayto pt = {
+    .full_payto
+      = (char *) "payto://x-taler-bank/localhost/Account?receiver-name=ACC"
+  };
+  const struct TALER_FullPayto pto = {
+    .full_payto
+      = (char *) "payto://x-taler-bank/localhost/Other?receiver-name=OTH"
+  };
   struct TALER_WireSaltP salt;
   struct TALER_MerchantPrivateKeyP priv;
   struct TALER_MerchantPublicKeyP pub;
@@ -409,7 +423,7 @@ test_merchant_sigs (void)
   }
   if (GNUNET_OK ==
       TALER_merchant_wire_signature_check (
-        "payto://x-taler-bank/localhost/Other",
+        pto,
         &salt,
         &pub,
         &sig))

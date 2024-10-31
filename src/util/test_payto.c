@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2020 Taler Systems SA
+  (C) 2020, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -53,42 +53,64 @@ main (int argc,
   GNUNET_assert (NULL ==
                  TALER_iban_validate ("DE89370400440532013000"));
   r = TALER_payto_validate (
-    "payto://x-taler-bank/hostname/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/hostname/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/hostname/~path/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/hostname/~path/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/hostname/~path/username?receiver-name=fo/o");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/hostname/~path/username?receiver-name=fo/o"
+  });
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/host_name/~path/username?receiver-name=fo_o");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/host_name/~path/username?receiver-name=fo_o"
+  });
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/hostname/path/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/hostname/path/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL == r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/https://hostname/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/https://hostname/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/hostname:4a2/path/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/hostname:4a2/path/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/-hostname/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/-hostname/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/domain..name/username?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/domain..name/username?receiver-name=foo"
+  });
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/domain..name/?receiver-name=foo");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/domain..name/?receiver-name=foo"
+  });
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_payto_validate (
-    "payto://x-taler-bank/domain.name/username");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/domain.name/username"
+  });
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_xtalerbank_account_from_payto (
@@ -109,12 +131,17 @@ main (int argc,
          r);
 
   r = TALER_payto_get_subject (
-    "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1");
+    (struct TALER_FullPayto) {
+    (char *)
+    "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1"
+  });
   CHECK ("hello",
          r);
 
   r = TALER_payto_get_subject (
-    "payto://x-taler-bank/localhost:1080/alice");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/localhost:1080/alice"
+  });
   GNUNET_assert (r == NULL);
   return 0;
 }

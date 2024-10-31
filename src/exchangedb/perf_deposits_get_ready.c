@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -354,8 +354,8 @@ run (void *cls)
     depos[i].amount_with_fee = value;
     bd.refund_deadline = deadline;
     bd.wire_deadline = deadline;
-    bd.receiver_wire_account =
-      "payto://iban/DE67830654080004822650?receiver-name=Test";
+    bd.receiver_wire_account.full_payto =
+      (char *) "payto://iban/DE67830654080004822650?receiver-name=Test";
     TALER_merchant_wire_signature_hash (
       bd.receiver_wire_account,
       &bd.wire_salt,
@@ -448,7 +448,7 @@ run (void *cls)
     struct GNUNET_TIME_Absolute time;
     struct GNUNET_TIME_Relative duration;
     struct TALER_MerchantPublicKeyP merchant_pub;
-    char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     enum GNUNET_DB_QueryStatus qs;
 
     time = GNUNET_TIME_absolute_get ();
@@ -466,6 +466,7 @@ run (void *cls)
                    duration.rel_value_us);
     GNUNET_assert (sqrs + duration_sq >= sqrs);
     sqrs += duration_sq;
+    GNUNET_free (payto_uri.full_payto);
   }
 
   /* evaluation of performance */

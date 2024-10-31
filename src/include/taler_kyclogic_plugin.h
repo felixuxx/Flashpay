@@ -201,7 +201,7 @@ typedef void
 (*TALER_KYCLOGIC_WebhookCallback)(
   void *cls,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -229,7 +229,7 @@ typedef enum GNUNET_DB_QueryStatus
   void *cls,
   const char *provider_name,
   const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto,
+  struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t *process_row);
 
 
@@ -291,7 +291,7 @@ struct TALER_KYCLOGIC_Plugin
   struct TALER_KYCLOGIC_InitiateHandle *
   (*initiate)(void *cls,
               const struct TALER_KYCLOGIC_ProviderDetails *pd,
-              const struct TALER_PaytoHashP *account_id,
+              const struct TALER_NormalizedPaytoHashP *account_id,
               uint64_t process_row,
               TALER_KYCLOGIC_InitiateCallback cb,
               void *cb_cls);
@@ -324,7 +324,7 @@ struct TALER_KYCLOGIC_Plugin
   (*proof)(void *cls,
            const struct TALER_KYCLOGIC_ProviderDetails *pd,
            struct MHD_Connection *connection,
-           const struct TALER_PaytoHashP *account_id,
+           const struct TALER_NormalizedPaytoHashP *account_id,
            uint64_t process_row,
            const char *provider_user_id,
            const char *provider_legitimization_id,

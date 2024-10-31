@@ -44,7 +44,7 @@ TEH_PG_profit_drains_get_pending (
   uint64_t *serial,
   struct TALER_WireTransferIdentifierRawP *wtid,
   char **account_section,
-  char **payto_uri,
+  struct TALER_FullPayto *payto_uri,
   struct GNUNET_TIME_Timestamp *request_timestamp,
   struct TALER_Amount *amount,
   struct TALER_MasterSignatureP *master_sig);

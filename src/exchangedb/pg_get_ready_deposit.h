@@ -24,6 +24,8 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Obtain information about deposits that are ready to be executed.  Such
  * deposits must not be marked as "done", the execution time must be
@@ -41,6 +43,6 @@ TEH_PG_get_ready_deposit (void *cls,
                           uint64_t start_shard_row,
                           uint64_t end_shard_row,
                           struct TALER_MerchantPublicKeyP *merchant_pub,
-                          char **payto_uri);
+                          struct TALER_FullPayto *payto_uri);
 
 #endif

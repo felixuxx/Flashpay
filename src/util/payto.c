@@ -28,18 +28,35 @@
 #define PAYTO "payto://"
 
 
+int
+TALER_full_payto_cmp (const struct TALER_FullPayto a,
+                      const struct TALER_FullPayto b)
+{
+  if ( (NULL == a.full_payto) &&
+       (NULL == b.full_payto) )
+    return 0;
+  if (NULL == a.full_payto)
+    return -1;
+  if (NULL == b.full_payto)
+    return 1;
+  return strcmp (a.full_payto,
+                 b.full_payto);
+}
+
+
 /**
  * Extract the value under @a key from the URI parameters.
  *
- * @param payto_uri the URL to parse
+ * @param fpayto_uri the full payto URL to parse
  * @param search_key key to look for, including "="
  * @return NULL if the @a key parameter is not found.
  *         The caller should free the returned value.
  */
 static char *
-payto_get_key (const char *payto_uri,
+payto_get_key (const struct TALER_FullPayto fpayto_uri,
                const char *search_key)
 {
+  const char *payto_uri = fpayto_uri.full_payto;
   const char *key;
   const char *value_start;
   const char *value_end;
@@ -71,7 +88,7 @@ payto_get_key (const char *payto_uri,
 
 
 char *
-TALER_payto_get_subject (const char *payto_uri)
+TALER_payto_get_subject (const struct TALER_FullPayto payto_uri)
 {
   return payto_get_key (payto_uri,
                         "subject=");
@@ -149,7 +166,7 @@ TALER_xtalerbank_account_from_payto (const char *payto)
  *      to be freed by the caller
  */
 static char *
-validate_payto_iban (const char *account_url)
+validate_payto_iban (struct TALER_FullPayto account_url)
 {
   const char *iban;
   const char *q;
@@ -157,11 +174,12 @@ validate_payto_iban (const char *account_url)
   char *err;
 
 #define IBAN_PREFIX "payto://iban/"
-  if (0 != strncasecmp (account_url,
+  if (0 != strncasecmp (account_url.full_payto,
                         IBAN_PREFIX,
                         strlen (IBAN_PREFIX)))
     return NULL; /* not an IBAN */
-  iban = strrchr (account_url, '/') + 1;
+  iban = strrchr (account_url.full_payto,
+                  '/') + 1;
 #undef IBAN_PREFIX
   q = strchr (iban,
               '?');
@@ -203,7 +221,7 @@ validate_payto_iban (const char *account_url)
  *      to be freed by the caller
  */
 static char *
-validate_payto_xtalerbank (const char *account_url)
+validate_payto_xtalerbank (const struct TALER_FullPayto account_url)
 {
   const char *user;
   const char *nxt;
@@ -215,11 +233,11 @@ validate_payto_xtalerbank (const char *account_url)
   bool port_ok;
 
 #define XTALERBANK_PREFIX PAYTO "x-taler-bank/"
-  if (0 != strncasecmp (account_url,
+  if (0 != strncasecmp (account_url.full_payto,
                         XTALERBANK_PREFIX,
                         strlen (XTALERBANK_PREFIX)))
     return NULL; /* not an IBAN */
-  host = &account_url[strlen (XTALERBANK_PREFIX)];
+  host = &account_url.full_payto[strlen (XTALERBANK_PREFIX)];
 #undef XTALERBANK_PREFIX
   beg = strchr (host,
                 '/');
@@ -328,8 +346,9 @@ validate_payto_xtalerbank (const char *account_url)
 
 
 char *
-TALER_payto_validate (const char *payto_uri)
+TALER_payto_validate (const struct TALER_FullPayto fpayto_uri)
 {
+  const char *payto_uri = fpayto_uri.full_payto;
   char *ret;
   const char *start;
   const char *end;
@@ -363,9 +382,9 @@ TALER_payto_validate (const char *payto_uri)
   if (NULL == end)
     return GNUNET_strdup ("missing '/' in payload");
 
-  if (NULL != (ret = validate_payto_iban (payto_uri)))
+  if (NULL != (ret = validate_payto_iban (fpayto_uri)))
     return ret; /* got a definitive answer */
-  if (NULL != (ret = validate_payto_xtalerbank (payto_uri)))
+  if (NULL != (ret = validate_payto_xtalerbank (fpayto_uri)))
     return ret; /* got a definitive answer */
 
   /* Insert other bank account validation methods here later! */
@@ -375,21 +394,21 @@ TALER_payto_validate (const char *payto_uri)
 
 
 char *
-TALER_payto_get_receiver_name (const char *payto)
+TALER_payto_get_receiver_name (const struct TALER_FullPayto fpayto)
 {
   char *err;
 
-  err = TALER_payto_validate (payto);
+  err = TALER_payto_validate (fpayto);
   if (NULL != err)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid payto://-URI `%s': %s\n",
-                payto,
+                fpayto.full_payto,
                 err);
     GNUNET_free (err);
     return NULL;
   }
-  return payto_get_key (payto,
+  return payto_get_key (fpayto,
                         "receiver-name=");
 }
 
@@ -572,9 +591,12 @@ normalize_payto_ilp (size_t len,
 }
 
 
-char *
-TALER_payto_normalize (const char *input)
+struct TALER_NormalizedPayto
+TALER_payto_normalize (const struct TALER_FullPayto input)
 {
+  struct TALER_NormalizedPayto npto = {
+    .normalized_payto = NULL
+  };
   char *method;
   const char *end;
   char *ret;
@@ -587,70 +609,92 @@ TALER_payto_normalize (const char *input)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Malformed payto://-URI `%s': %s\n",
-                  input,
+                  input.full_payto,
                   err);
       GNUNET_free (err);
-      return NULL;
+      return npto;
     }
   }
-  method = TALER_payto_get_method (input);
+  method = TALER_payto_get_method (input.full_payto);
   if (NULL == method)
   {
     GNUNET_break (0);
-    return NULL;
+    return npto;
   }
-  end = strchr (input, '?');
+  end = strchr (input.full_payto,
+                '?');
   if (NULL == end)
-    end = &input[strlen (input)];
+    end = &input.full_payto[strlen (input.full_payto)];
   if (0 == strcasecmp (method,
                        "x-taler-bank"))
-    ret = normalize_payto_x_taler_bank (end - input,
-                                        input);
+    ret = normalize_payto_x_taler_bank (end - input.full_payto,
+                                        input.full_payto);
   else if (0 == strcasecmp (method,
                             "iban"))
-    ret = normalize_payto_iban (end - input,
-                                input);
+    ret = normalize_payto_iban (end - input.full_payto,
+                                input.full_payto);
   else if (0 == strcasecmp (method,
                             "upi"))
-    ret = normalize_payto_upi (end - input,
-                               input);
+    ret = normalize_payto_upi (end - input.full_payto,
+                               input.full_payto);
   else if (0 == strcasecmp (method,
                             "bitcoin"))
-    ret = normalize_payto_bitcoin (end - input,
-                                   input);
+    ret = normalize_payto_bitcoin (end - input.full_payto,
+                                   input.full_payto);
   else if (0 == strcasecmp (method,
                             "ilp"))
-    ret = normalize_payto_ilp (end - input,
-                               input);
+    ret = normalize_payto_ilp (end - input.full_payto,
+                               input.full_payto);
   else
-    ret = GNUNET_strndup (input,
-                          end - input);
+    ret = GNUNET_strndup (input.full_payto,
+                          end - input.full_payto);
   GNUNET_free (method);
-  return ret;
+  npto.normalized_payto = ret;
+  return npto;
 }
 
 
 void
-TALER_payto_hash (const char *payto,
-                  struct TALER_PaytoHashP *h_payto)
+TALER_normalized_payto_hash (const struct TALER_NormalizedPayto npayto,
+                             struct TALER_NormalizedPaytoHashP *h_npayto)
 {
   struct GNUNET_HashCode sha512;
 
-  GNUNET_CRYPTO_hash (payto,
-                      strlen (payto) + 1,
+  GNUNET_CRYPTO_hash (npayto.normalized_payto,
+                      strlen (npayto.normalized_payto) + 1,
                       &sha512);
-  GNUNET_static_assert (sizeof (sha512) > sizeof (*h_payto));
+  GNUNET_static_assert (sizeof (sha512) > sizeof (*h_npayto));
   /* truncate */
-  GNUNET_memcpy (h_payto,
+  GNUNET_memcpy (h_npayto,
                  &sha512,
-                 sizeof (*h_payto));
+                 sizeof (*h_npayto));
 }
 
 
-char *
+void
+TALER_full_payto_hash (const struct TALER_FullPayto fpayto,
+                       struct TALER_FullPaytoHashP *h_fpayto)
+{
+  struct GNUNET_HashCode sha512;
+
+  GNUNET_CRYPTO_hash (fpayto.full_payto,
+                      strlen (fpayto.full_payto) + 1,
+                      &sha512);
+  GNUNET_static_assert (sizeof (sha512) > sizeof (*h_fpayto));
+  /* truncate */
+  GNUNET_memcpy (h_fpayto,
+                 &sha512,
+                 sizeof (*h_fpayto));
+}
+
+
+struct TALER_NormalizedPayto
 TALER_reserve_make_payto (const char *exchange_url,
                           const struct TALER_ReservePublicKeyP *reserve_pub)
 {
+  struct TALER_NormalizedPayto npto = {
+    .normalized_payto = NULL
+  };
   char pub_str[sizeof (*reserve_pub) * 2];
   char *end;
   bool is_http;
@@ -679,7 +723,7 @@ TALER_reserve_make_payto (const char *exchange_url,
   else
   {
     GNUNET_break (0);
-    return NULL;
+    return npto;
   }
   /* exchange_url includes trailing '/' */
   GNUNET_asprintf (&reserve_url,
@@ -687,7 +731,8 @@ TALER_reserve_make_payto (const char *exchange_url,
                    is_http ? "taler-reserve-http" : "taler-reserve",
                    exchange_url,
                    pub_str);
-  return reserve_url;
+  npto.normalized_payto = reserve_url;
+  return npto;
 }
 
 

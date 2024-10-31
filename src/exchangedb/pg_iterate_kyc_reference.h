@@ -39,7 +39,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_kyc_reference (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   TALER_EXCHANGEDB_LegitimizationProcessCallback lpc,
   void *lpc_cls);
 

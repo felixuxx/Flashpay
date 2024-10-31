@@ -44,7 +44,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_wire (void *cls,
-                    const char *payto_uri,
+                    const struct TALER_FullPayto payto_uri,
                     const char *conversion_url,
                     const json_t *debit_restrictions,
                     const json_t *credit_restrictions,

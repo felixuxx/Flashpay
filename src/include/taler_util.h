@@ -34,9 +34,9 @@
 
 #if MHD_VERSION < 0x00097701
 #define MHD_create_response_from_buffer_static(s, b)            \
-  MHD_create_response_from_buffer (s,                     \
-                                   (const char *) b,      \
-                                   MHD_RESPMEM_PERSISTENT)
+        MHD_create_response_from_buffer (s,                     \
+                                         (const char *) b,      \
+                                         MHD_RESPMEM_PERSISTENT)
 #endif
 
 /**
@@ -64,16 +64,16 @@
 
 /* Define logging functions */
 #define TALER_LOG_DEBUG(...)                                  \
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, __VA_ARGS__)
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, __VA_ARGS__)
 
 #define TALER_LOG_INFO(...)                                  \
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, __VA_ARGS__)
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO, __VA_ARGS__)
 
 #define TALER_LOG_WARNING(...)                                \
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING, __VA_ARGS__)
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING, __VA_ARGS__)
 
 #define TALER_LOG_ERROR(...)                                  \
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, __VA_ARGS__)
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, __VA_ARGS__)
 
 
 /**
@@ -84,11 +84,11 @@
  * @param reason string to print as warning
  */
 #define TALER_assert_as(EXP, reason)                           \
-  do {                                                          \
-    if (EXP) break;                                             \
-    TALER_LOG_ERROR ("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
-    abort ();                                                    \
-  } while (0)
+        do {                                                          \
+          if (EXP) break;                                             \
+          TALER_LOG_ERROR ("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
+          abort ();                                                    \
+        } while (0)
 
 
 /**
@@ -119,11 +119,11 @@
 
 
 #define TALER_gcry_ok(cmd) \
-  do {int rc; rc = cmd; if (! rc) break; \
-      TALER_LOG_ERROR ("A Gcrypt call failed at %s:%d with error: %s\n", \
-                       __FILE__, \
-                       __LINE__, gcry_strerror (rc)); abort (); } while (0 \
-                                                                         )
+        do {int rc; rc = cmd; if (! rc) break; \
+            TALER_LOG_ERROR ("A Gcrypt call failed at %s:%d with error: %s\n", \
+                             __FILE__, \
+                             __LINE__, gcry_strerror (rc)); abort (); } while (0 \
+                                                                               )
 
 
 /**
@@ -382,6 +382,18 @@ TALER_url_valid_charset (const char *url);
 
 
 /**
+ * Compare two payto URIs for equality.
+ *
+ * @param a a full payto URI, NULL is permitted
+ * @param b a full payto URI, NULL is permitted
+ * @return 0 if both are equal, otherwise -1 or 1
+ */
+int
+TALER_full_payto_cmp (const struct TALER_FullPayto a,
+                      const struct TALER_FullPayto b);
+
+
+/**
  * Test if the URL is a valid "http" (or "https")
  * URL (includes test for #TALER_url_valid_charset()).
  *
@@ -522,8 +534,8 @@ TALER_payto_get_method (const char *payto_uri);
  * @param input a payto://-URI
  * @return normalized URI, or NULL if @a input was not well-formed
  */
-char *
-TALER_payto_normalize (const char *input);
+struct TALER_NormalizedPayto
+TALER_payto_normalize (const struct TALER_FullPayto input);
 
 
 /**
@@ -540,33 +552,33 @@ TALER_xtalerbank_account_from_payto (const char *payto);
 /**
  * Obtain the receiver name from a payto URL.
  *
- * @param payto an x-taler-bank payto URL
- * @return only the receiver name from the @a payto URL, NULL if not an x-taler-bank payto URL
+ * @param fpayto a full payto URL
+ * @return only the receiver name from the @a payto URL, NULL if not a full payto URL
  */
 char *
-TALER_payto_get_receiver_name (const char *payto);
+TALER_payto_get_receiver_name (const struct TALER_FullPayto fpayto);
 
 
 /**
  * Extract the subject value from the URI parameters.
  *
- * @param payto_uri the URL to parse
+ * @param payto_uri the full URL to parse
  * @return NULL if the subject parameter is not found.
  *         The caller should free the returned value.
  */
 char *
-TALER_payto_get_subject (const char *payto_uri);
+TALER_payto_get_subject (const struct TALER_FullPayto payto_uri);
 
 
 /**
- * Check that a payto:// URI is well-formed.
+ * Check that a full payto:// URI is well-formed.
  *
- * @param payto_uri the URL to check
+ * @param fpayto_uri the full URL to check
  * @return NULL on success, otherwise an error
  *         message to be freed by the caller!
  */
 char *
-TALER_payto_validate (const char *payto_uri);
+TALER_payto_validate (const struct TALER_FullPayto fpayto_uri);
 
 
 /**
@@ -577,7 +589,7 @@ TALER_payto_validate (const char *payto_uri);
  * @param reserve_pub the public key of the reserve
  * @return payto://-URI for the reserve (without receiver-name!)
  */
-char *
+struct TALER_NormalizedPayto
 TALER_reserve_make_payto (const char *exchange_url,
                           const struct TALER_ReservePublicKeyP *reserve_pub);
 
@@ -843,7 +855,7 @@ TALER_get_lowest_age (
  * @return lowest age for the largest age group
  */
 #define TALER_adult_age(mask) \
-  sizeof((mask)->bits) * 8 - __builtin_clz ((mask)->bits) - 1
+        sizeof((mask)->bits) * 8 - __builtin_clz ((mask)->bits) - 1
 
 
 #undef __TALER_UTIL_LIB_H_INSIDE__

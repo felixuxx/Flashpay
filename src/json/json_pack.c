@@ -339,4 +339,24 @@ TALER_JSON_pack_amount (const char *name,
 }
 
 
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_full_payto (
+  const char *name,
+  const struct TALER_FullPayto payto)
+{
+  return GNUNET_JSON_pack_string (name,
+                                  payto.full_payto);
+}
+
+
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_normalized_payto (
+  const char *name,
+  const struct TALER_NormalizedPayto payto)
+{
+  return GNUNET_JSON_pack_string (name,
+                                  payto.normalized_payto);
+}
+
+
 /* End of json/json_pack.c */

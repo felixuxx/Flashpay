@@ -55,7 +55,7 @@ TEH_PG_lookup_completed_legitimization (
   uint64_t legitimization_measure_serial_id,
   uint32_t measure_index,
   struct TALER_AccountAccessTokenP *access_token,
-  struct TALER_PaytoHashP *h_payto,
+  struct TALER_NormalizedPaytoHashP *h_payto,
   json_t **jmeasures,
   bool *is_finished,
   size_t *encrypted_attributes_len,

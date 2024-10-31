@@ -68,15 +68,16 @@ GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_BANK_prepare_transfer (
-  const char *destination_account_payto_uri,
+  const struct TALER_FullPayto destination_account_payto_uri,
   const struct TALER_Amount *amount,
   const char *exchange_base_url,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   void **buf,
   size_t *buf_size)
 {
+  const char *payto = destination_account_payto_uri.full_payto;
   struct WirePackP *wp;
-  size_t d_len = strlen (destination_account_payto_uri) + 1;
+  size_t d_len = strlen (payto) + 1;
   size_t u_len = strlen (exchange_base_url) + 1;
   char *end;
 
@@ -100,7 +101,7 @@ TALER_BANK_prepare_transfer (
   wp->exchange_url_len = htonl ((uint32_t) u_len);
   end = (char *) &wp[1];
   GNUNET_memcpy (end,
-                 destination_account_payto_uri,
+                 payto,
                  d_len);
   GNUNET_memcpy (end + d_len,
                  exchange_base_url,

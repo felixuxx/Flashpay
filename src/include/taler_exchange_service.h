@@ -36,7 +36,7 @@
  * Version of the Taler Exchange API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_EXCHANGE_API_VERSION 0x00100005
+#define TALER_EXCHANGE_API_VERSION 0x00100006
 
 /**
  * Information returned when a client needs to pass
@@ -48,7 +48,7 @@ struct TALER_EXCHANGE_KycNeededRedirect
   /**
    * Hash of the payto-URI of the account to KYC;
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Public key needed to access the KYC state of
@@ -371,10 +371,10 @@ struct TALER_EXCHANGE_AccountRestriction
     struct
     {
       /**
-       * Regular expression that the payto://-URI of the partner account must
-       * follow.  The regular expression should follow posix-egrep, but
-       * without support for character classes, GNU extensions,
-       * back-references or intervals. See
+       * Regular expression that the normalized payto://-URI of the partner
+       * account must follow.  The regular expression should follow
+       * posix-egrep, but without support for character classes, GNU
+       * extensions, back-references or intervals. See
        * https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002degrep-regular-expression-syntax.html
        * for a description of the posix-egrep syntax. Applications may support
        * regexes with additional features, but exchanges must not use such
@@ -406,7 +406,7 @@ struct TALER_EXCHANGE_WireAccount
   /**
    * payto://-URI of the exchange.
    */
-  char *payto_uri;
+  struct TALER_FullPayto fpayto_uri;
 
   /**
    * URL of a conversion service in case using this account is subject to
@@ -1037,7 +1037,7 @@ enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_test_account_allowed (
   const struct TALER_EXCHANGE_WireAccount *account,
   bool check_credit,
-  const char *payto_uri);
+  const struct TALER_NormalizedPayto payto_uri);
 
 
 /**
@@ -1281,7 +1281,7 @@ struct TALER_EXCHANGE_DepositContractDetail
    * The merchant’s account details, in the payto://-format supported by the
    * exchange.
    */
-  const char *merchant_payto_uri;
+  const struct TALER_FullPayto merchant_payto_uri;
 
   /**
    * Policy extension specific details about the deposit relevant to the exchange.
@@ -2193,7 +2193,7 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
       /**
        * Sender account payto://-URL of the incoming transfer.
        */
-      char *sender_url;
+      struct TALER_FullPayto sender_url;
 
       /**
        * Information that uniquely identifies the wire transfer.
@@ -2285,7 +2285,7 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
       /**
        * Receiver account information for the outgoing wire transfer as a payto://-URI.
        */
-      const char *receiver_account_details;
+      struct TALER_FullPayto receiver_account_details;
 
       /**
        * Wire transfer details for the outgoing wire transfer.
@@ -2435,7 +2435,7 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
        * for the closure, or all zeros for the reserve
        * origin account.
        */
-      struct TALER_PaytoHashP target_account_h_payto;
+      struct TALER_FullPaytoHashP target_account_h_payto;
 
     } close_request;
 
@@ -3956,7 +3956,7 @@ struct TALER_EXCHANGE_TransferData
   /**
    * hash of the payto:// URI the transfer went to
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   /**
    * time when the exchange claims to have performed the wire transfer
@@ -4522,7 +4522,7 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPrivateKeyP *pk,
   enum TALER_EXCHANGE_KycLongPollTarget lpt,
   struct GNUNET_TIME_Relative timeout,
@@ -4856,7 +4856,7 @@ struct TALER_EXCHANGE_KycProofHandle *
 TALER_EXCHANGE_kyc_proof (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *logic,
   const char *args,
   TALER_EXCHANGE_KycProofCallback cb,
@@ -5449,7 +5449,7 @@ TALER_EXCHANGE_management_drain_profits (
   const struct TALER_Amount *amount,
   struct GNUNET_TIME_Timestamp date,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementDrainProfitsCallback cb,
   void *cb_cls);
@@ -6114,7 +6114,7 @@ struct TALER_EXCHANGE_AmlDecision
   /**
    * Account the decision was made for.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * RowID of this decision.
@@ -6229,7 +6229,7 @@ struct TALER_EXCHANGE_LookupAmlDecisions *
 TALER_EXCHANGE_lookup_aml_decisions (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   enum TALER_EXCHANGE_YesNoAll investigation_only,
   enum TALER_EXCHANGE_YesNoAll active_only,
   uint64_t offset,
@@ -6350,7 +6350,7 @@ struct TALER_EXCHANGE_LookupKycAttributes *
 TALER_EXCHANGE_lookup_kyc_attributes (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t offset,
   int64_t limit,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
@@ -6504,8 +6504,8 @@ struct TALER_EXCHANGE_AddAmlDecision *
 TALER_EXCHANGE_post_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_PaytoHashP *h_payto,
-  const char *payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
+  const struct TALER_NormalizedPayto payto_uri,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
   const char *new_measures,
@@ -6785,7 +6785,7 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle *
 TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -6841,7 +6841,7 @@ struct TALER_EXCHANGE_ManagementWireDisableHandle;
  * Inform the exchange that a wire account should be disabled.
  *
  * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange_url HTTP base URL for the exchange
  * @param payto_uri RFC 8905 URI of the exchange's bank account
  * @param validity_end when was this decided?
  * @param master_sig signature affirming the wire addition
@@ -6853,8 +6853,8 @@ struct TALER_EXCHANGE_ManagementWireDisableHandle;
 struct TALER_EXCHANGE_ManagementWireDisableHandle *
 TALER_EXCHANGE_management_disable_wire (
   struct GNUNET_CURL_Context *ctx,
-  const char *url,
-  const char *payto_uri,
+  const char *exchange_url,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementWireDisableCallback cb,
@@ -8224,7 +8224,7 @@ TALER_EXCHANGE_reserves_close (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const char *target_payto_uri,
+  const struct TALER_FullPayto target_payto_uri,
   TALER_EXCHANGE_ReservesCloseCallback cb,
   void *cb_cls);
 

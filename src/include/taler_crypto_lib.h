@@ -824,10 +824,49 @@ struct TALER_MerchantWireHashP
 
 
 /**
- * Hash used to represent the unsalted hash of a
+ * payto:// URI representing a bank account, excluding receiver name
+ * (and also otherwise normalized, so without BIC, etc.).
+ */
+struct TALER_NormalizedPayto
+{
+  /**
+   * Actual string value.
+   */
+  char *normalized_payto;
+};
+
+
+/**
+ * payto:// URI representing a bank account, including receiver name,
+ * not normalized.
+ */
+struct TALER_FullPayto
+{
+  /**
+   * Actual string value.
+   */
+  char *full_payto;
+};
+
+
+/**
+ * Hash used to represent the unsalted hash of a full
  * payto:// URI representing a bank account.
  */
-struct TALER_PaytoHashP
+struct TALER_FullPaytoHashP
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_ShortHashCode hash;
+};
+
+
+/**
+ * Hash used to represent the unsalted hash of a normalized
+ * payto:// URI representing a bank account.
+ */
+struct TALER_NormalizedPaytoHashP
 {
   /**
    * Actual hash value.
@@ -1828,14 +1867,25 @@ TALER_kyc_measure_authorization_hash (
 
 
 /**
- * Compute the hash of a payto URI.
+ * Compute the hash of a full payto URI.
  *
- * @param payto URI to hash
- * @param[out] h_payto where to write the hash
+ * @param fpayto URI to hash
+ * @param[out] h_fpayto where to write the hash
  */
 void
-TALER_payto_hash (const char *payto,
-                  struct TALER_PaytoHashP *h_payto);
+TALER_full_payto_hash (const struct TALER_FullPayto fpayto,
+                       struct TALER_FullPaytoHashP *h_fpayto);
+
+
+/**
+ * Compute the hash of a normalized payto URI.
+ *
+ * @param payto URI to hash
+ * @param[out] h_npayto where to write the hash
+ */
+void
+TALER_normalized_payto_hash (const struct TALER_NormalizedPayto npayto,
+                             struct TALER_NormalizedPaytoHashP *h_npayto);
 
 
 /**
@@ -2677,7 +2727,7 @@ void
 TALER_officer_aml_decision_sign (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
   const char *new_check,
@@ -2705,7 +2755,7 @@ enum GNUNET_GenericReturnValue
 TALER_officer_aml_decision_verify (
   const char *justification,
   struct GNUNET_TIME_Timestamp decision_time,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
   const char *new_check,
@@ -3464,7 +3514,7 @@ TALER_wallet_purse_deposit_verify (
  */
 void
 TALER_wallet_purse_merge_sign (
-  const char *reserve_uri,
+  const struct TALER_NormalizedPayto reserve_uri,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
@@ -3483,7 +3533,7 @@ TALER_wallet_purse_merge_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_purse_merge_verify (
-  const char *reserve_uri,
+  const struct TALER_NormalizedPayto reserve_uri,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePublicKeyP *merge_pub,
@@ -3675,7 +3725,7 @@ TALER_wallet_reserve_open_deposit_verify (
 void
 TALER_wallet_reserve_close_sign (
   struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -3693,7 +3743,7 @@ TALER_wallet_reserve_close_sign (
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_close_verify (
   struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -4524,48 +4574,6 @@ TALER_exchange_online_key_set_verify (
 
 
 /**
- * Create account KYC setup success signature.
- *
- * @param scb function to call to create the signature
- * @param h_payto target of the KYC account
- * @param kyc JSON data describing which KYC checks
- *            were satisfied
- * @param timestamp time when the KYC was confirmed
- * @param[out] pub where to write the public key
- * @param[out] sig where to write the signature
- * @return #TALER_EC_NONE on success
- */
-enum TALER_ErrorCode
-TALER_exchange_online_account_setup_success_sign (
-  TALER_ExchangeSignCallback scb,
-  const struct TALER_PaytoHashP *h_payto,
-  const json_t *kyc,
-  struct GNUNET_TIME_Timestamp timestamp,
-  struct TALER_ExchangePublicKeyP *pub,
-  struct TALER_ExchangeSignatureP *sig);
-
-
-/**
- * Verify account KYC setup success signature.
- *
- * @param h_payto target of the KYC account
- * @param kyc JSON data describing which KYC checks
- *            were satisfied
- * @param timestamp time when the KYC was confirmed
- * @param pub where to write the public key
- * @param sig where to write the signature
- * @return #GNUNET_OK if the signature is valid
- */
-enum GNUNET_GenericReturnValue
-TALER_exchange_online_account_setup_success_verify (
-  const struct TALER_PaytoHashP *h_payto,
-  const json_t *kyc,
-  struct GNUNET_TIME_Timestamp timestamp,
-  const struct TALER_ExchangePublicKeyP *pub,
-  const struct TALER_ExchangeSignatureP *sig);
-
-
-/**
  * Hash normalized @a j JSON object or array and
  * store the result in @a hc.
  *
@@ -4617,7 +4625,7 @@ TALER_exchange_online_wire_deposit_sign (
   const struct TALER_Amount *total,
   const struct TALER_Amount *wire_fee,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const char *payto,
+  const struct TALER_FullPayto payto,
   const struct GNUNET_HashCode *h_details,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig);
@@ -4640,7 +4648,7 @@ TALER_exchange_online_wire_deposit_verify (
   const struct TALER_Amount *total,
   const struct TALER_Amount *wire_fee,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct GNUNET_HashCode *h_details,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);
@@ -4884,7 +4892,7 @@ TALER_exchange_online_reserve_closed_sign (
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_Amount *closing_amount,
   const struct TALER_Amount *closing_fee,
-  const char *payto,
+  const struct TALER_FullPayto payto,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_ExchangePublicKeyP *pub,
@@ -4909,7 +4917,7 @@ TALER_exchange_online_reserve_closed_verify (
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_Amount *closing_amount,
   const struct TALER_Amount *closing_fee,
-  const char *payto,
+  const struct TALER_FullPayto payto,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ExchangePublicKeyP *pub,
@@ -5483,7 +5491,7 @@ TALER_exchange_offline_profit_drain_sign (
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_Amount *amount,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -5508,7 +5516,7 @@ TALER_exchange_offline_profit_drain_verify (
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_Amount *amount,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -5799,7 +5807,7 @@ TALER_exchange_offline_global_fee_verify (
  */
 void
 TALER_exchange_offline_wire_add_sign (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -5822,7 +5830,7 @@ TALER_exchange_offline_wire_add_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -5841,7 +5849,7 @@ TALER_exchange_offline_wire_add_verify (
  */
 void
 TALER_exchange_offline_wire_del_sign (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
@@ -5858,7 +5866,7 @@ TALER_exchange_offline_wire_del_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_del_verify (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
@@ -5877,7 +5885,7 @@ TALER_exchange_offline_wire_del_verify (
  */
 enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -5897,7 +5905,7 @@ TALER_exchange_wire_signature_check (
  */
 void
 TALER_exchange_wire_signature_make (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -5915,9 +5923,10 @@ TALER_exchange_wire_signature_make (
  * @param[out] hc set to the hash
  */
 void
-TALER_merchant_wire_signature_hash (const char *payto_uri,
-                                    const struct TALER_WireSaltP *salt,
-                                    struct TALER_MerchantWireHashP *hc);
+TALER_merchant_wire_signature_hash (
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_WireSaltP *salt,
+  struct TALER_MerchantWireHashP *hc);
 
 
 /**
@@ -5931,7 +5940,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
  */
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPublicKeyP *merch_pub,
   const struct TALER_MerchantSignatureP *merch_sig);
@@ -5947,7 +5956,7 @@ TALER_merchant_wire_signature_check (
  */
 void
 TALER_merchant_wire_signature_make (
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
   struct TALER_MerchantSignatureP *merch_sig);

@@ -49,8 +49,8 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_trigger_kyc_rule_for_account (
   void *cls,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *set_account_pub,
   const struct TALER_MerchantPublicKeyP *check_merchant_pub,
   const json_t *jmeasures,

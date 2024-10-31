@@ -1200,10 +1200,11 @@ TALER_JSON_spec_web_url (const char *field,
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 static enum GNUNET_GenericReturnValue
-parse_payto_uri (void *cls,
-                 json_t *root,
-                 struct GNUNET_JSON_Specification *spec)
+parse_full_payto_uri (void *cls,
+                      json_t *root,
+                      struct GNUNET_JSON_Specification *spec)
 {
+  struct TALER_FullPayto *payto_uri = spec->ptr;
   const char *str;
   char *err;
 
@@ -1214,29 +1215,31 @@ parse_payto_uri (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  err = TALER_payto_validate (str);
+  payto_uri->full_payto = (char *) str;
+  err = TALER_payto_validate (*payto_uri);
   if (NULL != err)
   {
     GNUNET_break_op (0);
     GNUNET_free (err);
+    payto_uri->full_payto = NULL;
     return GNUNET_SYSERR;
   }
-  *(const char **) spec->ptr = str;
   return GNUNET_OK;
 }
 
 
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_payto_uri (const char *field,
-                           const char **payto_uri)
+TALER_JSON_spec_full_payto_uri (
+  const char *field,
+  struct TALER_FullPayto *payto_uri)
 {
   struct GNUNET_JSON_Specification ret = {
-    .parser = &parse_payto_uri,
+    .parser = &parse_full_payto_uri,
     .field = field,
     .ptr = payto_uri
   };
 
-  *payto_uri = NULL;
+  payto_uri->full_payto = NULL;
   return ret;
 }
 

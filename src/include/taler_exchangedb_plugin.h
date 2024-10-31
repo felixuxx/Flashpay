@@ -240,7 +240,7 @@ struct TALER_KycCompletedEventP
   /**
    * Hash of payto://-URI for which the KYC state changed.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 };
 
 
@@ -382,7 +382,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      char *payto_uri;
+      struct TALER_FullPayto full_payto_uri;
       struct TALER_AccountAccessTokenP access_token;
       union TALER_AccountPublicKeyP target_pub;
       bool no_account;
@@ -398,7 +398,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct TALER_PaytoHashP h_payto;
+      struct TALER_NormalizedPaytoHashP h_payto;
       struct GNUNET_TIME_Timestamp decision_time;
       struct GNUNET_TIME_Timestamp expiration_time;
       json_t *properties;
@@ -408,7 +408,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct TALER_PaytoHashP h_payto;
+      struct TALER_NormalizedPaytoHashP h_payto;
       struct GNUNET_TIME_Timestamp start_time;
       struct GNUNET_TIME_Timestamp expiration_time;
       uint64_t legitimization_measure_serial_id;
@@ -421,7 +421,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct TALER_PaytoHashP h_payto;
+      struct TALER_NormalizedPaytoHashP h_payto;
       uint64_t legitimization_serial;
       struct GNUNET_TIME_Timestamp collection_time;
       struct GNUNET_TIME_Timestamp expiration_time;
@@ -432,7 +432,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct TALER_PaytoHashP h_payto;
+      struct TALER_NormalizedPaytoHashP h_payto;
       uint64_t outcome_serial_id;
       char *justification;
       struct TALER_AmlOfficerPublicKeyP decider_pub;
@@ -466,7 +466,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t wire_reference;
       struct TALER_Amount credit;
-      struct TALER_PaytoHashP sender_account_h_payto;
+      struct TALER_FullPaytoHashP sender_account_h_payto;
       char *exchange_account_section;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_ReservePublicKeyP reserve_pub;
@@ -476,7 +476,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t wire_reference;
       struct TALER_Amount credit;
-      struct TALER_PaytoHashP sender_account_h_payto;
+      struct TALER_FullPaytoHashP sender_account_h_payto;
       char *exchange_account_section;
       struct GNUNET_TIME_Timestamp execution_date;
       union TALER_AccountPublicKeyP account_pub;
@@ -506,7 +506,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReservePublicKeyP reserve_pub;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_WireTransferIdentifierRawP wtid;
-      struct TALER_PaytoHashP sender_account_h_payto;
+      struct TALER_FullPaytoHashP sender_account_h_payto;
       struct TALER_Amount amount;
       struct TALER_Amount closing_fee;
     } reserves_close;
@@ -600,7 +600,7 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_HashCode wallet_data_hash;
       bool no_wallet_data_hash;
       struct TALER_WireSaltP wire_salt;
-      struct TALER_PaytoHashP wire_target_h_payto;
+      struct TALER_FullPaytoHashP wire_target_h_payto;
       bool policy_blocked;
       uint64_t policy_details_serial_id;
       bool no_policy_details;
@@ -627,7 +627,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_WireTransferIdentifierRawP wtid_raw;
-      struct TALER_PaytoHashP wire_target_h_payto;
+      struct TALER_FullPaytoHashP wire_target_h_payto;
       char *exchange_account_section;
       struct TALER_Amount amount;
     } wire_out;
@@ -753,7 +753,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReservePublicKeyP reserve_pub;
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_PurseContractPublicKeyP purse_pub;
-      struct TALER_PaytoHashP wallet_h_payto;
+      struct TALER_NormalizedPaytoHashP wallet_h_payto;
     } account_merges;
 
     struct
@@ -771,7 +771,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_Amount close;
       struct TALER_Amount close_fee;
-      char *payto_uri;
+      struct TALER_FullPayto payto_uri;
     } close_requests;
 
     struct
@@ -824,7 +824,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       struct TALER_WireTransferIdentifierRawP wtid;
       char *account_section;
-      char *payto_uri;
+      struct TALER_FullPayto payto_uri;
       struct GNUNET_TIME_Timestamp trigger_date;
       struct TALER_Amount amount;
       struct TALER_MasterSignatureP master_sig;
@@ -922,7 +922,7 @@ struct TALER_EXCHANGEDB_BankTransfer
    * Detailed wire information about the sending account
    * in "payto://" format.
    */
-  char *sender_account_details;
+  struct TALER_FullPayto sender_account_details;
 
   /**
    * Data uniquely identifying the wire transfer (wire transfer-type specific)
@@ -963,7 +963,7 @@ struct TALER_EXCHANGEDB_ClosingTransfer
    * Detailed wire information about the receiving account
    * in payto://-format.
    */
-  char *receiver_account_details;
+  struct TALER_FullPayto receiver_account_details;
 
   /**
    * Detailed wire transfer information that uniquely identifies the
@@ -1608,7 +1608,7 @@ struct TALER_EXCHANGEDB_CloseRequest
    * for the closure, or all zeros for the reserve
    * origin account.
    */
-  struct TALER_PaytoHashP target_account_h_payto;
+  struct TALER_FullPaytoHashP target_account_h_payto;
 
   /**
    * Signature by the reserve approving the history request.
@@ -1793,7 +1793,7 @@ struct TALER_EXCHANGEDB_BatchDeposit
   /**
    * Unsalted hash over @e receiver_wire_account.
    */
-  struct TALER_PaytoHashP wire_target_h_payto;
+  struct TALER_FullPaytoHashP wire_target_h_payto;
 
   /**
    * Salt used by the merchant to compute "h_wire".
@@ -1839,7 +1839,7 @@ struct TALER_EXCHANGEDB_BatchDeposit
    * Information about the receiver for executing the transaction.  URI in
    * payto://-format.
    */
-  const char *receiver_wire_account;
+  struct TALER_FullPayto receiver_wire_account;
 
   /**
    * Array about the coins that are being deposited.
@@ -1962,7 +1962,7 @@ struct TALER_EXCHANGEDB_Deposit
    * Information about the receiver for executing the transaction.  URI in
    * payto://-format.
    */
-  char *receiver_wire_account;
+  struct TALER_FullPayto receiver_wire_account;
 
   /**
    * True if @e policy_json was provided
@@ -2076,7 +2076,7 @@ struct TALER_EXCHANGEDB_DepositListEntry
    * Detailed information about the receiver for executing the transaction.
    * URL in payto://-format.
    */
-  char *receiver_wire_account;
+  struct TALER_FullPayto receiver_wire_account;
 
   /**
    * true, if age commitment is not applicable
@@ -2659,7 +2659,7 @@ typedef void
 typedef void
 (*TALER_EXCHANGEDB_AttributeCallback)(
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *provider_name,
   struct GNUNET_TIME_Timestamp collection_time,
   struct GNUNET_TIME_Timestamp expiration_time,
@@ -3076,7 +3076,7 @@ typedef enum GNUNET_GenericReturnValue
   uint64_t rowid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *credit,
-  const char *sender_account_details,
+  const struct TALER_FullPayto sender_account_details,
   uint64_t wire_reference,
   struct GNUNET_TIME_Timestamp execution_date);
 
@@ -3097,7 +3097,7 @@ typedef enum GNUNET_GenericReturnValue
 typedef void
 (*TALER_EXCHANGEDB_WireAccountCallback)(
   void *cls,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -3271,8 +3271,8 @@ typedef void
   void *cls,
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const char *account_payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto account_payto_uri,
+  const struct TALER_FullPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp exec_time,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -3299,7 +3299,7 @@ typedef enum GNUNET_GenericReturnValue
   uint64_t rowid,
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_WireTransferIdentifierRawP *wtid,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_Amount *amount);
 
 
@@ -3317,7 +3317,7 @@ typedef enum GNUNET_GenericReturnValue
 typedef bool
 (*TALER_EXCHANGEDB_TransientAggregationCallback)(
   void *cls,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_Amount *total);
@@ -3451,7 +3451,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const char *receiver_account,
+  const struct TALER_FullPayto receiver_account,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   uint64_t close_request_row);
 
@@ -3487,7 +3487,7 @@ typedef enum GNUNET_GenericReturnValue
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *left,
-  const char *account_details,
+  const struct TALER_FullPayto account_details,
   struct GNUNET_TIME_Timestamp expiration_date,
   uint64_t close_request_row);
 
@@ -3530,7 +3530,7 @@ typedef void
   void *cls,
   uint64_t batch_deposit_serial_id,
   const struct TALER_Amount *total_amount,
-  const struct TALER_PaytoHashP *wire_target_h_payto,
+  const struct TALER_FullPaytoHashP *wire_target_h_payto,
   struct GNUNET_TIME_Timestamp deadline);
 
 
@@ -3616,7 +3616,7 @@ typedef void
   void *cls,
   uint64_t row_id,
   const char *justification,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Absolute expiration_time,
   const json_t *jproperties,
@@ -3941,8 +3941,8 @@ struct TALER_EXCHANGEDB_Plugin
     (*reserves_get_origin)(
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
-    struct TALER_PaytoHashP *h_payto,
-    char **payto_uri);
+    struct TALER_FullPaytoHashP *h_payto,
+    struct TALER_FullPayto *payto_uri);
 
 
   /**
@@ -3956,7 +3956,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*drain_kyc_alert)(void *cls,
                        uint32_t trigger_type,
-                       struct TALER_PaytoHashP *h_payto);
+                       struct TALER_NormalizedPaytoHashP *h_payto);
 
 
   /**
@@ -4678,7 +4678,7 @@ struct TALER_EXCHANGEDB_Plugin
                          uint64_t start_shard_row,
                          uint64_t end_shard_row,
                          struct TALER_MerchantPublicKeyP *merchant_pub,
-                         char **payto_uri);
+                         struct TALER_FullPayto *payto_uri);
 
 
   /**
@@ -4695,7 +4695,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*aggregate)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     const struct TALER_WireTransferIdentifierRawP *wtid,
     struct TALER_Amount *total);
@@ -4716,7 +4716,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*create_aggregation_transient)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     const char *exchange_account_section,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -4738,7 +4738,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_aggregation_transient)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     const char *exchange_account_section,
     struct TALER_WireTransferIdentifierRawP *wtid,
@@ -4757,7 +4757,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*find_aggregation_transient)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     TALER_EXCHANGEDB_TransientAggregationCallback cb,
     void *cb_cls);
 
@@ -4776,7 +4776,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*update_aggregation_transient)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     const struct TALER_WireTransferIdentifierRawP *wtid,
     uint64_t kyc_requirement_row,
     const struct TALER_Amount *total);
@@ -4794,7 +4794,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*delete_aggregation_transient)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
@@ -5188,7 +5188,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     struct TALER_Amount *balance,
-    char **payto_uri);
+    struct TALER_FullPayto *payto_uri);
 
 
   /**
@@ -5215,7 +5215,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp *request_timestamp,
     struct TALER_Amount *close_balance,
     struct TALER_Amount *close_fee,
-    char **payto_uri);
+    struct TALER_FullPayto *payto_uri);
 
 
   /**
@@ -5224,7 +5224,6 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param h_payto which target account is this about?
-   * @param h_payto account identifier
    * @param time_limit oldest transaction that could be relevant
    * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
    * @param kac_cls closure for @a kac
@@ -5233,7 +5232,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*iterate_reserve_close_info)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Absolute time_limit,
     TALER_EXCHANGEDB_KycAmountCallback kac,
     void *kac_cls);
@@ -5257,9 +5256,8 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     struct GNUNET_TIME_Timestamp execution_date,
-    const char *receiver_account,
-    const struct
-    TALER_WireTransferIdentifierRawP *wtid,
+    const struct TALER_FullPayto receiver_account,
+    const struct TALER_WireTransferIdentifierRawP *wtid,
     const struct TALER_Amount *amount_with_fee,
     const struct TALER_Amount *closing_fee,
     uint64_t close_request_row);
@@ -5355,7 +5353,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     struct GNUNET_TIME_Timestamp date,
     const struct TALER_WireTransferIdentifierRawP *wtid,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPaytoHashP *h_payto,
     const char *exchange_account_section,
     const struct TALER_Amount *amount);
 
@@ -5840,8 +5838,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_justification_for_missing_wire)(
     void *cls,
-    const struct TALER_PaytoHashP *wire_target_h_payto,
-    char **payto_uri,
+    const struct TALER_FullPaytoHashP *wire_target_h_payto,
+    struct TALER_FullPayto *payto_uri,
     json_t **jproperties,
     json_t **jrules);
 
@@ -5931,7 +5929,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
     (*lookup_wire_timestamp)(void *cls,
-                             const char *payto_uri,
+                             const struct TALER_FullPayto payto_uri,
                              struct GNUNET_TIME_Timestamp *last_date);
 
 
@@ -5953,7 +5951,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
     (*insert_wire)(void *cls,
-                   const char *payto_uri,
+                   const struct TALER_FullPayto payto_uri,
                    const char *conversion_url,
                    const json_t *debit_restrictions,
                    const json_t *credit_restrictions,
@@ -5981,7 +5979,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
     (*update_wire)(void *cls,
-                   const char *payto_uri,
+                   const struct TALER_FullPayto payto_uri,
                    const char *conversion_url,
                    const json_t *debit_restrictions,
                    const json_t *credit_restrictions,
@@ -6812,7 +6810,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*insert_close_request)(void *cls,
                             const struct TALER_ReservePublicKeyP *reserve_pub,
-                            const char *payto_uri,
+                            const struct TALER_FullPayto payto_uri,
                             const struct TALER_ReserveSignatureP *reserve_sig,
                             struct GNUNET_TIME_Timestamp request_timestamp,
                             const struct TALER_Amount *balance,
@@ -6835,7 +6833,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*insert_drain_profit)(void *cls,
                            const struct TALER_WireTransferIdentifierRawP *wtid,
                            const char *account_section,
-                           const char *payto_uri,
+                           const struct TALER_FullPayto payto_uri,
                            struct GNUNET_TIME_Timestamp request_timestamp,
                            const struct TALER_Amount *amount,
                            const struct TALER_MasterSignatureP *master_sig);
@@ -6859,7 +6857,7 @@ struct TALER_EXCHANGEDB_Plugin
                         const struct TALER_WireTransferIdentifierRawP *wtid,
                         uint64_t *serial,
                         char **account_section,
-                        char **payto_uri,
+                        struct TALER_FullPayto *payto_uri,
                         struct GNUNET_TIME_Timestamp *request_timestamp,
                         struct TALER_Amount *amount,
                         struct TALER_MasterSignatureP *master_sig);
@@ -6884,7 +6882,7 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t *serial,
     struct TALER_WireTransferIdentifierRawP *wtid,
     char **account_section,
-    char **payto_uri,
+    struct TALER_FullPayto *payto_uri,
     struct GNUNET_TIME_Timestamp *request_timestamp,
     struct TALER_Amount *amount,
     struct TALER_MasterSignatureP *master_sig);
@@ -6926,8 +6924,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*trigger_kyc_rule_for_account)(
     void *cls,
-    const char *payto_uri,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPayto payto_uri,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     const union TALER_AccountPublicKeyP *set_account_pub,
     const struct TALER_MerchantPublicKeyP *check_merchant_pub,
     const json_t *jmeasures,
@@ -6955,7 +6953,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*insert_kyc_requirement_process)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     uint32_t measure_index,
     uint64_t legitimization_measure_serial_id,
     const char *provider_name,
@@ -6976,7 +6974,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*get_pending_kyc_requirement_process)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     const char *provider_name,
     char **redirect_url);
 
@@ -7003,7 +7001,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t process_row,
     const char *provider_name,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     const char *provider_account_id,
     const char *provider_legitimization_id,
     const char *redirect_url,
@@ -7037,7 +7035,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*lookup_kyc_requirement_by_row)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     union TALER_AccountPublicKeyP *account_pub,
     struct TALER_ReservePublicKeyP *reserve_pub,
     struct TALER_AccountAccessTokenP *access_token,
@@ -7075,7 +7073,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*lookup_rules_by_access_token)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     json_t **jnew_rules,
     uint64_t *rowid);
 
@@ -7096,7 +7094,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*lookup_kyc_process_by_account)(
     void *cls,
     const char *provider_name,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     uint64_t *process_row,
     struct GNUNET_TIME_Absolute *expiration,
     char **provider_account_id,
@@ -7104,8 +7102,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Lookup an
-   * @a h_payto by @a provider_legitimization_id.
+   * Lookup an @a h_payto by @a provider_legitimization_id.
    *
    * @param cls closure
    * @param provider_name
@@ -7119,7 +7116,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const char *provider_name,
     const char *provider_legitimization_id,
-    struct TALER_PaytoHashP *h_payto,
+    struct TALER_NormalizedPaytoHashP *h_payto,
     uint64_t *process_row);
 
 
@@ -7142,7 +7139,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*get_kyc_rules)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     bool *no_account_pub,
     union TALER_AccountPublicKeyP *account_pub,
     bool *no_reserve_pub,
@@ -7163,7 +7160,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*iterate_kyc_reference)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     TALER_EXCHANGEDB_LegitimizationProcessCallback lpc,
     void *lpc_cls);
 
@@ -7182,7 +7179,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_withdraw_amounts_for_kyc_check)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Absolute time_limit,
     TALER_EXCHANGEDB_KycAmountCallback kac,
     void *kac_cls);
@@ -7202,7 +7199,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_aggregation_amounts_for_kyc_check)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Absolute time_limit,
     TALER_EXCHANGEDB_KycAmountCallback kac,
     void *kac_cls);
@@ -7222,7 +7219,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_merge_amounts_for_kyc_check)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Absolute time_limit,
     TALER_EXCHANGEDB_KycAmountCallback kac,
     void *kac_cls);
@@ -7244,7 +7241,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_deposit_amounts_for_kyc_check)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Absolute time_limit,
     TALER_EXCHANGEDB_KycAmountCallback kac,
     void *kac_cls);
@@ -7267,7 +7264,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*insert_programmatic_legitimization_outcome)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Timestamp decision_time,
     struct GNUNET_TIME_Absolute expiration_time,
     const json_t *account_properties,
@@ -7303,7 +7300,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*insert_kyc_attributes)(
     void *cls,
     uint64_t process_row,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     uint32_t birthday,
     struct GNUNET_TIME_Timestamp collection_time,
     const char *provider_name,
@@ -7331,7 +7328,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_kyc_attributes)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     TALER_EXCHANGEDB_AttributeCallback cb,
     void *cb_cls);
 
@@ -7397,25 +7394,6 @@ struct TALER_EXCHANGEDB_Plugin
     bool *read_only,
     struct GNUNET_TIME_Absolute *last_change);
 
-#if 0
-  /**
-   * Obtain the current AML threshold set for an account.
-   *
-   * @param cls closure
-   * @param h_payto account for which the AML threshold is stored
-   * @param[out] decision set to current AML decision
-   * @param[out] threshold set to the existing threshold
-   * @return database transaction status, 0 if no threshold was set
-   */
-  enum GNUNET_DB_QueryStatus
-    (*select_aml_threshold)(
-    void *cls,
-    const struct TALER_PaytoHashP *h_payto,
-    enum TALER_AmlDecisionState *decision,
-    struct TALER_EXCHANGEDB_KycStatus *kyc,
-    struct TALER_Amount *threshold);
-#endif
-
 
   /**
    * Obtain the AML statistics for a given key and
@@ -7449,7 +7427,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*trigger_aml_process)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     const struct TALER_Amount *threshold_crossed);
 
 
@@ -7470,7 +7448,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_aml_decisions)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     enum TALER_EXCHANGE_YesNoAll investigation_only,
     enum TALER_EXCHANGE_YesNoAll active_only,
     uint64_t offset,
@@ -7494,7 +7472,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*select_aml_attributes)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     uint64_t offset,
     int64_t limit,
     TALER_EXCHANGEDB_AmlAttributeCallback cb,
@@ -7515,7 +7493,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*lookup_h_payto_by_access_token)(
     void *cls,
     const struct TALER_AccountAccessTokenP *access_token,
-    struct TALER_PaytoHashP *h_payto);
+    struct TALER_NormalizedPaytoHashP *h_payto);
 
 
   /**
@@ -7539,7 +7517,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t legitimization_measure_serial_id,
     struct TALER_AccountAccessTokenP *access_token,
-    struct TALER_PaytoHashP *h_payto,
+    struct TALER_NormalizedPaytoHashP *h_payto,
     json_t **jmeasures,
     bool *is_finished);
 
@@ -7573,7 +7551,7 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t legitimization_measure_serial_id,
     uint32_t measure_index,
     struct TALER_AccountAccessTokenP *access_token,
-    struct TALER_PaytoHashP *h_payto,
+    struct TALER_NormalizedPaytoHashP *h_payto,
     json_t **jmeasures,
     bool *is_finished,
     size_t *encrypted_attributes_len,
@@ -7593,7 +7571,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*lookup_aml_history)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     TALER_EXCHANGEDB_AmlHistoryCallback cb,
     void *cb_cls);
 
@@ -7611,7 +7589,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*lookup_kyc_history)(
     void *cls,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     TALER_EXCHANGEDB_KycHistoryCallback cb,
     void *cb_cls);
 
@@ -7686,8 +7664,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*insert_aml_decision)(
     void *cls,
-    const char *payto_uri,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_FullPayto payto_uri,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     struct GNUNET_TIME_Timestamp decision_time,
     struct GNUNET_TIME_Timestamp expiration_time,
     const json_t *properties,
@@ -7721,7 +7699,7 @@ struct TALER_EXCHANGEDB_Plugin
     (*insert_kyc_failure)(
     void *cls,
     uint64_t process_row,
-    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     const char *provider_name,
     const char *provider_account_id,
     const char *provider_legitimization_id,

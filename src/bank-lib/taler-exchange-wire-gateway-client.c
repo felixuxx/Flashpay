@@ -44,12 +44,12 @@ static struct TALER_Amount amount;
 /**
  * Credit account payto://-URI.
  */
-static char *credit_account;
+static struct TALER_FullPayto credit_account;
 
 /**
  * Debit account payto://-URI.
  */
-static char *debit_account;
+static struct TALER_FullPayto debit_account;
 
 /**
  * Wire transfer subject.
@@ -185,13 +185,13 @@ credit_history_cb (void *cls,
         &reply->details.ok.details[i];
 
       /* If credit/debit accounts were specified, use as a filter */
-      if ( (NULL != credit_account) &&
-           (0 != strcasecmp (credit_account,
-                             reply->details.ok.credit_account_uri) ) )
+      if ( (NULL != credit_account.full_payto) &&
+           (0 != TALER_full_payto_cmp (credit_account,
+                                       reply->details.ok.credit_account_uri) ) )
         continue;
-      if ( (NULL != debit_account) &&
-           (0 != strcasecmp (debit_account,
-                             cd->debit_account_uri) ) )
+      if ( (NULL != debit_account.full_payto) &&
+           (0 != TALER_full_payto_cmp (debit_account,
+                                       cd->debit_account_uri) ) )
         continue;
       switch (cd->type)
       {
@@ -199,8 +199,8 @@ credit_history_cb (void *cls,
         fprintf (stdout,
                  "%llu: %s->%s (%s) over %s at %s\n",
                  (unsigned long long) cd->serial_id,
-                 cd->debit_account_uri,
-                 reply->details.ok.credit_account_uri,
+                 cd->debit_account_uri.full_payto,
+                 reply->details.ok.credit_account_uri.full_payto,
                  TALER_B2S (&cd->details.reserve.reserve_pub),
                  TALER_amount2s (&cd->amount),
                  GNUNET_TIME_timestamp2s (cd->execution_date));
@@ -209,8 +209,8 @@ credit_history_cb (void *cls,
         fprintf (stdout,
                  "%llu: %s->%s (KYC:%s) over %s at %s\n",
                  (unsigned long long) cd->serial_id,
-                 cd->debit_account_uri,
-                 reply->details.ok.credit_account_uri,
+                 cd->debit_account_uri.full_payto,
+                 reply->details.ok.credit_account_uri.full_payto,
                  TALER_B2S (&cd->details.kycauth.account_pub),
                  TALER_amount2s (&cd->amount),
                  GNUNET_TIME_timestamp2s (cd->execution_date));
@@ -303,19 +303,19 @@ debit_history_cb (void *cls,
         &reply->details.ok.details[i];
 
       /* If credit/debit accounts were specified, use as a filter */
-      if ( (NULL != credit_account) &&
-           (0 != strcasecmp (credit_account,
-                             dd->credit_account_uri) ) )
+      if ( (NULL != credit_account.full_payto) &&
+           (0 != TALER_full_payto_cmp (credit_account,
+                                       dd->credit_account_uri) ) )
         continue;
-      if ( (NULL != debit_account) &&
-           (0 != strcasecmp (debit_account,
-                             reply->details.ok.debit_account_uri) ) )
+      if ( (NULL != debit_account.full_payto) &&
+           (0 != TALER_full_payto_cmp (debit_account,
+                                       reply->details.ok.debit_account_uri) ) )
         continue;
       fprintf (stdout,
                "%llu: %s->%s (%s) over %s at %s\n",
                (unsigned long long) dd->serial_id,
-               reply->details.ok.debit_account_uri,
-               dd->credit_account_uri,
+               reply->details.ok.debit_account_uri.full_payto,
+               dd->credit_account_uri.full_payto,
                TALER_B2S (&dd->wtid),
                TALER_amount2s (&dd->amount),
                GNUNET_TIME_timestamp2s (dd->execution_date));
@@ -413,7 +413,7 @@ execute_wire_transfer (void)
   size_t buf_size;
   char *params;
 
-  if (NULL != debit_account)
+  if (NULL != debit_account.full_payto)
   {
     fprintf (stderr,
              "Invalid option -C specified, conflicts with -D\n");
@@ -445,7 +445,7 @@ execute_wire_transfer (void)
                                 &wtid,
                                 sizeof (wtid));
   }
-  params = strchr (credit_account,
+  params = strchr (credit_account.full_payto,
                    (unsigned char) '&');
   if (NULL != params)
     *params = '\0';
@@ -662,12 +662,12 @@ run (void *cls,
     execute_debit_history ();
     return;
   }
-  if (NULL != credit_account)
+  if (NULL != credit_account.full_payto)
   {
     execute_wire_transfer ();
     return;
   }
-  if (NULL != debit_account)
+  if (NULL != debit_account.full_payto)
   {
     execute_admin_transfer ();
     return;
@@ -706,12 +706,12 @@ main (int argc,
                                  "credit",
                                  "ACCOUNT",
                                  "payto URI of the bank account to credit (when making outgoing transfers)",
-                                 &credit_account),
+                                 &credit_account.full_payto),
     GNUNET_GETOPT_option_string ('D',
                                  "debit",
                                  "PAYTO-URL",
                                  "payto URI of the bank account to debit (when making incoming transfers)",
-                                 &debit_account),
+                                 &debit_account.full_payto),
     GNUNET_GETOPT_option_flag ('i',
                                "credit-history",
                                "Ask to get a list of 10 incoming transactions.",

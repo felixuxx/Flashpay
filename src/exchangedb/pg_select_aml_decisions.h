@@ -43,7 +43,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_aml_decisions (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   enum TALER_EXCHANGE_YesNoAll investigation_only,
   enum TALER_EXCHANGE_YesNoAll active_only,
   uint64_t offset,
