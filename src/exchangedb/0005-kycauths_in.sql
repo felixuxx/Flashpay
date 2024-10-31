@@ -43,8 +43,11 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
+  -- FIXME: check that the *full* payto URI is indeed the best choice here,
+  -- given that this is mostly used for KYC, we may prefer the normalized
+  -- payto URI instead! Not sure, to be checked!
   PERFORM comment_partitioned_column(
-     'Identifies the debited bank account and KYC status'
+     'Identifies the debited bank account and KYC status by the hash over the full payto URI'
     ,'wire_source_h_payto'
     ,table_name
     ,partition_suffix

@@ -49,7 +49,7 @@ BEGIN
     ,shard_suffix
   );
   PERFORM comment_partitioned_column(
-     'foreign key linking the entry to the wire_targets table, NOT a primary key (multiple legitimizations are possible per wire target)'
+     'hash over the normalized payto URI; foreign key linking the entry to the wire_targets table, NOT a primary key (multiple legitimizations are possible per wire target)'
     ,'h_payto'
     ,'legitimization_processes'
     ,shard_suffix

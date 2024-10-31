@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   uint32_t measure_index,
   uint64_t legitimization_measure_serial_id,
   const char *provider_name,

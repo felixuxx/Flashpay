@@ -44,6 +44,20 @@ TALER_full_payto_cmp (const struct TALER_FullPayto a,
 }
 
 
+void
+TALER_full_payto_normalize_and_hash (const struct TALER_FullPayto in,
+                                     struct TALER_NormalizedPaytoHashP *out)
+{
+  struct TALER_NormalizedPayto normalized_payto_uri;
+
+  normalized_payto_uri
+    = TALER_payto_normalize (in);
+  TALER_normalized_payto_hash (normalized_payto_uri,
+                               out);
+  GNUNET_free (normalized_payto_uri.normalized_payto);
+}
+
+
 /**
  * Extract the value under @a key from the URI parameters.
  *

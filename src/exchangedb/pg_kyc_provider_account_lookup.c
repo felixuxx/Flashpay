@@ -31,7 +31,7 @@ TEH_PG_kyc_provider_account_lookup (
   void *cls,
   const char *provider_name,
   const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto,
+  struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t *process_row)
 {
   struct PostgresClosure *pg = cls;

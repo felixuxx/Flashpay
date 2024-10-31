@@ -32,21 +32,23 @@ TEH_PG_kycauth_in_insert (
   const union TALER_AccountPublicKeyP *account_pub,
   const struct TALER_Amount *credit_amount,
   struct GNUNET_TIME_Timestamp execution_date,
-  const char *debit_account_uri,
+  const struct TALER_FullPayto debit_account_uri,
   const char *section_name,
   uint64_t serial_id)
 {
   struct PostgresClosure *pg = cls;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_normalized_payto;
+  struct TALER_FullPaytoHashP h_full_payto;
 
-  TALER_payto_hash (debit_account_uri,
-                    &h_payto);
-
+  TALER_full_payto_hash (debit_account_uri,
+                         &h_full_payto);
+  TALER_full_payto_normalize_and_hash (debit_account_uri,
+                                       &h_normalized_payto);
   {
     struct TALER_KycCompletedEventP rep = {
       .header.size = htons (sizeof (rep)),
       .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
-      .h_payto = h_payto
+      .h_payto = h_normalized_payto
     };
     char *notify_s
       = GNUNET_PQ_get_event_notify_channel (&rep.header);
@@ -55,8 +57,9 @@ TEH_PG_kycauth_in_insert (
       GNUNET_PQ_query_param_uint64 (&serial_id),
       TALER_PQ_query_param_amount (pg->conn,
                                    credit_amount),
-      GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      GNUNET_PQ_query_param_string (debit_account_uri),
+      GNUNET_PQ_query_param_auto_from_type (&h_full_payto),
+      GNUNET_PQ_query_param_auto_from_type (&h_normalized_payto),
+      GNUNET_PQ_query_param_string (debit_account_uri.full_payto),
       GNUNET_PQ_query_param_string (section_name),
       GNUNET_PQ_query_param_timestamp (&execution_date),
       GNUNET_PQ_query_param_string (notify_s),
@@ -68,7 +71,7 @@ TEH_PG_kycauth_in_insert (
              "kycauth_in_insert",
              "CALL"
              " exchange_do_kycauth_in_insert"
-             " ($1,$2,$3,$4,$5,$6,$7,$8);");
+             " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
     qs = GNUNET_PQ_eval_prepared_non_select (
       pg->conn,
       "kycauth_in_insert",

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -112,7 +112,7 @@ get_transients_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_find_aggregation_transient (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   TALER_EXCHANGEDB_TransientAggregationCallback cb,
   void *cb_cls)
 {

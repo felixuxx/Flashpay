@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2024 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -17,10 +17,11 @@
 DROP FUNCTION IF EXISTS exchange_do_trigger_kyc_rule_for_account;
 
 CREATE FUNCTION exchange_do_trigger_kyc_rule_for_account(
-  IN in_h_payto BYTEA,
+  IN in_h_normalized_payto BYTEA,
   IN in_account_pub BYTEA, -- can be NULL, if given, should be SET
   IN in_merchant_pub BYTEA, -- can be NULL
   IN in_payto_uri TEXT, -- can be NULL
+  IN in_h_full_payto BYTEA,
   IN in_now INT8,
   IN in_jmeasures TEXT,
   IN in_display_priority INT4,
@@ -36,7 +37,7 @@ DECLARE
   my_reserve_pub BYTEA;
 BEGIN
 -- Note: in_payto_uri is allowed to be NULL *if*
--- in_h_payto is already in wire_targets
+-- in_h_normalized_payto is already in wire_targets
 
 
 SELECT
@@ -45,7 +46,7 @@ SELECT
 INTO
   my_rec
 FROM wire_targets
-  WHERE wire_target_h_payto=in_h_payto;
+  WHERE h_normalized_payto=in_h_normalized_payto;
 
 IF FOUND
 THEN
@@ -59,10 +60,12 @@ ELSE
   INSERT INTO wire_targets
     (payto_uri
     ,wire_target_h_payto
+    ,h_normalized_payto
     ,target_pub)
   VALUES
     (in_payto_uri
-    ,in_h_payto
+    ,in_h_full_payto
+    ,in_h_normalized_payto
     ,in_account_pub)
   RETURNING
     access_token
@@ -72,20 +75,19 @@ END IF;
 
 IF out_bad_kyc_auth
 THEN
-  -- Check most recent reserve_in wire transfer, we also
-  -- allow that reserve public key for authentication!
-  SELECT reserve_pub
-    INTO my_reserve_pub
-    FROM reserves_in
-   WHERE wire_source_h_payto=in_h_payto
-   ORDER BY execution_date DESC
-   LIMIT 1;
+  -- Check reserve_in wire transfers, we also
+  -- allow those reserve public keys for authentication!
+  PERFORM FROM reserves_in
+    WHERE wire_source_h_payto IN (
+      SELECT wire_target_h_payto
+        FROM wire_targets
+       WHERE h_normalized_payto=in_h_normalized_payto
+      )
+      AND reserve_pub = in_merchant_pub
+   ORDER BY execution_date DESC;
   IF FOUND
   THEN
-    IF in_merchant_pub = my_reserve_pub
-    THEN
-      out_bad_kyc_auth = FALSE;
-    END IF;
+    out_bad_kyc_auth = FALSE;
   END IF;
 END IF;
 -- First check if a perfectly equivalent legi measure

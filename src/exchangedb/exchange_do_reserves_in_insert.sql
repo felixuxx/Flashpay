@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2023 Taler Systems SA
+-- Copyright (C) 2014--2024 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -15,7 +15,8 @@
 --
 
 
-CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
+DROP FUNCTION IF EXISTS exchange_do_array_reserves_insert;
+CREATE FUNCTION exchange_do_array_reserves_insert(
   IN in_gc_date INT8,
   IN in_reserve_expiration INT8,
   IN ina_reserve_pub BYTEA[],
@@ -24,6 +25,7 @@ CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN ina_exchange_account_name TEXT[],
   IN ina_execution_date INT8[],
   IN ina_wire_source_h_payto BYTEA[],
+  IN ina_h_normalized_payto BYTEA[],
   IN ina_payto_uri TEXT[],
   IN ina_notify TEXT[])
 RETURNS SETOF exchange_do_array_reserve_insert_return_type
@@ -40,6 +42,7 @@ DECLARE
   ini_exchange_account_name TEXT;
   ini_execution_date INT8;
   ini_wire_source_h_payto BYTEA;
+  ini_h_normalized_payto BYTEA;
   ini_payto_uri TEXT;
   ini_notify TEXT;
 BEGIN
@@ -52,6 +55,7 @@ BEGIN
     ini_exchange_account_name = ina_exchange_account_name[i];
     ini_execution_date = ina_execution_date[i];
     ini_wire_source_h_payto = ina_wire_source_h_payto[i];
+    ini_h_normalized_payto = ina_h_normalized_payto[i];
     ini_payto_uri = ina_payto_uri[i];
     ini_notify = ina_notify[i];
 
@@ -59,9 +63,11 @@ BEGIN
 
     INSERT INTO wire_targets
       (wire_target_h_payto
+      ,h_normalized_payto
       ,payto_uri
       ) VALUES (
         ini_wire_source_h_payto
+        ini_h_normalized_payto
        ,ini_payto_uri
       )
     ON CONFLICT DO NOTHING;

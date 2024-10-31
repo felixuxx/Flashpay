@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -32,7 +32,7 @@ TEH_PG_insert_reserve_closed (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct GNUNET_TIME_Timestamp execution_date,
-  const char *receiver_account,
+  const struct TALER_FullPayto receiver_account,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *closing_fee,
@@ -41,10 +41,10 @@ TEH_PG_insert_reserve_closed (
   struct PostgresClosure *pg = cls;
   struct TALER_EXCHANGEDB_Reserve reserve;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
-  TALER_payto_hash (receiver_account,
-                    &h_payto);
+  TALER_full_payto_hash (receiver_account,
+                         &h_payto);
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),

@@ -71,7 +71,7 @@ handle_aml_result (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_PaytoHashP h_payto;
+    struct TALER_NormalizedPaytoHashP h_payto;
     uint64_t rowid;
     char *justification = NULL;
     struct GNUNET_TIME_Timestamp decision_time;
@@ -135,7 +135,7 @@ handle_aml_result (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_aml_decisions (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   enum TALER_EXCHANGE_YesNoAll investigation_only,
   enum TALER_EXCHANGE_YesNoAll active_only,
   uint64_t offset,

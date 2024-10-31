@@ -31,7 +31,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_aggregate (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   struct TALER_Amount *total)

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022-2023 Taler Systems SA
+   Copyright (C) 2022-2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -140,7 +140,10 @@ TEH_PG_reserves_in_insert (
   struct PostgresClosure *pg = cls;
   unsigned int dups = 0;
 
-  struct TALER_PaytoHashP h_paytos[GNUNET_NZL (reserves_length)];
+  struct TALER_FullPaytoHashP h_full_paytos[
+    GNUNET_NZL (reserves_length)];
+  struct TALER_NormalizedPaytoHashP h_normalized_paytos[
+    GNUNET_NZL (reserves_length)];
   char *notify_s[GNUNET_NZL (reserves_length)];
   struct TALER_ReservePublicKeyP reserve_pubs[GNUNET_NZL (reserves_length)];
   struct TALER_Amount balances[GNUNET_NZL (reserves_length)];
@@ -162,13 +165,15 @@ TEH_PG_reserves_in_insert (
   {
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
 
-    TALER_payto_hash (reserve->sender_account_details,
-                      &h_paytos[i]);
+    TALER_full_payto_hash (reserve->sender_account_details,
+                           &h_full_paytos[i]);
+    TALER_full_payto_normalize_and_hash (reserve->sender_account_details,
+                                         &h_normalized_paytos[i]);
     notify_s[i] = compute_notify_on_reserve (reserve->reserve_pub);
     reserve_pubs[i] = *reserve->reserve_pub;
     balances[i] = *reserve->balance;
     execution_times[i] = reserve->execution_time;
-    sender_account_details[i] = reserve->sender_account_details;
+    sender_account_details[i] = reserve->sender_account_details.full_payto;
     exchange_account_names[i] = reserve->exchange_account_name;
     wire_references[i] = reserve->wire_reference;
   }
@@ -195,7 +200,7 @@ TEH_PG_reserves_in_insert (
            " transaction_duplicate"
            ",ruuid"
            " FROM exchange_do_array_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_timestamp (&gc),
@@ -220,7 +225,11 @@ TEH_PG_reserves_in_insert (
         pg->conn),
       GNUNET_PQ_query_param_array_auto_from_type (
         reserves_length,
-        h_paytos,
+        h_full_paytos,
+        pg->conn),
+      GNUNET_PQ_query_param_array_auto_from_type (
+        reserves_length,
+        h_normalized_paytos,
         pg->conn),
       GNUNET_PQ_query_param_array_ptrs_string (
         reserves_length,

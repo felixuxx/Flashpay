@@ -17,7 +17,8 @@
 DROP FUNCTION IF EXISTS exchange_do_insert_aml_decision;
 CREATE FUNCTION exchange_do_insert_aml_decision(
   IN in_payto_uri TEXT, -- can be NULL!
-  IN in_h_payto BYTEA,
+  IN in_h_normalized_payto BYTEA,
+  IN in_h_full_payto BYTEA, -- can be NULL!
   IN in_decision_time INT8,
   IN in_expiration_time INT8,
   IN in_properties TEXT, -- can be NULL
@@ -62,7 +63,7 @@ out_invalid_officer=FALSE;
 SELECT decision_time
   INTO out_last_date
   FROM legitimization_outcomes
- WHERE h_payto=in_h_payto
+ WHERE h_payto=in_h_normalized_payto
    AND is_active
  ORDER BY decision_time DESC;
 
@@ -75,7 +76,7 @@ THEN
   END IF;
   UPDATE legitimization_outcomes
      SET is_active=FALSE
-   WHERE h_payto=in_h_payto
+   WHERE h_payto=in_h_normalized_payto
      AND is_active;
 ELSE
   out_last_date = 0;
@@ -84,7 +85,7 @@ END IF;
 SELECT access_token
   INTO my_access_token
   FROM wire_targets
- WHERE wire_target_h_payto=in_h_payto;
+ WHERE h_normalized_payto=in_h_normalized_payto;
 
 IF NOT FOUND
 THEN
@@ -97,9 +98,11 @@ THEN
 
   INSERT INTO wire_targets
     (wire_target_h_payto
+    ,h_normalized_payto
     ,payto_uri)
     VALUES
-    (in_h_payto
+    (in_h_full_payto
+    ,in_h_normalized_payto
     ,in_payto_uri)
     RETURNING access_token
       INTO my_access_token;
@@ -146,7 +149,7 @@ END IF;
 
 UPDATE legitimization_outcomes
    SET is_active=FALSE
- WHERE h_payto=in_h_payto
+ WHERE h_payto=in_h_normalized_payto
    -- this clause is a minor optimization to avoid
    -- updating outcomes that have long expired.
    AND expiration_time >= in_decision_time;
@@ -161,7 +164,7 @@ INSERT INTO legitimization_outcomes
   ,jnew_rules
   )
   VALUES
-  (in_h_payto
+  (in_h_normalized_payto
   ,in_decision_time
   ,in_expiration_time
   ,in_properties
@@ -182,7 +185,7 @@ INSERT INTO aml_history
   ,decider_pub
   ,decider_sig
   ) VALUES
-  (in_h_payto
+  (in_h_normalized_payto
   ,my_outcome_serial_id
   ,in_justification
   ,in_decider_pub
@@ -194,7 +197,7 @@ INSERT INTO kyc_alerts
   (h_payto
   ,trigger_type)
   VALUES
-  (in_h_payto,1)
+  (in_h_normalized_payto,1)
  ON CONFLICT DO NOTHING;
 
 EXECUTE FORMAT (
@@ -205,5 +208,5 @@ EXECUTE FORMAT (
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(TEXT, BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, BYTEA, BYTEA, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(TEXT, BYTEA, BYTEA, INT8, INT8, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, BYTEA, BYTEA, TEXT)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

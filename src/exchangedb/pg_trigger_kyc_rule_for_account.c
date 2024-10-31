@@ -29,8 +29,8 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_trigger_kyc_rule_for_account (
   void *cls,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TLAER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *set_account_pub,
   const struct TALER_MerchantPublicKeyP *check_merchant_pub,
   const json_t *jmeasures,
@@ -48,6 +48,7 @@ TEH_PG_trigger_kyc_rule_for_account (
   };
   char *notify_str
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
+  struct TALER_FullPaytoHashP h_full_payto;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     NULL == set_account_pub
@@ -56,9 +57,12 @@ TEH_PG_trigger_kyc_rule_for_account (
     NULL == check_merchant_pub
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (check_merchant_pub),
-    NULL == payto_uri
+    NULL == payto_uri.full_payto
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (payto_uri),
+    : GNUNET_PQ_query_param_string (payto_uri.full_payto),
+    NULL == payto_uri.full_payto
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (&h_full_payto),
     GNUNET_PQ_query_param_absolute_time (&now),
     TALER_PQ_query_param_json (jmeasures),
     GNUNET_PQ_query_param_uint32 (&display_priority),
@@ -84,8 +88,10 @@ TEH_PG_trigger_kyc_rule_for_account (
            " ,out_bad_kyc_auth"
            "   AS bad_kyc_auth"
            " FROM exchange_do_trigger_kyc_rule_for_account"
-           "($1, $2, $3, $4, $5, $6, $7, $8);");
-
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
+  if (NULL != payto_uri.full_payto)
+    TALER_full_payto_normalize_and_hash (payto_uri,
+                                         &h_full_payto);
   qs = GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "trigger_kyc_rule_for_account",

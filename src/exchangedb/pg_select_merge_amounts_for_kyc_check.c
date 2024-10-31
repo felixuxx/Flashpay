@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -112,7 +112,7 @@ get_kyc_amounts_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_merge_amounts_for_kyc_check (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls)

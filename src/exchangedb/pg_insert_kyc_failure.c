@@ -31,7 +31,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_failure (
   void *cls,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *provider_name,
   const char *provider_account_id,
   const char *provider_legitimization_id,

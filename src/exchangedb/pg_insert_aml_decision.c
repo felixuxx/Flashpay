@@ -30,8 +30,8 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_aml_decision (
   void *cls,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Timestamp expiration_time,
   const json_t *properties,
@@ -53,6 +53,7 @@ TEH_PG_insert_aml_decision (
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
     .h_payto = *h_payto
   };
+  struct TALER_FullPaytoHashP h_full_payto;
   char *notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
@@ -60,6 +61,9 @@ TEH_PG_insert_aml_decision (
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
+    NULL == payto_uri
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (&h_full_payto),
     GNUNET_PQ_query_param_timestamp (&decision_time),
     GNUNET_PQ_query_param_timestamp (&expiration_time),
     NULL != properties
@@ -92,6 +96,8 @@ TEH_PG_insert_aml_decision (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  TALER_full_payto_hash (payto_uri,
+                         &h_full_payto);
   PREPARE (pg,
            "do_insert_aml_decision",
            "SELECT"
@@ -100,7 +106,7 @@ TEH_PG_insert_aml_decision (
            ",out_last_date"
            ",out_legitimization_measure_serial_id"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,

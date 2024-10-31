@@ -227,7 +227,6 @@
 #include "pg_insert_aml_officer.h"
 #include "pg_test_aml_officer.h"
 #include "pg_lookup_aml_officer.h"
-#include "pg_trigger_aml_process.h"
 #include "pg_lookup_kyc_requirement_by_row.h"
 #include "pg_insert_aml_decision.h"
 #include "pg_batch_ensure_coin_known.h"
@@ -818,8 +817,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_lookup_aml_officer;
   plugin->insert_active_legitimization_measure
     = &TEH_PG_insert_active_legitimization_measure;
-  plugin->trigger_aml_process
-    = &TEH_PG_trigger_aml_process;
   plugin->insert_aml_decision
     = &TEH_PG_insert_aml_decision;
   plugin->lookup_kyc_requirement_by_row

@@ -523,8 +523,8 @@ static void
 cb_wt_never (void *cls,
              uint64_t serial_id,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
-             const char *account_payto_uri,
-             const struct TALER_PaytoHashP *h_payto,
+             const struct TALER_FullPayto account_payto_uri,
+             const struct TALER_FullPaytoHashP *h_payto,
              struct GNUNET_TIME_Timestamp exec_time,
              const struct TALER_PrivateContractHashP *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
@@ -565,8 +565,8 @@ static void
 cb_wt_check (void *cls,
              uint64_t rowid,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
-             const char *account_payto_uri,
-             const struct TALER_PaytoHashP *h_payto,
+             const struct TALER_FullPayto account_payto_uri,
+             const struct TALER_FullPaytoHashP *h_payto,
              struct GNUNET_TIME_Timestamp exec_time,
              const struct TALER_PrivateContractHashP *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
@@ -580,7 +580,7 @@ cb_wt_check (void *cls,
   GNUNET_assert (cls == &cb_wt_never);
   GNUNET_assert (0 == GNUNET_memcmp (merchant_pub,
                                      &merchant_pub_wt));
-  GNUNET_assert (0 == strcmp (account_payto_uri,
+  GNUNET_assert (0 == strcmp (account_payto_uri.full_payto,
                               "payto://iban/DE67830654080004822650?receiver-name=Test"));
   GNUNET_assert (GNUNET_TIME_timestamp_cmp (exec_time,
                                             ==,
@@ -599,7 +599,7 @@ cb_wt_check (void *cls,
 /**
  * Here we store the hash of the payto URI.
  */
-static struct TALER_PaytoHashP global_wire_target_h_payto;
+static struct TALER_FullPaytoHashP global_wire_target_h_payto;
 
 
 /**
@@ -907,7 +907,7 @@ audit_wire_cb (void *cls,
                uint64_t rowid,
                struct GNUNET_TIME_Timestamp date,
                const struct TALER_WireTransferIdentifierRawP *wtid,
-               const char *payto_uri,
+               const struct TALER_FullPayto payto_uri,
                const struct TALER_Amount *amount)
 {
   (void) cls;
@@ -937,11 +937,11 @@ static enum GNUNET_GenericReturnValue
 test_wire_out (const struct TALER_EXCHANGEDB_BatchDeposit *bd)
 {
   const struct TALER_EXCHANGEDB_CoinDepositInformation *deposit = &bd->cdis[0];
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   GNUNET_assert (0 < bd->num_cdis);
-  TALER_payto_hash (bd->receiver_wire_account,
-                    &h_payto);
+  TALER_full_payto_hash (bd->receiver_wire_account,
+                         &h_payto);
   auditor_row_cnt = 0;
   memset (&wire_out_wtid,
           41,
@@ -1126,7 +1126,7 @@ wire_missing_cb (
   void *cls,
   uint64_t batch_deposit_serial_id,
   const struct TALER_Amount *total_amount,
-  const struct TALER_PaytoHashP *wire_target_h_payto,
+  const struct TALER_FullPaytoHashP *wire_target_h_payto,
   struct GNUNET_TIME_Timestamp deadline)
 {
   const struct TALER_EXCHANGEDB_CoinDepositInformation *deposit = cls;
@@ -1193,8 +1193,12 @@ run (void *cls)
   struct TALER_CoinSpendPublicKeyP cpub2;
   struct TALER_MerchantPublicKeyP mpub2;
   struct TALER_EXCHANGEDB_Refund refund;
-  const char *sndr = "payto://x-taler-bank/localhost:8080/1";
-  const char *rcvr = "payto://x-taler-bank/localhost:8080/2";
+  const struct TALER_FullPayto sndr = {
+    (char *) "payto://x-taler-bank/localhost:8080/1"
+  };
+  const struct TALER_FullPayto rcvr = {
+    (char *) "payto://x-taler-bank/localhost:8080/2"
+  };
   const uint32_t num_partitions = 10;
   unsigned int matched;
   enum GNUNET_DB_QueryStatus qs;
@@ -1518,7 +1522,7 @@ run (void *cls)
     bool balance_ok;
     uint32_t bad_balance_idx;
     bool in_conflict;
-    struct TALER_PaytoHashP h_payto;
+    struct TALER_FullPaytoHashP h_payto;
 
     RND_BLK (&h_payto);
     bd.refund_deadline
@@ -2142,10 +2146,10 @@ run (void *cls)
   RND_BLK (&bd.merchant_pub);
   RND_BLK (&bd.h_contract_terms);
   RND_BLK (&bd.wire_salt);
-  bd.receiver_wire_account =
-    "payto://iban/DE67830654080004822650?receiver-name=Test";
+  bd.receiver_wire_account.full_payto =
+    (char *) "payto://iban/DE67830654080004822650?receiver-name=Test";
   TALER_merchant_wire_signature_hash (
-    "payto://iban/DE67830654080004822650?receiver-name=Test",
+    bd.receiver_wire_account,
     &bd.wire_salt,
     &h_wire_wt);
   deposit.amount_with_fee = value;
@@ -2176,8 +2180,8 @@ run (void *cls)
     uint32_t bad_idx;
     bool ctr_conflict;
 
-    TALER_payto_hash (bd.receiver_wire_account,
-                      &bd.wire_target_h_payto);
+    TALER_full_payto_hash (bd.receiver_wire_account,
+                           &bd.wire_target_h_payto);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_deposit (plugin->cls,
                                 &bd,
@@ -2221,7 +2225,7 @@ run (void *cls)
   sleep (2); /* give deposit time to be ready */
   {
     struct TALER_MerchantPublicKeyP merchant_pub2;
-    char *payto_uri2;
+    struct TALER_FullPayto payto_uri2;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_ready_deposit (plugin->cls,
@@ -2231,11 +2235,11 @@ run (void *cls)
                                        &payto_uri2));
     FAILIF (0 != GNUNET_memcmp (&merchant_pub2,
                                 &bd.merchant_pub));
-    FAILIF (0 != strcmp (payto_uri2,
-                         bd.receiver_wire_account));
-    TALER_payto_hash (payto_uri2,
-                      &global_wire_target_h_payto);
-    GNUNET_free (payto_uri2);
+    FAILIF (0 != TALER_full_payto_cmp (payto_uri2,
+                                       bd.receiver_wire_account));
+    TALER_full_payto_hash (payto_uri2,
+                           &global_wire_target_h_payto);
+    GNUNET_free (payto_uri2.full_payto);
   }
 
   {

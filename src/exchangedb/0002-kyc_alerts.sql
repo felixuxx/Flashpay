@@ -22,6 +22,6 @@ CREATE TABLE kyc_alerts
 COMMENT ON TABLE kyc_alerts
   IS 'alerts about completed KYC events reliably notifying other components (even if they are not running)';
 COMMENT ON COLUMN kyc_alerts.h_payto
-  IS 'hash of the payto://-URI for which the KYC status changed';
+  IS 'hash of the normalized payto://-URI for which the KYC status changed';
 COMMENT ON COLUMN kyc_alerts.trigger_type
   IS 'identifies the receiver of the alert, as the same h_payto may require multiple components to be notified';

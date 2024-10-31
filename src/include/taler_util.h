@@ -539,6 +539,18 @@ TALER_payto_normalize (const struct TALER_FullPayto input);
 
 
 /**
+ * Normalize the given full payto URI and hash it.
+ *
+ * @param in full payto URI
+ * @param[out] out hash of the normalized payto URI
+ */
+void
+TALER_full_payto_normalize_and_hash (
+  const struct TALER_FullPayto in,
+  struct TALER_NormalizedPaytoHashP *out);
+
+
+/**
  * Obtain the account name from a payto URL.
  *
  * @param payto an x-taler-bank payto URL

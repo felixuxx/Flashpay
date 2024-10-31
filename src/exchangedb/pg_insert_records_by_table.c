@@ -168,10 +168,12 @@ static enum GNUNET_DB_QueryStatus
 irbt_cb_table_wire_targets (struct PostgresClosure *pg,
                             const struct TALER_EXCHANGEDB_TableData *td)
 {
-  struct TALER_PaytoHashP payto_hash;
+  struct TALER_NormalizedPaytoHashP normalized_payto_hash;
+  struct TALER_FullPaytoHashP full_payto_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_auto_from_type (&payto_hash),
+    GNUNET_PQ_query_param_auto_from_type (&full_payto_hash),
+    GNUNET_PQ_query_param_auto_from_type (&normalized_payto_hash),
     GNUNET_PQ_query_param_string (
       td->details.wire_targets.payto_uri),
     GNUNET_PQ_query_param_auto_from_type (
@@ -183,19 +185,23 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
-  TALER_payto_hash (
-    td->details.wire_targets.payto_uri,
-    &payto_hash);
+  TALER_full_payto_hash (
+    td->details.wire_targets.full_payto_uri,
+    &full_payto_hash);
+  TALER_full_payto_normalize_and_hash (
+    td->details.wire_targets.full_payto_uri,
+    &h_normalized_payto);
   PREPARE (pg,
            "insert_into_table_wire_targets",
            "INSERT INTO wire_targets"
            "(wire_target_serial_id"
            ",wire_target_h_payto"
+           ",h_normalized_payto"
            ",payto_uri"
            ",access_token"
            ",target_pub"
            ") VALUES "
-           "($1, $2, $3, $4, $5);");
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_targets",
                                              params);

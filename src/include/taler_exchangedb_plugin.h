@@ -2989,7 +2989,7 @@ struct TALER_EXCHANGEDB_ReserveInInfo
   const struct TALER_ReservePublicKeyP *reserve_pub;
   const struct TALER_Amount *balance;
   struct GNUNET_TIME_Timestamp execution_time;
-  const char *sender_account_details;
+  const struct TALER_FullPayto sender_account_details;
   const char *exchange_account_name;
   uint64_t wire_reference;
 };
@@ -3996,7 +3996,7 @@ struct TALER_EXCHANGEDB_Plugin
     const union TALER_AccountPublicKeyP *account_pub,
     const struct TALER_Amount *credit_amount,
     struct GNUNET_TIME_Timestamp execution_date,
-    const char *debit_account_uri,
+    const struct TALER_FullPayto debit_account_uri,
     const char *section_name,
     uint64_t serial_id);
 
@@ -7413,22 +7413,6 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp start_date,
     struct GNUNET_TIME_Timestamp end_date,
     uint64_t *cnt);
-
-
-  /**
-   * Trigger AML process, an account has crossed the threshold. Inserts or
-   * updates the AML status.
-   *
-   * @param cls closure
-   * @param h_payto account for which the attribute data is stored
-   * @param threshold_crossed existing threshold that was crossed
-   * @return database transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-    (*trigger_aml_process)(
-    void *cls,
-    const struct TALER_NormalizedPaytoHashP *h_payto,
-    const struct TALER_Amount *threshold_crossed);
 
 
   /**

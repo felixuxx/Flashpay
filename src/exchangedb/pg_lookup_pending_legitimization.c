@@ -31,7 +31,7 @@ TEH_PG_lookup_pending_legitimization (
   void *cls,
   uint64_t legitimization_measure_serial_id,
   struct TALER_AccountAccessTokenP *access_token,
-  struct TALER_PaytoHashP *h_payto,
+  struct TALER_NormalizedPaytoHashP *h_payto,
   json_t **jmeasures,
   bool *is_finished)
 {
@@ -60,7 +60,7 @@ TEH_PG_lookup_pending_legitimization (
            "lookup_pending_legitimization",
            "SELECT "
            " lm.jmeasures"
-           ",wt.wire_target_h_payto"
+           ",wt.h_normalized_payto"
            ",lm.access_token"
            ",lm.is_finished"
            " FROM legitimization_measures lm"

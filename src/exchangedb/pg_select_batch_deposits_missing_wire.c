@@ -71,7 +71,7 @@ missing_wire_cb (void *cls,
   {
     uint64_t batch_deposit_serial_id;
     struct GNUNET_TIME_Timestamp deadline;
-    struct TALER_PaytoHashP wire_target_h_payto;
+    struct TALER_FullPaytoHashP wire_target_h_payto;
     struct TALER_Amount total_amount;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("batch_deposit_serial_id",

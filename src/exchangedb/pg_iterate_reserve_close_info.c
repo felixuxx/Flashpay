@@ -93,7 +93,7 @@ iterate_reserve_close_info_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_reserve_close_info (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls)

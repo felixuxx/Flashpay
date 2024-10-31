@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -31,7 +31,7 @@ TEH_PG_update_kyc_process_by_row (
   void *cls,
   uint64_t process_row,
   const char *provider_name,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,
   const char *redirect_url,

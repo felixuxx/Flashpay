@@ -40,7 +40,7 @@ TEH_PG_do_purse_merge (
   bool *in_conflict)
 {
   struct PostgresClosure *pg = cls;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
   struct GNUNET_TIME_Timestamp expiration
     = GNUNET_TIME_relative_to_timestamp (pg->legal_reserve_expiration_time);
   struct GNUNET_PQ_QueryParam params[] = {
@@ -67,13 +67,13 @@ TEH_PG_do_purse_merge (
   };
 
   {
-    char *payto_uri;
+    struct TALER_NormalizedPayto payto_uri;
 
     payto_uri = TALER_reserve_make_payto (pg->exchange_url,
                                           reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &h_payto);
-    GNUNET_free (payto_uri);
+    TALER_normalized_payto_hash (payto_uri,
+                                 &h_payto);
+    GNUNET_free (payto_uri.normalized_payto);
   }
   PREPARE (pg,
            "call_purse_merge",

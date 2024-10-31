@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_aggregation_transient (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPaytoHashP *h_payto,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   uint64_t kyc_requirement_row,
   const struct TALER_Amount *total)

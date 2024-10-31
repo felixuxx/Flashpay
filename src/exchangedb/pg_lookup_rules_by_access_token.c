@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_rules_by_access_token (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   json_t **jnew_rules,
   uint64_t *rowid)
 {

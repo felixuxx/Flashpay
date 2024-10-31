@@ -54,6 +54,12 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
+     'hash over the normalized (!) payto:// URI that identifies the receiving wallet'
+    ,'wallet_h_payto'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
      'signature by the reserve private key affirming the merge, of type TALER_SIGNATURE_WALLET_ACCOUNT_MERGE'
     ,'reserve_sig'
     ,table_name

@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_kyc_rules (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   bool *no_account_pub,
   union TALER_AccountPublicKeyP *account_pub,
   bool *no_reserve_pub,
@@ -80,7 +80,7 @@ TEH_PG_get_kyc_rules (
            "    ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
            "  LEFT JOIN legitimization_outcomes lo"
            "    ON (lo.h_payto = wt.wire_target_h_payto)"
-           " WHERE wt.wire_target_h_payto=$1"
+           " WHERE wt.h_normalized_payto=$1"
            "   AND COALESCE(lo.expiration_time >= $2, TRUE)"
            "   AND COALESCE(lo.is_active, TRUE)"
            " ORDER BY ri.execution_date DESC"

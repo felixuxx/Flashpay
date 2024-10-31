@@ -30,7 +30,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_h_payto_by_access_token (
   void *cls,
   const struct TALER_AccountAccessTokenP *access_token,
-  struct TALER_PaytoHashP *h_payto)
+  struct TALER_NormalizedPaytoHashP *h_payto)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -47,7 +47,7 @@ TEH_PG_lookup_h_payto_by_access_token (
   PREPARE (pg,
            "lookup_h_payto_by_access_token",
            "SELECT "
-           "  wire_target_h_payto"
+           "  h_normalized_payto"
            " FROM wire_targets"
            " WHERE (access_token = $1);");
   return GNUNET_PQ_eval_prepared_singleton_select (

@@ -21,6 +21,7 @@ CREATE PROCEDURE exchange_do_kycauth_in_insert(
   IN in_wire_reference INT8,
   IN in_credit taler_amount,
   IN in_wire_source_h_payto BYTEA,
+  IN in_h_normalized_payto BYTEA,
   IN in_payto_uri TEXT,
   IN in_exchange_account_name TEXT,
   IN in_execution_date INT8,
@@ -60,10 +61,12 @@ BEGIN
   THEN
     INSERT INTO wire_targets
       (wire_target_h_payto
+      ,h_normalized_payto
       ,payto_uri
       ,target_pub
       ) VALUES (
        in_wire_source_h_payto
+      ,in_h_normalized_payto
       ,in_payto_uri
       ,in_account_pub);
   END IF;

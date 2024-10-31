@@ -24,6 +24,8 @@
 #include "taler_pq_lib.h"
 #include "pg_do_reserve_purse.h"
 #include "pg_helper.h"
+
+
 /**
  * Function called insert request to merge a purse into a reserve by the
  * respective purse merge key. The purse must not have been merged into a
@@ -56,7 +58,7 @@ TEH_PG_do_reserve_purse (
 {
   struct PostgresClosure *pg = cls;
   struct TALER_Amount zero_fee;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_absolute_to_timestamp (
         GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
@@ -93,18 +95,17 @@ TEH_PG_do_reserve_purse (
   };
 
   {
-    char *payto_uri;
+    struct TALER_NormalizedPayto payto_uri;
 
     payto_uri = TALER_reserve_make_payto (pg->exchange_url,
                                           reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &h_payto);
-    GNUNET_free (payto_uri);
+    TALER_normalized_payto_hash (payto_uri,
+                                 &h_payto);
+    GNUNET_free (payto_uri.normalized_payto);
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (pg->currency,
                                         &zero_fee));
-  /* Used in #postgres_do_reserve_purse() */
   PREPARE (pg,
            "call_reserve_purse",
            "SELECT"

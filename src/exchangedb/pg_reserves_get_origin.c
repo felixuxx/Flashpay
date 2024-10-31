@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -30,8 +30,8 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_get_origin (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct TALER_PaytoHashP *h_payto,
-  char **payto_uri)
+  struct TALER_FullPaytoHashP *h_payto,
+  struct TALER_FullPayto *payto_uri)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -44,7 +44,7 @@ TEH_PG_reserves_get_origin (
       h_payto),
     GNUNET_PQ_result_spec_string (
       "payto_uri",
-      payto_uri),
+      &payto_uri->full_payto),
     GNUNET_PQ_result_spec_end
   };
 

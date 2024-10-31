@@ -111,7 +111,7 @@ get_kyc_amounts_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_deposit_amounts_for_kyc_check (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls)
@@ -138,7 +138,11 @@ TEH_PG_select_deposit_amounts_for_kyc_check (
            " FROM batch_deposits bd"
            " JOIN coin_deposits cd"
            "   USING (batch_deposit_serial_id)"
-           " WHERE wire_target_h_payto=$1"
+           " WHERE wire_target_h_payto IN ("
+           "   SELECT wire_target_h_payto"
+           "     FROM wire_targets"
+           "    WHERE h_normalized_payto=$1"
+           "   )"
            "   AND bd.exchange_timestamp >= $2"
            " ORDER BY bd.exchange_timestamp DESC");
   qs = GNUNET_PQ_eval_prepared_multi_select (

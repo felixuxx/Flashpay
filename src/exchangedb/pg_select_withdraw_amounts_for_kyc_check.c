@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -113,7 +113,7 @@ get_kyc_amounts_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_withdraw_amounts_for_kyc_check (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls)
@@ -142,7 +142,11 @@ TEH_PG_select_withdraw_amounts_for_kyc_check (
            "   ON (rh.reserve_pub = ri.reserve_pub)"
            " JOIN reserves_out ro"
            "   ON (ro.reserve_out_serial_id = rh.serial_id)"
-           " WHERE ri.wire_source_h_payto=$1"
+           " WHERE ri.wire_source_h_payto IN ("
+           "   SELECT wire_target_h_payto"
+           "     FROM wire_targets"
+           "    WHERE h_normalized_payto=$1"
+           "   )"
            "   AND rh.table_name='reserves_out'"
            "   AND ro.execution_date >= $2"
            " ORDER BY rh.reserve_history_serial_id DESC");
