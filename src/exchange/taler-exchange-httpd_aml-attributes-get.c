@@ -88,7 +88,7 @@ TEH_handler_aml_attributes_get (
 {
   int64_t limit = -20;
   uint64_t offset;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   if ( (NULL == args[0]) ||
        (NULL != args[1]) )

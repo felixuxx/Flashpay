@@ -110,7 +110,7 @@ struct BatchWithdrawContext
    * established the reserve, set during the @e kyc
    * check (if any).
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_normalized_payto;
 
   /**
    * Array of @e planchets_length planchets we are processing.
@@ -570,7 +570,7 @@ check_kyc_result (struct BatchWithdrawContext *bwc)
     finish_loop (bwc,
                  TEH_RESPONSE_reply_kyc_required (
                    bwc->rc->connection,
-                   &bwc->h_payto,
+                   &bwc->h_normalized_payto,
                    &bwc->kyc,
                    false));
     return;
@@ -649,7 +649,7 @@ withdraw_amount_cb (
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
     TEH_plugin->cls,
-    &bwc->h_payto,
+    &bwc->h_normalized_payto,
     limit,
     cb,
     cb_cls);
@@ -671,7 +671,8 @@ static void
 run_legi_check (struct BatchWithdrawContext *bwc)
 {
   enum GNUNET_DB_QueryStatus qs;
-  char *payto_uri;
+  struct TALER_FullPaytoHashP h_payto;
+  struct TALER_FullPayto payto_uri;
 
   if (GNUNET_YES != TEH_enable_kyc)
   {
@@ -682,7 +683,7 @@ run_legi_check (struct BatchWithdrawContext *bwc)
   qs = TEH_plugin->reserves_get_origin (
     TEH_plugin->cls,
     &bwc->reserve_pub,
-    &bwc->h_payto,
+    &h_payto,
     &payto_uri);
   if (qs < 0)
   {
@@ -694,6 +695,8 @@ run_legi_check (struct BatchWithdrawContext *bwc)
                    "reserves_get_origin"));
     return;
   }
+  TALER_full_payto_normalize_and_hash (payto_uri,
+                                       &bwc->h_normalized_payto);
   /* If _no_ results, reserve was created by merge,
      in which case no KYC check is required as the
      merge already did that. */
@@ -707,14 +710,14 @@ run_legi_check (struct BatchWithdrawContext *bwc)
     &bwc->rc->async_scope_id,
     TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
     payto_uri,
-    &bwc->h_payto,
+    &bwc->h_normalized_payto,
     NULL, /* no account pub: this is about the origin account */
     &withdraw_amount_cb,
     bwc,
     &withdraw_legi_cb,
     bwc);
   GNUNET_assert (NULL != bwc->lch);
-  GNUNET_free (payto_uri);
+  GNUNET_free (payto_uri.full_payto);
   GNUNET_CONTAINER_DLL_insert (bwc_head,
                                bwc_tail,
                                bwc);

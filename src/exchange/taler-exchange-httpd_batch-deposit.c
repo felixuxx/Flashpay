@@ -80,7 +80,6 @@ struct BatchDepositContext
    */
   json_t *policy_json;
 
-
   /**
    * Response to return, if set.
    */
@@ -106,6 +105,12 @@ struct BatchDepositContext
    * in the policy_details table.
    */
   uint64_t policy_details_serial_id;
+
+  /**
+   * Hash over the normalized payto://-URI of the account we are
+   * depositing into.
+   */
+  struct TALER_NormalizedPaytoHashP nph;
 
   /**
    * Our timestamp (when we received the request).
@@ -507,7 +512,7 @@ bdc_phase_check_kyc_result (struct BatchDepositContext *bdc)
     finish_loop (bdc,
                  TEH_RESPONSE_reply_kyc_required (
                    bdc->rc->connection,
-                   &bdc->bd.wire_target_h_payto,
+                   &bdc->nph,
                    &bdc->kyc,
                    bdc->bad_kyc_auth));
     return;
@@ -587,7 +592,7 @@ deposit_amount_cb (
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = TEH_plugin->select_deposit_amounts_for_kyc_check (
     TEH_plugin->cls,
-    &bdc->bd.wire_target_h_payto,
+    &bdc->nph,
     limit,
     cb,
     cb_cls);
@@ -613,11 +618,13 @@ bdc_phase_kyc (struct BatchDepositContext *bdc)
     bdc->phase++;
     return;
   }
+  TALER_full_payto_normalize_and_hash (bdc->bd.receiver_wire_account,
+                                       &bdc->nph);
   bdc->lch = TEH_legitimization_check2 (
     &bdc->rc->async_scope_id,
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
     bdc->bd.receiver_wire_account,
-    &bdc->bd.wire_target_h_payto,
+    &bdc->nph,
     &bdc->bd.merchant_pub,
     &deposit_amount_cb,
     bdc,
@@ -891,8 +898,8 @@ bdc_phase_parse (struct BatchDepositContext *bdc,
   const json_t *policy_json;
   bool no_refund_deadline = true;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_payto_uri ("merchant_payto_uri",
-                               &bd->receiver_wire_account),
+    TALER_JSON_spec_full_payto_uri ("merchant_payto_uri",
+                                    &bd->receiver_wire_account),
     GNUNET_JSON_spec_fixed_auto ("wire_salt",
                                  &bd->wire_salt),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub",
@@ -996,8 +1003,8 @@ bdc_phase_parse (struct BatchDepositContext *bdc,
                    NULL));
     return;
   }
-  TALER_payto_hash (bd->receiver_wire_account,
-                    &bd->wire_target_h_payto);
+  TALER_full_payto_hash (bd->receiver_wire_account,
+                         &bd->wire_target_h_payto);
   TALER_merchant_wire_signature_hash (bd->receiver_wire_account,
                                       &bd->wire_salt,
                                       &bdc->h_wire);

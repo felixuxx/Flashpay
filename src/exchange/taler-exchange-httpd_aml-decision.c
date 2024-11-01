@@ -164,8 +164,10 @@ TEH_handler_post_aml_decision (
   struct GNUNET_TIME_Timestamp decision_time;
   const json_t *new_rules;
   const json_t *properties = NULL;
-  const char *payto_uri = NULL;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPayto payto_uri = {
+    .full_payto = NULL
+  };
+  struct TALER_NormalizedPaytoHashP h_payto;
   struct TALER_AmlOfficerSignatureP officer_sig;
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
   uint64_t legi_measure_serial_id = 0;
@@ -179,8 +181,8 @@ TEH_handler_post_aml_decision (
     GNUNET_JSON_spec_string ("justification",
                              &justification),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("payto_uri",
-                               &payto_uri),
+      TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                      &payto_uri),
       NULL),
     GNUNET_JSON_spec_fixed_auto ("h_payto",
                                  &h_payto),
@@ -236,12 +238,12 @@ TEH_handler_post_aml_decision (
       goto done;
     }
   }
-  if (NULL != payto_uri)
+  if (NULL != payto_uri.full_payto)
   {
-    struct TALER_PaytoHashP h_payto2;
+    struct TALER_NormalizedPaytoHashP h_payto2;
 
-    TALER_payto_hash (payto_uri,
-                      &h_payto2);
+    TALER_full_payto_normalize_and_hash (payto_uri,
+                                         &h_payto2);
     if (0 !=
         GNUNET_memcmp (&h_payto,
                        &h_payto2))

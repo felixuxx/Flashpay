@@ -82,10 +82,10 @@ struct AgeWithdrawContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
-   * Set to the hash of the payto account that established
+   * Set to the hash of the normalized payto URI that established
    * the reserve.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_normalized_payto;
 
   /**
    * value the client committed to
@@ -498,7 +498,7 @@ check_kyc_result (struct AgeWithdrawContext *awc)
     finish_loop (awc,
                  TEH_RESPONSE_reply_kyc_required (
                    awc->rc->connection,
-                   &awc->h_payto,
+                   &awc->h_normalized_payto,
                    &awc->kyc,
                    false));
     return;
@@ -577,7 +577,7 @@ withdraw_amount_cb (
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
     TEH_plugin->cls,
-    &awc->h_payto,
+    &awc->h_normalized_payto,
     limit,
     cb,
     cb_cls);
@@ -599,13 +599,14 @@ static void
 run_legi_check (struct AgeWithdrawContext *awc)
 {
   enum GNUNET_DB_QueryStatus qs;
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
+  struct TALER_FullPaytoHashP h_full_payto;
 
   /* Check if the money came from a wire transfer */
   qs = TEH_plugin->reserves_get_origin (
     TEH_plugin->cls,
     &awc->commitment.reserve_pub,
-    &awc->h_payto,
+    &h_full_payto,
     &payto_uri);
   if (qs < 0)
   {
@@ -625,19 +626,20 @@ run_legi_check (struct AgeWithdrawContext *awc)
     awc->phase = AWC_PHASE_PREPARE_TRANSACTION;
     return;
   }
-
+  TALER_full_payto_normalize_and_hash (payto_uri,
+                                       &awc->h_normalized_payto);
   awc->lch = TEH_legitimization_check (
     &awc->rc->async_scope_id,
     TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
     payto_uri,
-    &awc->h_payto,
+    &awc->h_normalized_payto,
     NULL, /* no account pub: this is about the origin account */
     &withdraw_amount_cb,
     awc,
     &withdraw_legi_cb,
     awc);
   GNUNET_assert (NULL != awc->lch);
-  GNUNET_free (payto_uri);
+  GNUNET_free (payto_uri.full_payto);
   GNUNET_CONTAINER_DLL_insert (awc_head,
                                awc_tail,
                                awc);

@@ -46,7 +46,7 @@ struct TEH_KycAmlTrigger
   /**
    * account the operation is about
    */
-  struct TALER_PaytoHashP account_id;
+  struct TALER_NormalizedPaytoHashP account_id;
 
   /**
    * until when is the KYC data valid
@@ -482,7 +482,7 @@ TEH_kyc_finished2 (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -611,7 +611,7 @@ struct TEH_KycAmlTrigger *
 TEH_kyc_finished (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -679,7 +679,7 @@ struct TEH_KycAmlFallback
   /**
    * Account this is for.
    */
-  struct TALER_PaytoHashP account_id;
+  struct TALER_NormalizedPaytoHashP account_id;
 
   /**
    * Function to call when done.
@@ -844,7 +844,7 @@ return_fallback_result (void *cls)
 struct TEH_KycAmlFallback*
 TEH_kyc_fallback (
   const struct GNUNET_AsyncScopeId *scope,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   uint64_t orig_requirement_row,
   const json_t *attributes,
   const json_t *aml_history,
@@ -897,11 +897,14 @@ TEH_kyc_fallback (
     json_t *jmeasures;
     enum GNUNET_DB_QueryStatus qs;
     bool bad_kyc_auth;
+    struct TALER_FullPayto null_account = {
+      .full_payto = NULL
+    };
 
     jmeasures = TALER_KYCLOGIC_check_to_measures (&kcc);
     qs = TEH_plugin->trigger_kyc_rule_for_account (
       TEH_plugin->cls,
-      NULL, /* account_id is already in wire targets */
+      null_account, /* account_id is already in wire targets */
       account_id,
       NULL, /* account_pub */
       NULL, /* merchant_pub */
@@ -939,7 +942,7 @@ TEH_kyc_fallback_cancel (
 bool
 TEH_kyc_failed (
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -991,7 +994,7 @@ struct TEH_LegitimizationCheckHandle
   /**
    * Payto-URI of the account.
    */
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Amount iterator to call to check for amounts.
@@ -1017,7 +1020,7 @@ struct TEH_LegitimizationCheckHandle
   /**
    * Hash of @e payto_uri.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Public key of the account. We should associate this public
@@ -1190,8 +1193,8 @@ static struct TEH_LegitimizationCheckHandle *
 setup_legitimization_check (
   const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *account_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
@@ -1203,7 +1206,8 @@ setup_legitimization_check (
   lch = GNUNET_new (struct TEH_LegitimizationCheckHandle);
   lch->scope = *scope;
   lch->et = et;
-  lch->payto_uri = GNUNET_strdup (payto_uri);
+  lch->payto_uri.full_payto
+    = GNUNET_strdup (payto_uri.full_payto);
   lch->h_payto = *h_payto;
   if (NULL != account_pub)
   {
@@ -1222,8 +1226,8 @@ struct TEH_LegitimizationCheckHandle *
 TEH_legitimization_check (
   const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *account_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
@@ -1250,8 +1254,8 @@ struct TEH_LegitimizationCheckHandle *
 TEH_legitimization_check2 (
   const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
@@ -1895,7 +1899,7 @@ TEH_legitimization_check_cancel (
     MHD_destroy_response (lch->lcr.response);
     lch->lcr.response = NULL;
   }
-  GNUNET_free (lch->payto_uri);
+  GNUNET_free (lch->payto_uri.full_payto);
   GNUNET_free (lch->aml_program);
   GNUNET_free (lch);
 }

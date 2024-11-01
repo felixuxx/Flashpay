@@ -98,7 +98,7 @@ TEH_RESPONSE_reply_reserve_age_restriction_required (
 MHD_RESULT
 TEH_RESPONSE_reply_kyc_required (
   struct MHD_Connection *connection,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const struct TALER_EXCHANGEDB_KycStatus *kyc,
   bool bad_kyc_auth);
 

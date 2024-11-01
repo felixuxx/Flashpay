@@ -56,7 +56,7 @@ record_cb (
   void *cls,
   uint64_t row_id,
   const char *justification,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
   struct GNUNET_TIME_Absolute expiration_time,
   const json_t *jproperties,
@@ -101,7 +101,7 @@ TEH_handler_aml_decisions_get (
 {
   int64_t limit = -20;
   uint64_t offset;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
   bool have_payto = false;
   enum TALER_EXCHANGE_YesNoAll active_filter;
   enum TALER_EXCHANGE_YesNoAll investigation_filter;

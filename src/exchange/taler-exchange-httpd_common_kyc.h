@@ -76,7 +76,7 @@ struct TEH_KycAmlTrigger *
 TEH_kyc_finished (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -118,7 +118,7 @@ TEH_kyc_finished2 (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -181,8 +181,7 @@ typedef void
 struct TEH_KycAmlFallback *
 TEH_kyc_fallback (
   const struct GNUNET_AsyncScopeId *scope,
-  const struct TALER_PaytoHashP *
-  account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   uint64_t orig_requirement_row,
   const json_t *attributes,
   const json_t *aml_history,
@@ -218,7 +217,7 @@ TEH_kyc_fallback_cancel (
 bool
 TEH_kyc_failed (
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -319,8 +318,8 @@ struct TEH_LegitimizationCheckHandle *
 TEH_legitimization_check (
   const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *account_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
@@ -349,8 +348,8 @@ struct TEH_LegitimizationCheckHandle *
 TEH_legitimization_check2 (
   const struct GNUNET_AsyncScopeId *scope,
   enum TALER_KYCLOGIC_KycTriggerEvent et,
-  const char *payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_KYCLOGIC_KycAmountIterator ai,
   void *ai_cls,
