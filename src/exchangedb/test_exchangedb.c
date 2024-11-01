@@ -693,7 +693,7 @@ audit_reserve_in_cb (void *cls,
                      uint64_t rowid,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
                      const struct TALER_Amount *credit,
-                     const char *sender_account_details,
+                     const struct TALER_FullPayto sender_account_details,
                      uint64_t wire_reference,
                      struct GNUNET_TIME_Timestamp execution_date)
 {
@@ -1194,10 +1194,10 @@ run (void *cls)
   struct TALER_MerchantPublicKeyP mpub2;
   struct TALER_EXCHANGEDB_Refund refund;
   const struct TALER_FullPayto sndr = {
-    (char *) "payto://x-taler-bank/localhost:8080/1"
+    (char *) "payto://x-taler-bank/localhost:8080/1?receiver-name=1"
   };
   const struct TALER_FullPayto rcvr = {
-    (char *) "payto://x-taler-bank/localhost:8080/2"
+    (char *) "payto://x-taler-bank/localhost:8080/2?receiver-name=1"
   };
   const uint32_t num_partitions = 10;
   unsigned int matched;
@@ -1223,7 +1223,7 @@ run (void *cls)
   memset (&bd,
           0,
           sizeof (bd));
-  bd.receiver_wire_account = (char *) rcvr;
+  bd.receiver_wire_account = rcvr;
   bd.cdis = &deposit;
   bd.num_cdis = 1;
   memset (&salt,
@@ -1914,8 +1914,9 @@ run (void *cls)
         /* this is the amount we transferred twice*/
         FAILIF (1 != bt->amount.value);
         FAILIF (1000 != bt->amount.fraction);
-        FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
-        FAILIF (NULL == bt->sender_account_details);
+        FAILIF (0 != strcmp (CURRENCY,
+                             bt->amount.currency));
+        FAILIF (NULL == bt->sender_account_details.full_payto);
         break;
       case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
         withdraw = rh_head->details.withdraw;

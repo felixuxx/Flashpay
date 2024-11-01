@@ -67,7 +67,7 @@ BEGIN
       ,payto_uri
       ) VALUES (
         ini_wire_source_h_payto
-        ini_h_normalized_payto
+       ,ini_h_normalized_payto
        ,ini_payto_uri
       )
     ON CONFLICT DO NOTHING;
