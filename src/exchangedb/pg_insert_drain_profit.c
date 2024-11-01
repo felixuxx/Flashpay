@@ -25,12 +25,13 @@
 #include "pg_insert_drain_profit.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_drain_profit (
   void *cls,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp request_timestamp,
   const struct TALER_Amount *amount,
   const struct TALER_MasterSignatureP *master_sig)
@@ -39,7 +40,7 @@ TEH_PG_insert_drain_profit (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_string (account_section),
-    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_string (payto_uri.full_payto),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
     TALER_PQ_query_param_amount (pg->conn,
                                  amount),

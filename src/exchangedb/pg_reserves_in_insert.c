@@ -30,8 +30,6 @@
 #include "pg_commit.h"
 #include "pg_preflight.h"
 #include "pg_rollback.h"
-#include "pg_reserves_get.h"
-#include "pg_reserves_update.h"
 #include "pg_event_notify.h"
 
 
@@ -326,7 +324,7 @@ TEH_PG_reserves_in_insert (
         TALER_PQ_query_param_amount (pg->conn,
                                      &balances[i]),
         GNUNET_PQ_query_param_string (exchange_account_names[i]),
-        GNUNET_PQ_query_param_auto_from_type (&h_paytos[i]),
+        GNUNET_PQ_query_param_auto_from_type (&h_full_paytos[i]),
         GNUNET_PQ_query_param_string (notify_s[i]),
         GNUNET_PQ_query_param_end
       };

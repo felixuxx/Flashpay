@@ -61,7 +61,7 @@ TEH_PG_have_deposit2 (
     GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                           &deposit2.wire_salt),
     GNUNET_PQ_result_spec_string ("receiver_wire_account",
-                                  &deposit2.receiver_wire_account),
+                                  &deposit2.receiver_wire_account.full_payto),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -101,7 +101,7 @@ TEH_PG_have_deposit2 (
   TALER_merchant_wire_signature_hash (deposit2.receiver_wire_account,
                                       &deposit2.wire_salt,
                                       &h_wire2);
-  GNUNET_free (deposit2.receiver_wire_account);
+  GNUNET_free (deposit2.receiver_wire_account.full_payto);
   /* Now we check that the other information in @a deposit
      also matches, and if not report inconsistencies. */
   if ( (GNUNET_TIME_timestamp_cmp (refund_deadline,

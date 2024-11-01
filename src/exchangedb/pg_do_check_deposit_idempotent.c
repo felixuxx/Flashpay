@@ -39,6 +39,7 @@ TEH_PG_do_check_deposit_idempotent (
   const struct TALER_CoinSpendPublicKeyP *coin_pubs[GNUNET_NZL (bd->num_cdis)];
   const struct TALER_CoinSpendSignatureP *coin_sigs[GNUNET_NZL (bd->num_cdis)];
   struct TALER_Amount amounts_with_fee[GNUNET_NZL (bd->num_cdis)];
+  struct TALER_NormalizedPaytoHashP h_normalized_payto;
   struct GNUNET_PQ_QueryParam params[] = {
     /* data for batch_deposits */
     GNUNET_PQ_query_param_uint64 (&deposit_shard),
@@ -57,8 +58,6 @@ TEH_PG_do_check_deposit_idempotent (
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_uint64 (&bd->policy_details_serial_id),
     GNUNET_PQ_query_param_bool (bd->policy_blocked),
-    /* to create entry in wire_targets */
-    GNUNET_PQ_query_param_string (bd->receiver_wire_account),
     /* arrays for coin_deposits */
     GNUNET_PQ_query_param_array_ptrs_auto_from_type (bd->num_cdis,
                                                      coin_pubs,
@@ -83,6 +82,8 @@ TEH_PG_do_check_deposit_idempotent (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  TALER_full_payto_normalize_and_hash (bd->receiver_wire_account,
+                                       &h_normalized_payto);
   for (unsigned int i = 0; i < bd->num_cdis; i++)
   {
     const struct TALER_EXCHANGEDB_CoinDepositInformation *cdi
@@ -102,7 +103,7 @@ TEH_PG_do_check_deposit_idempotent (
            " out_exchange_timestamp AS exchange_timestamp"
            ",out_is_idempotent AS is_idempotent"
            " FROM exchange_do_check_deposit_idempotent"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "call_check_deposit_idempotent",
                                                  params,

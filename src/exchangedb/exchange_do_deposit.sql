@@ -13,7 +13,9 @@
 -- You should have received a copy of the GNU General Public License along with
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
-CREATE OR REPLACE FUNCTION exchange_do_deposit(
+
+DROP FUNCTION IF EXISTS exchange_do_deposit;
+CREATE FUNCTION exchange_do_deposit(
   -- For batch_deposits
   IN in_shard INT8,
   IN in_merchant_pub BYTEA,
@@ -25,6 +27,7 @@ CREATE OR REPLACE FUNCTION exchange_do_deposit(
   IN in_wallet_data_hash BYTEA, -- can be NULL
   IN in_wire_salt BYTEA,
   IN in_wire_target_h_payto BYTEA,
+  IN in_h_normalized_payto BYTEA,
   IN in_policy_details_serial_id INT8, -- can be NULL
   IN in_policy_blocked BOOLEAN,
   -- For wire_targets
@@ -57,9 +60,11 @@ BEGIN
 -- First, get or create the 'wtsi'
 INSERT INTO wire_targets
     (wire_target_h_payto
+    ,h_normalized_payto
     ,payto_uri)
   VALUES
     (in_wire_target_h_payto
+    ,in_h_normalized_payto
     ,in_receiver_wire_account)
   ON CONFLICT DO NOTHING -- for CONFLICT ON (wire_target_h_payto)
   RETURNING

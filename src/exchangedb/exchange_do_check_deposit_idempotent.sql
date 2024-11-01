@@ -13,7 +13,9 @@
 -- You should have received a copy of the GNU General Public License along with
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
-CREATE OR REPLACE FUNCTION exchange_do_check_deposit_idempotent(
+
+DROP FUNCTION IF EXISTS exchange_do_check_deposit_idempotent;
+CREATE FUNCTION exchange_do_check_deposit_idempotent(
   -- For batch_deposits
   IN in_shard INT8,
   IN in_merchant_pub BYTEA,
@@ -27,8 +29,6 @@ CREATE OR REPLACE FUNCTION exchange_do_check_deposit_idempotent(
   IN in_wire_target_h_payto BYTEA,
   IN in_policy_details_serial_id INT8, -- can be NULL
   IN in_policy_blocked BOOLEAN,
-  -- For wire_targets
-  IN in_receiver_wire_account TEXT,
   -- For coin_deposits
   IN ina_coin_pub BYTEA[],
   IN ina_coin_sig BYTEA[],
@@ -57,8 +57,7 @@ out_exchange_timestamp = in_exchange_timestamp;
 SELECT wire_target_serial_id
   INTO wtsi
   FROM wire_targets
- WHERE wire_target_h_payto=in_wire_target_h_payto
-   AND payto_uri=in_receiver_wire_account;
+ WHERE wire_target_h_payto=in_wire_target_h_payto;
 
 IF NOT FOUND
 THEN

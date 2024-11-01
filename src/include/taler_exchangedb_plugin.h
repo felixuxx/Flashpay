@@ -2989,7 +2989,7 @@ struct TALER_EXCHANGEDB_ReserveInInfo
   const struct TALER_ReservePublicKeyP *reserve_pub;
   const struct TALER_Amount *balance;
   struct GNUNET_TIME_Timestamp execution_time;
-  const struct TALER_FullPayto sender_account_details;
+  struct TALER_FullPayto sender_account_details;
   const char *exchange_account_name;
   uint64_t wire_reference;
 };

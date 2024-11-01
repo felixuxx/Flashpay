@@ -72,7 +72,7 @@ get_transients_cb (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct TALER_Amount amount;
-    char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     struct TALER_WireTransferIdentifierRawP wtid;
     struct TALER_MerchantPublicKeyP merchant_pub;
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -81,7 +81,7 @@ get_transients_cb (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
                                             &wtid),
       GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &payto_uri),
+                                    &payto_uri.full_payto),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount),
       GNUNET_PQ_result_spec_end
@@ -102,7 +102,7 @@ get_transients_cb (void *cls,
                       &wtid,
                       &merchant_pub,
                       &amount);
-    GNUNET_free (payto_uri);
+    GNUNET_free (payto_uri.full_payto);
     if (! cont)
       break;
   }
@@ -137,7 +137,8 @@ TEH_PG_find_aggregation_transient (
            " ,merchant_pub"
            " ,payto_uri"
            " FROM aggregation_transient atr"
-           " JOIN wire_targets wt USING (wire_target_h_payto)"
+           " JOIN wire_targets wt"
+           "   USING (wire_target_h_payto)"
            " WHERE atr.wire_target_h_payto=$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "find_transient_aggregations",

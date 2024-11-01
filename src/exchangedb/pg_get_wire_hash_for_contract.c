@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2023 Taler Systems SA
+   Copyright (C) 2023, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -41,13 +41,13 @@ TEH_PG_get_wire_hash_for_contract (
     GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
     GNUNET_PQ_query_param_end
   };
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct TALER_WireSaltP wire_salt;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                           &wire_salt),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  &payto_uri),
+                                  &payto_uri.full_payto),
     GNUNET_PQ_result_spec_end
   };
 

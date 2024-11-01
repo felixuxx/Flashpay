@@ -32,7 +32,7 @@ TEH_PG_get_drain_profit (
   const struct TALER_WireTransferIdentifierRawP *wtid,
   uint64_t *serial,
   char **account_section,
-  char **payto_uri,
+  struct TALER_FullPayto *payto_uri,
   struct GNUNET_TIME_Timestamp *request_timestamp,
   struct TALER_Amount *amount,
   struct TALER_MasterSignatureP *master_sig)
@@ -48,7 +48,7 @@ TEH_PG_get_drain_profit (
     GNUNET_PQ_result_spec_string ("account_section",
                                   account_section),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  payto_uri),
+                                  &payto_uri->full_payto),
     GNUNET_PQ_result_spec_timestamp ("trigger_date",
                                      request_timestamp),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount",

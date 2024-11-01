@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -113,7 +113,7 @@ get_kyc_amounts_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_aggregation_amounts_for_kyc_check (
   void *cls,
-  const struct TALER_FullPaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls)
@@ -138,8 +138,12 @@ TEH_PG_select_aggregation_amounts_for_kyc_check (
            " amount"
            ",execution_date AS date"
            " FROM wire_out"
-           " WHERE wire_target_h_payto=$1"
-           "   AND execution_date >= $2"
+           " WHERE wire_target_h_payto IN"
+           "   (SELECT wire_target_h_payto"
+           "      FROM wire_targets"
+           "     WHERE h_normalized_payto=$1"
+           "   )"
+           "  AND execution_date >= $2"
            " ORDER BY execution_date DESC");
 
   qs = GNUNET_PQ_eval_prepared_multi_select (

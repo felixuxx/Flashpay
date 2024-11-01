@@ -57,11 +57,11 @@ TEH_PG_insert_aml_decision (
   char *notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
-    NULL == payto_uri
+    NULL == payto_uri.full_payto
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (payto_uri),
+    : GNUNET_PQ_query_param_string (payto_uri.full_payto),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    NULL == payto_uri
+    NULL == payto_uri.full_payto
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_auto_from_type (&h_full_payto),
     GNUNET_PQ_query_param_timestamp (&decision_time),

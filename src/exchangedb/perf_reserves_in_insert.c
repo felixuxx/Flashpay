@@ -33,24 +33,25 @@ static int result;
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                            \
-  do {                                          \
-    if (! (cond)) {break;}                    \
-    GNUNET_break (0);                           \
-    goto drop;                                  \
-  } while (0)
+        do {                                          \
+          if (! (cond)) {break;}                    \
+          GNUNET_break (0);                           \
+          goto drop;                                  \
+        } while (0)
 
 
 /**
  * Initializes @a ptr with random data.
  */
 #define RND_BLK(ptr)                                                    \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (* \
+                                                                             ptr))
 
 /**
  * Initializes @a ptr with zeros.
  */
 #define ZR_BLK(ptr) \
-  memset (ptr, 0, sizeof (*ptr))
+        memset (ptr, 0, sizeof (*ptr))
 
 /**
  * How many rounds do we average over?
@@ -123,7 +124,9 @@ run (void *cls)
       now = GNUNET_TIME_absolute_get ();
       ts = GNUNET_TIME_timestamp_get ();
       {
-        const char *sndr = "payto://x-taler-bank/localhost:8080/1";
+        struct TALER_FullPayto sndr = {
+          .full_payto = (char *) "payto://x-taler-bank/localhost:8080/1"
+        };
         struct TALER_ReservePublicKeyP reserve_pubs[lcm];
         struct TALER_EXCHANGEDB_ReserveInInfo reserves[lcm];
         enum GNUNET_DB_QueryStatus results[lcm];

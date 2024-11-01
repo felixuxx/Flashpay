@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -25,13 +25,14 @@
 #include "pg_profit_drains_get_pending.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_profit_drains_get_pending (
   void *cls,
   uint64_t *serial,
   struct TALER_WireTransferIdentifierRawP *wtid,
   char **account_section,
-  char **payto_uri,
+  struct TALER_FullPayto *payto_uri,
   struct GNUNET_TIME_Timestamp *request_timestamp,
   struct TALER_Amount *amount,
   struct TALER_MasterSignatureP *master_sig)
@@ -48,7 +49,7 @@ TEH_PG_profit_drains_get_pending (
     GNUNET_PQ_result_spec_string ("account_section",
                                   account_section),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  payto_uri),
+                                  &payto_uri->full_payto),
     GNUNET_PQ_result_spec_timestamp ("trigger_date",
                                      request_timestamp),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
