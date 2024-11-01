@@ -73,7 +73,7 @@ struct ReservePurseContext
   /**
    * Payto URI for the reserve.
    */
-  char *payto_uri;
+  struct TALER_NormalizedPayto payto_uri;
 
   /**
    * Public key of the account (reserve) we are creating a purse for.
@@ -133,7 +133,7 @@ struct ReservePurseContext
   /**
    * Hash of the @e payto_uri.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * KYC status of the operation.
@@ -580,7 +580,7 @@ rpc_cleaner (struct TEH_RequestContext *rc)
     rpc->lch = NULL;
   }
   GNUNET_free (rpc->econtract.econtract);
-  GNUNET_free (rpc->payto_uri);
+  GNUNET_free (rpc->payto_uri.normalized_payto);
   GNUNET_free (rpc);
 }
 
@@ -663,8 +663,8 @@ TEH_handler_reserves_purse (
     rpc->payto_uri
       = TALER_reserve_make_payto (TEH_base_url,
                                   &rpc->account_pub.reserve_pub);
-    TALER_payto_hash (rpc->payto_uri,
-                      &rpc->h_payto);
+    TALER_normalized_payto_hash (rpc->payto_uri,
+                                 &rpc->h_payto);
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
 
 
@@ -682,8 +682,7 @@ TEH_handler_reserves_purse (
         connection,
         MHD_HTTP_FORBIDDEN,
         TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
-        rpc->payto_uri);
-      GNUNET_free (rpc->payto_uri);
+        rpc->payto_uri.normalized_payto);
       return ret;
     }
     GNUNET_assert (GNUNET_OK ==
@@ -816,17 +815,24 @@ TEH_handler_reserves_purse (
                                          TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
                                          NULL);
     }
+    {
+      struct TALER_FullPayto fake_full_payto;
 
-    rpc->lch = TEH_legitimization_check (
-      &rpc->rc->async_scope_id,
-      TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
-      rpc->payto_uri,
-      &rpc->h_payto,
-      &rpc->account_pub,
-      &amount_iterator,
-      rpc,
-      &reserve_purse_legi_cb,
-      rpc);
+      GNUNET_asprintf (&fake_full_payto.full_payto,
+                       "%s?receiver-name=wallet",
+                       rpc->payto_uri.normalized_payto);
+      rpc->lch = TEH_legitimization_check (
+        &rpc->rc->async_scope_id,
+        TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+        fake_full_payto,
+        &rpc->h_payto,
+        &rpc->account_pub,
+        &amount_iterator,
+        rpc,
+        &reserve_purse_legi_cb,
+        rpc);
+      GNUNET_free (fake_full_payto.full_payto);
+    }
     GNUNET_assert (NULL != rpc->lch);
     MHD_suspend_connection (rc->connection);
     GNUNET_CONTAINER_DLL_insert (rpc_head,

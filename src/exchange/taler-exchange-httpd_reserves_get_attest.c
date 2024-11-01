@@ -43,7 +43,7 @@ struct ReserveAttestContext
   /**
    * Hash of the payto URI of this reserve.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Available attributes.
@@ -67,7 +67,7 @@ struct ReserveAttestContext
  */
 static void
 kyc_process_cb (void *cls,
-                const struct TALER_PaytoHashP *h_payto,
+                const struct TALER_NormalizedPaytoHashP *h_payto,
                 const char *provider_name,
                 struct GNUNET_TIME_Timestamp collection_time,
                 struct GNUNET_TIME_Timestamp expiration_time,
@@ -135,14 +135,14 @@ TEH_handler_reserves_get_attest (
       args[0]);
   }
   {
-    char *payto_uri;
+    struct TALER_NormalizedPayto payto_uri;
 
     payto_uri
       = TALER_reserve_make_payto (TEH_base_url,
                                   &rsc.reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &rsc.h_payto);
-    GNUNET_free (payto_uri);
+    TALER_normalized_payto_hash (payto_uri,
+                                 &rsc.h_payto);
+    GNUNET_free (payto_uri.normalized_payto);
   }
   {
     enum GNUNET_DB_QueryStatus qs;

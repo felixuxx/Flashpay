@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -63,8 +63,8 @@ compile_reserve_history (
                                          "CREDIT"),
                 GNUNET_JSON_pack_timestamp ("timestamp",
                                             bank->execution_date),
-                GNUNET_JSON_pack_string ("sender_account_url",
-                                         bank->sender_account_details),
+                TALER_JSON_pack_full_payto ("sender_account_url",
+                                            bank->sender_account_details),
                 GNUNET_JSON_pack_uint64 ("wire_reference",
                                          bank->wire_reference),
                 TALER_JSON_pack_amount ("amount",
@@ -178,8 +178,8 @@ compile_reserve_history (
               GNUNET_JSON_PACK (
                 GNUNET_JSON_pack_string ("type",
                                          "CLOSING"),
-                GNUNET_JSON_pack_string ("receiver_account_details",
-                                         closing->receiver_account_details),
+                TALER_JSON_pack_full_payto ("receiver_account_details",
+                                            closing->receiver_account_details),
                 GNUNET_JSON_pack_data_auto ("wtid",
                                             &closing->wtid),
                 GNUNET_JSON_pack_data_auto ("exchange_pub",

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2022, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -53,7 +53,7 @@ struct ReserveAttestContext
   /**
    * Hash of the payto URI of this reserve.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Timestamp of the request.
@@ -165,7 +165,7 @@ reply_reserve_attest_success (struct MHD_Connection *connection,
  */
 static void
 kyc_process_cb (void *cls,
-                const struct TALER_PaytoHashP *h_payto,
+                const struct TALER_NormalizedPaytoHashP *h_payto,
                 const char *provider_name,
                 struct GNUNET_TIME_Timestamp collection_time,
                 struct GNUNET_TIME_Timestamp expiration_time,
@@ -355,13 +355,13 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   }
 
   {
-    char *payto_uri;
+    struct TALER_NormalizedPayto payto_uri;
 
     payto_uri = TALER_reserve_make_payto (TEH_base_url,
                                           &rsc.reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &rsc.h_payto);
-    GNUNET_free (payto_uri);
+    TALER_normalized_payto_hash (payto_uri,
+                                 &rsc.h_payto);
+    GNUNET_free (payto_uri.normalized_payto);
   }
 
   if (GNUNET_OK !=

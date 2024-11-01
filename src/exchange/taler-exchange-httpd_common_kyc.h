@@ -299,6 +299,9 @@ typedef void
 struct TEH_LegitimizationCheckHandle;
 
 
+/* FIXME: add another variation of this API with a
+   NormalizedPayto payto_uri, as we currently 'fake'
+   a full payto in 3 places related to wallets! */
 /**
  * Do legitimization check.
  *

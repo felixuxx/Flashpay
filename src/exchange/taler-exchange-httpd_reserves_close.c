@@ -70,7 +70,7 @@ struct ReserveCloseContext
   /**
    * Where to wire the funds, may be NULL.
    */
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Response to return. Note that the response must
@@ -108,7 +108,7 @@ struct ReserveCloseContext
   /**
    * Hash of the @e payto_uri, if given (otherwise zero).
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   /**
    * KYC status for the request.
@@ -118,7 +118,7 @@ struct ReserveCloseContext
   /**
    * Hash of the payto-URI that was used for the KYC decision.
    */
-  struct TALER_PaytoHashP kyc_payto;
+  struct TALER_NormalizedPaytoHashP kyc_payto;
 
   /**
    * Query status from the amount_it() helper function.
@@ -280,7 +280,9 @@ reserve_close_transaction (
 {
   struct ReserveCloseContext *rcc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  char *payto_uri = NULL;
+  struct TALER_FullPayto payto_uri = {
+    .full_payto = NULL
+  };
   const struct TALER_WireFeeSet *wf;
 
   qs = TEH_plugin->select_reserve_close_info (
@@ -313,8 +315,8 @@ reserve_close_transaction (
     break;
   }
 
-  if ( (NULL == rcc->payto_uri) &&
-       (NULL == payto_uri) )
+  if ( (NULL == rcc->payto_uri.full_payto) &&
+       (NULL == payto_uri.full_payto) )
   {
     *mhd_ret
       = TALER_MHD_reply_with_error (
@@ -326,17 +328,17 @@ reserve_close_transaction (
   }
 
   if ( (! rcc->resumed) &&
-       (NULL != rcc->payto_uri) &&
-       ( (NULL == payto_uri) ||
-         (0 != strcmp (payto_uri,
-                       rcc->payto_uri)) ) )
+       (NULL != rcc->payto_uri.full_payto) &&
+       ( (NULL == payto_uri.full_payto) ||
+         (0 != TALER_full_payto_cmp (payto_uri,
+                                     rcc->payto_uri)) ) )
   {
     /* KYC check may be needed: we're not returning
        the money to the account that funded the reserve
        in the first place. */
 
-    TALER_payto_hash (rcc->payto_uri,
-                      &rcc->kyc_payto);
+    TALER_full_payto_normalize_and_hash (rcc->payto_uri,
+                                         &rcc->kyc_payto);
     rcc->lch = TEH_legitimization_check (
       &rcc->rc->async_scope_id,
       TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
@@ -356,13 +358,13 @@ reserve_close_transaction (
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   rcc->kyc.ok = true;
-  if (NULL == rcc->payto_uri)
+  if (NULL == rcc->payto_uri.full_payto)
     rcc->payto_uri = payto_uri;
 
   {
     char *method;
 
-    method = TALER_payto_get_method (rcc->payto_uri);
+    method = TALER_payto_get_method (rcc->payto_uri.full_payto);
     wf = TEH_wire_fees_by_time (rcc->timestamp,
                                 method);
     if (NULL == wf)
@@ -401,8 +403,8 @@ reserve_close_transaction (
     rcc->timestamp,
     &rcc->balance,
     &wf->closing);
-  GNUNET_free (payto_uri);
-  rcc->payto_uri = NULL;
+  GNUNET_free (payto_uri.full_payto);
+  rcc->payto_uri.full_payto = NULL;
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -465,8 +467,8 @@ TEH_handler_reserves_close (
         GNUNET_JSON_spec_timestamp ("request_timestamp",
                                     &rcc->timestamp),
         GNUNET_JSON_spec_mark_optional (
-          TALER_JSON_spec_payto_uri ("payto_uri",
-                                     &rcc->payto_uri),
+          TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                          &rcc->payto_uri),
           NULL),
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &rcc->reserve_sig),
@@ -510,9 +512,9 @@ TEH_handler_reserves_close (
       }
     }
 
-    if (NULL != rcc->payto_uri)
-      TALER_payto_hash (rcc->payto_uri,
-                        &rcc->h_payto);
+    if (NULL != rcc->payto_uri.full_payto)
+      TALER_full_payto_hash (rcc->payto_uri,
+                             &rcc->h_payto);
     if (GNUNET_OK !=
         TALER_wallet_reserve_close_verify (
           rcc->timestamp,

@@ -93,7 +93,7 @@ iterate_reserve_close_info_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_reserve_close_info (
   void *cls,
-  const struct TALER_FullPaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls)
@@ -116,7 +116,11 @@ TEH_PG_iterate_reserve_close_info (
            " amount"
            ",execution_date"
            " FROM reserves_close"
-           " WHERE wire_target_h_payto=$1"
+           " WHERE wire_target_h_payto IN ("
+           "   SELECT wire_target_h_payto"
+           "     FROM wire_targets"
+           "    WHERE h_normalized_payto=$1"
+           "   )"
            "   AND execution_date >= $2"
            " ORDER BY execution_date DESC");
   return GNUNET_PQ_eval_prepared_multi_select (
