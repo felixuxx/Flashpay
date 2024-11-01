@@ -294,12 +294,18 @@ run (void *cls)
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":53.456789",
                                            &rfb.history_fee_balance));
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->insert_reserve_info (plugin->cls,
-                                         &reserve_pub,
-                                         &rfb,
-                                         past,
-                                         "payto://bla/blub"));
+    {
+      struct TALER_FullPayto pt = {
+        .full_payto = (char *) "payto://bla/blub?receiver-name=blub"
+      };
+
+      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+              plugin->insert_reserve_info (plugin->cls,
+                                           &reserve_pub,
+                                           &rfb,
+                                           past,
+                                           pt));
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Test: update_reserve_info\n");
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -310,7 +316,7 @@ run (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Test: get_reserve_info\n");
     {
-      char *payto;
+      struct TALER_FullPayto payto;
 
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
               plugin->get_reserve_info (plugin->cls,
@@ -319,9 +325,9 @@ run (void *cls)
                                         &rfb2,
                                         &date,
                                         &payto));
-      FAILIF (0 != strcmp (payto,
-                           "payto://bla/blub"));
-      GNUNET_free (payto);
+      FAILIF (0 != strcmp (payto.full_payto,
+                           "payto://bla/blub?receiver-name=blub"));
+      GNUNET_free (payto.full_payto);
     }
     FAILIF ( (0 != GNUNET_memcmp (&date,
                                   &future))
