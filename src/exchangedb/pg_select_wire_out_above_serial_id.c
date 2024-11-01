@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -74,7 +74,7 @@ wire_out_serial_helper_cb (void *cls,
     uint64_t rowid;
     struct GNUNET_TIME_Timestamp date;
     struct TALER_WireTransferIdentifierRawP wtid;
-    char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     struct TALER_Amount amount;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("wireout_uuid",
@@ -84,7 +84,7 @@ wire_out_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
                                             &wtid),
       GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &payto_uri),
+                                    &payto_uri.full_payto),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount),
       GNUNET_PQ_result_spec_end
@@ -132,7 +132,7 @@ TEH_PG_select_wire_out_above_serial_id (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  /* Used in #postgres_select_wire_out_above_serial_id() */
+
   PREPARE (pg,
            "audit_get_wire_incr",
            "SELECT"
@@ -142,8 +142,8 @@ TEH_PG_select_wire_out_above_serial_id (
            ",payto_uri"
            ",amount"
            " FROM wire_out"
-           "   JOIN wire_targets"
-           "     USING (wire_target_h_payto)"
+           " JOIN wire_targets"
+           "   USING (wire_target_h_payto)"
            " WHERE wireout_uuid>=$1"
            " ORDER BY wireout_uuid ASC;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

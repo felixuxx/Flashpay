@@ -31,7 +31,7 @@ TEH_PG_get_ready_deposit (void *cls,
                           uint64_t start_shard_row,
                           uint64_t end_shard_row,
                           struct TALER_MerchantPublicKeyP *merchant_pub,
-                          char **payto_uri)
+                          struct TALER_FullPayto *payto_uri)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now
@@ -46,7 +46,7 @@ TEH_PG_get_ready_deposit (void *cls,
     GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                           merchant_pub),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  payto_uri),
+                                  &payto_uri->full_payto),
     GNUNET_PQ_result_spec_end
   };
   const char *query = "deposits_get_ready";

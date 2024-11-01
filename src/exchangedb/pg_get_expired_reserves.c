@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -68,20 +68,19 @@ reserve_expired_cb (void *cls,
 {
   struct ExpiredReserveContext *erc = cls;
   struct PostgresClosure *pg = erc->pg;
-  enum GNUNET_GenericReturnValue ret;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
 
-  ret = GNUNET_OK;
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_TIME_Timestamp exp_date;
-    char *account_details;
+    struct TALER_FullPayto account_details;
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount remaining_balance;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_timestamp ("expiration_date",
                                        &exp_date),
       GNUNET_PQ_result_spec_string ("account_details",
-                                    &account_details),
+                                    &account_details.full_payto),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
       TALER_PQ_result_spec_amount ("current_balance",
@@ -114,10 +113,11 @@ reserve_expired_cb (void *cls,
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_expired_reserves (void *cls,
-                             struct GNUNET_TIME_Timestamp now,
-                             TALER_EXCHANGEDB_ReserveExpiredCallback rec,
-                             void *rec_cls)
+TEH_PG_get_expired_reserves (
+  void *cls,
+  struct GNUNET_TIME_Timestamp now,
+  TALER_EXCHANGEDB_ReserveExpiredCallback rec,
+  void *rec_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

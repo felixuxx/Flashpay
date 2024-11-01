@@ -73,7 +73,7 @@ reserves_in_serial_helper_cb (void *cls,
   {
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount credit;
-    char *sender_account_details;
+    struct TALER_FullPayto sender_account_details;
     struct GNUNET_TIME_Timestamp execution_date;
     uint64_t rowid;
     uint64_t wire_reference;
@@ -87,7 +87,7 @@ reserves_in_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_timestamp ("execution_date",
                                        &execution_date),
       GNUNET_PQ_result_spec_string ("sender_account_details",
-                                    &sender_account_details),
+                                    &sender_account_details.full_payto),
       GNUNET_PQ_result_spec_uint64 ("reserve_in_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end

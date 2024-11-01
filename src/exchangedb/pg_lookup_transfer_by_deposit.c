@@ -49,7 +49,7 @@ TEH_PG_lookup_transfer_by_deposit (
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_end
   };
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct TALER_WireSaltP wire_salt;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
@@ -57,7 +57,7 @@ TEH_PG_lookup_transfer_by_deposit (
     GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                           &wire_salt),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  &payto_uri),
+                                  &payto_uri.full_payto),
     GNUNET_PQ_result_spec_timestamp ("execution_date",
                                      exec_time),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -143,7 +143,7 @@ TEH_PG_lookup_transfer_by_deposit (
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                             &wire_salt),
       GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &payto_uri),
+                                    &payto_uri.full_payto),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    amount_with_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",

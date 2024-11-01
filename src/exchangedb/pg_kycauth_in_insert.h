@@ -44,7 +44,7 @@ TEH_PG_kycauth_in_insert (
   const union TALER_AccountPublicKeyP *account_pub,
   const struct TALER_Amount *credit_amount,
   struct GNUNET_TIME_Timestamp execution_date,
-  const char *debit_account_uri,
+  const struct TALER_FullPayto debit_account_uri,
   const char *section_name,
   uint64_t serial_id);
 

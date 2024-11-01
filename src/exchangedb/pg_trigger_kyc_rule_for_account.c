@@ -29,7 +29,7 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_trigger_kyc_rule_for_account (
   void *cls,
-  const struct TLAER_FullPayto payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPublicKeyP *set_account_pub,
   const struct TALER_MerchantPublicKeyP *check_merchant_pub,
@@ -90,8 +90,8 @@ TEH_PG_trigger_kyc_rule_for_account (
            " FROM exchange_do_trigger_kyc_rule_for_account"
            "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   if (NULL != payto_uri.full_payto)
-    TALER_full_payto_normalize_and_hash (payto_uri,
-                                         &h_full_payto);
+    TALER_full_payto_hash (payto_uri,
+                           &h_full_payto);
   qs = GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "trigger_kyc_rule_for_account",

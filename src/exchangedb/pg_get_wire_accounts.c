@@ -65,7 +65,7 @@ get_wire_accounts_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     char *conversion_url = NULL;
     json_t *debit_restrictions = NULL;
     json_t *credit_restrictions = NULL;
@@ -74,7 +74,7 @@ get_wire_accounts_cb (void *cls,
     int64_t priority;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &payto_uri),
+                                    &payto_uri.full_payto),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_string ("conversion_url",
                                       &conversion_url),

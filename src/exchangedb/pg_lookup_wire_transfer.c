@@ -80,14 +80,14 @@ handle_wt_result (void *cls,
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
     struct TALER_DenominationPublicKey denom_pub;
-    char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
       GNUNET_PQ_result_spec_string ("payto_uri",
-                                    &payto_uri),
+                                    &payto_uri.full_payto),
       GNUNET_PQ_result_spec_auto_from_type ("wire_target_h_payto",
                                             &h_payto),
       TALER_PQ_result_spec_denom_pub ("denom_pub",

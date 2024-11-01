@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -68,13 +68,12 @@ reserve_cb (void *cls,
 {
   struct CloseReserveContext *erc = cls;
   struct PostgresClosure *pg = erc->pg;
-  enum GNUNET_GenericReturnValue ret;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
 
-  ret = GNUNET_OK;
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_TIME_Timestamp exp_date;
-    char *account_details;
+    struct TALER_FullPayto account_details;
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount remaining_balance;
     uint64_t close_request_row;
@@ -82,7 +81,7 @@ reserve_cb (void *cls,
       GNUNET_PQ_result_spec_timestamp ("expiration_date",
                                        &exp_date),
       GNUNET_PQ_result_spec_string ("account_details",
-                                    &account_details),
+                                    &account_details.full_payto),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT ("close",
@@ -137,7 +136,7 @@ TEH_PG_get_unfinished_close_requests (
            "get_unfinished_close_requests",
            "UPDATE close_requests AS rc"
            " SET done=TRUE"
-           " WHERE done=FALSE"
+           " WHERE NOT done"
            " RETURNING"
            "    reserve_pub"
            "   ,close_request_serial_id"
@@ -145,7 +144,8 @@ TEH_PG_get_unfinished_close_requests (
            "   ,close"
            "   ,(SELECT payto_uri"
            "       FROM reserves_in ri"
-           "       JOIN wire_targets wt ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
+           "       JOIN wire_targets wt"
+           "         ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
            "      WHERE ri.reserve_pub=rc.reserve_pub)"
            "    AS account_details;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

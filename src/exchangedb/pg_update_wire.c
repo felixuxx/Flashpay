@@ -27,20 +27,21 @@
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_update_wire (void *cls,
-                    const char *payto_uri,
-                    const char *conversion_url,
-                    const json_t *debit_restrictions,
-                    const json_t *credit_restrictions,
-                    struct GNUNET_TIME_Timestamp change_date,
-                    const struct TALER_MasterSignatureP *master_sig,
-                    const char *bank_label,
-                    int64_t priority,
-                    bool enabled)
+TEH_PG_update_wire (
+  void *cls,
+  const struct TALER_FullPayto payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
+  struct GNUNET_TIME_Timestamp change_date,
+  const struct TALER_MasterSignatureP *master_sig,
+  const char *bank_label,
+  int64_t priority,
+  bool enabled)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_string (payto_uri.full_payto),
     GNUNET_PQ_query_param_bool (enabled),
     NULL == conversion_url
     ? GNUNET_PQ_query_param_null ()

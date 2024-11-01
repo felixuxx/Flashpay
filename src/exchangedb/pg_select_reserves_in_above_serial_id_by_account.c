@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -74,7 +74,7 @@ reserves_in_serial_helper_cb (void *cls,
   {
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount credit;
-    char *sender_account_details;
+    struct TALER_FullPayto sender_account_details;
     struct GNUNET_TIME_Timestamp execution_date;
     uint64_t rowid;
     uint64_t wire_reference;
@@ -88,7 +88,7 @@ reserves_in_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_timestamp ("execution_date",
                                        &execution_date),
       GNUNET_PQ_result_spec_string ("sender_account_details",
-                                    &sender_account_details),
+                                    &sender_account_details.full_payto),
       GNUNET_PQ_result_spec_uint64 ("reserve_in_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end
@@ -157,11 +157,12 @@ TEH_PG_select_reserves_in_above_serial_id_by_account (
            " WHERE reserve_in_serial_id>=$1"
            "   AND exchange_account_section=$2"
            " ORDER BY reserve_in_serial_id ASC;");
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_reserves_in_get_transactions_incr_by_account",
-                                             params,
-                                             &reserves_in_serial_helper_cb,
-                                             &risc);
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "audit_reserves_in_get_transactions_incr_by_account",
+    params,
+    &reserves_in_serial_helper_cb,
+    &risc);
   if (GNUNET_OK != risc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;

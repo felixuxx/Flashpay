@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -28,12 +28,12 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_wire_timestamp (void *cls,
-                              const char *payto_uri,
+                              const struct TALER_FullPayto payto_uri,
                               struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_string (payto_uri.full_payto),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -41,7 +41,6 @@ TEH_PG_lookup_wire_timestamp (void *cls,
                                      last_date),
     GNUNET_PQ_result_spec_end
   };
-
 
   PREPARE (pg,
            "lookup_wire_timestamp",
