@@ -93,7 +93,7 @@ static MHD_RESULT
 reply_transfer_details (struct MHD_Connection *connection,
                         const struct TALER_Amount *total,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
-                        const char *payto_uri,
+                        const struct TALER_FullPayto payto_uri,
                         const struct TALER_Amount *wire_fee,
                         struct GNUNET_TIME_Timestamp exec_time,
                         const struct AggregatedDepositDetail *wdd_head)
@@ -103,7 +103,7 @@ reply_transfer_details (struct MHD_Connection *connection,
   struct GNUNET_HashCode h_details;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   deposits = json_array ();
   GNUNET_assert (NULL != deposits);
@@ -169,8 +169,8 @@ reply_transfer_details (struct MHD_Connection *connection,
     }
   }
 
-  TALER_payto_hash (payto_uri,
-                    &h_payto);
+  TALER_full_payto_hash (payto_uri,
+                         &h_payto);
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -241,7 +241,7 @@ struct WtidTransactionContext
   /**
    * Where were the funds wired?
    */
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * JSON array with details about the individual deposits.
@@ -306,8 +306,8 @@ handle_deposit_data (
   void *cls,
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const char *account_payto_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto account_payto_uri,
+  const struct TALER_FullPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp exec_time,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -392,7 +392,7 @@ handle_deposit_data (
   {
     /* First one we encounter, setup general information in 'ctx' */
     ctx->merchant_pub = *merchant_pub;
-    ctx->payto_uri = GNUNET_strdup (account_payto_uri);
+    ctx->payto_uri.full_payto = GNUNET_strdup (account_payto_uri.full_payto);
     ctx->exec_time = exec_time;
     ctx->is_valid = GNUNET_YES;
     if (0 >
@@ -413,8 +413,8 @@ handle_deposit_data (
        (it should, otherwise the deposits should not have been aggregated) */
     if ( (0 != GNUNET_memcmp (&ctx->merchant_pub,
                               merchant_pub)) ||
-         (0 != strcmp (account_payto_uri,
-                       ctx->payto_uri)) )
+         (0 != TALER_full_payto_cmp (account_payto_uri,
+                                     ctx->payto_uri)) )
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
@@ -473,7 +473,7 @@ free_ctx (struct WtidTransactionContext *ctx)
                                  wdd);
     GNUNET_free (wdd);
   }
-  GNUNET_free (ctx->payto_uri);
+  GNUNET_free (ctx->payto_uri.full_payto);
 }
 
 
@@ -543,7 +543,7 @@ get_transfer_deposits (void *cls,
   {
     char *wire_method;
 
-    wire_method = TALER_payto_get_method (ctx->payto_uri);
+    wire_method = TALER_payto_get_method (ctx->payto_uri.full_payto);
     if (NULL == wire_method)
     {
       GNUNET_break (0);
