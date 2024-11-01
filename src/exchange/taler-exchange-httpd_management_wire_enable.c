@@ -52,7 +52,7 @@ struct AddWireContext
   /**
    * Payto:// URI this is about.
    */
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * (optional) address of a conversion service for this account.
@@ -185,8 +185,8 @@ TEH_handler_management_post_wire (
                                  &awc.master_sig_wire),
     GNUNET_JSON_spec_fixed_auto ("master_sig_add",
                                  &awc.master_sig_add),
-    TALER_JSON_spec_payto_uri ("payto_uri",
-                               &awc.payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &awc.payto_uri),
     GNUNET_JSON_spec_mark_optional (
       TALER_JSON_spec_web_url ("conversion_url",
                                &awc.conversion_url),
@@ -277,12 +277,12 @@ TEH_handler_management_post_wire (
   {
     char *wire_method;
 
-    wire_method = TALER_payto_get_method (awc.payto_uri);
+    wire_method = TALER_payto_get_method (awc.payto_uri.full_payto);
     if (NULL == wire_method)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "payto:// URI `%s' is malformed\n",
-                  awc.payto_uri);
+                  awc.payto_uri.full_payto);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,

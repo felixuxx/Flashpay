@@ -191,7 +191,7 @@ static void
 webhook_finished_cb (
   void *cls,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,

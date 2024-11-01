@@ -86,7 +86,7 @@ struct KycPoller
   /**
    * Payto hash of the account matching @a access_token.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * True if we are still suspended.
@@ -351,7 +351,7 @@ generate_reply (struct KycPoller *kyp,
  * @param jmeasures measures JSON object
  * @returns true if @a jmeasures contains an instant measure
  */
-bool
+static bool
 contains_instant_measure (const json_t *jmeasures)
 {
   size_t i;

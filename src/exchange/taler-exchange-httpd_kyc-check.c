@@ -63,7 +63,7 @@ struct KycPoller
   /**
    * Account for which we perform the KYC check.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * When will this request time out?

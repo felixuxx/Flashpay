@@ -455,7 +455,7 @@ TEH_handler_kyc_upload (
 
   {
     uint64_t legi_process_row;
-    struct TALER_PaytoHashP h_payto;
+    struct TALER_NormalizedPaytoHashP h_payto;
     enum GNUNET_DB_QueryStatus qs;
     json_t *jmeasures;
     struct MHD_Response *empty_response;

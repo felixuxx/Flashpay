@@ -50,7 +50,7 @@ struct DrainContext
   /**
    * Account to credit.
    */
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Configuration section with account to debit.
@@ -124,8 +124,8 @@ TEH_handler_management_post_drain (
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("debit_account_section",
                              &dc.account_section),
-    TALER_JSON_spec_payto_uri ("credit_payto_uri",
-                               &dc.payto_uri),
+    TALER_JSON_spec_full_payto_uri ("credit_payto_uri",
+                                    &dc.payto_uri),
     GNUNET_JSON_spec_fixed_auto ("wtid",
                                  &dc.wtid),
     GNUNET_JSON_spec_fixed_auto ("master_sig",

@@ -56,7 +56,7 @@ struct KycRequestContext
   /**
    * Payto URI of the reserve.
    */
-  char *payto_uri;
+  struct TALER_NormalizedPayto payto_uri;
 
   /**
    * Request context.
@@ -74,7 +74,7 @@ struct KycRequestContext
   /**
    * Public key of the reserve/wallet this is about.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * The wallet's public key
@@ -213,7 +213,7 @@ krc_cleaner (struct TEH_RequestContext *rc)
     TEH_legitimization_check_cancel (krc->lch);
     krc->lch = NULL;
   }
-  GNUNET_free (krc->payto_uri);
+  GNUNET_free (krc->payto_uri.normalized_payto);
   GNUNET_free (krc);
 }
 
@@ -273,22 +273,30 @@ TEH_handler_kyc_wallet (
     krc->payto_uri
       = TALER_reserve_make_payto (TEH_base_url,
                                   &krc->wallet_pub.reserve_pub);
-    TALER_payto_hash (krc->payto_uri,
-                      &krc->h_payto);
+    TALER_normalized_payto_hash (krc->payto_uri,
+                                 &krc->h_payto);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "h_payto of wallet %s is %s\n",
-                krc->payto_uri,
+                krc->payto_uri.normalized_payto,
                 TALER_B2S (&krc->h_payto));
-    krc->lch = TEH_legitimization_check (
-      &rc->async_scope_id,
-      TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
-      krc->payto_uri,
-      &krc->h_payto,
-      &krc->wallet_pub,
-      &balance_iterator,
-      krc,
-      &legi_result_cb,
-      krc);
+    {
+      struct TALER_FullPayto fake_full_payto;
+
+      GNUNET_asprintf (&fake_full_payto.full_payto,
+                       "%s?receiver-name=wallet",
+                       krc->payto_uri.normalized_payto);
+      krc->lch = TEH_legitimization_check (
+        &rc->async_scope_id,
+        TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
+        fake_full_payto,
+        &krc->h_payto,
+        &krc->wallet_pub,
+        &balance_iterator,
+        krc,
+        &legi_result_cb,
+        krc);
+      GNUNET_free (fake_full_payto.full_payto);
+    }
     GNUNET_assert (NULL != krc->lch);
     MHD_suspend_connection (rc->connection);
     GNUNET_CONTAINER_DLL_insert (krc_head,

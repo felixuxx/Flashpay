@@ -53,7 +53,7 @@ struct KycPoller
   /**
    * Hash of the payto:// URI we are starting to the KYC for.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Kept in a DLL.

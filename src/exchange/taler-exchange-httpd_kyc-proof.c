@@ -89,7 +89,7 @@ struct KycProofContext
   /**
    * Hash of payment target URI this is about.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * HTTP response to return.
