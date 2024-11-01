@@ -146,7 +146,8 @@ TALER_EXCHANGEDB_find_account_by_method (const char *method);
  * @return NULL on error
  */
 const struct TALER_EXCHANGEDB_AccountInfo *
-TALER_EXCHANGEDB_find_account_by_payto_uri (const char *url);
+TALER_EXCHANGEDB_find_account_by_payto_uri (
+  const struct TALER_FullPayto url);
 
 
 /**

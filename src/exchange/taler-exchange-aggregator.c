@@ -79,12 +79,17 @@ struct AggregationUnit
   /**
    * Wire details of the merchant.
    */
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Selected wire target for the aggregation.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_full_payto;
+
+  /**
+   * Selected wire target for KYC checks.
+   */
+  struct TALER_NormalizedPaytoHashP h_normalized_payto;
 
   /**
    * Exchange wire account to be used for the preparation and
@@ -235,7 +240,7 @@ static void
 cleanup_au (struct AggregationUnit *au)
 {
   GNUNET_assert (NULL != au);
-  GNUNET_free (au->payto_uri);
+  GNUNET_free (au->payto_uri.full_payto);
   memset (au,
           0,
           sizeof (*au));
@@ -442,7 +447,7 @@ trigger_wire_transfer (const struct AggregationUnit *au_active)
       db_plugin->cls,
       au_active->execution_time,
       &au_active->wtid,
-      &au_active->h_payto,
+      &au_active->h_full_payto,
       au_active->wa->section_name,
       &au_active->final_amount);
 
@@ -450,7 +455,7 @@ trigger_wire_transfer (const struct AggregationUnit *au_active)
        au_active->have_transient)
     qs = db_plugin->delete_aggregation_transient (
       db_plugin->cls,
-      &au_active->h_payto,
+      &au_active->h_full_payto,
       &au_active->wtid);
   return qs;
 }
@@ -485,7 +490,7 @@ return_relevant_amounts (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   qs = db_plugin->select_aggregation_amounts_for_kyc_check (
     db_plugin->cls,
-    &au_active->h_payto,
+    &au_active->h_normalized_payto,
     limit,
     cb,
     cb_cls);
@@ -528,7 +533,7 @@ legitimization_satisfied (struct AggregationUnit *au_active)
 
     /* FIXME: optimization potential: custom API to *just* get jrules... */
     qs = db_plugin->get_kyc_rules (db_plugin->cls,
-                                   &au_active->h_payto,
+                                   &au_active->h_normalized_payto,
                                    &no_account_pub,
                                    &account_pub,
                                    &no_reserve_pub,
@@ -577,7 +582,7 @@ legitimization_satisfied (struct AggregationUnit *au_active)
   qs = db_plugin->trigger_kyc_rule_for_account (
     db_plugin->cls,
     au_active->payto_uri,
-    &au_active->h_payto,
+    &au_active->h_normalized_payto,
     NULL,
     &au_active->merchant_pub,
     jrule,
@@ -623,7 +628,7 @@ do_aggregate (struct AggregationUnit *au)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No exchange account configured for `%s', please fix your setup to continue!\n",
-                au->payto_uri);
+                au->payto_uri.full_payto);
     global_ret = EXIT_FAILURE;
     return GNUNET_SYSERR;
   }
@@ -655,9 +660,9 @@ do_aggregate (struct AggregationUnit *au)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Found ready deposit for %s, aggregating by target %s\n",
               TALER_B2S (&au->merchant_pub),
-              au->payto_uri);
+              au->payto_uri.full_payto);
   qs = db_plugin->select_aggregation_transient (db_plugin->cls,
-                                                &au->h_payto,
+                                                &au->h_full_payto,
                                                 &au->merchant_pub,
                                                 au->wa->section_name,
                                                 &au->wtid,
@@ -691,7 +696,7 @@ do_aggregate (struct AggregationUnit *au)
     break;
   }
   qs = db_plugin->aggregate (db_plugin->cls,
-                             &au->h_payto,
+                             &au->h_full_payto,
                              &au->merchant_pub,
                              &au->wtid,
                              &au->total_amount);
@@ -741,13 +746,13 @@ do_aggregate (struct AggregationUnit *au)
                 TALER_amount2s (&au->final_amount));
     if (au->have_transient)
       qs = db_plugin->update_aggregation_transient (db_plugin->cls,
-                                                    &au->h_payto,
+                                                    &au->h_full_payto,
                                                     &au->wtid,
                                                     au->requirement_row,
                                                     &au->total_amount);
     else
       qs = db_plugin->create_aggregation_transient (db_plugin->cls,
-                                                    &au->h_payto,
+                                                    &au->h_full_payto,
                                                     au->wa->section_name,
                                                     &au->merchant_pub,
                                                     &au->wtid,
@@ -903,8 +908,10 @@ run_aggregation (void *cls)
     break;
   }
 
-  TALER_payto_hash (au_active.payto_uri,
-                    &au_active.h_payto);
+  TALER_full_payto_hash (au_active.payto_uri,
+                         &au_active.h_full_payto);
+  TALER_full_payto_normalize_and_hash (au_active.payto_uri,
+                                       &au_active.h_normalized_payto);
   ret = do_aggregate (&au_active);
   cleanup_au (&au_active);
   switch (ret)
@@ -1045,7 +1052,7 @@ run_shard (void *cls)
 static bool
 handle_transient_cb (
   void *cls,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_Amount *total)
@@ -1057,13 +1064,13 @@ handle_transient_cb (
     GNUNET_break (0);
     return false;
   }
-  au->payto_uri = GNUNET_strdup (payto_uri);
+  au->payto_uri = payto_uri;
   au->wtid = *wtid;
   au->merchant_pub = *merchant_pub;
   au->trans = *total;
   au->have_transient = true;
   au->ret = do_aggregate (au);
-  GNUNET_free (au->payto_uri);
+  au->payto_uri.full_payto = NULL;
   return (GNUNET_OK == au->ret);
 }
 
@@ -1105,7 +1112,7 @@ drain_kyc_alerts (void *cls)
   {
     qs = db_plugin->drain_kyc_alert (db_plugin->cls,
                                      1,
-                                     &au.h_payto);
+                                     &au.h_normalized_payto);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -1137,7 +1144,7 @@ drain_kyc_alerts (void *cls)
 
     au.ret = GNUNET_OK;
     qs = db_plugin->find_aggregation_transient (db_plugin->cls,
-                                                &au.h_payto,
+                                                &au.h_full_payto,
                                                 &handle_transient_cb,
                                                 &au);
     switch (qs)

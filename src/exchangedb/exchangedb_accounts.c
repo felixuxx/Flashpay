@@ -101,17 +101,18 @@ TALER_EXCHANGEDB_find_account_by_method (const char *method)
 
 
 const struct TALER_EXCHANGEDB_AccountInfo *
-TALER_EXCHANGEDB_find_account_by_payto_uri (const char *url)
+TALER_EXCHANGEDB_find_account_by_payto_uri (
+  const struct TALER_FullPayto url)
 {
   char *method;
   const struct TALER_EXCHANGEDB_AccountInfo *ai;
 
-  method = TALER_payto_get_method (url);
+  method = TALER_payto_get_method (url.full_payto);
   if (NULL == method)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid payto:// URL `%s'\n",
-                url);
+                url.full_payto);
     return NULL;
   }
   ai = TALER_EXCHANGEDB_find_account_by_method (method);
