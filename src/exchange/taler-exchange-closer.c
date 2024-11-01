@@ -214,7 +214,7 @@ static enum GNUNET_GenericReturnValue
 expired_reserve_cb (void *cls,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_Amount *left,
-                    const char *account_payto_uri,
+                    const struct TALER_FullPayto account_payto_uri,
                     struct GNUNET_TIME_Timestamp expiration_date,
                     uint64_t close_request_row)
 {
@@ -240,7 +240,7 @@ expired_reserve_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire account configured to deal with target URI `%s'\n",
-                account_payto_uri);
+                account_payto_uri.full_payto);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_SYSERR;

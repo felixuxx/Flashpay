@@ -188,7 +188,7 @@ run_drain (void *cls)
   uint64_t serial;
   struct TALER_WireTransferIdentifierRawP wtid;
   char *account_section;
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct GNUNET_TIME_Timestamp request_timestamp;
   struct TALER_Amount amount;
   struct TALER_MasterSignatureP master_sig;
@@ -265,7 +265,7 @@ run_drain (void *cls)
   fprintf (stdout,
            "We will wire %s to `%s'\n based on instructions from %s.\n",
            TALER_amount2s (&amount),
-           payto_uri,
+           payto_uri.full_payto,
            GNUNET_TIME_timestamp2s (request_timestamp));
   fprintf (stdout,
            "Press ENTER to confirm, CTRL-D to abort.\n");
@@ -282,6 +282,7 @@ run_drain (void *cls)
                "Contact Taler Systems SA to cancel it for good.\n"
                "Exiting.\n");
       db_plugin->rollback (db_plugin->cls);
+      GNUNET_free (payto_uri.full_payto);
       GNUNET_assert (NULL == task);
       GNUNET_SCHEDULER_shutdown ();
       global_ret = EXIT_FAILURE;
@@ -305,7 +306,7 @@ run_drain (void *cls)
                                  &wtid,
                                  &buf,
                                  &buf_size);
-    method = TALER_payto_get_method (payto_uri);
+    method = TALER_payto_get_method (payto_uri.full_payto);
     qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
                                               method,
                                               buf,
@@ -313,6 +314,7 @@ run_drain (void *cls)
     GNUNET_free (method);
     GNUNET_free (buf);
   }
+  GNUNET_free (payto_uri.full_payto);
   qs = db_plugin->profit_drains_set_finished (db_plugin->cls,
                                               serial);
   switch (qs)
