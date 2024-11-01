@@ -392,6 +392,17 @@ int
 TALER_full_payto_cmp (const struct TALER_FullPayto a,
                       const struct TALER_FullPayto b);
 
+/**
+ * Compare two full payto URIs for equality in their normalized form.
+ *
+ * @param a a full payto URI, NULL is permitted
+ * @param b a full payto URI, NULL is permitted
+ * @return 0 if both are equal, otherwise -1 or 1
+ */
+int
+TALER_full_payto_normalize_and_cmp (const struct TALER_FullPayto a,
+                                    const struct TALER_FullPayto b);
+
 
 /**
  * Compare two normalized payto URIs for equality.

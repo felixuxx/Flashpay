@@ -75,6 +75,31 @@ TALER_full_payto_normalize_and_hash (const struct TALER_FullPayto in,
 
 
 /**
+ * Compare two full payto URIs for equality in their normalized form.
+ *
+ * @param a a full payto URI, NULL is permitted
+ * @param b a full payto URI, NULL is permitted
+ * @return 0 if both are equal, otherwise -1 or 1
+ */
+int
+TALER_full_payto_normalize_and_cmp (const struct TALER_FullPayto a,
+                                    const struct TALER_FullPayto b)
+{
+  struct TALER_NormalizedPayto an
+    = TALER_payto_normalize (a);
+  struct TALER_NormalizedPayto bn
+    = TALER_payto_normalize (b);
+  int ret;
+
+  ret = TALER_normalized_payto_cmp (an,
+                                    bn);
+  GNUNET_free (an.normalized_payto);
+  GNUNET_free (bn.normalized_payto);
+  return ret;
+}
+
+
+/**
  * Extract the value under @a key from the URI parameters.
  *
  * @param fpayto_uri the full payto URL to parse

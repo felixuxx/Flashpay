@@ -279,7 +279,7 @@ struct TALER_AUDITORDB_ClosureLags
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute deadline;
   struct TALER_WireTransferIdentifierRawP wtid;
-  char *account;
+  struct TALER_FullPayto account;
   bool suppressed;
 };
 
@@ -392,7 +392,7 @@ struct TALER_AUDITORDB_ReserveInInconsistency
   struct TALER_Amount amount_wired;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_TIME_Absolute timestamp;
-  char *account;
+  struct TALER_FullPayto account;
   char *diagnostic;
   bool suppressed;
 
@@ -692,7 +692,7 @@ struct TALER_AUDITORDB_Reserves
   struct TALER_Amount open_fee_balance;
   struct TALER_Amount history_fee_balance;
   struct GNUNET_TIME_Absolute expiration_date;
-  char *origin_account;
+  struct TALER_FullPayto origin_account;
   bool suppressed;
 
 };

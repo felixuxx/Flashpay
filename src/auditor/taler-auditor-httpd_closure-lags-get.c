@@ -51,8 +51,8 @@ process_closure_lags (
                                     dc->deadline),
     GNUNET_JSON_pack_data_auto ("wtid",
                                 &dc->wtid),
-    GNUNET_JSON_pack_string ("account",
-                             dc->account),
+    TALER_JSON_pack_full_payto ("account",
+                                dc->account),
     GNUNET_JSON_pack_bool ("suppressed",
                            dc->suppressed)
     );
