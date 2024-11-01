@@ -30,7 +30,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_close_request (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_ReserveSignatureP *reserve_sig,
   struct GNUNET_TIME_Timestamp request_timestamp,
   const struct TALER_Amount *balance,
@@ -45,7 +45,7 @@ TEH_PG_insert_close_request (
                                  balance),
     TALER_PQ_query_param_amount (pg->conn,
                                  closing_fee),
-    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_string (payto_uri.full_payto),
     GNUNET_PQ_query_param_end
   };
 

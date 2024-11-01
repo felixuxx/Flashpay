@@ -175,7 +175,7 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&full_payto_hash),
     GNUNET_PQ_query_param_auto_from_type (&normalized_payto_hash),
     GNUNET_PQ_query_param_string (
-      td->details.wire_targets.payto_uri),
+      td->details.wire_targets.full_payto_uri.full_payto),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.wire_targets.access_token),
     td->details.wire_targets.no_account
@@ -190,7 +190,7 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
     &full_payto_hash);
   TALER_full_payto_normalize_and_hash (
     td->details.wire_targets.full_payto_uri,
-    &h_normalized_payto);
+    &normalized_payto_hash);
   PREPARE (pg,
            "insert_into_table_wire_targets",
            "INSERT INTO wire_targets"
@@ -1788,7 +1788,7 @@ irbt_cb_table_close_requests (struct PostgresClosure *pg,
       pg->conn,
       &td->details.close_requests.close_fee),
     GNUNET_PQ_query_param_string (
-      td->details.close_requests.payto_uri),
+      td->details.close_requests.payto_uri.full_payto),
     GNUNET_PQ_query_param_end
   };
 
@@ -2025,7 +2025,7 @@ irbt_cb_table_profit_drains (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_string (
       td->details.profit_drains.account_section),
     GNUNET_PQ_query_param_string (
-      td->details.profit_drains.payto_uri),
+      td->details.profit_drains.payto_uri.full_payto),
     GNUNET_PQ_query_param_timestamp (
       &td->details.profit_drains.trigger_date),
     TALER_PQ_query_param_amount (

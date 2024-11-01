@@ -223,7 +223,7 @@ lrbt_cb_table_wire_targets (void *cls,
         &td.details.wire_targets.no_account),
       GNUNET_PQ_result_spec_string (
         "payto_uri",
-        &td.details.wire_targets.payto_uri),
+        &td.details.wire_targets.full_payto_uri.full_payto),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2197,7 +2197,7 @@ lrbt_cb_table_close_requests (void *cls,
         &td.details.close_requests.close_fee),
       GNUNET_PQ_result_spec_string (
         "payto_uri",
-        &td.details.close_requests.payto_uri),
+        &td.details.close_requests.payto_uri.full_payto),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2505,7 +2505,7 @@ lrbt_cb_table_profit_drains (void *cls,
         &td.details.profit_drains.account_section),
       GNUNET_PQ_result_spec_string (
         "payto_uri",
-        &td.details.profit_drains.payto_uri),
+        &td.details.profit_drains.payto_uri.full_payto),
       GNUNET_PQ_result_spec_timestamp (
         "trigger_date",
         &td.details.profit_drains.trigger_date),

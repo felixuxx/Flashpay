@@ -74,7 +74,7 @@ reserve_closed_serial_helper_cb (void *cls,
   {
     uint64_t rowid;
     struct TALER_ReservePublicKeyP reserve_pub;
-    char *receiver_account;
+    struct TALER_FullPayto receiver_account;
     struct TALER_WireTransferIdentifierRawP wtid;
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount closing_fee;
@@ -90,7 +90,7 @@ reserve_closed_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("wtid",
                                             &wtid),
       GNUNET_PQ_result_spec_string ("receiver_account",
-                                    &receiver_account),
+                                    &receiver_account.full_payto),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount_with_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",

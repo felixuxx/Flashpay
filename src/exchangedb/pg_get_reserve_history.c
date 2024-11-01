@@ -138,7 +138,7 @@ add_bank_to_exchange (void *cls,
         GNUNET_PQ_result_spec_timestamp ("execution_date",
                                          &bt->execution_date),
         GNUNET_PQ_result_spec_string ("sender_account_details",
-                                      &bt->sender_account_details),
+                                      &bt->sender_account_details.full_payto),
         GNUNET_PQ_result_spec_end
       };
 
@@ -321,7 +321,8 @@ add_exchange_to_bank (void *cls,
         GNUNET_PQ_result_spec_timestamp ("execution_date",
                                          &closing->execution_date),
         GNUNET_PQ_result_spec_string ("receiver_account",
-                                      &closing->receiver_account_details),
+                                      &closing->receiver_account_details.
+                                      full_payto),
         GNUNET_PQ_result_spec_auto_from_type ("wtid",
                                               &closing->wtid),
         GNUNET_PQ_result_spec_end
@@ -517,12 +518,12 @@ add_close_requests (void *cls,
 
     crq = GNUNET_new (struct TALER_EXCHANGEDB_CloseRequest);
     {
-      char *payto_uri;
+      struct TALER_FullPayto payto_uri;
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_timestamp ("close_timestamp",
                                          &crq->request_timestamp),
         GNUNET_PQ_result_spec_string ("payto_uri",
-                                      &payto_uri),
+                                      &payto_uri.full_payto),
         GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                               &crq->reserve_sig),
         GNUNET_PQ_result_spec_end
@@ -538,9 +539,9 @@ add_close_requests (void *cls,
         rhc->failed = true;
         return;
       }
-      TALER_payto_hash (payto_uri,
-                        &crq->target_account_h_payto);
-      GNUNET_free (payto_uri);
+      TALER_full_payto_hash (payto_uri,
+                             &crq->target_account_h_payto);
+      GNUNET_free (payto_uri.full_payto);
     }
     crq->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);

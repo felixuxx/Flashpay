@@ -31,7 +31,7 @@ TEH_PG_select_reserve_close_info (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_Amount *balance,
-  char **payto_uri)
+  struct TALER_FullPayto *payto_uri)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -43,7 +43,7 @@ TEH_PG_select_reserve_close_info (
                                  pg->currency,
                                  balance),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  payto_uri),
+                                  &payto_uri->full_payto),
     GNUNET_PQ_result_spec_end
   };
 
