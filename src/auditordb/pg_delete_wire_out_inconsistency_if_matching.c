@@ -26,7 +26,7 @@ TAH_PG_delete_wire_out_inconsistency_if_matching (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (dc->destination_account),
+    GNUNET_PQ_query_param_string (dc->destination_account.full_payto),
     GNUNET_PQ_query_param_string (dc->diagnostic),
     GNUNET_PQ_query_param_uint64 (&dc->wire_out_row_id),
     TALER_PQ_query_param_amount (pg->conn,

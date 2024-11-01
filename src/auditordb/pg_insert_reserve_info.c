@@ -32,7 +32,7 @@ TAH_PG_insert_reserve_info (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
   struct GNUNET_TIME_Timestamp expiration_date,
-  const char *origin_account)
+  const struct TALER_FullPayto origin_account)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -52,9 +52,9 @@ TAH_PG_insert_reserve_info (
     TALER_PQ_query_param_amount (pg->conn,
                                  &rfb->history_fee_balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
-    NULL == origin_account
+    NULL == origin_account.full_payto
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (origin_account),
+    : GNUNET_PQ_query_param_string (origin_account.full_payto),
     GNUNET_PQ_query_param_end
   };
 

@@ -30,7 +30,7 @@ enum GNUNET_DB_QueryStatus
 TAH_PG_insert_pending_deposit (
   void *cls,
   uint64_t batch_deposit_serial_id,
-  const struct TALER_PaytoHashP *wire_target_h_payto,
+  const struct TALER_FullPaytoHashP *wire_target_h_payto,
   const struct TALER_Amount *total_amount,
   struct GNUNET_TIME_Timestamp deadline)
 {

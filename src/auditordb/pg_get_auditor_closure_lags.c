@@ -78,7 +78,7 @@ closure_lags_cb (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("wtid",
                                             &dc.wtid),
       GNUNET_PQ_result_spec_string ("account",
-                                    &dc.account),
+                                    &dc.account.full_payto),
       GNUNET_PQ_result_spec_bool ("suppressed",
                                   &dc.suppressed),
       GNUNET_PQ_result_spec_end

@@ -43,6 +43,6 @@ TAH_PG_insert_reserve_info (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
   struct GNUNET_TIME_Timestamp expiration_date,
-  const char *origin_account);
+  const struct TALER_FullPayto origin_account);
 
 #endif

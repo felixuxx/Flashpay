@@ -43,7 +43,7 @@ TAH_PG_get_reserve_info (void *cls,
                          uint64_t *rowid,
                          struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
                          struct GNUNET_TIME_Timestamp *expiration_date,
-                         char **sender_account);
+                         struct TALER_FullPayto *sender_account);
 
 
 #endif

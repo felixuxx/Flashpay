@@ -31,7 +31,7 @@ TAH_PG_insert_auditor_closure_lags (
     GNUNET_PQ_query_param_uint64 (&dc->problem_row_id),
     GNUNET_PQ_query_param_absolute_time (&dc->deadline),
     GNUNET_PQ_query_param_auto_from_type (&dc->wtid),
-    GNUNET_PQ_query_param_string (dc->account),
+    GNUNET_PQ_query_param_string (dc->account.full_payto),
     GNUNET_PQ_query_param_end
   };
 

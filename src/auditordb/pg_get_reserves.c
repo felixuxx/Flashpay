@@ -88,7 +88,7 @@ reserves_cb (void *cls,
       GNUNET_PQ_result_spec_absolute_time ("expiration_date",
                                            &dc.expiration_date),
       GNUNET_PQ_result_spec_string ("origin_account",
-                                    &dc.origin_account),
+                                    &dc.origin_account.full_payto),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue rval;

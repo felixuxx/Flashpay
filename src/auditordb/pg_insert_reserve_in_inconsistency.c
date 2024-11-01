@@ -33,7 +33,7 @@ TAH_PG_insert_reserve_in_inconsistency (
                                  &dc->amount_wired),
     GNUNET_PQ_query_param_auto_from_type (&dc->reserve_pub),
     GNUNET_PQ_query_param_absolute_time (&dc->timestamp),
-    GNUNET_PQ_query_param_string (dc->account),
+    GNUNET_PQ_query_param_string (dc->account.full_payto),
     GNUNET_PQ_query_param_string (dc->diagnostic),
     GNUNET_PQ_query_param_end
   };

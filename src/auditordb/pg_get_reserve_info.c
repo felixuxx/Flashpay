@@ -32,7 +32,7 @@ TAH_PG_get_reserve_info (void *cls,
                          uint64_t *rowid,
                          struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
                          struct GNUNET_TIME_Timestamp *expiration_date,
-                         char **sender_account)
+                         struct TALER_FullPayto *sender_account)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -60,12 +60,12 @@ TAH_PG_get_reserve_info (void *cls,
                                   rowid),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_string ("origin_account",
-                                    sender_account),
+                                    &sender_account->full_payto),
       NULL),
     GNUNET_PQ_result_spec_end
   };
 
-  *sender_account = NULL;
+  sender_account->full_payto = NULL;
   PREPARE (pg,
            "auditor_get_reserve_info",
            "SELECT"
