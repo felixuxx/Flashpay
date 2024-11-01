@@ -239,7 +239,7 @@ static char *TEKT_base_url;
 /**
  * Payto set via command-line (or otherwise random).
  */
-static struct TALER_PaytoHashP cmd_line_h_payto;
+static struct TALER_NormalizedPaytoHashP cmd_line_h_payto;
 
 /**
  * Provider user ID to use.
@@ -454,7 +454,7 @@ static void
 webhook_finished_cb (
   void *cls,
   uint64_t process_row,
-  const struct TALER_PaytoHashP *account_id,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_section,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -565,7 +565,7 @@ kyc_provider_account_lookup (
   void *cls,
   const char *provider_section,
   const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto,
+  struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t *legi_row)
 {
   (void) cls;
@@ -783,7 +783,7 @@ handler_kyc_proof_get (
   struct TEKT_RequestContext *rc,
   const char *const args[1])
 {
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
   struct TALER_KYCLOGIC_ProviderDetails *pd;
   struct TALER_KYCLOGIC_Plugin *logic;
   struct ProofRequestState *rs;
@@ -1748,11 +1748,12 @@ run (void *cls,
 
 
 /**
- * The main function of the taler-exchange-httpd server ("the exchange").
+ * The main function of the taler-exchange-kyc-tester, a tool for
+ * testing KYC processes.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
- * @return 0 ok, 1 on error
+ * @return 0 ok, non-zero on error
  */
 int
 main (int argc,
@@ -1781,7 +1782,7 @@ main (int argc,
     GNUNET_GETOPT_option_flag (
       'P',
       "print-payto-hash",
-      "output the hash of the payto://-URI",
+      "output the hash of the (normalized) payto://-URI",
       &print_h_payto),
     GNUNET_GETOPT_option_base32_fixed_size (
       'p',

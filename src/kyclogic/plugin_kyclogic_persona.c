@@ -144,7 +144,7 @@ struct TALER_KYCLOGIC_InitiateHandle
   /**
    * Hash of the payto:// URI we are initiating the KYC for.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * UUID being checked.
@@ -245,7 +245,7 @@ struct TALER_KYCLOGIC_ProofHandle
   /**
    * Hash of the payto:// URI we are checking the KYC for.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Row in the legitimization processes of the
@@ -346,7 +346,7 @@ struct TALER_KYCLOGIC_WebhookHandle
   /**
    * Our account ID.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * UUID being checked.
@@ -755,7 +755,7 @@ handle_initiate_finished (void *cls,
 static struct TALER_KYCLOGIC_InitiateHandle *
 persona_initiate (void *cls,
                   const struct TALER_KYCLOGIC_ProviderDetails *pd,
-                  const struct TALER_PaytoHashP *account_id,
+                  const struct TALER_NormalizedPaytoHashP *account_id,
                   uint64_t legitimization_uuid,
                   TALER_KYCLOGIC_InitiateCallback cb,
                   void *cb_cls)
@@ -1458,7 +1458,7 @@ static struct TALER_KYCLOGIC_ProofHandle *
 persona_proof (void *cls,
                const struct TALER_KYCLOGIC_ProviderDetails *pd,
                struct MHD_Connection *connection,
-               const struct TALER_PaytoHashP *account_id,
+               const struct TALER_NormalizedPaytoHashP *account_id,
                uint64_t process_row,
                const char *provider_user_id,
                const char *inquiry_id,
