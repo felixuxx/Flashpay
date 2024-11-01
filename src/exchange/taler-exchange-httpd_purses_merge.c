@@ -77,7 +77,7 @@ struct PurseMergeContext
    * URI of the account the purse is to be merged into.
    * Must be of the form 'payto://taler-reserve/$EXCHANGE_URL/RESERVE_PUB'.
    */
-  const char *payto_uri;
+  struct TALER_NormalizedPayto payto_uri;
 
   /**
    * Response to return, if set.
@@ -142,7 +142,7 @@ struct PurseMergeContext
   /**
    * Hash of the @e payto_uri.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * KYC status of the operation.
@@ -529,8 +529,9 @@ TEH_handler_purses_merge (
 
     {
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_payto_uri ("payto_uri",
-                                   &pmc->payto_uri),
+        GNUNET_JSON_spec_string (
+          "payto_uri",
+          (const char **) &pmc->payto_uri.normalized_payto),
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &pmc->reserve_sig),
         GNUNET_JSON_spec_fixed_auto ("merge_sig",
@@ -619,13 +620,13 @@ TEH_handler_purses_merge (
     /* parse 'payto_uri' into pmc->account_pub and provider_url */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received payto: `%s'\n",
-                pmc->payto_uri);
-    if ( (0 != strncmp (pmc->payto_uri,
+                pmc->payto_uri.normalized_payto);
+    if ( (0 != strncmp (pmc->payto_uri.normalized_payto,
                         "payto://taler-reserve/",
                         strlen ("payto://taler-reserve/"))) &&
-         (0 != strncmp (pmc->payto_uri,
+         (0 != strncmp (pmc->payto_uri.normalized_payto,
                         "payto://taler-reserve-http/",
-                        strlen ("payto://taler-reserve+http/"))) )
+                        strlen ("payto://taler-reserve-http/"))) )
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
@@ -640,10 +641,10 @@ TEH_handler_purses_merge (
       const char *host;
       const char *slash;
 
-      http = (0 == strncmp (pmc->payto_uri,
+      http = (0 == strncmp (pmc->payto_uri.normalized_payto,
                             "payto://taler-reserve-http/",
                             strlen ("payto://taler-reserve-http/")));
-      host = &pmc->payto_uri[http
+      host = &pmc->payto_uri.normalized_payto[http
                             ? strlen ("payto://taler-reserve-http/")
                             : strlen ("payto://taler-reserve/")];
       slash = strchr (host,
@@ -678,8 +679,8 @@ TEH_handler_purses_merge (
           "payto_uri");
       }
     }
-    TALER_payto_hash (pmc->payto_uri,
-                      &pmc->h_payto);
+    TALER_normalized_payto_hash (pmc->payto_uri,
+                                 &pmc->h_payto);
     if (0 == strcmp (pmc->provider_url,
                      TEH_base_url))
     {
@@ -738,16 +739,24 @@ TEH_handler_purses_merge (
           NULL);
       }
     }
-    pmc->lch = TEH_legitimization_check (
-      &rc->async_scope_id,
-      TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
-      pmc->payto_uri,
-      &pmc->h_payto,
-      &pmc->account_pub,
-      &amount_iterator,
-      pmc,
-      &legi_result_cb,
-      pmc);
+    {
+      struct TALER_FullPayto fake_full_payto;
+
+      GNUNET_asprintf (&fake_full_payto.full_payto,
+                       "%s?receiver-name=wallet",
+                       pmc->payto_uri.normalized_payto);
+      pmc->lch = TEH_legitimization_check (
+        &rc->async_scope_id,
+        TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+        fake_full_payto,
+        &pmc->h_payto,
+        &pmc->account_pub,
+        &amount_iterator,
+        pmc,
+        &legi_result_cb,
+        pmc);
+      GNUNET_free (fake_full_payto.full_payto);
+    }
     GNUNET_assert (NULL != pmc->lch);
     MHD_suspend_connection (rc->connection);
     GNUNET_CONTAINER_DLL_insert (pmc_head,
