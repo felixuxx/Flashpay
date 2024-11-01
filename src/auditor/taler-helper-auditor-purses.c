@@ -722,7 +722,7 @@ handle_purse_merged (
   TALER_ARL_USE_PP (purse_merges_serial_id) = rowid + 1;
 
   {
-    char *reserve_url;
+    struct TALER_NormalizedPayto reserve_url;
 
     reserve_url
       = TALER_reserve_make_payto (NULL == partner_base_url
@@ -743,7 +743,7 @@ handle_purse_merged (
         .operation_specific_pub = merge_pub->eddsa_pub
       };
 
-      GNUNET_free (reserve_url);
+      GNUNET_free (reserve_url.normalized_payto);
       qs = TALER_ARL_adb->insert_bad_sig_losses (
         TALER_ARL_adb->cls,
         &bsl);
@@ -758,7 +758,7 @@ handle_purse_merged (
                             amount);
       return GNUNET_OK;
     }
-    GNUNET_free (reserve_url);
+    GNUNET_free (reserve_url.normalized_payto);
   }
 
   ps = setup_purse (pc,

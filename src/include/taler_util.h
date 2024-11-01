@@ -382,7 +382,7 @@ TALER_url_valid_charset (const char *url);
 
 
 /**
- * Compare two payto URIs for equality.
+ * Compare two full payto URIs for equality.
  *
  * @param a a full payto URI, NULL is permitted
  * @param b a full payto URI, NULL is permitted
@@ -391,6 +391,18 @@ TALER_url_valid_charset (const char *url);
 int
 TALER_full_payto_cmp (const struct TALER_FullPayto a,
                       const struct TALER_FullPayto b);
+
+
+/**
+ * Compare two normalized payto URIs for equality.
+ *
+ * @param a a full payto URI, NULL is permitted
+ * @param b a full payto URI, NULL is permitted
+ * @return 0 if both are equal, otherwise -1 or 1
+ */
+int
+TALER_normalized_payto_cmp (const struct TALER_NormalizedPayto a,
+                            const struct TALER_NormalizedPayto b);
 
 
 /**

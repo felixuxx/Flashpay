@@ -279,7 +279,7 @@ struct ReserveSummary
   /**
    * Which account did originally put money into the reserve?
    */
-  char *sender_account;
+  struct TALER_FullPayto sender_account;
 
   /**
    * Did we have a previous reserve info?  Used to decide between
@@ -468,7 +468,7 @@ handle_reserve_in (
   uint64_t rowid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *credit,
-  const char *sender_account_details,
+  const struct TALER_FullPayto sender_account_details,
   uint64_t wire_reference,
   struct GNUNET_TIME_Timestamp execution_date)
 {
@@ -487,8 +487,9 @@ handle_reserve_in (
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (NULL == rs->sender_account)
-    rs->sender_account = GNUNET_strdup (sender_account_details);
+  if (NULL == rs->sender_account.full_payto)
+    rs->sender_account.full_payto
+      = GNUNET_strdup (sender_account_details.full_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional incoming wire transfer for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
@@ -853,7 +854,7 @@ handle_recoup_by_reserve (
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-get_closing_fee (const char *receiver_account,
+get_closing_fee (const struct TALER_FullPayto receiver_account,
                  struct GNUNET_TIME_Timestamp atime,
                  struct TALER_Amount *fee)
 {
@@ -863,7 +864,7 @@ get_closing_fee (const char *receiver_account,
   struct TALER_WireFeeSet fees;
   char *method;
 
-  method = TALER_payto_get_method (receiver_account);
+  method = TALER_payto_get_method (receiver_account.full_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Method is `%s'\n",
               method);
@@ -1007,7 +1008,7 @@ handle_reserve_closed (
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const char *receiver_account,
+  const struct TALER_FullPayto receiver_account,
   const struct TALER_WireTransferIdentifierRawP *transfer_details,
   uint64_t close_request_row)
 {
@@ -1066,7 +1067,7 @@ handle_reserve_closed (
     struct GNUNET_TIME_Timestamp request_timestamp;
     struct TALER_Amount close_balance;
     struct TALER_Amount close_fee;
-    char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     enum GNUNET_DB_QueryStatus qs;
 
     qs = TALER_ARL_edb->select_reserve_close_request_info (
@@ -1088,10 +1089,10 @@ handle_reserve_closed (
     }
     else
     {
-      struct TALER_PaytoHashP h_payto;
+      struct TALER_FullPaytoHashP h_payto;
 
-      TALER_payto_hash (payto_uri,
-                        &h_payto);
+      TALER_full_payto_hash (payto_uri,
+                             &h_payto);
       if (GNUNET_OK !=
           TALER_wallet_reserve_close_verify (
             request_timestamp,
@@ -1114,7 +1115,7 @@ handle_reserve_closed (
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
           rc->qs = qs;
-          GNUNET_free (payto_uri);
+          GNUNET_free (payto_uri.full_payto);
           return GNUNET_SYSERR;
         }
         TALER_ARL_amount_add (&TALER_ARL_USE_AB (reserves_total_bad_sig_loss),
@@ -1122,8 +1123,8 @@ handle_reserve_closed (
                               amount_with_fee);
       }
     }
-    if ( (NULL == payto_uri) &&
-         (NULL == rs->sender_account) )
+    if ( (NULL == payto_uri.full_payto) &&
+         (NULL == rs->sender_account.full_payto) )
     {
       GNUNET_break (! rs->had_ri);
       report_row_inconsistency ("reserves_close",
@@ -1132,11 +1133,11 @@ handle_reserve_closed (
       if (global_qs < 0)
         return GNUNET_SYSERR;
     }
-    if (NULL == payto_uri)
+    if (NULL == payto_uri.full_payto)
     {
-      if ((NULL == rs->sender_account) ||
-          (0 != strcmp (rs->sender_account,
-                        receiver_account)))
+      if ((NULL == rs->sender_account.full_payto) ||
+          (0 != TALER_full_payto_cmp (rs->sender_account,
+                                      receiver_account)))
       {
         report_row_inconsistency ("reserves_close",
                                   rowid,
@@ -1147,24 +1148,24 @@ handle_reserve_closed (
     }
     else
     {
-      if (0 != strcmp (payto_uri,
-                       receiver_account))
+      if (0 != TALER_full_payto_cmp (payto_uri,
+                                     receiver_account))
       {
         report_row_inconsistency ("reserves_close",
                                   rowid,
                                   "target account does not match origin account");
         if (global_qs < 0)
         {
-          GNUNET_free (payto_uri);
+          GNUNET_free (payto_uri.full_payto);
           return GNUNET_SYSERR;
         }
       }
     }
-    GNUNET_free (payto_uri);
+    GNUNET_free (payto_uri.full_payto);
   }
   else
   {
-    if (NULL == rs->sender_account)
+    if (NULL == rs->sender_account.full_payto)
     {
       GNUNET_break (! rs->had_ri);
       report_row_inconsistency ("reserves_close",
@@ -1173,8 +1174,8 @@ handle_reserve_closed (
       if (global_qs < 0)
         return GNUNET_SYSERR;
     }
-    else if (0 != strcmp (rs->sender_account,
-                          receiver_account))
+    else if (0 != TALER_full_payto_cmp (rs->sender_account,
+                                        receiver_account))
     {
       report_row_inconsistency ("reserves_close",
                                 rowid,
@@ -1527,7 +1528,7 @@ verify_reserve_balance (void *cls,
     /* Reserve is expired */
     struct TALER_Amount cfee;
 
-    if ( (NULL != rs->sender_account) &&
+    if ( (NULL != rs->sender_account.full_payto) &&
          (GNUNET_OK ==
           get_closing_fee (rs->sender_account,
                            rs->a_expiration_date,
@@ -1541,7 +1542,7 @@ verify_reserve_balance (void *cls,
           .reserve_pub = rs->reserve_pub,
           .expiration_time = rs->a_expiration_date.abs_time,
           .balance = nbalance,
-          .diagnostic = rs->sender_account
+          .diagnostic = rs->sender_account.full_payto
         };
 
         /* remaining balance (according to us) exceeds closing fee */
@@ -1705,7 +1706,7 @@ verify_reserve_balance (void *cls,
                  GNUNET_CONTAINER_multihashmap_remove (rc->reserves,
                                                        key,
                                                        rs));
-  GNUNET_free (rs->sender_account);
+  GNUNET_free (rs->sender_account.full_payto);
   GNUNET_free (rs);
   return ret;
 }

@@ -43,8 +43,8 @@ process_wire_out_inconsistency (
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_int64 ("row_id",
                             dc->row_id),
-    GNUNET_JSON_pack_string ("destination_account",
-                             dc->destination_account),
+    TALER_JSON_pack_full_payto ("destination_account",
+                                dc->destination_account),
     GNUNET_JSON_pack_int64 ("wire_out_row_id",
                             dc->wire_out_row_id),
     GNUNET_JSON_pack_string ("diagnostic",

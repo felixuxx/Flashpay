@@ -768,7 +768,7 @@ struct TALER_AUDITORDB_WireFormatInconsistency
 struct TALER_AUDITORDB_WireOutInconsistency
 {
   uint64_t row_id;
-  char *destination_account;
+  struct TALER_FullPayto destination_account;
   char *diagnostic;
   uint64_t wire_out_row_id;
   struct TALER_Amount expected;
@@ -1781,7 +1781,7 @@ struct TALER_AUDITORDB_Plugin
     const struct TALER_ReservePublicKeyP *reserve_pub,
     const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
     struct GNUNET_TIME_Timestamp expiration_date,
-    const char *origin_account);
+    const struct TALER_FullPayto origin_account);
 
 
   /**
@@ -1820,7 +1820,7 @@ struct TALER_AUDITORDB_Plugin
     uint64_t *rowid,
     struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
     struct GNUNET_TIME_Timestamp *expiration_date,
-    char **sender_account);
+    struct TALER_FullPayto *sender_account);
 
 
   /**

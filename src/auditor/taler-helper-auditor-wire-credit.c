@@ -445,16 +445,14 @@ reserve_in_cb (void *cls,
                uint64_t rowid,
                const struct TALER_ReservePublicKeyP *reserve_pub,
                const struct TALER_Amount *credit,
-               const char *sender_account_details,
+               const struct TALER_FullPayto sender_account_details,
                uint64_t wire_reference,
                struct GNUNET_TIME_Timestamp execution_date)
 {
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii;
   size_t slen;
-  char *snp;
 
-  snp = TALER_payto_normalize (sender_account_details);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange wire IN (%llu) at %s of %s with reserve_pub %s\n",
               (unsigned long long) rowid,
@@ -464,18 +462,17 @@ reserve_in_cb (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_in),
                         &TALER_ARL_USE_AB (total_wire_in),
                         credit);
-  slen = strlen (snp) + 1;
+  slen = strlen (sender_account_details.full_payto) + 1;
   rii = GNUNET_malloc (sizeof (struct ReserveInInfo) + slen);
   rii->rowid = rowid;
   rii->credit_details.type = TALER_BANK_CT_RESERVE;
   rii->credit_details.amount = *credit;
   rii->credit_details.execution_date = execution_date;
   rii->credit_details.details.reserve.reserve_pub = *reserve_pub;
-  rii->credit_details.debit_account_uri = (const char *) &rii[1];
+  rii->credit_details.debit_account_uri.full_payto = (const char *) &rii[1];
   GNUNET_memcpy (&rii[1],
-                 snp,
+                 sender_account_details.full_payto,
                  slen);
-  GNUNET_free (snp);
   GNUNET_CRYPTO_hash (&wire_reference,
                       sizeof (uint64_t),
                       &rii->row_off_hash);
@@ -731,11 +728,13 @@ analyze_credit (
   }
 
   {
-    char *np;
+    struct TALER_NormalizedPayto np;
+    struct TALER_NormalizedPayto np2;
 
     np = TALER_payto_normalize (credit_details->debit_account_uri);
-    if (0 != strcasecmp (np,
-                         rii->credit_details.debit_account_uri))
+    np2 = TALER_payto_normalize (rii->credit_details.debit_account_uri);
+    if (0 != TALER_normalized_payto_cmp (np,
+                                         np2))
     {
       struct TALER_AUDITORDB_MisattributionInInconsistency mii = {
         .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
@@ -753,14 +752,16 @@ analyze_credit (
       {
         global_qs = qs;
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-        GNUNET_free (np);
+        GNUNET_free (np.normalized_payto);
+        GNUNET_free (np2.normalized_payto);
         return false;
       }
       TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_misattribution_in),
                             &TALER_ARL_USE_AB (total_misattribution_in),
                             &rii->credit_details.amount);
     }
-    GNUNET_free (np);
+    GNUNET_free (np.normalized_payto);
+    GNUNET_free (np2.normalized_payto);
   }
   if (GNUNET_TIME_timestamp_cmp (credit_details->execution_date,
                                  !=,

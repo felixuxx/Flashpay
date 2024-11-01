@@ -121,7 +121,7 @@ import_wire_missing_cb (
   void *cls,
   uint64_t batch_deposit_serial_id,
   const struct TALER_Amount *total_amount,
-  const struct TALER_PaytoHashP *wire_target_h_payto,
+  const struct TALER_FullPaytoHashP *wire_target_h_payto,
   struct GNUNET_TIME_Timestamp deadline)
 {
   struct ImportMissingWireContext *wc = cls;

@@ -44,6 +44,22 @@ TALER_full_payto_cmp (const struct TALER_FullPayto a,
 }
 
 
+int
+TALER_normalized_payto_cmp (const struct TALER_NormalizedPayto a,
+                            const struct TALER_NormalizedPayto b)
+{
+  if ( (NULL == a.normalized_payto) &&
+       (NULL == b.normalized_payto) )
+    return 0;
+  if (NULL == a.normalized_payto)
+    return -1;
+  if (NULL == b.normalized_payto)
+    return 1;
+  return strcmp (a.normalized_payto,
+                 b.normalized_payto);
+}
+
+
 void
 TALER_full_payto_normalize_and_hash (const struct TALER_FullPayto in,
                                      struct TALER_NormalizedPaytoHashP *out)

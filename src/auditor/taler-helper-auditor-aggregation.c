@@ -362,7 +362,7 @@ struct WireCheckContext
   /**
    * Target account details of the receiver.
    */
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Execution time of the wire transfer.
@@ -778,8 +778,8 @@ wire_transfer_information_cb (
   void *cls,
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const char *account_pay_uri,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_FullPayto account_pay_uri,
+  const struct TALER_FullPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp exec_time,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -794,13 +794,13 @@ wire_transfer_information_cb (
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_PaytoHashP hpt;
+  struct TALER_FullPaytoHashP hpt;
   uint64_t etag_out;
 
   if (0 > wcc->qs)
     return;
-  TALER_payto_hash (account_pay_uri,
-                    &hpt);
+  TALER_full_payto_hash (account_pay_uri,
+                         &hpt);
   if (0 !=
       GNUNET_memcmp (&hpt,
                      h_payto))
@@ -998,8 +998,8 @@ wire_transfer_information_cb (
     }
   }
   /* Check other details of wire transfer match */
-  if (0 != strcmp (account_pay_uri,
-                   wcc->payto_uri))
+  if (0 != TALER_full_payto_cmp (account_pay_uri,
+                                 wcc->payto_uri))
   {
     qs = report_row_inconsistency ("aggregation",
                                    rowid,
@@ -1189,7 +1189,7 @@ check_wire_out_cb (void *cls,
                    uint64_t rowid,
                    struct GNUNET_TIME_Timestamp date,
                    const struct TALER_WireTransferIdentifierRawP *wtid,
-                   const char *payto_uri,
+                   const struct TALER_FullPayto payto_uri,
                    const struct TALER_Amount *amount)
 {
   struct AggregationContext *ac = cls;
@@ -1209,7 +1209,7 @@ check_wire_out_cb (void *cls,
               TALER_B2S (wtid),
               TALER_amount2s (amount),
               GNUNET_TIME_timestamp2s (date));
-  if (NULL == (method = TALER_payto_get_method (payto_uri)))
+  if (NULL == (method = TALER_payto_get_method (payto_uri.full_payto)))
   {
     qs = report_row_inconsistency ("wire_out",
                                    rowid,
@@ -1341,7 +1341,7 @@ check_wire_out_cb (void *cls,
 
     {
       struct TALER_AUDITORDB_WireOutInconsistency woi = {
-        .destination_account = (char *) payto_uri,
+        .destination_account = payto_uri,
         .diagnostic = "aggregated amount does not match expectations",
         .wire_out_row_id = rowid,
         .expected = final_amount,
