@@ -1538,7 +1538,7 @@ upload_wire_add (const char *exchange_url,
 {
   struct TALER_MasterSignatureP master_sig_add;
   struct TALER_MasterSignatureP master_sig_wire;
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct GNUNET_TIME_Timestamp start_time;
   struct WireAddRequest *war;
   const char *err_name;
@@ -1549,8 +1549,8 @@ upload_wire_add (const char *exchange_url,
   const json_t *credit_restrictions;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_payto_uri ("payto_uri",
-                               &payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &payto_uri),
     GNUNET_JSON_spec_mark_optional (
       TALER_JSON_spec_web_url ("conversion_url",
                                &conversion_url),
@@ -1595,12 +1595,12 @@ upload_wire_add (const char *exchange_url,
   {
     char *wire_method;
 
-    wire_method = TALER_payto_get_method (payto_uri);
+    wire_method = TALER_payto_get_method (payto_uri.full_payto);
     if (NULL == wire_method)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "payto:// URI `%s' is malformed\n",
-                  payto_uri);
+                  payto_uri.full_payto);
       global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -1687,14 +1687,14 @@ upload_wire_del (const char *exchange_url,
                  const json_t *value)
 {
   struct TALER_MasterSignatureP master_sig;
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct GNUNET_TIME_Timestamp end_time;
   struct WireDelRequest *wdr;
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_payto_uri ("payto_uri",
-                               &payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &payto_uri),
     GNUNET_JSON_spec_timestamp ("validity_end",
                                 &end_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -2009,7 +2009,7 @@ upload_drain (const char *exchange_url,
   unsigned int err_line;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Timestamp date;
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   const char *account_section;
   struct DrainProfitsRequest *dpr;
   struct GNUNET_JSON_Specification spec[] = {
@@ -2022,8 +2022,8 @@ upload_drain (const char *exchange_url,
                                 &date),
     GNUNET_JSON_spec_string ("account_section",
                              &account_section),
-    TALER_JSON_spec_payto_uri ("payto_uri",
-                               &payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
     GNUNET_JSON_spec_end ()
@@ -3096,6 +3096,9 @@ do_add_wire (char *const *args)
   json_t *debit_restrictions;
   json_t *credit_restrictions;
   unsigned int num_args = 1;
+  struct TALER_FullPayto payto_uri = {
+    .full_payto = args[0]
+  };
 
   if (NULL != in)
   {
@@ -3117,12 +3120,13 @@ do_add_wire (char *const *args)
       load_offline_key (GNUNET_NO))
     return;
   {
-    char *msg = TALER_payto_validate (args[0]);
+    char *msg = TALER_payto_validate (payto_uri);
 
     if (NULL != msg)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "payto URI is malformed: %s\n",
+                  "payto URI `%s' is malformed: %s\n",
+                  payto_uri.full_payto,
                   msg);
       GNUNET_free (msg);
       GNUNET_SCHEDULER_shutdown ();
@@ -3134,12 +3138,12 @@ do_add_wire (char *const *args)
   {
     char *wire_method;
 
-    wire_method = TALER_payto_get_method (args[0]);
+    wire_method = TALER_payto_get_method (payto_uri.full_payto);
     if (NULL == wire_method)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "payto:// URI `%s' is malformed\n",
-                  args[0]);
+                  payto_uri.full_payto);
       global_ret = EXIT_INVALIDARGUMENT;
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -3259,14 +3263,14 @@ do_add_wire (char *const *args)
     }
     break;
   }
-  TALER_exchange_offline_wire_add_sign (args[0],
+  TALER_exchange_offline_wire_add_sign (payto_uri,
                                         conversion_url,
                                         debit_restrictions,
                                         credit_restrictions,
                                         now,
                                         &master_priv,
                                         &master_sig_add);
-  TALER_exchange_wire_signature_make (args[0],
+  TALER_exchange_wire_signature_make (payto_uri,
                                       conversion_url,
                                       debit_restrictions,
                                       credit_restrictions,
@@ -3274,8 +3278,8 @@ do_add_wire (char *const *args)
                                       &master_sig_wire);
   output_operation (OP_ENABLE_WIRE,
                     GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("payto_uri",
-                                               args[0]),
+                      TALER_JSON_pack_full_payto ("payto_uri",
+                                                  payto_uri),
                       GNUNET_JSON_pack_array_steal ("debit_restrictions",
                                                     debit_restrictions),
                       GNUNET_JSON_pack_array_steal ("credit_restrictions",
@@ -3302,13 +3306,16 @@ do_add_wire (char *const *args)
  * Disable wire account.
  *
  * @param args the array of command-line arguments to process next;
- *        args[0] must be the hash of the denomination key to revoke
+ *        args[0] must be the payto URI of the account to disable
  */
 static void
 do_del_wire (char *const *args)
 {
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Timestamp now;
+  struct TALER_FullPayto payto_uri = {
+    .full_payto = args[0]
+  };
 
   if (NULL != in)
   {
@@ -3331,14 +3338,14 @@ do_del_wire (char *const *args)
       load_offline_key (GNUNET_NO))
     return;
   now = GNUNET_TIME_timestamp_get ();
-  TALER_exchange_offline_wire_del_sign (args[0],
+  TALER_exchange_offline_wire_del_sign (payto_uri,
                                         now,
                                         &master_priv,
                                         &master_sig);
   output_operation (OP_DISABLE_WIRE,
                     GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_string ("payto_uri",
-                                               args[0]),
+                      TALER_JSON_pack_full_payto ("payto_uri",
+                                                  payto_uri),
                       GNUNET_JSON_pack_timestamp ("validity_end",
                                                   now),
                       GNUNET_JSON_pack_data_auto ("master_sig",
@@ -3585,7 +3592,7 @@ do_drain (char *const *args)
   struct GNUNET_TIME_Timestamp date;
   struct TALER_Amount amount;
   const char *account_section;
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct TALER_MasterSignatureP master_sig;
   char *err;
 
@@ -3632,13 +3639,13 @@ do_drain (char *const *args)
     return;
   }
   account_section = args[1];
-  payto_uri = args[2];
+  payto_uri.full_payto = args[2];
   err = TALER_payto_validate (payto_uri);
   if (NULL != err)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Invalid payto://-URI `%s' specified for drain: %s\n",
-                payto_uri,
+                payto_uri.full_payto,
                 err);
     GNUNET_free (err);
     GNUNET_SCHEDULER_shutdown ();
@@ -3665,8 +3672,8 @@ do_drain (char *const *args)
                                                   &wtid),
                       GNUNET_JSON_pack_string ("account_section",
                                                account_section),
-                      GNUNET_JSON_pack_string ("payto_uri",
-                                               payto_uri),
+                      TALER_JSON_pack_full_payto ("payto_uri",
+                                                  payto_uri),
                       TALER_JSON_pack_amount ("amount",
                                               &amount),
                       GNUNET_JSON_pack_timestamp ("date",
