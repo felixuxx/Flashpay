@@ -2461,8 +2461,8 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
       json_array_append_new (
         accounts,
         GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_string ("payto_uri",
-                                   acc->payto_uri),
+          TALER_JSON_pack_full_payto ("payto_uri",
+                                      acc->fpayto_uri),
           GNUNET_JSON_pack_allow_null (
             GNUNET_JSON_pack_string ("conversion_url",
                                      acc->conversion_url)),

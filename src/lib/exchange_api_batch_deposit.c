@@ -712,8 +712,8 @@ TALER_EXCHANGE_batch_deposit (
     wallet_data_hashp = &dcd->wallet_data_hash;
 
   deposit_obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("merchant_payto_uri",
-                             dcd->merchant_payto_uri),
+    TALER_JSON_pack_full_payto ("merchant_payto_uri",
+                                dcd->merchant_payto_uri),
     GNUNET_JSON_pack_data_auto ("wire_salt",
                                 &dcd->wire_salt),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",

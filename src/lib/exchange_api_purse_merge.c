@@ -394,8 +394,8 @@ TALER_EXCHANGE_account_merge (
                                      &pch->reserve_sig);
   }
   merge_obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             reserve_url),
+    TALER_JSON_pack_normalized_payto ("payto_uri",
+                                      reserve_url),
     GNUNET_JSON_pack_data_auto ("merge_sig",
                                 &pch->merge_sig),
     GNUNET_JSON_pack_data_auto ("reserve_sig",
@@ -403,7 +403,7 @@ TALER_EXCHANGE_account_merge (
     GNUNET_JSON_pack_timestamp ("merge_timestamp",
                                 merge_timestamp));
   GNUNET_assert (NULL != merge_obj);
-  GNUNET_free (reserve_url);
+  GNUNET_free (reserve_url.normalized_payto);
   eh = TALER_EXCHANGE_curl_easy_get_ (pch->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

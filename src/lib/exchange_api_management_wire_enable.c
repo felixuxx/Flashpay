@@ -142,7 +142,7 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle *
 TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const char *conversion_url,
   const json_t *debit_restrictions,
   const json_t *credit_restrictions,
@@ -185,8 +185,8 @@ TALER_EXCHANGE_management_enable_wire (
     return NULL;
   }
   body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             payto_uri),
+    TALER_JSON_pack_full_payto ("payto_uri",
+                                payto_uri),
     GNUNET_JSON_pack_array_incref ("debit_restrictions",
                                    (json_t *) debit_restrictions),
     GNUNET_JSON_pack_array_incref ("credit_restrictions",

@@ -256,7 +256,7 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const union TALER_AccountPrivateKeyP *account_priv,
   enum TALER_EXCHANGE_KycLongPollTarget lpt,
   struct GNUNET_TIME_Relative timeout,

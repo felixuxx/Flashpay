@@ -138,7 +138,7 @@ struct TALER_EXCHANGE_KycProofHandle *
 TALER_EXCHANGE_kyc_proof (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   const char *logic,
   const char *args,
   TALER_EXCHANGE_KycProofCallback cb,
@@ -152,7 +152,7 @@ TALER_EXCHANGE_kyc_proof (
   else
     GNUNET_assert (args[0] == '&');
   {
-    char hstr[sizeof (struct TALER_PaytoHashP) * 2];
+    char hstr[sizeof (*h_payto) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (h_payto,

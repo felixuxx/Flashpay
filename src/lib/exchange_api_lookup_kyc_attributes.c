@@ -256,7 +256,7 @@ struct TALER_EXCHANGE_LookupKycAttributes *
 TALER_EXCHANGE_lookup_kyc_attributes (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_url,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   uint64_t offset,
   int64_t limit,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
@@ -267,8 +267,8 @@ TALER_EXCHANGE_lookup_kyc_attributes (
   CURL *eh;
   struct TALER_AmlOfficerPublicKeyP officer_pub;
   struct TALER_AmlOfficerSignatureP officer_sig;
-  char arg_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2
-               + sizeof (struct TALER_PaytoHashP) * 2
+  char arg_str[sizeof (officer_pub) * 2
+               + sizeof (*h_payto) * 2
                + 32];
 
   GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,

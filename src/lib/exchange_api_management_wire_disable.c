@@ -142,7 +142,7 @@ struct TALER_EXCHANGE_ManagementWireDisableHandle *
 TALER_EXCHANGE_management_disable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementWireDisableCallback cb,
@@ -167,8 +167,8 @@ TALER_EXCHANGE_management_disable_wire (
     return NULL;
   }
   body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             payto_uri),
+    TALER_JSON_pack_full_payto ("payto_uri",
+                                payto_uri),
     GNUNET_JSON_pack_data_auto ("master_sig_del",
                                 master_sig),
     GNUNET_JSON_pack_timestamp ("validity_end",

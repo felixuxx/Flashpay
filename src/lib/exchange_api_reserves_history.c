@@ -148,7 +148,7 @@ parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
               struct HistoryParseContext *uc,
               const json_t *transaction)
 {
-  const char *wire_uri;
+  struct TALER_FullPayto wire_uri;
   uint64_t wire_reference;
   struct GNUNET_TIME_Timestamp timestamp;
   struct GNUNET_JSON_Specification withdraw_spec[] = {
@@ -156,8 +156,8 @@ parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
                              &wire_reference),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &timestamp),
-    TALER_JSON_spec_payto_uri ("sender_account_url",
-                               &wire_uri),
+    TALER_JSON_spec_full_payto_uri ("sender_account_url",
+                                    &wire_uri),
     GNUNET_JSON_spec_end ()
   };
 
@@ -179,7 +179,8 @@ parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  rh->details.in_details.sender_url = GNUNET_strdup (wire_uri);
+  rh->details.in_details.sender_url.full_payto
+    = GNUNET_strdup (wire_uri.full_payto);
   rh->details.in_details.wire_reference = wire_reference;
   rh->details.in_details.timestamp = timestamp;
   return GNUNET_OK;
@@ -378,10 +379,11 @@ parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
                const json_t *transaction)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
+  struct TALER_FullPayto receiver_uri;
   struct GNUNET_JSON_Specification closing_spec[] = {
-    TALER_JSON_spec_payto_uri (
+    TALER_JSON_spec_full_payto_uri (
       "receiver_account_details",
-      &rh->details.close_details.receiver_account_details),
+      &receiver_uri),
     GNUNET_JSON_spec_fixed_auto ("wtid",
                                  &rh->details.close_details.wtid),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
@@ -418,7 +420,7 @@ parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
         rh->details.close_details.timestamp,
         &rh->amount,
         &rh->details.close_details.fee,
-        rh->details.close_details.receiver_account_details,
+        receiver_uri,
         &rh->details.close_details.wtid,
         uc->reserve_pub,
         &rh->details.close_details.exchange_pub,
@@ -436,6 +438,8 @@ parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  rh->details.close_details.receiver_account_details.full_payto
+    = GNUNET_strdup (receiver_uri.full_payto);
   return GNUNET_OK;
 }
 
@@ -654,10 +658,12 @@ free_reserve_history (
 {
   for (unsigned int i = 0; i<len; i++)
   {
-    switch (rhistory[i].type)
+    struct TALER_EXCHANGE_ReserveHistoryEntry *rhi = &rhistory[i];
+
+    switch (rhi->type)
     {
     case TALER_EXCHANGE_RTT_CREDIT:
-      GNUNET_free (rhistory[i].details.in_details.sender_url);
+      GNUNET_free (rhi->details.in_details.sender_url.full_payto);
       break;
     case TALER_EXCHANGE_RTT_WITHDRAWAL:
       break;
@@ -672,6 +678,8 @@ free_reserve_history (
     case TALER_EXCHANGE_RTT_OPEN:
       break;
     case TALER_EXCHANGE_RTT_CLOSE:
+      GNUNET_free (rhi->details.close_details
+                   .receiver_account_details.full_payto);
       break;
     }
   }

@@ -1245,6 +1245,64 @@ TALER_JSON_spec_full_payto_uri (
 
 
 /**
+ * Parse given JSON object to payto:// URI.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_normalized_payto_uri (void *cls,
+                            json_t *root,
+                            struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_NormalizedPayto *payto_uri = spec->ptr;
+  const char *str;
+
+  (void) cls;
+  str = json_string_value (root);
+  if (NULL == str)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  payto_uri->normalized_payto = (char *) str;
+#if FIXME /* need reduced validation for normalized paytos! */
+  {
+    char *err;
+
+    err = TALER_payto_validate (*payto_uri);
+    if (NULL != err)
+    {
+      GNUNET_break_op (0);
+      GNUNET_free (err);
+      payto_uri->normalized_payto = NULL;
+      return GNUNET_SYSERR;
+    }
+  }
+#endif
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_normalized_payto_uri (
+  const char *field,
+  struct TALER_NormalizedPayto *payto_uri)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_normalized_payto_uri,
+    .field = field,
+    .ptr = payto_uri
+  };
+
+  payto_uri->normalized_payto = NULL;
+  return ret;
+}
+
+
+/**
  * Parse given JSON object with protocol version.
  *
  * @param cls closure, NULL

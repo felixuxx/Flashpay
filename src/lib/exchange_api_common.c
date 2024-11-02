@@ -130,7 +130,7 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
                                  &reserve_pub),
     GNUNET_JSON_spec_end ()
   };
-  char *payto_uri;
+  struct TALER_NormalizedPayto payto_uri;
 
   if (GNUNET_OK !=
       GNUNET_JSON_parse (proof,
@@ -153,10 +153,10 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
         &merge_sig))
   {
     GNUNET_break_op (0);
-    GNUNET_free (payto_uri);
+    GNUNET_free (payto_uri.normalized_payto);
     return GNUNET_SYSERR;
   }
-  GNUNET_free (payto_uri);
+  GNUNET_free (payto_uri.normalized_payto);
   if (0 ==
       GNUNET_memcmp (&merge_sig,
                      cmerge_sig))
@@ -514,15 +514,15 @@ TALER_EXCHANGE_parse_accounts (
        i++)
   {
     struct TALER_EXCHANGE_WireAccount *wa = &was[i];
-    const char *payto_uri;
+    struct TALER_FullPayto payto_uri;
     const char *conversion_url = NULL;
     const char *bank_label = NULL;
     int64_t priority = 0;
     const json_t *credit_restrictions;
     const json_t *debit_restrictions;
     struct GNUNET_JSON_Specification spec_account[] = {
-      TALER_JSON_spec_payto_uri ("payto_uri",
-                                 &payto_uri),
+      TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                      &payto_uri),
       GNUNET_JSON_spec_mark_optional (
         TALER_JSON_spec_web_url ("conversion_url",
                                  &conversion_url),
@@ -583,7 +583,8 @@ TALER_EXCHANGE_parse_accounts (
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    wa->payto_uri = GNUNET_strdup (payto_uri);
+    wa->fpayto_uri.full_payto
+      = GNUNET_strdup (payto_uri.full_payto);
     wa->priority = priority;
     if (NULL != conversion_url)
       wa->conversion_url = GNUNET_strdup (conversion_url);
@@ -633,7 +634,7 @@ TALER_EXCHANGE_free_accounts (
   {
     struct TALER_EXCHANGE_WireAccount *wa = &was[i];
 
-    GNUNET_free (wa->payto_uri);
+    GNUNET_free (wa->fpayto_uri.full_payto);
     GNUNET_free (wa->conversion_url);
     GNUNET_free (wa->bank_label);
     free_restrictions (wa->credit_restrictions_length,

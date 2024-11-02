@@ -1281,7 +1281,7 @@ struct TALER_EXCHANGE_DepositContractDetail
    * The merchant’s account details, in the payto://-format supported by the
    * exchange.
    */
-  const struct TALER_FullPayto merchant_payto_uri;
+  struct TALER_FullPayto merchant_payto_uri;
 
   /**
    * Policy extension specific details about the deposit relevant to the exchange.
@@ -6505,7 +6505,7 @@ TALER_EXCHANGE_post_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_NormalizedPaytoHashP *h_payto,
-  const struct TALER_NormalizedPayto payto_uri,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
   const char *new_measures,

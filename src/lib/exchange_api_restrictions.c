@@ -28,7 +28,7 @@ enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_test_account_allowed (
   const struct TALER_EXCHANGE_WireAccount *account,
   bool check_credit,
-  const char *payto_uri)
+  const struct TALER_NormalizedPayto payto_uri)
 {
   unsigned int limit
     = check_credit
@@ -41,8 +41,8 @@ TALER_EXCHANGE_test_account_allowed (
     char *wm2;
     bool ok;
 
-    wm1 = TALER_payto_get_method (payto_uri);
-    wm2 = TALER_payto_get_method (account->payto_uri);
+    wm1 = TALER_payto_get_method (payto_uri.normalized_payto);
+    wm2 = TALER_payto_get_method (account->fpayto_uri.full_payto);
     ok = (0 == strcmp (wm1,
                        wm2));
     GNUNET_free (wm1);
@@ -78,13 +78,13 @@ TALER_EXCHANGE_test_account_allowed (
           return GNUNET_SYSERR;
         }
         if (regexec (&ex,
-                     payto_uri,
+                     payto_uri.normalized_payto,
                      0, NULL,
                      REG_STARTEND))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                       "Account `%s' allowed by regex\n",
-                      payto_uri);
+                      payto_uri.normalized_payto);
           allowed = true;
         }
         regfree (&ex);

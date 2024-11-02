@@ -457,7 +457,7 @@ TALER_EXCHANGE_purse_create_with_merge (
                                   purse_priv,
                                   &pcm->purse_sig);
   {
-    char *payto_uri;
+    struct TALER_NormalizedPayto payto_uri;
 
     payto_uri = TALER_reserve_make_payto (url,
                                           &pcm->reserve_pub);
@@ -466,7 +466,7 @@ TALER_EXCHANGE_purse_create_with_merge (
                                    &pcm->purse_pub,
                                    merge_priv,
                                    &pcm->merge_sig);
-    GNUNET_free (payto_uri);
+    GNUNET_free (payto_uri.normalized_payto);
   }
   TALER_wallet_account_merge_sign (merge_timestamp,
                                    &pcm->purse_pub,

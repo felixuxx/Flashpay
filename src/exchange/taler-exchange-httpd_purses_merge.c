@@ -529,9 +529,8 @@ TEH_handler_purses_merge (
 
     {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string (
-          "payto_uri",
-          (const char **) &pmc->payto_uri.normalized_payto),
+        TALER_JSON_spec_normalized_payto_uri ("payto_uri",
+                                              &pmc->payto_uri),
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &pmc->reserve_sig),
         GNUNET_JSON_spec_fixed_auto ("merge_sig",

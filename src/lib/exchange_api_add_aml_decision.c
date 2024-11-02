@@ -127,8 +127,8 @@ struct TALER_EXCHANGE_AddAmlDecision *
 TALER_EXCHANGE_post_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_PaytoHashP *h_payto,
-  const char *payto_uri,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
+  const struct TALER_FullPayto payto_uri,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *successor_measure,
   const char *new_measures,
@@ -271,8 +271,8 @@ TALER_EXCHANGE_post_aml_decision (
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
     GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string ("payto_uri",
-                               payto_uri)),
+      TALER_JSON_pack_full_payto ("payto_uri",
+                                  payto_uri)),
     GNUNET_JSON_pack_object_steal ("new_rules",
                                    new_rules),
     GNUNET_JSON_pack_object_incref ("properties",

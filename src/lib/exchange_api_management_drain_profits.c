@@ -130,7 +130,7 @@ TALER_EXCHANGE_management_drain_profits (
   const struct TALER_Amount *amount,
   struct GNUNET_TIME_Timestamp date,
   const char *account_section,
-  const char *payto_uri,
+  const struct TALER_FullPayto payto_uri,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementDrainProfitsCallback cb,
   void *cb_cls)
@@ -156,8 +156,8 @@ TALER_EXCHANGE_management_drain_profits (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("debit_account_section",
                              account_section),
-    GNUNET_JSON_pack_string ("credit_payto_uri",
-                             payto_uri),
+    TALER_JSON_pack_full_payto ("credit_payto_uri",
+                                payto_uri),
     GNUNET_JSON_pack_data_auto ("wtid",
                                 wtid),
     GNUNET_JSON_pack_data_auto ("master_sig",

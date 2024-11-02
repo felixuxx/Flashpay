@@ -471,7 +471,7 @@ TALER_JSON_spec_web_url (const char *field,
 
 
 /**
- * Generate line in parser specification for
+ * Generate line in parser specification for full
  * "payto://" URIs.
  *
  * @param field name of the field
@@ -482,6 +482,20 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_full_payto_uri (
   const char *field,
   struct TALER_FullPayto *payto_uri);
+
+
+/**
+ * Generate line in parser specification for normalized
+ * "payto://" URIs.
+ *
+ * @param field name of the field
+ * @param[out] payto_uri RFC 8905 URI to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_normalized_payto_uri (
+  const char *field,
+  struct TALER_NormalizedPayto *payto_uri);
 
 
 /**

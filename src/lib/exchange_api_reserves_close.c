@@ -267,14 +267,14 @@ TALER_EXCHANGE_reserves_close (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const char *target_payto_uri,
+  const struct TALER_FullPayto target_payto_uri,
   TALER_EXCHANGE_ReservesCloseCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesCloseHandle *rch;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_FullPaytoHashP h_payto;
 
   rch = GNUNET_new (struct TALER_EXCHANGE_ReservesCloseHandle);
   rch->cb = cb;
@@ -313,11 +313,11 @@ TALER_EXCHANGE_reserves_close (
     GNUNET_free (rch);
     return NULL;
   }
-  if (NULL != target_payto_uri)
-    TALER_payto_hash (target_payto_uri,
-                      &h_payto);
+  if (NULL != target_payto_uri.full_payto)
+    TALER_full_payto_hash (target_payto_uri,
+                           &h_payto);
   TALER_wallet_reserve_close_sign (rch->ts,
-                                   (NULL != target_payto_uri)
+                                   (NULL != target_payto_uri.full_payto)
                                    ? &h_payto
                                    : NULL,
                                    reserve_priv,
@@ -325,8 +325,8 @@ TALER_EXCHANGE_reserves_close (
   {
     json_t *close_obj = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string ("payto_uri",
-                                 target_payto_uri)),
+        TALER_JSON_pack_full_payto ("payto_uri",
+                                    target_payto_uri)),
       GNUNET_JSON_pack_timestamp ("request_timestamp",
                                   rch->ts),
       GNUNET_JSON_pack_data_auto ("reserve_sig",
