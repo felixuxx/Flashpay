@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2020, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -43,12 +43,12 @@ struct BankAdminCheckState
   /**
    * Expected debit bank account.
    */
-  const char *debit_payto;
+  struct TALER_FullPayto debit_payto;
 
   /**
    * Expected credit bank account.
    */
-  const char *credit_payto;
+  struct TALER_FullPayto credit_payto;
 
   /**
    * Command providing the reserve public key trait to use.
@@ -78,8 +78,8 @@ check_bank_admin_transfer_run (void *cls,
   struct TALER_Amount amount;
   char *debit_account;
   char *credit_account;
-  const char *debit_payto;
-  const char *credit_payto;
+  struct TALER_FullPayto debit_payto;
+  struct TALER_FullPayto credit_payto;
   const struct TALER_ReservePublicKeyP *reserve_pub;
   const struct TALER_TESTING_Command *cmd_ref;
   struct TALER_FAKEBANK_Handle *fakebank;
@@ -141,7 +141,7 @@ check_bank_admin_transfer_run (void *cls,
   credit_account = TALER_xtalerbank_account_from_payto (credit_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted debit_payto (%s) to debit_account (%s)\n",
-              debit_payto,
+              debit_payto.full_payto,
               debit_account);
   if (GNUNET_OK !=
       TALER_FAKEBANK_check_credit (fakebank,
@@ -191,11 +191,11 @@ check_bank_admin_transfer_cleanup (void *cls,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_admin_transfer
-  (const char *label,
+TALER_TESTING_cmd_check_bank_admin_transfer (
+  const char *label,
   const char *amount,
-  const char *debit_payto,
-  const char *credit_payto,
+  struct TALER_FullPayto debit_payto,
+  struct TALER_FullPayto credit_payto,
   const char *reserve_pub_ref)
 {
   struct BankAdminCheckState *bcs;

@@ -67,7 +67,7 @@ struct AdminAddIncomingState
   /**
    * Money sender payto URL.
    */
-  const char *payto_debit_account;
+  struct TALER_FullPayto payto_debit_account;
 
   /**
    * Username to use for authentication.
@@ -356,7 +356,7 @@ admin_add_incoming_run (
   fts->reserve_history.type = TALER_EXCHANGE_RTT_CREDIT;
   fts->reserve_history.amount = fts->amount;
   fts->reserve_history.details.in_details.sender_url
-    = (char *) fts->payto_debit_account; /* remember to NOT free this one... */
+    = fts->payto_debit_account; /* remember to NOT free this one... */
   fts->aih
     = TALER_BANK_admin_add_incoming (
         TALER_TESTING_interpreter_get_context (is),
@@ -422,7 +422,9 @@ admin_add_incoming_traits (void *cls,
                            unsigned int index)
 {
   struct AdminAddIncomingState *fts = cls;
-  static const char *void_uri = "payto://void/the-exchange";
+  static struct TALER_FullPayto void_uri = {
+    .full_payto = (char *) "payto://void/the-exchange?receiver=name=exchange"
+  };
 
   if (MHD_HTTP_OK !=
       fts->expected_http_status)
@@ -431,10 +433,10 @@ admin_add_incoming_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-      TALER_TESTING_make_trait_debit_payto_uri (fts->payto_debit_account),
-      TALER_TESTING_make_trait_payto_uri (fts->payto_debit_account),
+      TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
+      TALER_TESTING_make_trait_full_payto_uri (&fts->payto_debit_account),
       /* Used as a marker, content does not matter */
-      TALER_TESTING_make_trait_credit_payto_uri (void_uri),
+      TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
       TALER_TESTING_make_trait_exchange_bank_account_url (
         fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
@@ -462,9 +464,9 @@ admin_add_incoming_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-      TALER_TESTING_make_trait_debit_payto_uri (fts->payto_debit_account),
+      TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
       /* Used as a marker, content does not matter */
-      TALER_TESTING_make_trait_credit_payto_uri (void_uri),
+      TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
       TALER_TESTING_make_trait_exchange_bank_account_url (
         fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
@@ -499,7 +501,7 @@ admin_add_incoming_traits (void *cls,
 static struct AdminAddIncomingState *
 make_fts (const char *amount,
           const struct TALER_BANK_AuthenticationData *auth,
-          const char *payto_debit_account)
+          const struct TALER_FullPayto payto_debit_account)
 {
   struct AdminAddIncomingState *fts;
 
@@ -549,7 +551,7 @@ TALER_TESTING_cmd_admin_add_incoming (
   const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account)
+  const struct TALER_FullPayto payto_debit_account)
 {
   return make_command (label,
                        make_fts (amount,
@@ -563,7 +565,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (
   const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
+  const struct TALER_FullPayto payto_debit_account,
   const char *ref,
   unsigned int http_status)
 {

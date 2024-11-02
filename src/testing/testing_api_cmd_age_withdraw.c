@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2023 Taler Systems SA
+  Copyright (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ struct AgeWithdrawState
   /**
    * URI of the reserve we are withdrawing from.
    */
-  char *reserve_payto_uri;
+  struct TALER_NormalizedPayto reserve_payto_uri;
 
   /**
    * Private key of the reserve we are withdrawing from.
@@ -151,7 +151,7 @@ struct AgeWithdrawState
    * Set to the KYC requirement payto hash *if* the exchange replied with a
    * request for KYC.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -374,7 +374,7 @@ age_withdraw_cleanup (
   }
   GNUNET_free (aws->coin_outputs);
   GNUNET_free (aws->exchange_url);
-  GNUNET_free (aws->reserve_payto_uri);
+  GNUNET_free (aws->reserve_payto_uri.normalized_payto);
   GNUNET_free (aws);
 }
 
@@ -417,7 +417,7 @@ age_withdraw_traits (
     */
     TALER_TESTING_make_trait_h_blinded_coin (idx,
                                              &aws->blinded_coin_hs[idx]),
-    TALER_TESTING_make_trait_payto_uri (aws->reserve_payto_uri),
+    TALER_TESTING_make_trait_normalized_payto_uri (&aws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (aws->exchange_url),
     TALER_TESTING_make_trait_coin_priv (idx,
                                         &details->coin_priv),

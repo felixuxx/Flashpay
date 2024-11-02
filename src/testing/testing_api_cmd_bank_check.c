@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2022 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -49,12 +49,12 @@ struct BankCheckState
   /**
    * Expected debit bank account.
    */
-  const char *debit_payto;
+  struct TALER_FullPayto debit_payto;
 
   /**
    * Expected credit bank account.
    */
-  const char *credit_payto;
+  struct TALER_FullPayto credit_payto;
 
   /**
    * Binary form of the wire transfer subject.
@@ -92,8 +92,8 @@ check_bank_transfer_run (void *cls,
   char *debit_account;
   char *credit_account;
   const char *exchange_base_url;
-  const char *debit_payto;
-  const char *credit_payto;
+  const struct TALER_FullPayto *debit_payto;
+  const struct TALER_FullPayto *credit_payto;
   struct TALER_FAKEBANK_Handle *fakebank;
 
   (void) cmd;
@@ -121,8 +121,8 @@ check_bank_transfer_run (void *cls,
   if (NULL == bcs->deposit_reference)
   {
     TALER_LOG_INFO ("Deposit reference NOT given\n");
-    debit_payto = bcs->debit_payto;
-    credit_payto = bcs->credit_payto;
+    debit_payto = &bcs->debit_payto;
+    credit_payto = &bcs->credit_payto;
     exchange_base_url = bcs->exchange_base_url;
 
     if (GNUNET_OK !=
@@ -167,15 +167,15 @@ check_bank_transfer_run (void *cls,
       TALER_TESTING_FAIL (is);
     amount = *amount_ptr;
   }
-  debit_account = TALER_xtalerbank_account_from_payto (debit_payto);
-  credit_account = TALER_xtalerbank_account_from_payto (credit_payto);
+  debit_account = TALER_xtalerbank_account_from_payto (*debit_payto);
+  credit_account = TALER_xtalerbank_account_from_payto (*credit_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted debit_payto (%s) to debit_account (%s)\n",
-              debit_payto,
+              debit_payto->full_payto,
               debit_account);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted credit_payto (%s) to credit_account (%s)\n",
-              credit_payto,
+              credit_payto->full_payto,
               credit_account);
   if (GNUNET_OK !=
       TALER_FAKEBANK_check_debit (fakebank,
@@ -246,11 +246,12 @@ check_bank_transfer_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_transfer (const char *label,
-                                       const char *exchange_base_url,
-                                       const char *amount,
-                                       const char *debit_payto,
-                                       const char *credit_payto)
+TALER_TESTING_cmd_check_bank_transfer (
+  const char *label,
+  const char *exchange_base_url,
+  const char *amount,
+  const struct TALER_FullPayto debit_payto,
+  const struct TALER_FullPayto credit_payto)
 {
   struct BankCheckState *bcs;
 

@@ -581,7 +581,7 @@ TALER_full_payto_normalize_and_hash (
  *   payto URL
  */
 char *
-TALER_xtalerbank_account_from_payto (const char *payto);
+TALER_xtalerbank_account_from_payto (const struct TALER_FullPayto payto);
 
 
 /**

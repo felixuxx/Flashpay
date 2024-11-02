@@ -55,7 +55,7 @@ struct AdminAddKycauthState
   /**
    * Money sender payto URL.
    */
-  const char *payto_debit_account;
+  struct TALER_FullPayto payto_debit_account;
 
   /**
    * Username to use for authentication.
@@ -298,15 +298,17 @@ admin_add_kycauth_traits (void *cls,
                           unsigned int index)
 {
   struct AdminAddKycauthState *fts = cls;
-  static const char *void_uri = "payto://void/the-exchange";
+  static struct TALER_FullPayto void_uri = {
+    .full_payto = (char *) "payto://void/the-exchange?receiver=name=exchange"
+  };
   struct TALER_TESTING_Trait traits[] = {
     /* must be first! */
     TALER_TESTING_make_trait_account_priv (&fts->account_priv),
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-    TALER_TESTING_make_trait_debit_payto_uri (fts->payto_debit_account),
-    TALER_TESTING_make_trait_payto_uri (fts->payto_debit_account),
+    TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
+    TALER_TESTING_make_trait_full_payto_uri (&fts->payto_debit_account),
     /* Used as a marker, content does not matter */
-    TALER_TESTING_make_trait_credit_payto_uri (void_uri),
+    TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
     TALER_TESTING_make_trait_exchange_bank_account_url (
       fts->exchange_credit_url),
     TALER_TESTING_make_trait_amount (&fts->amount),
@@ -340,7 +342,7 @@ admin_add_kycauth_traits (void *cls,
 static struct AdminAddKycauthState *
 make_fts (const char *amount,
           const struct TALER_BANK_AuthenticationData *auth,
-          const char *payto_debit_account,
+          const struct TALER_FullPayto payto_debit_account,
           const char *account_ref)
 {
   struct AdminAddKycauthState *fts;
@@ -369,7 +371,7 @@ TALER_TESTING_cmd_admin_add_kycauth (
   const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
+  const struct TALER_FullPayto payto_debit_account,
   const char *account_ref)
 {
   struct TALER_TESTING_Command cmd = {

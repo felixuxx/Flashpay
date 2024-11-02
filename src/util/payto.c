@@ -171,21 +171,21 @@ TALER_payto_get_method (const char *payto_uri)
 
 
 char *
-TALER_xtalerbank_account_from_payto (const char *payto)
+TALER_xtalerbank_account_from_payto (const struct TALER_FullPayto payto)
 {
   const char *host;
   const char *beg;
   const char *nxt;
   const char *end;
 
-  if (0 != strncasecmp (payto,
+  if (0 != strncasecmp (payto.full_payto,
                         PAYTO "x-taler-bank/",
                         strlen (PAYTO "x-taler-bank/")))
   {
     GNUNET_break_op (0);
     return NULL;
   }
-  host = &payto[strlen (PAYTO "x-taler-bank/")];
+  host = &payto.full_payto[strlen (PAYTO "x-taler-bank/")];
   beg = strchr (host,
                 '/');
   if (NULL == beg)
