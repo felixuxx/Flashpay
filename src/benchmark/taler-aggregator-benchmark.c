@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2021 Taler Systems SA
+  (C) 2021, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU Affero General Public License as
@@ -210,7 +210,7 @@ struct Merchant
   /**
    * Account information for the merchant.
    */
-  char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
 };
 
@@ -367,7 +367,7 @@ work (void *cls)
                                    UINT64_MAX);
   rnd2 = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
                                    UINT64_MAX);
-  GNUNET_asprintf (&m.payto_uri,
+  GNUNET_asprintf (&m.payto_uri.full_payto,
                    "payto://x-taler-bank/localhost:8082/account-%llX-%llX",
                    (unsigned long long) rnd1,
                    (unsigned long long) rnd2);
@@ -382,18 +382,14 @@ work (void *cls)
   {
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
-    GNUNET_free (m.payto_uri);
-    GNUNET_SCHEDULER_shutdown ();
-    return;
+    goto exit;
   }
   for (unsigned int i = 0; i<howmany_deposits; i++)
   {
     if (! add_deposit (&m))
     {
       global_ret = EXIT_FAILURE;
-      GNUNET_SCHEDULER_shutdown ();
-      GNUNET_free (m.payto_uri);
-      return;
+      goto exit;
     }
   }
   if (0 <=
@@ -401,9 +397,7 @@ work (void *cls)
   {
     if (0 == --howmany_merchants)
     {
-      GNUNET_SCHEDULER_shutdown ();
-      GNUNET_free (m.payto_uri);
-      return;
+      goto exit;
     }
   }
   else
@@ -411,9 +405,14 @@ work (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to commit, will try again\n");
   }
-  GNUNET_free (m.payto_uri);
+  GNUNET_free (m.payto_uri.full_payto);
   task = GNUNET_SCHEDULER_add_now (&work,
                                    NULL);
+  return;
+exit:
+  GNUNET_SCHEDULER_shutdown ();
+  GNUNET_free (m.payto_uri.full_payto);
+  return;
 }
 
 
