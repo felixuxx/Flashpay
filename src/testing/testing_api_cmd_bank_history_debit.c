@@ -52,10 +52,6 @@ struct History
    */
   char *c_url;
 
-  /**
-   * URL to free.
-   */
-  char *d_url;
 };
 
 
@@ -146,7 +142,7 @@ print_expected (struct History *h,
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 TALER_B2S (&h[i].details.wtid),
-                h[i].details.credit_account_uri);
+                h[i].details.credit_account_uri.full_payto);
   }
 }
 
@@ -204,10 +200,9 @@ command_cb (void *cls,
 {
   struct IteratorContext *ic = cls;
   struct HistoryState *hs = ic->hs;
-
   const uint64_t *row_id;
-  const char *debit_account;
-  const char *credit_account;
+  const struct TALER_FullPayto *debit_account;
+  const struct TALER_FullPayto *credit_account;
   const struct TALER_Amount *amount;
   const struct TALER_WireTransferIdentifierRawP *wtid;
   const char *exchange_base_url;
@@ -256,17 +251,17 @@ command_cb (void *cls,
     return;
   }
   TALER_LOG_INFO ("Found history: %s->%s for account %s\n",
-                  debit_account,
-                  credit_account,
+                  debit_account->full_payto,
+                  credit_account->full_payto,
                   hs->account_url);
   /* found matching record, make sure we have room */
   if (ic->pos == ic->total)
     GNUNET_array_grow (ic->h,
                        ic->total,
                        ic->pos * 2);
-  ic->h[ic->pos].c_url = GNUNET_strdup (credit_account);
-  ic->h[ic->pos].d_url = GNUNET_strdup (debit_account);
-  ic->h[ic->pos].details.credit_account_uri = ic->h[ic->pos].c_url;
+  ic->h[ic->pos].c_url = GNUNET_strdup (credit_account->full_payto);
+  ic->h[ic->pos].details.credit_account_uri.full_payto
+    = ic->h[ic->pos].c_url;
   ic->h[ic->pos].details.amount = *amount;
   ic->h[ic->pos].row_id = *row_id;
   ic->h[ic->pos].details.wtid = *wtid;
@@ -335,69 +330,6 @@ build_history (struct HistoryState *hs,
 
 
 /**
- * Normalize IBAN-based payto URI in @a in.
- *
- * @param in input payto://-URI to normalize
- * @return normalized IBAN for the test
- */
-static char *
-normalize (const char *in)
-{
-  char *npt;
-  const char *q = strchr (in,
-                          '?');
-  const char *mptr;
-  const char *bic;
-  const char *iban;
-
-  if (NULL == q)
-    npt = GNUNET_strdup (in);
-  else
-    npt = GNUNET_strndup (in,
-                          q - in);
-  if (0 != strncasecmp (npt,
-                        "payto://",
-                        strlen ("payto://")))
-  {
-    GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Invalid payto: %s\n",
-                npt);
-    GNUNET_free (npt);
-    return NULL;
-  }
-  mptr = npt + strlen ("payto://");
-  bic = strchr (mptr, '/');
-  if (NULL == bic)
-  {
-    GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Invalid payto: %s\n",
-                npt);
-    GNUNET_free (npt);
-    return NULL;
-  }
-  bic++;
-  iban = strchr (bic, '/');
-  if (NULL != iban)
-  {
-    /* need to remove bic */
-    char *n;
-
-    iban++;
-    GNUNET_asprintf (&n,
-                     "payto://%.*s/%s",
-                     (int) ((bic - mptr) - 1),
-                     mptr,
-                     iban);
-    GNUNET_free (npt);
-    npt = n;
-  }
-  return npt;
-}
-
-
-/**
  * Check that the "/history/outgoing" response matches the
  * CMD whose offset in the list of CMDs is @a off.
  *
@@ -414,9 +346,6 @@ check_result (struct History *h,
               unsigned int off,
               const struct TALER_BANK_DebitDetails *details)
 {
-  char *u1;
-  char *u2;
-
   if (off >= total)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -429,31 +358,23 @@ check_result (struct History *h,
                     off);
     return GNUNET_SYSERR;
   }
-  u1 = normalize (h[off].details.credit_account_uri);
-  if (NULL == u1)
-    return GNUNET_SYSERR;
-  u2 = normalize (details->credit_account_uri);
-  if (NULL == u2)
-  {
-    GNUNET_free (u1);
-    return GNUNET_SYSERR;
-  }
   if ( (0 != GNUNET_memcmp (&h[off].details.wtid,
                             &details->wtid)) ||
        (0 != TALER_amount_cmp (&h[off].details.amount,
                                &details->amount)) ||
-       (0 != strcasecmp (u1,
-                         u2)) )
+       (0 != TALER_full_payto_normalize_and_cmp (
+          h[off].details.credit_account_uri,
+          details->credit_account_uri)) )
   {
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "expected debit_account_uri: %s with %s for %s\n",
-                u1,
+                h[off].details.credit_account_uri.full_payto,
                 TALER_amount2s (&h[off].details.amount),
                 TALER_B2S (&h[off].details.wtid));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "actual debit_account_uri: %s with %s for %s\n",
-                u2,
+                details->credit_account_uri.full_payto,
                 TALER_amount2s (&details->amount),
                 TALER_B2S (&details->wtid));
     print_expected (h,
@@ -631,7 +552,6 @@ history_cleanup (void *cls,
   for (unsigned int off = 0; off<hs->total; off++)
   {
     GNUNET_free (hs->h[off].c_url);
-    GNUNET_free (hs->h[off].d_url);
   }
   GNUNET_free (hs->h);
   GNUNET_free (hs);

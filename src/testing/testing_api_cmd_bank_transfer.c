@@ -57,12 +57,12 @@ struct TransferState
   /**
    * Money receiver payto URL.
    */
-  char *payto_debit_account;
+  struct TALER_FullPayto payto_debit_account;
 
   /**
    * Money receiver account URL.
    */
-  const char *payto_credit_account;
+  struct TALER_FullPayto payto_credit_account;
 
   /**
    * Username to use for authentication.
@@ -231,7 +231,7 @@ transfer_run (void *cls,
               "Transfer of %s from %s to %s\n",
               TALER_amount2s (&fts->amount),
               fts->account_debit_url,
-              fts->payto_credit_account);
+              fts->payto_credit_account.full_payto);
   TALER_BANK_prepare_transfer (fts->payto_credit_account,
                                &fts->amount,
                                fts->exchange_base_url,
@@ -282,7 +282,6 @@ transfer_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (fts->retry_task);
     fts->retry_task = NULL;
   }
-  GNUNET_free (fts->payto_debit_account);
   GNUNET_free (fts);
 }
 
@@ -309,9 +308,9 @@ transfer_traits (void *cls,
       fts->exchange_base_url),
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_credit_payto_uri (
-      fts->payto_credit_account),
+      &fts->payto_credit_account),
     TALER_TESTING_make_trait_debit_payto_uri (
-      fts->payto_debit_account),
+      &fts->payto_debit_account),
     TALER_TESTING_make_trait_amount (&fts->amount),
     TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
     TALER_TESTING_make_trait_wtid (&fts->wtid),
@@ -329,8 +328,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer (const char *label,
                             const char *amount,
                             const struct TALER_BANK_AuthenticationData *auth,
-                            const char *payto_debit_account,
-                            const char *payto_credit_account,
+                            struct TALER_FullPayto payto_debit_account,
+                            struct TALER_FullPayto payto_credit_account,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             const char *exchange_base_url)
 {
@@ -339,7 +338,7 @@ TALER_TESTING_cmd_transfer (const char *label,
   fts = GNUNET_new (struct TransferState);
   fts->account_debit_url = auth->wire_gateway_url;
   fts->exchange_base_url = exchange_base_url;
-  fts->payto_debit_account = GNUNET_strdup (payto_debit_account);
+  fts->payto_debit_account = payto_debit_account;
   fts->payto_credit_account = payto_credit_account;
   fts->auth = *auth;
   fts->wtid = *wtid;
