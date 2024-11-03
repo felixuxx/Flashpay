@@ -220,7 +220,9 @@ TEH_handler_kyc_check (
         TALER_EC_GENERIC_PATH_SEGMENT_MALFORMED,
         "h_payto");
     }
-
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Checking KYC status for normalized payto hash %s\n",
+                args[0]);
     TALER_MHD_parse_request_header_auto (
       rc->connection,
       TALER_HTTP_HEADER_ACCOUNT_OWNER_SIGNATURE,

@@ -14,13 +14,30 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-BEGIN;
+CREATE FUNCTION foreign_table_legitimization_outcomes7()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT DEFAULT 'legitimization_outcomes';
+BEGIN
 
-SELECT _v.register_patch('exchange-0007', NULL, NULL);
-SET search_path TO exchange;
+  EXECUTE FORMAT (
+    'ALTER TABLE ' || table_name ||
+    ' DROP CONSTRAINT ' || table_name || '_foreign_key_h_payto');
+END
+$$;
 
-#include "0007-wire_targets.sql"
-#include "0007-legitimization_outcomes.sql"
 
-
-COMMIT;
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('legitimization_outcomes7'
+    ,'exchange-0007'
+    ,'foreign'
+    ,TRUE
+    ,FALSE);

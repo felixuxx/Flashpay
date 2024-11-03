@@ -39,7 +39,7 @@ TEH_PG_lookup_h_payto_by_access_token (
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type (
-      "wire_target_h_payto",
+      "h_normalized_payto",
       h_payto),
     GNUNET_PQ_result_spec_end
   };

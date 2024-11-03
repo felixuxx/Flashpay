@@ -18,7 +18,7 @@
 DROP FUNCTION IF EXISTS exchange_do_lookup_kyc_requirement_by_row;
 
 CREATE FUNCTION exchange_do_lookup_kyc_requirement_by_row(
-  IN in_h_payto BYTEA,
+  IN in_h_normalized_payto BYTEA,
   OUT out_account_pub BYTEA,  -- NULL allowed
   OUT out_reserve_pub BYTEA, -- NULL allowed
   OUT out_access_token BYTEA, -- NULL if 'out_not_found'
@@ -38,7 +38,7 @@ SELECT access_token
       ,target_pub
   INTO my_wtrec
   FROM wire_targets
- WHERE wire_target_h_payto=in_h_payto;
+ WHERE h_normalized_payto=in_h_normalized_payto;
 
 IF NOT FOUND
 THEN
@@ -66,7 +66,7 @@ SELECT jnew_rules
       ,to_investigate
   INTO my_lorec
   FROM legitimization_outcomes
- WHERE h_payto=in_h_payto
+ WHERE h_payto=in_h_normalized_payto
    AND is_active;
 
 IF FOUND
@@ -80,8 +80,15 @@ END IF;
 SELECT reserve_pub
   INTO out_reserve_pub
   FROM reserves_in
- WHERE wire_source_h_payto=in_h_payto
+ WHERE wire_source_h_payto
+   IN (SELECT wire_source_h_payto
+         FROM wire_targets
+        WHERE h_normalized_payto=in_h_normalized_payto)
  ORDER BY execution_date DESC
  LIMIT 1;
+-- FIXME: may want to turn this around and pass *in* the
+-- reserve_pub as an argument and then not LIMIT 1 but check
+-- if any reserve_pub ever matched (and just return a BOOL
+-- to indicate if the kyc-auth is OK).
 
 END $$;

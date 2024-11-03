@@ -45,7 +45,7 @@ TEH_PG_lookup_pending_legitimization (
       "jmeasures",
       jmeasures),
     GNUNET_PQ_result_spec_auto_from_type (
-      "wire_target_h_payto",
+      "h_normalized_payto",
       h_payto),
     GNUNET_PQ_result_spec_auto_from_type (
       "access_token",

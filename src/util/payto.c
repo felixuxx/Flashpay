@@ -723,6 +723,10 @@ TALER_normalized_payto_hash (const struct TALER_NormalizedPayto npayto,
   GNUNET_memcpy (h_npayto,
                  &sha512,
                  sizeof (*h_npayto));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Normalized hash of normalized payto `%s' is %16s\n",
+              npayto.normalized_payto,
+              GNUNET_h2s_full (&sha512));
 }
 
 
@@ -740,6 +744,10 @@ TALER_full_payto_hash (const struct TALER_FullPayto fpayto,
   GNUNET_memcpy (h_fpayto,
                  &sha512,
                  sizeof (*h_fpayto));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Full hash of full payto `%s' is %16s\n",
+              fpayto.full_payto,
+              GNUNET_h2s_full (&sha512));
 }
 
 

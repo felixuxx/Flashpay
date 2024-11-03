@@ -34,6 +34,11 @@
  */
 #define MAX_LEGI_LOOPS 5
 
+/**
+ * Enable additional sanity-checks for debugging?
+ */
+#define EXTRA_CHECK 0
+
 
 struct TEH_KycAmlTrigger
 {
@@ -1203,6 +1208,17 @@ setup_legitimization_check (
 {
   struct TEH_LegitimizationCheckHandle *lch;
 
+#if EXTRA_CHECK
+  {
+    struct TALER_NormalizedPaytoHashP npt;
+
+    TALER_full_payto_normalize_and_hash (payto_uri,
+                                         &npt);
+    GNUNET_assert (0 ==
+                   GNUNET_memcmp (&npt,
+                                  h_payto));
+  }
+#endif
   lch = GNUNET_new (struct TEH_LegitimizationCheckHandle);
   lch->scope = *scope;
   lch->et = et;
@@ -1462,6 +1478,20 @@ run_check (
     enum GNUNET_DB_QueryStatus qs;
 
     /* require kcc.check! */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Requiring KYC for `%s'\n",
+                lch->payto_uri.full_payto);
+#if EXTRA_CHECK
+    {
+      struct TALER_NormalizedPaytoHashP npt;
+
+      TALER_full_payto_normalize_and_hash (lch->payto_uri,
+                                           &npt);
+      GNUNET_assert (0 ==
+                     GNUNET_memcmp (&npt,
+                                    &lch->h_payto));
+    }
+#endif
     qs = TEH_plugin->trigger_kyc_rule_for_account (
       TEH_plugin->cls,
       lch->payto_uri,
