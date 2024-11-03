@@ -484,14 +484,14 @@ run (void *cls,
     TALER_TESTING_cmd_reserve_close (
       "reserve-101-close-kyc",
       "create-reserve-101",
-      /* 42b => not to origin */
-      "payto://x-taler-bank/localhost/42b?receiver-name=42b",
+      /* 44 => not to origin */
+      cred.user44_payto,
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
     TALER_TESTING_cmd_admin_add_kycauth (
       "setup-account-key",
       "EUR:0.01",
       &cred.ba,
-      "payto://x-taler-bank/localhost/42b?receiver-name=42b",
+      cred.user44_payto,
       NULL /* create new key */),
     CMD_EXEC_WIREWATCH (
       "import-kyc-account"),
@@ -526,8 +526,8 @@ run (void *cls,
     TALER_TESTING_cmd_reserve_close (
       "reserve-101-close",
       "create-reserve-101",
-      /* 42b => not to origin */
-      "payto://x-taler-bank/localhost/42b?receiver-name=42b",
+      /* 44 => not to origin */
+      cred.user44_payto,
       MHD_HTTP_OK),
     TALER_TESTING_cmd_exec_closer (
       "close-reserves-101",

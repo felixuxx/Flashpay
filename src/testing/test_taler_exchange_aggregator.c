@@ -41,6 +41,8 @@ struct TALER_TESTING_Credentials cred;
 static char *config_filename;
 
 #define USER42_ACCOUNT "42"
+#define USER43_ACCOUNT "43"
+#define USER44_ACCOUNT "44"
 
 
 /**
@@ -51,8 +53,8 @@ static char *config_filename;
  * @param cfg_fn configuration file to use
  */
 #define CMD_EXEC_AGGREGATOR(label, cfg_fn)                                 \
-  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", cfg_fn), \
-  TALER_TESTING_cmd_exec_transfer (label "-transfer", cfg_fn)
+        TALER_TESTING_cmd_exec_aggregator (label "-aggregator", cfg_fn), \
+        TALER_TESTING_cmd_exec_transfer (label "-transfer", cfg_fn)
 
 
 /**
@@ -127,7 +129,7 @@ run (void *cls,
     TALER_TESTING_cmd_insert_deposit ("do-deposit-3a",
                                       cred.cfg,
                                       "bob",
-                                      "4",
+                                      USER43_ACCOUNT,
                                       GNUNET_TIME_timestamp_get (),
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:1",
@@ -135,7 +137,7 @@ run (void *cls,
     TALER_TESTING_cmd_insert_deposit ("do-deposit-3b",
                                       cred.cfg,
                                       "bob",
-                                      "5",
+                                      USER44_ACCOUNT,
                                       GNUNET_TIME_timestamp_get (),
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:1",
@@ -143,7 +145,7 @@ run (void *cls,
     TALER_TESTING_cmd_insert_deposit ("do-deposit-3c",
                                       cred.cfg,
                                       "alice",
-                                      "4",
+                                      USER43_ACCOUNT,
                                       GNUNET_TIME_timestamp_get (),
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:1",
@@ -155,17 +157,17 @@ run (void *cls,
                                            cred.exchange_url,
                                            "EUR:0.89",
                                            cred.exchange_payto,
-                                           "payto://x-taler-bank/localhost/4?receiver-name=4"),
+                                           cred.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3b",
                                            cred.exchange_url,
                                            "EUR:0.89",
                                            cred.exchange_payto,
-                                           "payto://x-taler-bank/localhost/4?receiver-name=4"),
+                                           cred.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3c",
                                            cred.exchange_url,
                                            "EUR:0.89",
                                            cred.exchange_payto,
-                                           "payto://x-taler-bank/localhost/5?receiver-name=5"),
+                                           cred.user44_payto),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-after-3"),
 
     /* checking that aggregator waits for the deadline. */

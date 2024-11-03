@@ -164,6 +164,11 @@ struct TALER_TESTING_Credentials
    * RFC 8905 URI of a user.
    */
   struct TALER_FullPayto user43_payto;
+
+  /**
+   * RFC 8905 URI of a user.
+   */
+  struct TALER_FullPayto user44_payto;
 };
 
 

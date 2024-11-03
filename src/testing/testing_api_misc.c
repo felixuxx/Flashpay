@@ -168,6 +168,8 @@ TALER_TESTING_get_credentials (
       = GNUNET_strdup ("payto://x-taler-bank/localhost/42?receiver-name=42");
     ua->user43_payto.full_payto
       = GNUNET_strdup ("payto://x-taler-bank/localhost/43?receiver-name=43");
+    ua->user44_payto.full_payto
+      = GNUNET_strdup ("payto://x-taler-bank/localhost/44?receiver-name=44");
     break;
   case TALER_TESTING_BS_IBAN:
     ua->exchange_payto
@@ -178,6 +180,9 @@ TALER_TESTING_get_credentials (
     ua->user43_payto.full_payto
       = GNUNET_strdup (
           "payto://iban/SANDBOXX/GB33BUKB20201555555555?receiver-name=User43");
+    ua->user44_payto.full_payto
+      = GNUNET_strdup (
+          "payto://iban/SANDBOXX/NL05RABO5361965189?receiver-name=User44");
     break;
   }
   return GNUNET_OK;
