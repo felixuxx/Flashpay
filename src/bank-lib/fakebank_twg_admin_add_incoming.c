@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016-2023 Taler Systems SA
+  (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -74,7 +74,7 @@ TALER_FAKEBANK_twg_admin_add_incoming_ (
     break;
   }
   {
-    const char *debit_account;
+    struct TALER_FullPayto debit_account;
     struct TALER_Amount amount;
     struct TALER_ReservePublicKeyP reserve_pub;
     char *debit;
@@ -82,8 +82,8 @@ TALER_FAKEBANK_twg_admin_add_incoming_ (
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                    &reserve_pub),
-      GNUNET_JSON_spec_string ("debit_account",
-                               &debit_account),
+      TALER_JSON_spec_full_payto_uri ("debit_account",
+                                      &debit_account),
       TALER_JSON_spec_amount ("amount",
                               h->currency,
                               &amount),
@@ -120,7 +120,7 @@ TALER_FAKEBANK_twg_admin_add_incoming_ (
         connection,
         MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
-        debit_account);
+        debit_account.full_payto);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s\n",

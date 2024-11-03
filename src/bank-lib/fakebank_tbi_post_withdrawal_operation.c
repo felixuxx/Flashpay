@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016-2023 Taler Systems SA
+  (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -50,7 +50,7 @@ do_post_withdrawal (
   struct MHD_Connection *connection,
   const char *wopid,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  const char *exchange_payto_uri,
+  const struct TALER_FullPayto exchange_payto_uri,
   const struct TALER_Amount *amount)
 {
   struct WithdrawalOperation *wo;
@@ -233,7 +233,7 @@ TALER_FAKEBANK_tbi_post_withdrawal (
 
   {
     struct TALER_ReservePublicKeyP reserve_pub;
-    const char *exchange_payto_url;
+    struct TALER_FullPayto exchange_payto_url;
     enum GNUNET_GenericReturnValue ret;
     struct TALER_Amount amount;
     bool amount_missing;
@@ -241,8 +241,8 @@ TALER_FAKEBANK_tbi_post_withdrawal (
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                    &reserve_pub),
-      GNUNET_JSON_spec_string ("selected_exchange",
-                               &exchange_payto_url),
+      TALER_JSON_spec_full_payto_uri ("selected_exchange",
+                                      &exchange_payto_url),
       GNUNET_JSON_spec_mark_optional (
         TALER_JSON_spec_amount ("amount",
                                 h->currency,

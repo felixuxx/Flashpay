@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016-2023 Taler Systems SA
+  (C) 2016-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -88,7 +88,7 @@ TALER_FAKEBANK_handle_transfer_ (
   {
     struct GNUNET_HashCode uuid;
     struct TALER_WireTransferIdentifierRawP wtid;
-    const char *credit_account;
+    struct TALER_FullPayto credit_account;
     char *credit;
     const char *base_url;
     struct TALER_Amount amount;
@@ -103,8 +103,8 @@ TALER_FAKEBANK_handle_transfer_ (
                                &base_url),
       GNUNET_JSON_spec_fixed_auto ("wtid",
                                    &wtid),
-      GNUNET_JSON_spec_string ("credit_account",
-                               &credit_account),
+      TALER_JSON_spec_full_payto_uri ("credit_account",
+                                      &credit_account),
       GNUNET_JSON_spec_end ()
     };
 
@@ -125,7 +125,7 @@ TALER_FAKEBANK_handle_transfer_ (
         connection,
         MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
-        credit_account);
+        credit_account.full_payto);
     }
     ret = TALER_FAKEBANK_make_transfer_ (h,
                                          account,
