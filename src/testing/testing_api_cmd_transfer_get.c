@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2020, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -99,7 +99,6 @@ track_transfer_cleanup (
   void *cls,
   const struct TALER_TESTING_Command *cmd)
 {
-
   struct TrackTransferState *tts = cls;
 
   if (NULL != tts->tth)
@@ -217,13 +216,13 @@ track_transfer_cb (
       if (NULL != tts->wire_details_reference)
       {
         const struct TALER_TESTING_Command *wire_details_cmd;
-        const char *payto_uri;
-        struct TALER_PaytoHashP h_payto;
+        const struct TALER_FullPayto *payto_uri;
+        struct TALER_FullPaytoHashP h_payto;
 
         wire_details_cmd
-          = TALER_TESTING_interpreter_lookup_command (is,
-                                                      tts->
-                                                      wire_details_reference);
+          = TALER_TESTING_interpreter_lookup_command (
+              is,
+              tts->wire_details_reference);
         if (NULL == wire_details_cmd)
         {
           GNUNET_break (0);
@@ -231,15 +230,15 @@ track_transfer_cb (
           return;
         }
         if (GNUNET_OK !=
-            TALER_TESTING_get_trait_payto_uri (wire_details_cmd,
-                                               &payto_uri))
+            TALER_TESTING_get_trait_full_payto_uri (wire_details_cmd,
+                                                    &payto_uri))
         {
           GNUNET_break (0);
           TALER_TESTING_interpreter_fail (is);
           return;
         }
-        TALER_payto_hash (payto_uri,
-                          &h_payto);
+        TALER_full_payto_hash (*payto_uri,
+                               &h_payto);
         if (0 != GNUNET_memcmp (&h_payto,
                                 &ta->h_payto))
         {

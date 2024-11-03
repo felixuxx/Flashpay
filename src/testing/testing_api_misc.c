@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2023 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -60,7 +60,7 @@ TALER_TESTING_get_credentials (
   struct TALER_TESTING_Credentials *ua)
 {
   unsigned long long port;
-  char *exchange_payto_uri;
+  struct TALER_FullPayto exchange_payto_uri;
 
   ua->cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
@@ -80,10 +80,11 @@ TALER_TESTING_get_credentials (
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (ua->cfg,
-                                             exchange_account_section,
-                                             "PAYTO_URI",
-                                             &exchange_payto_uri))
+      GNUNET_CONFIGURATION_get_value_string (
+        ua->cfg,
+        exchange_account_section,
+        "PAYTO_URI",
+        &exchange_payto_uri.full_payto))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                exchange_account_section,
@@ -163,18 +164,18 @@ TALER_TESTING_get_credentials (
   case TALER_TESTING_BS_FAKEBANK:
     ua->exchange_payto
       = exchange_payto_uri;
-    ua->user42_payto
+    ua->user42_payto.full_payto
       = GNUNET_strdup ("payto://x-taler-bank/localhost/42?receiver-name=42");
-    ua->user43_payto
+    ua->user43_payto.full_payto
       = GNUNET_strdup ("payto://x-taler-bank/localhost/43?receiver-name=43");
     break;
   case TALER_TESTING_BS_IBAN:
     ua->exchange_payto
       = exchange_payto_uri;
-    ua->user42_payto
+    ua->user42_payto.full_payto
       = GNUNET_strdup (
           "payto://iban/SANDBOXX/FR7630006000011234567890189?receiver-name=User42");
-    ua->user43_payto
+    ua->user43_payto.full_payto
       = GNUNET_strdup (
           "payto://iban/SANDBOXX/GB33BUKB20201555555555?receiver-name=User43");
     break;
@@ -184,7 +185,7 @@ TALER_TESTING_get_credentials (
 
 
 json_t *
-TALER_TESTING_make_wire_details (const char *payto)
+TALER_TESTING_make_wire_details (struct TALER_FullPayto payto)
 {
   struct TALER_WireSaltP salt;
 
@@ -193,8 +194,8 @@ TALER_TESTING_make_wire_details (const char *payto)
           47,
           sizeof (salt));
   return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             payto),
+    TALER_JSON_pack_full_payto ("payto_uri",
+                                payto),
     GNUNET_JSON_pack_data_auto ("salt",
                                 &salt));
 }

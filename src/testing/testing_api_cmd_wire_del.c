@@ -48,7 +48,7 @@ struct WireDelState
   /**
    * Account to del.
    */
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Expected HTTP response code.
@@ -194,7 +194,7 @@ wire_del_cleanup (void *cls,
 
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire_del (const char *label,
-                            const char *payto_uri,
+                            struct TALER_FullPayto payto_uri,
                             unsigned int expected_http_status,
                             bool bad_sig)
 {

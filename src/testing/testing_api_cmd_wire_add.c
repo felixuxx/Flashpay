@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2023 Taler Systems SA
+  Copyright (C) 2020-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ struct WireAddState
   /**
    * Account to add.
    */
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
 
   /**
    * Expected HTTP response code.
@@ -218,7 +218,7 @@ wire_add_cleanup (void *cls,
 
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire_add (const char *label,
-                            const char *payto_uri,
+                            struct TALER_FullPayto payto_uri,
                             unsigned int expected_http_status,
                             bool bad_sig)
 {

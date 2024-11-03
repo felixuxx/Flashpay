@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2022 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -41,13 +41,13 @@
  * How long do we wait AT LEAST if the exchange says the reserve is unknown?
  */
 #define UNKNOWN_MIN_BACKOFF GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 10)
+          GNUNET_TIME_UNIT_MILLISECONDS, 10)
 
 /**
  * How long do we wait AT MOST if the exchange says the reserve is unknown?
  */
 #define UNKNOWN_MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
-    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+          GNUNET_TIME_UNIT_MILLISECONDS, 100)
 
 /**
  * State for a "withdraw" CMD.
@@ -93,7 +93,7 @@ struct WithdrawState
   /**
    * URI if the reserve we are withdrawing from.
    */
-  char *reserve_payto_uri;
+  struct TALER_NormalizedPayto reserve_payto_uri;
 
   /**
    * Private key of the reserve we are withdrawing from.
@@ -179,7 +179,7 @@ struct WithdrawState
    * Set to the KYC requirement payto hash *if* the exchange replied with a
    * request for KYC.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -499,7 +499,7 @@ withdraw_cleanup (void *cls,
   if (ws->age > 0)
     TALER_age_commitment_proof_free (&ws->age_commitment_proof);
   GNUNET_free (ws->exchange_url);
-  GNUNET_free (ws->reserve_payto_uri);
+  GNUNET_free (ws->reserve_payto_uri.normalized_payto);
   GNUNET_free (ws);
 }
 
@@ -540,8 +540,8 @@ withdraw_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
     TALER_TESTING_make_trait_amount (&ws->amount),
     TALER_TESTING_make_trait_legi_requirement_row (&ws->requirement_row),
-    TALER_TESTING_make_trait_h_payto (&ws->h_payto),
-    TALER_TESTING_make_trait_payto_uri (ws->reserve_payto_uri),
+    TALER_TESTING_make_trait_h_normalized_payto (&ws->h_payto),
+    TALER_TESTING_make_trait_normalized_payto_uri (&ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (ws->exchange_url),
     TALER_TESTING_make_trait_age_commitment_proof (0,
                                                    0 < ws->age

@@ -60,7 +60,7 @@ struct AmlDecisionState
   /**
    * Payto hash of the account we are manipulating the AML settings for.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Justification given.
@@ -141,7 +141,7 @@ take_aml_decision_run (void *cls,
 {
   struct AmlDecisionState *ds = cls;
   struct GNUNET_TIME_Timestamp now;
-  const struct TALER_PaytoHashP *h_payto;
+  const struct TALER_NormalizedPaytoHashP *h_payto;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
   const char *exchange_url;
@@ -203,8 +203,8 @@ take_aml_decision_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_h_payto (ref,
-                                       &h_payto))
+      TALER_TESTING_get_trait_h_normalized_payto (ref,
+                                                  &h_payto))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -350,25 +350,31 @@ take_aml_decision_run (void *cls,
     }
     GNUNET_assert (off == num_measures);
 
-    ds->dh = TALER_EXCHANGE_post_aml_decision (
-      TALER_TESTING_interpreter_get_context (is),
-      exchange_url,
-      h_payto,
-      NULL, /* payto_uri */
-      now,
-      ds->successor_measure,
-      new_measures,
-      expiration_time,
-      num_rules,
-      rules,
-      num_measures,
-      measures,
-      ds->properties,
-      ds->keep_investigating,
-      ds->justification,
-      officer_priv,
-      &take_aml_decision_cb,
-      ds);
+    {
+      struct TALER_FullPayto null_payto = {
+        .full_payto = NULL
+      };
+
+      ds->dh = TALER_EXCHANGE_post_aml_decision (
+        TALER_TESTING_interpreter_get_context (is),
+        exchange_url,
+        h_payto,
+        null_payto,
+        now,
+        ds->successor_measure,
+        new_measures,
+        expiration_time,
+        num_rules,
+        rules,
+        num_measures,
+        measures,
+        ds->properties,
+        ds->keep_investigating,
+        ds->justification,
+        officer_priv,
+        &take_aml_decision_cb,
+        ds);
+    }
     for (unsigned int j = 0; j<num_rules; j++)
     {
       struct TALER_EXCHANGE_AccountRule *rule = &rules[j];
@@ -429,7 +435,7 @@ take_aml_decision_traits (void *cls,
 {
   struct AmlDecisionState *ws = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_h_payto (&ws->h_payto),
+    TALER_TESTING_make_trait_h_normalized_payto (&ws->h_payto),
     TALER_TESTING_make_trait_aml_justification (ws->justification),
     TALER_TESTING_trait_end ()
   };
