@@ -114,19 +114,29 @@ main (int argc,
   GNUNET_assert (NULL != r);
   GNUNET_free (r);
   r = TALER_xtalerbank_account_from_payto (
-    "payto://x-taler-bank/localhost:1080/alice");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/localhost:1080/alice?receiver-name=alice"
+  });
   CHECK ("alice",
          r);
   r = TALER_xtalerbank_account_from_payto (
-    "payto://x-taler-bank/localhost:1080/path/alice");
+    (struct TALER_FullPayto) {
+    (char *) "payto://x-taler-bank/localhost:1080/path/alice?receiver-name=bob"
+  });
   CHECK ("alice",
          r);
   r = TALER_xtalerbank_account_from_payto (
-    "payto://x-taler-bank/localhost:1080/path/alice?receiver-name=ali/cia");
+    (struct TALER_FullPayto) {
+    (char *)
+    "payto://x-taler-bank/localhost:1080/path/alice?receiver-name=ali/cia"
+  });
   CHECK ("alice",
          r);
   r = TALER_xtalerbank_account_from_payto (
-    "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1");
+    (struct TALER_FullPayto) {
+    (char *)
+    "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1&receiver-name=bob"
+  });
   CHECK ("alice",
          r);
 

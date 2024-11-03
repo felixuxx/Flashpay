@@ -16,7 +16,7 @@
 
 DROP FUNCTION IF EXISTS exchange_do_insert_programmatic_legitimization_outcome;
 CREATE OR REPLACE FUNCTION exchange_do_insert_programmatic_legitimization_outcome(
-  IN in_h_payto BYTEA,
+  IN in_h_normalized_payto BYTEA,
   IN in_decision_time INT8,
   IN in_expiration_time INT8,
   IN in_properties TEXT,
@@ -38,16 +38,17 @@ BEGIN
 out_account_unknown=FALSE;
 
 -- Note: in_payto_uri is allowed to be NULL *if*
--- in_h_payto is already in wire_targets
+-- in_h_normalized_payto is already in wire_targets
 SELECT access_token
   INTO my_access_token
   FROM wire_targets
- WHERE wire_target_h_payto=in_h_payto;
+ WHERE h_normalized_payto=in_h_normalized_payto;
 
 -- Very strange, should never happen that we
 -- take an AML decision on an unknown account!
 IF NOT FOUND
 THEN
+  RAISE NOTICE 'failed to find account for which AML decision was to be taken (bug)';
   out_account_unknown=TRUE;
   RETURN;
 END IF;
@@ -98,7 +99,7 @@ END IF;
 
 UPDATE legitimization_outcomes
    SET is_active=FALSE
- WHERE h_payto=in_h_payto
+ WHERE h_payto=in_h_normalized_payto
    -- this clause is a minor optimization to avoid
    -- updating outcomes that have long expired.
    AND expiration_time >= in_decision_time;
@@ -113,7 +114,7 @@ INSERT INTO legitimization_outcomes
   ,jnew_rules
   )
   VALUES
-  (in_h_payto
+  (in_h_normalized_payto
   ,in_decision_time
   ,in_expiration_time
   ,in_properties
@@ -139,7 +140,7 @@ INSERT INTO legitimization_outcomes
 --  ,decider_pub
 --  ,decider_sig
 --  ) VALUES
---  (in_h_payto
+--  (in_h_normalized_payto
 --  ,my_outcome_serial_id
 --  ,in_justification
 --  ,in_decider_pub
@@ -151,7 +152,7 @@ INSERT INTO kyc_alerts
   (h_payto
   ,trigger_type)
   VALUES
-  (in_h_payto,1)
+  (in_h_normalized_payto,1)
    ON CONFLICT DO NOTHING;
 
 
