@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2021, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -60,7 +60,7 @@ struct TrackTransactionState
    * Note: set based on our @e merchant_payto_uri, as
    * the exchange does not respond with the payto hash.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -77,7 +77,7 @@ struct TrackTransactionState
   /**
    * Payto URI of the merchant receiving the deposit.
    */
-  char *merchant_payto_uri;
+  struct TALER_FullPayto merchant_payto_uri;
 
   /**
    * Index of the coin involved in the transaction.  Recall:
@@ -164,8 +164,8 @@ deposit_wtid_cb (
     break;
   case MHD_HTTP_ACCEPTED:
     /* allowed, nothing to check here */
-    TALER_payto_hash (tts->merchant_payto_uri,
-                      &tts->h_payto);
+    TALER_full_payto_normalize_and_hash (tts->merchant_payto_uri,
+                                         &tts->h_payto);
     tts->requirement_row
       = dr->details.accepted.requirement_row;
     break;
@@ -237,7 +237,7 @@ deposits_get_run (
     TALER_TESTING_interpreter_fail (tts->is);
     return;
   }
-  tts->merchant_payto_uri
+  tts->merchant_payto_uri.full_payto
     = GNUNET_strdup (json_string_value (json_object_get (wire_details,
                                                          "payto_uri")));
   if (GNUNET_OK !=
@@ -311,7 +311,7 @@ deposits_get_cleanup (
     TALER_EXCHANGE_deposits_get_cancel (tts->tth);
     tts->tth = NULL;
   }
-  GNUNET_free (tts->merchant_payto_uri);
+  GNUNET_free (tts->merchant_payto_uri.full_payto);
   GNUNET_free (tts);
 }
 
@@ -336,8 +336,8 @@ deposits_get_traits (void *cls,
     TALER_TESTING_make_trait_wtid (&tts->wtid),
     TALER_TESTING_make_trait_legi_requirement_row (
       &tts->requirement_row),
-    TALER_TESTING_make_trait_h_payto (&tts->h_payto),
-    TALER_TESTING_make_trait_payto_uri (tts->merchant_payto_uri),
+    TALER_TESTING_make_trait_h_normalized_payto (&tts->h_payto),
+    TALER_TESTING_make_trait_full_payto_uri (&tts->merchant_payto_uri),
     TALER_TESTING_trait_end ()
   };
 

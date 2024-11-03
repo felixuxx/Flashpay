@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2022 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ struct BatchWithdrawState
   /**
    * URI if the reserve we are withdrawing from.
    */
-  char *reserve_payto_uri;
+  struct TALER_NormalizedPayto reserve_payto_uri;
 
   /**
    * Private key of the reserve we are withdrawing from.
@@ -150,7 +150,7 @@ struct BatchWithdrawState
    * Set to the KYC requirement payto hash *if* the exchange replied with a
    * request for KYC.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -416,7 +416,7 @@ batch_withdraw_cleanup (void *cls,
   }
   GNUNET_free (ws->coins);
   GNUNET_free (ws->exchange_url);
-  GNUNET_free (ws->reserve_payto_uri);
+  GNUNET_free (ws->reserve_payto_uri.normalized_payto);
   GNUNET_free (ws);
 }
 
@@ -462,8 +462,8 @@ batch_withdraw_traits (void *cls,
     TALER_TESTING_make_trait_amounts (index,
                                       &cs->amount),
     TALER_TESTING_make_trait_legi_requirement_row (&ws->requirement_row),
-    TALER_TESTING_make_trait_h_payto (&ws->h_payto),
-    TALER_TESTING_make_trait_payto_uri (ws->reserve_payto_uri),
+    TALER_TESTING_make_trait_h_normalized_payto (&ws->h_payto),
+    TALER_TESTING_make_trait_normalized_payto_uri (&ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (ws->exchange_url),
     TALER_TESTING_make_trait_age_commitment_proof (index,
                                                    ws->age > 0 ?

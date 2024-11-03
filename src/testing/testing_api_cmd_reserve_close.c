@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -46,7 +46,7 @@ struct CloseState
   /**
    * payto://-URI where to wire the funds.
    */
-  const char *target_account;
+  struct TALER_FullPayto target_account;
 
   /**
    * Private key of the reserve being analyzed.
@@ -72,7 +72,7 @@ struct CloseState
    * Set to the KYC requirement payto hash *if* the exchange replied with a
    * request for KYC.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -216,7 +216,7 @@ close_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_legi_requirement_row (
       &cs->requirement_row),
-    TALER_TESTING_make_trait_h_payto (
+    TALER_TESTING_make_trait_h_normalized_payto (
       &cs->h_payto),
     TALER_TESTING_trait_end ()
   };
@@ -233,7 +233,7 @@ close_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_reserve_close (const char *label,
                                  const char *reserve_reference,
-                                 const char *target_account,
+                                 struct TALER_FullPayto target_account,
                                  unsigned int expected_response_code)
 {
   struct CloseState *ss;

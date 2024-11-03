@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2023 Taler Systems SA
+  (C) 2023, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -152,7 +152,7 @@ TALER_TESTING_cmd_run_fakebank (
 {
   struct RunFakebankState *rfs;
   unsigned long long fakebank_port;
-  char *exchange_payto_uri;
+  struct TALER_FullPayto exchange_payto_uri;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cfg,
@@ -169,7 +169,7 @@ TALER_TESTING_cmd_run_fakebank (
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              exchange_account_section,
                                              "PAYTO_URI",
-                                             &exchange_payto_uri))
+                                             &exchange_payto_uri.full_payto))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                exchange_account_section,
@@ -195,9 +195,8 @@ TALER_TESTING_cmd_run_fakebank (
                      (unsigned int) fakebank_port,
                      exchange_xtalerbank_account);
     GNUNET_free (exchange_xtalerbank_account);
-    GNUNET_free (exchange_payto_uri);
   }
-  GNUNET_free (exchange_payto_uri);
+  GNUNET_free (exchange_payto_uri.full_payto);
   rfs->ba.method = TALER_BANK_AUTH_NONE;
   {
     struct TALER_TESTING_Command cmd = {

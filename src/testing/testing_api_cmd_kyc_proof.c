@@ -126,7 +126,7 @@ proof_kyc_run (void *cls,
 {
   struct KycProofGetState *kps = cls;
   const struct TALER_TESTING_Command *res_cmd;
-  const struct TALER_PaytoHashP *h_payto;
+  const struct TALER_NormalizedPaytoHashP *h_payto;
   char *uargs;
   const char *exchange_url;
 
@@ -148,8 +148,8 @@ proof_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_h_payto (res_cmd,
-                                       &h_payto))
+      TALER_TESTING_get_trait_h_normalized_payto (res_cmd,
+                                                  &h_payto))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kps->is);

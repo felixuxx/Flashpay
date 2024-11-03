@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2022 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -181,7 +181,7 @@ struct BatchDepositState
    * Set to the KYC requirement payto hash *if* the exchange replied with a
    * request for KYC.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -274,11 +274,11 @@ batch_deposit_run (void *cls,
   enum TALER_ErrorCode ec;
   struct TALER_WireSaltP wire_salt;
   struct TALER_MerchantWireHashP h_wire;
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct TALER_EXCHANGE_CoinDepositDetail cdds[ds->num_coins];
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("salt",
                                  &wire_salt),
     GNUNET_JSON_spec_end ()
@@ -614,7 +614,7 @@ batch_deposit_traits (void *cls,
       TALER_TESTING_make_trait_refund_deadline (index,
                                                 &ds->refund_deadline),
       TALER_TESTING_make_trait_legi_requirement_row (&ds->requirement_row),
-      TALER_TESTING_make_trait_h_payto (&ds->h_payto),
+      TALER_TESTING_make_trait_h_normalized_payto (&ds->h_payto),
       TALER_TESTING_trait_end ()
     };
 
@@ -631,7 +631,7 @@ batch_deposit_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch_deposit (
   const char *label,
-  const char *target_account_payto,
+  const struct TALER_FullPayto target_account_payto,
   const char *contract_terms,
   struct GNUNET_TIME_Relative refund_deadline,
   unsigned int expected_response_code,

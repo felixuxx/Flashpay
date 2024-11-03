@@ -155,7 +155,7 @@ check_aml_decisions_run (
   struct TALER_TESTING_Interpreter *is)
 {
   struct AmlCheckState *ds = cls;
-  const struct TALER_PaytoHashP *h_payto = NULL;
+  const struct TALER_NormalizedPaytoHashP *h_payto = NULL;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
   const char *exchange_url;
@@ -193,7 +193,7 @@ check_aml_decisions_run (
       return;
     }
     GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_h_payto (
+                   TALER_TESTING_get_trait_h_normalized_payto (
                      ref,
                      &h_payto));
   }

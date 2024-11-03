@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -138,7 +138,7 @@ insert_deposit_run (void *cls,
   struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
   struct TALER_DenominationPublicKey dpk;
   struct TALER_DenominationPrivateKey denom_priv;
-  char *receiver_wire_account;
+  struct TALER_FullPayto receiver_wire_account;
 
   (void) cmd;
   if (NULL == ids->plugin)
@@ -254,13 +254,13 @@ insert_deposit_run (void *cls,
                                             &dpk));
     TALER_blinded_denom_sig_free (&bds);
   }
-  GNUNET_asprintf (&receiver_wire_account,
+  GNUNET_asprintf (&receiver_wire_account.full_payto,
                    "payto://x-taler-bank/localhost/%s?receiver-name=%s",
                    ids->merchant_account,
                    ids->merchant_account);
   bd.receiver_wire_account = receiver_wire_account;
-  TALER_payto_hash (bd.receiver_wire_account,
-                    &bd.wire_target_h_payto);
+  TALER_full_payto_hash (bd.receiver_wire_account,
+                         &bd.wire_target_h_payto);
   memset (&bd.wire_salt,
           46,
           sizeof (bd.wire_salt));
@@ -297,7 +297,7 @@ insert_deposit_run (void *cls,
     {
       GNUNET_break (0);
       ids->plugin->rollback (ids->plugin->cls);
-      GNUNET_free (receiver_wire_account);
+      GNUNET_free (receiver_wire_account.full_payto);
       TALER_denom_pub_free (&dpk);
       TALER_denom_priv_free (&denom_priv);
       TALER_TESTING_interpreter_fail (is);
@@ -308,7 +308,7 @@ insert_deposit_run (void *cls,
   TALER_denom_sig_free (&deposit.coin.denom_sig);
   TALER_denom_pub_free (&dpk);
   TALER_denom_priv_free (&denom_priv);
-  GNUNET_free (receiver_wire_account);
+  GNUNET_free (receiver_wire_account.full_payto);
   TALER_TESTING_interpreter_next (is);
 }
 

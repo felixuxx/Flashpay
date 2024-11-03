@@ -1392,7 +1392,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_reserve_close (
   const char *label,
   const char *reserve_reference,
-  const char *target_account,
+  struct TALER_FullPayto target_account,
   unsigned int expected_response_code);
 
 

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2023 Taler Systems SA
+  Copyright (C) 2018-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -311,10 +311,10 @@ deposit_run (void *cls,
   struct TALER_PrivateContractHashP h_contract_terms;
   enum TALER_ErrorCode ec;
   struct TALER_WireSaltP wire_salt;
-  const char *payto_uri;
+  struct TALER_FullPayto payto_uri;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri",
-                             &payto_uri),
+    TALER_JSON_spec_full_payto_uri ("payto_uri",
+                                    &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("salt",
                                  &wire_salt),
     GNUNET_JSON_spec_end ()
@@ -713,7 +713,7 @@ TALER_TESTING_cmd_deposit (
   const char *label,
   const char *coin_reference,
   unsigned int coin_index,
-  const char *target_account_payto,
+  struct TALER_FullPayto target_account_payto,
   const char *contract_terms,
   struct GNUNET_TIME_Relative refund_deadline,
   const char *amount,
@@ -776,7 +776,7 @@ TALER_TESTING_cmd_deposit_with_ref (
   const char *label,
   const char *coin_reference,
   unsigned int coin_index,
-  const char *target_account_payto,
+  struct TALER_FullPayto target_account_payto,
   const char *contract_terms,
   struct GNUNET_TIME_Relative refund_deadline,
   const char *amount,

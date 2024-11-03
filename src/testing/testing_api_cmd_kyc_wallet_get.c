@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -46,7 +46,7 @@ struct KycWalletGetState
   /**
    * Payto URI of the reserve of the wallet.
    */
-  char *reserve_payto_uri;
+  struct TALER_NormalizedPayto reserve_payto_uri;
 
   /**
    * Our command.
@@ -67,7 +67,7 @@ struct KycWalletGetState
    * Set to the KYC requirement payto hash *if* the exchange replied with a
    * request for KYC (#MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS).
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -226,7 +226,7 @@ wallet_kyc_cleanup (
     TALER_EXCHANGE_kyc_wallet_cancel (kwg->kwh);
     kwg->kwh = NULL;
   }
-  GNUNET_free (kwg->reserve_payto_uri);
+  GNUNET_free (kwg->reserve_payto_uri.normalized_payto);
   GNUNET_free (kwg);
 }
 
@@ -258,10 +258,10 @@ wallet_kyc_traits (void *cls,
       &kwg->account_pub.reserve_pub),
     TALER_TESTING_make_trait_legi_requirement_row (
       &kwg->requirement_row),
-    TALER_TESTING_make_trait_h_payto (
+    TALER_TESTING_make_trait_h_normalized_payto (
       &kwg->h_payto),
-    TALER_TESTING_make_trait_payto_uri (
-      kwg->reserve_payto_uri),
+    TALER_TESTING_make_trait_normalized_payto_uri (
+      &kwg->reserve_payto_uri),
     TALER_TESTING_trait_end ()
   };
 

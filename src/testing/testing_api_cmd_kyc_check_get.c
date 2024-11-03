@@ -126,7 +126,7 @@ check_kyc_run (void *cls,
   struct KycCheckGetState *kcg = cls;
   const struct TALER_TESTING_Command *res_cmd;
   const struct TALER_TESTING_Command *acc_cmd;
-  const struct TALER_PaytoHashP *h_payto;
+  const struct TALER_NormalizedPaytoHashP *h_payto;
   const union TALER_AccountPrivateKeyP *account_priv;
 
   (void) cmd;
@@ -150,7 +150,7 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_h_payto (
+      TALER_TESTING_get_trait_h_normalized_payto (
         res_cmd,
         &h_payto))
   {

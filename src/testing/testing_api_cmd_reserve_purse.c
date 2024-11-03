@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022, 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ struct ReservePurseState
    * Hash of the payto://-URI for the reserve we are
    * merging into.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
    * Set to the KYC requirement row *if* the exchange replied with
@@ -225,7 +225,7 @@ purse_run (void *cls,
           ds->expiration_rel));
 
   {
-    char *payto_uri;
+    struct TALER_NormalizedPayto payto_uri;
     const char *exchange_url;
     const struct TALER_TESTING_Command *exchange_cmd;
 
@@ -246,9 +246,9 @@ purse_run (void *cls,
       = TALER_reserve_make_payto (
           exchange_url,
           &ds->account_pub.reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &ds->h_payto);
-    GNUNET_free (payto_uri);
+    TALER_normalized_payto_hash (payto_uri,
+                                 &ds->h_payto);
+    GNUNET_free (payto_uri.normalized_payto);
   }
 
   GNUNET_assert (0 ==
@@ -351,7 +351,7 @@ purse_traits (void *cls,
       &ds->reserve_sig),
     TALER_TESTING_make_trait_legi_requirement_row (
       &ds->requirement_row),
-    TALER_TESTING_make_trait_h_payto (
+    TALER_TESTING_make_trait_h_normalized_payto (
       &ds->h_payto),
     TALER_TESTING_trait_end ()
   };

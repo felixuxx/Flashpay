@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -124,8 +124,9 @@ history_entry_cmp (
     if ( (0 ==
           TALER_amount_cmp (&h1->amount,
                             &h2->amount)) &&
-         (0 == strcasecmp (h1->details.in_details.sender_url,
-                           h2->details.in_details.sender_url)) &&
+         (0 ==
+          TALER_full_payto_cmp (h1->details.in_details.sender_url,
+                                h2->details.in_details.sender_url)) &&
          (h1->details.in_details.wire_reference ==
           h2->details.in_details.wire_reference) &&
          (GNUNET_TIME_timestamp_cmp (h1->details.in_details.timestamp,
@@ -196,7 +197,8 @@ history_entry_cmp (
          &&
          (GNUNET_TIME_timestamp_cmp (h1->details.merge_details.purse_expiration,
                                      ==,
-                                     h2->details.merge_details.purse_expiration))
+                                     h2->details.merge_details.purse_expiration)
+         )
          &&
          (0 ==
           GNUNET_memcmp (&h1->details.merge_details.merge_pub,
