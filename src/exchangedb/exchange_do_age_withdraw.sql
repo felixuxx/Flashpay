@@ -53,8 +53,8 @@ SELECT current_balance
       ,birthday
       ,gc_date
   INTO reserve
-  FROM exchange.reserves
- WHERE reserves.reserve_pub=rpub;
+  FROM reserves
+ WHERE reserve_pub=rpub;
 
 IF NOT FOUND
 THEN
@@ -124,10 +124,10 @@ UPDATE reserves SET
   gc_date=min_reserve_gc
  ,current_balance=balance
 WHERE
-  reserves.reserve_pub=rpub;
+  reserve_pub=rpub;
 
 -- Write the commitment into the age-withdraw table
-INSERT INTO exchange.age_withdraw
+INSERT INTO age_withdraw
   (h_commitment
   ,max_age
   ,amount_with_fee

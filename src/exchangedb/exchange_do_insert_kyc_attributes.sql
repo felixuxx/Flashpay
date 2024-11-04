@@ -110,7 +110,10 @@ UPDATE reserves
  WHERE (reserve_pub IN
     (SELECT reserve_pub
        FROM reserves_in
-      WHERE wire_source_h_payto=in_h_payto) )
+      WHERE wire_source_h_payto IN
+        (SELECT wire_source_h_payto
+           FROM wire_targets
+          WHERE h_normalized_payto=in_h_payto) ) )
 -- The next 3 clauses primarily serve to limit
 -- unnecessary updates for reserves we do not
 -- care about anymore.
