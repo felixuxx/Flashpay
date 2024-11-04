@@ -79,7 +79,7 @@ TEH_PG_get_kyc_rules (
            "  LEFT JOIN reserves_in ri"
            "    ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
            "  LEFT JOIN legitimization_outcomes lo"
-           "    ON (lo.h_payto = wt.wire_target_h_payto)"
+           "    ON (lo.h_payto = wt.h_normalized_payto)"
            " WHERE wt.h_normalized_payto=$1"
            "   AND COALESCE(lo.expiration_time >= $2, TRUE)"
            "   AND COALESCE(lo.is_active, TRUE)"

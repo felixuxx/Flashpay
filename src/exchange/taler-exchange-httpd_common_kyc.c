@@ -1669,10 +1669,11 @@ legitimization_check_run (
       break;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "get_kyc_rules returned %d/%d/%d\n",
+                "get_kyc_rules returned %d/%d/%d/%d\n",
                 (int) qs,
                 ! no_account_pub,
-                ! no_reserve_pub);
+                ! no_reserve_pub,
+                NULL != jrules);
 
     lch->lcr.kyc.have_account_pub
       = ! no_account_pub;
