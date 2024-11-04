@@ -112,7 +112,7 @@ get_transients_cb (void *cls,
 enum GNUNET_DB_QueryStatus
 TEH_PG_find_aggregation_transient (
   void *cls,
-  const struct TALER_FullPaytoHashP *h_payto,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
   TALER_EXCHANGEDB_TransientAggregationCallback cb,
   void *cb_cls)
 {
@@ -132,14 +132,14 @@ TEH_PG_find_aggregation_transient (
   PREPARE (pg,
            "find_transient_aggregations",
            "SELECT"
-           "  amount"
-           " ,wtid_raw"
-           " ,merchant_pub"
-           " ,payto_uri"
-           " FROM aggregation_transient atr"
-           " JOIN wire_targets wt"
+           "  atr.amount"
+           " ,atr.wtid_raw"
+           " ,atr.merchant_pub"
+           " ,wt.payto_uri"
+           " FROM wire_targets wt"
+           " JOIN aggregation_transient atr"
            "   USING (wire_target_h_payto)"
-           " WHERE atr.wire_target_h_payto=$1;");
+           " WHERE wt.h_normalized_payto=$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "find_transient_aggregations",
                                              params,

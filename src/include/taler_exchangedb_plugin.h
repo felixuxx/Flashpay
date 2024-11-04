@@ -4757,7 +4757,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
     (*find_aggregation_transient)(
     void *cls,
-    const struct TALER_FullPaytoHashP *h_payto,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
     TALER_EXCHANGEDB_TransientAggregationCallback cb,
     void *cb_cls);
 

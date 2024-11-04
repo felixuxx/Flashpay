@@ -1065,6 +1065,8 @@ handle_transient_cb (
     return false;
   }
   au->payto_uri = payto_uri;
+  TALER_full_payto_hash (payto_uri,
+                         &au->h_full_payto);
   au->wtid = *wtid;
   au->merchant_pub = *merchant_pub;
   au->trans = *total;
@@ -1113,6 +1115,9 @@ drain_kyc_alerts (void *cls)
     qs = db_plugin->drain_kyc_alert (db_plugin->cls,
                                      1,
                                      &au.h_normalized_payto);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found %d KYC alerts\n",
+                (int) qs);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -1144,7 +1149,7 @@ drain_kyc_alerts (void *cls)
 
     au.ret = GNUNET_OK;
     qs = db_plugin->find_aggregation_transient (db_plugin->cls,
-                                                &au.h_full_payto,
+                                                &au.h_normalized_payto,
                                                 &handle_transient_cb,
                                                 &au);
     switch (qs)

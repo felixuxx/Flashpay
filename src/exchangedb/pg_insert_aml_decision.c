@@ -96,8 +96,9 @@ TEH_PG_insert_aml_decision (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  TALER_full_payto_hash (payto_uri,
-                         &h_full_payto);
+  if (NULL != payto_uri.full_payto)
+    TALER_full_payto_hash (payto_uri,
+                           &h_full_payto);
   PREPARE (pg,
            "do_insert_aml_decision",
            "SELECT"
