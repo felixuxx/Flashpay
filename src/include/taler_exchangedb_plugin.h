@@ -7679,6 +7679,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] unknown_account set to TRUE if @a h_payto does not refer to a known account and @a jmeasures was given
    * @param[out] last_date set to the previous decision time;
    *   the INSERT is not performed if @a last_date is not before @a decision_time
+   * @param[out] legitimization_measure_serial_id serial ID of the legitimization measures
+   *   of the decision
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -7698,7 +7700,8 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_AmlOfficerSignatureP *decider_sig,
     bool *invalid_officer,
     bool *unknown_account,
-    struct GNUNET_TIME_Timestamp *last_date);
+    struct GNUNET_TIME_Timestamp *last_date,
+    uint64_t *legitimization_measure_serial_id);
 
 
   /**

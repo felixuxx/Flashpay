@@ -44,7 +44,8 @@ TEH_PG_insert_aml_decision (
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,
   bool *unknown_account,
-  struct GNUNET_TIME_Timestamp *last_date)
+  struct GNUNET_TIME_Timestamp *last_date,
+  uint64_t *legitimization_measure_serial_id)
 {
   struct PostgresClosure *pg = cls;
   struct TALER_KycCompletedEventP rep = {
@@ -85,6 +86,8 @@ TEH_PG_insert_aml_decision (
                                 unknown_account),
     GNUNET_PQ_result_spec_timestamp ("out_last_date",
                                      last_date),
+    GNUNET_PQ_result_spec_uint64 ("out_legitimization_measure_serial_id",
+                                  legitimization_measure_serial_id),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -95,6 +98,7 @@ TEH_PG_insert_aml_decision (
            " out_invalid_officer"
            ",out_account_unknown"
            ",out_last_date"
+           ",out_legitimization_measure_serial_id"
            " FROM exchange_do_insert_aml_decision"
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

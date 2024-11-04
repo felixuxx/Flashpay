@@ -168,6 +168,7 @@ TEH_handler_post_aml_decision (
   struct TALER_PaytoHashP h_payto;
   struct TALER_AmlOfficerSignatureP officer_sig;
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
+  uint64_t legi_measure_serial_id = 0;
   MHD_RESULT ret;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_mark_optional (
@@ -332,7 +333,8 @@ TEH_handler_post_aml_decision (
                                           &officer_sig,
                                           &invalid_officer,
                                           &unknown_account,
-                                          &last_date);
+                                          &last_date,
+                                          &legi_measure_serial_id);
     json_decref (jmeasures);
     if (qs <= 0)
     {
@@ -381,6 +383,7 @@ TEH_handler_post_aml_decision (
   {
     const struct TALER_KYCLOGIC_Measure *instant_ms = NULL;
     struct MHD_Response *empty_response;
+    enum GNUNET_DB_QueryStatus qs;
 
     if (NULL != new_measures)
     {
@@ -394,6 +397,7 @@ TEH_handler_post_aml_decision (
          to select some measure and contribute their KYC data. */
       json_t *attributes
         = json_object ();   /* instant: empty attributes */
+      uint64_t process_row;
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Running instant measure after AML decision\n");
@@ -403,10 +407,31 @@ TEH_handler_post_aml_decision (
         = MHD_create_response_from_buffer_static (0,
                                                   "");
       GNUNET_assert (NULL != empty_response);
+
+      qs = TEH_plugin->insert_kyc_requirement_process (
+        TEH_plugin->cls,
+        &h_payto,
+        0, /* measure index */
+        legi_measure_serial_id,
+        "SKIP",
+        NULL, /* provider_account_id */
+        NULL, /* provider_legitimziation_id */
+        &process_row);
+      if (qs < 0)
+      {
+        GNUNET_break (0);
+        ret = TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_STORE_FAILED,
+          "insert_kyc_requirement_process");
+        goto done;
+      }
+      /* FIXME: Insert start time of KYC process' AML program */
       adc->kat
         = TEH_kyc_finished2 (
             &rc->async_scope_id,
-            0LL,
+            process_row,
             instant_ms,
             &h_payto,
             "SKIP",   /* provider */

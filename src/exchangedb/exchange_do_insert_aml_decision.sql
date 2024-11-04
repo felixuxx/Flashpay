@@ -31,7 +31,8 @@ CREATE FUNCTION exchange_do_insert_aml_decision(
   IN in_notify_s TEXT,
   OUT out_invalid_officer BOOLEAN,
   OUT out_account_unknown BOOLEAN,
-  OUT out_last_date INT8)
+  OUT out_last_date INT8,
+  OUT out_legitimization_measure_serial_id INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -40,6 +41,7 @@ DECLARE
 BEGIN
 
 out_account_unknown=FALSE;
+out_legitimization_measure_serial_id=0;
 
 
 -- Check officer is eligible to make decisions.
@@ -132,7 +134,11 @@ THEN
       (my_access_token
       ,in_decision_time
       ,in_jmeasures
-      ,1);
+      ,1)
+      RETURNING
+        legitimization_measure_serial_id
+      INTO
+        out_legitimization_measure_serial_id;
   END IF;
 
   -- end if for where we had in_jmeasures
