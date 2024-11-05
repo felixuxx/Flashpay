@@ -613,6 +613,7 @@ TEH_handler_kyc_info (
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
   }
+  /* FIXME: We should instead long-poll on the running KYC program. */
   if (contains_instant_measure (jmeasures))
   {
     json_decref (jmeasures);

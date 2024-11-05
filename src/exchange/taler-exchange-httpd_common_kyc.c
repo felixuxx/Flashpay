@@ -1709,7 +1709,7 @@ legitimization_check_run (
                     "KYC: merchant_pub does not match target_pub of custom rules!\n");
         json_decref (jrules);
         fail_kyc_auth (lch);
-        return;
+        goto cleanup;
       }
     }
 
@@ -1758,6 +1758,7 @@ legitimization_check_run (
       {
         run_check (lch,
                    &kcc);
+        goto cleanup;
       }
     }
   }
@@ -1772,19 +1773,17 @@ legitimization_check_run (
   if (qs < 0)
   {
     GNUNET_break (0);
-    TALER_KYCLOGIC_rules_free (lrs);
     legi_fail (lch,
                TALER_EC_GENERIC_DB_FETCH_FAILED,
                "kyc_test_required");
-    GNUNET_async_scope_restore (&old_scope);
-    return;
+    goto cleanup;
   }
   if (lch->lcr.bad_kyc_auth)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC auth required\n");
     fail_kyc_auth (lch);
-    return;
+    goto cleanup;
   }
 
   if (NULL == requirement)
@@ -1803,8 +1802,7 @@ legitimization_check_run (
       = GNUNET_SCHEDULER_add_now (
           &async_return_legi_result,
           lch);
-    GNUNET_async_scope_restore (&old_scope);
-    return;
+    goto cleanup;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1844,11 +1842,9 @@ legitimization_check_run (
       legi_fail (lch,
                  TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
                  NULL);
-      GNUNET_async_scope_restore (&old_scope);
-      return;
+      goto cleanup;
     }
-    GNUNET_async_scope_restore (&old_scope);
-    return;
+    goto cleanup;
   }
 
   /* No instant measure, store all measures in the database and
@@ -1884,24 +1880,23 @@ legitimization_check_run (
     legi_fail (lch,
                TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
                "trigger_kyc_rule_for_account");
-    GNUNET_async_scope_restore (&old_scope);
-    return;
+    goto cleanup;
   }
-  TALER_KYCLOGIC_rules_free (lrs);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
     legi_fail (lch,
                TALER_EC_GENERIC_DB_STORE_FAILED,
                "trigger_kyc_rule_for_account");
-    GNUNET_async_scope_restore (&old_scope);
-    return;
+    goto cleanup;
   }
   /* return success! */
   lch->async_task
     = GNUNET_SCHEDULER_add_now (
         &async_return_legi_result,
         lch);
+cleanup:
+  TALER_KYCLOGIC_rules_free (lrs);
   GNUNET_async_scope_restore (&old_scope);
 }
 
