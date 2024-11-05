@@ -483,7 +483,7 @@ add_kyc_history_entry (
 
 
 struct TEH_KycAmlTrigger *
-TEH_kyc_finished2 (
+TEH_kyc_finished (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
@@ -609,37 +609,6 @@ TEH_kyc_finished2 (
     return NULL;
   }
   return kat;
-}
-
-
-struct TEH_KycAmlTrigger *
-TEH_kyc_finished (
-  const struct GNUNET_AsyncScopeId *scope,
-  uint64_t process_row,
-  const struct TALER_NormalizedPaytoHashP *account_id,
-  const char *provider_name,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  struct GNUNET_TIME_Absolute expiration,
-  const json_t *attributes,
-  unsigned int http_status,
-  struct MHD_Response *response,
-  TEH_KycAmlTriggerCallback cb,
-  void *cb_cls)
-{
-  return TEH_kyc_finished2 (scope,
-                            process_row,
-                            NULL,
-                            account_id,
-                            provider_name,
-                            provider_user_id,
-                            provider_legitimization_id,
-                            expiration,
-                            attributes,
-                            http_status,
-                            response,
-                            cb,
-                            cb_cls);
 }
 
 
@@ -1829,7 +1798,7 @@ legitimization_check_run (
 
     GNUNET_assert (NULL != attributes);
     lch->kat
-      = TEH_kyc_finished2 (
+      = TEH_kyc_finished (
           &lch->scope,
           0LL,
           instant_ms,

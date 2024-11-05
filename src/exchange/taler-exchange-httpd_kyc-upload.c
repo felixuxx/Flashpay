@@ -584,6 +584,7 @@ TEH_handler_kyc_upload (
     uc->kat = TEH_kyc_finished (
       &rc->async_scope_id,
       legi_process_row,
+      NULL, /* instant_measure */
       &h_payto,
       "FORM",
       NULL /* provider account */,

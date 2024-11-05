@@ -210,6 +210,7 @@ webhook_finished_cb (
     kwh->kat = TEH_kyc_finished (
       &kwh->rc->async_scope_id,
       process_row,
+      NULL, /* instant_measure */
       account_id,
       provider_name,
       provider_user_id,

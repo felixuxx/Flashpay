@@ -431,7 +431,7 @@ TEH_handler_post_aml_decision (
       }
       /* FIXME: Insert start time of KYC process' AML program */
       adc->kat
-        = TEH_kyc_finished2 (
+        = TEH_kyc_finished (
             &rc->async_scope_id,
             process_row,
             instant_ms,

@@ -303,6 +303,7 @@ proof_cb (
     kpc->kat = TEH_kyc_finished (
       &rc->async_scope_id,
       kpc->process_row,
+      NULL, /* instant_measure */
       &kpc->h_payto,
       kpc->provider_name,
       provider_user_id,
