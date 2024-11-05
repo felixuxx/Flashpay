@@ -1333,16 +1333,24 @@ legi_check_aml_program_cb (
       expiration_time
         = TALER_KYCLOGIC_rules_get_expiration (lrs);
       TALER_KYCLOGIC_rules_free (lrs);
-      qs = TEH_plugin->insert_programmatic_legitimization_outcome (
+      qs = TEH_plugin->insert_kyc_measure_result (
         TEH_plugin->cls,
+        lch->lcr.kyc.requirement_row,
         &lch->h_payto,
-        GNUNET_TIME_timestamp_get (),
+        0, /* birthday */
+        GNUNET_TIME_timestamp_get (), /* decision time */
+        "SKIP",
+        NULL,
+        NULL,
         expiration_time.abs_time,
         apr->details.success.account_properties,
-        apr->details.success.to_investigate,
         apr->details.success.new_rules,
+        apr->details.success.to_investigate,
         apr->details.success.num_events,
-        apr->details.success.events);
+        apr->details.success.events,
+        0, /* enc attr size */
+        NULL /* enc attrs*/
+        );
       switch (qs)
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
@@ -1388,14 +1396,66 @@ run_check (
   struct TEH_LegitimizationCheckHandle *lch,
   const struct TALER_KYCLOGIC_KycCheckContext *kcc)
 {
+  enum GNUNET_DB_QueryStatus qs;
   json_t *jmeasures;
 
   jmeasures
     = TALER_KYCLOGIC_check_to_measures (kcc);
+
+  /* require kcc.check! */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requiring KYC for `%s'\n",
+              lch->payto_uri.full_payto);
+#if EXTRA_CHECK
+  {
+    struct TALER_NormalizedPaytoHashP npt;
+
+    TALER_full_payto_normalize_and_hash (lch->payto_uri,
+                                         &npt);
+    GNUNET_assert (0 ==
+                   GNUNET_memcmp (&npt,
+                                  &lch->h_payto));
+  }
+#endif
+  qs = TEH_plugin->trigger_kyc_rule_for_account (
+    TEH_plugin->cls,
+    lch->payto_uri,
+    &lch->h_payto,
+    lch->have_account_pub ? &lch->account_pub : NULL,
+    lch->have_merchant_pub ? &lch->merchant_pub : NULL,
+    jmeasures,
+    0, /* no particular priority */
+    &lch->lcr.kyc.requirement_row,
+    &lch->lcr.bad_kyc_auth);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    legi_fail (lch,
+               TALER_EC_GENERIC_DB_STORE_FAILED,
+               "trigger_kyc_rule_for_account");
+    goto cleanup;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    legi_fail (lch,
+               TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+               "trigger_kyc_rule_for_account");
+    goto cleanup;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "trigger_kyc_rule_for_account-2 on %d/%d returned %d/%llu/%d\n",
+              lch->have_account_pub,
+              lch->have_merchant_pub,
+              (int) qs,
+              (unsigned long long) lch->lcr.kyc.requirement_row,
+              lch->lcr.bad_kyc_auth);
+
   if (NULL == kcc->check)
   {
     /* check was skip; directly run AML program */
-    enum GNUNET_DB_QueryStatus qs;
     json_t *attributes;
     json_t *aml_history;
     json_t *kyc_history;
@@ -1475,58 +1535,6 @@ run_check (
   }
   else
   {
-    enum GNUNET_DB_QueryStatus qs;
-
-    /* require kcc.check! */
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Requiring KYC for `%s'\n",
-                lch->payto_uri.full_payto);
-#if EXTRA_CHECK
-    {
-      struct TALER_NormalizedPaytoHashP npt;
-
-      TALER_full_payto_normalize_and_hash (lch->payto_uri,
-                                           &npt);
-      GNUNET_assert (0 ==
-                     GNUNET_memcmp (&npt,
-                                    &lch->h_payto));
-    }
-#endif
-    qs = TEH_plugin->trigger_kyc_rule_for_account (
-      TEH_plugin->cls,
-      lch->payto_uri,
-      &lch->h_payto,
-      lch->have_account_pub ? &lch->account_pub : NULL,
-      lch->have_merchant_pub ? &lch->merchant_pub : NULL,
-      jmeasures,
-      0, /* no particular priority */
-      &lch->lcr.kyc.requirement_row,
-      &lch->lcr.bad_kyc_auth);
-    switch (qs)
-    {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_break (0);
-      legi_fail (lch,
-                 TALER_EC_GENERIC_DB_STORE_FAILED,
-                 "trigger_kyc_rule_for_account");
-      goto cleanup;
-    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      GNUNET_break (0);
-      legi_fail (lch,
-                 TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                 "trigger_kyc_rule_for_account");
-      goto cleanup;
-    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      break;
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "trigger_kyc_rule_for_account-2 on %d/%d returned %d/%llu/%d\n",
-                lch->have_account_pub,
-                lch->have_merchant_pub,
-                (int) qs,
-                (unsigned long long) lch->lcr.kyc.requirement_row,
-                lch->lcr.bad_kyc_auth);
     /* return success! */
     lch->async_task
       = GNUNET_SCHEDULER_add_now (

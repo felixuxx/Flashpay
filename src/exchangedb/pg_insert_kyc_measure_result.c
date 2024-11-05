@@ -78,8 +78,10 @@ TEH_PG_insert_kyc_measure_result (
     GNUNET_PQ_query_param_array_ptrs_string (num_events,
                                              events,
                                              pg->conn),
-    GNUNET_PQ_query_param_fixed_size (enc_attributes,
-                                      enc_attributes_size),
+    (NULL == enc_attributes)
+      ? GNUNET_PQ_query_param_null ()
+      : GNUNET_PQ_query_param_fixed_size (enc_attributes,
+                                          enc_attributes_size),
     GNUNET_PQ_query_param_bool (to_investigate),
     GNUNET_PQ_query_param_string (kyc_completed_notify_s),
     GNUNET_PQ_query_param_end

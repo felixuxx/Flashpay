@@ -49,7 +49,6 @@
 #include "pg_get_unfinished_close_requests.h"
 #include "pg_insert_close_request.h"
 #include "pg_insert_records_by_table.h"
-#include "pg_insert_programmatic_legitimization_outcome.h"
 #include "pg_insert_reserve_open_deposit.h"
 #include "pg_get_pending_kyc_requirement_process.h"
 #include "pg_iterate_kyc_reference.h"
@@ -785,8 +784,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_abort_shard;
   plugin->insert_kyc_failure
     = &TEH_PG_insert_kyc_failure;
-  plugin->insert_programmatic_legitimization_outcome
-    = &TEH_PG_insert_programmatic_legitimization_outcome;
   plugin->complete_shard
     = &TEH_PG_complete_shard;
   plugin->release_revolving_shard

@@ -68,7 +68,8 @@ RETURNING
 INTO
   my_trigger_outcome_serial;
 
-IF in_process_row IS NOT NULL
+IF (in_process_row IS NOT NULL) AND
+   (encrypted_attributes IS NOT NULL)
 THEN
   INSERT INTO kyc_attributes
     (h_payto
