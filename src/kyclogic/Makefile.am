@@ -18,6 +18,8 @@ bin_SCRIPTS = \
   taler-exchange-helper-converter-oauth2-test-full_name \
   taler-exchange-helper-measure-test-form \
   taler-exchange-helper-measure-test-oauth \
+  taler-exchange-helper-measure-none \
+  taler-exchange-helper-measure-freeze \
   taler-exchange-kyc-kycaid-converter.sh \
   taler-exchange-kyc-persona-converter.sh \
   taler-exchange-kyc-oauth2-test-converter.sh \
