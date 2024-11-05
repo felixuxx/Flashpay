@@ -2718,7 +2718,7 @@ TALER_officer_aml_query_verify (
  * @param new_rules new KYC rules to apply to the account
  *         Must be a "LegitimizationRuleSet".
  * @param properties properties of the account, can be NULL
- * @param new_check new KYC check to run, NULL for none
+ * @param new_measures new measures to apply immediately, NULL for none
  * @param to_investigate true if the account should be investigated by AML staff
  * @param officer_priv private key of AML officer
  * @param[out] officer_sig where to write the signature
@@ -2730,7 +2730,7 @@ TALER_officer_aml_decision_sign (
   const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
-  const char *new_check,
+  const char *new_measures,
   bool to_investigate,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig);
@@ -2745,7 +2745,7 @@ TALER_officer_aml_decision_sign (
  *                      decision is about
  * @param new_rules new KYC rules to apply to the account
  * @param properties properties of the account, can be NULL
- * @param new_check new KYC check to run, NULL for none
+ * @param new_measures new measures to apply immediately, NULL for none
  * @param to_investigate true if the account should be investigated by AML staff
  * @param officer_pub public key of AML officer
  * @param officer_sig signature to verify
@@ -2758,7 +2758,7 @@ TALER_officer_aml_decision_verify (
   const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
-  const char *new_check,
+  const char *new_measures,
   bool to_investigate,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig);

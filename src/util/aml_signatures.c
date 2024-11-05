@@ -119,7 +119,7 @@ TALER_officer_aml_decision_verify (
   const struct TALER_NormalizedPaytoHashP *h_payto,
   const json_t *new_rules,
   const json_t *properties,
-  const char *new_measure,
+  const char *new_measures,
   bool to_investigate,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig)
@@ -140,9 +140,9 @@ TALER_officer_aml_decision_verify (
                      &ad.h_properties);
   TALER_json_hash (new_rules,
                    &ad.h_new_rules);
-  if (NULL != new_measure)
-    GNUNET_CRYPTO_hash (new_measure,
-                        strlen (new_measure),
+  if (NULL != new_measures)
+    GNUNET_CRYPTO_hash (new_measures,
+                        strlen (new_measures),
                         &ad.h_new_measure);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_AML_DECISION,
