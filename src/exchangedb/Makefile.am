@@ -187,7 +187,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_have_deposit2.h pg_have_deposit2.c \
   pg_aggregate.h pg_aggregate.c \
   pg_create_aggregation_transient.h pg_create_aggregation_transient.c \
-  pg_insert_kyc_attributes.h pg_insert_kyc_attributes.c \
+  pg_insert_kyc_measure_result.h pg_insert_kyc_measure_result.c \
   pg_select_kyc_attributes.h pg_select_kyc_attributes.c \
   pg_insert_aml_officer.h pg_insert_aml_officer.c \
   pg_test_aml_officer.h pg_test_aml_officer.c \

@@ -14,27 +14,20 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_kyc_attributes.c
- * @brief Implementation of the insert_kyc_attributes function for Postgres
+ * @file exchangedb/pg_insert_kyc_measure_result.c
+ * @brief Implementation of the insert_kyc_measure_result function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_insert_kyc_attributes.h"
+#include "pg_insert_kyc_measure_result.h"
 #include "pg_helper.h"
 
 
-/*
- * FIXME:
- * This function does *so* much more than inserting KYC attributes.
- * Sometimes it doesn't even insert KYC attributes at all.
- * => Rename?
- */
-
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_kyc_attributes (
+TEH_PG_insert_kyc_measure_result (
   void *cls,
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *h_payto,
@@ -106,13 +99,13 @@ TEH_PG_insert_kyc_attributes (
   GNUNET_break (NULL != h_payto);
   GNUNET_break (NULL != enc_attributes);
   PREPARE (pg,
-           "insert_kyc_attributes",
+           "insert_kyc_measure_result",
            "SELECT "
            " out_ok"
-           " FROM exchange_do_insert_kyc_attributes "
+           " FROM exchange_do_insert_kyc_measure_result "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "insert_kyc_attributes",
+                                                 "insert_kyc_measure_result",
                                                  params,
                                                  rs);
   GNUNET_PQ_cleanup_query_params_closures (params);

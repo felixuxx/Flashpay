@@ -14,8 +14,8 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_kyc_attributes.h
- * @brief implementation of the insert_kyc_attributes function for Postgres
+ * @file exchangedb/pg_insert_kyc_measure_result.h
+ * @brief implementation of the insert_kyc_measure_result function for Postgres
  * @author Christian Grothoff
  */
 #ifndef PG_INSERT_KYC_ATTRIBUTES_H
@@ -49,7 +49,7 @@
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_kyc_attributes (
+TEH_PG_insert_kyc_measure_result (
   void *cls,
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *h_payto,

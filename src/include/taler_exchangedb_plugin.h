@@ -7297,7 +7297,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
-    (*insert_kyc_attributes)(
+    (*insert_kyc_measure_result)(
     void *cls,
     uint64_t process_row,
     const struct TALER_NormalizedPaytoHashP *h_payto,

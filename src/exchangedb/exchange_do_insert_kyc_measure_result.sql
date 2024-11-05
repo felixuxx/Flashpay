@@ -14,8 +14,8 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-DROP FUNCTION IF EXISTS exchange_do_insert_kyc_attributes;
-CREATE FUNCTION exchange_do_insert_kyc_attributes(
+DROP FUNCTION IF EXISTS exchange_do_insert_kyc_measure_result;
+CREATE FUNCTION exchange_do_insert_kyc_measure_result(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
   IN in_birthday INT4,
@@ -147,5 +147,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_attributes(INT8, BYTEA, INT4, TEXT, TEXT, TEXT, INT8, INT8, INT8, TEXT, TEXT, TEXT[], BYTEA, BOOL, TEXT)
+COMMENT ON FUNCTION exchange_do_insert_kyc_measure_result(INT8, BYTEA, INT4, TEXT, TEXT, TEXT, INT8, INT8, INT8, TEXT, TEXT, TEXT[], BYTEA, BOOL, TEXT)
   IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';

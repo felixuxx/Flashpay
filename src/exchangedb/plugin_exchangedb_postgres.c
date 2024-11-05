@@ -222,7 +222,7 @@
 #include "pg_set_purse_balance.h"
 #include "pg_reserves_update.h"
 #include "pg_compute_shard.h"
-#include "pg_insert_kyc_attributes.h"
+#include "pg_insert_kyc_measure_result.h"
 #include "pg_select_kyc_attributes.h"
 #include "pg_insert_aml_officer.h"
 #include "pg_test_aml_officer.h"
@@ -805,8 +805,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_set_purse_balance;
   plugin->get_pending_kyc_requirement_process
     = &TEH_PG_get_pending_kyc_requirement_process;
-  plugin->insert_kyc_attributes
-    = &TEH_PG_insert_kyc_attributes;
+  plugin->insert_kyc_measure_result
+    = &TEH_PG_insert_kyc_measure_result;
   plugin->select_kyc_attributes
     = &TEH_PG_select_kyc_attributes;
   plugin->insert_aml_officer

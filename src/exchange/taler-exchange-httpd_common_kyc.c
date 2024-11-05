@@ -305,7 +305,7 @@ kyc_aml_finished (
                                        kat->attributes,
                                        &ea,
                                        &eas);
-  qs = TEH_plugin->insert_kyc_attributes (
+  qs = TEH_plugin->insert_kyc_measure_result (
     TEH_plugin->cls,
     kat->process_row,
     &kat->account_id,
@@ -337,7 +337,7 @@ kyc_aml_finished (
     kat->response
       = TALER_MHD_make_error (
           TALER_EC_GENERIC_DB_STORE_FAILED,
-          "do_insert_kyc_attributes");
+          "do_insert_kyc_measure_result");
     /* Continued below to return the response */
   }
 RETURN_RESULT:
@@ -786,7 +786,7 @@ handle_aml_fallback_result (
                                          &eas);
     json_decref (attributes);
   }
-  qs = TEH_plugin->insert_kyc_attributes (
+  qs = TEH_plugin->insert_kyc_measure_result (
     TEH_plugin->cls,
     fb->orig_requirement_row,
     &fb->account_id,
