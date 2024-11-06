@@ -1770,7 +1770,6 @@ legitimization_check_run (
     lch->lcr.kyc.ok = true;
     lch->lcr.expiration_date
       = TALER_KYCLOGIC_rules_get_expiration (lrs);
-    TALER_KYCLOGIC_rules_free (lrs);
     memset (&lch->lcr.next_threshold,
             0,
             sizeof (struct TALER_Amount));
