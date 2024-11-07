@@ -57,7 +57,7 @@ struct KycWebhookContext
   /**
    * Handle for the KYC-AML trigger interaction.
    */
-  struct TEH_KycAmlTrigger *kat;
+  struct TEH_KycMeasureRunContext *kat;
 
   /**
    * Plugin responsible for the webhook.
@@ -238,18 +238,17 @@ webhook_finished_cb (
   switch (status)
   {
   case TALER_KYCLOGIC_STATUS_SUCCESS:
-    kwh->kat = TEH_kyc_finished (
+    kwh->kat = TEH_kyc_run_measure_for_attributes (
       &kwh->rc->async_scope_id,
       process_row,
-      NULL, /* instant_measure */
       account_id,
-      provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,
       attributes,
       &kyc_aml_webhook_finished,
-      kwh);
+      kwh
+      );
     if (NULL == kwh->kat)
     {
       kyc_aml_webhook_finished (kwh,
@@ -315,7 +314,7 @@ clean_kwh (struct TEH_RequestContext *rc)
   }
   if (NULL != kwh->kat)
   {
-    TEH_kyc_finished_cancel (kwh->kat);
+    TEH_kyc_run_measure_cancel (kwh->kat);
     kwh->kat = NULL;
   }
   if (NULL != kwh->response)

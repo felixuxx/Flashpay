@@ -40,7 +40,7 @@
 #define EXTRA_CHECK 0
 
 
-struct TEH_KycAmlTrigger
+struct TEH_KycMeasureRunContext
 {
 
   /**
@@ -81,7 +81,7 @@ struct TEH_KycAmlTrigger
   /**
    * function to call with the result
    */
-  TEH_KycAmlTriggerCallback cb;
+  TEH_KycMeasureRunContextCallback cb;
 
   /**
    * closure for @e cb
@@ -136,7 +136,7 @@ struct TEH_KycAmlTrigger
  * Function called with the result of activating a
  * fallback measure.
  *
- * @param cls a `struct TEH_KycAmlTrigger *`
+ * @param cls a `struct TEH_KycMeasureRunContext *`
  * @param result true if the fallback was activated
  *    successfully
  * @param requirement_row row of
@@ -147,7 +147,7 @@ fallback_result_cb (void *cls,
                     bool result,
                     uint64_t requirement_row)
 {
-  struct TEH_KycAmlTrigger *kat = cls;
+  struct TEH_KycMeasureRunContext *kat = cls;
   struct GNUNET_AsyncScopeSave old_scope;
 
   kat->fb = NULL;
@@ -166,7 +166,7 @@ fallback_result_cb (void *cls,
              TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_FAILED,
              kat->fallback_name);
   }
-  TEH_kyc_finished_cancel (kat);
+  TEH_kyc_run_measure_cancel (kat);
   GNUNET_async_scope_restore (&old_scope);
 }
 
@@ -174,7 +174,7 @@ fallback_result_cb (void *cls,
 /**
  * Type of a callback that receives a JSON @a result.
  *
- * @param cls closure of type `struct TEH_KycAmlTrigger *`
+ * @param cls closure of type `struct TEH_KycMeasureRunContext *`
  * @param apr AML program result
  */
 static void
@@ -182,7 +182,7 @@ kyc_aml_finished (
   void *cls,
   const struct TALER_KYCLOGIC_AmlProgramResult *apr)
 {
-  struct TEH_KycAmlTrigger *kat = cls;
+  struct TEH_KycMeasureRunContext *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
   size_t eas;
   void *ea;
@@ -208,7 +208,7 @@ kyc_aml_finished (
       kat->cb (kat->cb_cls,
                TALER_EC_GENERIC_DB_STORE_FAILED,
                "insert_kyc_failure");
-      TEH_kyc_finished_cancel (kat);
+      TEH_kyc_run_measure_cancel (kat);
       GNUNET_async_scope_restore (&old_scope);
       return;
     }
@@ -219,7 +219,7 @@ kyc_aml_finished (
       kat->cb (kat->cb_cls,
                TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
                NULL);
-      TEH_kyc_finished_cancel (kat);
+      TEH_kyc_run_measure_cancel (kat);
       GNUNET_async_scope_restore (&old_scope);
       return;
     }
@@ -243,7 +243,7 @@ kyc_aml_finished (
       kat->cb (kat->cb_cls,
                TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_UNKNOWN,
                kat->fallback_name);
-      TEH_kyc_finished_cancel (kat);
+      TEH_kyc_run_measure_cancel (kat);
       GNUNET_async_scope_restore (&old_scope);
       return;
     }
@@ -320,7 +320,7 @@ kyc_aml_finished (
              0);
   }
 done:
-  TEH_kyc_finished_cancel (kat);
+  TEH_kyc_run_measure_cancel (kat);
   GNUNET_async_scope_restore (&old_scope);
 }
 
@@ -456,141 +456,8 @@ add_kyc_history_entry (
 }
 
 
-struct TEH_KycAmlTrigger *
-TEH_kyc_finished (
-  const struct GNUNET_AsyncScopeId *scope,
-  uint64_t process_row,
-  const struct TALER_KYCLOGIC_Measure *instant_ms,
-  const struct TALER_NormalizedPaytoHashP *account_id,
-  const char *provider_name,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  struct GNUNET_TIME_Absolute expiration,
-  const json_t *attributes,
-  TEH_KycAmlTriggerCallback cb,
-  void *cb_cls)
-{
-  struct TEH_KycAmlTrigger *kat;
-  enum GNUNET_DB_QueryStatus qs;
-
-  /* FIXME: We should look up the provider name instead of
-     taking it as an argument. Or at least check consistency. */
-
-  kat = GNUNET_new (struct TEH_KycAmlTrigger);
-  kat->scope = *scope;
-  kat->process_row = process_row;
-  kat->account_id = *account_id;
-  if (NULL != provider_user_id)
-    kat->provider_user_id
-      = GNUNET_strdup (provider_user_id);
-  if (NULL != provider_legitimization_id)
-    kat->provider_legitimization_id
-      = GNUNET_strdup (provider_legitimization_id);
-  kat->expiration = expiration;
-  kat->attributes = json_incref ((json_t*) attributes);
-  kat->cb = cb;
-  kat->cb_cls = cb_cls;
-  if (NULL == instant_ms)
-  {
-    qs = TEH_plugin->lookup_active_legitimization (
-      TEH_plugin->cls,
-      process_row,
-      &kat->measure_index,
-      &kat->provider_name,
-      &kat->jmeasures);
-    switch (qs)
-    {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_break (0);
-      TEH_kyc_finished_cancel (kat);
-      return NULL;
-    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      GNUNET_break (0);
-      TEH_kyc_finished_cancel (kat);
-      return NULL;
-    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      break;
-    }
-  }
-  /* We optionally pass in the provider name to double check with DB. */
-  GNUNET_assert ( (NULL == provider_name) || (0 == strcasecmp (provider_name,
-                                                               kat->
-                                                               provider_name)) )
-  ;
-  kat->aml_history = json_array ();
-  kat->kyc_history = json_array ();
-  qs = TEH_plugin->lookup_aml_history (
-    TEH_plugin->cls,
-    account_id,
-    &add_aml_history_entry,
-    kat->aml_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    TEH_kyc_finished_cancel (kat);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  qs = TEH_plugin->lookup_kyc_history (
-    TEH_plugin->cls,
-    account_id,
-    &add_kyc_history_entry,
-    kat->kyc_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    TEH_kyc_finished_cancel (kat);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  if (NULL == instant_ms)
-  {
-    kat->kyc_aml
-      = TALER_KYCLOGIC_run_aml_program (
-          kat->attributes,
-          kat->aml_history,
-          kat->kyc_history,
-          kat->jmeasures,
-          kat->measure_index,
-          &kyc_aml_finished,
-          kat);
-  }
-  else
-  {
-    kat->kyc_aml
-      = TALER_KYCLOGIC_run_aml_program3 (
-          instant_ms,
-          kat->attributes,
-          kat->aml_history,
-          kat->kyc_history,
-          &kyc_aml_finished,
-          kat);
-  }
-  if (NULL == kat->kyc_aml)
-  {
-    GNUNET_break (0);
-    TEH_kyc_finished_cancel (kat);
-    return NULL;
-  }
-  return kat;
-}
-
-
 void
-TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
+TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat)
 {
   if (NULL != kat->kyc_aml)
   {
@@ -614,26 +481,128 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
 }
 
 
-struct TEH_KycAmlTrigger *
+struct TEH_KycMeasureRunContext *
+TEH_kyc_run_measure_for_attributes (
+  const struct GNUNET_AsyncScopeId *scope,
+  uint64_t process_row,
+  const struct TALER_NormalizedPaytoHashP *account_id,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration,
+  const json_t *new_attributes,
+  TEH_KycMeasureRunContextCallback cb,
+  void *cb_cls)
+{
+  /* FIXME(fdold, 2024-11-07):
+     Consider storing the attributes *before* we run the AMP.
+     Also, we're only passing *new* attributes here, but the AMP
+     should receive *all* attributes. */
+
+  struct TEH_KycMeasureRunContext *kat;
+  enum GNUNET_DB_QueryStatus qs;
+
+  kat = GNUNET_new (struct TEH_KycMeasureRunContext);
+  kat->scope = *scope;
+  kat->process_row = process_row;
+  kat->account_id = *account_id;
+  if (NULL != provider_user_id)
+    kat->provider_user_id
+      = GNUNET_strdup (provider_user_id);
+  if (NULL != provider_legitimization_id)
+    kat->provider_legitimization_id
+      = GNUNET_strdup (provider_legitimization_id);
+  kat->expiration = expiration;
+  kat->cb = cb;
+  kat->cb_cls = cb_cls;
+  kat->aml_history = json_array ();
+  kat->kyc_history = json_array ();
+  qs = TEH_plugin->lookup_aml_history (
+    TEH_plugin->cls,
+    account_id,
+    &add_aml_history_entry,
+    kat->aml_history);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* empty history is fine! */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  qs = TEH_plugin->lookup_kyc_history (
+    TEH_plugin->cls,
+    account_id,
+    &add_kyc_history_entry,
+    kat->kyc_history);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* empty history is fine! */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+
+  kat->kyc_aml
+    = TALER_KYCLOGIC_run_aml_program (
+        kat->attributes,
+        kat->aml_history,
+        kat->kyc_history,
+        kat->jmeasures,
+        kat->measure_index,
+        &kyc_aml_finished,
+        kat);
+
+  if (NULL == kat->kyc_aml)
+  {
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  }
+  return kat;
+}
+
+
+struct TEH_KycMeasureRunContext *
 TEH_kyc_run_measure_instant (
   const struct GNUNET_AsyncScopeId *scope,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
   const struct TALER_NormalizedPaytoHashP *account_id,
-  TEH_KycAmlTriggerCallback cb,
+  TEH_KycMeasureRunContextCallback cb,
   void *cb_cls)
 {
+  struct TEH_KycMeasureRunContext *kat;
   uint64_t process_row;
   uint64_t legi_measure_serial_id;
   bool bad_kyc_auth;
   enum GNUNET_DB_QueryStatus qs;
-  json_t *jmeasures;
   struct TALER_FullPayto null_account = {
     .full_payto = NULL
   };
 
-  jmeasures = TALER_KYCLOGIC_measure_to_jmeasures (instant_ms);
+  kat = GNUNET_new (struct TEH_KycMeasureRunContext);
 
-  GNUNET_assert (NULL != jmeasures);
+  kat->jmeasures = TALER_KYCLOGIC_measure_to_jmeasures (instant_ms);
+  kat->provider_name = GNUNET_strdup ("SKIP");
+  kat->measure_index = 0;
+  kat->scope = *scope;
+  kat->process_row = process_row;
+  kat->account_id = *account_id;
+  kat->expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
+  kat->cb = cb;
+  kat->cb_cls = cb_cls;
+
+  GNUNET_assert (NULL != kat->jmeasures);
 
   qs = TEH_plugin->trigger_kyc_rule_for_account (
     TEH_plugin->cls,
@@ -641,7 +610,7 @@ TEH_kyc_run_measure_instant (
     account_id,
     NULL,
     NULL,
-    jmeasures,
+    kat->jmeasures,
     0, /* no particular priority */
     &legi_measure_serial_id,
     &bad_kyc_auth);
@@ -676,19 +645,62 @@ TEH_kyc_run_measure_instant (
     return NULL;
   }
 
-  return TEH_kyc_finished (
-    scope,
-    process_row,
-    instant_ms,
+  /* FIXME(fdold, 2024-11-07):
+     We need to look up the attributes before running the AMP. */
+
+  kat->aml_history = json_array ();
+  kat->kyc_history = json_array ();
+  qs = TEH_plugin->lookup_aml_history (
+    TEH_plugin->cls,
     account_id,
-    "SKIP",
-    NULL,
-    NULL,
-    GNUNET_TIME_UNIT_FOREVER_ABS,
-    NULL,
-    cb,
-    cb_cls
-    );
+    &add_aml_history_entry,
+    kat->aml_history);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* empty history is fine! */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  qs = TEH_plugin->lookup_kyc_history (
+    TEH_plugin->cls,
+    account_id,
+    &add_kyc_history_entry,
+    kat->kyc_history);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* empty history is fine! */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  kat->kyc_aml
+    = TALER_KYCLOGIC_run_aml_program3 (
+        instant_ms,
+        kat->attributes,
+        kat->aml_history,
+        kat->kyc_history,
+        &kyc_aml_finished,
+        kat);
+  if (NULL == kat->kyc_aml)
+  {
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  }
+  return kat;
 }
 
 
@@ -1013,7 +1025,7 @@ struct TEH_LegitimizationCheckHandle
   /**
    * Handle to asynchronously running instant measure.
    */
-  struct TEH_KycAmlTrigger *kat;
+  struct TEH_KycMeasureRunContext *kat;
 
   /**
    * Payto-URI of the account.
@@ -1928,7 +1940,7 @@ TEH_legitimization_check_cancel (
   }
   if (NULL != lch->kat)
   {
-    TEH_kyc_finished_cancel (lch->kat);
+    TEH_kyc_run_measure_cancel (lch->kat);
     lch->kat = NULL;
   }
   if (NULL != lch->aprh)

@@ -72,7 +72,7 @@ struct KycProofContext
   /**
    * KYC AML trigger operation.
    */
-  struct TEH_KycAmlTrigger *kat;
+  struct TEH_KycMeasureRunContext *kat;
 
   /**
    * Process information about the user for the plugin from the database, can
@@ -328,12 +328,10 @@ proof_cb (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC process #%llu succeeded with KYC provider\n",
                 (unsigned long long) kpc->process_row);
-    kpc->kat = TEH_kyc_finished (
+    kpc->kat = TEH_kyc_run_measure_for_attributes (
       &rc->async_scope_id,
       kpc->process_row,
-      NULL, /* instant_measure */
       &kpc->h_payto,
-      kpc->provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,
@@ -431,7 +429,7 @@ clean_kpc (struct TEH_RequestContext *rc)
   }
   if (NULL != kpc->kat)
   {
-    TEH_kyc_finished_cancel (kpc->kat);
+    TEH_kyc_run_measure_cancel (kpc->kat);
     kpc->kat = NULL;
   }
   if (NULL != kpc->response)

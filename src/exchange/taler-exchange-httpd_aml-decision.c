@@ -68,7 +68,7 @@ struct AmlDecisionContext
   /**
    * Handle for async KYC processing.
    */
-  struct TEH_KycAmlTrigger *kat;
+  struct TEH_KycMeasureRunContext *kat;
 
 };
 
@@ -110,7 +110,7 @@ aml_decision_cleaner (struct TEH_RequestContext *rc)
 
   if (NULL != adc->kat)
   {
-    TEH_kyc_finished_cancel (adc->kat);
+    TEH_kyc_run_measure_cancel (adc->kat);
     adc->kat = NULL;
   }
   if (NULL != adc->response)

@@ -30,29 +30,6 @@
 #include "taler-exchange-httpd.h"
 
 
-/* Proposed new definitions, for review. */
-
-#if 0
-/**
- * Run measure after storing attributes from the given
- * provider.
- *
- * Only works when a process is active.
- */
-struct TEH_KycAmlTrigger *
-TEH_kyc_run_measure_for_attributes (
-  const struct GNUNET_AsyncScopeId *scope,
-  uint64_t process_row,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  struct GNUNET_TIME_Absolute expiration,
-  const json_t *new_attributes,
-  TEH_KycAmlTriggerCallback cb,
-  void *cb_cls);
-
-#endif
-
-
 /**
  * Function called after the KYC-AML trigger is done.
  *
@@ -61,7 +38,7 @@ TEH_kyc_run_measure_for_attributes (
  * @param detail error message or NULL on success / no info
  */
 typedef void
-(*TEH_KycAmlTriggerCallback) (
+(*TEH_KycMeasureRunContextCallback) (
   void *cls,
   enum TALER_ErrorCode ec,
   const char *detail);
@@ -71,42 +48,38 @@ typedef void
  * Handle for an asynchronous operation to finish
  * a KYC process after running the AML trigger.
  */
-struct TEH_KycAmlTrigger;
+struct TEH_KycMeasureRunContext;
 
 
 /**
- * We have finished a KYC process and obtained new
- * @a attributes for a given @a account_id.
- * Check with the KYC-AML trigger to see if we need
- * to initiate an AML process, and store the attributes
- * in the database. Then call @a cb.
+ * Run measure after storing attributes from the given
+ * provider.
+ *
+ * Only works when a process is active.
+ *
+ * FIXME: Isn't the account_id redundant via the process_row?
  *
  * @param scope the HTTP request logging scope
  * @param process_row legitimization process the data provided is about
- * @param instant_measure instant measure to run, used if @a process_row is 0,
- *          otherwise must be NULL
- * @param account_id account the webhook was about
- * @param provider_name name of the provider with the logic that was run
+ * @param account_id account the the data provided is about
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
- * @param attributes user attributes returned by the provider
+ * @param new_attributes user attributes returned by the provider
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel the operation
  */
-struct TEH_KycAmlTrigger *
-TEH_kyc_finished (
+struct TEH_KycMeasureRunContext *
+TEH_kyc_run_measure_for_attributes (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
-  const struct TALER_KYCLOGIC_Measure *instant_measure,
   const struct TALER_NormalizedPaytoHashP *account_id,
-  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
-  const json_t *attributes,
-  TEH_KycAmlTriggerCallback cb,
+  const json_t *new_attributes,
+  TEH_KycMeasureRunContextCallback cb,
   void *cb_cls);
 
 
@@ -126,22 +99,22 @@ TEH_kyc_finished (
  * @param cb_cls closure for @a cb
  * @return handle to cancel the operation
  */
-struct TEH_KycAmlTrigger *
+struct TEH_KycMeasureRunContext *
 TEH_kyc_run_measure_instant (
   const struct GNUNET_AsyncScopeId *scope,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
   const struct TALER_NormalizedPaytoHashP *account_id,
-  TEH_KycAmlTriggerCallback cb,
+  TEH_KycMeasureRunContextCallback cb,
   void *cb_cls);
 
 
 /**
- * Cancel KYC finish operation.
+ * Cancel running KYC measure.
  *
  * @param[in] kat operation to abort
  */
 void
-TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat);
+TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat);
 
 
 /**

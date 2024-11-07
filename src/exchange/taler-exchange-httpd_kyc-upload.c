@@ -86,7 +86,7 @@ struct UploadContext
   /**
    * Handle for async KYC processing.
    */
-  struct TEH_KycAmlTrigger *kat;
+  struct TEH_KycMeasureRunContext *kat;
 
   /**
    * Uploaded data, in JSON.
@@ -239,7 +239,7 @@ upload_cleaner (struct TEH_RequestContext *rc)
 
   if (NULL != uc->kat)
   {
-    TEH_kyc_finished_cancel (uc->kat);
+    TEH_kyc_run_measure_cancel (uc->kat);
     uc->kat = NULL;
   }
   if (NULL != uc->response)
@@ -590,12 +590,10 @@ TEH_handler_kyc_upload (
         "insert_kyc_requirement_process");
     }
 
-    uc->kat = TEH_kyc_finished (
+    uc->kat = TEH_kyc_run_measure_for_attributes (
       &rc->async_scope_id,
       legi_process_row,
-      NULL, /* instant_measure */
       &h_payto,
-      "FORM",
       NULL /* provider account */,
       NULL /* provider legi ID */,
       GNUNET_TIME_UNIT_FOREVER_ABS, /* expiration time */
