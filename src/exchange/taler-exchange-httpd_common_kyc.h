@@ -31,7 +31,7 @@
 
 
 /**
- * Function called after the KYC-AML trigger is done.
+ * Function called after a measure has been run.
  *
  * @param cls closure
  * @param ec error code or 0 on success
@@ -84,7 +84,7 @@ TEH_kyc_run_measure_for_attributes (
 
 
 /**
- * Run an instant measure.
+ * Run an measure directly.
  *
  * Inserts a legitimization process and measure
  * into the database before running the measure program.
@@ -100,7 +100,7 @@ TEH_kyc_run_measure_for_attributes (
  * @return handle to cancel the operation
  */
 struct TEH_KycMeasureRunContext *
-TEH_kyc_run_measure_instant (
+TEH_kyc_run_measure_directly (
   const struct GNUNET_AsyncScopeId *scope,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
   const struct TALER_NormalizedPaytoHashP *account_id,

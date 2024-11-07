@@ -311,8 +311,8 @@ TEH_handler_post_aml_decision (
   if (NULL != new_measures)
   {
     jmeasures
-      = TALER_KYCLOGIC_get_measures (lrs,
-                                     new_measures);
+      = TALER_KYCLOGIC_get_jmeasures (lrs,
+                                      new_measures);
     if (NULL == jmeasures)
     {
       GNUNET_break_op (0);
@@ -413,7 +413,7 @@ TEH_handler_post_aml_decision (
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Running instant measure after AML decision\n");
-      adc->kat = TEH_kyc_run_measure_instant (
+      adc->kat = TEH_kyc_run_measure_directly (
         &rc->async_scope_id,
         instant_ms,
         &h_payto,

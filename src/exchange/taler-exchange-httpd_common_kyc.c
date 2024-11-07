@@ -129,6 +129,8 @@ struct TEH_KycMeasureRunContext
    */
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *kyc_aml;
 
+  struct GNUNET_SCHEDULER_Task *async_task;
+
 };
 
 
@@ -469,6 +471,11 @@ TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat)
     TEH_kyc_fallback_cancel (kat->fb);
     kat->fb = NULL;
   }
+  if (NULL != kat->async_task)
+  {
+    GNUNET_SCHEDULER_cancel (kat->async_task);
+    kat->async_task = NULL;
+  }
   GNUNET_free (kat->provider_name);
   GNUNET_free (kat->provider_user_id);
   GNUNET_free (kat->provider_legitimization_id);
@@ -573,8 +580,27 @@ TEH_kyc_run_measure_for_attributes (
 }
 
 
+/**
+ * Helper task that asynchronously calls the result
+ * callback and then cleans up.
+ *
+ * @param[in] cls a `struct TEH_LegitimizationCheckHandle *`
+ */
+static void
+async_return_measure_result (void *cls)
+{
+  struct TEH_KycMeasureRunContext *kat = cls;
+
+  kat->async_task = NULL;
+  kat->cb (kat->cb_cls,
+           TALER_EC_NONE,
+           NULL);
+  TEH_kyc_run_measure_cancel (kat);
+}
+
+
 struct TEH_KycMeasureRunContext *
-TEH_kyc_run_measure_instant (
+TEH_kyc_run_measure_directly (
   const struct GNUNET_AsyncScopeId *scope,
   const struct TALER_KYCLOGIC_Measure *instant_ms,
   const struct TALER_NormalizedPaytoHashP *account_id,
@@ -629,6 +655,17 @@ TEH_kyc_run_measure_instant (
 
   /* We're not checking kyc auth, so it can't be bad. */
   GNUNET_assert (! bad_kyc_auth);
+
+  if (0 != strcasecmp (instant_ms->check_name, "SKIP"))
+  {
+    /* Not an instant measure, it's enough to trigger it.
+       The AMP will be run later. */
+    kat->async_task
+      = GNUNET_SCHEDULER_add_now (
+          &async_return_measure_result,
+          kat);
+    return kat;
+  }
 
   qs = TEH_plugin->insert_kyc_requirement_process (
     TEH_plugin->cls,
@@ -937,7 +974,7 @@ TEH_kyc_fallback (
       .full_payto = NULL
     };
 
-    jmeasures = TALER_KYCLOGIC_check_to_measures (&kcc);
+    jmeasures = TALER_KYCLOGIC_check_to_jmeasures (&kcc);
     qs = TEH_plugin->trigger_kyc_rule_for_account (
       TEH_plugin->cls,
       null_account, /* account_id is already in wire targets */
@@ -1043,15 +1080,9 @@ struct TEH_LegitimizationCheckHandle
   void *ai_cls;
 
   /**
-   * Used to keep around the name of the AML program
-   * that we are running via @e aprh.
-   */
-  char *aml_program;
-
-  /**
    * Handle to AML program we are running, or NULL for none.
    */
-  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh;
+  struct TEH_KycMeasureRunContext *measure_run_ctx;
 
   /**
    * Hash of @e payto_uri.
@@ -1330,256 +1361,6 @@ TEH_legitimization_check2 (
 
 
 /**
- * Type of function called after AML program was run.
- *
- * @param cls closure
- * @param apr result of the AML program.
- */
-static void
-legi_check_aml_program_cb (
-  void *cls,
-  const struct TALER_KYCLOGIC_AmlProgramResult *apr)
-{
-  struct TEH_LegitimizationCheckHandle *lch = cls;
-
-  lch->aprh = NULL;
-  switch (apr->status)
-  {
-  case TALER_KYCLOGIC_AMLR_SUCCESS:
-    {
-      enum GNUNET_DB_QueryStatus qs;
-      struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
-      struct GNUNET_TIME_Timestamp expiration_time;
-
-      /* persist outcome of AML program */
-      lrs = TALER_KYCLOGIC_rules_parse (
-        apr->details.success.new_rules);
-      if (NULL == lrs)
-      {
-        GNUNET_break (0);
-        legi_fail (
-          lch,
-          TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-          lch->aml_program);
-        return;
-      }
-      expiration_time
-        = TALER_KYCLOGIC_rules_get_expiration (lrs);
-      TALER_KYCLOGIC_rules_free (lrs);
-      qs = TEH_plugin->insert_kyc_measure_result (
-        TEH_plugin->cls,
-        lch->lcr.kyc.requirement_row,
-        &lch->h_payto,
-        0, /* birthday */
-        GNUNET_TIME_timestamp_get (), /* decision time */
-        "SKIP",
-        NULL,
-        NULL,
-        expiration_time.abs_time,
-        apr->details.success.account_properties,
-        apr->details.success.new_rules,
-        apr->details.success.to_investigate,
-        apr->details.success.num_events,
-        apr->details.success.events,
-        0, /* enc attr size */
-        NULL /* enc attrs*/
-        );
-      switch (qs)
-      {
-      case GNUNET_DB_STATUS_HARD_ERROR:
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-        GNUNET_break (0);
-        legi_fail (lch,
-                   TALER_EC_GENERIC_DB_STORE_FAILED,
-                   "insert_programmatic_aml_decision");
-        return;
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        GNUNET_break (0);
-        legi_fail (lch,
-                   TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                   "insert_programmatic_aml_decision");
-        return;
-      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        break;
-      }
-      /* Now run with new_rules! */
-      GNUNET_free (lch->aml_program);
-      legitimization_check_run (lch);
-      return;
-    }
-  case TALER_KYCLOGIC_AMLR_FAILURE:
-    GNUNET_break (0);
-    legi_fail (lch,
-               TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-               lch->aml_program);
-    return;
-  }
-  GNUNET_break (0);
-}
-
-
-/**
- * We need to run the check from @a kcc for @a lch.
- *
- * @param lch legitimization process handle
- * @param kcc check to trigger
- */
-static void
-run_check (
-  struct TEH_LegitimizationCheckHandle *lch,
-  const struct TALER_KYCLOGIC_KycCheckContext *kcc)
-{
-  enum GNUNET_DB_QueryStatus qs;
-  json_t *jmeasures;
-
-  jmeasures
-    = TALER_KYCLOGIC_check_to_measures (kcc);
-
-  /* require kcc.check! */
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Requiring KYC for `%s'\n",
-              lch->payto_uri.full_payto);
-#if EXTRA_CHECK
-  {
-    struct TALER_NormalizedPaytoHashP npt;
-
-    TALER_full_payto_normalize_and_hash (lch->payto_uri,
-                                         &npt);
-    GNUNET_assert (0 ==
-                   GNUNET_memcmp (&npt,
-                                  &lch->h_payto));
-  }
-#endif
-  qs = TEH_plugin->trigger_kyc_rule_for_account (
-    TEH_plugin->cls,
-    lch->payto_uri,
-    &lch->h_payto,
-    lch->have_account_pub ? &lch->account_pub : NULL,
-    lch->have_merchant_pub ? &lch->merchant_pub : NULL,
-    jmeasures,
-    0, /* no particular priority */
-    &lch->lcr.kyc.requirement_row,
-    &lch->lcr.bad_kyc_auth);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    legi_fail (lch,
-               TALER_EC_GENERIC_DB_STORE_FAILED,
-               "trigger_kyc_rule_for_account");
-    goto cleanup;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    GNUNET_break (0);
-    legi_fail (lch,
-               TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-               "trigger_kyc_rule_for_account");
-    goto cleanup;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "trigger_kyc_rule_for_account-2 on %d/%d returned %d/%llu/%d\n",
-              lch->have_account_pub,
-              lch->have_merchant_pub,
-              (int) qs,
-              (unsigned long long) lch->lcr.kyc.requirement_row,
-              lch->lcr.bad_kyc_auth);
-
-  if (NULL == kcc->check)
-  {
-    /* check was skip; directly run AML program */
-    json_t *attributes;
-    json_t *aml_history;
-    json_t *kyc_history;
-
-    aml_history = json_array ();
-    kyc_history = json_array ();
-    qs = TEH_plugin->lookup_aml_history (
-      TEH_plugin->cls,
-      &lch->h_payto,
-      &add_aml_history_entry,
-      aml_history);
-    switch (qs)
-    {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_break (0);
-      json_decref (aml_history);
-      json_decref (kyc_history);
-      legi_fail (lch,
-                 TALER_EC_GENERIC_DB_FETCH_FAILED,
-                 "lookup_aml_history");
-      return;
-    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      /* empty history is fine! */
-      break;
-    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      break;
-    }
-    qs = TEH_plugin->lookup_kyc_history (
-      TEH_plugin->cls,
-      &lch->h_payto,
-      &add_kyc_history_entry,
-      kyc_history);
-    switch (qs)
-    {
-    case GNUNET_DB_STATUS_HARD_ERROR:
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_break (0);
-      json_decref (aml_history);
-      json_decref (kyc_history);
-      legi_fail (lch,
-                 TALER_EC_GENERIC_DB_FETCH_FAILED,
-                 "lookup_kyc_history");
-      return;
-    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      /* empty history is fine! */
-      break;
-    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      break;
-    }
-
-    attributes
-      = json_object (); /* instant: empty attributes */
-    GNUNET_assert (NULL != attributes);
-    lch->aml_program
-      = GNUNET_strdup (kcc->prog_name);
-    lch->aprh
-      = TALER_KYCLOGIC_run_aml_program (
-          attributes,
-          aml_history,
-          kyc_history,
-          jmeasures,
-          0,       /* measure index */
-          &legi_check_aml_program_cb,
-          lch);
-    json_decref (aml_history);
-    json_decref (kyc_history);
-    json_decref (attributes);
-    if (NULL == lch->aprh)
-    {
-      GNUNET_break (0);
-      legi_fail (lch,
-                 TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-                 NULL);
-      goto cleanup;
-    }
-  }
-  else
-  {
-    /* return success! */
-    lch->async_task
-      = GNUNET_SCHEDULER_add_now (
-          &async_return_legi_result,
-          lch);
-  }
-cleanup:
-  json_decref (jmeasures);
-}
-
-
-/**
  * The KYC check failed because KYC auth is required
  * to match and it does not.
  *
@@ -1779,15 +1560,13 @@ legitimization_check_run (
     if (GNUNET_TIME_absolute_is_past (ts.abs_time))
     {
       const char *successor;
-      struct TALER_KYCLOGIC_KycCheckContext kcc;
+      struct TALER_KYCLOGIC_Measure *successor_measure;
 
       successor
         = TALER_KYCLOGIC_rules_get_successor (lrs);
-      if (GNUNET_OK !=
-          TALER_KYCLOGIC_requirements_to_check (lrs,
-                                                NULL,
-                                                successor,
-                                                &kcc))
+
+      successor_measure = TALER_KYCLOGIC_get_measure (lrs, successor);
+      if (NULL == successor_measure)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Successor measure `%s' unknown, falling back to default rules!\n",
@@ -1797,9 +1576,18 @@ legitimization_check_run (
       }
       else
       {
-        /* FIXME: Replace by call to TEH_kyc_run_measure_instant. */
-        run_check (lch,
-                   &kcc);
+        lch->measure_run_ctx = TEH_kyc_run_measure_directly (
+          &lch->scope,
+          successor_measure,
+          &lch->h_payto,
+          &legi_check_aml_trigger_cb,
+          lch);
+        if (NULL == lch->measure_run_ctx)
+        {
+          legi_fail (lch,
+                     TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
+                     "successor measure");
+        }
         goto cleanup;
       }
     }
@@ -1858,7 +1646,7 @@ legitimization_check_run (
        AML program immediately instead of waiting for the account owner
        to select some measure and contribute their KYC data. */
 
-    lch->kat = TEH_kyc_run_measure_instant (
+    lch->kat = TEH_kyc_run_measure_directly (
       &lch->scope,
       instant_ms,
       &lch->h_payto,
@@ -1943,10 +1731,10 @@ TEH_legitimization_check_cancel (
     TEH_kyc_run_measure_cancel (lch->kat);
     lch->kat = NULL;
   }
-  if (NULL != lch->aprh)
+  if (NULL != lch->measure_run_ctx)
   {
-    TALER_KYCLOGIC_run_aml_program_cancel (lch->aprh);
-    lch->aprh = NULL;
+    TEH_kyc_run_measure_cancel (lch->measure_run_ctx);
+    lch->measure_run_ctx = NULL;
   }
   if (NULL != lch->lcr.response)
   {
@@ -1954,6 +1742,5 @@ TEH_legitimization_check_cancel (
     lch->lcr.response = NULL;
   }
   GNUNET_free (lch->payto_uri.full_payto);
-  GNUNET_free (lch->aml_program);
   GNUNET_free (lch);
 }

@@ -108,6 +108,38 @@ enum TALER_KYCLOGIC_CheckType
 
 
 /**
+ * KYC measure that can be taken.
+ */
+struct TALER_KYCLOGIC_Measure
+{
+  /**
+   * Name of the KYC measure.
+   */
+  char *measure_name;
+
+  /**
+   * Name of the KYC check.
+   */
+  char *check_name;
+
+  /**
+   * Name of the AML program.
+   */
+  char *prog_name;
+
+  /**
+   * Context for the check. Can be NULL.
+   */
+  json_t *context;
+
+  /**
+   * Can this measure be triggered voluntarily?
+   */
+  bool voluntary;
+};
+
+
+/**
  * Information about a KYC provider.
  */
 struct TALER_KYCLOGIC_KycProvider;
@@ -478,6 +510,9 @@ TALER_KYCLOGIC_rule_to_measures (
  * have references into the legitimization rule set provided to
  * #TALER_KYCLOGIC_requirements_to_check() and thus has a lifetime that
  * matches the legitimization rule set.
+ *
+ * FIXME(fdold, 2024-11-07): Consider not making this public,
+ * instead use struct TALER_KYCLOGIC_Measure.
  */
 struct TALER_KYCLOGIC_KycCheckContext
 {
@@ -509,7 +544,7 @@ struct TALER_KYCLOGIC_KycCheckContext
  *   ``LegitimizationMeasures``
  */
 json_t *
-TALER_KYCLOGIC_check_to_measures (
+TALER_KYCLOGIC_check_to_jmeasures (
   const struct TALER_KYCLOGIC_KycCheckContext *kcc);
 
 
@@ -595,7 +630,7 @@ TALER_KYCLOGIC_measure_to_requirement (
  * @return JSON object of type LegitimizationMeasures
  */
 json_t *
-TALER_KYCLOGIC_get_measures (
+TALER_KYCLOGIC_get_jmeasures (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const char *measures_spec);
 
@@ -785,6 +820,20 @@ const struct TALER_KYCLOGIC_Measure *
 TALER_KYCLOGIC_get_instant_measure (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const char *measures_spec);
+
+
+/**
+ * Check if there is a measure in @a lrs
+ * that is named @a measure.
+ *
+ * @param rls legitimization rule set
+ * @param measure_name measures spec
+ * @returns NULL if not found
+ */
+const struct TALER_KYCLOGIC_Measure *
+TALER_KYCLOGIC_get_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measure_name);
 
 
 /**

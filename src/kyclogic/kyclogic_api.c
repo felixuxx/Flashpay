@@ -125,38 +125,6 @@ struct TALER_KYCLOGIC_KycRule
 
 
 /**
- * KYC measure that can be taken.
- */
-struct TALER_KYCLOGIC_Measure
-{
-  /**
-   * Name of the KYC measure.
-   */
-  char *measure_name;
-
-  /**
-   * Name of the KYC check.
-   */
-  char *check_name;
-
-  /**
-   * Name of the AML program.
-   */
-  char *prog_name;
-
-  /**
-   * Context for the check. Can be NULL.
-   */
-  json_t *context;
-
-  /**
-   * Can this measure be triggered voluntarily?
-   */
-  bool voluntary;
-};
-
-
-/**
  * Set of rules that applies to an account.
  */
 struct TALER_KYCLOGIC_LegitimizationRuleSet
@@ -1236,8 +1204,17 @@ done:
 }
 
 
+const struct TALER_KYCLOGIC_Measure *
+TALER_KYCLOGIC_get_measure (
+  const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
+  const char *measure_name)
+{
+  return find_measure (lrs, measure_name);
+}
+
+
 json_t *
-TALER_KYCLOGIC_get_measures (
+TALER_KYCLOGIC_get_jmeasures (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const char *measures_spec)
 {
@@ -1303,7 +1280,7 @@ TALER_KYCLOGIC_get_measures (
 
 
 json_t *
-TALER_KYCLOGIC_check_to_measures (
+TALER_KYCLOGIC_check_to_jmeasures (
   const struct TALER_KYCLOGIC_KycCheckContext *kcc)
 {
   const struct TALER_KYCLOGIC_KycCheck *check
