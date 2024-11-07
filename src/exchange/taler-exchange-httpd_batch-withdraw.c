@@ -695,8 +695,6 @@ run_legi_check (struct BatchWithdrawContext *bwc)
                    "reserves_get_origin"));
     return;
   }
-  TALER_full_payto_normalize_and_hash (payto_uri,
-                                       &bwc->h_normalized_payto);
   /* If _no_ results, reserve was created by merge,
      in which case no KYC check is required as the
      merge already did that. */
@@ -705,6 +703,9 @@ run_legi_check (struct BatchWithdrawContext *bwc)
     bwc->phase = BWC_PHASE_PREPARE_TRANSACTION;
     return;
   }
+
+  TALER_full_payto_normalize_and_hash (payto_uri,
+                                       &bwc->h_normalized_payto);
 
   bwc->lch = TEH_legitimization_check (
     &bwc->rc->async_scope_id,
