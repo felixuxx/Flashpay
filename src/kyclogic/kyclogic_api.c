@@ -1075,7 +1075,7 @@ TALER_KYCLOGIC_zero_measures (
         json_decref (zero_measures);
         return NULL;
       }
-      if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE
+      if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
                            ms->check_name))
         continue; /* not a measure to be selected */
       mi = GNUNET_JSON_PACK (
@@ -1278,12 +1278,6 @@ TALER_KYCLOGIC_get_measures (
       GNUNET_free (nm);
       json_decref (jmeasures);
       return NULL;
-    }
-    if (0 == strcasecmp ("verboten",
-                         ms->check_name))
-    {
-      verboten = true;
-      continue;
     }
     mi = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("check_name",
