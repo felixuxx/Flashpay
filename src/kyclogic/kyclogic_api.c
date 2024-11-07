@@ -966,7 +966,7 @@ TALER_KYCLOGIC_rule_get_instant_measure (
     const char *measure_name = r->next_measures[i];
     const struct TALER_KYCLOGIC_Measure *ms;
 
-    if (0 == strcasecmp (measure_name, "verboten"))
+    if (0 == strcasecmp (measure_name, KYC_MEASURE_IMPOSSIBLE))
     {
       /* If any of the measures if verboten, we do not even
       consider execution of the instant measure. */
@@ -1075,7 +1075,7 @@ TALER_KYCLOGIC_zero_measures (
         json_decref (zero_measures);
         return NULL;
       }
-      if (0 == strcasecmp ("verboten",
+      if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE
                            ms->check_name))
         continue; /* not a measure to be selected */
       mi = GNUNET_JSON_PACK (
@@ -1123,7 +1123,7 @@ append_voluntary_measure (
 
   if (! ms->voluntary)
     return;
-  if (0 == strcasecmp ("verboten",
+  if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
                        ms->check_name))
     return; /* very strange configuration */
 #if 0
@@ -1207,7 +1207,7 @@ TALER_KYCLOGIC_get_instant_measure (
   {
     const struct TALER_KYCLOGIC_Measure *ms;
 
-    if (0 == strcasecmp ("verboten",
+    if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
                          tok))
     {
       continue;
@@ -1219,7 +1219,7 @@ TALER_KYCLOGIC_get_instant_measure (
       GNUNET_break (0);
       continue;
     }
-    if (0 == strcasecmp ("verboten",
+    if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
                          ms->check_name))
     {
       continue;
@@ -1264,7 +1264,7 @@ TALER_KYCLOGIC_get_measures (
     const struct TALER_KYCLOGIC_Measure *ms;
     json_t *mi;
 
-    if (0 == strcasecmp ("verboten",
+    if (0 == strcasecmp (KYC_MEASURE_IMPOSSIBLE,
                          tok))
     {
       verboten = true;
@@ -2591,7 +2591,7 @@ TALER_KYCLOGIC_kyc_init (
       const char *measure_name = rule->next_measures[j];
       const struct TALER_KYCLOGIC_Measure *m;
 
-      if (0 == strcmp ("verboten",
+      if (0 == strcmp (KYC_MEASURE_IMPOSSIBLE,
                        measure_name))
         continue;
       m = find_measure (&default_rules,
