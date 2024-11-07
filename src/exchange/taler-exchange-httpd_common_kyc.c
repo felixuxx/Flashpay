@@ -523,6 +523,28 @@ TEH_kyc_run_measure_for_attributes (
   kat->cb_cls = cb_cls;
   kat->aml_history = json_array ();
   kat->kyc_history = json_array ();
+
+  qs = TEH_plugin->lookup_active_legitimization (
+    TEH_plugin->cls,
+    process_row,
+    &kat->measure_index,
+    &kat->provider_name,
+    &kat->jmeasures);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+
   qs = TEH_plugin->lookup_aml_history (
     TEH_plugin->cls,
     account_id,
@@ -1560,7 +1582,7 @@ legitimization_check_run (
     if (GNUNET_TIME_absolute_is_past (ts.abs_time))
     {
       const char *successor;
-      struct TALER_KYCLOGIC_Measure *successor_measure;
+      const struct TALER_KYCLOGIC_Measure *successor_measure;
 
       successor
         = TALER_KYCLOGIC_rules_get_successor (lrs);
