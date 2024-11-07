@@ -366,7 +366,6 @@ proof_cb (
       GNUNET_asprintf (&msg,
                        "Failure by KYC provider (HTTP status %u)\n",
                        http_status);
-      http_status = MHD_HTTP_BAD_GATEWAY;
       proof_finish (
         kpc,
         TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,

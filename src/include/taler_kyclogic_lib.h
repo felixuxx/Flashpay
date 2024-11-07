@@ -788,6 +788,17 @@ TALER_KYCLOGIC_get_instant_measure (
 
 
 /**
+ * Convert a measure to JSON.
+ *
+ * @param m measure to convert to JSON
+ * @returns JSON representation of the measure
+ */
+json_t *
+TALER_KYCLOGIC_measure_to_jmeasures (
+  const struct TALER_KYCLOGIC_Measure *m);
+
+
+/**
  * Handle to manage a running AML program.
  */
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle;

@@ -1336,6 +1336,36 @@ TALER_KYCLOGIC_check_to_measures (
 }
 
 
+json_t *
+TALER_KYCLOGIC_measure_to_jmeasures (
+  const struct TALER_KYCLOGIC_Measure *m)
+{
+  json_t *jmeasures;
+  json_t *mi;
+
+  mi = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("check_name",
+                             m->check_name),
+    GNUNET_JSON_pack_string ("prog_name",
+                             m->prog_name),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_object_incref ("context",
+                                      (json_t *) m->context)));
+  jmeasures = json_array ();
+  GNUNET_assert (NULL != jmeasures);
+  GNUNET_assert (0 ==
+                 json_array_append_new (jmeasures,
+                                        mi));
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("measures",
+                                  jmeasures),
+    GNUNET_JSON_pack_bool ("is_and_combinator",
+                           true),
+    GNUNET_JSON_pack_bool ("verboten",
+                           false));
+}
+
+
 uint32_t
 TALER_KYCLOGIC_rule2priority (
   const struct TALER_KYCLOGIC_KycRule *r)

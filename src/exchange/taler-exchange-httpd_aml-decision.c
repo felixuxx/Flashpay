@@ -399,7 +399,6 @@ TEH_handler_post_aml_decision (
   /* Run instant measure if necessary */
   {
     const struct TALER_KYCLOGIC_Measure *instant_ms = NULL;
-    enum GNUNET_DB_QueryStatus qs;
 
     if (NULL != new_measures)
     {
@@ -411,49 +410,16 @@ TEH_handler_post_aml_decision (
       /* We have an 'instant' measure which means we must run the
          AML program immediately instead of waiting for the account owner
          to select some measure and contribute their KYC data. */
-      json_t *attributes
-        = json_object ();   /* instant: empty attributes */
-      uint64_t process_row;
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Running instant measure after AML decision\n");
-
-      GNUNET_assert (NULL != attributes);
-
-      qs = TEH_plugin->insert_kyc_requirement_process (
-        TEH_plugin->cls,
+      adc->kat = TEH_kyc_run_measure_instant (
+        &rc->async_scope_id,
+        instant_ms,
         &h_payto,
-        0, /* measure index */
-        legi_measure_serial_id,
-        "SKIP",
-        NULL, /* provider_account_id */
-        NULL, /* provider_legitimziation_id */
-        &process_row);
-      if (qs < 0)
-      {
-        GNUNET_break (0);
-        ret = TALER_MHD_reply_with_error (
-          rc->connection,
-          MHD_HTTP_INTERNAL_SERVER_ERROR,
-          TALER_EC_GENERIC_DB_STORE_FAILED,
-          "insert_kyc_requirement_process");
-        goto done;
-      }
-      /* FIXME: Insert start time of KYC process' AML program */
-      adc->kat
-        = TEH_kyc_finished (
-            &rc->async_scope_id,
-            process_row,
-            instant_ms,
-            &h_payto,
-            "SKIP",   /* provider */
-            NULL,
-            NULL,
-            GNUNET_TIME_UNIT_FOREVER_ABS,
-            attributes,
-            &aml_trigger_callback,
-            adc);
-      json_decref (attributes);
+        &aml_trigger_callback,
+        adc
+        );
       if (NULL == adc->kat)
       {
         GNUNET_break (0);
@@ -464,7 +430,6 @@ TEH_handler_post_aml_decision (
           "TEH_kyc_finished");
         goto done;
       }
-
       MHD_suspend_connection (adc->rc->connection);
       GNUNET_CONTAINER_DLL_insert (adc_head,
                                    adc_tail,

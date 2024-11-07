@@ -34,31 +34,12 @@
 
 #if 0
 /**
- * Function called after finishing running a measure.
- *
- * @param cls closure
- * @param ec error code, 0 on success
- * @param msg error message, NULL on success
- */
-typedef void
-(*TEH_AmlMeasureRunCallback) (
-  void *cls,
-  enum TALER_ErrorCode ec,
-  const char *msg);
-
-/**
- * Handle for an asynchronous operation to finish
- * a KYC process after running the AML trigger.
- */
-struct TEH_AmlMeasureRunContext;
-
-/**
  * Run measure after storing attributes from the given
  * provider.
  *
  * Only works when a process is active.
  */
-struct TEH_AmlMeasureRunContext *
+struct TEH_KycAmlTrigger *
 TEH_kyc_run_measure_for_attributes (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
@@ -66,25 +47,7 @@ TEH_kyc_run_measure_for_attributes (
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
   const json_t *new_attributes,
-  TEH_AmlMeasureRunCallback cb,
-  void *cb_cls);
-
-
-/**
- * Run an instant measure.
- *
- * Inserts a legitimization process and measure
- * into the database before running the measure program.
- *
- * After running the measure program, the result is stored
- * in the DB.
- */
-struct TEH_AmlMeasureRunContext *
-TEH_kyc_run_measure_instant (
-  const struct GNUNET_AsyncScopeId *scope,
-  const struct TALER_KYCLOGIC_Measure *instant_ms,
-  const struct TALER_NormalizedPaytoHashP *account_id,
-  TEH_AmlMeasureRunCallback cb,
+  TEH_KycAmlTriggerCallback cb,
   void *cb_cls);
 
 #endif
@@ -143,6 +106,31 @@ TEH_kyc_finished (
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
   const json_t *attributes,
+  TEH_KycAmlTriggerCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Run an instant measure.
+ *
+ * Inserts a legitimization process and measure
+ * into the database before running the measure program.
+ *
+ * After running the measure program, the result is stored
+ * in the DB.
+ *
+ * @param scope the HTTP request logging scope
+ * @param instant_measure instant measure to run
+ * @param account_id account affected by the measure
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return handle to cancel the operation
+ */
+struct TEH_KycAmlTrigger *
+TEH_kyc_run_measure_instant (
+  const struct GNUNET_AsyncScopeId *scope,
+  const struct TALER_KYCLOGIC_Measure *instant_ms,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   TEH_KycAmlTriggerCallback cb,
   void *cb_cls);
 

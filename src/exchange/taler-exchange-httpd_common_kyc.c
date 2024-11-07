@@ -473,6 +473,9 @@ TEH_kyc_finished (
   struct TEH_KycAmlTrigger *kat;
   enum GNUNET_DB_QueryStatus qs;
 
+  /* FIXME: We should look up the provider name instead of
+     taking it as an argument. Or at least check consistency. */
+
   kat = GNUNET_new (struct TEH_KycAmlTrigger);
   kat->scope = *scope;
   kat->process_row = process_row;
@@ -607,6 +610,84 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
 }
 
 
+struct TEH_KycAmlTrigger *
+TEH_kyc_run_measure_instant (
+  const struct GNUNET_AsyncScopeId *scope,
+  const struct TALER_KYCLOGIC_Measure *instant_ms,
+  const struct TALER_NormalizedPaytoHashP *account_id,
+  TEH_KycAmlTriggerCallback cb,
+  void *cb_cls)
+{
+  uint64_t process_row;
+  uint64_t legi_measure_serial_id;
+  bool bad_kyc_auth;
+  enum GNUNET_DB_QueryStatus qs;
+  json_t *jmeasures;
+  struct TALER_FullPayto null_account = {
+    .full_payto = NULL
+  };
+
+  jmeasures = TALER_KYCLOGIC_measure_to_jmeasures (instant_ms);
+
+  GNUNET_assert (NULL != jmeasures);
+
+  qs = TEH_plugin->trigger_kyc_rule_for_account (
+    TEH_plugin->cls,
+    null_account,
+    account_id,
+    NULL,
+    NULL,
+    jmeasures,
+    0, /* no particular priority */
+    &legi_measure_serial_id,
+    &bad_kyc_auth);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+
+  /* We're not checking kyc auth, so it can't be bad. */
+  GNUNET_assert (! bad_kyc_auth);
+
+  qs = TEH_plugin->insert_kyc_requirement_process (
+    TEH_plugin->cls,
+    account_id,
+    0, /* measure index */
+    legi_measure_serial_id,
+    "SKIP",
+    NULL, /* provider_account_id */
+    NULL, /* provider_legitimziation_id */
+    &process_row);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+
+  return TEH_kyc_finished (
+    scope,
+    0, /* FIXME: Start process! */
+    instant_ms,
+    account_id,
+    "SKIP",
+    NULL,
+    NULL,
+    GNUNET_TIME_UNIT_FOREVER_ABS,
+    NULL,
+    cb,
+    cb_cls
+    );
+}
+
+
 struct TEH_KycAmlFallback
 {
 
@@ -689,7 +770,7 @@ handle_aml_fallback_result (
           apr->details.failure.error_message,
           apr->details.failure.ec))
     {
-      /* tripple-bad: error during error handling of fallback */
+      /* triple-bad: error during error handling of fallback */
       GNUNET_break (0);
       fb->cb (fb->cb_cls,
               false,
@@ -1700,6 +1781,7 @@ legitimization_check_run (
       }
       else
       {
+        /* FIXME: Replace by call to TEH_kyc_run_measure_instant. */
         run_check (lch,
                    &kcc);
         goto cleanup;
