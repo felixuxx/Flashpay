@@ -126,22 +126,37 @@ aml_decision_cleaner (struct TEH_RequestContext *rc)
  * Function called after the KYC-AML trigger is done.
  *
  * @param cls closure
- * @param http_status final HTTP status to return
- * @param[in] response final HTTP ro return
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
  */
 static void
 aml_trigger_callback (
   void *cls,
-  unsigned int http_status,
-  struct MHD_Response *response)
+  enum TALER_ErrorCode ec,
+  const char *detail)
 {
   struct AmlDecisionContext *adc = cls;
 
   adc->kat = NULL;
   GNUNET_assert (NULL == adc->response);
-  GNUNET_assert (NULL != response);
-  adc->response_code = http_status;
-  adc->response = response;
+
+  if (TALER_EC_NONE != ec)
+  {
+    adc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    adc->response = TALER_MHD_make_error (
+      ec,
+      detail);
+  }
+  else
+  {
+    adc->response_code = MHD_HTTP_NO_CONTENT;
+    adc->response = MHD_create_response_from_buffer_static (
+      0,
+      "");
+  }
+
+  GNUNET_assert (NULL != adc->response);
+
   MHD_resume_connection (adc->rc->connection);
   GNUNET_CONTAINER_DLL_remove (adc_head,
                                adc_tail,
@@ -384,7 +399,6 @@ TEH_handler_post_aml_decision (
   /* Run instant measure if necessary */
   {
     const struct TALER_KYCLOGIC_Measure *instant_ms = NULL;
-    struct MHD_Response *empty_response;
     enum GNUNET_DB_QueryStatus qs;
 
     if (NULL != new_measures)
@@ -405,10 +419,6 @@ TEH_handler_post_aml_decision (
                   "Running instant measure after AML decision\n");
 
       GNUNET_assert (NULL != attributes);
-      empty_response
-        = MHD_create_response_from_buffer_static (0,
-                                                  "");
-      GNUNET_assert (NULL != empty_response);
 
       qs = TEH_plugin->insert_kyc_requirement_process (
         TEH_plugin->cls,
@@ -441,8 +451,6 @@ TEH_handler_post_aml_decision (
             NULL,
             GNUNET_TIME_UNIT_FOREVER_ABS,
             attributes,
-            MHD_HTTP_NO_CONTENT,      /* http status */
-            empty_response,   /* MHD_Response */
             &aml_trigger_callback,
             adc);
       json_decref (attributes);

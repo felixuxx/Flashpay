@@ -334,22 +334,35 @@ post_helper (void *cls,
  * Function called after the KYC-AML trigger is done.
  *
  * @param cls closure
- * @param http_status final HTTP status to return
- * @param[in] response final HTTP ro return
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
  */
 static void
 aml_trigger_callback (
   void *cls,
-  unsigned int http_status,
-  struct MHD_Response *response)
+  enum TALER_ErrorCode ec,
+  const char *detail)
 {
   struct UploadContext *uc = cls;
 
   uc->kat = NULL;
   GNUNET_assert (NULL == uc->response);
-  GNUNET_assert (NULL != response);
-  uc->response_code = http_status;
-  uc->response = response;
+  if (TALER_EC_NONE != ec)
+  {
+    uc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    uc->response = TALER_MHD_make_error (
+      ec,
+      detail);
+  }
+  else
+  {
+    uc->response_code = MHD_HTTP_NO_CONTENT;
+    uc->response = MHD_create_response_from_buffer_static (
+      0,
+      ""
+      );
+  }
+
   MHD_resume_connection (uc->rc->connection);
   GNUNET_CONTAINER_DLL_remove (uc_head,
                                uc_tail,
@@ -458,7 +471,6 @@ TEH_handler_kyc_upload (
     struct TALER_NormalizedPaytoHashP h_payto;
     enum GNUNET_DB_QueryStatus qs;
     json_t *jmeasures;
-    struct MHD_Response *empty_response;
     bool is_finished = false;
     size_t enc_attributes_len;
     void *enc_attributes;
@@ -578,9 +590,6 @@ TEH_handler_kyc_upload (
         "insert_kyc_requirement_process");
     }
 
-    empty_response
-      = MHD_create_response_from_buffer_static (0,
-                                                "");
     uc->kat = TEH_kyc_finished (
       &rc->async_scope_id,
       legi_process_row,
@@ -591,11 +600,8 @@ TEH_handler_kyc_upload (
       NULL /* provider legi ID */,
       GNUNET_TIME_UNIT_FOREVER_ABS, /* expiration time */
       uc->result,
-      MHD_HTTP_NO_CONTENT,
-      empty_response,
       &aml_trigger_callback,
       uc);
-    empty_response = NULL; /* taken over by TEH_kyc_finished */
     if (NULL == uc->kat)
     {
       GNUNET_break (0);

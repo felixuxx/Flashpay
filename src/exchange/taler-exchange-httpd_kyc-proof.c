@@ -92,9 +92,24 @@ struct KycProofContext
   struct TALER_NormalizedPaytoHashP h_payto;
 
   /**
-   * HTTP response to return.
+   * Final HTTP response to return.
    */
   struct MHD_Response *response;
+
+  /**
+   * Final HTTP response code to return.
+   */
+  unsigned int response_code;
+
+  /**
+   * HTTP response from the KYC provider plugin.
+   */
+  struct MHD_Response *proof_response;
+
+  /**
+   * HTTP response code from the KYC provider plugin.
+   */
+  unsigned int proof_response_code;
 
   /**
    * Provider configuration section name of the logic we are running.
@@ -105,11 +120,6 @@ struct KycProofContext
    * Row in the database for this legitimization operation.
    */
   uint64_t process_row;
-
-  /**
-   * HTTP response code to return.
-   */
-  unsigned int response_code;
 
   /**
    * True if we are suspended,
@@ -128,6 +138,46 @@ static struct KycProofContext *kpc_head;
  * Contexts are kept in a DLL while suspended.
  */
 static struct KycProofContext *kpc_tail;
+
+
+/**
+ * Generate HTML error for @a connection using @a template.
+ *
+ * @param connection HTTP client connection
+ * @param template template to expand
+ * @param[in,out] http_status HTTP status of the response
+ * @param ec Taler error code to return
+ * @param message extended message to return
+ * @return MHD response object
+ */
+static struct MHD_Response *
+make_html_error (struct MHD_Connection *connection,
+                 const char *template,
+                 unsigned int *http_status,
+                 enum TALER_ErrorCode ec,
+                 const char *message)
+{
+  struct MHD_Response *response = NULL;
+  json_t *body;
+
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("message",
+                               message)),
+    TALER_JSON_pack_ec (
+      ec));
+  GNUNET_break (
+    GNUNET_SYSERR !=
+    TALER_TEMPLATING_build (connection,
+                            http_status,
+                            template,
+                            NULL,
+                            NULL,
+                            body,
+                            &response));
+  json_decref (body);
+  return response;
+}
 
 
 /**
@@ -169,62 +219,38 @@ TEH_kyc_proof_cleanup (void)
  * Function called after the KYC-AML trigger is done.
  *
  * @param cls closure
- * @param http_status final HTTP status to return
- * @param[in] response final HTTP ro return
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
  */
 static void
 proof_finish (
   void *cls,
-  unsigned int http_status,
-  struct MHD_Response *response)
+  enum TALER_ErrorCode ec,
+  const char *detail)
 {
   struct KycProofContext *kpc = cls;
 
   kpc->kat = NULL;
+  if (TALER_EC_NONE != ec)
+  {
+    kpc->response_code  = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    kpc->response = make_html_error (
+      kpc->rc->connection,
+      "kyc-proof-internal-error",
+      &kpc->response_code,
+      ec,
+      detail);
+  }
+  else
+  {
+    GNUNET_assert (NULL != kpc->proof_response);
+    kpc->response_code = kpc->proof_response_code;
+    kpc->response = kpc->proof_response;
+    kpc->proof_response = NULL;
+    kpc->proof_response_code = 0;
+  }
   GNUNET_assert (NULL == kpc->response);
-  kpc->response_code = http_status;
-  kpc->response = response;
   kpc_resume (kpc);
-}
-
-
-/**
- * Generate HTML error for @a connection using @a template.
- *
- * @param connection HTTP client connection
- * @param template template to expand
- * @param[in,out] http_status HTTP status of the response
- * @param ec Taler error code to return
- * @param message extended message to return
- * @return MHD response object
- */
-static struct MHD_Response *
-make_html_error (struct MHD_Connection *connection,
-                 const char *template,
-                 unsigned int *http_status,
-                 enum TALER_ErrorCode ec,
-                 const char *message)
-{
-  struct MHD_Response *response = NULL;
-  json_t *body;
-
-  body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string ("message",
-                               message)),
-    TALER_JSON_pack_ec (
-      ec));
-  GNUNET_break (
-    GNUNET_SYSERR !=
-    TALER_TEMPLATING_build (connection,
-                            http_status,
-                            template,
-                            NULL,
-                            NULL,
-                            body,
-                            &response));
-  json_decref (body);
-  return response;
 }
 
 
@@ -292,6 +318,8 @@ proof_cb (
   struct GNUNET_AsyncScopeSave old_scope;
 
   kpc->ph = NULL;
+  kpc->proof_response = response;
+  kpc->proof_response_code = http_status;
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
   switch (status)
@@ -310,20 +338,13 @@ proof_cb (
       provider_legitimization_id,
       expiration,
       attributes,
-      http_status,
-      response,
       &proof_finish,
       kpc);
-    response = NULL; /* taken over by TEH_kyc_finished */
     if (NULL == kpc->kat)
     {
-      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      response = make_html_error (
-        kpc->rc->connection,
-        "kyc-proof-internal-error",
-        &http_status,
-        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-        "[exchange] AML_KYC_TRIGGER");
+      proof_finish (kpc,
+                    TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+                    "[exchange] AML_KYC_TRIGGER");
     }
     break;
   case TALER_KYCLOGIC_STATUS_FAILED:
@@ -342,16 +363,12 @@ proof_cb (
       char *msg;
 
       /* OAuth2 server had a problem, do NOT log this as a KYC failure */
-      if (NULL != response)
-        MHD_destroy_response (response);
       GNUNET_asprintf (&msg,
                        "Failure by KYC provider (HTTP status %u)\n",
                        http_status);
       http_status = MHD_HTTP_BAD_GATEWAY;
-      response = make_html_error (
-        kpc->rc->connection,
-        "kyc-proof-internal-error",
-        &http_status,
+      proof_finish (
+        kpc,
         TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
         msg);
       GNUNET_free (msg);
@@ -368,15 +385,20 @@ proof_cb (
             TALER_EC_EXCHANGE_GENERIC_KYC_FAILED))
       {
         GNUNET_break (0);
-        if (NULL != response)
-          MHD_destroy_response (response);
-        http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        response = make_html_error (
-          kpc->rc->connection,
-          "kyc-proof-internal-error",
-          &http_status,
+        proof_finish (
+          kpc,
           TALER_EC_GENERIC_DB_STORE_FAILED,
           "insert_kyc_failure");
+      }
+      else
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "KYC process #%llu failed with status %d\n",
+                    (unsigned long long) kpc->process_row,
+                    status);
+        proof_finish (kpc,
+                      TALER_EC_NONE,
+                      NULL);
       }
     }
     break;
@@ -388,16 +410,6 @@ proof_cb (
                 (unsigned long long) kpc->process_row,
                 (int) status);
     break;
-  }
-  if (NULL == kpc->kat)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC process #%llu failed with status %d\n",
-                (unsigned long long) kpc->process_row,
-                status);
-    proof_finish (kpc,
-                  http_status,
-                  response);
   }
   GNUNET_async_scope_restore (&old_scope);
 }
@@ -427,6 +439,11 @@ clean_kpc (struct TEH_RequestContext *rc)
   {
     MHD_destroy_response (kpc->response);
     kpc->response = NULL;
+  }
+  if (NULL != kpc->proof_response)
+  {
+    MHD_destroy_response (kpc->proof_response);
+    kpc->proof_response = NULL;
   }
   GNUNET_free (kpc->provider_user_id);
   GNUNET_free (kpc->provider_legitimization_id);

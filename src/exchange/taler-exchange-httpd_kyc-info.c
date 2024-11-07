@@ -417,8 +417,7 @@ TEH_handler_kyc_info (
   uint64_t legitimization_outcome_last_row;
   json_t *jmeasures = NULL;
   json_t *jvoluntary = NULL;
-  json_t *jnew_rules;
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
 
   if (NULL == kyp)
   {
@@ -435,11 +434,12 @@ TEH_handler_kyc_info (
           sizeof (kyp->access_token)))
     {
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (
+      res = TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         "access token");
+      goto cleanup;
     }
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &kyp->timeout);
@@ -485,20 +485,21 @@ TEH_handler_kyc_info (
     if (qs < 0)
     {
       GNUNET_break (0);
-      return TALER_MHD_reply_with_ec (
+      res = TALER_MHD_reply_with_ec (
         rc->connection,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
         "lookup_h_payto_by_access_token");
+      goto cleanup;
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       GNUNET_break_op (0);
-      return TALER_MHD_REPLY_JSON_PACK (
+      res = TALER_MHD_REPLY_JSON_PACK (
         rc->connection,
         MHD_HTTP_FORBIDDEN,
         TALER_JSON_pack_ec (
           TALER_EC_EXCHANGE_KYC_INFO_AUTHORIZATION_FAILED));
-
+      goto cleanup;
     }
 
     if (GNUNET_TIME_absolute_is_future (kyp->timeout))
@@ -520,31 +521,37 @@ TEH_handler_kyc_info (
     }
   } /* end of one-time initialization */
 
-  qs = TEH_plugin->lookup_rules_by_access_token (
-    TEH_plugin->cls,
-    &kyp->h_payto,
-    &jnew_rules,
-    &legitimization_outcome_last_row);
-  if (qs < 0)
+  /* Get rules. */
   {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_ec (
-      rc->connection,
-      TALER_EC_GENERIC_DB_FETCH_FAILED,
-      "lookup_rules_by_access_token");
+    json_t *jnew_rules;
+    qs = TEH_plugin->lookup_rules_by_access_token (
+      TEH_plugin->cls,
+      &kyp->h_payto,
+      &jnew_rules,
+      &legitimization_outcome_last_row);
+    if (qs < 0)
+    {
+      GNUNET_break (0);
+      res = TALER_MHD_reply_with_ec (
+        rc->connection,
+        TALER_EC_GENERIC_DB_FETCH_FAILED,
+        "lookup_rules_by_access_token");
+      goto cleanup;
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      /* Nothing was triggered, return the measures
+        that apply for any amount. */
+      lrs = NULL;
+    }
+    else
+    {
+      lrs = TALER_KYCLOGIC_rules_parse (jnew_rules);
+      GNUNET_break (NULL != lrs);
+      json_decref (jnew_rules);
+    }
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    /* Nothing was triggered, return the measures
-       that apply for any amount. */
-    lrs = NULL;
-  }
-  else
-  {
-    lrs = TALER_KYCLOGIC_rules_parse (jnew_rules);
-    GNUNET_break (NULL != lrs);
-    json_decref (jnew_rules);
-  }
+
   jvoluntary
     = TALER_KYCLOGIC_voluntary_measures (lrs);
 
@@ -556,11 +563,11 @@ TEH_handler_kyc_info (
   if (qs < 0)
   {
     GNUNET_break (0);
-    TALER_KYCLOGIC_rules_free (lrs);
-    return TALER_MHD_reply_with_ec (
+    res = TALER_MHD_reply_with_ec (
       rc->connection,
       TALER_EC_GENERIC_DB_FETCH_FAILED,
       "lookup_kyc_status_by_token");
+    goto cleanup;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
@@ -570,13 +577,13 @@ TEH_handler_kyc_info (
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "No KYC requirement open\n");
-      TALER_KYCLOGIC_rules_free (lrs);
-      return TALER_MHD_REPLY_JSON_PACK (
+      res = TALER_MHD_REPLY_JSON_PACK (
         rc->connection,
         MHD_HTTP_OK,
         GNUNET_JSON_pack_allow_null (
           GNUNET_JSON_pack_array_steal ("voluntary_measures",
                                         jvoluntary)));
+      goto cleanup;
     }
 
     qs = TEH_plugin->insert_active_legitimization_measure (
@@ -587,14 +594,16 @@ TEH_handler_kyc_info (
     if (qs < 0)
     {
       GNUNET_break (0);
-      TALER_KYCLOGIC_rules_free (lrs);
-      return TALER_MHD_reply_with_ec (
+      res = TALER_MHD_reply_with_ec (
         rc->connection,
         TALER_EC_GENERIC_DB_STORE_FAILED,
         "insert_active_legitimization_measure");
+      goto cleanup;
     }
   }
+  /* We can free rules early here. */
   TALER_KYCLOGIC_rules_free (lrs);
+  lrs = NULL;
   if ( (legitimization_measure_last_row == kyp->etag_measure_in) &&
        (legitimization_outcome_last_row == kyp->etag_outcome_in) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout) )
@@ -611,19 +620,19 @@ TEH_handler_kyc_info (
                                  kyp_tail,
                                  kyp);
     MHD_suspend_connection (rc->connection);
-    return MHD_YES;
+    res = MHD_YES;
+    goto cleanup;
   }
   /* FIXME: We should instead long-poll on the running KYC program. */
   if (contains_instant_measure (jmeasures))
   {
-    json_decref (jmeasures);
-    json_decref (jvoluntary);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Still waiting for KYC program.\n");
-    return TALER_MHD_reply_with_ec (
+    res = TALER_MHD_reply_with_ec (
       rc->connection,
       TALER_EC_EXCHANGE_KYC_INFO_BUSY,
       "waiting for KYC program");
+    goto cleanup;
   }
   if ( (legitimization_measure_last_row ==
         kyp->etag_measure_in) &&
@@ -632,18 +641,17 @@ TEH_handler_kyc_info (
   {
     char etags[128];
 
-    json_decref (jmeasures);
-    json_decref (jvoluntary);
     GNUNET_snprintf (etags,
                      sizeof (etags),
                      "\"%llu-%llu\"",
                      (unsigned long long) legitimization_measure_last_row,
                      (unsigned long long) legitimization_outcome_last_row);
-    return TEH_RESPONSE_reply_not_modified (
+    res = TEH_RESPONSE_reply_not_modified (
       rc->connection,
       etags,
       &add_response_headers,
       NULL);
+    goto cleanup;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Generating success reply to kyc-info query\n");
@@ -652,6 +660,8 @@ TEH_handler_kyc_info (
                         legitimization_outcome_last_row,
                         jmeasures,
                         jvoluntary);
+cleanup:
+  TALER_KYCLOGIC_rules_free (lrs);
   json_decref (jmeasures);
   json_decref (jvoluntary);
   return res;

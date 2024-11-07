@@ -94,14 +94,14 @@ TEH_kyc_run_measure_instant (
  * Function called after the KYC-AML trigger is done.
  *
  * @param cls closure
- * @param http_status final HTTP status to return
- * @param[in] response final HTTP ro return
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
  */
 typedef void
 (*TEH_KycAmlTriggerCallback) (
   void *cls,
-  unsigned int http_status,
-  struct MHD_Response *response);
+  enum TALER_ErrorCode ec,
+  const char *detail);
 
 
 /**
@@ -128,8 +128,6 @@ struct TEH_KycAmlTrigger;
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
  * @param attributes user attributes returned by the provider
- * @param http_status HTTP status code of @a response
- * @param[in] response to return to the HTTP client
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel the operation
@@ -145,8 +143,6 @@ TEH_kyc_finished (
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
   const json_t *attributes,
-  unsigned int http_status,
-  struct MHD_Response *response,
   TEH_KycAmlTriggerCallback cb,
   void *cb_cls);
 

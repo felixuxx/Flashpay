@@ -81,14 +81,28 @@ struct KycWebhookContext
   struct TALER_KYCLOGIC_WebhookHandle *wh;
 
   /**
-   * HTTP response to return.
+   * Final HTTP response to return.
    */
   struct MHD_Response *response;
 
   /**
-   * HTTP response code to return.
+   * Final HTTP response code to return.
    */
   unsigned int response_code;
+
+  /**
+   * Response from the webhook plugin.
+   *
+   * Will become the final response on successfully
+   * running the measure with the new attributes.
+   */
+  struct MHD_Response *webhook_response;
+
+  /**
+   * Response code to return for the webhook plugin
+   * response.
+   */
+  unsigned int webhook_response_code;
 
   /**
    * #GNUNET_YES if we are suspended,
@@ -150,21 +164,35 @@ TEH_kyc_webhook_cleanup (void)
  * Function called after the KYC-AML trigger is done.
  *
  * @param cls closure with a `struct KycWebhookContext *`
- * @param http_status final HTTP status to return
- * @param[in] response final HTTP ro return
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
  */
 static void
 kyc_aml_webhook_finished (
   void *cls,
-  unsigned int http_status,
-  struct MHD_Response *response)
+  enum TALER_ErrorCode ec,
+  const char *detail)
 {
   struct KycWebhookContext *kwh = cls;
 
   kwh->kat = NULL;
   GNUNET_assert (NULL == kwh->response);
-  kwh->response = response;
-  kwh->response_code = http_status;
+  if (TALER_EC_NONE != ec)
+  {
+    kwh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    kwh->response = TALER_MHD_make_error (
+      ec,
+      detail
+      );
+  }
+  else
+  {
+    GNUNET_assert (NULL != kwh->webhook_response);
+    kwh->response_code = kwh->webhook_response_code;
+    kwh->response = kwh->webhook_response;
+    kwh->webhook_response = NULL;
+    kwh->webhook_response_code = 0;
+  }
   kwh_resume (kwh);
 }
 
@@ -204,6 +232,9 @@ webhook_finished_cb (
   struct KycWebhookContext *kwh = cls;
 
   kwh->wh = NULL;
+  kwh->webhook_response = response;
+  kwh->webhook_response_code = http_status;
+
   switch (status)
   {
   case TALER_KYCLOGIC_STATUS_SUCCESS:
@@ -217,21 +248,15 @@ webhook_finished_cb (
       provider_legitimization_id,
       expiration,
       attributes,
-      http_status,
-      response,
       &kyc_aml_webhook_finished,
       kwh);
     if (NULL == kwh->kat)
     {
-      if (NULL != response)
-        MHD_destroy_response (response);
-      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      response = TALER_MHD_make_error (
-        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-        "[exchange] AML_KYC_TRIGGER");
-      break;
+      kyc_aml_webhook_finished (kwh,
+                                TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+                                "[exchange] AML_KYC_TRIGGER");
     }
-    return;
+    break;
   case TALER_KYCLOGIC_STATUS_FAILED:
   case TALER_KYCLOGIC_STATUS_PROVIDER_FAILED:
   case TALER_KYCLOGIC_STATUS_USER_ABORTED:
@@ -252,12 +277,9 @@ webhook_finished_cb (
           TALER_EC_EXCHANGE_GENERIC_KYC_FAILED))
     {
       GNUNET_break (0);
-      if (NULL != response)
-        MHD_destroy_response (response);
-      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      response = TALER_MHD_make_error (
-        TALER_EC_GENERIC_DB_STORE_FAILED,
-        "insert_kyc_failure");
+      kyc_aml_webhook_finished (kwh,
+                                TALER_EC_GENERIC_DB_STORE_FAILED,
+                                "insert_kyc_failure");
     }
     break;
   default:
@@ -268,12 +290,11 @@ webhook_finished_cb (
       provider_legitimization_id,
       (unsigned long long) process_row,
       (int) status);
+    kyc_aml_webhook_finished (kwh,
+                              TALER_EC_NONE,
+                              NULL);
     break;
   }
-  GNUNET_break (NULL == kwh->kat);
-  kyc_aml_webhook_finished (kwh,
-                            http_status,
-                            response);
 }
 
 
@@ -301,6 +322,11 @@ clean_kwh (struct TEH_RequestContext *rc)
   {
     MHD_destroy_response (kwh->response);
     kwh->response = NULL;
+  }
+  if (NULL != kwh->webhook_response)
+  {
+    MHD_destroy_response (kwh->response);
+    kwh->webhook_response = NULL;
   }
   GNUNET_free (kwh);
 }

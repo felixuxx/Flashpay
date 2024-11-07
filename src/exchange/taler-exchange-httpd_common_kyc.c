@@ -124,20 +124,10 @@ struct TEH_KycAmlTrigger
   uint32_t measure_index;
 
   /**
-   * response to return to the HTTP client
-   */
-  struct MHD_Response *response;
-
-  /**
    * Handle to an external process that evaluates the
    * need to run AML on the account.
    */
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *kyc_aml;
-
-  /**
-   * HTTP status code of @e response
-   */
-  unsigned int http_status;
 
 };
 
@@ -167,18 +157,14 @@ fallback_result_cb (void *cls,
   if (result)
   {
     kat->cb (kat->cb_cls,
-             MHD_HTTP_INTERNAL_SERVER_ERROR,
-             TALER_MHD_make_error (
-               TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-               NULL));
+             TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
+             NULL);
   }
   else
   {
     kat->cb (kat->cb_cls,
-             MHD_HTTP_INTERNAL_SERVER_ERROR,
-             TALER_MHD_make_error (
-               TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_FAILED,
-               kat->fallback_name));
+             TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_FAILED,
+             kat->fallback_name);
   }
   TEH_kyc_finished_cancel (kat);
   GNUNET_async_scope_restore (&old_scope);
@@ -220,10 +206,8 @@ kyc_aml_finished (
       /* double-bad: error during error handling */
       GNUNET_break (0);
       kat->cb (kat->cb_cls,
-               MHD_HTTP_INTERNAL_SERVER_ERROR,
-               TALER_MHD_make_error (
-                 TALER_EC_GENERIC_DB_STORE_FAILED,
-                 "insert_kyc_failure"));
+               TALER_EC_GENERIC_DB_STORE_FAILED,
+               "insert_kyc_failure");
       TEH_kyc_finished_cancel (kat);
       GNUNET_async_scope_restore (&old_scope);
       return;
@@ -233,10 +217,8 @@ kyc_aml_finished (
       /* Not sure this can happen (fallback required?),
          but report AML program failure to client */
       kat->cb (kat->cb_cls,
-               MHD_HTTP_INTERNAL_SERVER_ERROR,
-               TALER_MHD_make_error (
-                 TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-                 NULL));
+               TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
+               NULL);
       TEH_kyc_finished_cancel (kat);
       GNUNET_async_scope_restore (&old_scope);
       return;
@@ -259,10 +241,8 @@ kyc_aml_finished (
     {
       GNUNET_break (0);
       kat->cb (kat->cb_cls,
-               MHD_HTTP_INTERNAL_SERVER_ERROR,
-               TALER_MHD_make_error (
-                 TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_UNKNOWN,
-                 kat->fallback_name));
+               TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_UNKNOWN,
+               kat->fallback_name);
       TEH_kyc_finished_cancel (kat);
       GNUNET_async_scope_restore (&old_scope);
       return;
@@ -290,13 +270,10 @@ kyc_aml_finished (
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Failed to parse birthdate `%s' from KYC attributes\n",
                     birthdate);
-        if (NULL != kat->response)
-          MHD_destroy_response (kat->response);
-        kat->http_status = MHD_HTTP_BAD_REQUEST;
-        kat->response = TALER_MHD_make_error (
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          TALER_ATTRIBUTE_BIRTHDATE);
-        goto RETURN_RESULT;
+        kat->cb (kat->cb_cls,
+                 TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                 "TALER_ATTRIBUTE_BIRTHDATE");
+        goto done;
       }
     }
   }
@@ -330,22 +307,19 @@ kyc_aml_finished (
   if (qs < 0)
   {
     GNUNET_break (0);
-    if (NULL != kat->response)
-      MHD_destroy_response (kat->response);
-    kat->http_status
-      = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    kat->response
-      = TALER_MHD_make_error (
-          TALER_EC_GENERIC_DB_STORE_FAILED,
-          "do_insert_kyc_measure_result");
-    /* Continued below to return the response */
+    kat->cb (kat->cb_cls,
+             TALER_EC_GENERIC_DB_STORE_FAILED,
+             "do_insert_kyc_measure_result");
+    /* Continued below to clean up. */
   }
-RETURN_RESULT:
-  /* Finally, return result to main handler */
-  kat->cb (kat->cb_cls,
-           kat->http_status,
-           kat->response);
-  kat->response = NULL;
+  else
+  {
+    /* Finally, return result to main handler */
+    kat->cb (kat->cb_cls,
+             TALER_EC_NONE,
+             0);
+  }
+done:
   TEH_kyc_finished_cancel (kat);
   GNUNET_async_scope_restore (&old_scope);
 }
@@ -493,8 +467,6 @@ TEH_kyc_finished (
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
   const json_t *attributes,
-  unsigned int http_status,
-  struct MHD_Response *response,
   TEH_KycAmlTriggerCallback cb,
   void *cb_cls)
 {
@@ -515,8 +487,6 @@ TEH_kyc_finished (
       = GNUNET_strdup (provider_legitimization_id);
   kat->expiration = expiration;
   kat->attributes = json_incref ((json_t*) attributes);
-  kat->http_status = http_status;
-  kat->response = response;
   kat->cb = cb;
   kat->cb_cls = cb_cls;
   if (NULL == instant_ms)
@@ -633,11 +603,6 @@ TEH_kyc_finished_cancel (struct TEH_KycAmlTrigger *kat)
   json_decref (kat->attributes);
   json_decref (kat->aml_history);
   json_decref (kat->kyc_history);
-  if (NULL != kat->response)
-  {
-    MHD_destroy_response (kat->response);
-    kat->response = NULL;
-  }
   GNUNET_free (kat);
 }
 
@@ -1111,22 +1076,24 @@ legitimization_check_run (
  * Function called after the KYC-AML trigger is done.
  *
  * @param cls must be a `struct TEH_LegitimizationCheckHandle *`
- * @param http_status final HTTP status to return
- * @param[in] response final HTTP ro return
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
  */
 static void
 legi_check_aml_trigger_cb (
   void *cls,
-  unsigned int http_status,
-  struct MHD_Response *response)
+  enum TALER_ErrorCode ec,
+  const char *detail)
 {
   struct TEH_LegitimizationCheckHandle *lch = cls;
 
   lch->kat = NULL;
-  if (NULL != response)
+  if (TALER_EC_NONE != ec)
   {
-    lch->lcr.http_status = http_status;
-    lch->lcr.response = response;
+    lch->lcr.http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    lch->lcr.response = TALER_MHD_make_error (
+      ec,
+      detail);
     lch->async_task
       = GNUNET_SCHEDULER_add_now (
           &async_return_legi_result,
@@ -1807,8 +1774,6 @@ legitimization_check_run (
           NULL,
           GNUNET_TIME_UNIT_FOREVER_ABS,
           attributes,
-          0,      /* http status */
-          NULL,   /* MHD_Response */
           &legi_check_aml_trigger_cb,
           lch);
     json_decref (attributes);
