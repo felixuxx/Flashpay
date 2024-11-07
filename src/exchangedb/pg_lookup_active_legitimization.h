@@ -34,6 +34,7 @@
  *    row in legitimization_processes table to access
  * @param[out] measure_index set to the measure the
  *    process is trying to satisfy
+ * @param[out] provider_name name of the provider, must be freed by caller
  * @param[out] jmeasures set to the legitimization
  *    measures that were put on the account
  * @return database transaction status
@@ -43,6 +44,7 @@ TEH_PG_lookup_active_legitimization (
   void *cls,
   uint64_t legitimization_process_serial_id,
   uint32_t *measure_index,
+  char **provider_name,
   json_t **jmeasures);
 
 

@@ -480,8 +480,6 @@ TEH_kyc_finished (
   kat->scope = *scope;
   kat->process_row = process_row;
   kat->account_id = *account_id;
-  kat->provider_name
-    = GNUNET_strdup (provider_name);
   if (NULL != provider_user_id)
     kat->provider_user_id
       = GNUNET_strdup (provider_user_id);
@@ -498,6 +496,7 @@ TEH_kyc_finished (
       TEH_plugin->cls,
       process_row,
       &kat->measure_index,
+      &kat->provider_name,
       &kat->jmeasures);
     switch (qs)
     {
@@ -514,6 +513,11 @@ TEH_kyc_finished (
       break;
     }
   }
+  /* We optionally pass in the provider name to double check with DB. */
+  GNUNET_assert ( (NULL == provider_name) || (0 == strcasecmp (provider_name,
+                                                               kat->
+                                                               provider_name)) )
+  ;
   kat->aml_history = json_array ();
   kat->kyc_history = json_array ();
   qs = TEH_plugin->lookup_aml_history (
@@ -674,7 +678,7 @@ TEH_kyc_run_measure_instant (
 
   return TEH_kyc_finished (
     scope,
-    0, /* FIXME: Start process! */
+    process_row,
     instant_ms,
     account_id,
     "SKIP",
@@ -1841,31 +1845,20 @@ legitimization_check_run (
     /* We have an 'instant' measure which means we must run the
        AML program immediately instead of waiting for the account owner
        to select some measure and contribute their KYC data. */
-    json_t *attributes
-      = json_object ();   /* instant: empty attributes */
 
-    GNUNET_assert (NULL != attributes);
-    lch->kat
-      = TEH_kyc_finished (
-          &lch->scope,
-          0LL,
-          instant_ms,
-          &lch->h_payto,
-          "SKIP",   /* provider */
-          NULL,
-          NULL,
-          GNUNET_TIME_UNIT_FOREVER_ABS,
-          attributes,
-          &legi_check_aml_trigger_cb,
-          lch);
-    json_decref (attributes);
+    lch->kat = TEH_kyc_run_measure_instant (
+      &lch->scope,
+      instant_ms,
+      &lch->h_payto,
+      &legi_check_aml_trigger_cb,
+      lch
+      );
     if (NULL == lch->kat)
     {
       GNUNET_break (0);
       legi_fail (lch,
                  TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
                  NULL);
-      goto cleanup;
     }
     goto cleanup;
   }

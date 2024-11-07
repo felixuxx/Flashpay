@@ -31,6 +31,7 @@ TEH_PG_lookup_active_legitimization (
   void *cls,
   uint64_t legitimization_process_serial_id,
   uint32_t *measure_index,
+  char **provider_name,
   json_t **jmeasures)
 {
   struct PostgresClosure *pg = cls;
@@ -45,6 +46,9 @@ TEH_PG_lookup_active_legitimization (
     GNUNET_PQ_result_spec_uint32 (
       "measure_index",
       measure_index),
+    GNUNET_PQ_result_spec_string (
+      "provider_section",
+      provider_name),
     GNUNET_PQ_result_spec_end
   };
 
@@ -53,6 +57,7 @@ TEH_PG_lookup_active_legitimization (
            "SELECT "
            " lm.jmeasures"
            ",lp.measure_index"
+           ",lp.provider_section"
            " FROM legitimization_processes lp"
            " JOIN legitimization_measures lm"
            "   USING (legitimization_measure_serial_id)"
