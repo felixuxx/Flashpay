@@ -523,6 +523,7 @@ TEH_kyc_run_measure_for_attributes (
   kat->cb_cls = cb_cls;
   kat->aml_history = json_array ();
   kat->kyc_history = json_array ();
+  kat->attributes = json_incref ((json_t*) new_attributes);
 
   qs = TEH_plugin->lookup_active_legitimization (
     TEH_plugin->cls,

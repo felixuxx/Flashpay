@@ -47,7 +47,7 @@ TEH_PG_lookup_active_legitimization (
       "measure_index",
       measure_index),
     GNUNET_PQ_result_spec_string (
-      "provider_section",
+      "provider_name",
       provider_name),
     GNUNET_PQ_result_spec_end
   };
@@ -57,7 +57,7 @@ TEH_PG_lookup_active_legitimization (
            "SELECT "
            " lm.jmeasures"
            ",lp.measure_index"
-           ",lp.provider_section"
+           ",lp.provider_name"
            " FROM legitimization_processes lp"
            " JOIN legitimization_measures lm"
            "   USING (legitimization_measure_serial_id)"
