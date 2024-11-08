@@ -44,7 +44,6 @@ BEGIN
 out_account_unknown=FALSE;
 out_legitimization_measure_serial_id=0;
 
-
 -- Check officer is eligible to make decisions.
 PERFORM
   FROM aml_staff
@@ -108,22 +107,17 @@ THEN
       INTO my_access_token;
 END IF;
 
--- AML decision: mark all active measures finished!
-UPDATE legitimization_measures
-   SET is_finished=TRUE
- WHERE access_token=my_access_token
-   AND NOT is_finished;
-
 -- Did KYC measures get prescribed?
 IF in_jmeasures IS NOT NULL
 THEN
   -- First check if a perfectly equivalent legi measure
   -- already exists, to avoid creating tons of duplicates.
-  PERFORM
+  SELECT legitimization_measure_serial_id
+    INTO out_legitimization_measure_serial_id
     FROM legitimization_measures
-   WHERE access_token=my_access_token
-     AND jmeasures=in_jmeasures
-     AND NOT is_finished;
+    WHERE access_token=my_access_token
+      AND jmeasures=in_jmeasures
+      AND NOT is_finished;
 
   IF NOT FOUND
   THEN
@@ -143,9 +137,15 @@ THEN
       INTO
         out_legitimization_measure_serial_id;
   END IF;
-
   -- end if for where we had in_jmeasures
 END IF;
+
+-- AML decision: mark all other active measures finished!
+UPDATE legitimization_measures
+  SET is_finished=TRUE
+  WHERE access_token=my_access_token
+    AND NOT is_finished
+    AND legitimization_measure_serial_id != out_legitimization_measure_serial_id;
 
 UPDATE legitimization_outcomes
    SET is_active=FALSE
