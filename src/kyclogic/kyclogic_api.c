@@ -277,11 +277,19 @@ TALER_KYCLOGIC_rules_get_expiration (
 }
 
 
-const char *
+const struct TALER_KYCLOGIC_Measure *
 TALER_KYCLOGIC_rules_get_successor (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
 {
-  return lrs->successor_measure;
+  const char *successor_measure_name = lrs->successor_measure;
+
+  if (NULL == successor_measure_name)
+  {
+    return NULL;
+  }
+  return TALER_KYCLOGIC_get_measure (
+    lrs,
+    successor_measure_name);
 }
 
 
@@ -1337,7 +1345,7 @@ TALER_KYCLOGIC_measure_to_jmeasures (
     GNUNET_JSON_pack_array_steal ("measures",
                                   jmeasures),
     GNUNET_JSON_pack_bool ("is_and_combinator",
-                           true),
+                           false),
     GNUNET_JSON_pack_bool ("verboten",
                            false));
 }

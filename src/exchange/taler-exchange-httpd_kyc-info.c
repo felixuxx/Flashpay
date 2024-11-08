@@ -32,10 +32,13 @@
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_kyc-info.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_common_kyc.h"
 
 
 /**
- * Reserve GET request that is long-polling.
+ * Context for the GET /kyc-info request.
+ *
+ * Used for long-polling and other asynchronous waiting.
  */
 struct KycPoller
 {
@@ -93,6 +96,21 @@ struct KycPoller
    */
   bool suspended;
 
+  /**
+   * Handle for async KYC processing.
+   */
+  struct TEH_KycMeasureRunContext *kat;
+
+  /**
+   * HTTP status code to use with @e response.
+   */
+  unsigned int response_code;
+
+  /**
+   * Response to return, NULL if none yet.
+   */
+  struct MHD_Response *response;
+
 };
 
 
@@ -145,6 +163,16 @@ kyp_cleanup (struct TEH_RequestContext *rc)
     TEH_plugin->event_listen_cancel (TEH_plugin->cls,
                                      kyp->eh);
     kyp->eh = NULL;
+  }
+  if (NULL != kyp->response)
+  {
+    MHD_destroy_response (kyp->response);
+    kyp->response = NULL;
+  }
+  if (NULL != kyp->kat)
+  {
+    TEH_kyc_run_measure_cancel (kyp->kat);
+    kyp->kat = NULL;
   }
   GNUNET_free (kyp);
 }
@@ -405,6 +433,48 @@ contains_instant_measure (const json_t *jmeasures)
 }
 
 
+/**
+ * Function called after a measure has been run.
+ *
+ * @param cls closure
+ * @param ec error code or 0 on success
+ * @param detail error message or NULL on success / no info
+ */
+static void
+measure_run_cb (
+  void *cls,
+  enum TALER_ErrorCode ec,
+  const char *detail)
+{
+  struct KycPoller *kyp = cls;
+
+  GNUNET_assert (kyp->suspended);
+  GNUNET_assert (NULL == kyp->response);
+  GNUNET_assert (NULL != kyp->kat);
+
+  kyp->kat = NULL;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Resuming after running successor measure, ec=%u\n",
+              (unsigned int) ec);
+
+  if (TALER_EC_NONE != ec)
+  {
+    kyp->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    kyp->response = TALER_MHD_make_error (
+      ec,
+      detail);
+  }
+
+  GNUNET_CONTAINER_DLL_remove (kyp_head,
+                               kyp_tail,
+                               kyp);
+  kyp->suspended = false;
+  MHD_resume_connection (kyp->connection);
+  TALER_MHD_daemon_trigger ();
+}
+
+
 MHD_RESULT
 TEH_handler_kyc_info (
   struct TEH_RequestContext *rc,
@@ -521,6 +591,14 @@ TEH_handler_kyc_info (
     }
   } /* end of one-time initialization */
 
+  if (NULL != kyp->response)
+  {
+    res = MHD_queue_response (rc->connection,
+                              kyp->response_code,
+                              kyp->response);
+    goto cleanup;
+  }
+
   /* Get rules. */
   {
     json_t *jnew_rules;
@@ -549,6 +627,62 @@ TEH_handler_kyc_info (
       lrs = TALER_KYCLOGIC_rules_parse (jnew_rules);
       GNUNET_break (NULL != lrs);
       json_decref (jnew_rules);
+    }
+  }
+
+  /* Check if ruleset is expired and we need to run the successor measure */
+  if (NULL != lrs)
+  {
+    struct GNUNET_TIME_Timestamp ts;
+
+    ts = TALER_KYCLOGIC_rules_get_expiration (lrs);
+    if (GNUNET_TIME_absolute_is_past (ts.abs_time))
+    {
+      const struct TALER_KYCLOGIC_Measure *successor_measure;
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Current KYC ruleset expired, running successor measure.\n");
+
+      successor_measure = TALER_KYCLOGIC_rules_get_successor (lrs);
+      if (NULL == successor_measure)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Successor measure `%s' unknown, falling back to default rules!\n",
+                    successor_measure->measure_name);
+        TALER_KYCLOGIC_rules_free (lrs);
+        lrs = NULL;
+      }
+      else
+      {
+
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Running successor measure %s.\n", successor_measure->
+                    measure_name);
+        /* FIXME(fdold, 2024-01-08): Consider limiting how
+           often we try this, in case we run into expired rulesets
+           repeatedly. */
+        kyp->kat = TEH_kyc_run_measure_directly (
+          &rc->async_scope_id,
+          successor_measure,
+          &kyp->h_payto,
+          &measure_run_cb,
+          kyp);
+        if (NULL == kyp->kat)
+        {
+          GNUNET_break (0);
+          res = TALER_MHD_reply_with_ec (
+            rc->connection,
+            TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
+            "successor measure");
+        }
+        kyp->suspended = true;
+        GNUNET_CONTAINER_DLL_insert (kyp_head,
+                                     kyp_tail,
+                                     kyp);
+        MHD_suspend_connection (rc->connection);
+        res = MHD_YES;
+        goto cleanup;
+      }
     }
   }
 

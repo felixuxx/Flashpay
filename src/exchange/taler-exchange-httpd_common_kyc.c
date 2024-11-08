@@ -186,8 +186,8 @@ kyc_aml_finished (
 {
   struct TEH_KycMeasureRunContext *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
-  size_t eas;
-  void *ea;
+  size_t eas = 0;
+  void *ea = NULL;
   unsigned int birthday = 0;
   struct GNUNET_AsyncScopeSave old_scope;
 
@@ -280,10 +280,14 @@ kyc_aml_finished (
     }
   }
 
-  TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
-                                       kat->attributes,
-                                       &ea,
-                                       &eas);
+  if (NULL != kat->attributes)
+  {
+    TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
+                                         kat->attributes,
+                                         &ea,
+                                         &eas);
+  }
+
   qs = TEH_plugin->insert_kyc_measure_result (
     TEH_plugin->cls,
     kat->process_row,
@@ -631,7 +635,6 @@ TEH_kyc_run_measure_directly (
   void *cb_cls)
 {
   struct TEH_KycMeasureRunContext *kat;
-  uint64_t process_row;
   uint64_t legi_measure_serial_id;
   bool bad_kyc_auth;
   enum GNUNET_DB_QueryStatus qs;
@@ -645,7 +648,6 @@ TEH_kyc_run_measure_directly (
   kat->provider_name = GNUNET_strdup ("SKIP");
   kat->measure_index = 0;
   kat->scope = *scope;
-  kat->process_row = process_row;
   kat->account_id = *account_id;
   kat->expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
   kat->cb = cb;
@@ -668,16 +670,15 @@ TEH_kyc_run_measure_directly (
   case GNUNET_DB_STATUS_HARD_ERROR:
   case GNUNET_DB_STATUS_SOFT_ERROR:
     GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
     return NULL;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
     return NULL;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
   }
-
-  /* We're not checking kyc auth, so it can't be bad. */
-  GNUNET_assert (! bad_kyc_auth);
 
   if (0 != strcasecmp (instant_ms->check_name, "SKIP"))
   {
@@ -698,15 +699,13 @@ TEH_kyc_run_measure_directly (
     "SKIP",
     NULL, /* provider_account_id */
     NULL, /* provider_legitimziation_id */
-    &process_row);
+    &kat->process_row);
   if (qs < 0)
   {
     GNUNET_break (0);
+    TEH_kyc_run_measure_cancel (kat);
     return NULL;
   }
-
-  /* FIXME(fdold, 2024-11-07):
-     We need to look up the attributes before running the AMP. */
 
   kat->aml_history = json_array ();
   kat->kyc_history = json_array ();
@@ -746,14 +745,23 @@ TEH_kyc_run_measure_directly (
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
   }
-  kat->kyc_aml
-    = TALER_KYCLOGIC_run_aml_program3 (
-        instant_ms,
-        kat->attributes,
-        kat->aml_history,
-        kat->kyc_history,
-        &kyc_aml_finished,
-        kat);
+  {
+    json_t *empty_attributes = json_object ();
+
+    /* Attributes are in the aml_history.
+       No new attributes from instant measure. */
+
+    kat->kyc_aml
+      = TALER_KYCLOGIC_run_aml_program3 (
+          instant_ms,
+          empty_attributes,
+          kat->aml_history,
+          kat->kyc_history,
+          &kyc_aml_finished,
+          kat);
+
+    json_decref (empty_attributes);
+  }
   if (NULL == kat->kyc_aml)
   {
     GNUNET_break (0);
@@ -827,8 +835,6 @@ handle_aml_fallback_result (
   const struct TALER_KYCLOGIC_AmlProgramResult *apr)
 {
   struct TEH_KycAmlFallback *fb = cls;
-  size_t eas;
-  void *ea;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_AsyncScopeSave old_scope;
 
@@ -865,18 +871,6 @@ handle_aml_fallback_result (
     return;
   }
 
-  {
-    json_t *attributes;
-
-    /* empty attributes for fallback */
-    attributes = json_object ();
-    GNUNET_assert (NULL != attributes);
-    TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
-                                         attributes,
-                                         &ea,
-                                         &eas);
-    json_decref (attributes);
-  }
   qs = TEH_plugin->insert_kyc_measure_result (
     TEH_plugin->cls,
     fb->orig_requirement_row,
@@ -892,9 +886,8 @@ handle_aml_fallback_result (
     apr->details.success.to_investigate,
     apr->details.success.num_events,
     apr->details.success.events,
-    eas,
-    ea);
-  GNUNET_free (ea);
+    0 /* enc attr size */,
+    NULL /* enc attr */);
   if (qs <= 0)
   {
     GNUNET_break (0);
@@ -1575,6 +1568,7 @@ legitimization_check_run (
     }
   }
 
+  /* Check if ruleset is expired and we need to run the successor measure */
   if (NULL != lrs)
   {
     struct GNUNET_TIME_Timestamp ts;
@@ -1582,18 +1576,17 @@ legitimization_check_run (
     ts = TALER_KYCLOGIC_rules_get_expiration (lrs);
     if (GNUNET_TIME_absolute_is_past (ts.abs_time))
     {
-      const char *successor;
       const struct TALER_KYCLOGIC_Measure *successor_measure;
 
-      successor
-        = TALER_KYCLOGIC_rules_get_successor (lrs);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Current KYC ruleset expired, running successor measure.\n");
 
-      successor_measure = TALER_KYCLOGIC_get_measure (lrs, successor);
+      successor_measure = TALER_KYCLOGIC_rules_get_successor (lrs);
       if (NULL == successor_measure)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Successor measure `%s' unknown, falling back to default rules!\n",
-                    successor);
+                    successor_measure->measure_name);
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;
       }

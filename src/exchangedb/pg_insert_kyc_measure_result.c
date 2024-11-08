@@ -99,7 +99,6 @@ TEH_PG_insert_kyc_measure_result (
               kyc_completed_notify_s);
   GNUNET_break (NULL != new_rules);
   GNUNET_break (NULL != h_payto);
-  GNUNET_break (NULL != enc_attributes);
   PREPARE (pg,
            "insert_kyc_measure_result",
            "SELECT "
