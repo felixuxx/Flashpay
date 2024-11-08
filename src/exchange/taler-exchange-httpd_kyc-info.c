@@ -601,9 +601,6 @@ TEH_handler_kyc_info (
       goto cleanup;
     }
   }
-  /* We can free rules early here. */
-  TALER_KYCLOGIC_rules_free (lrs);
-  lrs = NULL;
   if ( (legitimization_measure_last_row == kyp->etag_measure_in) &&
        (legitimization_outcome_last_row == kyp->etag_outcome_in) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout) )
