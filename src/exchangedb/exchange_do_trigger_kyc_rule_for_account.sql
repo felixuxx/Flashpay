@@ -90,6 +90,7 @@ THEN
     out_bad_kyc_auth = FALSE;
   END IF;
 END IF;
+
 -- First check if a perfectly equivalent legi measure
 -- already exists, to avoid creating tons of duplicates.
 UPDATE legitimization_measures
@@ -116,6 +117,13 @@ THEN
       legitimization_measure_serial_id
     INTO
       out_legitimization_measure_serial_id;
+
+  -- mark all other active measures finished!
+  UPDATE legitimization_measures
+    SET is_finished=TRUE
+    WHERE access_token=my_access_token
+      AND NOT is_finished
+      AND legitimization_measure_serial_id != out_legitimization_measure_serial_id;
 END IF;
 
 EXECUTE FORMAT (
