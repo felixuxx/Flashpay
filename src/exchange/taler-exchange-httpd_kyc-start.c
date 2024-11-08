@@ -425,9 +425,9 @@ TEH_handler_kyc_start (
       &kyp->redirect_url);
     if (qs < 0)
     {
-      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-        return qs;
       GNUNET_break (0);
+      /* Simple query, never should be a soft error. */
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
       return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
