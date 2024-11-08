@@ -195,6 +195,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_lookup_completed_legitimization.h pg_lookup_completed_legitimization.c \
   pg_lookup_active_legitimization.h pg_lookup_active_legitimization.c \
   pg_insert_aml_decision.h pg_insert_aml_decision.c \
+  pg_insert_successor_measure.h pg_insert_successor_measure.c \
   pg_select_aggregation_transient.h pg_select_aggregation_transient.c \
   pg_find_aggregation_transient.h pg_find_aggregation_transient.c \
   pg_update_aggregation_transient.h pg_update_aggregation_transient.c \

@@ -1568,6 +1568,9 @@ legitimization_check_run (
     }
   }
 
+  /* FIXME(fdold, 2024-11-08): We are doing the same logic
+     here and in kyc-info, abstract it out? */
+
   /* Check if ruleset is expired and we need to run the successor measure */
   if (NULL != lrs)
   {
@@ -1590,7 +1593,7 @@ legitimization_check_run (
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;
       }
-      else
+      else if (0 == strcmp (successor_measure->prog_name, "SKIP"))
       {
         lch->measure_run_ctx = TEH_kyc_run_measure_directly (
           &lch->scope,
@@ -1605,6 +1608,53 @@ legitimization_check_run (
                      "successor measure");
         }
         goto cleanup;
+      }
+      else
+      {
+        bool unknown_account;
+        struct GNUNET_TIME_Timestamp decision_time
+          = GNUNET_TIME_timestamp_get ();
+        struct GNUNET_TIME_Timestamp last_date;
+        json_t *succ_jmeasures = TALER_KYCLOGIC_get_jmeasures (
+          lrs,
+          successor_measure->measure_name);
+
+        GNUNET_assert (NULL != succ_jmeasures);
+        qs = TEH_plugin->insert_successor_measure (
+          TEH_plugin->cls,
+          &lch->h_payto,
+          decision_time,
+          successor_measure->measure_name,
+          succ_jmeasures,
+          &unknown_account,
+          &last_date);
+        json_decref (succ_jmeasures);
+        if (qs <= 0)
+        {
+          legi_fail (lch,
+                     TALER_EC_GENERIC_DB_STORE_FAILED,
+                     "insert_successor_measure");
+          goto cleanup;
+        }
+        if (unknown_account)
+        {
+          legi_fail (lch,
+                     TALER_EC_EXCHANGE_GENERIC_BANK_ACCOUNT_UNKNOWN,
+                     NULL);
+          goto cleanup;
+        }
+        if (GNUNET_TIME_timestamp_cmp (last_date,
+                                       >=,
+                                       decision_time))
+        {
+          legi_fail (lch,
+                     TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
+                     "later decision exists");
+          goto cleanup;
+        }
+        /* Back to default rules. */
+        TALER_KYCLOGIC_rules_free (lrs);
+        lrs = NULL;
       }
     }
   }

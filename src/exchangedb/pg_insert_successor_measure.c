@@ -14,38 +14,28 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aml_decision.c
- * @brief Implementation of the insert_aml_decision function for Postgres
- * @author Christian Grothoff
+ * @file exchangedb/pg_insert_succesor_measure.c
+ * @brief Implementation of the insert_succesor_measure function for Postgres
+ * @author Florian Dold
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_insert_aml_decision.h"
+#include "pg_insert_successor_measure.h"
 #include "pg_helper.h"
 #include <gnunet/gnunet_pq_lib.h>
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aml_decision (
+TEH_PG_insert_successor_measure (
   void *cls,
-  const struct TALER_FullPayto payto_uri,
   const struct TALER_NormalizedPaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp decision_time,
-  struct GNUNET_TIME_Timestamp expiration_time,
-  const json_t *properties,
-  const json_t *new_rules,
-  bool to_investigate,
   const char *new_measure_name,
   const json_t *jmeasures,
-  const char *justification,
-  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-  const struct TALER_AmlOfficerSignatureP *decider_sig,
-  bool *invalid_officer,
   bool *unknown_account,
-  struct GNUNET_TIME_Timestamp *last_date,
-  uint64_t *legitimization_measure_serial_id)
+  struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
   struct TALER_KycCompletedEventP rep = {
@@ -53,63 +43,43 @@ TEH_PG_insert_aml_decision (
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
     .h_payto = *h_payto
   };
+  /* We're reverting back to default rules => never expires.*/
+  struct GNUNET_TIME_Timestamp expiration_time = {
+    .abs_time = GNUNET_TIME_UNIT_FOREVER_ABS,
+  };
   struct TALER_FullPaytoHashP h_full_payto;
   char *notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
-    NULL == payto_uri.full_payto
-      ? GNUNET_PQ_query_param_null ()
-      : GNUNET_PQ_query_param_string (payto_uri.full_payto),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    NULL == payto_uri.full_payto
-      ? GNUNET_PQ_query_param_null ()
-      : GNUNET_PQ_query_param_auto_from_type (&h_full_payto),
     GNUNET_PQ_query_param_timestamp (&decision_time),
     GNUNET_PQ_query_param_timestamp (&expiration_time),
-    NULL != properties
-      ? TALER_PQ_query_param_json (properties)
-      : GNUNET_PQ_query_param_null (),
-    TALER_PQ_query_param_json (new_rules),
-    GNUNET_PQ_query_param_bool (to_investigate),
     NULL != new_measure_name
       ? GNUNET_PQ_query_param_string (new_measure_name)
       : GNUNET_PQ_query_param_null (),
     NULL != jmeasures
       ? TALER_PQ_query_param_json (jmeasures)
       : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_string (justification),
-    GNUNET_PQ_query_param_auto_from_type (decider_pub),
-    GNUNET_PQ_query_param_auto_from_type (decider_sig),
-    GNUNET_PQ_query_param_string (notify_s),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("out_invalid_officer",
-                                invalid_officer),
     GNUNET_PQ_result_spec_bool ("out_account_unknown",
                                 unknown_account),
     GNUNET_PQ_result_spec_timestamp ("out_last_date",
                                      last_date),
-    GNUNET_PQ_result_spec_uint64 ("out_legitimization_measure_serial_id",
-                                  legitimization_measure_serial_id),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  if (NULL != payto_uri.full_payto)
-    TALER_full_payto_hash (payto_uri,
-                           &h_full_payto);
   PREPARE (pg,
-           "do_insert_aml_decision",
+           "do_insert_successor_measure",
            "SELECT"
-           " out_invalid_officer"
            ",out_account_unknown"
            ",out_last_date"
-           ",out_legitimization_measure_serial_id"
-           " FROM exchange_do_insert_aml_decision"
+           " FROM exchange_do_insert_successor_measure"
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "do_insert_aml_decision",
+                                                 "do_insert_successor_measure",
                                                  params,
                                                  rs);
   GNUNET_free (notify_s);

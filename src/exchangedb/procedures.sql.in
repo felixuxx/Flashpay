@@ -44,6 +44,7 @@ SET search_path TO exchange;
 #include "exchange_do_reserve_open.sql"
 #include "exchange_do_insert_or_update_policy_details.sql"
 #include "exchange_do_insert_aml_decision.sql"
+#include "exchange_do_insert_successor_measure.sql"
 #include "exchange_do_insert_aml_officer.sql"
 #include "exchange_do_insert_kyc_measure_result.sql"
 #include "exchange_do_reserves_in_insert.sql"

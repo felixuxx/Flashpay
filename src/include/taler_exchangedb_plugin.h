@@ -7296,6 +7296,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Revert account back to default rules and insert successor measure.
+   */
+  enum GNUNET_DB_QueryStatus
+    (*insert_successor_measure)(
+    void *cls,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
+    struct GNUNET_TIME_Timestamp decision_time,
+    const char *new_measure_name,
+    const json_t *jmeasures,
+    bool *unknown_account,
+    struct GNUNET_TIME_Timestamp *last_date);
+
+
+  /**
    * Lookup KYC attribute data for a specific account.
    *
    * @param cls closure

@@ -228,6 +228,7 @@
 #include "pg_lookup_aml_officer.h"
 #include "pg_lookup_kyc_requirement_by_row.h"
 #include "pg_insert_aml_decision.h"
+#include "pg_insert_successor_measure.h"
 #include "pg_batch_ensure_coin_known.h"
 #include "plugin_exchangedb_postgres.h"
 
@@ -826,6 +827,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_batch_ensure_coin_known;
   plugin->inject_auditor_triggers
     = &TEH_PG_inject_auditor_triggers;
+  plugin->insert_successor_measure
+    = &TEH_PG_insert_successor_measure;
 
   return plugin;
 }
