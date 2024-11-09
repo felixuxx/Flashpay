@@ -249,7 +249,7 @@ proof_finish (
     kpc->proof_response = NULL;
     kpc->proof_response_code = 0;
   }
-  GNUNET_assert (NULL == kpc->response);
+  GNUNET_assert (NULL != kpc->response);
   kpc_resume (kpc);
 }
 
