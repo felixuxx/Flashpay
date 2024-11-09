@@ -21,6 +21,7 @@ SET search_path TO exchange;
 
 #include "0007-wire_targets.sql"
 #include "0007-legitimization_outcomes.sql"
+#include "0007-batch_deposits.sql"
 
 
 COMMIT;

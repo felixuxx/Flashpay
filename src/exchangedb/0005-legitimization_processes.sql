@@ -22,7 +22,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   PERFORM create_partitioned_table(
-    'ALTER TABLE legitimization_processes'
+    'ALTER TABLE %I'
     ' ADD COLUMN legitimization_measure_serial_id BIGINT'
     ',ADD COLUMN measure_index INT4 DEFAULT(0)'
     ',ADD COLUMN error_code INT4 DEFAULT (0)'

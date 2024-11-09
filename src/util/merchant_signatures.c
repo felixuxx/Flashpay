@@ -95,11 +95,11 @@ TALER_merchant_deposit_verify (
     .h_wire = *h_wire
   };
 
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
-                                &tps,
-                                &merchant_sig->eddsa_sig,
-                                &merchant->eddsa_pub);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
+    &tps,
+    &merchant_sig->eddsa_sig,
+    &merchant->eddsa_pub);
 }
 
 
@@ -183,11 +183,11 @@ TALER_merchant_refund_verify (
 
   TALER_amount_hton (&rr.refund_amount,
                      amount);
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                &rr,
-                                &merchant_sig->eddsa_sig,
-                                &merchant_pub->eddsa_pub);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_MERCHANT_REFUND,
+    &rr,
+    &merchant_sig->eddsa_sig,
+    &merchant_pub->eddsa_pub);
 }
 
 
@@ -303,11 +303,11 @@ TALER_merchant_pay_verify (
     .h_contract_terms = *h_contract_terms
   };
 
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_PAYMENT_OK,
-                                &pr,
-                                &merchant_sig->eddsa_sig,
-                                &merchant_pub->eddsa_pub);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_MERCHANT_PAYMENT_OK,
+    &pr,
+    &merchant_sig->eddsa_sig,
+    &merchant_pub->eddsa_pub);
 }
 
 
@@ -329,11 +329,12 @@ struct TALER_ProposalDataPS
   struct TALER_PrivateContractHashP hash;
 };
 
+
 void
 TALER_merchant_contract_sign (
   const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_MerchantPrivateKeyP *merch_priv,
-  struct GNUNET_CRYPTO_EddsaSignature *merch_sig)
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  struct TALER_MerchantSignatureP *merchant_sig)
 {
   struct TALER_ProposalDataPS pdps = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_CONTRACT),
@@ -341,9 +342,29 @@ TALER_merchant_contract_sign (
     .hash = *h_contract_terms
   };
 
-  GNUNET_CRYPTO_eddsa_sign (&merch_priv->eddsa_priv,
+  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                             &pdps,
-                            merch_sig);
+                            &merchant_sig->eddsa_sig);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_merchant_contract_verify (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct TALER_MerchantSignatureP *merchant_sig)
+{
+  struct TALER_ProposalDataPS pdps = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_CONTRACT),
+    .purpose.size = htonl (sizeof (pdps)),
+    .hash = *h_contract_terms
+  };
+
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_MERCHANT_CONTRACT,
+    &pdps,
+    &merchant_sig->eddsa_sig,
+    &merchant_pub->eddsa_pub);
 }
 
 

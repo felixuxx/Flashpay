@@ -668,6 +668,10 @@ TALER_EXCHANGE_batch_deposit (
       json_decref (deposits);
       return NULL;
     }
+    if (! GNUNET_is_zero (&dcd->merchant_sig))
+    {
+      /* FIXME #9185: check merchant_sig!? */
+    }
     if (GNUNET_is_zero (&cdd->h_age_commitment))
       h_age_commitmentp = NULL;
     else
@@ -730,6 +734,8 @@ TALER_EXCHANGE_batch_deposit (
                                 dcd->wallet_timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
                                 &dcd->merchant_pub),
+    GNUNET_JSON_pack_data_auto ("merchant_sig",
+                                &dcd->merchant_sig),
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_timestamp ("refund_deadline",
                                   dcd->refund_deadline)),

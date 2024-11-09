@@ -19,6 +19,7 @@ CREATE FUNCTION exchange_do_deposit(
   -- For batch_deposits
   IN in_shard INT8,
   IN in_merchant_pub BYTEA,
+  IN in_merchant_sig BYTEA,
   IN in_wallet_timestamp INT8,
   IN in_exchange_timestamp INT8,
   IN in_refund_deadline INT8,
@@ -88,6 +89,7 @@ END IF;
 INSERT INTO batch_deposits
   (shard
   ,merchant_pub
+  ,merchant_sig
   ,wallet_timestamp
   ,exchange_timestamp
   ,refund_deadline
@@ -102,6 +104,7 @@ INSERT INTO batch_deposits
   VALUES
   (in_shard
   ,in_merchant_pub
+  ,in_merchant_sig
   ,in_wallet_timestamp
   ,in_exchange_timestamp
   ,in_refund_deadline

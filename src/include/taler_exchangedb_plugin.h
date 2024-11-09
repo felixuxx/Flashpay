@@ -1780,6 +1780,12 @@ struct TALER_EXCHANGEDB_BatchDeposit
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
+   * Signature of the merchant over the contract, of purpose
+   * #TALER_SIGNATURE_MERCHANT_CONTRACT.
+   */
+  struct TALER_MerchantSignatureP merchant_sig;
+
+  /**
    * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */

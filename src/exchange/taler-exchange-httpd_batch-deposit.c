@@ -904,6 +904,10 @@ bdc_phase_parse (struct BatchDepositContext *bdc,
                                  &bd->wire_salt),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                  &bd->merchant_pub),
+    GNUNET_JSON_spec_mark_optional ( /* since v22, we are compatible */
+      GNUNET_JSON_spec_fixed_auto ("merchant_sig",
+                                   &bd->merchant_sig),
+      NULL),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &bd->h_contract_terms),
     GNUNET_JSON_spec_mark_optional (
@@ -949,6 +953,23 @@ bdc_phase_parse (struct BatchDepositContext *bdc,
                    MHD_YES);
       return;
     }
+  }
+  if ( (! GNUNET_is_zero (&bd->merchant_sig)) &&
+       (GNUNET_OK !=
+        TALER_merchant_contract_verify (
+          &bd->h_contract_terms,
+          &bd->merchant_pub,
+          &bd->merchant_sig)) )
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    finish_loop (bdc,
+                 TALER_MHD_reply_with_error (
+                   bdc->rc->connection,
+                   MHD_HTTP_BAD_REQUEST,
+                   TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                   "merchant_sig"));
+    return;
   }
   bdc->policy_json
     = json_incref ((json_t *) policy_json);

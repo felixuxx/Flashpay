@@ -46,6 +46,9 @@ TEH_PG_do_deposit (
     /* data for batch_deposits */
     GNUNET_PQ_query_param_uint64 (&deposit_shard),
     GNUNET_PQ_query_param_auto_from_type (&bd->merchant_pub),
+    GNUNET_is_zero (&bd->merchant_sig)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (&bd->merchant_sig),
     GNUNET_PQ_query_param_timestamp (&bd->wallet_timestamp),
     GNUNET_PQ_query_param_timestamp (exchange_timestamp),
     GNUNET_PQ_query_param_timestamp (&bd->refund_deadline),
@@ -113,7 +116,8 @@ TEH_PG_do_deposit (
            ",out_insufficient_balance_coin_index AS insufficient_balance_coin_index"
            ",out_conflict AS conflicted"
            " FROM exchange_do_deposit"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18);")
+  ;
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "call_deposit",
                                                  params,

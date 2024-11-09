@@ -1246,6 +1246,12 @@ struct TALER_EXCHANGE_DepositContractDetail
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
+   * The signature of the merchant (used to show that the merchant indeed
+   * agree to the deposit).
+   */
+  struct TALER_MerchantSignatureP merchant_sig;
+
+  /**
    * Salt used to hash the @e merchant_payto_uri.
    */
   struct TALER_WireSaltP wire_salt;

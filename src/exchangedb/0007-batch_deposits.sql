@@ -14,25 +14,28 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE FUNCTION alter_table_batch_deposits7()
+CREATE FUNCTION alter_table_batch_deposits7(
+  IN partition_suffix TEXT DEFAULT NULL
+)
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
-DECLARE
-  table_name TEXT DEFAULT 'batch_deposits';
 BEGIN
-  EXECUTE FORMAT (
-    'ALTER TABLE ' || table_name ||
+  PERFORM create_partitioned_table(
+    'ALTER TABLE %I'
     ' ADD COLUMN merchant_sig BYTEA CHECK(LENGTH(merchant_sig)=64)'
     '   DEFAULT NULL'
-    ';'
+    ';',
+    'batch_deposits'
+    ,''
+    ,partition_suffix
   );
 
   PERFORM comment_partitioned_column(
-     'signature by the merchant over the contract terms'
-    ,'batch_deposits'
+     'signature by the merchant over the contract terms, of purpuse TALER_SIGNATURE_MERCHANT_CONTRACT'
     ,'merchant_sig'
-    ,NULL
+    ,'batch_deposits'
+    ,partition_suffix
   );
 END $$;
 
