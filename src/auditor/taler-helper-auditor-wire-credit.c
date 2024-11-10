@@ -527,7 +527,7 @@ complain_in_not_found (void *cls,
   struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
     .bank_row_id = rii->rowid,
     .diagnostic = "incoming wire transfer claimed by exchange not found",
-    .account = (char *) wa->ai->section_name,
+    .account = { .full_payto = (const char *) wa->ai->section_name },
     .amount_exchange_expected = rii->credit_details.amount,
     .amount_wired = zero,
     .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
