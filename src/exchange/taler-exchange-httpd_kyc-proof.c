@@ -233,7 +233,8 @@ proof_finish (
   kpc->kat = NULL;
   if (TALER_EC_NONE != ec)
   {
-    kpc->response_code  = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    kpc->response_code = TALER_ErrorCode_get_http_status (ec);
+    GNUNET_assert (kpc->response_code != UINT_MAX);
     kpc->response = make_html_error (
       kpc->rc->connection,
       "kyc-proof-internal-error",

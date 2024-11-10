@@ -349,7 +349,8 @@ aml_trigger_callback (
   GNUNET_assert (NULL == uc->response);
   if (TALER_EC_NONE != ec)
   {
-    uc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    uc->response_code = TALER_ErrorCode_get_http_status (ec);
+    GNUNET_assert (uc->response_code != UINT_MAX);
     uc->response = TALER_MHD_make_error (
       ec,
       detail);
