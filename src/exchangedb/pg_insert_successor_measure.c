@@ -76,6 +76,7 @@ TEH_PG_insert_successor_measure (
            "SELECT"
            ",out_account_unknown"
            ",out_last_date"
+           ",out_legitimization_measure_serial_id"
            " FROM exchange_do_insert_successor_measure"
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

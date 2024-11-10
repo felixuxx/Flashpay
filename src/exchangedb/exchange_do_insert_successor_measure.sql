@@ -23,6 +23,7 @@ CREATE FUNCTION exchange_do_insert_successor_measure(
   IN in_jmeasures TEXT, -- can be NULL
   OUT out_last_date INT8,
   OUT out_account_unknown BOOLEAN,
+  OUT out_legitimization_measure_serial_id INT8
 )
 LANGUAGE plpgsql
 AS $$
@@ -152,5 +153,5 @@ INSERT INTO legitimization_outcomes
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_successor_measure(BYTEA, INT8, INT8, TEXT, TEXT, INT8)
+COMMENT ON FUNCTION exchange_do_insert_successor_measure(BYTEA, INT8, INT8, TEXT, TEXT)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';
