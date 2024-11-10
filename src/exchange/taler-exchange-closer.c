@@ -151,7 +151,8 @@ parse_closer_config (void)
   }
 
   if (NULL ==
-      (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                                 false)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize DB subsystem\n");

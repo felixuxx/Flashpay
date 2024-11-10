@@ -362,7 +362,8 @@ TALER_TESTING_cmd_insert_deposit (
   }
   else
   {
-    ids->plugin = TALER_EXCHANGEDB_plugin_load (db_cfg);
+    ids->plugin = TALER_EXCHANGEDB_plugin_load (db_cfg,
+                                                false);
     pluginc = ids->plugin;
     db_cfgc = db_cfg;
   }

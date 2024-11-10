@@ -345,7 +345,8 @@ exchange_serve_process_config (void)
     return GNUNET_SYSERR;
   }
   if (NULL ==
-      (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                                 false)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize DB subsystem\n");

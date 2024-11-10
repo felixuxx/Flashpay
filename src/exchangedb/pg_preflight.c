@@ -27,6 +27,69 @@
 #include "plugin_exchangedb_postgres.h"
 
 
+/**
+ * Connect to the database if the connection does not exist yet
+ * and check that we are ready to operate.
+ *
+ * @param pg the plugin-specific state
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+internal_setup (struct PostgresClosure *pg)
+{
+  if (NULL == pg->conn)
+  {
+#if AUTO_EXPLAIN
+    /* Enable verbose logging to see where queries do not
+       properly use indices */
+    struct GNUNET_PQ_ExecuteStatement es[] = {
+      GNUNET_PQ_make_try_execute ("LOAD 'auto_explain';"),
+      GNUNET_PQ_make_try_execute ("SET auto_explain.log_min_duration=50;"),
+      GNUNET_PQ_make_try_execute ("SET auto_explain.log_timing=TRUE;"),
+      GNUNET_PQ_make_try_execute ("SET auto_explain.log_analyze=TRUE;"),
+      /* https://wiki.postgresql.org/wiki/Serializable suggests to really
+         force the default to 'serializable' if SSI is to be used. */
+      GNUNET_PQ_make_try_execute (
+        "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
+      GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+      /* Mergejoin causes issues, see Postgres #18380 */
+      GNUNET_PQ_make_try_execute ("SET enable_mergejoin=OFF;"),
+      GNUNET_PQ_EXECUTE_STATEMENT_END
+    };
+#else
+    struct GNUNET_PQ_ExecuteStatement es[] = {
+      GNUNET_PQ_make_try_execute (
+        "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
+      GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
+      /* Mergejoin causes issues, see Postgres #18380 */
+      GNUNET_PQ_make_try_execute ("SET enable_mergejoin=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+      GNUNET_PQ_EXECUTE_STATEMENT_END
+    };
+#endif
+    struct GNUNET_PQ_Context *db_conn;
+
+    db_conn = GNUNET_PQ_connect_with_cfg2 (pg->cfg,
+                                           "exchangedb-postgres",
+                                           "exchange-", /* load_path_suffix */
+                                           es,
+                                           NULL /* prepared statements */,
+                                           GNUNET_PQ_FLAG_CHECK_CURRENT);
+    if (NULL == db_conn)
+      return GNUNET_SYSERR;
+
+    pg->prep_gen++;
+    pg->conn = db_conn;
+  }
+  if (NULL == pg->transaction_name)
+    GNUNET_PQ_reconnect_if_down (pg->conn);
+  return GNUNET_OK;
+}
+
+
 enum GNUNET_GenericReturnValue
 TEH_PG_preflight (void *cls)
 {
@@ -37,7 +100,7 @@ TEH_PG_preflight (void *cls)
   };
 
   if (GNUNET_OK !=
-      TEH_PG_internal_setup (pg))
+      internal_setup (pg))
     return GNUNET_SYSERR;
   if (NULL == pg->transaction_name)
     return GNUNET_OK; /* all good */

@@ -1235,7 +1235,8 @@ run (void *cls)
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (NULL ==
-      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                              true)))
   {
     result = 77;
     return;

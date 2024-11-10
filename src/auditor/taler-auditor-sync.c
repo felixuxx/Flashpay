@@ -523,13 +523,15 @@ static void
 setup (struct GNUNET_CONFIGURATION_Handle *src_cfg,
        struct GNUNET_CONFIGURATION_Handle *dst_cfg)
 {
-  src = TALER_EXCHANGEDB_plugin_load (src_cfg);
+  src = TALER_EXCHANGEDB_plugin_load (src_cfg,
+                                      false);
   if (NULL == src)
   {
     global_ret = EXIT_NOTINSTALLED;
     return;
   }
-  dst = TALER_EXCHANGEDB_plugin_load (dst_cfg);
+  dst = TALER_EXCHANGEDB_plugin_load (dst_cfg,
+                                      false);
   if (NULL == dst)
   {
     global_ret = EXIT_NOTINSTALLED;

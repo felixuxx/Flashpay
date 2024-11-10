@@ -240,7 +240,8 @@ run (void *cls)
   ZR_BLK (&cbc);
 
   if (NULL ==
-      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                              true)))
   {
     GNUNET_break (0);
     result = 77;

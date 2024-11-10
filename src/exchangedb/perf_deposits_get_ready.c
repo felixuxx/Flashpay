@@ -216,7 +216,8 @@ run (void *cls)
                             struct TALER_EXCHANGEDB_CoinDepositInformation);
 
   if (NULL ==
-      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                              true)))
   {
     GNUNET_break (0);
     result = 77;

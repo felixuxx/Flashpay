@@ -66,7 +66,8 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
   if (NULL ==
-      (plugin = TALER_AUDITORDB_plugin_load (cfg)))
+      (plugin = TALER_AUDITORDB_plugin_load (cfg,
+                                             true)))
   {
     fprintf (stderr,
              "Failed to initialize database plugin.\n");

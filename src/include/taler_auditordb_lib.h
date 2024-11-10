@@ -151,10 +151,14 @@ enum TALER_AUDITORDB_DeletableSuppressableTables
  * Initialize the plugin.
  *
  * @param cfg configuration to use
+ * @param skip_preflight true if we should skip the usual
+ *   preflight check which assures us that the DB is actually
+ *   operational; only taler-auditor-dbinit should use true here.
  * @return NULL on failure
  */
 struct TALER_AUDITORDB_Plugin *
-TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                             bool skip_preflight);
 
 
 /**

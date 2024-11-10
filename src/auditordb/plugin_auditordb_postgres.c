@@ -315,11 +315,12 @@ setup_connection (struct PostgresClosure *pg)
     GNUNET_PQ_reconnect_if_down (pg->conn);
     return GNUNET_OK;
   }
-  db_conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                        "auditordb-postgres",
-                                        NULL,
-                                        es,
-                                        NULL);
+  db_conn = GNUNET_PQ_connect_with_cfg2 (pg->cfg,
+                                         "auditordb-postgres",
+                                         "auditor-",
+                                         es,
+                                         NULL, /* prepared statements */
+                                         GNUNET_PQ_FLAG_CHECK_CURRENT);
   if (NULL == db_conn)
     return GNUNET_SYSERR;
   pg->conn = db_conn;
@@ -346,15 +347,10 @@ postgres_preflight (void *cls)
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  if (NULL == pg->conn)
-  {
-    if (GNUNET_OK !=
-        setup_connection (pg))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-  }
+  if ( (NULL == pg->conn) &&
+       (GNUNET_OK !=
+        setup_connection (pg)) )
+    return GNUNET_SYSERR;
   if (NULL == pg->transaction_name)
     return GNUNET_OK; /* all good */
   if (GNUNET_OK ==
@@ -523,8 +519,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
-
-  // MARK: CRUD
 
   plugin = GNUNET_new (struct TALER_AUDITORDB_Plugin);
   plugin->cls = pg;

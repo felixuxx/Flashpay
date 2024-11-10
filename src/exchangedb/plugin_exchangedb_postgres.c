@@ -259,67 +259,6 @@
 
 
 /**
- * Connect to the database if the connection does not exist yet.
- *
- * @param pg the plugin-specific state
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TEH_PG_internal_setup (struct PostgresClosure *pg)
-{
-  if (NULL == pg->conn)
-  {
-#if AUTO_EXPLAIN
-    /* Enable verbose logging to see where queries do not
-       properly use indices */
-    struct GNUNET_PQ_ExecuteStatement es[] = {
-      GNUNET_PQ_make_try_execute ("LOAD 'auto_explain';"),
-      GNUNET_PQ_make_try_execute ("SET auto_explain.log_min_duration=50;"),
-      GNUNET_PQ_make_try_execute ("SET auto_explain.log_timing=TRUE;"),
-      GNUNET_PQ_make_try_execute ("SET auto_explain.log_analyze=TRUE;"),
-      /* https://wiki.postgresql.org/wiki/Serializable suggests to really
-         force the default to 'serializable' if SSI is to be used. */
-      GNUNET_PQ_make_try_execute (
-        "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
-      GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
-      GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
-      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
-      /* Mergejoin causes issues, see Postgres #18380 */
-      GNUNET_PQ_make_try_execute ("SET enable_mergejoin=OFF;"),
-      GNUNET_PQ_EXECUTE_STATEMENT_END
-    };
-#else
-    struct GNUNET_PQ_ExecuteStatement es[] = {
-      GNUNET_PQ_make_try_execute (
-        "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
-      GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
-      GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
-      /* Mergejoin causes issues, see Postgres #18380 */
-      GNUNET_PQ_make_try_execute ("SET enable_mergejoin=OFF;"),
-      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
-      GNUNET_PQ_EXECUTE_STATEMENT_END
-    };
-#endif
-    struct GNUNET_PQ_Context *db_conn;
-
-    db_conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                          "exchangedb-postgres",
-                                          NULL,
-                                          es,
-                                          NULL);
-    if (NULL == db_conn)
-      return GNUNET_SYSERR;
-
-    pg->prep_gen++;
-    pg->conn = db_conn;
-  }
-  if (NULL == pg->transaction_name)
-    GNUNET_PQ_reconnect_if_down (pg->conn);
-  return GNUNET_OK;
-}
-
-
-/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -424,15 +363,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
                                  &pg->currency))
   {
     GNUNET_free (pg->exchange_url);
-    GNUNET_free (pg->sql_dir);
-    GNUNET_free (pg);
-    return NULL;
-  }
-  if (GNUNET_OK !=
-      TEH_PG_internal_setup (pg))
-  {
-    GNUNET_free (pg->exchange_url);
-    GNUNET_free (pg->currency);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;

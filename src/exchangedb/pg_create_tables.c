@@ -60,6 +60,7 @@ TEH_PG_create_tables (void *cls,
     struct GNUNET_PQ_Context *tconn;
 
     tconn = pg->conn;
+    pg->prep_gen++;
     pg->conn = conn;
     PREPARE (pg,
              "create_tables",
@@ -71,7 +72,10 @@ TEH_PG_create_tables (void *cls,
         GNUNET_PQ_eval_prepared_non_select (conn,
                                             "create_tables",
                                             params))
+    {
+      GNUNET_break (0);
       ret = GNUNET_SYSERR;
+    }
   }
   GNUNET_PQ_disconnect (conn);
   return ret;

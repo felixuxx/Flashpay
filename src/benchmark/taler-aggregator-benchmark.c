@@ -450,7 +450,8 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
-  plugin = TALER_EXCHANGEDB_plugin_load (cfg);
+  plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                         false);
   if (NULL == plugin)
   {
     global_ret = EXIT_NOTCONFIGURED;

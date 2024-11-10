@@ -2382,7 +2382,8 @@ exchange_serve_process_config (const char *cfg_fn)
 
   for (unsigned int i = 0; i<MAX_DB_RETRIES; i++)
   {
-    TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg);
+    TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg,
+                                               false);
     if (NULL != TEH_plugin)
       break;
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

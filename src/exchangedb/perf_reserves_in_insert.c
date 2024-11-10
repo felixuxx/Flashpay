@@ -86,7 +86,8 @@ run (void *cls)
   unsigned long long sqrs[sizeof (batches) / sizeof(*batches)];
 
   if (NULL ==
-      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (plugin = TALER_EXCHANGEDB_plugin_load (cfg,
+                                              true)))
   {
     GNUNET_break (0);
     result = 77;

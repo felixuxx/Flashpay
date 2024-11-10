@@ -32,19 +32,24 @@
  * Initialize the plugin.
  *
  * @param cfg configuration to use
+ * @param skip_preflight true if we should skip the usual
+ *   preflight check which assures us that the DB is actually
+ *   operational; only taler-exchange-dbinit should use true here.
  * @return NULL on failure
  */
 struct TALER_EXCHANGEDB_Plugin *
-TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                              bool skip_preflight);
 
 
 /**
  * Shutdown the plugin.
  *
- * @param plugin plugin to unload
+ * @param[in] plugin plugin to unload
  */
 void
 TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin);
+
 
 /**
  * Information about an account from the configuration.

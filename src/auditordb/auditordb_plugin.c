@@ -25,7 +25,8 @@
 
 
 struct TALER_AUDITORDB_Plugin *
-TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
+TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                             bool skip_preflight)
 {
   char *plugin_name;
   char *lib_name;
@@ -52,6 +53,15 @@ TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
     plugin->library_name = lib_name;
   else
     GNUNET_free (lib_name);
+  if ( (! skip_preflight) &&
+       (GNUNET_OK !=
+        plugin->preflight (plugin->cls)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database not ready. Try running taler-auditor-dbinit!\n");
+    TALER_AUDITORDB_plugin_unload (plugin);
+    return NULL;
+  }
   return plugin;
 }
 

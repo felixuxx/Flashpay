@@ -634,7 +634,8 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     }
   }
   if (NULL ==
-      (TALER_ARL_edb = TALER_EXCHANGEDB_plugin_load (TALER_ARL_cfg)))
+      (TALER_ARL_edb = TALER_EXCHANGEDB_plugin_load (TALER_ARL_cfg,
+                                                     false)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize exchange database plugin.\n");
@@ -642,7 +643,8 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     return GNUNET_SYSERR;
   }
   if (NULL ==
-      (TALER_ARL_adb = TALER_AUDITORDB_plugin_load (TALER_ARL_cfg)))
+      (TALER_ARL_adb = TALER_AUDITORDB_plugin_load (TALER_ARL_cfg,
+                                                    false)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize auditor database plugin.\n");

@@ -25,7 +25,8 @@
 
 
 struct TALER_EXCHANGEDB_Plugin *
-TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
+TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                              bool skip_preflight)
 {
   char *plugin_name;
   char *lib_name;
@@ -52,6 +53,15 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
     plugin->library_name = lib_name;
   else
     GNUNET_free (lib_name);
+  if ( (! skip_preflight) &&
+       (GNUNET_OK !=
+        plugin->preflight (plugin->cls)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database not ready. Try running taler-exchange-dbinit!\n");
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    return NULL;
+  }
   return plugin;
 }
 
