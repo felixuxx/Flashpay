@@ -199,7 +199,8 @@ run (void *cls)
               "loading database plugin\n");
 
   if (NULL ==
-      (plugin = TALER_AUDITORDB_plugin_load (cfg)))
+      (plugin = TALER_AUDITORDB_plugin_load (cfg,
+                                             false)))
   {
     result = 77;
     return;
