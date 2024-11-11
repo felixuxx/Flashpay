@@ -652,9 +652,8 @@ TEH_handler_kyc_info (
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;
       }
-      else
+      else if (0 == strcmp (successor_measure->prog_name, "SKIP"))
       {
-
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Running successor measure %s.\n", successor_measure->
                     measure_name);
@@ -682,6 +681,57 @@ TEH_handler_kyc_info (
         MHD_suspend_connection (rc->connection);
         res = MHD_YES;
         goto cleanup;
+      }
+      else
+      {
+        bool unknown_account;
+        struct GNUNET_TIME_Timestamp decision_time
+          = GNUNET_TIME_timestamp_get ();
+        struct GNUNET_TIME_Timestamp last_date;
+        json_t *succ_jmeasures = TALER_KYCLOGIC_get_jmeasures (
+          lrs,
+          successor_measure->measure_name);
+
+        GNUNET_assert (NULL != succ_jmeasures);
+        qs = TEH_plugin->insert_successor_measure (
+          TEH_plugin->cls,
+          &kyp->h_payto,
+          decision_time,
+          successor_measure->measure_name,
+          succ_jmeasures,
+          &unknown_account,
+          &last_date);
+        json_decref (succ_jmeasures);
+        if (qs <= 0)
+        {
+          GNUNET_break (0);
+          res = TALER_MHD_reply_with_ec (
+            rc->connection,
+            TALER_EC_GENERIC_DB_STORE_FAILED,
+            "insert_successor_measure");
+          goto cleanup;
+        }
+        if (unknown_account)
+        {
+          res = TALER_MHD_reply_with_ec (
+            rc->connection,
+            TALER_EC_EXCHANGE_GENERIC_BANK_ACCOUNT_UNKNOWN,
+            NULL);
+          goto cleanup;
+        }
+        if (GNUNET_TIME_timestamp_cmp (last_date,
+                                       >=,
+                                       decision_time))
+        {
+          res = TALER_MHD_reply_with_ec (
+            rc->connection,
+            TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
+            "later decision exists");
+          goto cleanup;
+        }
+        /* Back to default rules. */
+        TALER_KYCLOGIC_rules_free (lrs);
+        lrs = NULL;
       }
     }
   }

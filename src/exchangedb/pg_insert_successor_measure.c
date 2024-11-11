@@ -47,7 +47,6 @@ TEH_PG_insert_successor_measure (
   struct GNUNET_TIME_Timestamp expiration_time = {
     .abs_time = GNUNET_TIME_UNIT_FOREVER_ABS,
   };
-  struct TALER_FullPaytoHashP h_full_payto;
   char *notify_s
     = GNUNET_PQ_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
@@ -74,11 +73,11 @@ TEH_PG_insert_successor_measure (
   PREPARE (pg,
            "do_insert_successor_measure",
            "SELECT"
-           ",out_account_unknown"
+           " out_account_unknown"
            ",out_last_date"
            ",out_legitimization_measure_serial_id"
            " FROM exchange_do_insert_successor_measure"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);");
+           "($1, $2, $3, $4, $5);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_successor_measure",
                                                  params,

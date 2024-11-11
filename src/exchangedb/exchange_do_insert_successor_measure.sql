@@ -143,7 +143,7 @@ INSERT INTO legitimization_outcomes
   ,'{}'
   ,in_new_measure_name
   ,FALSE
-  ,in_new_rules
+  ,NULL
   )
   RETURNING
     outcome_serial_id
