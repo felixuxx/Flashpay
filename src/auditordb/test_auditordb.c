@@ -200,7 +200,7 @@ run (void *cls)
 
   if (NULL ==
       (plugin = TALER_AUDITORDB_plugin_load (cfg,
-                                             false)))
+                                             true)))
   {
     result = 77;
     return;

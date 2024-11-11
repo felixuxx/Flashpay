@@ -90,7 +90,7 @@ run (void *cls)
               "loading database plugin\n");
   if (NULL ==
       (plugin = TALER_AUDITORDB_plugin_load (cfg,
-                                             false)))
+                                             true)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to connect to database\n");
