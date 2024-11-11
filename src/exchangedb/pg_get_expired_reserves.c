@@ -135,27 +135,26 @@ TEH_PG_get_expired_reserves (
   PREPARE (pg,
            "get_expired_reserves",
            "WITH ed AS MATERIALIZED ( "
-           " SELECT * "
-           " FROM reserves "
+           " SELECT expiration_date"
+           "       ,wire_source_h_payto"
+           "       ,current_balance"
+           "       ,r.reserve_pub"
+           " FROM reserves r"
+           " JOIN reserves_in"
+           "   USING (reserve_pub)"
            " WHERE expiration_date <= $1 "
            "   AND ((current_balance).val != 0 OR (current_balance).frac != 0) "
            " ORDER BY expiration_date ASC "
            " LIMIT 1 "
            ") "
-           "SELECT "
-           " ed.expiration_date "
-           " ,payto_uri AS account_details "
-           " ,ed.reserve_pub "
-           " ,current_balance "
-           "FROM ( "
-           " SELECT "
-           "  * "
-           " FROM reserves_in "
-           " WHERE reserve_pub = ( "
-           "     SELECT reserve_pub FROM ed) "
-           " ) ri "
-           "JOIN wire_targets wt ON (ri.wire_source_h_payto = wt.wire_target_h_payto) "
-           "JOIN ed ON (ri.reserve_pub = ed.reserve_pub);");
+           "SELECT"
+           "  wt.payto_uri AS account_details"
+           " ,ed.expiration_date"
+           " ,ed.reserve_pub"
+           " ,ed.current_balance"
+           " FROM wire_targets wt"
+           " JOIN ed"
+           "   ON (ed.wire_source_h_payto=wt.wire_target_h_payto);");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_expired_reserves",
                                              params,
