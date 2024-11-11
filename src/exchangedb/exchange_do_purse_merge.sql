@@ -39,7 +39,7 @@ DECLARE
 DECLARE
   rval RECORD;
 DECLARE
-  reserve RECORD;
+  reserve_bal RECORD;
 DECLARE
   balance taler_amount;
 BEGIN
@@ -64,7 +64,7 @@ ELSE
     partner_serial_id
   INTO
     my_partner_serial_id
-  FROM exchange.partners
+  FROM partners
   WHERE partner_base_url=in_partner_url
     AND start_date <= in_merge_timestamp
     AND end_date > in_merge_timestamp;
@@ -204,28 +204,28 @@ ELSE
   my_amount.val = my_amount.val + my_amount.frac / 100000000;
   my_amount.frac = my_amount.frac % 100000000;
 
-  SELECT *
-   INTO reserve
-   FROM exchange.reserves
-  WHERE reserve_pub=in_reserve_pub;
+  SELECT current_balance
+    INTO reserve_bal
+    FROM reserves
+   WHERE reserve_pub=in_reserve_pub;
 
-  balance = reserve.current_balance;
-  balance.frac=balance.frac+my_amount.frac
-     - CASE
-       WHEN balance.frac + my_amount.frac >= 100000000
-       THEN 100000000
-       ELSE 0
-       END;
+  balance = reserve_bal.current_balance;
   balance.val=balance.val+my_amount.val
      + CASE
        WHEN balance.frac + my_amount.frac >= 100000000
        THEN 1
        ELSE 0
        END;
+  balance.frac=balance.frac+my_amount.frac
+     - CASE
+       WHEN balance.frac + my_amount.frac >= 100000000
+       THEN 100000000
+       ELSE 0
+       END;
 
-  UPDATE exchange.reserves
-  SET current_balance=balance
-  WHERE reserve_pub=in_reserve_pub;
+  UPDATE reserves
+     SET current_balance=balance
+   WHERE reserve_pub=in_reserve_pub;
 
 END IF;
 
