@@ -146,6 +146,38 @@ main (int argc,
                     NULL);
   proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
+                                  "taler-auditor-dbinit",
+                                  "taler-auditor-dbinit",
+                                  "-c", CONFIG_FILE,
+                                  "-L", "INFO",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (
+      GNUNET_ERROR_TYPE_ERROR,
+      "Failed to run `taler-auditor-dbinit`, is your PATH correct?\n");
+    return 77;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-dbinit",
+                                  "taler-exchange-dbinit",
+                                  "-c", CONFIG_FILE,
+                                  "-L", "INFO",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (
+      GNUNET_ERROR_TYPE_ERROR,
+      "Failed to run `taler-auditor-dbinit`, is your PATH correct?\n");
+    return 77;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
                                   "taler-auditor-httpd",
                                   "taler-auditor-httpd",
                                   "-c", CONFIG_FILE,
@@ -153,8 +185,9 @@ main (int argc,
                                   NULL);
   if (NULL == proc)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to run `taler-auditor-httpd`, is your PATH correct?\n");
+    GNUNET_log (
+      GNUNET_ERROR_TYPE_ERROR,
+      "Failed to run `taler-auditor-httpd`, is your PATH correct?\n");
     return 77;
   }
   global_ret = TALER_TESTING_wait_httpd_ready ("http://localhost:8083/");
