@@ -1643,15 +1643,11 @@ legitimization_check_run (
                      NULL);
           goto cleanup;
         }
-        if (GNUNET_TIME_timestamp_cmp (last_date,
-                                       >=,
-                                       decision_time))
-        {
-          legi_fail (lch,
-                     TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
-                     "later decision exists");
-          goto cleanup;
-        }
+        /* We tolerate conflicting decision times for automatic decisions. */
+        GNUNET_break (
+          GNUNET_TIME_timestamp_cmp (last_date,
+                                     >=,
+                                     decision_time));
         /* Back to default rules. */
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;

@@ -59,7 +59,8 @@ TEH_PG_lookup_rules_by_access_token (
            " WHERE h_payto=$1"
            "   AND expiration_time>$2"
            "   AND is_active"
-           " ORDER BY expiration_time DESC"
+           " ORDER BY expiration_time DESC,"
+           "          outcome_serial_id DESC"
            " LIMIT 1;");
   now = GNUNET_TIME_absolute_get ();
   return GNUNET_PQ_eval_prepared_singleton_select (

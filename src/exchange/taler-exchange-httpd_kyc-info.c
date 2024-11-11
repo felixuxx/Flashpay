@@ -719,16 +719,11 @@ TEH_handler_kyc_info (
             NULL);
           goto cleanup;
         }
-        if (GNUNET_TIME_timestamp_cmp (last_date,
-                                       >=,
-                                       decision_time))
-        {
-          res = TALER_MHD_reply_with_ec (
-            rc->connection,
-            TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
-            "later decision exists");
-          goto cleanup;
-        }
+        /* We tolerate conflicting decision times for automatic decisions. */
+        GNUNET_break (
+          GNUNET_TIME_timestamp_cmp (last_date,
+                                     >=,
+                                     decision_time));
         /* Back to default rules. */
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;

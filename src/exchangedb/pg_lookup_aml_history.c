@@ -154,7 +154,7 @@ TEH_PG_lookup_aml_history (
            " JOIN legitimization_outcomes lo"
            "   USING (outcome_serial_id)"
            " WHERE ah.h_payto=$1"
-           " ORDER BY decision_time DESC;");
+           " ORDER BY decision_time DESC, outcome_serial_id DESC;");
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
     "lookup_aml_history",

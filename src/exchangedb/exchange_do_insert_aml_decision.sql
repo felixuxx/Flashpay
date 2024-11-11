@@ -64,7 +64,7 @@ SELECT decision_time
   FROM legitimization_outcomes
  WHERE h_payto=in_h_normalized_payto
    AND is_active
- ORDER BY decision_time DESC;
+ ORDER BY decision_time DESC, outcome_serial_id DESC;
 
 IF FOUND
 THEN
