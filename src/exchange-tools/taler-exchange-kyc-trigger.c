@@ -94,7 +94,7 @@ kyc_wallet_cb (
   {
   case MHD_HTTP_OK:
     fprintf (stdout,
-             "OK, next treshold at %s\n",
+             "OK, next threshold at %s\n",
              TALER_amount2s (&ks->details.ok.next_threshold));
     break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
