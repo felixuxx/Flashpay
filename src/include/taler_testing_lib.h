@@ -748,6 +748,30 @@ TALER_TESTING_cmd_bank_credits (
 
 
 /**
+ * Make an account access token request CMD.
+ *
+ * @param label command label.
+ * @param auth login data to use
+ * @param account_name account name to request access token for
+ * @param scope requested token scope
+ * @param refreshable true if the token should be refreshable
+ * @param description human-readable token description (for token management)
+ * @param duration how long should the token be valid
+ * @param expected_http_status expected server response code
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_account_token (
+  const char *label,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *account_name,
+  enum TALER_BANK_TokenScope scope,
+  bool refreshable,
+  struct GNUNET_TIME_Relative duration,
+  unsigned int expected_http_status);
+
+
+/**
  * Make a debit "history" CMD.
  *
  * @param label command label.
@@ -2756,6 +2780,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  */
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
         op (bank_row, const uint64_t)                                    \
+        op (access_token, const char)                                    \
         op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
         op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
         op (officer_name, const char)                                    \

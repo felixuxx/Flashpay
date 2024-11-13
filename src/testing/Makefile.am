@@ -47,6 +47,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_auditor_deposit_confirmation.c \
   testing_api_cmd_auditor_exec_auditor.c \
   testing_api_cmd_auditor_exec_auditor_dbinit.c \
+  testing_api_cmd_bank_account_token.c \
   testing_api_cmd_bank_admin_add_incoming.c \
   testing_api_cmd_bank_admin_add_kycauth.c \
   testing_api_cmd_bank_check.c \
