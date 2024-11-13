@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016-2023 Taler Systems SA
+  (C) 2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -17,12 +17,12 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/fakebank_bank_post_accounts_withdrawals.h
- * @brief implementation of the bank API's POST /accounts/AID/withdrawals endpoint
+ * @file bank-lib/fakebank_bank_post_accounts_token.h
+ * @brief implementation of the bank API's POST /accounts/AID/token endpoint
  * @author Christian Grothoff <christian@grothoff.org>
  */
-#ifndef FAKEBANK_BANK_POST_ACCOUNTS_WITHDRAWALS_H
-#define FAKEBANK_BANK_POST_ACCOUNTS_WITHDRAWALS_H
+#ifndef FAKEBANK_BANK_POST_ACCOUNTS_TOKEN_H
+#define FAKEBANK_BANK_POST_ACCOUNTS_TOKEN_H
 
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
@@ -32,7 +32,7 @@
 
 
 /**
- * Handle POST /accounts/$account_name/withdrawals request.
+ * Handle POST /accounts/$account_name/token request.
  *
  * @param h our fakebank handle
  * @param connection the connection
@@ -43,7 +43,7 @@
  * @return MHD result code
  */
 MHD_RESULT
-TALER_FAKEBANK_bank_post_account_withdrawals_ (
+TALER_FAKEBANK_bank_post_accounts_token_ (
   struct TALER_FAKEBANK_Handle *h,
   struct MHD_Connection *connection,
   const char *account_name,

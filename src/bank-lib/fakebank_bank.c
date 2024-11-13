@@ -33,6 +33,7 @@
 #include "fakebank_bank_get_accounts.h"
 #include "fakebank_bank_get_withdrawals.h"
 #include "fakebank_bank_get_root.h"
+#include "fakebank_bank_post_accounts_token.h"
 #include "fakebank_bank_post_accounts_withdrawals.h"
 #include "fakebank_bank_post_withdrawals_id_op.h"
 #include "fakebank_bank_testing_register.h"
@@ -237,6 +238,29 @@ TALER_FAKEBANK_bank_main_ (
                                       upload_data,
                                       upload_data_size,
                                       con_cls);
+      GNUNET_free (acc);
+      return ret;
+    }
+
+    if ( (NULL != end_acc) &&
+         (0 == strcasecmp (method,
+                           MHD_HTTP_METHOD_POST)) &&
+         (0 == strncmp (end_acc,
+                        "/token",
+                        strlen ("/token"))) )
+    {
+      /* POST /accounts/$ACCOUNT/token */
+      char *acc;
+      MHD_RESULT ret;
+
+      acc = GNUNET_strndup (acc_name,
+                            end_acc - acc_name);
+      ret = TALER_FAKEBANK_bank_post_accounts_token_ (h,
+                                                      connection,
+                                                      acc,
+                                                      upload_data,
+                                                      upload_data_size,
+                                                      con_cls);
       GNUNET_free (acc);
       return ret;
     }
