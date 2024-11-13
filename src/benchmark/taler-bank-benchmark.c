@@ -546,7 +546,7 @@ main (int argc,
              howmany_reserves,
              howmany_clients,
              GNUNET_STRINGS_relative_time_to_string (duration,
-                                                     GNUNET_YES));
+                                                     true));
     if (! GNUNET_TIME_relative_is_zero (duration))
     {
       tps = ((unsigned long long) howmany_reserves) * howmany_clients * 1000LLU
