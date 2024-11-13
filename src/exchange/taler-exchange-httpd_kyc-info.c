@@ -647,8 +647,7 @@ TEH_handler_kyc_info (
       if (NULL == successor_measure)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Successor measure `%s' unknown, falling back to default rules!\n",
-                    successor_measure->measure_name);
+                    "Successor measure unknown, falling back to default rules!\n");
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;
       }
