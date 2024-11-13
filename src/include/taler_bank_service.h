@@ -112,6 +112,152 @@ struct TALER_BANK_AuthenticationData
 };
 
 
+/* ********************* /accounts/$ACC/token *********************** */
+
+
+/**
+ * @brief A /accounts/$USERNAME/token request handle
+ */
+struct TALER_BANK_AccountTokenHandle;
+
+
+/**
+ * Response details for a token request.
+ */
+struct TALER_BANK_AccountTokenResponse
+{
+
+  /**
+   * HTTP status.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, #TALER_EC_NONE on success.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Full response, NULL if body was not in JSON format.
+   */
+  const json_t *response;
+
+  /**
+   * Details returned depending on the @e http_status.
+   */
+  union
+  {
+
+    /**
+     * Details if status was #MHD_HTTP_OK
+     */
+    struct
+    {
+      /**
+       * Access token to use.
+       */
+      const char *access_token;
+
+      /**
+       * time when the token will expire.
+       */
+      struct GNUNET_TIME_Timestamp expiration;
+
+    } ok;
+
+  } details;
+
+};
+
+/**
+ * Callbacks of this type are used to return the result of submitting
+ * a request for an access token to the bank.
+ *
+ * @param cls closure
+ * @param atr response details
+ */
+typedef void
+(*TALER_BANK_AccountTokenCallback) (
+  void *cls,
+  const struct TALER_BANK_AccountTokenResponse *atr);
+
+
+/**
+ * Possible access scopes for bank bearer tokens.
+ */
+enum TALER_BANK_TokenScope
+{
+
+  /**
+   * Only grant read-access to the account. Useful for
+   * human auditors.
+   */
+  TALER_BANK_TOKEN_SCOPE_READONLY,
+
+  /**
+   * Grants full read-write access to the account. Useful
+   * for the SPA. Strongly recommended to limit validity
+   * duration.
+   */
+  TALER_BANK_TOKEN_SCOPE_READWRITE,
+
+  /**
+   * Only grant (read-access to) the revenue API. Useful for
+   * merchant backends.
+   */
+  TALER_BANK_TOKEN_SCOPE_REVENUE,
+
+  /**
+   * Only grant access to the wire gateway API. Useful for
+   * the exchange.
+   */
+  TALER_BANK_TOKEN_SCOPE_WIREGATEWAY
+
+};
+
+
+/**
+ * Requests an access token from the bank. Note that this
+ * request is against the CORE banking API and not done by
+ * exchange code itself (but used to get access tokens when testing).
+ *
+ * @param ctx curl context for the event loop
+ * @param auth authentication data to send to the bank
+ * @param account_name username of the bank account to get a token for
+ * @param scope requested token scope
+ * @param refreshable true if the token should be refreshable
+ * @param description human-readable token description (for token management)
+ * @param duration requested token validity, use zero for default
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return NULL
+ *         if the inputs are invalid (i.e. invalid amount) or internal errors.
+ *         In this case, the callback is not called.
+ */
+struct TALER_BANK_AccountTokenHandle *
+TALER_BANK_account_token (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *account_name,
+  enum TALER_BANK_TokenScope scope,
+  bool refreshable,
+  const char *description,
+  struct GNUNET_TIME_Relative duration,
+  TALER_BANK_AccountTokenCallback res_cb,
+  void *res_cb_cls);
+
+
+/**
+ * Cancel an add incoming operation.  This function cannot be used on a
+ * request handle if a response is already served for it.
+ *
+ * @param[in] aai the admin add incoming request handle
+ */
+void
+TALER_BANK_account_token_cancel (
+  struct TALER_BANK_AccountTokenHandle *ath);
+
+
 /* ********************* /admin/add-incoming *********************** */
 
 
