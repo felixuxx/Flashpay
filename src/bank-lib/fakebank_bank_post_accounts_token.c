@@ -38,7 +38,7 @@
  * @param h our fakebank handle
  * @param connection the connection
  * @param account_name name of the account
- * @param scope scope of the token
+ * @param scope_s scope of the token (as a string)
  * @param refreshable true if the token can be refreshed
  * @param duration how long should the token be valid
  * @return MHD result code

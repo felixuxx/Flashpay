@@ -93,7 +93,7 @@ TEH_kyc_run_measure_for_attributes (
  * in the DB.
  *
  * @param scope the HTTP request logging scope
- * @param instant_measure instant measure to run
+ * @param instant_ms instant measure to run
  * @param account_id account affected by the measure
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb

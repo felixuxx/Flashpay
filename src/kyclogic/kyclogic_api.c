@@ -1362,12 +1362,13 @@ TALER_KYCLOGIC_rule2priority (
 /**
  * Perform very primitive word splitting of a command.
  *
- * @args command command to split
- * @args extra_args extra arguments to append after the word
+ * @param command command to split
+ * @param extra_args extra arguments to append after the word
  * @returns NULL-terminated array of words
  */
 static char **
-split_words (const char *command, const char **extra_args)
+split_words (const char *command,
+             const char **extra_args)
 {
   unsigned int i = 0;
   unsigned int j = 0;

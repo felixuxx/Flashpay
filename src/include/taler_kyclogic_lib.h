@@ -812,7 +812,7 @@ TALER_KYCLOGIC_rule_get_instant_measure (
  * and a SKIP measure, and thus should be immediately
  * executed.
  *
- * @param rls legitimization rule set
+ * @param lrs legitimization rule set
  * @param measures_spec measures spec
  * @returns NULL if there is no instant measure
  */
@@ -823,10 +823,9 @@ TALER_KYCLOGIC_get_instant_measure (
 
 
 /**
- * Check if there is a measure in @a lrs
- * that is named @a measure.
+ * Check if there is a measure in @a lrs that is named @a measure.
  *
- * @param rls legitimization rule set
+ * @param lrs legitimization rule set
  * @param measure_name measures spec
  * @returns NULL if not found
  */

@@ -251,7 +251,7 @@ TALER_BANK_account_token (
  * Cancel an add incoming operation.  This function cannot be used on a
  * request handle if a response is already served for it.
  *
- * @param[in] aai the admin add incoming request handle
+ * @param[in] ath the admin add incoming request handle
  */
 void
 TALER_BANK_account_token_cancel (

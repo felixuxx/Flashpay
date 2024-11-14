@@ -1880,7 +1880,7 @@ TALER_full_payto_hash (const struct TALER_FullPayto fpayto,
 /**
  * Compute the hash of a normalized payto URI.
  *
- * @param payto URI to hash
+ * @param npayto normalized URI to hash
  * @param[out] h_npayto where to write the hash
  */
 void

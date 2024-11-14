@@ -755,7 +755,6 @@ TALER_TESTING_cmd_bank_credits (
  * @param account_name account name to request access token for
  * @param scope requested token scope
  * @param refreshable true if the token should be refreshable
- * @param description human-readable token description (for token management)
  * @param duration how long should the token be valid
  * @param expected_http_status expected server response code
  * @return the command.

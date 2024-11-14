@@ -14,7 +14,7 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_succesor_measure.c
+ * @file exchangedb/pg_insert_successor_measure.c
  * @brief Implementation of the insert_succesor_measure function for Postgres
  * @author Florian Dold
  */

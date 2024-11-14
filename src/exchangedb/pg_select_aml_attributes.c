@@ -56,7 +56,7 @@ struct AmlAttributeResultContext
 /**
  * Function to be called with the results of a SELECT statement
  * that has returned @a num_results results.  Helper function
- * for #TEH_PG_select_aml_process().
+ * for #TEH_PG_select_aml_attributes().
  *
  * @param cls closure of type `struct AmlAttributeResultContext *`
  * @param result the postgres result
