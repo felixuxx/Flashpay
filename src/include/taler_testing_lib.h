@@ -634,10 +634,10 @@ TALER_TESTING_cmd_set_var (const char *name,
 
 
 /**
- * Update interpeter @a is variable state due to execution of @a cmd.
+ * Update interpreter @a is variable state due to execution of @a cmd.
  *
  * @param[in,out] is interpreter to update
- * @param[in,out] cmd command that we are exeucting and that
+ * @param[in,out] cmd command that we are executing and that
  *   needs to be checked for side-effects on the variable state
  */
 void
