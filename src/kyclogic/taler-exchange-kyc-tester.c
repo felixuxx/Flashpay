@@ -1761,6 +1761,7 @@ main (int argc,
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_help (
+      TALER_EXCHANGE_project_data (),
       "tool to test KYC provider integrations"),
     GNUNET_GETOPT_option_flag (
       'M',
@@ -1830,11 +1831,11 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  TALER_OS_init ();
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &cmd_line_h_payto,
                               sizeof (cmd_line_h_payto));
-  ret = GNUNET_PROGRAM_run (argc, argv,
+  ret = GNUNET_PROGRAM_run (TALER_EXCHANGE_project_data (),
+                            argc, argv,
                             "taler-exchange-kyc-tester",
                             "tool to test KYC provider integrations",
                             options,

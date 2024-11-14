@@ -147,7 +147,6 @@ main (int argc,
   GNUNET_log_setup ("test-conversion",
                     "INFO",
                     NULL);
-  GNUNET_OS_init (TALER_project_data_default ());
   global_ret = 1;
   GNUNET_SCHEDULER_run (&run,
                         NULL);

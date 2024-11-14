@@ -2492,7 +2492,6 @@ main (int argc,
   GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
-  TALER_OS_init ();
   plugin_name++;
   (void) GNUNET_asprintf (&testname,
                           "test-exchange-db-%s",
@@ -2500,7 +2499,7 @@ main (int argc,
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf",
                           testname);
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
                                   config_filename))

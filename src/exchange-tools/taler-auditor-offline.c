@@ -1470,11 +1470,8 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  /* force linker to link against libtalerutil; if we do
-     not do this, the linker may "optimize" libtalerutil
-     away and skip #TALER_OS_init(), which we do need */
-  TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
     argc, argv,
     "taler-auditor-offline",
     gettext_noop ("Operations for offline signing for a Taler exchange"),

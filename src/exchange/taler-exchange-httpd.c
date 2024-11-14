@@ -2885,17 +2885,19 @@ main (int argc,
                                    &input_filename),
 #endif
     GNUNET_GETOPT_option_help (
+      TALER_EXCHANGE_project_data (),
       "HTTP server providing a RESTful API to access a Taler exchange"),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
 
-  TALER_OS_init ();
-  ret = GNUNET_PROGRAM_run (argc, argv,
-                            "taler-exchange-httpd",
-                            "Taler exchange HTTP service",
-                            options,
-                            &run, NULL);
+  ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
+    argc, argv,
+    "taler-exchange-httpd",
+    "Taler exchange HTTP service",
+    options,
+    &run, NULL);
   if (GNUNET_SYSERR == ret)
     return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)

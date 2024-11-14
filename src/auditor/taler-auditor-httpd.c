@@ -1211,18 +1211,20 @@ main (int argc,
                                "after how long do connections timeout by default (in seconds)",
                                &connection_timeout),
     GNUNET_GETOPT_option_help (
+      TALER_EXCHANGE_project_data (),
       "HTTP server providing a RESTful API to access a Taler auditor"),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
 
-  TALER_OS_init ();
-  ret = GNUNET_PROGRAM_run (argc, argv,
-                            "taler-auditor-httpd",
-                            "Taler auditor HTTP service",
-                            options,
-                            &run, NULL);
+  ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
+    argc, argv,
+    "taler-auditor-httpd",
+    "Taler auditor HTTP service",
+    options,
+    &run, NULL);
   if (GNUNET_SYSERR == ret)
     return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)

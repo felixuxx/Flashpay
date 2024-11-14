@@ -438,7 +438,8 @@ main (int argc,
                                "fakebank",
                                "we are using fakebank",
                                &use_fakebank),
-    GNUNET_GETOPT_option_help ("taler-bank benchmark"),
+    GNUNET_GETOPT_option_help (TALER_EXCHANGE_project_data (),
+                               "taler-bank benchmark"),
     GNUNET_GETOPT_option_string ('l',
                                  "logfile",
                                  "LF",
@@ -493,7 +494,7 @@ main (int argc,
   GNUNET_log_setup ("taler-bank-benchmark",
                     loglev,
                     logfile);
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
                                  cfg_filename))

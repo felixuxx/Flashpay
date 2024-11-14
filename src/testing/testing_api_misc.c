@@ -62,7 +62,7 @@ TALER_TESTING_get_credentials (
   unsigned long long port;
   struct TALER_FullPayto exchange_payto_uri;
 
-  ua->cfg = GNUNET_CONFIGURATION_create ();
+  ua->cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (ua->cfg,
                                  cfg_file))

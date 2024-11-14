@@ -493,6 +493,7 @@ main (int argc,
       "should all reserves be created first, before starting normal operations",
       &reserves_first),
     GNUNET_GETOPT_option_help (
+      TALER_EXCHANGE_project_data (),
       "Exchange benchmark"),
     GNUNET_GETOPT_option_string (
       'l',
@@ -558,14 +559,15 @@ main (int argc,
                     loglev,
                     logfile);
   if (NULL == cfg_filename)
-    cfg_filename = GNUNET_CONFIGURATION_default_filename ();
+    cfg_filename = GNUNET_CONFIGURATION_default_filename (
+      TALER_EXCHANGE_project_data ());
   if (NULL == cfg_filename)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Can't find default configuration file.\n");
     return EXIT_NOTCONFIGURED;
   }
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
                                  cfg_filename))

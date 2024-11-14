@@ -412,7 +412,7 @@ run_test (void)
     .tv_nsec = 250000000
   };
 
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
                                  "test_helper_eddsa.conf"))
@@ -500,8 +500,8 @@ main (int argc,
   GNUNET_log_setup ("test-helper-eddsa",
                     "INFO",
                     NULL);
-  GNUNET_OS_init (TALER_project_data_default ());
-  libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
+  libexec_dir = GNUNET_OS_installation_get_path (TALER_EXCHANGE_project_data (),
+                                                 GNUNET_OS_IPK_BINDIR);
   GNUNET_asprintf (&binary_name,
                    "%s/%s",
                    libexec_dir,

@@ -26,21 +26,17 @@ EXTRA_DIST = \
 bin_PROGRAMS = \
   taler-exchange-secmod-eddsa \
   taler-exchange-secmod-rsa \
-  taler-exchange-secmod-cs
-
-bin_SCRIPTS = \
+  taler-exchange-secmod-cs \
   taler-config
 
-edit_script = $(SED) -e 's,%libdir%,$(libdir),'g $(NULL)
+taler_config_SOURCES = \
+  taler-config.c
+taler_config_LDADD = \
+  libtalerutil.la \
+ -lgnunetutil \
+  $(XLIB)
 
-taler-config: taler-config.in
-	rm -f $@ $@.tmp && \
-	$(edit_script) $< >$@.tmp && \
-	chmod a-w+x $@.tmp && \
-	mv $@.tmp $@
 
-CLEANFILES = \
-  taler-config
 
 taler_exchange_secmod_rsa_SOURCES = \
   taler-exchange-secmod-rsa.c taler-exchange-secmod-rsa.h \

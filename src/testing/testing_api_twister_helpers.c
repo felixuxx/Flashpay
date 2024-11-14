@@ -25,6 +25,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <taler/taler_twister_service.h>
 #include "taler_twister_testing_lib.h"
 
 
@@ -42,8 +43,7 @@ TALER_TWISTER_prepare_twister (const char *config_filename)
   unsigned long long port;
   char *base_url;
 
-  cfg = GNUNET_CONFIGURATION_create ();
-
+  cfg = GNUNET_CONFIGURATION_create (TWISTER_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
                                  config_filename))

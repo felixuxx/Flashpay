@@ -3125,11 +3125,8 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  /* force linker to link against libtalerutil; if we do
-     not do this, the linker may "optimize" libtalerutil
-     away and skip #TALER_OS_init(), which we do need */
-  (void) TALER_project_data_default ();
   ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
     argc,
     argv,
     "taler-helper-auditor-coins",

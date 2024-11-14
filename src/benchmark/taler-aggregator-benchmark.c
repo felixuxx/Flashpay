@@ -642,13 +642,15 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   if (0 >=
-      (result = GNUNET_PROGRAM_run (argc,
-                                    argv,
-                                    "taler-aggregator-benchmark",
-                                    "generate database to benchmark the aggregator",
-                                    options,
-                                    &run,
-                                    NULL)))
+      (result = GNUNET_PROGRAM_run (
+         TALER_EXCHANGE_project_data (),
+         argc,
+         argv,
+         "taler-aggregator-benchmark",
+         "generate database to benchmark the aggregator",
+         options,
+         &run,
+         NULL)))
   {
     if (GNUNET_NO == result)
       return EXIT_SUCCESS;

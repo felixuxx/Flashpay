@@ -1675,7 +1675,8 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
       GNUNET_free (lib_name);
       return kyc_logics[i];
     }
-  plugin = GNUNET_PLUGIN_load (lib_name,
+  plugin = GNUNET_PLUGIN_load (TALER_EXCHANGE_project_data (),
+                               lib_name,
                                (void *) cfg);
   if (NULL == plugin)
   {

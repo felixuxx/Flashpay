@@ -159,7 +159,7 @@ TALER_extensions_verify_manifests_signature (
 }
 
 
-/*
+/**
  * Closure used in TALER_extensions_load_taler_config during call to
  * GNUNET_CONFIGURATION_iterate_sections with configure_extension.
  */
@@ -170,7 +170,7 @@ struct LoadConfClosure
 };
 
 
-/*
+/**
  * Used in TALER_extensions_load_taler_config during call to
  * GNUNET_CONFIGURATION_iterate_sections to load the configuration
  * of supported extensions.
@@ -208,7 +208,8 @@ configure_extension (
   for (unsigned int i = 0; i < strlen (lib_name); i++)
     lib_name[i] = tolower (lib_name[i]);
 
-  extension = GNUNET_PLUGIN_load (lib_name,
+  extension = GNUNET_PLUGIN_load (TALER_EXCHANGE_project_data (),
+                                  lib_name,
                                   (void *) col->cfg);
   if (NULL == extension)
   {

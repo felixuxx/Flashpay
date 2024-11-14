@@ -896,8 +896,8 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
     argc, argv,
     "taler-exchange-transfer",
     gettext_noop (

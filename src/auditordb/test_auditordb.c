@@ -487,7 +487,6 @@ main (int argc,
   GNUNET_log_setup (argv[0],
                     "WARNING",
                     NULL);
-  TALER_OS_init ();
   if (NULL == (plugin_name = strrchr (argv[0],
                                       (int) '-')))
   {
@@ -500,7 +499,7 @@ main (int argc,
                           plugin_name);
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf", testname);
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
                                   config_filename))

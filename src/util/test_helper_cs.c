@@ -1013,7 +1013,7 @@ run_test (void)
   };
   int ret;
 
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
                                  "test_helper_cs.conf"))
@@ -1120,8 +1120,8 @@ main (int argc,
   GNUNET_log_setup ("test-helper-cs",
                     loglev,
                     NULL);
-  GNUNET_OS_init (TALER_project_data_default ());
-  libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
+  libexec_dir = GNUNET_OS_installation_get_path (TALER_EXCHANGE_project_data (),
+                                                 GNUNET_OS_IPK_BINDIR);
   GNUNET_asprintf (&binary_name,
                    "%s/%s",
                    libexec_dir,

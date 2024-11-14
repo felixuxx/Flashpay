@@ -337,17 +337,10 @@ TALER_getopt_get_amount (char shortName,
 
 
 /**
- * Return default project data used by Taler.
+ * Return default project data used by Taler exchange.
  */
 const struct GNUNET_OS_ProjectData *
-TALER_project_data_default (void);
-
-
-/**
- * Initialize libtalerutil.
- */
-void
-TALER_OS_init (void);
+TALER_EXCHANGE_project_data (void);
 
 
 /**

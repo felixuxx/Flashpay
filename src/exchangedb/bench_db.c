@@ -38,7 +38,8 @@ static int result;
  * Initializes @a ptr with random data.
  */
 #define RND_BLK(ptr)                                                    \
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (* \
+                                                                             ptr))
 
 
 static bool
@@ -508,8 +509,7 @@ main (int argc,
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf",
                           testname);
-  TALER_OS_init ();
-  cfg = GNUNET_CONFIGURATION_create ();
+  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
                                   config_filename))

@@ -481,7 +481,8 @@ TALER_TEMPLATING_init (const char *subsystem)
   {
     char *path;
 
-    path = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_DATADIR);
+    path = GNUNET_OS_installation_get_path (TALER_EXCHANGE_project_data (),
+                                            GNUNET_OS_IPK_DATADIR);
     if (NULL == path)
     {
       GNUNET_break (0);

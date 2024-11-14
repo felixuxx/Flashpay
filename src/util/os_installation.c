@@ -49,22 +49,12 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
 
 
 /**
- * Return default project data used by Taler.
+ * Return default project data used by Taler exchange.
  */
 const struct GNUNET_OS_ProjectData *
-TALER_project_data_default (void)
+TALER_EXCHANGE_project_data (void)
 {
   return &taler_pd;
-}
-
-
-/**
- * Initialize libtalerutil.
- */
-void __attribute__ ((constructor))
-TALER_OS_init ()
-{
-  GNUNET_OS_init (&taler_pd);
 }
 
 

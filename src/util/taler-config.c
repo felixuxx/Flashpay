@@ -1,6 +1,6 @@
 /*
      This file is part of Taler.
-     Copyright (C) 2012-2021 Taler Systems SA
+     Copyright (C) 2012-2024 Taler Systems SA
 
      Taler is free software: you can redistribute it and/or modify it
      under the terms of the GNU Affero General Public License as published
@@ -17,14 +17,15 @@
 
      SPDX-License-Identifier: AGPL3.0-or-later
  */
-
+/* FIXME: probably should have separate tool for taler-merchant
+   and taler-exchange! */
 /**
  * @file util/taler-config.c
  * @brief tool to access and manipulate Taler configuration files
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "taler_util_lib.h"
+#include "taler_util.h"
 
 
 /**
@@ -43,12 +44,16 @@ main (int argc,
     .global_ret = EXIT_SUCCESS
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_help (TALER_EXCHANGE_project_data (),
+                               "taler-config [OPTIONS]"),
+    GNUNET_GETOPT_option_version (TALER_EXCHANGE_project_data ()->version),
+    GNUNET_CONFIGURATION_CONFIG_OPTIONS (&cs),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
 
-  TALER_OS_init ();
-  ret = GNUNET_PROGRAM_run (argc,
+  ret = GNUNET_PROGRAM_run (TALER_EXCHANGE_project_data (),
+                            argc,
                             argv,
                             "taler-config [OPTIONS]",
                             gettext_noop (

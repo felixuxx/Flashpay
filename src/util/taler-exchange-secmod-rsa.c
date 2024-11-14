@@ -2113,14 +2113,11 @@ main (int argc,
   /* Restrict permissions for the key files that we create. */
   (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
   section = GNUNET_strdup ("taler-exchange");
-  /* force linker to link against libtalerutil; if we do
-   not do this, the linker may "optimize" libtalerutil
-   away and skip #TALER_OS_init(), which we do need */
-  TALER_OS_init ();
   global_now_tmp
     = global_now
       = GNUNET_TIME_timestamp_get ();
-  ret = GNUNET_PROGRAM_run (argc, argv,
+  ret = GNUNET_PROGRAM_run (TALER_EXCHANGE_project_data (),
+                            argc, argv,
                             "taler-exchange-secmod-rsa",
                             "Handle private RSA key operations for a Taler exchange",
                             options,

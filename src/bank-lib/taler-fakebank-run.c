@@ -235,7 +235,8 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue iret;
 
-  iret = GNUNET_PROGRAM_run (argc, argv,
+  iret = GNUNET_PROGRAM_run (TALER_EXCHANGE_project_data (),
+                             argc, argv,
                              "taler-fakebank-run",
                              "Runs the fakebank",
                              options,

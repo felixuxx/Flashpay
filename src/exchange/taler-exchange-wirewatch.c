@@ -1098,8 +1098,8 @@ main (int argc,
   enum GNUNET_GenericReturnValue ret;
 
   longpoll_timeout = LONGPOLL_TIMEOUT;
-  TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
     argc, argv,
     "taler-exchange-wirewatch",
     gettext_noop (
