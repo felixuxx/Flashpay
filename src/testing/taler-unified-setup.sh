@@ -354,11 +354,13 @@ then
     libeufin-bank dbinit \
         -r \
         -c "$CONF" \
+        -L "$LOGLEVEL" \
         &> libeufin-bank-reset.log
     echo "DONE"
     echo -n "Launching bank ... "
     libeufin-bank serve \
       -c "$CONF" \
+      -L "$LOGLEVEL" \
       > libeufin-bank-stdout.log \
       2> libeufin-bank-stderr.log &
     echo $! > libeufin-bank.pid
@@ -389,11 +391,13 @@ then
     libeufin-bank \
       passwd \
       -c "$CONF" \
+      -L "$LOGLEVEL" \
       "$AUSER" "$APASS" \
       &> libeufin-bank-passwd.log
     libeufin-bank \
       edit-account \
       -c "$CONF" \
+      -L "$LOGLEVEL" \
       --debit_threshold="$CURRENCY:1000000" \
       "$AUSER" \
       &> libeufin-bank-debit-threshold.log
