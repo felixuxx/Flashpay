@@ -7,31 +7,43 @@ if USE_COVERAGE
 endif
 
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgadir = $(prefix)/share/taler-auditor/config.d/
+pkgcfgedir = $(prefix)/share/taler-exchange/config.d/
 
-pkgcfg_DATA = \
+pkgcfga_DATA = \
+  auditor-paths.conf
+
+pkgcfge_DATA = \
   currencies.conf \
-  paths.conf \
+  exchange-paths.conf \
   taler-exchange-secmod-eddsa.conf \
   taler-exchange-secmod-rsa.conf \
   taler-exchange-secmod-cs.conf
 
 EXTRA_DIST = \
-  $(pkgcfg_DATA) \
-  taler-config.in \
+  $(pkgcfga_DATA) \
+  $(pkgcfge_DATA) \
   test_helper_eddsa.conf \
   test_helper_rsa.conf \
   test_helper_cs.conf
 
 bin_PROGRAMS = \
+  taler-auditor-config \
   taler-exchange-secmod-eddsa \
   taler-exchange-secmod-rsa \
   taler-exchange-secmod-cs \
-  taler-config
+  taler-exchange-config
 
-taler_config_SOURCES = \
-  taler-config.c
-taler_config_LDADD = \
+taler_auditor_config_SOURCES = \
+  taler-auditor-config.c
+taler_auditor_config_LDADD = \
+  libtalerutil.la \
+ -lgnunetutil \
+  $(XLIB)
+
+taler_exchange_config_SOURCES = \
+  taler-exchange-config.c
+taler_exchange_config_LDADD = \
   libtalerutil.la \
  -lgnunetutil \
   $(XLIB)

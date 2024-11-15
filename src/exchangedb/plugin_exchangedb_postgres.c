@@ -360,6 +360,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
+                                 "exchange",
                                  &pg->currency))
   {
     GNUNET_free (pg->exchange_url);

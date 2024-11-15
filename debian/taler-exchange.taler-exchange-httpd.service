@@ -23,7 +23,7 @@ RestartPreventExitStatus=9
 StartLimitBurst=5
 StartLimitInterval=5s
 
-ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler/taler.conf -L INFO
+ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler-exchange/taler-exchange.conf -L INFO
 StandardOutput=journal
 StandardError=journal
 PrivateTmp=no

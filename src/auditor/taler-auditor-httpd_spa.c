@@ -56,7 +56,8 @@ TAH_spa_handler (
 enum GNUNET_GenericReturnValue
 TAH_spa_init ()
 {
-  spa = TALER_MHD_spa_load ("auditor/spa/");
+  spa = TALER_MHD_spa_load (TALER_AUDITOR_project_data (),
+                            "spa/");
   if (NULL == spa)
   {
     GNUNET_break (0);

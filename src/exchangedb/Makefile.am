@@ -6,13 +6,20 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgadir = $(prefix)/share/taler-auditor/config.d/
+pkgcfgedir = $(prefix)/share/taler-exchange/config.d/
 
-pkgcfg_DATA = \
+# Auditor also needs to access the exchange DB, so we install
+# the exchange configuration for it here as well!
+pkgcfga_DATA = \
   exchangedb.conf \
   exchangedb-postgres.conf
 
-sqldir = $(prefix)/share/taler/sql/exchange/
+pkgcfge_DATA = \
+  exchangedb.conf \
+  exchangedb-postgres.conf
+
+sqldir = $(prefix)/share/taler-exchange/sql/
 
 sqlinputs = \
   exchange_do_*.sql \
@@ -107,7 +114,7 @@ EXTRA_DIST = \
   pg_template.h pg_template.c \
   pg_template.sh
 
-plugindir = $(libdir)/taler
+plugindir = $(libdir)/taler-exchange
 
 if HAVE_POSTGRESQL
 plugin_LTLIBRARIES = \

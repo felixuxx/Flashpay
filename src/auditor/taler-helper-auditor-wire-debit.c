@@ -888,8 +888,8 @@ check_profit_drain (struct ReserveOutInfo *roi)
   {
     struct TALER_AUDITORDB_RowInconsistency ri = {
       .row_id = roi->details.serial_id,
-      .row_table = "profit_drains",
-      .diagnostic = "invalid signature"
+      .row_table = (char *) "profit_drains",
+      .diagnostic = (char *) "invalid signature"
     };
 
     GNUNET_break (0);
@@ -916,7 +916,7 @@ check_profit_drain (struct ReserveOutInfo *roi)
       struct TALER_AUDITORDB_WireOutInconsistency woi = {
         .wire_out_row_id = serial,
         .destination_account = roi->details.credit_account_uri,
-        .diagnostic = "profit drain wired to invalid account",
+        .diagnostic = (char *) "profit drain wired to invalid account",
         .expected = roi->details.amount,
         .claimed = zero,
       };
@@ -946,7 +946,7 @@ check_profit_drain (struct ReserveOutInfo *roi)
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .wire_out_row_id = roi->details.serial_id,
       .destination_account = roi->details.credit_account_uri,
-      .diagnostic = "incorrect amount drained to correct account",
+      .diagnostic = (char *) "incorrect amount drained to correct account",
       .expected = roi->details.amount,
       .claimed = amount,
     };
@@ -1027,7 +1027,7 @@ complain_out_not_found (void *cls,
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .destination_account = roi->details.credit_account_uri,
-      .diagnostic = "missing justification for outgoing wire transfer",
+      .diagnostic = (char *) "missing justification for outgoing wire transfer",
       .wire_out_row_id = roi->details.serial_id,
       .expected = zero,
       .claimed = roi->details.amount
@@ -1138,7 +1138,7 @@ wire_out_cb (
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .wire_out_row_id = rowid,
       .destination_account = payto_uri,
-      .diagnostic = "receiver account mismatch",
+      .diagnostic = (char *) "receiver account mismatch",
       .expected = *amount,
       .claimed = roi->details.amount,
     };
@@ -1171,7 +1171,7 @@ wire_out_cb (
   {
     struct TALER_AUDITORDB_WireOutInconsistency woi = {
       .destination_account = payto_uri,
-      .diagnostic = "wire amount does not match",
+      .diagnostic = (char *) "wire amount does not match",
       .wire_out_row_id = rowid,
       .expected = *amount,
       .claimed = roi->details.amount,
@@ -1386,7 +1386,7 @@ history_debit_cb (
                           &roi->subject_hash);
       roi->details = *dd;
       roi->details.credit_account_uri.full_payto
-        = (const char *) &roi[1];
+        = (char *) &roi[1];
       GNUNET_memcpy (&roi[1],
                      dd->credit_account_uri.full_payto,
                      slen);
@@ -1399,7 +1399,7 @@ history_debit_cb (
         struct TALER_AUDITORDB_WireFormatInconsistency wfi = {
           .amount = dd->amount,
           .wire_offset = dd->serial_id,
-          .diagnostic = "duplicate outgoing wire transfer subject"
+          .diagnostic = (char *) "duplicate outgoing wire transfer subject"
         };
         enum GNUNET_DB_QueryStatus qs;
 
@@ -1530,8 +1530,10 @@ reserve_closed_cb (
   {
     struct TALER_AUDITORDB_RowInconsistency ri = {
       .row_id = rowid,
-      .row_table = "reserves_closures",
-      .diagnostic = "closing fee above reserve balance (and closed anyway)"
+      .row_table
+        = (char *) "reserves_closures",
+      .diagnostic
+        = (char *) "closing fee above reserve balance (and closed anyway)"
     };
     enum GNUNET_DB_QueryStatus qs;
 
@@ -1890,7 +1892,7 @@ main (int argc,
   enum GNUNET_GenericReturnValue ret;
 
   ret = GNUNET_PROGRAM_run (
-    TALER_EXCHANGE_project_data (),
+    TALER_AUDITOR_project_data (),
     argc,
     argv,
     "taler-helper-auditor-wire-debit",

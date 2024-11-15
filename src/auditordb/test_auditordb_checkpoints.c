@@ -386,7 +386,7 @@ main (int argc,
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf",
                           testname);
-  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
+  cfg = GNUNET_CONFIGURATION_create (TALER_AUDITOR_project_data ());
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
                                   config_filename))

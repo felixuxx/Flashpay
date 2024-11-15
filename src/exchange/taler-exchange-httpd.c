@@ -2206,6 +2206,7 @@ exchange_serve_process_config (const char *cfg_fn)
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (TEH_cfg,
+                                 "exchange",
                                  &TEH_currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
@@ -2737,7 +2738,7 @@ run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TEMPLATING_init ("exchange"))
+      TALER_TEMPLATING_init (TALER_EXCHANGE_project_data ()))
   {
     global_ret = EXIT_NOTINSTALLED;
     GNUNET_SCHEDULER_shutdown ();

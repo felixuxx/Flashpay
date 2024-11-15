@@ -1394,6 +1394,7 @@ run (void *cls,
   kcfg = cfg;
   if (GNUNET_OK !=
       TALER_config_get_currency (kcfg,
+                                 "exchange",
                                  &currency))
   {
     global_ret = EXIT_NOTCONFIGURED;
@@ -1471,7 +1472,7 @@ main (int argc,
   enum GNUNET_GenericReturnValue ret;
 
   ret = GNUNET_PROGRAM_run (
-    TALER_EXCHANGE_project_data (),
+    TALER_AUDITOR_project_data (),
     argc, argv,
     "taler-auditor-offline",
     gettext_noop ("Operations for offline signing for a Taler exchange"),

@@ -268,8 +268,8 @@ fi
 STAGE="config"
 
 
-EXCHANGE_URL=$(taler-config -c "$CONF" -s "EXCHANGE" -o "BASE_URL")
-CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
+EXCHANGE_URL=$(taler-exchange-config -c "$CONF" -s "EXCHANGE" -o "BASE_URL")
+CURRENCY=$(taler-exchange-config -c "$CONF" -s "EXCHANGE" -o "CURRENCY")
 
 echo "Setting up for $CURRENCY at $EXCHANGE_URL"
 
@@ -336,13 +336,13 @@ register_fakebank_account() {
 
 if [[ "1" = "$START_BANK" ]]
 then
-    BANK_PORT=$(taler-config -c "$CONF" -s "libeufin-bank" -o "PORT")
+    BANK_PORT=$(taler-exchange-config -c "$CONF" -s "libeufin-bank" -o "PORT")
     BANK_URL="http://localhost:${BANK_PORT}/"
 fi
 
 if [[ "1" = "$START_FAKEBANK" ]]
 then
-    BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
+    BANK_PORT=$(taler-exchange-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
     BANK_URL="http://localhost:${BANK_PORT}/"
 fi
 
@@ -486,15 +486,15 @@ STAGE="exchange"
 if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
-    EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
-    SERVE=$(taler-config -c "$CONF" -s EXCHANGE -o SERVE)
+    EXCHANGE_PORT=$(taler-exchange-config -c "$CONF" -s EXCHANGE -o PORT)
+    SERVE=$(taler-exchange-config -c "$CONF" -s EXCHANGE -o SERVE)
     if [ "${SERVE}" = "unix" ]
     then
-        EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
+        EXCHANGE_URL=$(taler-exchange-config -c "$CONF" -s EXCHANGE -o BASE_URL)
     else
         EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
     fi
-    MASTER_PRIV_FILE=$(taler-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
+    MASTER_PRIV_FILE=$(taler-exchange-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
     MASTER_PRIV_DIR=$(dirname "$MASTER_PRIV_FILE")
     mkdir -p "${MASTER_PRIV_DIR}"
     if [ ! -e "$MASTER_PRIV_FILE" ]
@@ -503,11 +503,11 @@ then
         echo -n "."
     fi
     MASTER_PUB=$(gnunet-ecc -p "${MASTER_PRIV_FILE}")
-    MPUB=$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)
+    MPUB=$(taler-exchange-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)
     if [ "$MPUB" != "$MASTER_PUB" ]
     then
         echo -n " patching master_pub ($MASTER_PUB)..."
-        taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
+        taler-exchange-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
     taler-exchange-dbinit -c "$CONF" --reset
     $USE_VALGRIND taler-exchange-secmod-eddsa \
@@ -594,20 +594,20 @@ then
     echo -n "Starting merchant ..."
     if [ -n "${USE_MERCHANT_EXCHANGE+x}" ]
     then
-        MEPUB=$(taler-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY)
-        MXPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
+        MEPUB=$(taler-merchant-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY)
+        MXPUB=${MASTER_PUB:-$(taler-merchant-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
         if [ "$MEPUB" != "$MXPUB" ]
         then
             echo -n " patching master_pub ($MXPUB)..."
-            taler-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY -V "$MXPUB"
+            taler-merchant-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY -V "$MXPUB"
         fi
     fi
-    MERCHANT_TYPE=$(taler-config -c "$CONF" -s MERCHANT -o SERVE)
+    MERCHANT_TYPE=$(taler-merchant-config -c "$CONF" -s MERCHANT -o SERVE)
     if [ "unix" = "$MERCHANT_TYPE" ]
     then
-        MERCHANT_URL="$(taler-config -c "$CONF" -s MERCHANT -o BASE_URL)"
+        MERCHANT_URL="$(taler-merchant-config -c "$CONF" -s MERCHANT -o BASE_URL)"
     else
-        MERCHANT_PORT="$(taler-config -c "$CONF" -s MERCHANT -o PORT)"
+        MERCHANT_PORT="$(taler-merchant-config -c "$CONF" -s MERCHANT -o PORT)"
         MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
     fi
     taler-merchant-dbinit \
@@ -659,11 +659,11 @@ STAGE="sync"
 if [ "1" = "$START_BACKUP" ]
 then
     echo -n "Starting sync ..."
-    SYNC_PORT=$(taler-config -c "$CONF" -s SYNC -o PORT)
-    SERVE=$(taler-config -c "$CONF" -s SYNC -o SERVE)
+    SYNC_PORT=$(sync-config -c "$CONF" -s SYNC -o PORT)
+    SERVE=$(sync-config -c "$CONF" -s SYNC -o SERVE)
     if [ "${SERVE}" = "unix" ]
     then
-        SYNC_URL=$(taler-config -c "$CONF" -s SYNC -o BASE_URL)
+        SYNC_URL=$(sync-config -c "$CONF" -s SYNC -o BASE_URL)
     else
         SYNC_URL="http://localhost:${SYNC_PORT}/"
     fi
@@ -681,10 +681,10 @@ if [ "1" = "$START_CHALLENGER" ]
 then
     echo -n "Starting challenger ..."
     CHALLENGER_PORT=$(challenger-config -c "$CONF" -s CHALLENGER -o PORT)
-    SERVE=$(taler-config -c "$CONF" -s CHALLENGER -o SERVE)
+    SERVE=$(challenger-config -c "$CONF" -s CHALLENGER -o SERVE)
     if [ "${SERVE}" = "unix" ]
     then
-        CHALLENGER_URL=$(taler-config -c "$CONF" -s CHALLENGER -o BASE_URL)
+        CHALLENGER_URL=$(challenger-config -c "$CONF" -s CHALLENGER -o BASE_URL)
     else
         CHALLENGER_URL="http://localhost:${CHALLENGER_PORT}/"
     fi
@@ -696,16 +696,16 @@ then
                   -L "$LOGLEVEL" \
                   2> challenger-httpd.log &
     echo " DONE"
-    for SECTION in $(taler-config -c "$CONF" -S | grep kyc-provider)
+    for SECTION in $(taler-exchange-config -c "$CONF" -S | grep kyc-provider)
     do
-        LOGIC=$(taler-config -c "$CONF" -s "$SECTION" -o "LOGIC")
+        LOGIC=$(taler-exchange-config -c "$CONF" -s "$SECTION" -o "LOGIC")
         if [ "${LOGIC}" = "oauth2" ]
         then
-            INFO=$(taler-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_INFO_URL")
+            INFO=$(taler-exchange-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_INFO_URL")
             if [ "${CHALLENGER_URL}info" = "$INFO" ]
             then
                 echo -n "Enabling Challenger client for $SECTION"
-                CLIENT_SECRET=$(taler-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_CLIENT_SECRET")
+                CLIENT_SECRET=$(taler-exchange-config -c "$CONF" -s "$SECTION" -o "KYC_OAUTH2_CLIENT_SECRET")
                 RFC_8959_PREFIX="secret-token:"
                 if ! echo "${CLIENT_SECRET}" | grep ^${RFC_8959_PREFIX} > /dev/null
                 then
@@ -713,7 +713,7 @@ then
                 fi
                 REDIRECT_URI="${EXCHANGE_URL}kyc-proof/kyc-provider-example-challeger"
                 CLIENT_ID=$(challenger-admin --add="${CLIENT_SECRET}" --quiet "${REDIRECT_URI}")
-                taler-config -c "$CONF" -s "$SECTION" -o KYC_OAUTH2_CLIENT_ID -V "$CLIENT_ID"
+                taler-exchange-config -c "$CONF" -s "$SECTION" -o KYC_OAUTH2_CLIENT_ID -V "$CLIENT_ID"
                 echo " DONE"
             fi
         fi
@@ -726,10 +726,10 @@ if [ "1" = "$START_AUDITOR" ]
 then
     echo -n "Starting auditor ..."
 
-    export TALER_AUDITOR_SALT=$(taler-config -c "$CONF" -s AUDITOR -o TALER_AUDITOR_SALT)
+    export TALER_AUDITOR_SALT=$(taler-auditor-config -c "$CONF" -s AUDITOR -o TALER_AUDITOR_SALT)
 
-    AUDITOR_URL=$(taler-config -c "$CONF" -s AUDITOR -o BASE_URL)
-    AUDITOR_PRIV_FILE=$(taler-config -f -c "$CONF" -s AUDITOR -o AUDITOR_PRIV_FILE)
+    AUDITOR_URL=$(taler-auditor-config -c "$CONF" -s AUDITOR -o BASE_URL)
+    AUDITOR_PRIV_FILE=$(taler-auditor-config -f -c "$CONF" -s AUDITOR -o AUDITOR_PRIV_FILE)
     AUDITOR_PRIV_DIR=$(dirname "$AUDITOR_PRIV_FILE")
     mkdir -p "$AUDITOR_PRIV_DIR"
     if [ ! -e "$AUDITOR_PRIV_FILE" ]
@@ -738,19 +738,24 @@ then
         echo -n "."
     fi
     AUDITOR_PUB=$(gnunet-ecc -p "${AUDITOR_PRIV_FILE}")
-    MAPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
+    APUB=$(taler-exchange-config -c "$CONF" -s auditor -o PUBLIC_KEY)
+    if [ "$APUB" != "$AUDITOR_PUB" ]
+    then
+        echo -n " patching auditor public key ..."
+        # Using taler-exchange-config is correct here, we don't want to
+        # suddenly use the auditor-defaults while editing...
+        taler-exchange-config -c "$CONF" -s auditor -o PUBLIC_KEY -V "$AUDITOR_PUB"
+    fi
+
     taler-auditor-dbinit \
         -c "$CONF" \
         --reset
+    echo "Launching auditor using $CONF" > taler-auditor-httpd.log
+    echo "Launching auditor using $AUDITOR_PUB from $AUDITOR_PRIV_FILE" \
+         >> taler-auditor-httpd.log
     $USE_VALGRIND taler-auditor-httpd \
                   -L "$LOGLEVEL" \
-                  -c "$CONF" 2> taler-auditor-httpd.log &
-#    $USE_VALGRIND taler-helper-auditor-deposits \
-#                  -L "$LOGLEVEL" \
-#                  -c "$CONF" 2> taler-helper-auditor.log &
-
-
-
+                  -c "$CONF" 2>> taler-auditor-httpd.log &
     echo " DONE"
 fi
 
@@ -868,11 +873,11 @@ then
       global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.0" 1h 1year 5 \
       upload &> taler-exchange-offline.log
     echo "OK"
-    ENABLED=$(taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "ENABLE_CREDIT")
+    ENABLED=$(taler-exchange-config -c "$CONF" -s "$USE_ACCOUNT" -o "ENABLE_CREDIT")
     if [ "YES" = "$ENABLED" ]
     then
         echo -n "Configuring bank account $USE_ACCOUNT ..."
-        EXCHANGE_PAYTO_URI=$(taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "PAYTO_URI")
+        EXCHANGE_PAYTO_URI=$(taler-exchange-config -c "$CONF" -s "$USE_ACCOUNT" -o "PAYTO_URI")
         taler-exchange-offline -c "$CONF" \
           enable-account "$EXCHANGE_PAYTO_URI" \
           upload &> "taler-exchange-offline-account.log"

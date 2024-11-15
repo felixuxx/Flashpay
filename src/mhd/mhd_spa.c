@@ -302,7 +302,8 @@ build_webui (void *cls,
 
 
 struct TALER_MHD_Spa *
-TALER_MHD_spa_load (const char *dir)
+TALER_MHD_spa_load (const struct GNUNET_OS_ProjectData *pd,
+                    const char *dir)
 {
   struct TALER_MHD_Spa *spa;
   char *dn;
@@ -310,7 +311,7 @@ TALER_MHD_spa_load (const char *dir)
   {
     char *path;
 
-    path = GNUNET_OS_installation_get_path (TALER_EXCHANGE_project_data (),
+    path = GNUNET_OS_installation_get_path (pd,
                                             GNUNET_OS_IPK_DATADIR);
     if (NULL == path)
     {

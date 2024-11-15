@@ -1,10 +1,1 @@
 usr/lib/*/libtaler*.so.*
-
-# FIXME:  All this should eventually go into taler-base.
-usr/share/taler/config.d/paths.conf
-usr/share/taler/config.d/currencies.conf
-usr/share/taler/config.d/taler.conf
-debian/etc-libtalerexchange/* etc/
-usr/bin/taler-config
-usr/share/man/man5/taler.conf.5
-usr/share/man/man1/taler-config*

@@ -597,9 +597,6 @@ EXTRA_DIST = \
   test_bank_api_fakebank.conf \
   test_bank_api_fakebank_twisted.conf \
   test_bank_api_nexus.conf \
-  test_exchange_api_home/taler/auditor/offline-keys/auditor.priv \
-  test_exchange_api_home/.local/share/taler/exchange-offline/master.priv \
-  test_exchange_api_home/.local/share/taler/auditor/offline-keys/auditor.priv \
   test_exchange_api.conf \
   test_exchange_api-cs.conf \
   test_exchange_api-rsa.conf \

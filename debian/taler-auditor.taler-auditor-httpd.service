@@ -16,7 +16,7 @@ RestartPreventExitStatus=9
 StartLimitBurst=5
 StartLimitInterval=5s
 
-ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler/taler.conf -L INFO
+ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler-auditor/taler-auditor.conf -L INFO
 StandardOutput=journal
 StandardError=journal
 PrivateTmp=yes

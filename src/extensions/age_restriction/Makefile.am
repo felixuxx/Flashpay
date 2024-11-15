@@ -12,7 +12,7 @@ endif
 
 # Age restriction as extension library
 
-plugindir = $(libdir)/taler
+plugindir = $(libdir)/taler-exchange
 
 plugin_LTLIBRARIES = \
   libtaler_extension_age_restriction.la

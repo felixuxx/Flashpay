@@ -126,18 +126,19 @@ TALER_config_get_denom_fees (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           const char *section,
                            char **currency)
 {
   size_t slen;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
+                                             section,
                                              "CURRENCY",
                                              currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
+                               section,
                                "CURRENCY");
     return GNUNET_SYSERR;
   }

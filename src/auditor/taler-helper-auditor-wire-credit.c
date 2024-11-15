@@ -469,7 +469,7 @@ reserve_in_cb (void *cls,
   rii->credit_details.amount = *credit;
   rii->credit_details.execution_date = execution_date;
   rii->credit_details.details.reserve.reserve_pub = *reserve_pub;
-  rii->credit_details.debit_account_uri.full_payto = (const char *) &rii[1];
+  rii->credit_details.debit_account_uri.full_payto = (char *) &rii[1];
   GNUNET_memcpy (&rii[1],
                  sender_account_details.full_payto,
                  slen);
@@ -484,8 +484,8 @@ reserve_in_cb (void *cls,
   {
     struct TALER_AUDITORDB_RowInconsistency ri = {
       .row_id = rowid,
-      .row_table = "reserves_in",
-      .diagnostic = "duplicate wire offset"
+      .row_table = (char *) "reserves_in",
+      .diagnostic = (char *) "duplicate wire offset"
     };
     enum GNUNET_DB_QueryStatus qs;
 
@@ -526,8 +526,9 @@ complain_in_not_found (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
     .bank_row_id = rii->rowid,
-    .diagnostic = "incoming wire transfer claimed by exchange not found",
-    .account = { .full_payto = (const char *) wa->ai->section_name },
+    .diagnostic = (char *)
+                  "incoming wire transfer claimed by exchange not found",
+    .account.full_payto = (char *) wa->ai->section_name,
     .amount_exchange_expected = rii->credit_details.amount,
     .amount_wired = zero,
     .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
@@ -642,13 +643,13 @@ analyze_credit (
                           &rii->credit_details.details.reserve.reserve_pub))
   {
     struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
-      .diagnostic = "wire subject does not match",
-      .account = (char *) wa->ai->section_name,
       .bank_row_id = credit_details->serial_id,
       .amount_exchange_expected = rii->credit_details.amount,
       .amount_wired = zero,
       .reserve_pub = rii->credit_details.details.reserve.reserve_pub,
-      .timestamp = rii->credit_details.execution_date.abs_time
+      .timestamp = rii->credit_details.execution_date.abs_time,
+      .account.full_payto = (char *) wa->ai->section_name,              /* FIXME: get actual account? */
+      .diagnostic = (char *) "wire subject does not match"
     };
     enum GNUNET_DB_QueryStatus qs;
 
@@ -679,8 +680,8 @@ analyze_credit (
                              &credit_details->amount))
   {
     struct TALER_AUDITORDB_ReserveInInconsistency riiDb = {
-      .diagnostic = "wire amount does not match",
-      .account = (char *) wa->ai->section_name,
+      .diagnostic = (char *) "wire amount does not match",
+      .account.full_payto = (char *) wa->ai->section_name, /* FIXME: get actual account! */
       .bank_row_id = credit_details->serial_id,
       .amount_exchange_expected = rii->credit_details.amount,
       .amount_wired = credit_details->amount,
@@ -769,8 +770,8 @@ analyze_credit (
   {
     struct TALER_AUDITORDB_RowMinorInconsistencies rmi = {
       .problem_row = rii->rowid,
-      .diagnostic = "execution date mismatch",
-      .row_table = "reserves_in"
+      .diagnostic = (char *) "execution date mismatch",
+      .row_table = (char *) "reserves_in"
     };
     enum GNUNET_DB_QueryStatus qs;
 
@@ -1215,7 +1216,7 @@ main (int argc,
   enum GNUNET_GenericReturnValue ret;
 
   ret = GNUNET_PROGRAM_run (
-    TALER_EXCHANGE_project_data (),
+    TALER_AUDITOR_project_data (),
     argc,
     argv,
     "taler-helper-auditor-wire-credit",

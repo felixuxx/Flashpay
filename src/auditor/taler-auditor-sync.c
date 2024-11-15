@@ -463,7 +463,7 @@ load_config (const char *cfgfile)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
 
-  cfg = GNUNET_CONFIGURATION_create (TALER_EXCHANGE_project_data ());
+  cfg = GNUNET_CONFIGURATION_create (TALER_AUDITOR_project_data ());
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Loading config file: %s\n",
               cfgfile);
@@ -572,7 +572,7 @@ main (int argc,
     GNUNET_GETOPT_option_mandatory (
       option_cfgfile_dst (&dst_cfgfile)),
     GNUNET_GETOPT_option_help (
-      TALER_EXCHANGE_project_data (),
+      TALER_AUDITOR_project_data (),
       gettext_noop ("Make a safe copy of an exchange database")),
     GNUNET_GETOPT_option_uint (
       'b',

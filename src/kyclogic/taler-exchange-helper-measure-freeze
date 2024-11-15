@@ -86,7 +86,7 @@ EXPIRATION=$((3600 * 30 + $(date +%s)))
 # for the required output format.
 
 jq -n \
-    --arg expiration "$EXPIRATION" \
+    --argjson expiration "$EXPIRATION" \
     '{ "to_investigate": true,
        "new_rules" : {
          "new_measures" : "info-frozen",

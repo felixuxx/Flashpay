@@ -63,7 +63,6 @@
 #include "pg_get_row_inconsistency.h"
 #include "pg_update_balance.h"
 
-
 #include "pg_insert_coin_inconsistency.h"
 #include "pg_insert_row_inconsistency.h"
 #include "pg_insert_amount_arithmetic_inconsistency.h"
@@ -514,6 +513,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   pg->cfg = cfg;
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
+                                 "exchange",
                                  &pg->currency))
   {
     GNUNET_free (pg);

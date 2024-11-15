@@ -1058,11 +1058,13 @@ TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection);
 /**
  * Load SPA files from @a dir
  *
+ * @param pd project data to use to determine the parent directory
  * @param dir directory suffix to append to our data directory with the location of the files of the SPA
  * @return handle to serve static files from @a dir
  */
 struct TALER_MHD_Spa *
-TALER_MHD_spa_load (const char *dir);
+TALER_MHD_spa_load (const struct GNUNET_OS_ProjectData *pd,
+                    const char *dir);
 
 
 /**

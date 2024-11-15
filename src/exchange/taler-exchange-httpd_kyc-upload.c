@@ -350,6 +350,8 @@ aml_trigger_callback (
   if (TALER_EC_NONE != ec)
   {
     uc->response_code = TALER_ErrorCode_get_http_status (ec);
+    if (0 == uc->response_code)
+      uc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     GNUNET_assert (uc->response_code != UINT_MAX);
     uc->response = TALER_MHD_make_error (
       ec,

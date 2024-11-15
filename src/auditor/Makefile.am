@@ -6,7 +6,7 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgdir = $(prefix)/share/taler-auditor/config.d/
 
 pkgcfg_DATA = \
   auditor.conf

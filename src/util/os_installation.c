@@ -1,6 +1,6 @@
 /*
      This file is part of GNU Taler.
-     Copyright (C) 2016 Taler Systems SA
+     Copyright (C) 2016, 2024 Taler Systems SA
 
      Taler is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -28,18 +28,18 @@
 
 /**
  * Default project data used for installation path detection
- * for GNU Taler.
+ * for GNU Taler exchange.
  */
-static const struct GNUNET_OS_ProjectData taler_pd = {
+static const struct GNUNET_OS_ProjectData exchange_pd = {
   .libname = "libtalerutil",
-  .project_dirname = "taler",
+  .project_dirname = "taler-exchange",
   .binary_name = "taler-exchange-httpd",
   .env_varname = "TALER_PREFIX",
   .base_config_varname = "TALER_BASE_CONFIG",
   .bug_email = "taler@gnu.org",
   .homepage = "http://www.gnu.org/s/taler/",
-  .config_file = "taler.conf",
-  .user_config_file = "~/.config/taler.conf",
+  .config_file = "taler-exchange.conf",
+  .user_config_file = "~/.config/taler-exchange.conf",
   .version = PACKAGE_VERSION "-" VCS_VERSION,
   .is_gnu = 1,
   .gettext_domain = "taler",
@@ -48,13 +48,68 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
 };
 
 
-/**
- * Return default project data used by Taler exchange.
- */
 const struct GNUNET_OS_ProjectData *
 TALER_EXCHANGE_project_data (void)
 {
-  return &taler_pd;
+  return &exchange_pd;
+}
+
+
+/**
+ * Default project data used for installation path detection
+ * for GNU Taler auditor.
+ */
+static const struct GNUNET_OS_ProjectData auditor_pd = {
+  .libname = "libtalerutil",
+  .project_dirname = "taler-auditor",
+  .binary_name = "taler-auditor-httpd",
+  .env_varname = "TALER_PREFIX",
+  .base_config_varname = "TALER_BASE_CONFIG",
+  .bug_email = "taler@gnu.org",
+  .homepage = "http://www.gnu.org/s/taler/",
+  .config_file = "taler-auditor.conf",
+  .user_config_file = "~/.config/taler-auditor.conf",
+  .version = PACKAGE_VERSION "-" VCS_VERSION,
+  .is_gnu = 1,
+  .gettext_domain = "taler",
+  .gettext_path = NULL,
+  .agpl_url = "https://git.taler.net/"
+};
+
+
+const struct GNUNET_OS_ProjectData *
+TALER_AUDITOR_project_data (void)
+{
+  return &auditor_pd;
+}
+
+
+/**
+ * Default project data used for installation path detection
+ * for GNU Taler fakebank.
+ */
+static const struct GNUNET_OS_ProjectData fakebank_pd = {
+  .libname = "libtalerutil",
+  .project_dirname = "taler-fakebank",
+  .binary_name = "taler-fakebank-run",
+  .env_varname = "TALER_PREFIX",
+  .base_config_varname = "TALER_BASE_CONFIG",
+  .bug_email = "taler@gnu.org",
+  .homepage = "http://www.gnu.org/s/taler/",
+  .config_file = "taler-fakebank.conf",
+  .user_config_file = "~/.config/taler-fakebank.conf",
+  .version = PACKAGE_VERSION "-" VCS_VERSION,
+  .is_gnu = 1,
+  .gettext_domain = "taler",
+  .gettext_path = NULL,
+  .agpl_url = "https://git.taler.net/"
+};
+
+
+const struct GNUNET_OS_ProjectData *
+TALER_FAKEBANK_project_data (void)
+{
+  return &fakebank_pd;
 }
 
 

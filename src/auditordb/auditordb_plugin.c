@@ -47,13 +47,15 @@ TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
                           "libtaler_plugin_auditordb_%s",
                           plugin_name);
   GNUNET_free (plugin_name);
-  plugin = GNUNET_PLUGIN_load (TALER_EXCHANGE_project_data (),
+  plugin = GNUNET_PLUGIN_load (TALER_AUDITOR_project_data (),
                                lib_name,
                                (void *) cfg);
-  if (NULL != plugin)
-    plugin->library_name = lib_name;
-  else
+  if (NULL == plugin)
+  {
     GNUNET_free (lib_name);
+    return NULL;
+  }
+  plugin->library_name = lib_name;
   if ( (! skip_preflight) &&
        (GNUNET_OK !=
         plugin->preflight (plugin->cls)) )

@@ -210,15 +210,17 @@ TALER_denom_fee_check_currency (
 
 
 /**
- * Load our currency from the @a cfg (in section [taler]
- * the option "CURRENCY").
+ * Load our currency from the @a cfg in @a section
+ * the option "CURRENCY".
  *
  * @param cfg configuration to use
+ * @param section configuration section to inspect
  * @param[out] currency where to write the result
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
 enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           const char *section,
                            char **currency);
 
 
@@ -341,6 +343,20 @@ TALER_getopt_get_amount (char shortName,
  */
 const struct GNUNET_OS_ProjectData *
 TALER_EXCHANGE_project_data (void);
+
+
+/**
+ * Return default project data used by Taler auditor.
+ */
+const struct GNUNET_OS_ProjectData *
+TALER_AUDITOR_project_data (void);
+
+
+/**
+ * Return default project data used by Taler fakebank.
+ */
+const struct GNUNET_OS_ProjectData *
+TALER_FAKEBANK_project_data (void);
 
 
 /**

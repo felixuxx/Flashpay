@@ -115,6 +115,7 @@ run (void *cls,
   (void) cfgfile;
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
+                                 "exchange",
                                  &currency_string))
   {
     ret = EXIT_NOTCONFIGURED;
@@ -235,7 +236,7 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue iret;
 
-  iret = GNUNET_PROGRAM_run (TALER_EXCHANGE_project_data (),
+  iret = GNUNET_PROGRAM_run (TALER_FAKEBANK_project_data (),
                              argc, argv,
                              "taler-fakebank-run",
                              "Runs the fakebank",

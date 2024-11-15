@@ -9,9 +9,15 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgadir = $(prefix)/share/taler-auditor/config.d/
+pkgcfgedir = $(prefix)/share/taler-exchange/config.d/
 
-pkgcfg_DATA = \
+# Auditor also needs to access the exchange config, so we install
+# the exchange configuration for it here as well!
+pkgcfga_DATA = \
+  exchange.conf
+
+pkgcfge_DATA = \
   exchange.conf
 
 # Programs

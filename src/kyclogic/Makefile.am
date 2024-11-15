@@ -6,7 +6,7 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgdir = $(prefix)/share/taler-exchange/config.d/
 
 pkgcfg_DATA = \
   kyclogic.conf \
@@ -70,7 +70,7 @@ taler_exchange_kyc_tester_LDADD = \
 
 
 
-plugindir = $(libdir)/taler
+plugindir = $(libdir)/taler-exchange
 
 plugin_LTLIBRARIES = \
   libtaler_plugin_kyclogic_kycaid.la \

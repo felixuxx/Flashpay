@@ -85,13 +85,15 @@ TEH_handler_kyc_spa (struct TEH_RequestContext *rc,
 enum GNUNET_GenericReturnValue
 TEH_spa_init ()
 {
-  aml_spa = TALER_MHD_spa_load ("exchange/aml-spa/");
+  aml_spa = TALER_MHD_spa_load (TALER_EXCHANGE_project_data (),
+                                "aml-spa/");
   if (NULL == aml_spa)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  kyc_spa = TALER_MHD_spa_load ("exchange/kyc-spa/");
+  kyc_spa = TALER_MHD_spa_load (TALER_EXCHANGE_project_data (),
+                                "kyc-spa/");
   if (NULL == kyc_spa)
   {
     GNUNET_break (0);

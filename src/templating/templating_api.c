@@ -473,7 +473,7 @@ TALER_TEMPLATING_reply_error (
 
 
 enum GNUNET_GenericReturnValue
-TALER_TEMPLATING_init (const char *subsystem)
+TALER_TEMPLATING_init (const struct GNUNET_OS_ProjectData *pd)
 {
   char *dn;
   int ret;
@@ -481,7 +481,7 @@ TALER_TEMPLATING_init (const char *subsystem)
   {
     char *path;
 
-    path = GNUNET_OS_installation_get_path (TALER_EXCHANGE_project_data (),
+    path = GNUNET_OS_installation_get_path (pd,
                                             GNUNET_OS_IPK_DATADIR);
     if (NULL == path)
     {
@@ -489,9 +489,8 @@ TALER_TEMPLATING_init (const char *subsystem)
       return GNUNET_SYSERR;
     }
     GNUNET_asprintf (&dn,
-                     "%s/%s/templates/",
-                     path,
-                     subsystem);
+                     "%s/templates/",
+                     path);
     GNUNET_free (path);
   }
   ret = GNUNET_DISK_directory_scan (dn,

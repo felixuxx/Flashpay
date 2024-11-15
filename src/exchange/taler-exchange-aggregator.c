@@ -318,13 +318,13 @@ parse_aggregator_config (void)
   }
   if ( (GNUNET_OK !=
         TALER_config_get_amount (cfg,
-                                 "taler",
+                                 "exchange",
                                  "CURRENCY_ROUND_UNIT",
                                  &currency_round_unit)) ||
        (TALER_amount_is_zero (&currency_round_unit)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need non-zero amount in section `taler' under `CURRENCY_ROUND_UNIT'\n");
+                "Need non-zero amount in section `exchange' under `CURRENCY_ROUND_UNIT'\n");
     return GNUNET_SYSERR;
   }
 

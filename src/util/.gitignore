@@ -10,3 +10,5 @@ test_helper_cs_home/
 test_helper_eddsa
 test_helper_eddsa_home/
 test_conversion
+taler-auditor-config
+taler-exchange-config

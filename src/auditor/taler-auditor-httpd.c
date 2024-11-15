@@ -939,6 +939,7 @@ auditor_serve_process_config (void)
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
+                                 "exchange",
                                  &TAH_currency))
   {
     return GNUNET_SYSERR;
@@ -1020,6 +1021,9 @@ auditor_serve_process_config (void)
                                  "AUDITOR_PRIV_FILE");
       return GNUNET_SYSERR;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Loading auditor private key from %s\n",
+                auditor_key_file);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_key_from_file (auditor_key_file,
                                            GNUNET_NO,
@@ -1211,7 +1215,7 @@ main (int argc,
                                "after how long do connections timeout by default (in seconds)",
                                &connection_timeout),
     GNUNET_GETOPT_option_help (
-      TALER_EXCHANGE_project_data (),
+      TALER_AUDITOR_project_data (),
       "HTTP server providing a RESTful API to access a Taler auditor"),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
@@ -1219,7 +1223,7 @@ main (int argc,
   int ret;
 
   ret = GNUNET_PROGRAM_run (
-    TALER_EXCHANGE_project_data (),
+    TALER_AUDITOR_project_data (),
     argc, argv,
     "taler-auditor-httpd",
     "Taler auditor HTTP service",

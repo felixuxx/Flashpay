@@ -19,5 +19,5 @@ StandardError=journal
 PrivateTmp=yes
 PrivateDevices=yes
 
-Environment="REGIO_CURRENCY=$(taler-config -s taler -o CURRENCY)"
+Environment="REGIO_CURRENCY=$(taler-exchange-config -s exchange -o CURRENCY)"
 ExecStart=bash -c 'taler-exchange-offline download sign wire-fee now iban "${REGIO_CURRENCY}":0 "${REGIO_CURRENCY}":0 wire-fee now x-taler-bank "${REGIO_CURRENCY}":0 "${REGIO_CURRENCY}":0 global-fee now "${REGIO_CURRENCY}:0" "${REGIO_CURRENCY}:0" "${REGIO_CURRENCY}:0" 4weeks 6years 4 upload'

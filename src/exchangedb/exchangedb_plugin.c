@@ -32,7 +32,7 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *lib_name;
   struct TALER_EXCHANGEDB_Plugin *plugin;
 
-  if (GNUNET_SYSERR ==
+  if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "db",
@@ -50,10 +50,12 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
   plugin = GNUNET_PLUGIN_load (TALER_EXCHANGE_project_data (),
                                lib_name,
                                (void *) cfg);
-  if (NULL != plugin)
-    plugin->library_name = lib_name;
-  else
+  if (NULL == plugin)
+  {
     GNUNET_free (lib_name);
+    return NULL;
+  }
+  plugin->library_name = lib_name;
   if ( (! skip_preflight) &&
        (GNUNET_OK !=
         plugin->preflight (plugin->cls)) )

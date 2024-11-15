@@ -114,11 +114,11 @@ TALER_TEMPLATING_reply_error (struct MHD_Connection *connection,
 /**
  * Preload templates.
  *
- * @param subsystem name of the subsystem, "merchant" or "exchange"
+ * @param pd project data for the subsystem
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_TEMPLATING_init (const char *subsystem);
+TALER_TEMPLATING_init (const struct GNUNET_OS_ProjectData *pd);
 
 
 /**

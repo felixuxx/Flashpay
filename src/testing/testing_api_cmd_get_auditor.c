@@ -49,6 +49,16 @@ struct GetAuditorState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Our configuration.
+   */
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
+   * Should we load and check the auditor's private key?
+   */
+  bool load_auditor_keys;
+
+  /**
    * Auditor handle used to get the configuration.
    */
   struct TALER_AUDITOR_GetConfigHandle *auditor;
@@ -100,6 +110,48 @@ version_cb (
 
 
 /**
+ * Get the file name of the master private key file of the auditor from @a
+ * cfg.
+ *
+ * @param cfg configuration to evaluate
+ * @return base URL of the auditor according to @a cfg
+ */
+static char *
+get_auditor_priv_file (
+  const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  char *fn;
+  struct GNUNET_CONFIGURATION_Handle *acfg;
+  char *dfn;
+
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                         "PATHS",
+                                                         "DEFAULTCONFIG",
+                                                         &dfn));
+  acfg = GNUNET_CONFIGURATION_create (TALER_AUDITOR_project_data ());
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_CONFIGURATION_load (acfg,
+                                           dfn));
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (acfg,
+                                               "auditor",
+                                               "AUDITOR_PRIV_FILE",
+                                               &fn))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "auditor",
+                               "AUDITOR_PRIV_FILE");
+  }
+  GNUNET_CONFIGURATION_destroy (acfg);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loading auditor private key from %s\n",
+              fn);
+  return fn;
+}
+
+
+/**
  * Run the "get_auditor" command.
  *
  * @param cls closure.
@@ -114,6 +166,9 @@ get_auditor_run (void *cls,
   struct GetAuditorState *gas = cls;
 
   (void) cmd;
+  if (gas->load_auditor_keys)
+    gas->priv_file = get_auditor_priv_file (gas->cfg);
+
   if (NULL == gas->auditor_url)
   {
     GNUNET_break (0);
@@ -231,34 +286,6 @@ get_auditor_base_url (
 }
 
 
-/**
- * Get the file name of the master private key file of the auditor from @a
- * cfg.
- *
- * @param cfg configuration to evaluate
- * @return base URL of the auditor according to @a cfg
- */
-static char *
-get_auditor_priv_file (
-  const struct GNUNET_CONFIGURATION_Handle *cfg)
-{
-  char *fn;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "auditor",
-                                               "AUDITOR_PRIV_FILE",
-                                               &fn))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "auditor",
-                               "AUDITOR_PRIV_FILE");
-    return NULL;
-  }
-  return fn;
-}
-
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_get_auditor (
   const char *label,
@@ -269,8 +296,8 @@ TALER_TESTING_cmd_get_auditor (
 
   gas = GNUNET_new (struct GetAuditorState);
   gas->auditor_url = get_auditor_base_url (cfg);
-  if (load_auditor_keys)
-    gas->priv_file = get_auditor_priv_file (cfg);
+  gas->load_auditor_keys = load_auditor_keys;
+  gas->cfg = cfg;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = gas,

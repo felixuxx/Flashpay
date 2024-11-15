@@ -1,23 +1,20 @@
 usr/bin/taler-auditor
-usr/bin/taler-auditor-dbconfig
-usr/bin/taler-auditor-dbinit
-usr/bin/taler-auditor-httpd
-usr/bin/taler-auditor-offline
-usr/bin/taler-auditor-sync
+usr/bin/taler-auditor-*
 usr/bin/taler-helper-auditor-*
 
-usr/lib/*/taler/libtaler_plugin_auditor*.so
+usr/lib/*/taler-auditor/libtaler_plugin_auditor*.so
 usr/lib/*/libauditor*
 usr/lib/*/libtalerauditordb*
 
 usr/share/man/man1/taler-auditor*
 usr/share/man/man1/taler-helper-auditor*
+usr/share/man/man5/taler-auditor*
 
 usr/share/info/taler-auditor*
 
-usr/share/taler/config.d/auditor*
-usr/share/taler/sql/auditor/*
-usr/share/taler/auditor/spa/*
+usr/share/taler-auditor/config.d/auditor*
+usr/share/taler-auditor/sql/*
+usr/share/taler-auditor/spa/*
 
-# Configuration
+# Debian-specific configuration files for /etc/
 debian/etc-taler-auditor/* etc/

@@ -183,6 +183,7 @@ TALER_TESTING_cmd_run_fakebank (
                    (unsigned int) rfs->port);
   GNUNET_assert (GNUNET_OK ==
                  TALER_config_get_currency (cfg,
+                                            "exchange",
                                             &rfs->currency));
   {
     char *exchange_xtalerbank_account;

@@ -5441,6 +5441,7 @@ run (void *cls,
 
   if (GNUNET_OK !=
       TALER_config_get_currency (kcfg,
+                                 "exchange",
                                  &currency))
   {
     global_ret = EXIT_NOTCONFIGURED;

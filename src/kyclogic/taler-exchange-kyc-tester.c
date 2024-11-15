@@ -1493,7 +1493,7 @@ run (void *cls,
   (void) args;
   (void ) cfgfile;
   if (GNUNET_OK !=
-      TALER_TEMPLATING_init ("exchange"))
+      TALER_TEMPLATING_init (TALER_EXCHANGE_project_data ()))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not load templates. Installation broken.\n");

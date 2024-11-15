@@ -17,10 +17,8 @@
 
      SPDX-License-Identifier: AGPL3.0-or-later
  */
-/* FIXME: probably should have separate tool for taler-merchant
-   and taler-exchange! */
 /**
- * @file util/taler-config.c
+ * @file util/taler-exchange-config.c
  * @brief tool to access and manipulate Taler configuration files
  * @author Christian Grothoff
  */
@@ -45,22 +43,23 @@ main (int argc,
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_help (TALER_EXCHANGE_project_data (),
-                               "taler-config [OPTIONS]"),
+                               "taler-exchange-config [OPTIONS]"),
     GNUNET_GETOPT_option_version (TALER_EXCHANGE_project_data ()->version),
     GNUNET_CONFIGURATION_CONFIG_OPTIONS (&cs),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
 
-  ret = GNUNET_PROGRAM_run (TALER_EXCHANGE_project_data (),
-                            argc,
-                            argv,
-                            "taler-config [OPTIONS]",
-                            gettext_noop (
-                              "Manipulate Taler configuration files"),
-                            options,
-                            &GNUNET_CONFIGURATION_config_tool_run,
-                            &cs);
+  ret = GNUNET_PROGRAM_run (
+    TALER_EXCHANGE_project_data (),
+    argc,
+    argv,
+    "taler-exchange-config [OPTIONS]",
+    gettext_noop (
+      "Manipulate Taler configuration files"),
+    options,
+    &GNUNET_CONFIGURATION_config_tool_run,
+    &cs);
   GNUNET_CONFIGURATION_config_settings_free (&cs);
   if (GNUNET_NO == ret)
     return 0;
@@ -70,4 +69,4 @@ main (int argc,
 }
 
 
-/* end of taler-config.c */
+/* end of taler-exchange-config.c */

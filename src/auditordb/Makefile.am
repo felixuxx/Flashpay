@@ -6,12 +6,12 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgdir = $(prefix)/share/taler-auditor/config.d/
 
 pkgcfg_DATA = \
   auditordb-postgres.conf
 
-sqldir = $(prefix)/share/taler/sql/auditor/
+sqldir = $(prefix)/share/taler-auditor/sql/
 
 sqlinputs = \
   0002-*.sql \
@@ -49,7 +49,7 @@ EXTRA_DIST = \
   pg_template.h pg_template.c \
   pg_template.sh
 
-plugindir = $(libdir)/taler
+plugindir = $(libdir)/taler-auditor
 
 if HAVE_POSTGRESQL
 plugin_LTLIBRARIES = \

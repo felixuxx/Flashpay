@@ -7,12 +7,12 @@ if HAVE_SQLITE
   SQ_DIR = sq
 endif
 
-pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfgdir = $(prefix)/share/taler-exchange/config.d/
 pkgcfg_DATA = \
-  taler.conf
+  taler-exchange.conf
 
 EXTRA_DIST = \
-  taler.conf
+  $(pkgcfg_DATA)
 
 SUBDIRS = \
   include \

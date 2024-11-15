@@ -578,6 +578,7 @@ main (int argc,
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
+                                 "exchange",
                                  &currency))
   {
     GNUNET_CONFIGURATION_destroy (cfg);
