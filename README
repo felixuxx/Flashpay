@@ -40,15 +40,36 @@ We are looking forward to hacking with you!
 Dependencies:
 =============
 
+Build tools for compiling Taler exchange from source:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- gcc or clang
+- autoconf           >= 2.69        (building from git)
+- automake           >= 1.11.1      (building from git)
+- recutils           >= 1.0         (building from git)
+- libtool            >= 2.2
+- makeinfo           >= 4.8
+- make[*3]
+- pkgconf or pkg-config
+- sphinx
+- sphinx-rtd-theme
+- sphinx-multiversion
+
+
+Direct dependencies
+~~~~~~~~~~~~~~~~~~~
+
 These are the direct dependencies for running a Taler exchange:
 
-- GNUnet            >= 0.21.1
+- GNUnet            >= 0.23.0
 - GNU libmicrohttpd >= 0.9.71
 - PostgreSQL        >= 15.0
 
 
+Project structure
+=================
 
-Project structure is currently as follows:
+The project structure is currently as follows:
 
 src/include/
   -- installed headers for public APIs
