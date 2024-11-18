@@ -2210,7 +2210,7 @@ exchange_serve_process_config (const char *cfg_fn)
                                  &TEH_currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
+                               "exchange",
                                "CURRENCY");
     return GNUNET_SYSERR;
   }
