@@ -27,7 +27,7 @@ function exit_fail() {
     exit "$EXIT_STATUS"
 }
 
-CONF="$HOME/.config/taler.conf"
+CONF="$HOME/.config/taler-exchange.conf"
 VERBOSE=0
 
 while getopts 'ac:hrvV' OPTION;
