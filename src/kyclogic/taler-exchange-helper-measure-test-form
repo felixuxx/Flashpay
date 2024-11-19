@@ -96,7 +96,7 @@ echo "$J" >> /dev/null
 EXPIRATION=$((3600 * 30 + $(date +%s)))
 
 # Read currency from the config
-CURRENCY=$(taler-config -c $CONF -s taler -o currency)
+CURRENCY=$(taler-exchange-config -c "$CONF" -s exchange -o currency)
 
 # Finally, output the new rules.
 # See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlOutcome

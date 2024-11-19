@@ -30,7 +30,7 @@ function exit_fail() {
 CONF="$HOME/.config/taler-exchange.conf"
 VERBOSE=0
 
-while getopts 'ac:hrvV' OPTION;
+while getopts 'ac:hirvV' OPTION;
 do
     case "$OPTION" in
         a)
@@ -48,9 +48,14 @@ do
             # shellcheck disable=SC2016
             echo '  -c $CONF     -- set configuration'
             echo '  -h           -- print this help'
+            echo '  -i           -- show required inputs'
             echo '  -r           -- show required context'
             echo '  -v           -- show version'
             echo '  -V           -- be verbose'
+            ;;
+        i)
+            # No inputs are required
+            exit 0
             ;;
         r)
             # No context is required.
@@ -75,14 +80,14 @@ then
 fi
 
 
-# See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlProgramInput
+# See https://docs.taler.net/taler-kyc-manual.html#tsref-type-AmlProgramInput
 # for the full JSON with possible inputs.
 
 # New rules apply for 30 days.
 EXPIRATION=$((3600 * 30 + $(date +%s)))
 
 # Finally, output the new rules.
-# See https://docs.taler.net/taler-exchange-manual.html#tsref-type-AmlOutcome
+# See https://docs.taler.net/taler-kyc-manual.html#tsref-type-AmlOutcome
 # for the required output format.
 
 jq -n \

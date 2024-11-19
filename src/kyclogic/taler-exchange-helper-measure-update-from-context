@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #  This file is part of TALER
-#  Copyright (C) 2014-2024 Taler Systems SA
+#  Copyright (C) 2024 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -13,20 +13,18 @@
 #
 #  You should have received a copy of the GNU General Public License along with
 #  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/license>
-
-# This AMP is used as a dummy program for measures that just use an INFO check.
 #
-# It program fails when running it, but correctly responds to commands that try
-# to inspect it.
 
 # Hard error reporting on.
 set -eu
 
+
+
 # Exit, with error message (hard failure)
 function exit_fail() {
-  echo " FAIL: " "$@" >&2
-  EXIT_STATUS=1
-  exit "$EXIT_STATUS"
+    echo " FAIL: " "$@" >&2
+    EXIT_STATUS=1
+    exit "$EXIT_STATUS"
 }
 
 CONF="$HOME/.config/taler-exchange.conf"
@@ -44,7 +42,7 @@ do
             CONF="$OPTARG"
             ;;
         h)
-            echo "This is a KYC measure program that freezes the account and flags it for manual investigation. This is the ultimate fallback measure."
+            echo "This is a KYC measure program that updates the current rules of an account based on values given in the context."
             echo 'Supported options:'
             echo '  -a           -- show required attributes'
             # shellcheck disable=SC2016
@@ -56,11 +54,17 @@ do
             echo '  -V           -- be verbose'
             ;;
         i)
-            # No inputs are required
+            # Need context and current_rules.
+            echo "context"
+            echo "current_rules"
             exit 0
             ;;
         r)
-            # No context is required.
+            # Need new_rules, custom_measures, expiration time and successor measure.
+            echo "new_rules"
+            echo "custom_measures"
+            echo "expiration_time"
+            echo "successor_measure"
             exit 0
             ;;
         v)
@@ -76,10 +80,33 @@ do
     esac
 done
 
-if [ 1 = "$VERBOSE" ]; then
-  echo "Running $0" 1>&2
+if [ 1 = "$VERBOSE" ]
+then
+    echo "Running $0" 1>&2
 fi
 
-echo "FATAL: This measure program is a dummy and should never run.  Only use it for INFO checks." >&2
+# See https://docs.taler.net/taler-kyc-manual.html#tsref-type-AmlProgramInput
+# for the full JSON with possible inputs.
 
-exit 1
+# First, extract inputs we need
+INPUTS=$(jq '{"context":.context,"current_rules":.current_rules}')
+
+# Get context values.
+EXPIRATION_TIME=$(echo "$INPUTS" | jq '.context.expiration_time // .current_rules.expiration_time // null')
+SUCCESSOR_MEASURE=$(echo "$INPUTS" | jq '.context.successor_measure // .current_rules.successor_measure // null')
+CUSTOM_MEASURES=$(echo "$INPUTS" | jq '.context.custom_measures // null')
+NEW_RULES=$(echo "$INPUTS" | jq '.context.new_rules // null')
+
+# Finally, output the new rules.
+# See https://docs.taler.net/taler-kyc-manual.html#tsref-type-AmlOutcome
+# for the required output format.
+
+echo "$INPUTS" \
+    | jq \
+          --jsonarg et "$EXPIRATION_TIME" \
+          --jsonarg sm "$SUCCESSOR_MEASURE" \
+          --jsonarg cm "$CUSTOM_MEASURES" \
+          --jsonarg nr "$NEW_RULES" \
+          '.current_rules+{"new_rules":(.current_rules.new_rules+{"expiration_time":$et,"successor_measure":$sm,"rules":(.current_rules.new_rules.rules+$nr),"custom_measures":(.current_rules.custom_measures+$cm)})}|del(..|nulls)'
+
+exit 0

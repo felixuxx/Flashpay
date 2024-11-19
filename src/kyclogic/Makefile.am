@@ -20,6 +20,10 @@ bin_SCRIPTS = \
   taler-exchange-helper-measure-test-oauth \
   taler-exchange-helper-measure-none \
   taler-exchange-helper-measure-freeze \
+  taler-exchange-helper-measure-defaults-but-investigate \
+  taler-exchange-helper-measure-preserve-but-investigate \
+  taler-exchange-helper-measure-preserve-set-expiration \
+  taler-exchange-helper-measure-update-from-context \
   taler-exchange-kyc-kycaid-converter.sh \
   taler-exchange-kyc-persona-converter.sh \
   taler-exchange-kyc-oauth2-test-converter.sh \
