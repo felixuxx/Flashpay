@@ -34,7 +34,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-#include "taler-exchange-secmod-eddsa.h"
+#include "secmod_eddsa.h"
 #include <gcrypt.h>
 #include <pthread.h>
 #include "taler_error_codes.h"

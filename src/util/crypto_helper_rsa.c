@@ -22,7 +22,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "crypto_helper_common.h"
-#include "taler-exchange-secmod-rsa.h"
+#include "secmod_rsa.h"
 #include <poll.h>
 
 

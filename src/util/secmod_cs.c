@@ -33,7 +33,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-#include "taler-exchange-secmod-cs.h"
+#include "secmod_cs.h"
 #include <gcrypt.h>
 #include <pthread.h>
 #include <sys/eventfd.h>

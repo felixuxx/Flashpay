@@ -49,7 +49,7 @@ taler_exchange_config_LDADD = \
   $(XLIB)
 
 taler_exchange_secmod_rsa_SOURCES = \
-  taler-exchange-secmod-rsa.c taler-exchange-secmod-rsa.h
+  taler-exchange-secmod-rsa.c
 taler_exchange_secmod_rsa_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
@@ -58,7 +58,7 @@ taler_exchange_secmod_rsa_LDADD = \
   $(XLIB)
 
 taler_exchange_secmod_cs_SOURCES = \
-  taler-exchange-secmod-cs.c taler-exchange-secmod-cs.h
+  taler-exchange-secmod-cs.c
 taler_exchange_secmod_cs_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
@@ -67,7 +67,7 @@ taler_exchange_secmod_cs_LDADD = \
   $(XLIB)
 
 taler_exchange_secmod_eddsa_SOURCES = \
-  taler-exchange-secmod-eddsa.c taler-exchange-secmod-eddsa.h
+  taler-exchange-secmod-eddsa.c
 taler_exchange_secmod_eddsa_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
@@ -103,9 +103,9 @@ libtalerutil_la_SOURCES = \
   offline_signatures.c \
   payto.c \
   secmod_common.c secmod_common.h \
-  secmod_cs.c \
-  secmod_eddsa.c \
-  secmod_rsa.c \
+  secmod_cs.c secmod_cs.h \
+  secmod_eddsa.c secmod_eddsa.h \
+  secmod_rsa.c secmod_rsa.h \
   secmod_signatures.c \
   taler_error_codes.c \
   tokens.c \

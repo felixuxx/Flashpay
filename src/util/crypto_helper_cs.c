@@ -21,7 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
-#include "taler-exchange-secmod-cs.h"
+#include "secmod_cs.h"
 #include <poll.h>
 #include "crypto_helper_common.h"
 
