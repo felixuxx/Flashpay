@@ -912,7 +912,7 @@ struct TALER_SECMOD_Options
    * Number of workers to launch. Note that connections to
    * exchanges are NOT workers.
    */
-  unsigned int max_workers = 16;
+  unsigned int max_workers;
 
   /**
    * Time when the key update is executed.
@@ -931,6 +931,12 @@ struct TALER_SECMOD_Options
    */
   const char *section;
 
+  /**
+   * Return value from main().
+   */
+  int global_ret;
+
+
 };
 
 #define TALER_SECMOD_OPTIONS(opt)                         \
@@ -940,12 +946,12 @@ struct TALER_SECMOD_Options
                                         "time",               \
                                         "TIMESTAMP",          \
                                         "pretend it is a different time for the update", \
-                                        &opt->global_now_tmp), \
+                                        &(opt)->global_now_tmp),        \
         GNUNET_GETOPT_option_uint ('w',                       \
                                    "workers",                 \
                                    "COUNT",                   \
                                    "use COUNT workers for parallel processing of batch requests", \
-                                   &opt->max_workers)
+                                   &(opt)->max_workers)
 
 
 /**
