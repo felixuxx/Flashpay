@@ -74,7 +74,9 @@ TEH_PG_insert_kyc_measure_result (
     NULL == account_properties
     ? GNUNET_PQ_query_param_null ()
     : TALER_PQ_query_param_json (account_properties),
-    TALER_PQ_query_param_json (new_rules),
+    NULL == new_rules
+    ? GNUNET_PQ_query_param_null ()
+    : TALER_PQ_query_param_json (new_rules),
     GNUNET_PQ_query_param_array_ptrs_string (num_events,
                                              events,
                                              pg->conn),
