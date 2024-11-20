@@ -602,6 +602,7 @@ TEH_handler_kyc_info (
   /* Get rules. */
   {
     json_t *jnew_rules;
+
     qs = TEH_plugin->lookup_rules_by_access_token (
       TEH_plugin->cls,
       &kyp->h_payto,
@@ -616,13 +617,9 @@ TEH_handler_kyc_info (
         "lookup_rules_by_access_token");
       goto cleanup;
     }
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      /* Nothing was triggered, return the measures
-        that apply for any amount. */
-      lrs = NULL;
-    }
-    else
+    lrs = NULL;
+    if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
+         (NULL != jnew_rules) )
     {
       lrs = TALER_KYCLOGIC_rules_parse (jnew_rules);
       GNUNET_break (NULL != lrs);
