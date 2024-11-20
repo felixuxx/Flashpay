@@ -902,6 +902,97 @@ TALER_get_lowest_age (
         sizeof((mask)->bits) * 8 - __builtin_clz ((mask)->bits) - 1
 
 
+/**
+ * Command-line options for various TALER_SECMOD_XXX_run() functions.
+ */
+struct TALER_SECMOD_Options
+{
+
+  /**
+   * Number of workers to launch. Note that connections to
+   * exchanges are NOT workers.
+   */
+  unsigned int max_workers = 16;
+
+  /**
+   * Time when the key update is executed.
+   * Either the actual current time, or a pretended time.
+   */
+  struct GNUNET_TIME_Timestamp global_now;
+
+  /**
+   * The time for the key update, as passed by the user
+   * on the command line.
+   */
+  struct GNUNET_TIME_Timestamp global_now_tmp;
+
+  /**
+   * Configuration section name to use.
+   */
+  const char *section;
+
+};
+
+#define TALER_SECMOD_OPTIONS(opt)                         \
+        GNUNET_GETOPT_option_timetravel ('T',                 \
+                                         "timetravel"),       \
+        GNUNET_GETOPT_option_timestamp ('t',                  \
+                                        "time",               \
+                                        "TIMESTAMP",          \
+                                        "pretend it is a different time for the update", \
+                                        &opt->global_now_tmp), \
+        GNUNET_GETOPT_option_uint ('w',                       \
+                                   "workers",                 \
+                                   "COUNT",                   \
+                                   "use COUNT workers for parallel processing of batch requests", \
+                                   &opt->max_workers)
+
+
+/**
+ * Main function of an EDDSA secmod that will be run under the GNUnet scheduler.
+ *
+ * @param cls must point to a `struct TALER_SECMOD_Options *`
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
+ */
+void
+TALER_SECMOD_eddsa_run (void *cls,
+                        char *const *args,
+                        const char *cfgfile,
+                        const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Main function of a CS secmod that will be run under the GNUnet scheduler.
+ *
+ * @param cls must point to a `struct TALER_SECMOD_Options *`
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
+ */
+void
+TALER_SECMOD_cs_run (void *cls,
+                     char *const *args,
+                     const char *cfgfile,
+                     const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Main function of an RSA secmod that will be run under the GNUnet scheduler.
+ *
+ * @param cls must point to a `struct TALER_SECMOD_Options *`
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
+ */
+void
+TALER_SECMOD_rsa_run (void *cls,
+                      char *const *args,
+                      const char *cfgfile,
+                      const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
 #undef __TALER_UTIL_LIB_H_INSIDE__
 
 #endif
