@@ -445,9 +445,9 @@ check_transaction_history_for_deposit (
       {
         struct TALER_AUDITORDB_RowInconsistency ri = {
           .row_id = tl->serial_id,
-          .diagnostic =
-            "multiple deposits of the same coin into the same contract detected",
-          .row_table = "deposits"
+          .diagnostic = (char *)
+                        "multiple deposits of the same coin into the same contract detected",
+          .row_table = (char *) "deposits"
         };
 
         qs = TALER_ARL_adb->insert_row_inconsistency (
@@ -901,7 +901,7 @@ wire_transfer_information_cb (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "wire",
+      .operation = (char *) "wire",
       .loss = *coin_value,
       .operation_specific_pub = coin.coin_pub.eddsa_pub
     };
@@ -1130,7 +1130,7 @@ get_wire_fee (struct AggregationContext *ac,
   {
     struct TALER_AUDITORDB_FeeTimeInconsistency ftib = {
       .problem_row_id = 0, /* FIXME: fetch above! */
-      .diagnostic = "start date before previous end date",
+      .diagnostic = (char *) "start date before previous end date",
       .time = wfi->start_date.abs_time,
       .type = (char *) method
     };
@@ -1152,7 +1152,7 @@ get_wire_fee (struct AggregationContext *ac,
   {
     struct TALER_AUDITORDB_FeeTimeInconsistency ftia = {
       .problem_row_id = 0, /* FIXME: fetch above! */
-      .diagnostic = "end date date after next start date",
+      .diagnostic = (char *) "end date date after next start date",
       .time = wfi->end_date.abs_time,
       .type = (char *) method
     };
@@ -1342,7 +1342,7 @@ check_wire_out_cb (void *cls,
     {
       struct TALER_AUDITORDB_WireOutInconsistency woi = {
         .destination_account = payto_uri,
-        .diagnostic = "aggregated amount does not match expectations",
+        .diagnostic = (char *) "aggregated amount does not match expectations",
         .wire_out_row_id = rowid,
         .expected = final_amount,
         .claimed = *amount

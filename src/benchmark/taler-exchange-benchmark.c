@@ -552,9 +552,9 @@ main (int argc,
     return EXIT_INVALIDARGUMENT;
   }
   if (NULL == exchange_bank_section)
-    exchange_bank_section = "exchange-account-1";
+    exchange_bank_section = (char *) "exchange-account-1";
   if (NULL == loglev)
-    loglev = "INFO";
+    loglev = (char *) "INFO";
   GNUNET_log_setup ("taler-exchange-benchmark",
                     loglev,
                     logfile);

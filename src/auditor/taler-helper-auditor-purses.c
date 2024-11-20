@@ -506,7 +506,7 @@ handle_purse_requested (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "purse-request",
+      .operation = (char *) "purse-request",
       .loss = *target_amount,
       .operation_specific_pub = purse_pub->eddsa_pub
     };
@@ -631,7 +631,7 @@ handle_purse_deposits (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "purse-deposit",
+      .operation = (char *) "purse-deposit",
       .loss = deposit->amount,
       .operation_specific_pub = deposit->coin_pub.eddsa_pub
     };
@@ -738,7 +738,7 @@ handle_purse_merged (
     {
       struct TALER_AUDITORDB_BadSigLosses bsl = {
         .problem_row_id = rowid,
-        .operation = "merge-purse",
+        .operation = (char *) "merge-purse",
         .loss = *amount,
         .operation_specific_pub = merge_pub->eddsa_pub
       };
@@ -847,7 +847,7 @@ handle_account_merged (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "account-merge",
+      .operation = (char *) "account-merge",
       .loss = *purse_fee,
       .operation_specific_pub = reserve_pub->eddsa_pub
     };

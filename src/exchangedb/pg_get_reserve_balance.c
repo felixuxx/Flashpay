@@ -25,10 +25,13 @@
 #include "pg_get_reserve_balance.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_reserve_balance (void *cls,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            struct TALER_Amount *balance)
+TEH_PG_get_reserve_balance (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_Amount *balance,
+  struct TALER_FullPayto *origin_account)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -39,15 +42,26 @@ TEH_PG_get_reserve_balance (void *cls,
     TALER_PQ_result_spec_amount ("current_balance",
                                  pg->currency,
                                  balance),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &origin_account->full_payto),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
 
+  origin_account->full_payto = NULL;
   PREPARE (pg,
            "get_reserve_balance",
            "SELECT"
-           " current_balance"
-           " FROM reserves"
-           " WHERE reserve_pub=$1;");
+           "  r.current_balance"
+           " ,wt.payto_uri"
+           " FROM reserves r"
+           " LEFT JOIN reserves_in ri"
+           "   USING (reserve_pub)"
+           " LEFT JOIN wire_targets wt"
+           "   ON (wt.wire_target_h_payto = ri.wire_source_h_payto)"
+           " WHERE r.reserve_pub=$1"
+           " LIMIT 1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_reserve_balance",
                                                    params,

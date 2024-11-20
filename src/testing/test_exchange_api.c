@@ -132,7 +132,9 @@ run (void *cls,
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
     TALER_TESTING_cmd_reserve_poll_finish ("finish-poll-reserve-1",
-                                           GNUNET_TIME_UNIT_SECONDS,
+                                           GNUNET_TIME_relative_multiply (
+                                             GNUNET_TIME_UNIT_SECONDS,
+                                             2),
                                            "poll-reserve-1"),
     /**
      * Withdraw EUR:5.

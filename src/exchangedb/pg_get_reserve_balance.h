@@ -30,11 +30,15 @@
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve
  * @param[out] balance set to the reserve balance
- * @return transaction status
+ * @param[out] origin_account set to URI of the origin account, NULL
+ *     if we have no origin account (reserve created by P2P merge)
+* @return transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_reserve_balance (void *cls,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            struct TALER_Amount *balance);
+TEH_PG_get_reserve_balance (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_Amount *balance,
+  struct TALER_FullPayto *origin_account);
 
 #endif

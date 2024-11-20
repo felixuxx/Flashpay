@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2023 Taler Systems SA
+  Copyright (C) 2014-2024 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -77,6 +77,12 @@ struct ReservePoller
   struct TALER_Amount balance;
 
   /**
+   * Last origin account of the reserve, NULL if only
+   * P2P payments were made.
+   */
+  struct TALER_FullPayto origin_account;
+
+  /**
    * True if we are still suspended.
    */
   bool suspended;
@@ -134,6 +140,7 @@ rp_cleanup (struct TEH_RequestContext *rc)
   GNUNET_CONTAINER_DLL_remove (rp_head,
                                rp_tail,
                                rp);
+  GNUNET_free (rp->origin_account.full_payto);
   GNUNET_free (rp);
 }
 
@@ -213,9 +220,11 @@ TEH_handler_reserves_get (
   {
     enum GNUNET_DB_QueryStatus qs;
 
+    GNUNET_free (rp->origin_account.full_payto);
     qs = TEH_plugin->get_reserve_balance (TEH_plugin->cls,
                                           &rp->reserve_pub,
-                                          &rp->balance);
+                                          &rp->balance,
+                                          &rp->origin_account);
     switch (qs)
     {
     case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -234,10 +243,15 @@ TEH_handler_reserves_get (
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Got reserve balance of %s\n",
                   TALER_amount2s (&rp->balance));
-      return TALER_MHD_REPLY_JSON_PACK (rc->connection,
-                                        MHD_HTTP_OK,
-                                        TALER_JSON_pack_amount ("balance",
-                                                                &rp->balance));
+      return TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_OK,
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string (
+            "last_origin",
+            rp->origin_account.full_payto)),
+        TALER_JSON_pack_amount ("balance",
+                                &rp->balance));
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       if (! GNUNET_TIME_absolute_is_future (rp->timeout))
       {

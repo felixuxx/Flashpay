@@ -611,7 +611,7 @@ handle_reserve_out (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "withdraw",
+      .operation = (char *) "withdraw",
       .loss = *amount_with_fee,
       .operation_specific_pub = reserve_pub->eddsa_pub
     };
@@ -722,7 +722,7 @@ handle_recoup_by_reserve (
   {
     struct TALER_AUDITORDB_BadSigLosses bslr = {
       .problem_row_id = rowid,
-      .operation = "recoup",
+      .operation = (char *) "recoup",
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
     };
@@ -801,7 +801,7 @@ handle_recoup_by_reserve (
   {
     struct TALER_AUDITORDB_BadSigLosses bslrm = {
       .problem_row_id = rev_rowid,
-      .operation = "recoup-master",
+      .operation = (char *) "recoup-master",
       .loss = *amount,
       .operation_specific_pub = TALER_ARL_master_pub.eddsa_pub
     };
@@ -947,7 +947,7 @@ handle_reserve_open (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "reserve-open",
+      .operation = (char *) "reserve-open",
       .loss = *reserve_payment,
       .operation_specific_pub = reserve_pub->eddsa_pub
     };
@@ -1102,7 +1102,7 @@ handle_reserve_closed (
       {
         struct TALER_AUDITORDB_BadSigLosses bsl = {
           .problem_row_id = close_request_row,
-          .operation = "close-request",
+          .operation = (char *) "close-request",
           .loss = *amount_with_fee,
           .operation_specific_pub = reserve_pub->eddsa_pub
         };
@@ -1248,7 +1248,7 @@ handle_account_merged (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "account-merge",
+      .operation = (char *) "account-merge",
       .loss = *purse_fee,
       .operation_specific_pub = reserve_pub->eddsa_pub
     };
@@ -1576,7 +1576,7 @@ verify_reserve_balance (void *cls,
         .reserve_pub = rs->reserve_pub,
         .balance = nbalance,
         .expiration_time = rs->a_expiration_date.abs_time,
-        .diagnostic = "could not determine closing fee"
+        .diagnostic = (char *) "could not determine closing fee"
       };
 
       qs = TALER_ARL_adb->insert_reserve_not_closed_inconsistency (

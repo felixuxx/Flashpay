@@ -85,6 +85,11 @@ handle_reserves_get_ok (struct TALER_EXCHANGE_ReservesGetHandle *rgh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
                                 &rs.details.ok.balance),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string (
+        "last_origin",
+        (const char **) &rs.details.ok.last_origin.full_payto),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
 

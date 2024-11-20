@@ -2486,6 +2486,12 @@ struct TALER_EXCHANGE_ReserveSummary
        */
       struct TALER_Amount balance;
 
+      /**
+       * payto://-URI of the last bank account that wired funds
+       * to the reserve, NULL for none (can happen if reserve
+       * was funded via P2P merge).
+       */
+      struct TALER_FullPayto last_origin;
     } ok;
 
   } details;

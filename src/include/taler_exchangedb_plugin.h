@@ -4415,13 +4415,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
-    (*get_reserve_history)(void *cls,
-                           const struct TALER_ReservePublicKeyP *reserve_pub,
-                           uint64_t start_off,
-                           uint64_t etag_in,
-                           uint64_t *etag_out,
-                           struct TALER_Amount *balance,
-                           struct TALER_EXCHANGEDB_ReserveHistory **rhp);
+    (*get_reserve_history)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    uint64_t start_off,
+    uint64_t etag_in,
+    uint64_t *etag_out,
+    struct TALER_Amount *balance,
+    struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
 
   /**
@@ -4430,12 +4431,16 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve
    * @param[out] balance set to the reserve balance
+   * @param[out] origin_account set to URI of the origin account, NULL
+   *     if we have no origin account (reserve created by P2P merge)
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
-    (*get_reserve_balance)(void *cls,
-                           const struct TALER_ReservePublicKeyP *reserve_pub,
-                           struct TALER_Amount *balance);
+    (*get_reserve_balance)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    struct TALER_Amount *balance,
+    struct TALER_FullPayto *origin_account);
 
 
   /**
@@ -4445,8 +4450,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param rh history to free.
    */
   void
-  (*free_reserve_history) (void *cls,
-                           struct TALER_EXCHANGEDB_ReserveHistory *rh);
+  (*free_reserve_history) (
+    void *cls,
+    struct TALER_EXCHANGEDB_ReserveHistory *rh);
 
 
   /**

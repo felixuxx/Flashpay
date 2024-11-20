@@ -209,8 +209,8 @@ taler_exchange_httpd_LDADD = \
   $(top_builddir)/src/extensions/libtalerextensions.la \
   -lmicrohttpd \
   -lgnunetcurl \
-  -lgnunetutil \
   -lgnunetjson \
+  -lgnunetutil \
   -ljansson \
   -lcurl \
   -lz \

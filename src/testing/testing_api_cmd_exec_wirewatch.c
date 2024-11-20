@@ -72,6 +72,7 @@ wirewatch_run (void *cls,
                                "taler-exchange-wirewatch",
                                "taler-exchange-wirewatch",
                                "-c", ws->config_filename,
+                               "-L", "INFO",
                                "-S", "1",
                                "-w", "0",
                                "-t", /* exit when done */

@@ -596,6 +596,9 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
           struct TALER_EXCHANGEDB_ReserveInInfo *res = &reserves[j++];
 
           /* add to batch, do later */
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Importing reserve transfer over %s\n",
+                      TALER_amount2s (&cd->amount));
           res->reserve_pub = &cd->details.reserve.reserve_pub;
           res->balance = &cd->amount;
           res->execution_time = cd->execution_date;
@@ -606,6 +609,9 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
         break;
       case TALER_BANK_CT_KYCAUTH:
         {
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Importing KYC auth transfer over %s\n",
+                      TALER_amount2s (&cd->amount));
           qs = db_plugin->kycauth_in_insert (
             db_plugin->cls,
             &cd->details.kycauth.account_pub,
@@ -633,6 +639,9 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
         }
       case TALER_BANK_CT_WAD:
         {
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Importing WAD transfer over %s\n",
+                      TALER_amount2s (&cd->amount));
           qs = db_plugin->wad_in_insert (
             db_plugin->cls,
             &cd->details.wad.wad_id,

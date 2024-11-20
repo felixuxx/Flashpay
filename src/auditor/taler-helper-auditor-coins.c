@@ -1387,7 +1387,7 @@ refresh_session_cb (void *cls,
     {
       struct TALER_AUDITORDB_BadSigLosses bsl = {
         .problem_row_id = rowid,
-        .operation = "melt",
+        .operation = (char *) "melt",
         .loss = *amount_with_fee,
         .operation_specific_pub = coin_pub->eddsa_pub
       };
@@ -1732,7 +1732,7 @@ deposit_cb (void *cls,
     {
       struct TALER_AUDITORDB_BadSigLosses bsl = {
         .problem_row_id = rowid,
-        .operation = "deposit",
+        .operation = (char *) "deposit",
         .loss = deposit->amount_with_fee,
         .operation_specific_pub = deposit->coin.coin_pub.eddsa_pub
       };
@@ -1869,7 +1869,7 @@ refund_cb (void *cls,
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "refund",
+      .operation = (char *) "refund",
       .loss = *amount_with_fee,
       .operation_specific_pub = coin_pub->eddsa_pub
     };
@@ -2291,7 +2291,7 @@ recoup_cb (void *cls,
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "recoup",
+      .operation = (char *) "recoup",
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
     };
@@ -2422,7 +2422,7 @@ recoup_refresh_cb (void *cls,
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "recoup-refresh",
+      .operation = (char *) "recoup-refresh",
       .loss = *amount,
       .operation_specific_pub = coin->coin_pub.eddsa_pub
     };
@@ -2613,7 +2613,7 @@ purse_deposit_cb (
   {
     struct TALER_AUDITORDB_BadSigLosses bsl = {
       .problem_row_id = rowid,
-      .operation = "purse-deposit",
+      .operation = (char *) "purse-deposit",
       .loss = deposit->amount,
       .operation_specific_pub = deposit->coin_pub.eddsa_pub
     };
