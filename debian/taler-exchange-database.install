@@ -1,8 +1,8 @@
 usr/bin/taler-exchange-dbconfig
 usr/bin/taler-exchange-dbinit
-usr/lib/*/taler/libtaler_plugin_exchange*.so
+usr/lib/*/taler-exchange/libtaler_plugin_exchange*.so
 usr/share/man/man1/taler-exchange-dbconfig.1
 usr/share/man/man1/taler-exchange-dbinit.1
 usr/share/taler-exchange/sql/*
-usr/share/taler/config.d/exchangedb.conf
-usr/share/taler/config.d/exchangedb-postgres.conf
+usr/share/taler-exchange/config.d/exchangedb.conf
+usr/share/taler-exchange/config.d/exchangedb-postgres.conf
