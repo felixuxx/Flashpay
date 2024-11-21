@@ -1003,10 +1003,10 @@ load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                            "DURATION",
                                            &duration))
   {
-    GNUNET_free (secname);
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                secname,
                                "DURATION");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -1015,10 +1015,10 @@ load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                            "LOOKAHEAD_SIGN",
                                            &lookahead_sign))
   {
-    GNUNET_free (secname);
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                secname,
                                "LOOKAHEAD_SIGN");
+    GNUNET_free (secname);
     return GNUNET_SYSERR;
   }
   GNUNET_free (secname);
