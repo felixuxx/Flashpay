@@ -788,7 +788,7 @@ do
     fi
    if [ "0" = "$D_DONE" ] && [ "1" = "$START_DONAU" ]
     then
-        echo -n "E"
+        echo -n "D"
         wget \
             --tries=1 \
             --timeout=1 \
