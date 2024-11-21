@@ -6,9 +6,8 @@ usr/lib/*/taler-auditor/libtaler_plugin_auditor*.so
 usr/lib/*/libauditor*
 usr/lib/*/libtalerauditordb*
 
-usr/share/man/man1/taler-auditor*
-usr/share/man/man1/taler-helper-auditor*
-usr/share/man/man5/taler-auditor*
+usr/share/man/man*/taler-auditor*
+usr/share/man/man*/taler-helper-auditor*
 
 usr/share/info/taler-auditor*
 
