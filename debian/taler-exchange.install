@@ -1,4 +1,42 @@
-usr/bin/taler-exchange-*
+# We do not use globs here, to avoid
+# clashes with e.g. taler-exchange-offline
+# and to make the installed programs more explicit.
+
+usr/bin/taler-exchange-aggregator
+usr/bin/taler-exchange-benchmark
+usr/bin/taler-exchange-closer
+usr/bin/taler-exchange-config
+usr/bin/taler-exchange-dbconfig
+usr/bin/taler-exchange-dbinit
+usr/bin/taler-exchange-drain
+usr/bin/taler-exchange-expire
+usr/bin/taler-exchange-helper-converter-oauth2-test-full_name
+usr/bin/taler-exchange-helper-measure-defaults-but-investigate
+usr/bin/taler-exchange-helper-measure-freeze
+usr/bin/taler-exchange-helper-measure-none
+usr/bin/taler-exchange-helper-measure-preserve-but-investigate
+usr/bin/taler-exchange-helper-measure-preserve-set-expiration
+usr/bin/taler-exchange-helper-measure-test-form
+usr/bin/taler-exchange-helper-measure-test-oauth
+usr/bin/taler-exchange-helper-measure-update-from-context
+usr/bin/taler-exchange-httpd
+usr/bin/taler-exchange-kyc-aml-pep-trigger.sh
+usr/bin/taler-exchange-kyc-kycaid-converter.sh
+usr/bin/taler-exchange-kyc-oauth2-challenger.sh
+usr/bin/taler-exchange-kyc-oauth2-nda.sh
+usr/bin/taler-exchange-kyc-oauth2-test-converter.sh
+usr/bin/taler-exchange-kyc-persona-converter.sh
+usr/bin/taler-exchange-kyc-tester
+usr/bin/taler-exchange-kyc-trigger
+usr/bin/taler-exchange-router
+usr/bin/taler-exchange-secmod-cs
+usr/bin/taler-exchange-secmod-eddsa
+usr/bin/taler-exchange-secmod-rsa
+usr/bin/taler-exchange-transfer
+usr/bin/taler-exchange-wire-gateway-client
+usr/bin/taler-exchange-wirewatch
+
+
 usr/lib/*/taler-exchange/libtaler_plugin_kyclogic_*.so
 usr/lib/*/taler-exchange/libtaler_extension_*.so
 usr/share/man/man1/taler-exchange-*
