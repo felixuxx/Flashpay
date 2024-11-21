@@ -766,6 +766,7 @@ STAGE="wait"
 echo -n "Waiting for Taler services ..."
 # Wait for all other taler services to be available
 E_DONE=0
+D_DONE=0
 M_DONE=0
 S_DONE=0
 K_DONE=0
@@ -784,6 +785,17 @@ do
             -o /dev/null \
             -O /dev/null >/dev/null || continue
         E_DONE=1
+    fi
+   if [ "0" = "$D_DONE" ] && [ "1" = "$START_DONAU" ]
+    then
+        echo -n "E"
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "${DONAU_URL}config" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
+        D_DONE=1
     fi
     if [ "0" = "$M_DONE" ] && [ "1" = "$START_MERCHANT" ]
     then
@@ -834,7 +846,7 @@ do
 done
 if [ 1 != "$OK" ]
 then
-    exit_skip "Failed to launch (some) Taler services (E: $E_DONE, M: $M_DONE, S: $S_DONE, K: $K_DONE, A: $A_DONE)"
+    exit_skip "Failed to launch (some) Taler services (E: $E_DONE, M: $M_DONE, S: $S_DONE, K: $K_DONE, A: $A_DONE, D: $D_DONE)"
 fi
 echo " OK"
 
