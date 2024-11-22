@@ -36,13 +36,41 @@ usr/bin/taler-exchange-transfer
 usr/bin/taler-exchange-wire-gateway-client
 usr/bin/taler-exchange-wirewatch
 
+# Man pages
+usr/share/man/man1/taler-exchange-aggregator.1
+usr/share/man/man1/taler-exchange-benchmark.1
+usr/share/man/man1/taler-exchange-closer.1
+usr/share/man/man1/taler-exchange-config.1
+usr/share/man/man1/taler-exchange-dbconfig.1
+usr/share/man/man1/taler-exchange-dbinit.1
+usr/share/man/man1/taler-exchange-drain.1
+usr/share/man/man1/taler-exchange-expire.1
+usr/share/man/man1/taler-exchange-httpd.1
+usr/share/man/man1/taler-exchange-kyc-aml-pep-trigger.1
+usr/share/man/man1/taler-exchange-kyc-tester.1
+usr/share/man/man1/taler-exchange-kyc-trigger.1
+usr/share/man/man1/taler-exchange-offline.1
+usr/share/man/man1/taler-exchange-router.1
+usr/share/man/man1/taler-exchange-secmod-cs.1
+usr/share/man/man1/taler-exchange-secmod-eddsa.1
+usr/share/man/man1/taler-exchange-secmod-rsa.1
+usr/share/man/man1/taler-exchange-transfer.1
+usr/share/man/man1/taler-exchange-wire-gateway-client.1
+usr/share/man/man1/taler-exchange-wirewatch.1
+usr/share/man/man5/taler-exchange.conf.5
 
+# Info pages
+usr/share/info/taler-exchange.info
+
+# Dynamically loaded extensions / plugins
 usr/lib/*/taler-exchange/libtaler_plugin_kyclogic_*.so
 usr/lib/*/taler-exchange/libtaler_extension_*.so
-usr/share/man/man1/taler-exchange-*
-usr/share/man/man5/taler-exchange.conf.5
-usr/share/info/taler-exchange*
-usr/share/taler-exchange/*
+
+usr/share/taler-exchange/aml-spa/*
+usr/share/taler-exchange/kyc-spa/*
+usr/share/taler-exchange/templates/*
+usr/share/taler-exchange/sql/*
+usr/share/taler-exchange/config.d/*
 
 # Debian-specific configuration files for /etc/taler
 debian/etc-taler-exchange/* etc/
