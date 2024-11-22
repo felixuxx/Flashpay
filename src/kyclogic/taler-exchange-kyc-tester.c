@@ -1686,6 +1686,7 @@ run (void *cls,
                                  pd,
                                  &cmd_line_h_payto,
                                  kyc_row_id,
+                                 NULL, /* FIXME: support passing context*/
                                  &initiate_cb,
                                  NULL);
         GNUNET_break (NULL != ih);

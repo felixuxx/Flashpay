@@ -22,6 +22,7 @@
 #include "taler_kyclogic_plugin.h"
 #include "taler_mhd_lib.h"
 #include "taler_templating_lib.h"
+#include "taler_curl_lib.h"
 #include "taler_json_lib.h"
 #include <regex.h>
 #include "taler_util.h"
@@ -173,6 +174,17 @@ struct TALER_KYCLOGIC_InitiateHandle
    * Closure for @a cb.
    */
   void *cb_cls;
+
+  /**
+   * Initial address to pass to the KYC provider on /setup.
+   */
+  json_t *initial_address;
+
+  /**
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
+   */
+  struct TALER_CURL_PostContext ctx;
 
 };
 
@@ -533,6 +545,30 @@ oauth2_load_configuration (void *cls,
 
 
 /**
+ * Cancel KYC check initiation.
+ *
+ * @param[in] ih handle of operation to cancel
+ */
+static void
+oauth2_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
+{
+  if (NULL != ih->task)
+  {
+    GNUNET_SCHEDULER_cancel (ih->task);
+    ih->task = NULL;
+  }
+  if (NULL != ih->job)
+  {
+    GNUNET_CURL_job_cancel (ih->job);
+    ih->job = NULL;
+  }
+  TALER_curl_easy_post_finished (&ih->ctx);
+  json_decref (ih->initial_address);
+  GNUNET_free (ih);
+}
+
+
+/**
  * Logic to asynchronously return the response for
  * how to begin the OAuth2.0 checking process to
  * the client.
@@ -586,7 +622,7 @@ initiate_with_url (struct TALER_KYCLOGIC_InitiateHandle *ih,
           NULL /* no error */);
   GNUNET_free (url);
   GNUNET_free (hps);
-  GNUNET_free (ih);
+  oauth2_initiate_cancel (ih);
 }
 
 
@@ -620,7 +656,7 @@ handle_curl_setup_finished (void *cls,
             NULL,
             NULL,
             "/setup request to OAuth 2.0 backend returned no response");
-    GNUNET_free (ih);
+    oauth2_initiate_cancel (ih);
     return;
   case MHD_HTTP_OK:
     {
@@ -651,7 +687,7 @@ handle_curl_setup_finished (void *cls,
                 NULL,
                 NULL,
                 "Unexpected response from KYC gateway: setup must return a nonce");
-        GNUNET_free (ih);
+        oauth2_initiate_cancel (ih);
         return;
       }
       GNUNET_asprintf (&url,
@@ -674,7 +710,7 @@ handle_curl_setup_finished (void *cls,
             NULL,
             NULL,
             "/setup request to OAuth 2.0 backend returned unexpected HTTP status code");
-    GNUNET_free (ih);
+    oauth2_initiate_cancel (ih);
     return;
   }
 }
@@ -714,7 +750,7 @@ initiate_task (void *cls)
             NULL,
             NULL,
             "curl_easy_init() failed");
-    GNUNET_free (ih);
+    oauth2_initiate_cancel (ih);
     return;
   }
   GNUNET_assert (CURLE_OK ==
@@ -725,10 +761,31 @@ initiate_task (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_POST,
                                    1));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   ""));
+  if (NULL == ih->initial_address)
+  {
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_POSTFIELDS,
+                                     ""));
+  }
+  else
+  {
+    if (GNUNET_OK !=
+        TALER_curl_easy_post (&ih->ctx,
+                              eh,
+                              ih->initial_address))
+    {
+      curl_easy_cleanup (eh);
+      ih->cb (ih->cb_cls,
+              TALER_EC_GENERIC_ALLOCATION_FAILURE,
+              NULL,
+              NULL,
+              NULL,
+              "TALER_curl_easy_post() failed");
+      oauth2_initiate_cancel (ih);
+      return;
+    }
+  }
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_FOLLOWLOCATION,
@@ -760,6 +817,7 @@ initiate_task (void *cls)
  * @param pd provider configuration details
  * @param account_id which account to trigger process for
  * @param legitimization_uuid unique ID for the legitimization process
+ * @param context additional contextual information for the legi process
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
@@ -769,6 +827,7 @@ oauth2_initiate (void *cls,
                  const struct TALER_KYCLOGIC_ProviderDetails *pd,
                  const struct TALER_NormalizedPaytoHashP *account_id,
                  uint64_t legitimization_uuid,
+                 const json_t *context,
                  TALER_KYCLOGIC_InitiateCallback cb,
                  void *cb_cls)
 {
@@ -783,29 +842,10 @@ oauth2_initiate (void *cls,
   ih->pd = pd;
   ih->task = GNUNET_SCHEDULER_add_now (&initiate_task,
                                        ih);
+  if (NULL != context)
+    ih->initial_address = json_incref (json_object_get (context,
+                                                        "initial_address"));
   return ih;
-}
-
-
-/**
- * Cancel KYC check initiation.
- *
- * @param[in] ih handle of operation to cancel
- */
-static void
-oauth2_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
-{
-  if (NULL != ih->task)
-  {
-    GNUNET_SCHEDULER_cancel (ih->task);
-    ih->task = NULL;
-  }
-  if (NULL != ih->job)
-  {
-    GNUNET_CURL_job_cancel (ih->job);
-    ih->job = NULL;
-  }
-  GNUNET_free (ih);
 }
 
 

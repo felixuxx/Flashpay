@@ -235,6 +235,7 @@ template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
  * @param pd provider configuration details
  * @param account_id which account to trigger process for
  * @param legitimization_uuid unique ID for the legitimization process
+ * @param context additional contextual information for the legi process
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
@@ -244,12 +245,14 @@ template_initiate (void *cls,
                    const struct TALER_KYCLOGIC_ProviderDetails *pd,
                    const struct TALER_NormalizedPaytoHashP *account_id,
                    uint64_t legitimization_uuid,
+                   const json_t *context,
                    TALER_KYCLOGIC_InitiateCallback cb,
                    void *cb_cls)
 {
   struct TALER_KYCLOGIC_InitiateHandle *ih;
 
   (void) cls;
+  (void) context;
   ih = GNUNET_new (struct TALER_KYCLOGIC_InitiateHandle);
   ih->legitimization_uuid = legitimization_uuid;
   ih->cb = cb;

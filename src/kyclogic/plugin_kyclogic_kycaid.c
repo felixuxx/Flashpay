@@ -571,6 +571,7 @@ handle_initiate_finished (void *cls,
  * @param pd provider configuration details
  * @param account_id which account to trigger process for
  * @param legitimization_uuid unique ID for the legitimization process
+ * @param context additional contextual information for the legi process
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
@@ -580,6 +581,7 @@ kycaid_initiate (void *cls,
                  const struct TALER_KYCLOGIC_ProviderDetails *pd,
                  const struct TALER_NormalizedPaytoHashP *account_id,
                  uint64_t legitimization_uuid,
+                 const json_t *context,
                  TALER_KYCLOGIC_InitiateCallback cb,
                  void *cb_cls)
 {
@@ -588,6 +590,7 @@ kycaid_initiate (void *cls,
   json_t *body;
   CURL *eh;
 
+  (void) context;
   eh = curl_easy_init ();
   if (NULL == eh)
   {

@@ -273,6 +273,7 @@ TEH_handler_kyc_start (
     const struct TALER_KYCLOGIC_KycProvider *provider;
     struct TALER_KYCLOGIC_ProviderDetails *pd;
     bool is_finished;
+    const json_t *context;
 
     kyp = GNUNET_new (struct KycPoller);
     kyp->connection = rc->connection;
@@ -379,7 +380,6 @@ TEH_handler_kyc_start (
     {
       const char *check_name;
       const char *prog_name;
-      const json_t *context;
 
       kyp->ec = TALER_KYCLOGIC_select_measure (
         kyp->jmeasures,
@@ -463,6 +463,7 @@ TEH_handler_kyc_start (
       pd,
       &kyp->h_payto,
       kyp->process_row,
+      context,
       &initiate_cb,
       kyp);
     if (NULL == kyp->ih)
