@@ -49,7 +49,6 @@ usr/share/man/man1/taler-exchange-httpd.1
 usr/share/man/man1/taler-exchange-kyc-aml-pep-trigger.1
 usr/share/man/man1/taler-exchange-kyc-tester.1
 usr/share/man/man1/taler-exchange-kyc-trigger.1
-usr/share/man/man1/taler-exchange-offline.1
 usr/share/man/man1/taler-exchange-router.1
 usr/share/man/man1/taler-exchange-secmod-cs.1
 usr/share/man/man1/taler-exchange-secmod-eddsa.1
