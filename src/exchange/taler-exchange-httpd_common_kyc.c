@@ -1587,9 +1587,8 @@ legitimization_check_run (
       successor_measure = TALER_KYCLOGIC_rules_get_successor (lrs);
       if (NULL == successor_measure)
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Successor measure `%s' unknown, falling back to default rules!\n",
-                    successor_measure->measure_name);
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Successor measure unknown, falling back to default rules!\n");
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;
       }
