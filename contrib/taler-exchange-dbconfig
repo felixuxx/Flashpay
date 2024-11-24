@@ -24,7 +24,7 @@ SKIP_DBINIT=0
 FORCE_PERMS=0
 DBUSER="taler-exchange-httpd"
 DBGROUP="taler-exchange-db"
-CFGFILE="/etc/taler/taler.conf"
+CFGFILE="/etc/taler-exchange/taler-exchange.conf"
 
 # Parse command-line options
 while getopts 'c:g:hprsu:' OPTION; do

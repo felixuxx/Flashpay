@@ -22,14 +22,18 @@ set -eu
 RESET_DB=0
 SKIP_DBINIT=0
 DBUSER="taler-auditor-httpd"
-CFGFILE="/etc/taler/taler.conf"
+CFGFILE="/etc/taler-auditor/taler-auditor.conf"
 
 # Parse command-line options
-while getopts ':hrsu:' OPTION; do
+while getopts 'c:hrsu:' OPTION; do
   case "$OPTION" in
+  c)
+    CFGFILE="$OPTARG"
+    ;;
   h)
     echo 'Supported options:'
     echo "  -c FILENAME  -- use configuration FILENAME (default: $CFGFILE)"
+    echo "  -h           -- print this help text"
     echo "  -r           -- reset database (dangerous)"
     echo "  -s           -- skip database initialization"
     echo "  -u USER      -- taler-auditor to be run by USER (default: $DBUSER)"
@@ -45,7 +49,7 @@ while getopts ':hrsu:' OPTION; do
     DBUSER="$OPTARG"
     ;;
   ?)
-    exit_fail "Unrecognized command line option"
+    echo "Unrecognized command line option '$OPTION'" 1>&2
     ;;
   esac
 done
