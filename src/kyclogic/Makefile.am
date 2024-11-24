@@ -22,6 +22,7 @@ bin_SCRIPTS = \
   taler-exchange-helper-measure-none \
   taler-exchange-helper-measure-preserve-but-investigate \
   taler-exchange-helper-measure-preserve-set-expiration \
+  taler-exchange-helper-measure-tops-kyx-check \
   taler-exchange-helper-measure-tops-postal-check \
   taler-exchange-helper-measure-tops-sms-check \
   taler-exchange-helper-measure-test-form \
