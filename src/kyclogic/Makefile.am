@@ -16,13 +16,16 @@ pkgcfg_DATA = \
 
 bin_SCRIPTS = \
   taler-exchange-helper-converter-oauth2-test-full_name \
-  taler-exchange-helper-measure-test-form \
-  taler-exchange-helper-measure-test-oauth \
-  taler-exchange-helper-measure-none \
-  taler-exchange-helper-measure-freeze \
   taler-exchange-helper-measure-defaults-but-investigate \
+  taler-exchange-helper-measure-enable-deposits \
+  taler-exchange-helper-measure-freeze \
+  taler-exchange-helper-measure-none \
   taler-exchange-helper-measure-preserve-but-investigate \
   taler-exchange-helper-measure-preserve-set-expiration \
+  taler-exchange-helper-measure-tops-postal-check \
+  taler-exchange-helper-measure-tops-sms-check \
+  taler-exchange-helper-measure-test-form \
+  taler-exchange-helper-measure-test-oauth \
   taler-exchange-helper-measure-update-from-context \
   taler-exchange-kyc-kycaid-converter.sh \
   taler-exchange-kyc-persona-converter.sh \

@@ -34,7 +34,8 @@ while getopts 'ac:hirvV' OPTION;
 do
     case "$OPTION" in
         a)
-            # No attributes are required.
+            # Phone number is required.
+            echo "CONTACT_PHONE"
             exit 0
             ;;
         c)
@@ -42,7 +43,7 @@ do
             CONF="$OPTARG"
             ;;
         h)
-            echo "This is a KYC measure program that applies default rules to an account, but flags it for manual investigation."
+            echo "This is a KYC measure program that lifts restrictions on deposits after the terms of service were accepted. Expiration rules are set based on the context."
             echo 'Supported options:'
             echo '  -a           -- show required attributes'
             # shellcheck disable=SC2016
@@ -54,12 +55,16 @@ do
             echo '  -V           -- be verbose'
             ;;
         i)
-            # Need default rules.
-            echo "default_rules"
+            # Need context and current_rules.
+            echo "context"
+            echo "current_rules"
             exit 0
             ;;
         r)
-            # No context is required.
+            # What to do next?
+            echo "custom_measures"
+            echo "expiration_time"
+            echo "successor_measure"
             exit 0
             ;;
         v)
@@ -84,11 +89,40 @@ fi
 # for the full JSON with possible inputs.
 
 # First, extract inputs we need
-DEFAULT_RULES=$(jq '.default_rules')
+INPUTS=$(jq '{"current_rules":.current_rules,"attributes":.attributes,"context":.context}')
+
+# Get ToS acceptance confirmation.
+TOS_ACCEPTED=$(echo "$INPUTS" | jq '.attributes.ACCEPTED_TERMS_OF_SERVICE // null')
+# Get current rules.
+CURRENT_RULES=$(echo "$INPUTS" | jq '.current_rules // null')
+# Get context values.
+EXPIRATION_TIME=$(echo "$INPUTS" | jq '.context.expiration_time // .current_rules.expiration_time // null')
+SUCCESSOR_MEASURE=$(echo "$INPUTS" | jq '.context.successor_measure // .current_rules.successor_measure // null')
+CUSTOM_MEASURES=$(echo "$INPUTS" | jq '.context.custom_measures // null')
+
+# FIXME: maybe do this via systemd once instead of in every script run?
+. /etc/taler-exchange/taler-exchange.env
+
+# Validate accepted ToS version
+if $(echo "$TOS_ACCEPTED" | grep "${EXCHANGE_TERMS_ETAG}" > /dev/null)
+then
+    # Valid ToS acceptance
+    # Remove limitation from current rules.
+    NEW_RULES=$(echo "$CURRENT_RULES" | jq 'walk(if ( (type == "object") and (.operation_type == "deposit") and (.threshold == "${EXCHANGE_AML_PROGRAM_TOPS_ENABLE_DEPOSITS_THRESHOLD }}") ) then del(.) else . end)')
+else
+    # Invalid ToS version
+    echo "Version of accepted ToS ${TOS_ACCEPTED} invalid." 1&>2
+    NEW_RULES="$CURRENT_RULES"
+fi
 
 # Finally, output the new rules.
 # See https://docs.taler.net/taler-kyc-manual.html#tsref-type-AmlOutcome
 # for the required output format.
+jq \
+    --jsonarg et "$EXPIRATION_TIME" \
+    --jsonarg sm "$SUCCESSOR_MEASURE" \
+    --jsonarg cm "$CUSTOM_MEASURES" \
+    --jsonarg nr "$NEW_RULES" \
+    '{"new_rules":$nr+{"expiration_time":$et,"successor_measure":$sm,"custom_measures":($nr.custom_measures+$cm)}}|del(..|nulls)'
 
-echo "$DEFAULT_RULES" \
-    | jq '.+{"to_investigate": true}'
+exit 0

@@ -19,7 +19,6 @@
 set -eu
 
 
-
 # Exit, with error message (hard failure)
 function exit_fail() {
     echo " FAIL: " "$@" >&2
@@ -34,7 +33,11 @@ while getopts 'ac:hirvV' OPTION;
 do
     case "$OPTION" in
         a)
-            # No attributes are required.
+            # Address details are required.
+            echo "ADDRESS_STREET"
+            echo "ADDRESS_CITY"
+            echo "ADDRESS_ZIPCODE"
+            echo "ADDRESS_COUNTRY"
             exit 0
             ;;
         c)
@@ -42,7 +45,7 @@ do
             CONF="$OPTARG"
             ;;
         h)
-            echo "This is a KYC measure program that preserves the current rules of an account, but flags it for manual investigation."
+            echo "This is a KYC measure program that lifts restrictions on withdraw and P2P transfers after a phone number was confirmed via SMS. Expiration rules are set based on the context."
             echo 'Supported options:'
             echo '  -a           -- show required attributes'
             # shellcheck disable=SC2016
@@ -54,12 +57,16 @@ do
             echo '  -V           -- be verbose'
             ;;
         i)
-            # Need current rules.
+            # Need context and current_rules.
+            echo "context"
             echo "current_rules"
             exit 0
             ;;
         r)
-            # No context is required.
+            # What to do next?
+            echo "custom_measures"
+            echo "expiration_time"
+            echo "successor_measure"
             exit 0
             ;;
         v)
@@ -84,11 +91,42 @@ fi
 # for the full JSON with possible inputs.
 
 # First, extract inputs we need
-CURRENT_RULES=$(jq '.current_rules')
+INPUTS=$(jq '{"current_rules":.current_rules,"attributes":.attributes,"context":.context}')
+
+# Get phone number.
+COUNTRY=$(echo "$INPUTS" | jq '.attributes.COUNTRY // null')
+# Get current rules.
+CURRENT_RULES=$(echo "$INPUTS" | jq '.current_rules // null')
+# Get context values.
+EXPIRATION_TIME=$(echo "$INPUTS" | jq '.context.expiration_time // .current_rules.expiration_time // null')
+SUCCESSOR_MEASURE=$(echo "$INPUTS" | jq '.context.successor_measure // .current_rules.successor_measure // null')
+CUSTOM_MEASURES=$(echo "$INPUTS" | jq '.context.custom_measures // null')
+
+# FIXME: maybe do this via systemd once instead of in every script run?
+. /etc/taler-exchange/taler-exchange.env
+
+# FIXME: should we check that BUSINESS_NAME *or* FULL_NAME are provided?
+
+# Validate country
+if $(echo "$COUNTRY" | grep -E -e ${EXCHANGE_AML_PROGRAM_TOPS_POSTAL_CHECK_COUNTRY_REGEX} > /dev/null)
+then
+    # Valid country
+    # Remove limitation from current rules.
+    NEW_RULES=$(echo "$CURRENT_RULES" | jq 'walk(if (type == "object" and ( ( (.operation_type == "withdraw") and (.threshold == "${EXCHANGE_AML_PROGRAM_TOPS_POSTAL_WITHDRAW_THRESHOLD") ) or ( (.operation_type == "merge") and (.threshold == "${EXCHANGE_AML_PROGRAM_TOPS_POSTAL_MERGE_THRESHOLD" ) ) ) ) then del(.) else . end)')
+else
+    # Invalid country
+    echo "Country ${COUNTRY} invalid." 1&>2
+    NEW_RULES="$CURRENT_RULES"
+fi
 
 # Finally, output the new rules.
 # See https://docs.taler.net/taler-kyc-manual.html#tsref-type-AmlOutcome
 # for the required output format.
+jq \
+    --jsonarg et "$EXPIRATION_TIME" \
+    --jsonarg sm "$SUCCESSOR_MEASURE" \
+    --jsonarg cm "$CUSTOM_MEASURES" \
+    --jsonarg nr "$NEW_RULES" \
+    '{"new_rules":$nr+{"expiration_time":$et,"successor_measure":$sm,"custom_measures":($nr.custom_measures+$cm)}}|del(..|nulls)'
 
-echo "$CURRENT_RULES" \
-    | jq '.+{"to_investigate": true}'
+exit 0
