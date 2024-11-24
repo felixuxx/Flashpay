@@ -49,7 +49,8 @@ while getopts 'c:hrsu:' OPTION; do
     DBUSER="$OPTARG"
     ;;
   ?)
-    echo "Unrecognized command line option '$OPTION'" 1>&2
+  echo "Unrecognized command line option '$OPTION'" 1>&2
+  exit 1
     ;;
   esac
 done
