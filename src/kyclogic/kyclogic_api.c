@@ -166,6 +166,52 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
 
 
 /**
+ * AML program inputs as per "-i" option of the AML program.
+ * This is a bitmask.
+ */
+enum AmlProgramInputs
+{
+  /**
+   * No inputs are needed.
+   */
+  API_NONE = 0,
+
+  /**
+   * Context is needed.
+   */
+  API_CONTEXT = 1,
+
+  /**
+   * Current (just submitted) attributes needed.
+   */
+  API_ATTRIBUTES = 2,
+
+  /**
+   * Current AML rules are needed.
+   */
+  API_CURRENT_RULES = 4,
+
+  /**
+   * Default AML rules (that apply to fresh accounts) are needed.
+   */
+  API_DEFAULT_RULES = 8,
+
+  /**
+   * Account AML history is needed, possibly length-limited,
+   * see ``aml_history_length_limit``.
+   */
+  API_AML_HISTORY = 16,
+
+  /**
+   * Account KYC history is needed, possibly length-limited,
+   * see ``kyc_history_length_limit``
+   */
+  API_KYC_HISTORY = 32,
+
+};
+
+
+/**
  * AML programs.
  */
 struct TALER_KYCLOGIC_AmlProgram
@@ -212,6 +258,24 @@ struct TALER_KYCLOGIC_AmlProgram
    * Length of the @e required_attributes array.
    */
   unsigned int num_required_attributes;
+
+  /**
+   * Bitmask of inputs this AML program would like (based on '-i').
+   */
+  enum AmlProgramInputs input_mask;
+
+  /**
+   * How many entries of the AML history are requested;
+   * negative number if we want the latest entries only.
+   */
+  long long aml_history_length_limit;
+
+  /**
+   * How many entries of the KYC history are requested;
+   * negative number if we want the latest entries only.
+   */
+  long long kyc_history_length_limit;
+
 };
 
 
@@ -2042,12 +2106,12 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
     kc->fallback = fallback;
     kc->type = ct;
     add_tokens (requires,
-                ";",
+                "; \n\t",
                 &kc->requires,
                 &kc->num_requires);
     GNUNET_free (requires);
     add_tokens (outputs,
-                " ",
+                "; \n\t",
                 &kc->outputs,
                 &kc->num_outputs);
     GNUNET_free (outputs);
@@ -2230,7 +2294,7 @@ add_rule (const struct GNUNET_CONFIGURATION_Handle *cfg,
     };
 
     add_tokens (measures,
-                " ",
+                "; \n\t",
                 &kt.next_measures,
                 &kt.num_measures);
     for (unsigned int i=0; i<kt.num_measures; i++)
@@ -2272,6 +2336,44 @@ handle_rule_section (void *cls,
 
 
 /**
+ * Parse array dimension argument of @a tok (if present)
+ * and store result in @a dimp. Does nothing if
+ * @a tok does not contain '['. Otherwise does some input
+ * validation.
+ *
+ * @param section name of configuration section for logging
+ * @param tok input to parse, of form "text[$DIM]"
+ * @param[out] dimp set to value of $DIM
+ * @return true on success
+ */
+static bool
+parse_dim (const char *section,
+           const char *tok,
+           long long *dimp)
+{
+  const char *dim = strchr (tok,
+                            '[');
+  char dummy;
+
+  if (NULL == dim)
+    return true;
+  if (1 !=
+      sscanf (dim,
+              "[%lld]%c",
+              dimp,
+              &dummy))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "COMMAND",
+                               "output for -i invalid (bad dimension given)");
+    return false;
+  }
+  return true;
+}
+
+
+/**
  * Parse configuration @a cfg in section @a section for
  * the specification of an AML program.
  *
@@ -2288,6 +2390,10 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *fallback = NULL;
   char *required_contexts = NULL;
   char *required_attributes = NULL;
+  char *required_inputs = NULL;
+  enum AmlProgramInputs input_mask = API_NONE;
+  long long aml_history_length_limit = INT64_MAX;
+  long long kyc_history_length_limit = INT64_MAX;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Parsing KYC program %s\n",
@@ -2351,6 +2457,71 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
     goto fail;
   }
 
+  required_inputs = command_output (command,
+                                    "-i");
+  if (NULL == required_inputs)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "COMMAND",
+                               "output for -i invalid");
+    goto fail;
+  }
+  {
+    char *sptr;
+
+    for (char *tok = strtok_r (required_inputs,
+                               ";\n \t",
+                               &sptr);
+         NULL != tok;
+         tok = strtok_r (NULL,
+                         ";\n \t",
+                         &sptr) )
+    {
+      if (0 == strcasecmp (tok,
+                           "context"))
+        input_mask |= API_CONTEXT;
+      else if (0 == strcasecmp (tok,
+                                "attributes"))
+        input_mask |= API_ATTRIBUTES;
+      else if (0 == strcasecmp (tok,
+                                "current_rules"))
+        input_mask |= API_CURRENT_RULES;
+      else if (0 == strcasecmp (tok,
+                                "default_rules"))
+        input_mask |= API_DEFAULT_RULES;
+      else if (0 == strncasecmp (tok,
+                                 "aml_history",
+                                 strlen ("aml_history")))
+      {
+        input_mask |= API_AML_HISTORY;
+        if (! parse_dim (section,
+                         tok,
+                         &aml_history_length_limit))
+          goto fail;
+      }
+      else if (0 == strncasecmp (tok,
+                                 "kyc_history",
+                                 strlen ("kyc_history")))
+      {
+        input_mask |= API_KYC_HISTORY;
+        if (! parse_dim (section,
+                         tok,
+                         &kyc_history_length_limit))
+          goto fail;
+      }
+      else
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   section,
+                                   "COMMAND",
+                                   "output for -i invalid (unsupported input)");
+        goto fail;
+      }
+    }
+  }
+
+
   {
     struct TALER_KYCLOGIC_AmlProgram *ap;
 
@@ -2359,13 +2530,16 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
     ap->command = command;
     ap->description = description;
     ap->fallback = fallback;
+    ap->input_mask = input_mask;
+    ap->aml_history_length_limit = aml_history_length_limit;
+    ap->kyc_history_length_limit = kyc_history_length_limit;
     add_tokens (required_contexts,
-                "\n",
+                "; \n\t",
                 &ap->required_contexts,
                 &ap->num_required_contexts);
     GNUNET_free (required_contexts);
     add_tokens (required_attributes,
-                "\n",
+                "; \n\t",
                 &ap->required_attributes,
                 &ap->num_required_attributes);
     GNUNET_free (required_attributes);
@@ -2377,6 +2551,7 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
 fail:
   GNUNET_free (command);
   GNUNET_free (description);
+  GNUNET_free (required_inputs);
   GNUNET_free (required_contexts);
   GNUNET_free (required_attributes);
   GNUNET_free (fallback);
