@@ -54,6 +54,7 @@ do
             echo '  -r           -- show required context'
             echo '  -v           -- show version'
             echo '  -V           -- be verbose'
+            exit 0
             ;;
         i)
             # No inputs are required
