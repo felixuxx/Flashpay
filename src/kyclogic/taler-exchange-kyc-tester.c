@@ -730,6 +730,7 @@ static void
 proof_cb (
   void *cls,
   enum TALER_KYCLOGIC_KycStatus status,
+  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
@@ -740,6 +741,7 @@ proof_cb (
   struct ProofRequestState *rs = cls;
 
   (void) expiration;
+  (void) provider_name;
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               "KYC legitimization %s completed with status %d (%u) for %s\n",
               provider_legitimization_id,

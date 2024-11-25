@@ -115,8 +115,19 @@ TEH_PG_insert_kyc_measure_result (
   GNUNET_free (kyc_completed_notify_s);
   GNUNET_PQ_event_do_poll (pg->conn);
   if (qs <= 0)
+  {
+    GNUNET_break (qs < 0);
+    GNUNET_break (0);
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      GNUNET_break (0);
+      qs = GNUNET_DB_STATUS_HARD_ERROR;
+    }
     return qs;
+  }
   if (! ok)
+  {
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
   return qs;
 }

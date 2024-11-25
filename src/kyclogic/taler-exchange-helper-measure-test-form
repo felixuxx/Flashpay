@@ -57,7 +57,8 @@ do
             exit 0
             ;;
         i)
-            # No Inputs are required.
+            # Attributes are required.
+            echo "attributes"
             exit 0
             ;;
         r)

@@ -7160,6 +7160,22 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Return just the KYC rules that apply to the given account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param[out] jrules set to the active KYC rules for the
+   *    given account, set to NULL if no custom rules are active
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+    (*get_kyc_rules2)(
+    void *cls,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
+    json_t **jrules);
+
+
+  /**
    * Call us on KYC legitimization processes satisfied and not expired for the
    * given account.
    *

@@ -160,6 +160,7 @@ typedef void
  *
  * @param cls closure
  * @param status KYC status
+ * @param provider_name name of the provider with the attributes
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param attributes user attributes returned by the provider
@@ -171,6 +172,7 @@ typedef void
 (*TALER_KYCLOGIC_ProofCallback)(
   void *cls,
   enum TALER_KYCLOGIC_KycStatus status,
+  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,

@@ -692,6 +692,7 @@ proof_reply (void *cls)
   GNUNET_break (GNUNET_SYSERR != ret);
   ph->cb (ph->cb_cls,
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
+          ph->pd->section,
           NULL, /* user id */
           NULL, /* provider legi ID */
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */

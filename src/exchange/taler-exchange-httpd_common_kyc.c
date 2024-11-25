@@ -64,7 +64,7 @@ struct TEH_KycMeasureRunContext
   uint64_t process_row;
 
   /**
-   * name of the provider with the logic that was run
+   * Name of the provider with the logic that was run
    */
   char *provider_name;
 
@@ -109,16 +109,6 @@ struct TEH_KycMeasureRunContext
   json_t *jmeasures;
 
   /**
-   * KYC history of the account.
-   */
-  json_t *kyc_history;
-
-  /**
-   * AML history of the account.
-   */
-  json_t *aml_history;
-
-  /**
    * KYC measure the client is (trying to) satisfy.
    */
   uint32_t measure_index;
@@ -129,6 +119,9 @@ struct TEH_KycMeasureRunContext
    */
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *kyc_aml;
 
+  /**
+   * Task scheduled to return a result asynchronously.
+   */
   struct GNUNET_SCHEDULER_Task *async_task;
 
 };
@@ -234,8 +227,6 @@ kyc_aml_finished (
           &kat->account_id,
           kat->process_row,
           kat->attributes,
-          kat->aml_history,
-          kat->kyc_history,
           kat->fallback_name,
           &fallback_result_cb,
           kat);
@@ -381,6 +372,44 @@ add_aml_history_entry (
 
 
 /**
+ * Function called to obtain an AML
+ * history in JSON on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_NormalizedPaytoHashP account_id *`
+ * @return AML history in JSON format, NULL on error
+ */
+static json_t *
+aml_history_builder_cb (void *cls)
+{
+  const struct TALER_NormalizedPaytoHashP *acc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  json_t *aml_history;
+
+  aml_history = json_array ();
+  GNUNET_assert (NULL != aml_history);
+  qs = TEH_plugin->lookup_aml_history (
+    TEH_plugin->cls,
+    acc,
+    &add_aml_history_entry,
+    aml_history);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    json_decref (aml_history);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* empty history is fine! */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  return aml_history;
+}
+
+
+/**
  * Function called to expand KYC history for the account.
  *
  * @param cls a `json_t *` array to build
@@ -462,6 +491,78 @@ add_kyc_history_entry (
 }
 
 
+/**
+ * Function called to obtain a KYC
+ * history in JSON on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_NormalizedPaytoHashP account_id *`
+ * @return KYC history in JSON format, NULL on error
+ */
+static json_t *
+kyc_history_builder_cb (void *cls)
+{
+  const struct TALER_NormalizedPaytoHashP *acc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  json_t *kyc_history;
+
+  kyc_history = json_array ();
+  GNUNET_assert (NULL != kyc_history);
+  qs = TEH_plugin->lookup_kyc_history (
+    TEH_plugin->cls,
+    acc,
+    &add_kyc_history_entry,
+    kyc_history);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    json_decref (kyc_history);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* empty history is fine! */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  return kyc_history;
+}
+
+
+/**
+ * Function called to obtain the current ``LegitimizationRuleSet``
+ * in JSON for an account on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_NormalizedPaytoHashP *`
+ * @return KYC history in JSON format, NULL on error
+ */
+static json_t *
+current_rule_builder_cb (void *cls)
+{
+  const struct TALER_NormalizedPaytoHashP *acc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  json_t *jlrs;
+
+  qs = TEH_plugin->get_kyc_rules2 (
+    TEH_plugin->cls,
+    acc,
+    &jlrs);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    jlrs = json_incref ((json_t *) TALER_KYCLOGIC_get_default_legi_rules ());
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  return jlrs;
+}
+
+
 void
 TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat)
 {
@@ -486,8 +587,6 @@ TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat)
   GNUNET_free (kat->fallback_name);
   json_decref (kat->jmeasures);
   json_decref (kat->attributes);
-  json_decref (kat->aml_history);
-  json_decref (kat->kyc_history);
   GNUNET_free (kat);
 }
 
@@ -497,6 +596,7 @@ TEH_kyc_run_measure_for_attributes (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *account_id,
+  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
@@ -514,6 +614,7 @@ TEH_kyc_run_measure_for_attributes (
 
   kat = GNUNET_new (struct TEH_KycMeasureRunContext);
   kat->scope = *scope;
+  kat->provider_name = GNUNET_strdup (provider_name);
   kat->process_row = process_row;
   kat->account_id = *account_id;
   if (NULL != provider_user_id)
@@ -525,8 +626,6 @@ TEH_kyc_run_measure_for_attributes (
   kat->expiration = expiration;
   kat->cb = cb;
   kat->cb_cls = cb_cls;
-  kat->aml_history = json_array ();
-  kat->kyc_history = json_array ();
   kat->attributes = json_incref ((json_t*) new_attributes);
 
   qs = TEH_plugin->lookup_active_legitimization (
@@ -549,51 +648,17 @@ TEH_kyc_run_measure_for_attributes (
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
   }
-
-  qs = TEH_plugin->lookup_aml_history (
-    TEH_plugin->cls,
-    account_id,
-    &add_aml_history_entry,
-    kat->aml_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    TEH_kyc_run_measure_cancel (kat);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  qs = TEH_plugin->lookup_kyc_history (
-    TEH_plugin->cls,
-    account_id,
-    &add_kyc_history_entry,
-    kat->kyc_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    TEH_kyc_run_measure_cancel (kat);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-
   kat->kyc_aml
     = TALER_KYCLOGIC_run_aml_program (
-        kat->attributes,
-        kat->aml_history,
-        kat->kyc_history,
         kat->jmeasures,
         kat->measure_index,
+        kat->attributes,
+        &current_rule_builder_cb,
+        &kat->account_id,
+        &aml_history_builder_cb,
+        &kat->account_id,
+        &kyc_history_builder_cb,
+        &kat->account_id,
         &kyc_aml_finished,
         kat);
 
@@ -643,7 +708,6 @@ TEH_kyc_run_measure_directly (
   };
 
   kat = GNUNET_new (struct TEH_KycMeasureRunContext);
-
   kat->jmeasures = TALER_KYCLOGIC_measure_to_jmeasures (instant_ms);
   kat->provider_name = GNUNET_strdup ("SKIP");
   kat->measure_index = 0;
@@ -680,7 +744,9 @@ TEH_kyc_run_measure_directly (
     break;
   }
 
-  if (0 != strcasecmp (instant_ms->check_name, "SKIP"))
+  if (0 !=
+      strcasecmp (instant_ms->check_name,
+                  "SKIP"))
   {
     /* Not an instant measure, it's enough to trigger it.
        The AMP will be run later. */
@@ -707,61 +773,18 @@ TEH_kyc_run_measure_directly (
     return NULL;
   }
 
-  kat->aml_history = json_array ();
-  kat->kyc_history = json_array ();
-  qs = TEH_plugin->lookup_aml_history (
-    TEH_plugin->cls,
-    account_id,
-    &add_aml_history_entry,
-    kat->aml_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    TEH_kyc_run_measure_cancel (kat);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  qs = TEH_plugin->lookup_kyc_history (
-    TEH_plugin->cls,
-    account_id,
-    &add_kyc_history_entry,
-    kat->kyc_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    TEH_kyc_run_measure_cancel (kat);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  {
-    json_t *empty_attributes = json_object ();
-
-    /* Attributes are in the aml_history.
-       No new attributes from instant measure. */
-
-    kat->kyc_aml
-      = TALER_KYCLOGIC_run_aml_program3 (
-          instant_ms,
-          empty_attributes,
-          kat->aml_history,
-          kat->kyc_history,
-          &kyc_aml_finished,
-          kat);
-
-    json_decref (empty_attributes);
-  }
+  kat->kyc_aml
+    = TALER_KYCLOGIC_run_aml_program3 (
+        instant_ms,
+        NULL,                                /* no attributes */
+        &current_rule_builder_cb,
+        &kat->account_id,
+        &aml_history_builder_cb,
+        &kat->account_id,
+        &kyc_history_builder_cb,
+        &kat->account_id,
+        &kyc_aml_finished,
+        kat);
   if (NULL == kat->kyc_aml)
   {
     GNUNET_break (0);
@@ -877,7 +900,7 @@ handle_aml_fallback_result (
     &fb->account_id,
     0,
     GNUNET_TIME_timestamp_get (),
-    NULL,
+    "NONE",
     NULL,
     NULL,
     GNUNET_TIME_UNIT_FOREVER_ABS,
@@ -888,7 +911,7 @@ handle_aml_fallback_result (
     apr->details.success.events,
     0 /* enc attr size */,
     NULL /* enc attr */);
-  if (qs <= 0)
+  if (qs < 0)
   {
     GNUNET_break (0);
     fb->cb (fb->cb_cls,
@@ -936,8 +959,6 @@ TEH_kyc_fallback (
   const struct TALER_NormalizedPaytoHashP *account_id,
   uint64_t orig_requirement_row,
   const json_t *attributes,
-  const json_t *aml_history,
-  const json_t *kyc_history,
   const char *fallback_measure,
   TEH_KycAmlFallbackCallback cb,
   void *cb_cls)
@@ -964,13 +985,18 @@ TEH_kyc_fallback (
   {
     /* check was set to 'SKIP', run program immediately */
     fb->aprh
-      = TALER_KYCLOGIC_run_aml_program2 (kcc.prog_name,
-                                         attributes,
-                                         aml_history,
-                                         kyc_history,
-                                         kcc.context,
-                                         &handle_aml_fallback_result,
-                                         fb);
+      = TALER_KYCLOGIC_run_aml_program2 (
+          kcc.prog_name,
+          attributes,
+          kcc.context,
+          &current_rule_builder_cb,
+          &fb->account_id,
+          &aml_history_builder_cb,
+          &fb->account_id,
+          &kyc_history_builder_cb,
+          &fb->account_id,
+          &handle_aml_fallback_result,
+          fb);
     if (NULL == fb->aprh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

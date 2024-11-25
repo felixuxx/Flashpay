@@ -154,7 +154,16 @@ jq -n \
              "is_and_combinator" : true
            },
            {
-             "operation_type": "AGE-WITHDRAW",
+             "operation_type": "TRANSACTION",
+             "threshold" : "EUR:0",
+             "timeframe" : { "d_us" : 3600000000 },
+             "measures" : [ "verboten" ],
+             "display_priority" : 1,
+             "exposed" : false,
+             "is_and_combinator" : true
+           },
+           {
+             "operation_type": "REFUND",
              "threshold" : "EUR:0",
              "timeframe" : { "d_us" : 3600000000 },
              "measures" : [ "verboten" ],

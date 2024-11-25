@@ -823,6 +823,14 @@ TALER_KYCLOGIC_get_instant_measure (
 
 
 /**
+ * Return default legitimization rule set in JSON.
+ *
+ * @return default legitimization rules
+ */
+const json_t *
+TALER_KYCLOGIC_get_default_legi_rules (void);
+
+/**
  * Check if there is a measure in @a lrs that is named @a measure.
  *
  * @param lrs legitimization rule set
@@ -951,17 +959,32 @@ typedef void
 
 
 /**
+ * Type of function called to obtain an AML or KYC
+ * history in JSON on-demand if needed.
+ *
+ * @param cls closure
+ * @return AML or KYC history in JSON format, NULL on error
+ */
+typedef json_t *
+(*TALER_KYCLOGIC_HistoryBuilderCallback) (void *cls);
+
+
+/**
  * Run AML program based on @a jmeasures using
  * the the given inputs.
  *
- * @param attributes KYC attributes newly obtained
- * @param aml_history AML history of the account
- * @param kyc_history KYC history of the account
  * @param jmeasures current KYC/AML rules to apply;
  *           they determine also the AML program and
  *           provide the context
  * @param measure_index which KYC measure yielded the
  *       @a attributes
+ * @param attributes KYC attributes newly obtained
+ * @param current_rules_cb callback to get current KYC rules that apply to the account
+ * @param current_rules_cb_cls closure for @a current_rules_cb
+ * @param aml_history_cb callback to get the AML history of the account
+ * @param aml_history_cb_cls closure for @a aml_history_cb
+ * @param kyc_history_cb callback to get the KYC history of the account
+ * @param kyc_history_cb_cls closure for @a aml_history_cb
  * @param aprc function to call with the result
  * @param aprc_cls closure for @a aprc
  * @return NULL if @a jmeasures is invalid for the
@@ -969,11 +992,15 @@ typedef void
  */
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program (
-  const json_t *attributes,
-  const json_t *aml_history,
-  const json_t *kyc_history,
   const json_t *jmeasures,
   unsigned int measure_index,
+  const json_t *attributes,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
+  void *current_rules_cls,
+  TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
+  void *aml_history_cb_cls,
+  TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
+  void *kyc_history_cb_cls,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 
@@ -983,9 +1010,13 @@ TALER_KYCLOGIC_run_aml_program (
  *
  * @param prog_name name of AML program to run
  * @param attributes attributes to run with
- * @param aml_history AML history of the account
- * @param kyc_history KYC history of the account
  * @param context context to run with
+ * @param current_rules_cb callback to get current KYC rules that apply to the account
+ * @param current_rules_cb_cls closure for @a current_rules_cb
+ * @param aml_history_cb callback to get the AML history of the account
+ * @param aml_history_cb_cls closure for @a aml_history_cb
+ * @param kyc_history_cb callback to get the KYC history of the account
+ * @param kyc_history_cb_cls closure for @a aml_history_cb
  * @param aprc function to call with the result
  * @param aprc_cls closure for @a aprc
  * @return NULL if @a jmeasures is invalid for the
@@ -995,9 +1026,13 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program2 (
   const char *prog_name,
   const json_t *attributes,
-  const json_t *aml_history,
-  const json_t *kyc_history,
   const json_t *context,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
+  void *current_rules_cls,
+  TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
+  void *aml_history_cb_cls,
+  TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
+  void *kyc_history_cb_cls,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 
@@ -1009,8 +1044,12 @@ TALER_KYCLOGIC_run_aml_program2 (
  * @param measure measure with program name and context
  *         to run
  * @param attributes attributes to run with
- * @param aml_history AML history of the account
- * @param kyc_history KYC history of the account
+ * @param current_rules_cb callback to get current KYC rules that apply to the account
+ * @param current_rules_cb_cls closure for @a current_rules_cb
+ * @param aml_history_cb callback to get the AML history of the account
+ * @param aml_history_cb_cls closure for @a aml_history_cb
+ * @param kyc_history_cb callback to get the KYC history of the account
+ * @param kyc_history_cb_cls closure for @a aml_history_cb
  * @param aprc function to call with the result
  * @param aprc_cls closure for @a aprc
  * @return NULL if @a jmeasures is invalid for the
@@ -1020,8 +1059,12 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program3 (
   const struct TALER_KYCLOGIC_Measure *measure,
   const json_t *attributes,
-  const json_t *aml_history,
-  const json_t *kyc_history,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
+  void *current_rules_cls,
+  TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
+  void *aml_history_cb_cls,
+  TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
+  void *kyc_history_cb_cls,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 

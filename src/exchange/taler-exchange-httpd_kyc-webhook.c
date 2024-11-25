@@ -242,6 +242,7 @@ webhook_finished_cb (
       &kwh->rc->async_scope_id,
       process_row,
       account_id,
+      provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,

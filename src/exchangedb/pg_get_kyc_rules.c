@@ -91,3 +91,44 @@ TEH_PG_get_kyc_rules (
     params,
     rs);
 }
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_get_kyc_rules2 (
+  void *cls,
+  const struct TALER_NormalizedPaytoHashP *h_payto,
+  json_t **jrules)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Timestamp now
+    = GNUNET_TIME_timestamp_get ();
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_timestamp (&now),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_allow_null (
+      TALER_PQ_result_spec_json ("jnew_rules",
+                                 jrules),
+      NULL),
+    GNUNET_PQ_result_spec_end
+  };
+
+  *jrules = NULL;
+  PREPARE (pg,
+           "get_kyc_rules2",
+           "SELECT"
+           "  jnew_rules"
+           "  FROM legitimization_outcomes"
+           " WHERE h_payto=$1"
+           "   AND expiration_time >= $2"
+           "   AND is_active"
+           " ORDER BY expiration_time DESC"
+           " LIMIT 1;");
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "get_kyc_rules2",
+    params,
+    rs);
+}

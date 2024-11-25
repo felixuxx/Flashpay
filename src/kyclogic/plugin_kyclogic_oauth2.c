@@ -899,6 +899,7 @@ return_proof_response (void *cls)
   ph->task = NULL;
   ph->cb (ph->cb_cls,
           ph->status,
+          ph->pd->section,
           ph->provider_user_id,
           ph->provider_legitimization_id,
           GNUNET_TIME_relative_to_absolute (ph->pd->validity),

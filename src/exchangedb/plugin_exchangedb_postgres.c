@@ -436,6 +436,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_aggregation_amounts_for_kyc_check;
   plugin->get_kyc_rules
     = &TEH_PG_get_kyc_rules;
+  plugin->get_kyc_rules2
+    = &TEH_PG_get_kyc_rules2;
   plugin->kyc_provider_account_lookup
     = &TEH_PG_kyc_provider_account_lookup;
   plugin->lookup_kyc_process_by_account

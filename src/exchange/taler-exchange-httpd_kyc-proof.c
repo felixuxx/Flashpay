@@ -296,6 +296,7 @@ respond_html_ec (struct TEH_RequestContext *rc,
  *
  * @param cls closure
  * @param status KYC status
+ * @param provider_name name of the provider
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
@@ -307,6 +308,7 @@ static void
 proof_cb (
   void *cls,
   enum TALER_KYCLOGIC_KycStatus status,
+  const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
@@ -333,6 +335,7 @@ proof_cb (
       &rc->async_scope_id,
       kpc->process_row,
       &kpc->h_payto,
+      provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,
