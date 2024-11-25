@@ -142,6 +142,12 @@ struct TALER_KYCLOGIC_LegitimizationRuleSet
   char *successor_measure;
 
   /**
+   * This object in JSON format. Excludes *default* measures even
+   * if these are the default rules.
+   */
+  json_t *jlrs;
+
+  /**
    * Array of the rules.
    */
   struct TALER_KYCLOGIC_KycRule *kyc_rules;
@@ -595,6 +601,8 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
     GNUNET_break (0);
     goto cleanup;
   }
+  lrs->jlrs
+    = json_incref ((json_t *) jlrs);
   lrs->kyc_rules
     = GNUNET_new_array (lrs->num_kyc_rules,
                         struct TALER_KYCLOGIC_KycRule);
@@ -776,6 +784,7 @@ TALER_KYCLOGIC_rules_free (struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
     json_decref (measure->context);
   }
   GNUNET_free (lrs->kyc_rules);
+  json_decref (lrs->jlrs);
   GNUNET_free (lrs->custom_measures);
   GNUNET_free (lrs->successor_measure);
   GNUNET_free (lrs);
@@ -2738,6 +2747,7 @@ TALER_KYCLOGIC_kyc_init (
     .cfg = cfg,
     .result = true
   };
+  json_t *jkyc_rules;
 
   cfg_filename = GNUNET_strdup (cfg_fn);
   GNUNET_CONFIGURATION_iterate_sections (cfg,
@@ -2766,12 +2776,18 @@ TALER_KYCLOGIC_kyc_init (
            default_rules.num_kyc_rules,
            sizeof (struct TALER_KYCLOGIC_KycRule),
            &sort_by_timeframe);
+  jkyc_rules = json_array ();
+  GNUNET_assert (NULL != jkyc_rules);
 
   for (unsigned int i=0; i<default_rules.num_kyc_rules; i++)
   {
     const struct TALER_KYCLOGIC_KycRule *rule
       = &default_rules.kyc_rules[i];
+    json_t *jrule;
+    json_t *jmeasures;
 
+    jmeasures = json_array ();
+    GNUNET_assert (NULL != jmeasures);
     for (unsigned int j=0; j<rule->num_measures; j++)
     {
       const char *measure_name = rule->next_measures[j];
@@ -2790,8 +2806,37 @@ TALER_KYCLOGIC_kyc_init (
                     rule->rule_name);
         return GNUNET_SYSERR;
       }
+      GNUNET_assert (0 ==
+                     json_array_append_new (jmeasures,
+                                            json_string (measure_name)));
     }
+    jrule = GNUNET_JSON_PACK (
+      TALER_JSON_pack_kycte ("operation_type",
+                             rule->trigger),
+      TALER_JSON_pack_amount ("threshold",
+                              &rule->threshold),
+      GNUNET_JSON_pack_time_rel ("timeframe",
+                                 rule->timeframe),
+      GNUNET_JSON_pack_array_steal ("measures",
+                                    jmeasures),
+      GNUNET_JSON_pack_uint64 ("display_priority",
+                               rule->display_priority),
+      GNUNET_JSON_pack_bool ("exposed",
+                             rule->exposed),
+      GNUNET_JSON_pack_bool ("is_and_combinator",
+                             rule->is_and_combinator)
+      );
+    GNUNET_assert (0 ==
+                   json_array_append_new (jkyc_rules,
+                                          jrule));
   }
+  default_rules.jlrs
+    = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_timestamp ("expiration_time",
+                                    GNUNET_TIME_UNIT_FOREVER_TS),
+        GNUNET_JSON_pack_array_steal ("rules",
+                                      jkyc_rules)
+        );
 
   for (unsigned int i=0; i<num_aml_programs; i++)
   {
