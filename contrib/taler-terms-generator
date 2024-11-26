@@ -88,8 +88,8 @@ function failcat() {
 # defaults
 AUTHOR="GNU Taler team"
 VERSION="exchange-tos-v0"
-LOCALE_DIR=${TALER_PATHS_LOCALEDIR:-$(taler-config -s "PATHS" -o "LOCALEDIR" -f)}
-OUTPUT=${TALER_EXCHANGE_TERMS_DIR:-$(taler-config -s "EXCHANGE" -o "TERMS_DIR" -f)}
+LOCALE_DIR=${TALER_PATHS_LOCALEDIR:-$(taler-exchange-config -s "PATHS" -o "LOCALEDIR" -f)}
+OUTPUT=${TALER_EXCHANGE_TERMS_DIR:-$(taler-exchange-config -s "EXCHANGE" -o "TERMS_DIR" -f)}
 PAPER="a4"
 COPYRIGHT="2014-2023 Taler Systems SA (GPLv3+ or GFDL 1.3+)"
 INCREMENTAL=0
