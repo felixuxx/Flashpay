@@ -91,7 +91,7 @@ if ! sudo -i -u postgres createuser "$DBUSER" 2>/dev/null; then
   echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
 fi
 
-DBPATH=$(taler-config \
+DBPATH=$(taler-exchange-config \
   -c "$CFGFILE" \
   -s exchangedb-postgres \
   -o CONFIG)
