@@ -9,6 +9,12 @@ TALER_HOME="/var/lib/taler-auditor"
 _USERNAME=taler-auditor-httpd
 _GROUPNAME=taler-auditor-httpd
 
+function mark_secret() {
+  if ! dpkg-statoverride --list "$1" >/dev/null 2>&1; then
+    dpkg-statoverride --add --update ${_USERNAME} ${_GROUPNAME} 640 "$1"
+  fi
+}
+
 case "${1}" in
 configure)
   # Creating taler groups as needed
@@ -20,12 +26,8 @@ configure)
     adduser --quiet --system --ingroup ${_GROUPNAME} --no-create-home --home ${TALER_HOME} ${_USERNAME}
   fi
 
-  if ! dpkg-statoverride --list /etc/taler/secrets/auditor-db.secret.conf >/dev/null 2>&1
-  then
-    dpkg-statoverride --add --update \
-      ${_USERNAME} ${_GROUPNAME} 640 \
-      /etc/taler/secrets/auditor-db.secret.conf
-  fi
+  mark_secret /etc/taler-auditor/secrets/auditor-db.secret.conf
+  mark_secret /etc/taler-exchange/secrets/exchange-accountcredentials-1.secret.conf
 
   ;;
 

@@ -12,7 +12,7 @@ _GROUPNAME=taler-auditor-httpd
 case "${1}" in
 purge)
     dpkg-statoverride --remove \
-      /etc/taler/secrets/auditor-db.secret.conf || true
+      /etc/taler/taler-auditor/secrets/auditor-db.secret.conf || true
     deluser --system --quiet ${_USERNAME} || true
     delgroup --only-if-empty --quiet ${_GROUPNAME} || true
     ;;
