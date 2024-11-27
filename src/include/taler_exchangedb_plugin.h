@@ -3173,6 +3173,26 @@ typedef void
 
 
 /**
+ * Function called with legitimization measures.
+ *
+ * @param cls closure
+ * @param h_payto hash of account the measure applies to
+ * @param start_time when was the process started
+ * @param jmeasures array of measures that are active
+ * @param is_finished true if the measure was finished
+ * @param measure_serial_id row ID of the measure in the exchange table
+ */
+typedef void
+(*TALER_EXCHANGEDB_LegitimizationMeasureCallback) (
+  void *cls,
+  struct TALER_NormalizedPaytoHashP *h_payto,
+  struct GNUNET_TIME_Timestamp start_time,
+  const json_t *jmeasures,
+  bool is_finished,
+  uint64_t measure_serial_id);
+
+
+/**
  * Provide information about wire fees.
  *
  * @param cls closure
@@ -3341,12 +3361,13 @@ typedef bool
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
 typedef enum GNUNET_GenericReturnValue
-(*TALER_EXCHANGEDB_WirePreparationCallback)(void *cls,
-                                            uint64_t rowid,
-                                            const char *wire_method,
-                                            const char *buf,
-                                            size_t buf_size,
-                                            int finished);
+(*TALER_EXCHANGEDB_WirePreparationCallback)(
+  void *cls,
+  uint64_t rowid,
+  const char *wire_method,
+  const char *buf,
+  size_t buf_size,
+  int finished);
 
 
 /**
@@ -7345,6 +7366,31 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_NormalizedPaytoHashP *h_payto,
     TALER_EXCHANGEDB_AttributeCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Lookup legitimization measures.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored,
+   *                NULL to select for all accounts
+   * @param finished_only select only measures that are finished
+   * @param offset row offset to select from
+   * @param limit number of results to return, negative to
+   *               return in descending order from @a offset
+   * @param cb callback to invoke on each match
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*select_aml_measures)(
+    void *cls,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
+    enum TALER_EXCHANGE_YesNoAll active_only,
+    uint64_t offset,
+    int64_t limit,
+    TALER_EXCHANGEDB_LegitimizationMeasureCallback cb,
     void *cb_cls);
 
 

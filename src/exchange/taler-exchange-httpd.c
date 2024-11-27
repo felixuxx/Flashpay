@@ -54,6 +54,7 @@
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_kyc-webhook.h"
 #include "taler-exchange-httpd_aml-decision.h"
+#include "taler-exchange-httpd_legitimization-measures-get.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
@@ -571,12 +572,16 @@ handle_get_aml (struct TEH_RequestContext *rc,
 
   } h[] = {
     {
+      .op = "attributes",
+      .handler = &TEH_handler_aml_attributes_get
+    },
+    {
       .op = "decisions",
       .handler = &TEH_handler_aml_decisions_get
     },
     {
-      .op = "attributes",
-      .handler = &TEH_handler_aml_attributes_get
+      .op = "legitimizations",
+      .handler = &TEH_handler_legitimization_measures_get
     },
     {
       .op = "kyc-statistics",
