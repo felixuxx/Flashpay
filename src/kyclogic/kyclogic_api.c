@@ -3599,7 +3599,7 @@ TALER_KYCLOGIC_get_measure_configuration (
       GNUNET_JSON_pack_string ("description",
                                ck->description),
       GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_object_incref ("description",
+        GNUNET_JSON_pack_object_incref ("description_i18n",
                                         ck->description_i18n)),
       GNUNET_JSON_pack_array_steal ("requires",
                                     requires),
