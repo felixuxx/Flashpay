@@ -25,8 +25,8 @@ SUBDIRS = \
   mhd \
   templating \
   bank-lib \
-  exchangedb \
   kyclogic \
+  exchangedb \
   exchange \
   auditordb \
   auditor \

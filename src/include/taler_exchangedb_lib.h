@@ -202,4 +202,60 @@ TALER_EXCHANGEDB_load_accounts (
 void
 TALER_EXCHANGEDB_unload_accounts (void);
 
+
+/**
+ * Closure for various history building functions.
+ */
+struct TALER_EXCHANGEDB_HistoryBuilderContext
+{
+  /**
+   * Account to build history for.
+   */
+  const struct TALER_NormalizedPaytoHashP *account;
+
+  /**
+   * Database plugin to build history with.
+   */
+  struct TALER_EXCHANGEDB_Plugin *db_plugin;
+
+  /**
+   * Key to use to decrypt KYC attributes.
+   */
+  struct TALER_AttributeEncryptionKeyP *attribute_key;
+};
+
+
+/**
+ * Function called to obtain an AML
+ * history in JSON on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_EXCHANGEDB_HistoryBuilderContext *`
+ * @return AML history in JSON format, NULL on error
+ */
+json_t *
+TALER_EXCHANGEDB_aml_history_builder (void *cls);
+
+
+/**
+ * Function called to obtain a KYC
+ * history in JSON on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_EXCHANGEDB_HistoryBuilderContext *`
+ * @return KYC history in JSON format, NULL on error
+ */
+json_t *
+TALER_EXCHANGEDB_kyc_history_builder (void *cls);
+
+
+/**
+ * Function called to obtain the current ``LegitimizationRuleSet``
+ * in JSON for an account on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_EXCHANGEDB_HistoryBuilderContext *`
+ * @return KYC history in JSON format, NULL on error
+ */
+json_t *
+TALER_EXCHANGEDB_current_rule_builder (void *cls);
+
+
 #endif

@@ -179,18 +179,6 @@ struct TALER_ReserveSignatureP
 
 
 /**
- * (Symmetric) key used to encrypt KYC attribute data in the database.
- */
-struct TALER_AttributeKeyP
-{
-  /**
-   * Actual key material.
-   */
-  struct GNUNET_HashCode key;
-};
-
-
-/**
  * @brief Type of public keys to for merchant authorizations.
  * Merchants can issue refunds using the corresponding
  * private key.

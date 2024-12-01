@@ -340,11 +340,15 @@ lib_LTLIBRARIES = \
 
 libtalerexchangedb_la_SOURCES = \
   exchangedb_accounts.c \
+  exchangedb_history.c \
   exchangedb_plugin.c \
   exchangedb_transactions.c
 libtalerexchangedb_la_LIBADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetutil \
   $(XLIB)
 libtalerexchangedb_la_LDFLAGS = \

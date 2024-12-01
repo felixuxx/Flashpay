@@ -25,6 +25,7 @@
 #include "taler_error_codes.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "taler_exchangedb_lib.h"
 #include <gnunet/gnunet_common.h>
 
 /**
@@ -322,247 +323,6 @@ done:
 }
 
 
-/**
- * Function called to expand AML history for the account.
- *
- * @param cls a `json_t *` array to build
- * @param decision_time when was the decision taken
- * @param justification what was the given justification
- * @param decider_pub which key signed the decision
- * @param jproperties what are the new account properties
- * @param jnew_rules what are the new account rules
- * @param to_investigate should AML staff investigate
- *          after the decision
- * @param is_active is this the active decision
- */
-static void
-add_aml_history_entry (
-  void *cls,
-  struct GNUNET_TIME_Timestamp decision_time,
-  const char *justification,
-  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-  const json_t *jproperties,
-  const json_t *jnew_rules,
-  bool to_investigate,
-  bool is_active)
-{
-  json_t *aml_history = cls;
-  json_t *e;
-
-  e = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_timestamp ("decision_time",
-                                decision_time),
-    GNUNET_JSON_pack_string ("justification",
-                             justification),
-    GNUNET_JSON_pack_data_auto ("decider_pub",
-                                decider_pub),
-    GNUNET_JSON_pack_object_incref ("properties",
-                                    (json_t *) jproperties),
-    GNUNET_JSON_pack_object_incref ("new_rules",
-                                    (json_t *) jnew_rules),
-    GNUNET_JSON_pack_bool ("to_investigate",
-                           to_investigate),
-    GNUNET_JSON_pack_bool ("is_active",
-                           is_active)
-    );
-  GNUNET_assert (0 ==
-                 json_array_append_new (aml_history,
-                                        e));
-}
-
-
-/**
- * Function called to obtain an AML
- * history in JSON on-demand if needed.
- *
- * @param cls must be a `struct TALER_NormalizedPaytoHashP account_id *`
- * @return AML history in JSON format, NULL on error
- */
-static json_t *
-aml_history_builder_cb (void *cls)
-{
-  const struct TALER_NormalizedPaytoHashP *acc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  json_t *aml_history;
-
-  aml_history = json_array ();
-  GNUNET_assert (NULL != aml_history);
-  qs = TEH_plugin->lookup_aml_history (
-    TEH_plugin->cls,
-    acc,
-    &add_aml_history_entry,
-    aml_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    json_decref (aml_history);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  return aml_history;
-}
-
-
-/**
- * Function called to expand KYC history for the account.
- *
- * @param cls a `json_t *` array to build
- * @param provider_name name of the KYC provider
- *    or NULL for none
- * @param finished did the KYC process finish
- * @param error_code error code from the KYC process
- * @param error_message error message from the KYC process,
- *    or NULL for none
- * @param provider_user_id user ID at the provider
- *    or NULL for none
- * @param provider_legitimization_id legitimization process ID at the provider
- *    or NULL for none
- * @param collection_time when was the data collected
- * @param expiration_time when does the collected data expire
- * @param encrypted_attributes_len number of bytes in @a encrypted_attributes
- * @param encrypted_attributes encrypted KYC attributes
- */
-static void
-add_kyc_history_entry (
-  void *cls,
-  const char *provider_name,
-  bool finished,
-  enum TALER_ErrorCode error_code,
-  const char *error_message,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  struct GNUNET_TIME_Timestamp collection_time,
-  struct GNUNET_TIME_Absolute expiration_time,
-  size_t encrypted_attributes_len,
-  const void *encrypted_attributes)
-{
-  json_t *kyc_history = cls;
-  json_t *attributes;
-  json_t *e;
-
-  attributes = TALER_CRYPTO_kyc_attributes_decrypt (
-    &TEH_attribute_key,
-    encrypted_attributes,
-    encrypted_attributes_len);
-  e = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string (
-      "provider_name",
-      provider_name),
-    GNUNET_JSON_pack_bool (
-      "finished",
-      finished),
-    TALER_JSON_pack_ec (error_code),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string (
-        "error_message",
-        error_message)),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string (
-        "provider_user_id",
-        provider_user_id)),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string (
-        "provider_legitimization_id",
-        provider_legitimization_id)),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_timestamp (
-        "collection_time",
-        collection_time)),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_timestamp (
-        "expiration_time",
-        GNUNET_TIME_absolute_to_timestamp (
-          expiration_time))),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_object_steal (
-        "attributes",
-        attributes))
-    );
-
-  GNUNET_assert (0 ==
-                 json_array_append_new (kyc_history,
-                                        e));
-}
-
-
-/**
- * Function called to obtain a KYC
- * history in JSON on-demand if needed.
- *
- * @param cls must be a `struct TALER_NormalizedPaytoHashP account_id *`
- * @return KYC history in JSON format, NULL on error
- */
-static json_t *
-kyc_history_builder_cb (void *cls)
-{
-  const struct TALER_NormalizedPaytoHashP *acc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  json_t *kyc_history;
-
-  kyc_history = json_array ();
-  GNUNET_assert (NULL != kyc_history);
-  qs = TEH_plugin->lookup_kyc_history (
-    TEH_plugin->cls,
-    acc,
-    &add_kyc_history_entry,
-    kyc_history);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    json_decref (kyc_history);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* empty history is fine! */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  return kyc_history;
-}
-
-
-/**
- * Function called to obtain the current ``LegitimizationRuleSet``
- * in JSON for an account on-demand if needed.
- *
- * @param cls must be a `struct TALER_NormalizedPaytoHashP *`
- * @return KYC history in JSON format, NULL on error
- */
-static json_t *
-current_rule_builder_cb (void *cls)
-{
-  const struct TALER_NormalizedPaytoHashP *acc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  json_t *jlrs;
-
-  qs = TEH_plugin->get_kyc_rules2 (
-    TEH_plugin->cls,
-    acc,
-    &jlrs);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (0);
-    return NULL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    jlrs = json_incref ((json_t *) TALER_KYCLOGIC_get_default_legi_rules ());
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
-  }
-  return jlrs;
-}
-
-
 void
 TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat)
 {
@@ -648,20 +408,27 @@ TEH_kyc_run_measure_for_attributes (
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
   }
-  kat->kyc_aml
-    = TALER_KYCLOGIC_run_aml_program (
-        kat->jmeasures,
-        kat->measure_index,
-        kat->attributes,
-        &current_rule_builder_cb,
-        &kat->account_id,
-        &aml_history_builder_cb,
-        &kat->account_id,
-        &kyc_history_builder_cb,
-        &kat->account_id,
-        &kyc_aml_finished,
-        kat);
+  {
+    struct TALER_EXCHANGEDB_HistoryBuilderContext hbc = {
+      .account = &kat->account_id,
+      .db_plugin = TEH_plugin,
+      .attribute_key = &TEH_attribute_key
+    };
 
+    kat->kyc_aml
+      = TALER_KYCLOGIC_run_aml_program (
+          kat->jmeasures,
+          kat->measure_index,
+          kat->attributes,
+          &TALER_EXCHANGEDB_current_rule_builder,
+          &hbc,
+          &TALER_EXCHANGEDB_aml_history_builder,
+          &hbc,
+          &TALER_EXCHANGEDB_kyc_history_builder,
+          &hbc,
+          &kyc_aml_finished,
+          kat);
+  }
   if (NULL == kat->kyc_aml)
   {
     GNUNET_break (0);
@@ -772,19 +539,26 @@ TEH_kyc_run_measure_directly (
     TEH_kyc_run_measure_cancel (kat);
     return NULL;
   }
+  {
+    struct TALER_EXCHANGEDB_HistoryBuilderContext hbc = {
+      .account = &kat->account_id,
+      .db_plugin = TEH_plugin,
+      .attribute_key = &TEH_attribute_key
+    };
 
-  kat->kyc_aml
-    = TALER_KYCLOGIC_run_aml_program3 (
-        instant_ms,
-        NULL,                                /* no attributes */
-        &current_rule_builder_cb,
-        &kat->account_id,
-        &aml_history_builder_cb,
-        &kat->account_id,
-        &kyc_history_builder_cb,
-        &kat->account_id,
-        &kyc_aml_finished,
-        kat);
+    kat->kyc_aml
+      = TALER_KYCLOGIC_run_aml_program3 (
+          instant_ms,
+          NULL,                              /* no attributes */
+          &TALER_EXCHANGEDB_current_rule_builder,
+          &hbc,
+          &TALER_EXCHANGEDB_aml_history_builder,
+          &hbc,
+          &TALER_EXCHANGEDB_kyc_history_builder,
+          &hbc,
+          &kyc_aml_finished,
+          kat);
+  }
   if (NULL == kat->kyc_aml)
   {
     GNUNET_break (0);
@@ -983,18 +757,24 @@ TEH_kyc_fallback (
   fb->cb_cls = cb_cls;
   if (NULL == kcc.check)
   {
+    struct TALER_EXCHANGEDB_HistoryBuilderContext hbc = {
+      .account = &fb->account_id,
+      .db_plugin = TEH_plugin,
+      .attribute_key = &TEH_attribute_key
+    };
+
     /* check was set to 'SKIP', run program immediately */
     fb->aprh
       = TALER_KYCLOGIC_run_aml_program2 (
           kcc.prog_name,
           attributes,
           kcc.context,
-          &current_rule_builder_cb,
-          &fb->account_id,
-          &aml_history_builder_cb,
-          &fb->account_id,
-          &kyc_history_builder_cb,
-          &fb->account_id,
+          &TALER_EXCHANGEDB_current_rule_builder,
+          &hbc,
+          &TALER_EXCHANGEDB_aml_history_builder,
+          &hbc,
+          &TALER_EXCHANGEDB_kyc_history_builder,
+          &hbc,
           &handle_aml_fallback_result,
           fb);
     if (NULL == fb->aprh)
