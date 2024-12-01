@@ -28,10 +28,10 @@ setup -c "$CONF" \
       -d "iban"
 
 # obtain key configuration data
-EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
-MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
+EXCHANGE_URL=$(taler-exchange-config -c "$CONF" -s EXCHANGE -o BASE_URL)
+MERCHANT_PORT=$(taler-merchant-config -c "$CONF" -s MERCHANT -o PORT)
 MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
-BANK_PORT=$(taler-config -c "$CONF" -s BANK -o HTTP_PORT)
+BANK_PORT=$(taler-exchange-config -c "$CONF" -s BANK -o HTTP_PORT)
 BANK_URL="http://localhost:${BANK_PORT}/"
 
 

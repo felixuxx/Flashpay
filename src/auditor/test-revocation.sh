@@ -636,7 +636,11 @@ function check_with_database()
     echo "Running test suite with database $BASEDB using configuration $CONF"
 
     MASTER_PRIV_FILE="${BASEDB}.mpriv"
-    taler-config -f -c "${CONF}" -s exchange-offline -o MASTER_PRIV_FILE -V "${MASTER_PRIV_FILE}"
+    taler-exchange-config -f \
+                          -c "${CONF}" \
+                          -s exchange-offline \
+                          -o MASTER_PRIV_FILE \
+                          -V "${MASTER_PRIV_FILE}"
     MASTER_PUB=$(gnunet-ecc -p "$MASTER_PRIV_FILE")
 
     echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"

@@ -55,7 +55,7 @@ echo " FOUND"
 pwd
 # Clean up
 
-DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
+DATA_DIR=`taler-exchange-config -f -c $CONF -s PATHS -o TALER_HOME`
 rm -rf $DATA_DIR || true
 
 # reset database
@@ -64,18 +64,18 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
 
 # obtain key configuration data
-MASTER_PRIV_FILE=$(taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE)
+MASTER_PRIV_FILE=$(taler-exchange-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE)
 MASTER_PRIV_DIR=$(dirname $MASTER_PRIV_FILE)
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
 MASTER_PUB=$(gnunet-ecc -p $MASTER_PRIV_FILE)
-EXCHANGE_URL=$(taler-config -c $CONF -s EXCHANGE -o BASE_URL)
-MERCHANT_PORT=$(taler-config -c $CONF -s MERCHANT -o PORT)
+EXCHANGE_URL=$(taler-exchange-config -c $CONF -s EXCHANGE -o BASE_URL)
+MERCHANT_PORT=$(taler-merchant-config -c $CONF -s MERCHANT -o PORT)
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
-BANK_PORT=$(taler-config -c $CONF -s BANK -o HTTP_PORT)
+BANK_PORT=$(taler-exchange-config -c $CONF -s BANK -o HTTP_PORT)
 BANK_URL=http://localhost:${BANK_PORT}/
 AUDITOR_URL=http://localhost:8083/
-AUDITOR_PRIV_FILE=$(taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE)
+AUDITOR_PRIV_FILE=$(taler-auditor-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE)
 AUDITOR_PRIV_DIR=$(dirname $AUDITOR_PRIV_FILE)
 mkdir -p $AUDITOR_PRIV_DIR
 gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
@@ -84,13 +84,41 @@ AUDITOR_PUB=$(gnunet-ecc -p $AUDITOR_PRIV_FILE)
 echo "AUDITOR PUB is $AUDITOR_PUB using file $AUDITOR_PRIV_FILE"
 
 # patch configuration
-taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
-taler-config -c $CONF -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
-taler-config -c $CONF -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
-taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
+taler-exchange-config \
+    -c $CONF \
+    -s exchange \
+    -o MASTER_PUBLIC_KEY \
+    -V $MASTER_PUB
+taler-auditor-config \
+    -c $CONF \
+    -s auditor \
+    -o PUBLIC_KEY \
+    -V $AUDITOR_PUB
+taler-merchant-config \
+    -c $CONF \
+    -s merchant-exchange-default \
+    -o MASTER_KEY \
+    -V $MASTER_PUB
+taler-exchange-config \
+    -c $CONF \
+    -s exchangedb-postgres \
+    -o CONFIG \
+    -V postgres:///$TARGET_DB
+taler-auditor-config \
+    -c $CONF \
+    -s auditordb-postgres \
+    -o CONFIG \
+    -V postgres:///$TARGET_DB
+taler-merchant-config \
+    -c $CONF \
+    -s merchantdb-postgres \
+    -o CONFIG \
+    -V postgres:///$TARGET_DB
+taler-exchange-config \
+    -c $CONF \
+    -s bank \
+    -o database \
+    -V postgres:///$TARGET_DB
 
 # setup exchange
 echo "Setting up exchange"

@@ -84,7 +84,7 @@ function launch_libeufin() {
     >"${MY_TMP_DIR}/libeufin-bank-stdout.log" \
     2>"${MY_TMP_DIR}/libeufin-bank-stderr.log" &
   echo $! >"${MY_TMP_DIR}/libeufin-bank.pid"
-  BANK_PORT=$(taler-config -c "$CONF" -s "libeufin-bank" -o "PORT")
+  BANK_PORT=$(taler-exchange-config -c "$CONF" -s "libeufin-bank" -o "PORT")
   BANK_URL="http://localhost:${BANK_PORT}/"
   for n in $(seq 1 100); do
     echo -n "."

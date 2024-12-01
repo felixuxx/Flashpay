@@ -627,7 +627,7 @@ function check_with_database()
     CONF="$1.conf"
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE="${BASEDB}.mpriv"
-    taler-config \
+    taler-exchange-config \
         -f \
         -c "${CONF}" \
         -s exchange-offline \
