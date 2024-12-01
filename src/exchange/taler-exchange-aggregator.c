@@ -527,19 +527,10 @@ legitimization_satisfied (struct AggregationUnit *au_active)
 
   {
     json_t *jrules;
-    union TALER_AccountPublicKeyP account_pub;
-    struct TALER_ReservePublicKeyP reserve_pub;
-    bool no_account_pub;
-    bool no_reserve_pub;
 
-    /* FIXME: optimization potential: custom API to *just* get jrules... */
-    qs = db_plugin->get_kyc_rules (db_plugin->cls,
-                                   &au_active->h_normalized_payto,
-                                   &no_account_pub,
-                                   &account_pub,
-                                   &no_reserve_pub,
-                                   &reserve_pub,
-                                   &jrules);
+    qs = db_plugin->get_kyc_rules2 (db_plugin->cls,
+                                    &au_active->h_normalized_payto,
+                                    &jrules);
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
