@@ -26,6 +26,7 @@
 #include "taler_signatures.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_bank_service.h"
+#include "taler_kyclogic_lib.h"
 
 
 /**
@@ -256,6 +257,34 @@ TALER_EXCHANGEDB_kyc_history_builder (void *cls);
  */
 json_t *
 TALER_EXCHANGEDB_current_rule_builder (void *cls);
+
+
+/**
+ * Persist the given @a apr for the given process and account
+ * into the database via @a plugin.
+ *
+ * @param plugin database API handle
+ * @param process_row row identifying the AML process that was run
+ * @param provider_name name of the provider that provided the attributes
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param expiration until when is the KYC check valid
+ * @param account_id hash of account the result is about
+ * @param apr AML program result to persist
+ */
+enum GNUNET_DB_QueryStatus
+TALER_EXCHANGEDB_persist_aml_program_result (
+  struct TALER_EXCHANGEDB_Plugin *plugin,
+  uint64_t process_row,
+  const char *provider_name,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  const json_t *attributes,
+  const struct TALER_AttributeEncryptionKeyP *attribute_key,
+  unsigned int birthday,
+  struct GNUNET_TIME_Absolute expiration,
+  const struct TALER_NormalizedPaytoHashP *account_id,
+  const struct TALER_KYCLOGIC_AmlProgramResult *apr);
 
 
 #endif

@@ -340,6 +340,7 @@ lib_LTLIBRARIES = \
 
 libtalerexchangedb_la_SOURCES = \
   exchangedb_accounts.c \
+  exchangedb_aml.c \
   exchangedb_history.c \
   exchangedb_plugin.c \
   exchangedb_transactions.c

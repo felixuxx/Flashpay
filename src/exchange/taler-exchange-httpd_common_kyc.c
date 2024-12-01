@@ -180,34 +180,67 @@ kyc_aml_finished (
 {
   struct TEH_KycMeasureRunContext *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
-  size_t eas = 0;
-  void *ea = NULL;
   unsigned int birthday = 0;
   struct GNUNET_AsyncScopeSave old_scope;
 
   kat->kyc_aml = NULL;
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
-  if (TALER_KYCLOGIC_AMLR_SUCCESS != apr->status)
+  if (TEH_age_restriction_enabled)
   {
-    if (! TEH_kyc_failed (
-          kat->process_row,
-          &kat->account_id,
-          kat->provider_name,
-          kat->provider_user_id,
-          kat->provider_legitimization_id,
-          apr->details.failure.error_message,
-          apr->details.failure.ec))
+    const char *birthdate;
+
+    birthdate = json_string_value (
+      json_object_get (kat->attributes,
+                       TALER_ATTRIBUTE_BIRTHDATE));
+    if (NULL != birthdate)
     {
-      /* double-bad: error during error handling */
-      GNUNET_break (0);
-      kat->cb (kat->cb_cls,
-               TALER_EC_GENERIC_DB_STORE_FAILED,
-               "insert_kyc_failure");
-      TEH_kyc_run_measure_cancel (kat);
-      GNUNET_async_scope_restore (&old_scope);
-      return;
+      enum GNUNET_GenericReturnValue ret;
+
+      ret = TALER_parse_coarse_date (birthdate,
+                                     &TEH_age_restriction_config.mask,
+                                     &birthday);
+
+      if (GNUNET_OK != ret)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse birthdate `%s' from KYC attributes\n",
+                    birthdate);
+      }
     }
+  }
+
+  qs = TALER_EXCHANGEDB_persist_aml_program_result (
+    TEH_plugin,
+    kat->process_row,
+    kat->provider_name,
+    kat->provider_user_id,
+    kat->provider_legitimization_id,
+    kat->attributes,
+    &TEH_attribute_key,
+    birthday,
+    kat->expiration,
+    &kat->account_id,
+    apr);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* double-bad: error during error handling */
+    GNUNET_break (0);
+    kat->cb (kat->cb_cls,
+             TALER_EC_GENERIC_DB_STORE_FAILED,
+             "persist_aml_program_result");
+    TEH_kyc_run_measure_cancel (kat);
+    GNUNET_async_scope_restore (&old_scope);
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  switch (apr->status)
+  {
+  case TALER_KYCLOGIC_AMLR_FAILURE:
     if (NULL == apr->details.failure.fallback_measure)
     {
       /* Not sure this can happen (fallback required?),
@@ -215,9 +248,7 @@ kyc_aml_finished (
       kat->cb (kat->cb_cls,
                TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
                NULL);
-      TEH_kyc_run_measure_cancel (kat);
-      GNUNET_async_scope_restore (&old_scope);
-      return;
+      break;
     }
     kat->fallback_name
       = GNUNET_strdup (
@@ -237,87 +268,18 @@ kyc_aml_finished (
       kat->cb (kat->cb_cls,
                TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_UNKNOWN,
                kat->fallback_name);
-      TEH_kyc_run_measure_cancel (kat);
-      GNUNET_async_scope_restore (&old_scope);
-      return;
+      break;
     }
+    /* continued in fallback_result_cb */
     GNUNET_async_scope_restore (&old_scope);
     return;
-  }
-  {
-    const char *birthdate;
-
-    birthdate = json_string_value (
-      json_object_get (kat->attributes,
-                       TALER_ATTRIBUTE_BIRTHDATE));
-    if ( (TEH_age_restriction_enabled) &&
-         (NULL != birthdate) )
-    {
-      enum GNUNET_GenericReturnValue ret;
-
-      ret = TALER_parse_coarse_date (birthdate,
-                                     &TEH_age_restriction_config.mask,
-                                     &birthday);
-
-      if (GNUNET_OK != ret)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to parse birthdate `%s' from KYC attributes\n",
-                    birthdate);
-        kat->cb (kat->cb_cls,
-                 TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                 "TALER_ATTRIBUTE_BIRTHDATE");
-        goto done;
-      }
-    }
-  }
-
-  if (NULL != kat->attributes)
-  {
-    TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
-                                         kat->attributes,
-                                         &ea,
-                                         &eas);
-  }
-
-  qs = TEH_plugin->insert_kyc_measure_result (
-    TEH_plugin->cls,
-    kat->process_row,
-    &kat->account_id,
-    birthday,
-    GNUNET_TIME_timestamp_get (),
-    kat->provider_name,
-    kat->provider_user_id,
-    kat->provider_legitimization_id,
-    kat->expiration,
-    apr->details.success.account_properties,
-    apr->details.success.new_rules,
-    apr->details.success.to_investigate,
-    apr->details.success.num_events,
-    apr->details.success.events,
-    eas,
-    ea);
-  GNUNET_free (ea);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Stored encrypted KYC process #%llu attributes: %d\n",
-              (unsigned long long) kat->process_row,
-              qs);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    kat->cb (kat->cb_cls,
-             TALER_EC_GENERIC_DB_STORE_FAILED,
-             "do_insert_kyc_measure_result");
-    /* Continued below to clean up. */
-  }
-  else
-  {
+  case TALER_KYCLOGIC_AMLR_SUCCESS:
     /* Finally, return result to main handler */
     kat->cb (kat->cb_cls,
              TALER_EC_NONE,
              0);
+    break;
   }
-done:
   TEH_kyc_run_measure_cancel (kat);
   GNUNET_async_scope_restore (&old_scope);
 }
