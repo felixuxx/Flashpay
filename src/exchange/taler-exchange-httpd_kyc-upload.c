@@ -365,6 +365,7 @@ aml_trigger_callback (
       ""
       );
   }
+  TALER_MHD_add_global_headers (uc->response);
 
   MHD_resume_connection (uc->rc->connection);
   GNUNET_CONTAINER_DLL_remove (uc_head,
