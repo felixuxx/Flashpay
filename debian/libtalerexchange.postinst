@@ -7,10 +7,10 @@ set -e
 case "${1}" in
 configure)
 
-  if ! dpkg-statoverride --list /etc/taler/taler.conf >/dev/null 2>&1; then
+  if ! dpkg-statoverride --list /etc/taler-exchange/taler-exchange.conf >/dev/null 2>&1; then
     dpkg-statoverride --add --update \
       root root 644 \
-      /etc/taler/taler.conf
+      /etc/taler-exchange/taler-exchange.conf
   fi
 
   ;;

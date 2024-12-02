@@ -4,7 +4,7 @@ set -e
 
 . /usr/share/debconf/confmodule
 
-TALER_HOME="/var/lib/taler"
+TALER_HOME="/var/lib/taler-exchange"
 _GROUPNAME=taler-exchange-secmod
 _DBGROUPNAME=taler-exchange-db
 _EUSERNAME=taler-exchange-httpd

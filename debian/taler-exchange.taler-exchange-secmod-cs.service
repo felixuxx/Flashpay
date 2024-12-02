@@ -1,6 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange CS security module
-AssertPathExists=/run/taler/exchange-secmod-cs
+AssertPathExists=/run/taler-exchange/secmod-cs
 PartOf=taler-exchange.target
 
 [Service]

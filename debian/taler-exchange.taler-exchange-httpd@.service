@@ -6,7 +6,7 @@
 
 [Unit]
 Description=GNU Taler payment system exchange REST API at %I
-AssertPathExists=/run/taler/exchange-httpd
+AssertPathExists=/run/taler-exchange/httpd
 Requires=taler-exchange-httpd@%i.socket taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
 After=postgres.service network.target taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
 PartOf=taler-exchange.target

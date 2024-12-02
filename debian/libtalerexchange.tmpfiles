@@ -1,2 +1,2 @@
 #Type Path        Mode UID  GID  Age Argument
-d /run/taler 0755 root root  - -
+d /run/taler-exchange 0755 root root  - -

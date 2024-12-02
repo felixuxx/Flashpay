@@ -20,11 +20,11 @@ fi
 
 case "${1}" in
 purge)
-    rm -rf /var/lib/taler/exchange-offline /var/lib/taler/exchange-secmod-*
+    rm -rf /var/lib/taler-exchange/secmod-*
     dpkg-statoverride --remove \
-       /etc/taler/secrets/exchange-accountcredentials-1.secret.conf || true
+       /etc/taler-exchange/secrets/exchange-accountcredentials-1.secret.conf || true
     dpkg-statoverride --remove \
-                      /etc/taler/secrets/exchange-db.secret.conf || true
+                      /etc/taler-exchange/secrets/exchange-db.secret.conf || true
     deluser --quiet --system ${_CSECUSERNAME} || true
     deluser --quiet --system ${_RSECUSERNAME} || true
     deluser --quiet --system ${_ESECUSERNAME} || true
