@@ -60,3 +60,6 @@ test_exchange_api_home/taler/exchange-secmod-rsa/
 test_exchange_api_keys_cherry_picking_home/taler/
 test_taler_exchange_httpd_home/taler/
 libeufin-bank.pid
+test_exchange_api_home/.local/
+test_exchange_api_keys_cherry_picking_home/
+test_taler_exchange_httpd_home/
