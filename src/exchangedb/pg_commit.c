@@ -42,7 +42,7 @@ TEH_PG_commit (void *cls)
   enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_break (NULL != pg->transaction_name);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Committing transaction `%s'\n",
               pg->transaction_name);
   PREPARE (pg,

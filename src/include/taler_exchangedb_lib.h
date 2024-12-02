@@ -260,6 +260,97 @@ TALER_EXCHANGEDB_current_rule_builder (void *cls);
 
 
 /**
+ * Handle for helper logic that advances rules to the currently
+ * valid rule set.
+ */
+struct TALER_EXCHANGEDB_RuleUpdater;
+
+/**
+ * Main result returned in the
+ * #TALER_EXCHANGEDB_CurrentRulesCallback
+ */
+struct TALER_EXCHANGEDB_RuleUpdaterResult
+{
+  /**
+   * Row the rule set is based on.
+   */
+  uint64_t legitimization_outcome_last_row;
+
+  /**
+   * Current legitimization rule set, owned by callee.  Will be NULL on error
+   * or for default rules. Will not contain skip rules and not be expired.
+   */
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+
+  /**
+   * Hint to return, if @e ec is not #TALER_EC_NONE. Can be NULL.
+   */
+  const char *hint;
+
+  /**
+   * Error code in case a problem was encountered
+   * when fetching or updating the legitimization rules.
+   */
+  enum TALER_ErrorCode ec;
+};
+
+
+/**
+ * Function called with the current rule set.
+ *
+ * @param cls closure
+ * @param legitimization_outcome_last_row row the rule set is based on
+ * @param rur includes legitimziation rule set that applies to the account
+ *   (owned by callee, callee must free the lrs!)
+ */
+typedef void
+(*TALER_EXCHANGEDB_CurrentRulesCallback)(
+  void *cls,
+  struct TALER_EXCHANGEDB_RuleUpdaterResult *rur);
+
+
+/**
+ * Obtains the current rule set for an account and advances it
+ * to the rule set that should apply right now. Considers
+ * expiration of rules as well as "skip" measures. Runs
+ * AML programs as needed to advance the rule book to the currently
+ * valid state.
+ *
+ * On success, the result is returned in a (fresh) transaction
+ * that must be committed for the result to be valid. This should
+ * be used to ensure transactionality of the AML program result.
+ *
+ * This function should be called *outside* of any other transaction.
+ * Calling it while a transaction is already running risks aborting
+ * that transaction.
+ *
+ * @param plugin database plugin to use
+ * @param attribute_key key to use to decrypt attributes
+ * @param account account to get the rule set for
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return handle to cancel the operation
+ */
+struct TALER_EXCHANGEDB_RuleUpdater *
+TALER_EXCHANGEDB_update_rules (
+  struct TALER_EXCHANGEDB_Plugin *plugin,
+  const struct TALER_AttributeEncryptionKeyP *attribute_key,
+  const struct TALER_NormalizedPaytoHashP *account,
+  TALER_EXCHANGEDB_CurrentRulesCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel operation to get the current legitimization rule set.
+ *
+ * @param[in] ru operation to cancel
+ */
+void
+TALER_EXCHANGEDB_update_rules_cancel (
+  struct TALER_EXCHANGEDB_RuleUpdater *ru);
+
+
+/**
  * Persist the given @a apr for the given process and account
  * into the database via @a plugin.
  *

@@ -413,6 +413,7 @@ take_aml_decision_cleanup (void *cls,
     ds->dh = NULL;
   }
   json_decref (ds->new_rules);
+  json_decref (ds->properties);
   GNUNET_free (ds);
 }
 

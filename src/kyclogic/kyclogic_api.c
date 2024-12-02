@@ -2535,7 +2535,7 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
       }
     }
   }
-
+  GNUNET_free (required_inputs);
 
   {
     struct TALER_KYCLOGIC_AmlProgram *ap;

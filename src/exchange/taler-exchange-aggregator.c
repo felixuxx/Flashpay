@@ -30,6 +30,10 @@
 #include "taler_bank_service.h"
 #include "taler_dbevents.h"
 
+/**
+ * How often do we retry after serialization failures?
+ */
+#define MAX_RETRIES 5
 
 /**
  * Information about one aggregation process to be executed.  There is
@@ -108,15 +112,26 @@ struct AggregationUnit
   struct Shard *shard;
 
   /**
-   * Currently active rule set.
+   * Handle to async process to obtain the legitimization rules.
    */
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+  struct TALER_EXCHANGEDB_RuleUpdater *ru;
 
   /**
    * Row in KYC table for legitimization requirements
    * that are pending for this aggregation, or 0 if none.
    */
   uint64_t requirement_row;
+
+  /**
+   * How often did we retry the transaction?
+   */
+  unsigned int retries;
+
+  /**
+   * Should we run a follow-up transaction with a legitimization
+   * check?
+   */
+  bool legi_check;
 
   /**
    * Do we have an entry in the transient table for
@@ -260,8 +275,129 @@ cleanup_au (struct AggregationUnit *au)
     TALER_KYCLOGIC_run_aml_program_cancel (au->amlh);
     au->amlh = NULL;
   }
+  if (NULL != au->ru)
+  {
+    GNUNET_break (0);
+    TALER_EXCHANGEDB_update_rules_cancel (au->ru);
+    au->ru = NULL;
+  }
   GNUNET_free (au->payto_uri.full_payto);
   GNUNET_free (au);
+}
+
+
+/**
+ * Perform a database commit. If it fails, print a warning.
+ *
+ * @return status of commit
+ */
+static enum GNUNET_DB_QueryStatus
+commit_or_warn (void)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = db_plugin->commit (db_plugin->cls);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return qs;
+  GNUNET_log ((GNUNET_DB_STATUS_SOFT_ERROR == qs)
+              ? GNUNET_ERROR_TYPE_INFO
+              : GNUNET_ERROR_TYPE_ERROR,
+              "Failed to commit database transaction!\n");
+  return qs;
+}
+
+
+/**
+ * Release lock on shard @a s in the database.
+ * On error, terminates this process.
+ *
+ * @param[in] s shard to free (and memory to release)
+ */
+static void
+release_shard (struct Shard *s)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = db_plugin->release_revolving_shard (
+    db_plugin->cls,
+    "aggregator",
+    s->shard_start,
+    s->shard_end);
+  GNUNET_free (s);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* Strange, but let's just continue */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    /* normal case */
+    break;
+  }
+}
+
+
+/**
+ * Schedule the next major task, or exit depending on mode.
+ */
+static void
+next_task (uint64_t counter)
+{
+  if ( (GNUNET_YES == test_mode) &&
+       (0 == counter) )
+  {
+    /* in test mode, shutdown after a shard is done with 0 work */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No work done and in test mode, shutting down\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  GNUNET_assert (NULL == task);
+  /* If we ended up doing zero work, sleep a bit */
+  if (0 == counter)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Going to sleep for %s before trying again\n",
+                GNUNET_TIME_relative2s (aggregator_idle_sleep_interval,
+                                        true));
+    task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
+                                         &drain_kyc_alerts,
+                                         NULL);
+  }
+  else
+  {
+    task = GNUNET_SCHEDULER_add_now (&drain_kyc_alerts,
+                                     NULL);
+  }
+}
+
+
+/**
+ * Rollback the current transaction (if any),
+ * then free data stored in @a au, including @a au itself, and then
+ * run the next aggregation task.
+ *
+ * @param[in] au aggregation unit to clean up
+ */
+static void
+cleanup_and_next (struct AggregationUnit *au)
+{
+  struct Shard *s = au->shard;
+  uint64_t counter = (NULL == s) ? 0 : s->work_counter;
+
+  /* just in case, often no transaction is running here anymore */
+  db_plugin->rollback (db_plugin->cls);
+  cleanup_au (au);
+  if (NULL != s)
+    release_shard (s);
+  if (EXIT_SUCCESS == global_ret)
+    next_task (counter);
 }
 
 
@@ -391,63 +527,6 @@ parse_aggregator_config (void)
 
 
 /**
- * Perform a database commit. If it fails, print a warning.
- *
- * @return status of commit
- */
-static enum GNUNET_DB_QueryStatus
-commit_or_warn (void)
-{
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = db_plugin->commit (db_plugin->cls);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    return qs;
-  GNUNET_log ((GNUNET_DB_STATUS_SOFT_ERROR == qs)
-              ? GNUNET_ERROR_TYPE_INFO
-              : GNUNET_ERROR_TYPE_ERROR,
-              "Failed to commit database transaction!\n");
-  return qs;
-}
-
-
-/**
- * Release lock on shard @a s in the database.
- * On error, terminates this process.
- *
- * @param[in] s shard to free (and memory to release)
- */
-static void
-release_shard (struct Shard *s)
-{
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = db_plugin->release_revolving_shard (
-    db_plugin->cls,
-    "aggregator",
-    s->shard_start,
-    s->shard_end);
-  GNUNET_free (s);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* Strange, but let's just continue */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    /* normal case */
-    break;
-  }
-}
-
-
-/**
  * Callback to return all applicable amounts for the KYC
  * decision to @ a cb.
  *
@@ -543,6 +622,19 @@ rollback_aggregation (struct AggregationUnit *au)
 
 
 /**
+ * Function called with legitimization rule set. Check
+ * how that affects the aggregation process.
+ *
+ * @param[in] cls a `struct AggregationUnit *`
+ * @param[in] rur new legitimization rule set to evaluate
+ */
+static void
+evaluate_rules (
+  void *cls,
+  struct TALER_EXCHANGEDB_RuleUpdaterResult *rur);
+
+
+/**
  * The aggregation process succeeded and should be finally committed.
  *
  * @param[in] au aggregation that needs to be committed
@@ -550,14 +642,10 @@ rollback_aggregation (struct AggregationUnit *au)
 static void
 commit_aggregation (struct AggregationUnit *au)
 {
-  struct Shard *s = au->shard;
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Committing aggregation result over %s to %s\n",
               TALER_amount2s (&au->final_amount),
               au->payto_uri.full_payto);
-  cleanup_au (au);
-
   /* Now we can finally commit the overall transaction, as we are
      again consistent if all of this passes. */
   switch (commit_or_warn ())
@@ -566,28 +654,246 @@ commit_aggregation (struct AggregationUnit *au)
     /* try again */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Serialization issue on commit; trying again later!\n");
-    run_task_with_shard (s);
+    cleanup_and_next (au);
     return;
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    db_plugin->rollback (db_plugin->cls); /* just in case */
-    release_shard (s);
+    cleanup_and_next (au);
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Commit complete, going again\n");
-    run_task_with_shard (s);
+    if (au->legi_check)
+    {
+      au->legi_check = false;
+      au->ru = TALER_EXCHANGEDB_update_rules (
+        db_plugin,
+        &attribute_key,
+        &au->h_normalized_payto,
+        &evaluate_rules,
+        au);
+      if (NULL != au->ru)
+        return;
+    }
+    cleanup_and_next (au);
     return;
   default:
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    db_plugin->rollback (db_plugin->cls); /* just in case */
-    release_shard (s);
+    cleanup_and_next (au);
     return;
   }
+}
+
+
+/**
+ * Trigger the wire transfer for the @a au
+ * and delete the record of the aggregation.
+ *
+ * @param[in] au information about the aggregation
+ */
+static void
+trigger_wire_transfer (struct AggregationUnit *au)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Preparing wire transfer of %s to %s\n",
+              TALER_amount2s (&au->final_amount),
+              TALER_B2S (&au->merchant_pub));
+  {
+    void *buf;
+    size_t buf_size;
+
+    TALER_BANK_prepare_transfer (au->payto_uri,
+                                 &au->final_amount,
+                                 exchange_base_url,
+                                 &au->wtid,
+                                 &buf,
+                                 &buf_size);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Storing %u bytes of wire prepare data\n",
+                (unsigned int) buf_size);
+    /* Commit our intention to execute the wire transfer! */
+    qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
+                                              au->wa->method,
+                                              buf,
+                                              buf_size);
+    GNUNET_log (qs >= 0
+                ? GNUNET_ERROR_TYPE_DEBUG
+                : GNUNET_ERROR_TYPE_WARNING,
+                "wire_prepare_data_insert returned %d\n",
+                (int) qs);
+    GNUNET_free (buf);
+  }
+  /* Commit the WTID data to 'wire_out'  */
+  if (qs >= 0)
+  {
+    qs = db_plugin->store_wire_transfer_out (
+      db_plugin->cls,
+      au->execution_time,
+      &au->wtid,
+      &au->h_full_payto,
+      au->wa->section_name,
+      &au->final_amount);
+    GNUNET_log (qs >= 0
+                ? GNUNET_ERROR_TYPE_DEBUG
+                : GNUNET_ERROR_TYPE_WARNING,
+                "store_wire_transfer_out returned %d\n",
+                (int) qs);
+  }
+  if ( (qs >= 0) &&
+       au->have_transient)
+    qs = db_plugin->delete_aggregation_transient (
+      db_plugin->cls,
+      &au->h_full_payto,
+      &au->wtid);
+
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_log (
+      GNUNET_ERROR_TYPE_INFO,
+      "Serialization issue during aggregation; trying again later!\n");
+    rollback_aggregation (au);
+    return;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    fail_aggregation (au);
+    return;
+  default:
+    break;
+  }
+  {
+    struct TALER_CoinDepositEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
+      .merchant_pub = au->merchant_pub
+    };
+
+    db_plugin->event_notify (db_plugin->cls,
+                             &rep.header,
+                             NULL,
+                             0);
+  }
+  commit_aggregation (au);
+}
+
+
+static void
+evaluate_rules (
+  void *cls,
+  struct TALER_EXCHANGEDB_RuleUpdaterResult *rur)
+{
+  struct AggregationUnit *au = cls;
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = rur->lrs;
+  enum GNUNET_DB_QueryStatus qs;
+  const struct TALER_KYCLOGIC_KycRule *requirement;
+
+  au->ru = NULL;
+  if (TALER_EC_NONE != rur->ec)
+  {
+    if (NULL != lrs)
+    {
+      /* strange, but whatever */
+      TALER_KYCLOGIC_rules_free (lrs);
+    }
+    /* Rollback just in case, should have already been done
+       before by the TALER_EXCHANGEDB_update_rules() logic. */
+    db_plugin->rollback (db_plugin->cls);
+    if ( (TALER_EC_GENERIC_DB_SOFT_FAILURE == rur->ec) &&
+         (au->retries++ < MAX_RETRIES) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Serialization failure, trying again!\n");
+      au->ru = TALER_EXCHANGEDB_update_rules (
+        db_plugin,
+        &attribute_key,
+        &au->h_normalized_payto,
+        &evaluate_rules,
+        au);
+      if (NULL != au->ru)
+        return;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "KYC rule evaluation failed hard: %s (%d, %s)\n",
+                TALER_ErrorCode_get_hint (rur->ec),
+                (int) rur->ec,
+                rur->hint);
+    cleanup_and_next (au);
+    return;
+  }
+
+  /* Note that here we are in an open transaction that fetched
+     (or updated) the current set of legitimization rules. So
+     we must properly commit at the end! */
+  {
+    struct TALER_Amount next_threshold;
+
+    qs = TALER_KYCLOGIC_kyc_test_required (
+      TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE,
+      lrs,
+      &return_relevant_amounts,
+      (void *) au,
+      &requirement,
+      &next_threshold);
+  }
+  if (qs < 0)
+  {
+    TALER_KYCLOGIC_rules_free (lrs);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cleanup_and_next (au);
+    return;
+  }
+  if (NULL == requirement)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC check clear, proceeding with wire transfer\n");
+    TALER_KYCLOGIC_rules_free (lrs);
+    trigger_wire_transfer (au);
+    return;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC requirement for %s is %s\n",
+              TALER_amount2s (&au->total_amount),
+              TALER_KYCLOGIC_rule2s (requirement));
+  {
+    json_t *jrule;
+
+    jrule = TALER_KYCLOGIC_rule_to_measures (requirement);
+    qs = db_plugin->trigger_kyc_rule_for_account (
+      db_plugin->cls,
+      au->payto_uri,
+      &au->h_normalized_payto,
+      NULL,
+      &au->merchant_pub,
+      jrule,
+      TALER_KYCLOGIC_rule2priority (requirement),
+      &au->requirement_row,
+      &au->bad_kyc_auth);
+    json_decref (jrule);
+  }
+  if (qs < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to persist KYC requirement `%s' in DB!\n",
+                TALER_KYCLOGIC_rule2s (requirement));
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      global_ret = EXIT_FAILURE;
+    cleanup_and_next (au);
+    return;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Legitimization process %llu started\n",
+              (unsigned long long) au->requirement_row);
+  TALER_KYCLOGIC_rules_free (lrs);
+  /* First commit, turns the rollback in cleanup into a NOP! */
+  commit_or_warn ();
+  cleanup_and_next (au);
 }
 
 
@@ -633,385 +939,9 @@ commit_to_transient (struct AggregationUnit *au)
     fail_aggregation (au);
     return;
   }
+  au->have_transient = true;
   /* commit */
   commit_aggregation (au);
-}
-
-
-/**
- * Trigger the wire transfer for the @a au
- * and delete the record of the aggregation.
- *
- * @param[in] au information about the aggregation
- */
-static void
-trigger_wire_transfer (struct AggregationUnit *au)
-{
-  enum GNUNET_DB_QueryStatus qs;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Preparing wire transfer of %s to %s\n",
-              TALER_amount2s (&au->final_amount),
-              TALER_B2S (&au->merchant_pub));
-  {
-    void *buf;
-    size_t buf_size;
-
-    TALER_BANK_prepare_transfer (au->payto_uri,
-                                 &au->final_amount,
-                                 exchange_base_url,
-                                 &au->wtid,
-                                 &buf,
-                                 &buf_size);
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Storing %u bytes of wire prepare data\n",
-                (unsigned int) buf_size);
-    /* Commit our intention to execute the wire transfer! */
-    qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
-                                              au->wa->method,
-                                              buf,
-                                              buf_size);
-    GNUNET_free (buf);
-  }
-  /* Commit the WTID data to 'wire_out'  */
-  if (qs >= 0)
-    qs = db_plugin->store_wire_transfer_out (
-      db_plugin->cls,
-      au->execution_time,
-      &au->wtid,
-      &au->h_full_payto,
-      au->wa->section_name,
-      &au->final_amount);
-
-  if ( (qs >= 0) &&
-       au->have_transient)
-    qs = db_plugin->delete_aggregation_transient (
-      db_plugin->cls,
-      &au->h_full_payto,
-      &au->wtid);
-
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_log (
-      GNUNET_ERROR_TYPE_INFO,
-      "Serialization issue during aggregation; trying again later!\n");
-    rollback_aggregation (au);
-    return;
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    fail_aggregation (au);
-    return;
-  default:
-    break;
-  }
-  {
-    struct TALER_CoinDepositEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
-      .merchant_pub = au->merchant_pub
-    };
-
-    db_plugin->event_notify (db_plugin->cls,
-                             &rep.header,
-                             NULL,
-                             0);
-  }
-  commit_aggregation (au);
-}
-
-
-/**
- * Function called with legitimization rule set. Check
- * how that affects the aggregation process.
- *
- * @param[in] au active aggregation
- * @param[in] lrs legitimization rule set to evaluate, NULL for defaults
- */
-static void
-evaluate_lrs (
-  struct AggregationUnit *au,
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs);
-
-
-/**
- * Function called after AML program was run.  Decides how to
- * continue with the aggregation based on the AML result.
- *
- * @param cls a `struct AggregationUnit *`
- * @param apr result of the AML program.
- */
-static void
-aml_result_callback (
-  void *cls,
-  const struct TALER_KYCLOGIC_AmlProgramResult *apr);
-
-
-/**
- * Run the given measure @a m of the @a lrs for the
- * given aggregation process @a au.
- *
- * @param lrs a legitimization rule set containing @a m
- * @param m measure to run
- * @param au aggregation unit we are processing
- */
-static void
-run_measure (
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
-  const struct TALER_KYCLOGIC_Measure *m,
-  struct AggregationUnit *au)
-{
-  if ( (NULL == m->check_name) ||
-       (0 ==
-        strcasecmp ("skip",
-                    m->check_name)) )
-  {
-    struct TALER_EXCHANGEDB_HistoryBuilderContext hbc = {
-      .account = &au->h_normalized_payto,
-      .db_plugin = db_plugin,
-      .attribute_key = &attribute_key
-    };
-
-    au->lrs = lrs;
-    au->amlh = TALER_KYCLOGIC_run_aml_program3 (
-      m,
-      NULL /* no attributes */,
-      &TALER_EXCHANGEDB_current_rule_builder,
-      &hbc,
-      &TALER_EXCHANGEDB_aml_history_builder,
-      &hbc,
-      &TALER_EXCHANGEDB_kyc_history_builder,
-      &hbc,
-      &aml_result_callback,
-      au);
-    return;
-  }
-  /* User MUST pass interactive check (odd): we cannot continue here */
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-              "Fallback measure %s involves check %s, blocking aggregation\n",
-              m->measure_name,
-              m->check_name);
-  {
-    /* persist measure */
-    bool unknown_account;
-    struct GNUNET_TIME_Timestamp last_date;
-    json_t *succ_jmeasures = TALER_KYCLOGIC_get_jmeasures (
-      lrs,
-      m->measure_name);
-    enum GNUNET_DB_QueryStatus qs;
-
-    qs = db_plugin->insert_successor_measure (
-      db_plugin->cls,
-      &au->h_normalized_payto,
-      GNUNET_TIME_timestamp_get (),
-      m->measure_name,
-      succ_jmeasures,
-      &unknown_account,
-      &last_date);
-    json_decref (succ_jmeasures);
-    switch (qs)
-    {
-    case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_log (
-        GNUNET_ERROR_TYPE_INFO,
-        "Serialization issue during aggregation; trying again later!\n");
-      rollback_aggregation (au);
-      return;
-    case GNUNET_DB_STATUS_HARD_ERROR:
-      GNUNET_break (0);
-      fail_aggregation (au);
-      return;
-    default:
-      break;
-    }
-  }
-  TALER_KYCLOGIC_rules_free (lrs);
-  commit_to_transient (au);
-}
-
-
-/**
- * Function called after AML program was run.
- *
- * @param cls closure
- * @param apr result of the AML program.
- */
-static void
-aml_result_callback (
-  void *cls,
-  const struct TALER_KYCLOGIC_AmlProgramResult *apr)
-{
-  struct AggregationUnit *au = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  au->amlh = NULL;
-  /* Update database update based on result */
-  qs = TALER_EXCHANGEDB_persist_aml_program_result (
-    db_plugin,
-    0,   // FIXME: process row - #9303 may give us something?
-    NULL /* no provider */,
-    NULL /* no user ID */,
-    NULL /* no legi ID */,
-    NULL /* no attributes */,
-    &attribute_key,
-    0 /* no birthday */,
-    GNUNET_TIME_UNIT_FOREVER_ABS,
-    &au->h_normalized_payto,
-    apr);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    fail_aggregation (au);
-    return;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    /* Bad, couldn't persist AML result. Try again... */
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Serialization issue persisting result of AML program. Restarting.\n");
-    rollback_aggregation (au);
-    return;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* Strange, but let's just continue */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    /* normal case */
-    break;
-  }
-  switch (apr->status)
-  {
-  case TALER_KYCLOGIC_AMLR_SUCCESS:
-    {
-      struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
-
-      TALER_KYCLOGIC_rules_free (au->lrs);
-      au->lrs = NULL;
-      lrs = TALER_KYCLOGIC_rules_parse (apr->details.success.new_rules);
-      GNUNET_break (NULL != lrs);
-      /* Fall back to default rules on parse error! */
-      evaluate_lrs (au,
-                    lrs);
-      return;
-    }
-  case TALER_KYCLOGIC_AMLR_FAILURE:
-    {
-      struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = au->lrs;
-      const char *fmn = apr->details.failure.fallback_measure;
-      const struct TALER_KYCLOGIC_Measure *m;
-
-      au->lrs = NULL;
-      m = TALER_KYCLOGIC_get_measure (lrs,
-                                      fmn);
-      if (NULL == m)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Fallback measure `%s' does not exist (anymore?).\n",
-                    fmn);
-        TALER_KYCLOGIC_rules_free (lrs);
-        trigger_wire_transfer (au);
-        return;
-      }
-      run_measure (lrs,
-                   m,
-                   au);
-      return;
-    }
-  }
-  /* This should be impossible */
-  GNUNET_assert (0);
-}
-
-
-/**
- * Function called with legitimization rule set. Check
- * how that affects the aggregation process.
- *
- * @param[in] au active aggregation
- * @param[in] lrs legitimization rule set to evaluate, NULL for defaults
- */
-static void
-evaluate_lrs (
-  struct AggregationUnit *au,
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs)
-{
-  enum GNUNET_DB_QueryStatus qs;
-  const struct TALER_KYCLOGIC_KycRule *requirement;
-
-  if ( (NULL != lrs) &&
-       GNUNET_TIME_absolute_is_past
-         (TALER_KYCLOGIC_rules_get_expiration (lrs).abs_time) )
-  {
-    const struct TALER_KYCLOGIC_Measure *m;
-
-    m = TALER_KYCLOGIC_rules_get_successor (lrs);
-    if (NULL != m)
-    {
-      run_measure (lrs,
-                   m,
-                   au);
-      return;
-    }
-    /* fall back to default rules */
-    TALER_KYCLOGIC_rules_free (lrs);
-    lrs = NULL;
-  }
-
-  {
-    struct TALER_Amount next_threshold;
-
-    qs = TALER_KYCLOGIC_kyc_test_required (
-      TALER_KYCLOGIC_KYC_TRIGGER_AGGREGATE,
-      lrs,
-      &return_relevant_amounts,
-      (void *) au,
-      &requirement,
-      &next_threshold);
-  }
-  if (qs < 0)
-  {
-    TALER_KYCLOGIC_rules_free (lrs);
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    rollback_aggregation (au);
-    return;
-  }
-  if (NULL == requirement)
-  {
-    TALER_KYCLOGIC_rules_free (lrs);
-    trigger_wire_transfer (au);
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC requirement for %s is %s\n",
-              TALER_amount2s (&au->total_amount),
-              TALER_KYCLOGIC_rule2s (requirement));
-  {
-    json_t *jrule;
-
-    jrule = TALER_KYCLOGIC_rule_to_measures (requirement);
-    qs = db_plugin->trigger_kyc_rule_for_account (
-      db_plugin->cls,
-      au->payto_uri,
-      &au->h_normalized_payto,
-      NULL,
-      &au->merchant_pub,
-      jrule,
-      TALER_KYCLOGIC_rule2priority (requirement),
-      &au->requirement_row,
-      &au->bad_kyc_auth);
-    json_decref (jrule);
-  }
-  if (qs < 0)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to persist KYC requirement `%s' in DB!\n",
-                TALER_KYCLOGIC_rule2s (requirement));
-    rollback_aggregation (au);
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Legitimization process %llu started\n",
-              (unsigned long long) au->requirement_row);
-  TALER_KYCLOGIC_rules_free (lrs);
-  commit_to_transient (au);
 }
 
 
@@ -1023,9 +953,6 @@ evaluate_lrs (
 static void
 check_legitimization_satisfied (struct AggregationUnit *au)
 {
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
-  enum GNUNET_DB_QueryStatus qs;
-
   if (kyc_off)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1033,28 +960,10 @@ check_legitimization_satisfied (struct AggregationUnit *au)
     trigger_wire_transfer (au);
     return;
   }
-  {
-    json_t *jrules;
-
-    qs = db_plugin->get_kyc_rules2 (db_plugin->cls,
-                                    &au->h_normalized_payto,
-                                    &jrules);
-    if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      rollback_aggregation (au);
-      return;
-    }
-    if (qs > 0)
-    {
-      lrs = TALER_KYCLOGIC_rules_parse (jrules);
-      GNUNET_break (NULL != lrs);
-      /* Fall back to default rules on parse error! */
-      json_decref (jrules);
-    }
-  }
-  evaluate_lrs (au,
-                lrs);
+  /* get legi rules *after* committing, as the legi check
+     should run in a separate transaction! */
+  au->legi_check = true;
+  commit_to_transient (au);
 }
 
 
@@ -1230,13 +1139,11 @@ run_aggregation (void *cls)
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
-    cleanup_au (au);
-    db_plugin->rollback (db_plugin->cls);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to begin deposit iteration!\n");
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    release_shard (s);
+    cleanup_and_next (au);
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     cleanup_au (au);
@@ -1245,46 +1152,17 @@ run_aggregation (void *cls)
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     {
-      uint64_t counter = s->work_counter;
       struct GNUNET_TIME_Relative duration
         = GNUNET_TIME_absolute_get_duration (s->start_time.abs_time);
 
-      cleanup_au (au);
-      db_plugin->rollback (db_plugin->cls);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Completed shard [%u,%u] after %s with %llu deposits\n",
                   (unsigned int) s->shard_start,
                   (unsigned int) s->shard_end,
                   GNUNET_TIME_relative2s (duration,
                                           true),
-                  (unsigned long long) counter);
-      release_shard (s);
-      if ( (GNUNET_YES == test_mode) &&
-           (0 == counter) )
-      {
-        /* in test mode, shutdown after a shard is done with 0 work */
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "No work done and in test mode, shutting down\n");
-        GNUNET_SCHEDULER_shutdown ();
-        return;
-      }
-      GNUNET_assert (NULL == task);
-      /* If we ended up doing zero work, sleep a bit */
-      if (0 == counter)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Going to sleep for %s before trying again\n",
-                    GNUNET_TIME_relative2s (aggregator_idle_sleep_interval,
-                                            true));
-        task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
-                                             &drain_kyc_alerts,
-                                             NULL);
-      }
-      else
-      {
-        task = GNUNET_SCHEDULER_add_now (&drain_kyc_alerts,
-                                         NULL);
-      }
+                  (unsigned long long) s->work_counter);
+      cleanup_and_next (au);
       return;
     }
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:

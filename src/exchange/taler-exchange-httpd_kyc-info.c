@@ -648,11 +648,12 @@ TEH_handler_kyc_info (
         TALER_KYCLOGIC_rules_free (lrs);
         lrs = NULL;
       }
-      else if (0 == strcmp (successor_measure->prog_name, "SKIP"))
+      else if (0 == strcmp (successor_measure->prog_name,
+                            "SKIP"))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Running successor measure %s.\n", successor_measure->
-                    measure_name);
+                    "Running successor measure %s.\n",
+                    successor_measure->measure_name);
         /* FIXME(fdold, 2024-01-08): Consider limiting how
            often we try this, in case we run into expired rulesets
            repeatedly. */

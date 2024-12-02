@@ -501,6 +501,7 @@ history_run (void *cls,
   create_coin
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 cref);
+  GNUNET_free (cref);
   if (NULL == create_coin)
   {
     GNUNET_break (0);

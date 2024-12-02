@@ -309,7 +309,7 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   void *callback_cls;
 
   /* The Handler for the actual call to the exchange */
-  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *procotol_handle;
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *protocol_handle;
 };
 
 /**
@@ -469,6 +469,7 @@ handle_reserve_age_withdraw_blinded_finished (
         awbr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      break;
     }
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
@@ -695,6 +696,7 @@ copy_results (
     },
   };
 
+  awh->protocol_handle = NULL;
   for (size_t n = 0; n< awh->num_coins; n++)
   {
     details[n] = awh->coin_data[n].coin_candidates[k].details;
@@ -704,6 +706,7 @@ copy_results (
   awh->callback (awh->callback_cls,
                  &resp);
   awh->callback = NULL;
+  TALER_EXCHANGE_age_withdraw_cancel (awh);
 }
 
 
@@ -727,7 +730,7 @@ call_age_withdraw_blinded (
         awh->coin_data[n].planchet_details[k];
   }
 
-  awh->procotol_handle =
+  awh->protocol_handle =
     TALER_EXCHANGE_age_withdraw_blinded (
       awh->curl_ctx,
       awh->keys,
@@ -736,7 +739,7 @@ call_age_withdraw_blinded (
       awh->max_age,
       awh->num_coins,
       blinded_input,
-      copy_results,
+      &copy_results,
       awh);
 }
 
@@ -1064,8 +1067,8 @@ TALER_EXCHANGE_age_withdraw_cancel (
   }
   GNUNET_free (awh->coin_data);
   TALER_EXCHANGE_keys_decref (awh->keys);
-  TALER_EXCHANGE_age_withdraw_blinded_cancel (awh->procotol_handle);
-  awh->procotol_handle = NULL;
+  TALER_EXCHANGE_age_withdraw_blinded_cancel (awh->protocol_handle);
+  awh->protocol_handle = NULL;
   GNUNET_free (awh);
 }
 

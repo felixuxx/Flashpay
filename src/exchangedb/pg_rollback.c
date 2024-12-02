@@ -41,7 +41,7 @@ TEH_PG_rollback (void *cls)
                 "Skipping rollback, no transaction active\n");
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Rolling back transaction\n");
   GNUNET_break (GNUNET_OK ==
                 GNUNET_PQ_exec_statements (pg->conn,
