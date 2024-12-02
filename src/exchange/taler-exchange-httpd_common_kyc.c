@@ -1338,6 +1338,8 @@ legitimization_check_run (
 
   /* FIXME(fdold, 2024-11-08): We are doing the same logic
      here and in kyc-info, abstract it out? */
+  /* FIXME(cg-2024-12-02): Also some duplication with
+     code around run_measure in taler-exchange-aggregator! */
 
   /* Check if ruleset is expired and we need to run the successor measure */
   if (NULL != lrs)

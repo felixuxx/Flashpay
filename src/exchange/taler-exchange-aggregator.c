@@ -791,6 +791,40 @@ run_measure (
               "Fallback measure %s involves check %s, blocking aggregation\n",
               m->measure_name,
               m->check_name);
+  {
+    /* persist measure */
+    bool unknown_account;
+    struct GNUNET_TIME_Timestamp last_date;
+    json_t *succ_jmeasures = TALER_KYCLOGIC_get_jmeasures (
+      lrs,
+      m->measure_name);
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = db_plugin->insert_successor_measure (
+      db_plugin->cls,
+      &au->h_normalized_payto,
+      GNUNET_TIME_timestamp_get (),
+      m->measure_name,
+      succ_jmeasures,
+      &unknown_account,
+      &last_date);
+    json_decref (succ_jmeasures);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_log (
+        GNUNET_ERROR_TYPE_INFO,
+        "Serialization issue during aggregation; trying again later!\n");
+      rollback_aggregation (au);
+      return;
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      fail_aggregation (au);
+      return;
+    default:
+      break;
+    }
+  }
   TALER_KYCLOGIC_rules_free (lrs);
   commit_to_transient (au);
 }
