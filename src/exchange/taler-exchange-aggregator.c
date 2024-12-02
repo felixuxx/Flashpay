@@ -796,15 +796,53 @@ run_measure (
 }
 
 
+/**
+ * Function called after AML program was run.
+ *
+ * @param cls closure
+ * @param apr result of the AML program.
+ */
 static void
 aml_result_callback (
   void *cls,
   const struct TALER_KYCLOGIC_AmlProgramResult *apr)
 {
   struct AggregationUnit *au = cls;
+  enum GNUNET_DB_QueryStatus qs;
 
   au->amlh = NULL;
-  // FIXME: database update based on result!
+  /* Update database update based on result */
+  qs = TALER_EXCHANGEDB_persist_aml_program_result (
+    db_plugin,
+    0,   // FIXME: process row - #9303 may give us something?
+    NULL /* no provider */,
+    NULL /* no user ID */,
+    NULL /* no legi ID */,
+    NULL /* no attributes */,
+    &attribute_key,
+    0 /* no birthday */,
+    GNUNET_TIME_UNIT_FOREVER_ABS,
+    &au->h_normalized_payto,
+    apr);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    fail_aggregation (au);
+    return;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    /* Bad, couldn't persist AML result. Try again... */
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization issue persisting result of AML program. Restarting.\n");
+    rollback_aggregation (au);
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* Strange, but let's just continue */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    /* normal case */
+    break;
+  }
   switch (apr->status)
   {
   case TALER_KYCLOGIC_AMLR_SUCCESS:
