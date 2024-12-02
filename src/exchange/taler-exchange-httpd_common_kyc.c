@@ -326,7 +326,7 @@ TEH_kyc_run_measure_for_attributes (
   TEH_KycMeasureRunContextCallback cb,
   void *cb_cls)
 {
-  /* FIXME(fdold, 2024-11-07):
+  /* FIXME(fdold, 2024-11-07): - #9303
      Consider storing the attributes *before* we run the AMP.
      Also, we're only passing *new* attributes here, but the AMP
      should receive *all* attributes. */
