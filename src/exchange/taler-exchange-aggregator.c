@@ -788,7 +788,7 @@ run_measure (
   }
   /* User MUST pass interactive check (odd): we cannot continue here */
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-              "Fallback measure %s involves check %s, blocking aggreation\n",
+              "Fallback measure %s involves check %s, blocking aggregation\n",
               m->measure_name,
               m->check_name);
   TALER_KYCLOGIC_rules_free (lrs);
