@@ -2037,7 +2037,13 @@ add_check (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "FALLBACK",
                                              &fallback))
   {
-    /* FIXME: Allow NULL to fall back to default rules? */
+    /* We do *not* allow NULL to fall back to default rules because fallbacks
+       are used when there is actually a serious error and thus some action
+       (usually an investigation) is always in order, and that's basically
+       never the default. And as fallbacks should be rare, we really insist on
+       them at least being explicitly configured. Otherwise these errors may
+       go undetected simply because someone forgot to configure a fallback and
+       then nothing happens. */
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "FALLBACK");
