@@ -24,7 +24,7 @@ purge)
     dpkg-statoverride --remove \
        /etc/taler-exchange/secrets/exchange-accountcredentials-1.secret.conf || true
     dpkg-statoverride --remove \
-                      /etc/taler-exchange/secrets/exchange-db.secret.conf || true
+        /etc/taler-exchange/secrets/exchange-db.secret.conf || true
     deluser --quiet --system ${_CSECUSERNAME} || true
     deluser --quiet --system ${_RSECUSERNAME} || true
     deluser --quiet --system ${_ESECUSERNAME} || true

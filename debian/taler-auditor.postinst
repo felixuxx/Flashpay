@@ -27,7 +27,7 @@ configure)
   fi
 
   mark_secret /etc/taler-auditor/secrets/auditor-db.secret.conf
-  mark_secret /etc/taler-exchange/secrets/exchange-accountcredentials-1.secret.conf
+  mark_secret /etc/taler-auditor/secrets/exchange-accountcredentials-1.secret.conf
 
   ;;
 

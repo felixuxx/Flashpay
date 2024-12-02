@@ -83,7 +83,7 @@ if ! sudo -i -u postgres createuser "$DBUSER" 2>/dev/null; then
   echo "Database user '$DBUSER' already existed. Continuing anyway." 1>&2
 fi
 
-DBPATH=$(taler-config \
+DBPATH=$(taler-auditor-config \
   -c "$CFGFILE" \
   -s auditordb-postgres \
   -o CONFIG)
