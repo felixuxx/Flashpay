@@ -992,9 +992,6 @@ check_legitimization_satisfied (struct AggregationUnit *au)
  * (or rollback) depending on our return value.
  *
  * @param[in,out] au aggregation unit to work on
- * @return #GNUNET_OK if aggregation succeeded,
- *         #GNUNET_NO to rollback and try again (serialization issue)
- *         #GNUNET_SYSERR hard error, terminate aggregator process
  */
 static void
 do_aggregate (struct AggregationUnit *au)

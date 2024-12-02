@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/taler-exchange-secmod-cs.h
+ * @file util/secmod_cs.h
  * @brief IPC messages for the CS crypto helper.
  * @author Christian Grothoff
  * @author Gian Demarmels

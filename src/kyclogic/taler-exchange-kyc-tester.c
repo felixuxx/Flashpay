@@ -719,6 +719,7 @@ handler_kyc_webhook_post (
  *
  * @param cls closure with the `struct ProofRequestState`
  * @param status KYC status
+ * @param provider_name name of the KYC provider
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid

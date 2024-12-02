@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/taler-exchange-secmod-eddsa.h
+ * @file util/secmod_eddsa.h
  * @brief IPC messages for the EDDSA crypto helper.
  * @author Christian Grothoff
  */

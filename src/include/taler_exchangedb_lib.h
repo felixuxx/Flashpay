@@ -268,6 +268,9 @@ TALER_EXCHANGEDB_current_rule_builder (void *cls);
  * @param provider_name name of the provider that provided the attributes
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param attributes set of KYC attributes, possibly NULL
+ * @param attribute_key key to use to encrypt the KYC attributes
+ * @param birthday birthday of the user, 0 for unknown
  * @param expiration until when is the KYC check valid
  * @param account_id hash of account the result is about
  * @param apr AML program result to persist

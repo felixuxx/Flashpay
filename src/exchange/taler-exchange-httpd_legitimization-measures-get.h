@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_legitimization-measures.h
+ * @file taler-exchange-httpd_legitimization-measures-get.h
  * @brief Handle /aml/$OFFICER_PUB/legitimizations requests
  * @author Christian Grothoff
  */

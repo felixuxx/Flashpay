@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/taler-exchange-secmod-rsa.h
+ * @file util/secmod_rsa.h
  * @brief IPC messages for the RSA crypto helper.
  * @author Christian Grothoff
  */
