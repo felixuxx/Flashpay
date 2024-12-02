@@ -253,30 +253,6 @@ function audit_only () {
 }
 
 
-# Cleanup to run after the auditor
-function post_audit () {
-    cleanup
-    echo -n "TeXing ."
-    taler-helper-auditor-render.py \
-        test-audit-aggregation.json \
-        test-audit-coins.json \
-        test-audit-deposits.json \
-        test-audit-reserves.json \
-        test-audit-wire.json \
-        < ../../contrib/auditor-report.tex.j2 \
-        > test-report.tex \
-        || exit_fail "Renderer failed"
-    echo -n "."
-    timeout 10 pdflatex test-report.tex \
-            >/dev/null \
-        || exit_fail "pdflatex failed"
-    echo -n "."
-    timeout 10 pdflatex test-report.tex \
-            >/dev/null
-    echo " DONE"
-}
-
-
 # Run audit process on current database, including report
 # generation.  Pass "aggregator" as $1 to run
 # $ taler-exchange-aggregator
@@ -284,7 +260,8 @@ function post_audit () {
 function run_audit () {
     pre_audit "${1:-no}"
     audit_only
-    post_audit
+    cleanup
+    echo " DONE"
 }
 
 
@@ -682,8 +659,6 @@ libeufin-bank --help \
              2> /dev/null \
              </dev/null \
     || exit_skip "libeufin-bank required"
-echo "Testing for pdflatex"
-which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h \
                  >/dev/null \

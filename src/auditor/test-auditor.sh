@@ -2179,8 +2179,6 @@ faketime -h > /dev/null || exit_skip "faketime required"
 # NOTE: really check for all three libeufin commands?
 echo "Testing for libeufin"
 libeufin-bank --help >/dev/null 2> /dev/null </dev/null || exit_skip "libeufin required"
-echo "Testing for pdflatex"
-which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
 

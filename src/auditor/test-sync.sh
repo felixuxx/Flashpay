@@ -101,8 +101,6 @@ echo "Testing for faketime"
 faketime -h > /dev/null || exit_skip "faketime required"
 echo "Testing for libeufin-bank"
 libeufin-bank --help >/dev/null </dev/null 2> /dev/null || exit_skip "libeufin-bank required"
-echo "Testing for pdflatex"
-which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
 
