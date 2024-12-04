@@ -196,9 +196,14 @@ age_withdraw_cb (
     for (size_t n = 0; n < aws->num_coins; n++)
     {
       aws->coin_outputs[n].details = response->details.ok.coin_details[n];
+      /* FIXME: API flaw: arguments of this _copy are swapped with
+         the argument order for the other _copy() APIs... */
       TALER_age_commitment_proof_deep_copy (
         &response->details.ok.coin_details[n].age_commitment_proof,
         &aws->coin_outputs[n].details.age_commitment_proof);
+      TALER_denom_ewv_copy (
+        &aws->coin_outputs[n].details.alg_values,
+        &response->details.ok.coin_details[n].alg_values);
     }
     aws->blinded_coin_hs = response->details.ok.blinded_coin_hs;
     break;
@@ -368,7 +373,10 @@ age_withdraw_cleanup (
         in->denom_pub = NULL;
       }
       if (NULL != out)
+      {
         TALER_age_commitment_proof_free (&out->details.age_commitment_proof);
+        TALER_denom_ewv_free (&out->details.alg_values);
+      }
     }
     GNUNET_free (aws->coin_inputs);
   }
@@ -464,8 +472,8 @@ TALER_TESTING_cmd_age_withdraw (const char *label,
   aws->reserve_reference = reserve_reference;
   aws->expected_response_code = expected_response_code;
   aws->mask = TALER_extensions_get_age_restriction_mask ();
-  aws->max_age = TALER_get_lowest_age (&aws->mask, max_age);
-
+  aws->max_age = TALER_get_lowest_age (&aws->mask,
+                                       max_age);
   cnt = 1;
   va_start (ap, amount);
   while (NULL != (va_arg (ap, const char *)))
@@ -554,7 +562,8 @@ struct AgeWithdrawRevealState
 
 };
 
-/*
+
+/**
  * Callback for the reveal response
  *
  * @param cls Closure of type `struct AgeWithdrawRevealState`
