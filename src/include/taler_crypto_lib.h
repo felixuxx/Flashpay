@@ -6258,6 +6258,8 @@ TALER_age_commitment_proof_duplicate (
  * @param[in] acp The original age commitment proof
  * @param[out] nacp The struct to copy the data into, with freshly allocated and copied keys.
  */
+/* FIXME: API flaw: arguments of this _copy are swapped with
+   the argument order for the other _copy() APIs... */
 void
 TALER_age_commitment_proof_deep_copy (
   const struct TALER_AgeCommitmentProof *acp,

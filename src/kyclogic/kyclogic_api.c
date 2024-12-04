@@ -1015,7 +1015,8 @@ TALER_KYCLOGIC_rule_get_instant_measure (
     const char *measure_name = r->next_measures[i];
     const struct TALER_KYCLOGIC_Measure *ms;
 
-    if (0 == strcasecmp (measure_name, KYC_MEASURE_IMPOSSIBLE))
+    if (0 == strcasecmp (measure_name,
+                         KYC_MEASURE_IMPOSSIBLE))
     {
       /* If any of the measures if verboten, we do not even
       consider execution of the instant measure. */

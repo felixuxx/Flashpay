@@ -453,6 +453,13 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
     default:
       break;
     }
+    if (unknown_account)
+    {
+      fail_update (ru,
+                   TALER_EC_EXCHANGE_GENERIC_BANK_ACCOUNT_UNKNOWN,
+                   NULL);
+      return;
+    }
   }
   /* The rules remain these rules until the user passes the check */
   finish_update (ru);
@@ -485,6 +492,8 @@ update_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 static void
 check_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 {
+  const struct TALER_KYCLOGIC_Measure *m;
+
   ru->depth++;
   if (ru->depth > MAX_DEPTH)
   {

@@ -849,6 +849,12 @@ struct TEH_LegitimizationCheckHandle
   struct TEH_KycMeasureRunContext *kat;
 
   /**
+   * Handle for the task that gets us the latest
+   * applicable rules.
+   */
+  struct TALER_EXCHANGEDB_RuleUpdater *ru;
+
+  /**
    * Payto-URI of the account.
    */
   struct TALER_FullPayto payto_uri;
@@ -921,6 +927,15 @@ struct TEH_LegitimizationCheckHandle
    * Do we have @e merchant_pub?
    */
   bool have_merchant_pub;
+
+  /**
+   * Set to true if the merchant public key does not
+   * match the public key we have on file for this
+   * target account *and* a rule actually triggered
+   * for this operation (and thus a new KYC AUTH is
+   * required).
+   */
+  bool bad_kyc_auth;
 
 };
 
@@ -1208,6 +1223,7 @@ amount_iterator_wrapper_cb (
        so we indeed have a problem! */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC: Mismatch between merchant_pub and target_pub is relevant!\n");
+    lch->bad_kyc_auth = true;
   }
   return lch->ai (lch->ai_cls,
                   limit,
@@ -1216,14 +1232,209 @@ amount_iterator_wrapper_cb (
 }
 
 
+/**
+ * Function called with the current rule set.
+ *
+ * @param cls a `struct TEH_LegitimizationCheckHandle *`
+ * @param legitimization_outcome_last_row row the rule set is based on
+ * @param rur includes legitimziation rule set that applies to the account
+ *   (owned by callee, callee must free the lrs!)
+ */
+static void
+current_rules_cb (
+  void *cls,
+  struct TALER_EXCHANGEDB_RuleUpdaterResult *rur)
+{
+  struct TEH_LegitimizationCheckHandle *lch = cls;
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = rur->lrs;
+  struct GNUNET_AsyncScopeSave old_scope;
+  enum GNUNET_DB_QueryStatus qs;
+  const struct TALER_KYCLOGIC_KycRule *requirement;
+  const struct TALER_KYCLOGIC_Measure *instant_ms;
+
+  GNUNET_async_scope_enter (&lch->scope,
+                            &old_scope);
+  if (TALER_EC_NONE != rur->ec)
+  {
+    /* rollback should not be needed, but better be safe */
+    TEH_plugin->rollback (TEH_plugin->cls);
+    legi_fail (lch,
+               rur->ec,
+               rur->hint);
+    goto cleanup;
+  }
+
+  qs = TALER_KYCLOGIC_kyc_test_required (
+    lch->et,
+    lrs,
+    &amount_iterator_wrapper_cb,
+    lch,
+    &requirement,
+    &lch->lcr.next_threshold);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
+    legi_fail (lch,
+               TALER_EC_GENERIC_DB_FETCH_FAILED,
+               "kyc_test_required");
+    goto cleanup;
+  }
+  // FIXME: check that this change is a valid correction,
+  // used to be just lch->lcr.bad_key_auth, but that
+  // would be independent of there being an applicable KYC rule!
+  if (lch->bad_kyc_auth)
+  {
+    qs = TEH_plugin->commit (TEH_plugin->cls);
+    if (0 > qs)
+    {
+      legi_fail (lch,
+                 TALER_EC_GENERIC_DB_COMMIT_FAILED,
+                 "kyc_test_required");
+      goto cleanup;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC auth required\n");
+    fail_kyc_auth (lch);
+    goto cleanup;
+  }
+
+  if (NULL == requirement)
+  {
+    qs = TEH_plugin->commit (TEH_plugin->cls);
+    if (0 > qs)
+    {
+      legi_fail (lch,
+                 TALER_EC_GENERIC_DB_COMMIT_FAILED,
+                 "kyc_test_required");
+      goto cleanup;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC check passed\n");
+    lch->lcr.kyc.ok = true;
+    lch->lcr.expiration_date
+      = TALER_KYCLOGIC_rules_get_expiration (lrs);
+    memset (&lch->lcr.next_threshold,
+            0,
+            sizeof (struct TALER_Amount));
+    /* return success! */
+    lch->async_task
+      = GNUNET_SCHEDULER_add_now (
+          &async_return_legi_result,
+          lch);
+    goto cleanup;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC requirement is %s\n",
+              TALER_KYCLOGIC_rule2s (requirement));
+  // FIXME: this is again logic that should probably be
+  // shared!
+  instant_ms
+    = TALER_KYCLOGIC_rule_get_instant_measure (
+        requirement);
+  if (NULL != instant_ms)
+  {
+    /* We have an 'instant' measure which means we must run the
+       AML program immediately instead of waiting for the account owner
+       to select some measure and contribute their KYC data. */
+
+    lch->kat = TEH_kyc_run_measure_directly (
+      &lch->scope,
+      instant_ms,
+      &lch->h_payto,
+      &legi_check_aml_trigger_cb,
+      lch
+      );
+    if (NULL == lch->kat)
+    {
+      GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
+      legi_fail (lch,
+                 TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
+                 NULL);
+    }
+    qs = TEH_plugin->commit (TEH_plugin->cls);
+    if (0 > qs)
+    {
+      legi_fail (lch,
+                 TALER_EC_GENERIC_DB_COMMIT_FAILED,
+                 "kyc_test_required");
+      goto cleanup;
+    }
+    goto cleanup;
+  }
+
+  /* No instant measure, store all measures in the database and
+     wait for the user to select one (via /kyc-info) and to then
+     provide the data. */
+  lch->lcr.kyc.ok = false;
+  {
+    json_t *jmeasures;
+
+    jmeasures = TALER_KYCLOGIC_rule_to_measures (requirement);
+    qs = TEH_plugin->trigger_kyc_rule_for_account (
+      TEH_plugin->cls,
+      lch->payto_uri,
+      &lch->h_payto,
+      lch->have_account_pub ? &lch->account_pub : NULL,
+      lch->have_merchant_pub ? &lch->merchant_pub : NULL,
+      jmeasures,
+      TALER_KYCLOGIC_rule2priority (requirement),
+      &lch->lcr.kyc.requirement_row,
+      &lch->lcr.bad_kyc_auth);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "trigger_kyc_rule_for_account-1 on %d/%d returned %d/%llu/%d\n",
+                lch->have_account_pub,
+                lch->have_merchant_pub,
+                (int) qs,
+                (unsigned long long) lch->lcr.kyc.requirement_row,
+                lch->lcr.bad_kyc_auth);
+    json_decref (jmeasures);
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
+    legi_fail (lch,
+               TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+               "trigger_kyc_rule_for_account");
+    goto cleanup;
+  }
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
+    legi_fail (lch,
+               TALER_EC_GENERIC_DB_STORE_FAILED,
+               "trigger_kyc_rule_for_account");
+    goto cleanup;
+  }
+  qs = TEH_plugin->commit (TEH_plugin->cls);
+  if (0 > qs)
+  {
+    legi_fail (lch,
+               TALER_EC_GENERIC_DB_COMMIT_FAILED,
+               "kyc_test_required");
+    goto cleanup;
+  }
+  /* return success! */
+  lch->async_task
+    = GNUNET_SCHEDULER_add_now (
+        &async_return_legi_result,
+        lch);
+cleanup:
+  TALER_KYCLOGIC_rules_free (lrs);
+  GNUNET_async_scope_restore (&old_scope);
+}
+
+
 static void
 legitimization_check_run (
   struct TEH_LegitimizationCheckHandle *lch)
 {
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
-  const struct TALER_KYCLOGIC_KycRule *requirement;
   enum GNUNET_DB_QueryStatus qs;
-  const struct TALER_KYCLOGIC_Measure *instant_ms;
   struct GNUNET_AsyncScopeSave old_scope;
 
   if (! TEH_enable_kyc)
@@ -1336,214 +1547,26 @@ legitimization_check_run (
     }
   }
 
+  if (NULL != lrs)
+  {
+    lch->ru = TALER_EXCHANGEDB_update_rules (TEH_plugin,
+                                             &TEH_attribute_key,
+                                             &lch->h_payto,
+                                             &current_rules_cb,
+                                             lch);
+  }
+  else
+  {
+    struct TALER_EXCHANGEDB_RuleUpdaterResult rur = { 0 };
+
+    current_rules_cb (lch,
+                      &rur);
+  }
   /* FIXME(fdold, 2024-11-08): We are doing the same logic
      here and in kyc-info, abstract it out? */
   /* FIXME(cg-2024-12-02): Also some duplication with
      code around run_measure in taler-exchange-aggregator! */
-
-  /* Check if ruleset is expired and we need to run the successor measure */
-  if (NULL != lrs)
-  {
-    struct GNUNET_TIME_Timestamp ts;
-
-    ts = TALER_KYCLOGIC_rules_get_expiration (lrs);
-    if (GNUNET_TIME_absolute_is_past (ts.abs_time))
-    {
-      const struct TALER_KYCLOGIC_Measure *successor_measure;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Current KYC ruleset expired, running successor measure.\n");
-
-      successor_measure = TALER_KYCLOGIC_rules_get_successor (lrs);
-      if (NULL == successor_measure)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Successor measure unknown, falling back to default rules!\n");
-        TALER_KYCLOGIC_rules_free (lrs);
-        lrs = NULL;
-      }
-      else if (0 == strcmp (successor_measure->prog_name, "SKIP"))
-      {
-        lch->measure_run_ctx = TEH_kyc_run_measure_directly (
-          &lch->scope,
-          successor_measure,
-          &lch->h_payto,
-          &legi_check_aml_trigger_cb,
-          lch);
-        if (NULL == lch->measure_run_ctx)
-        {
-          legi_fail (lch,
-                     TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-                     "successor measure");
-        }
-        goto cleanup;
-      }
-      else
-      {
-        bool unknown_account;
-        struct GNUNET_TIME_Timestamp decision_time
-          = GNUNET_TIME_timestamp_get ();
-        struct GNUNET_TIME_Timestamp last_date;
-        json_t *succ_jmeasures = TALER_KYCLOGIC_get_jmeasures (
-          lrs,
-          successor_measure->measure_name);
-
-        GNUNET_assert (NULL != succ_jmeasures);
-        qs = TEH_plugin->insert_successor_measure (
-          TEH_plugin->cls,
-          &lch->h_payto,
-          decision_time,
-          successor_measure->measure_name,
-          succ_jmeasures,
-          &unknown_account,
-          &last_date);
-        json_decref (succ_jmeasures);
-        if (qs <= 0)
-        {
-          legi_fail (lch,
-                     TALER_EC_GENERIC_DB_STORE_FAILED,
-                     "insert_successor_measure");
-          goto cleanup;
-        }
-        if (unknown_account)
-        {
-          legi_fail (lch,
-                     TALER_EC_EXCHANGE_GENERIC_BANK_ACCOUNT_UNKNOWN,
-                     NULL);
-          goto cleanup;
-        }
-        /* We tolerate conflicting decision times for automatic decisions. */
-        GNUNET_break (
-          GNUNET_TIME_timestamp_cmp (last_date,
-                                     >=,
-                                     decision_time));
-        /* Back to default rules. */
-        TALER_KYCLOGIC_rules_free (lrs);
-        lrs = NULL;
-      }
-    }
-  }
-
-  qs = TALER_KYCLOGIC_kyc_test_required (
-    lch->et,
-    lrs,
-    &amount_iterator_wrapper_cb,
-    lch,
-    &requirement,
-    &lch->lcr.next_threshold);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    legi_fail (lch,
-               TALER_EC_GENERIC_DB_FETCH_FAILED,
-               "kyc_test_required");
-    goto cleanup;
-  }
-  if (lch->lcr.bad_kyc_auth)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC auth required\n");
-    fail_kyc_auth (lch);
-    goto cleanup;
-  }
-
-  if (NULL == requirement)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC check passed\n");
-    lch->lcr.kyc.ok = true;
-    lch->lcr.expiration_date
-      = TALER_KYCLOGIC_rules_get_expiration (lrs);
-    memset (&lch->lcr.next_threshold,
-            0,
-            sizeof (struct TALER_Amount));
-    /* return success! */
-    lch->async_task
-      = GNUNET_SCHEDULER_add_now (
-          &async_return_legi_result,
-          lch);
-    goto cleanup;
-  }
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC requirement is %s\n",
-              TALER_KYCLOGIC_rule2s (requirement));
-  instant_ms
-    = TALER_KYCLOGIC_rule_get_instant_measure (
-        requirement);
-  if (NULL != instant_ms)
-  {
-    /* We have an 'instant' measure which means we must run the
-       AML program immediately instead of waiting for the account owner
-       to select some measure and contribute their KYC data. */
-
-    lch->kat = TEH_kyc_run_measure_directly (
-      &lch->scope,
-      instant_ms,
-      &lch->h_payto,
-      &legi_check_aml_trigger_cb,
-      lch
-      );
-    if (NULL == lch->kat)
-    {
-      GNUNET_break (0);
-      legi_fail (lch,
-                 TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-                 NULL);
-    }
-    goto cleanup;
-  }
-
-  /* No instant measure, store all measures in the database and
-     wait for the user to select one (via /kyc-info) and to then
-     provide the data. */
-  lch->lcr.kyc.ok = false;
-  {
-    json_t *jmeasures;
-
-    jmeasures = TALER_KYCLOGIC_rule_to_measures (requirement);
-    qs = TEH_plugin->trigger_kyc_rule_for_account (
-      TEH_plugin->cls,
-      lch->payto_uri,
-      &lch->h_payto,
-      lch->have_account_pub ? &lch->account_pub : NULL,
-      lch->have_merchant_pub ? &lch->merchant_pub : NULL,
-      jmeasures,
-      TALER_KYCLOGIC_rule2priority (requirement),
-      &lch->lcr.kyc.requirement_row,
-      &lch->lcr.bad_kyc_auth);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "trigger_kyc_rule_for_account-1 on %d/%d returned %d/%llu/%d\n",
-                lch->have_account_pub,
-                lch->have_merchant_pub,
-                (int) qs,
-                (unsigned long long) lch->lcr.kyc.requirement_row,
-                lch->lcr.bad_kyc_auth);
-    json_decref (jmeasures);
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    GNUNET_break (0);
-    legi_fail (lch,
-               TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-               "trigger_kyc_rule_for_account");
-    goto cleanup;
-  }
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    GNUNET_break (0);
-    legi_fail (lch,
-               TALER_EC_GENERIC_DB_STORE_FAILED,
-               "trigger_kyc_rule_for_account");
-    goto cleanup;
-  }
-  /* return success! */
-  lch->async_task
-    = GNUNET_SCHEDULER_add_now (
-        &async_return_legi_result,
-        lch);
 cleanup:
-  TALER_KYCLOGIC_rules_free (lrs);
   GNUNET_async_scope_restore (&old_scope);
 }
 
