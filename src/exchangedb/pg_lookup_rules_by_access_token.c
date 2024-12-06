@@ -41,9 +41,11 @@ TEH_PG_lookup_rules_by_access_token (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_json (
-      "jnew_rules",
-      jnew_rules),
+    GNUNET_PQ_result_spec_allow_null (
+      TALER_PQ_result_spec_json (
+        "jnew_rules",
+        jnew_rules),
+      NULL),
     GNUNET_PQ_result_spec_uint64 (
       "row_id",
       rowid),
