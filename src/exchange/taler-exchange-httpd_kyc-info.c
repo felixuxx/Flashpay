@@ -25,6 +25,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_exchangedb_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
@@ -64,6 +65,12 @@ struct KycPoller
   struct GNUNET_DB_EventHandler *eh;
 
   /**
+   * Handle to async activity to get the latest legitimization
+   * rule set.
+   */
+  struct TALER_EXCHANGEDB_RuleUpdater *ru;
+
+  /**
    * #MHD_HTTP_HEADER_IF_NONE_MATCH Etag value sent by the client.  0 for none
    * (or malformed).
    */
@@ -90,6 +97,23 @@ struct KycPoller
    * Payto hash of the account matching @a access_token.
    */
   struct TALER_NormalizedPaytoHashP h_payto;
+
+
+  /**
+   * Current legitimization rule set, owned by callee.  Will be NULL on error
+   * or for default rules. Will not contain skip rules and not be expired.
+   */
+  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs;
+
+  /**
+   *
+   */
+  uint64_t legitimization_measure_last_row;
+
+  /**
+   * Row in the legitimization outcomes table that @e lrs matches.
+   */
+  uint64_t legitimization_outcome_last_row;
 
   /**
    * True if we are still suspended.
@@ -164,10 +188,20 @@ kyp_cleanup (struct TEH_RequestContext *rc)
                                      kyp->eh);
     kyp->eh = NULL;
   }
+  if (NULL != kyp->ru)
+  {
+    TALER_EXCHANGEDB_update_rules_cancel (kyp->ru);
+    kyp->ru = NULL;
+  }
   if (NULL != kyp->response)
   {
     MHD_destroy_response (kyp->response);
     kyp->response = NULL;
+  }
+  if (NULL != kyp->lrs)
+  {
+    TALER_KYCLOGIC_rules_free (kyp->lrs);
+    kyp->lrs = NULL;
   }
   if (NULL != kyp->kat)
   {
@@ -217,18 +251,58 @@ db_event_cb (void *cls,
 /**
  * Add the headers we want to set for every response.
  *
- * @param cls the key state to use
  * @param[in,out] response the response to modify
  */
 static void
-add_response_headers (void *cls,
-                      struct MHD_Response *response)
+add_nocache_header (struct MHD_Response *response)
 {
-  (void) cls;
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CACHE_CONTROL,
                                          "no-cache"));
+}
+
+
+/**
+ * Resume processing the @a kyp request with the @a response.
+ *
+ * @param kyp request to resume and respond to
+ * @param http_status HTTP status for @a response
+ * @param response HTTP response to return
+ */
+static void
+resume_with_response (struct KycPoller *kyp,
+                      unsigned int http_status,
+                      struct MHD_Response *response)
+{
+  kyp->response_code = http_status;
+  kyp->response = response;
+  GNUNET_CONTAINER_DLL_remove (kyp_head,
+                               kyp_tail,
+                               kyp);
+  kyp->suspended = false;
+  MHD_resume_connection (kyp->connection);
+  TALER_MHD_daemon_trigger ();
+}
+
+
+/**
+ * Function called after a measure has been run.
+ *
+ * @param kyp request to fail with the error code
+ * @param ec error code or 0 on success
+ * @param hint detail error message or NULL on success / no info
+ */
+static void
+fail_with_ec (
+  struct KycPoller *kyp,
+  enum TALER_ErrorCode ec,
+  const char *hint)
+{
+  resume_with_response (kyp,
+                        TALER_ErrorCode_get_http_status (ec),
+                        TALER_MHD_make_error (ec,
+                                              hint));
 }
 
 
@@ -241,14 +315,13 @@ add_response_headers (void *cls,
  * @param legitimization_outcome_row_id part of etag to set for the response
  * @param jmeasures a `LegitimizationMeasures` object to encode
  * @param jvoluntary array of voluntary measures to encode, can be NULL
- * @return MHD status code
  */
-static MHD_RESULT
-generate_reply (struct KycPoller *kyp,
-                uint64_t legitimization_measure_row_id,
-                uint64_t legitimization_outcome_row_id,
-                const json_t *jmeasures,
-                const json_t *jvoluntary)
+static void
+resume_with_reply (struct KycPoller *kyp,
+                   uint64_t legitimization_measure_row_id,
+                   uint64_t legitimization_outcome_row_id,
+                   const json_t *jmeasures,
+                   const json_t *jvoluntary)
 {
   const json_t *measures; /* array of MeasureInformation */
   bool is_and_combinator = false;
@@ -278,10 +351,10 @@ generate_reply (struct KycPoller *kyp,
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
-    return TALER_MHD_reply_with_ec (
-      kyp->connection,
-      TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
-      ename);
+    fail_with_ec (kyp,
+                  TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                  ename);
+    return;
   }
   kris = json_array ();
   GNUNET_assert (NULL != kris);
@@ -311,10 +384,11 @@ generate_reply (struct KycPoller *kyp,
     {
       GNUNET_break (0);
       json_decref (kris);
-      return TALER_MHD_reply_with_ec (
-        kyp->connection,
+      fail_with_ec (
+        kyp,
         TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
         ename);
+      return;
     }
     kri = TALER_KYCLOGIC_measure_to_requirement (
       check_name,
@@ -327,10 +401,11 @@ generate_reply (struct KycPoller *kyp,
     {
       GNUNET_break (0);
       json_decref (kris);
-      return TALER_MHD_reply_with_ec (
-        kyp->connection,
+      fail_with_ec (
+        kyp,
         TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
         "could not convert measure to requirement");
+      return;
     }
     GNUNET_assert (0 ==
                    json_array_append_new (kris,
@@ -340,7 +415,6 @@ generate_reply (struct KycPoller *kyp,
   {
     char etags[128];
     struct MHD_Response *resp;
-    MHD_RESULT res;
 
     GNUNET_snprintf (etags,
                      sizeof (etags),
@@ -360,118 +434,175 @@ generate_reply (struct KycPoller *kyp,
                   MHD_add_response_header (resp,
                                            MHD_HTTP_HEADER_ETAG,
                                            etags));
-    add_response_headers (NULL,
+    add_nocache_header (resp);
+    resume_with_response (kyp,
+                          MHD_HTTP_OK,
                           resp);
-    res = MHD_queue_response (kyp->connection,
-                              MHD_HTTP_OK,
-                              resp);
-    GNUNET_break (MHD_YES == res);
-    MHD_destroy_response (resp);
-    return res;
   }
 }
 
 
 /**
- * Check if measures contain an instant
- * measure.
+ * Function called with the current rule set.
  *
- * @param jmeasures measures JSON object
- * @returns true if @a jmeasures contains an instant measure
- */
-static bool
-contains_instant_measure (const json_t *jmeasures)
-{
-  size_t i;
-  json_t *mi; /* a MeasureInformation object */
-  const char *ename;
-  unsigned int eline;
-  enum GNUNET_GenericReturnValue ret;
-  const json_t *measures;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_array_const ("measures",
-                                  &measures),
-    GNUNET_JSON_spec_end ()
-  };
-
-  ret = GNUNET_JSON_parse (jmeasures,
-                           spec,
-                           &ename,
-                           &eline);
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (0);
-    return false;
-  }
-
-  json_array_foreach ((json_t *) measures, i, mi)
-  {
-    const char *check_name;
-
-    struct GNUNET_JSON_Specification ispec[] = {
-      GNUNET_JSON_spec_string ("check_name",
-                               &check_name),
-      GNUNET_JSON_spec_end ()
-    };
-
-    ret = GNUNET_JSON_parse (mi,
-                             ispec,
-                             &ename,
-                             &eline);
-    if (GNUNET_OK != ret)
-    {
-      GNUNET_break (0);
-      continue;
-    }
-    if (0 == strcasecmp (check_name, "SKIP"))
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-
-/**
- * Function called after a measure has been run.
- *
- * @param cls closure
- * @param ec error code or 0 on success
- * @param detail error message or NULL on success / no info
+ * @param cls closure with a `struct KycPoller *`
+ * @param legitimization_outcome_last_row row the rule set is based on
+ * @param rur includes legitimziation rule set that applies to the account
+ *   (owned by callee, callee must free the lrs!)
  */
 static void
-measure_run_cb (
+current_rules_cb (
   void *cls,
-  enum TALER_ErrorCode ec,
-  const char *detail)
+  struct TALER_EXCHANGEDB_RuleUpdaterResult *rur)
 {
   struct KycPoller *kyp = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  uint64_t legitimization_measure_last_row;
+  json_t *jmeasures;
 
-  GNUNET_assert (kyp->suspended);
-  GNUNET_assert (NULL == kyp->response);
-  GNUNET_assert (NULL != kyp->kat);
-
-  kyp->kat = NULL;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Resuming after running successor measure, ec=%u\n",
-              (unsigned int) ec);
-
-  if (TALER_EC_NONE != ec)
+  kyp->ru = NULL;
+  if (TALER_EC_NONE != rur->ec)
   {
-    kyp->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    kyp->response = TALER_MHD_make_error (
-      ec,
-      detail);
+    /* Rollback should not be needed, just to be sure */
+    TEH_plugin->rollback (TEH_plugin->cls);
+    fail_with_ec (kyp,
+                  rur->ec,
+                  rur->hint);
+    return;
   }
+  GNUNET_assert (NULL == kyp->lrs);
+  kyp->lrs
+    = rur->lrs;
+  kyp->legitimization_outcome_last_row
+    = rur->legitimization_outcome_last_row;
 
-  GNUNET_CONTAINER_DLL_remove (kyp_head,
-                               kyp_tail,
-                               kyp);
-  kyp->suspended = false;
-  MHD_resume_connection (kyp->connection);
-  TALER_MHD_daemon_trigger ();
+  qs = TEH_plugin->lookup_kyc_status_by_token (
+    TEH_plugin->cls,
+    &kyp->access_token,
+    &legitimization_measure_last_row,
+    &jmeasures);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
+    fail_with_ec (
+      kyp,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "lookup_kyc_status_by_token");
+    return;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    jmeasures
+      = TALER_KYCLOGIC_zero_measures (kyp->lrs);
+    if (NULL == jmeasures)
+    {
+      qs = TEH_plugin->commit (TEH_plugin->cls);
+      if (qs < 0)
+      {
+        TEH_plugin->rollback (TEH_plugin->cls);
+        fail_with_ec (
+          kyp,
+          TALER_EC_GENERIC_DB_COMMIT_FAILED,
+          "kyc-info");
+        return;
+      }
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "No KYC requirement open\n");
+      resume_with_response (kyp,
+                            MHD_HTTP_OK,
+                            TALER_MHD_MAKE_JSON_PACK (
+                              GNUNET_JSON_pack_allow_null (
+                                GNUNET_JSON_pack_array_steal (
+                                  "voluntary_measures",
+                                  TALER_KYCLOGIC_voluntary_measures
+                                    (kyp->lrs))
+                                )));
+      return;
+    }
+
+    qs = TEH_plugin->insert_active_legitimization_measure (
+      TEH_plugin->cls,
+      &kyp->access_token,
+      jmeasures,
+      &legitimization_measure_last_row);
+    if (qs < 0)
+    {
+      GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
+      fail_with_ec (kyp,
+                    TALER_EC_GENERIC_DB_STORE_FAILED,
+                    "insert_active_legitimization_measure");
+      return;
+    }
+  }
+  if ( (legitimization_measure_last_row == kyp->etag_measure_in) &&
+       (kyp->legitimization_outcome_last_row == kyp->etag_outcome_in) &&
+       GNUNET_TIME_absolute_is_future (kyp->timeout) )
+  {
+    /* Note: in practice this commit should do nothing, but we cannot
+       trust that the client provided correct etags, and so we must
+       commit anyway just in case the client lied about the etags. */
+    qs = TEH_plugin->commit (TEH_plugin->cls);
+    if (qs < 0)
+    {
+      TEH_plugin->rollback (TEH_plugin->cls);
+      fail_with_ec (
+        kyp,
+        TALER_EC_GENERIC_DB_COMMIT_FAILED,
+        "kyc-info");
+      return;
+    }
+    if (NULL != kyp->lrs)
+    {
+      TALER_KYCLOGIC_rules_free (kyp->lrs);
+      kyp->lrs = NULL;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Suspending HTTP request on timeout (%s)\n",
+                GNUNET_TIME_relative2s (
+                  GNUNET_TIME_absolute_get_remaining (
+                    kyp->timeout),
+                  true));
+    GNUNET_assert (NULL != kyp->eh);
+    GNUNET_break (kyp->suspended);
+    return;
+  }
+  if ( (legitimization_measure_last_row ==
+        kyp->etag_measure_in) &&
+       (kyp->legitimization_outcome_last_row ==
+        kyp->etag_outcome_in) )
+  {
+    char etags[128];
+    struct MHD_Response *resp;
+
+    GNUNET_snprintf (etags,
+                     sizeof (etags),
+                     "\"%llu-%llu\"",
+                     (unsigned long long) legitimization_measure_last_row,
+                     (unsigned long long) kyp->legitimization_outcome_last_row);
+    resp = MHD_create_response_from_buffer (0,
+                                            NULL,
+                                            MHD_RESPMEM_PERSISTENT);
+    add_nocache_header (resp);
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (resp,
+                                           MHD_HTTP_HEADER_ETAG,
+                                           etags));
+    resume_with_response (kyp,
+                          MHD_HTTP_NOT_MODIFIED,
+                          resp);
+    json_decref (jmeasures);
+    return;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Generating success reply to kyc-info query\n");
+  resume_with_reply (kyp,
+                     legitimization_measure_last_row,
+                     kyp->legitimization_outcome_last_row,
+                     jmeasures,
+                     TALER_KYCLOGIC_voluntary_measures (kyp->lrs));
+  json_decref (jmeasures);
 }
 
 
@@ -481,13 +612,7 @@ TEH_handler_kyc_info (
   const char *const args[1])
 {
   struct KycPoller *kyp = rc->rh_ctx;
-  MHD_RESULT res;
   enum GNUNET_DB_QueryStatus qs;
-  uint64_t legitimization_measure_last_row;
-  uint64_t legitimization_outcome_last_row;
-  json_t *jmeasures = NULL;
-  json_t *jvoluntary = NULL;
-  struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
 
   if (NULL == kyp)
   {
@@ -504,12 +629,11 @@ TEH_handler_kyc_info (
           sizeof (kyp->access_token)))
     {
       GNUNET_break_op (0);
-      res = TALER_MHD_reply_with_error (
+      return TALER_MHD_reply_with_error (
         rc->connection,
         MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PARAMETER_MALFORMED,
         "access token");
-      goto cleanup;
     }
     TALER_MHD_parse_request_timeout (rc->connection,
                                      &kyp->timeout);
@@ -555,21 +679,19 @@ TEH_handler_kyc_info (
     if (qs < 0)
     {
       GNUNET_break (0);
-      res = TALER_MHD_reply_with_ec (
+      return TALER_MHD_reply_with_ec (
         rc->connection,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
         "lookup_h_payto_by_access_token");
-      goto cleanup;
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       GNUNET_break_op (0);
-      res = TALER_MHD_REPLY_JSON_PACK (
+      return TALER_MHD_REPLY_JSON_PACK (
         rc->connection,
         MHD_HTTP_FORBIDDEN,
         TALER_JSON_pack_ec (
           TALER_EC_EXCHANGE_KYC_INFO_AUTHORIZATION_FAILED));
-      goto cleanup;
     }
 
     if (GNUNET_TIME_absolute_is_future (kyp->timeout))
@@ -593,251 +715,23 @@ TEH_handler_kyc_info (
 
   if (NULL != kyp->response)
   {
-    res = MHD_queue_response (rc->connection,
-                              kyp->response_code,
-                              kyp->response);
-    goto cleanup;
+    return MHD_queue_response (rc->connection,
+                               kyp->response_code,
+                               kyp->response);
   }
 
-  /* Get rules. */
-  {
-    json_t *jnew_rules;
+  kyp->ru = TALER_EXCHANGEDB_update_rules (TEH_plugin,
+                                           &TEH_attribute_key,
+                                           &kyp->h_payto,
+                                           &current_rules_cb,
+                                           kyp);
+  kyp->suspended = true;
+  GNUNET_CONTAINER_DLL_insert (kyp_head,
+                               kyp_tail,
+                               kyp);
+  MHD_suspend_connection (rc->connection);
+  return MHD_YES;
 
-    qs = TEH_plugin->lookup_rules_by_access_token (
-      TEH_plugin->cls,
-      &kyp->h_payto,
-      &jnew_rules,
-      &legitimization_outcome_last_row);
-    if (qs < 0)
-    {
-      GNUNET_break (0);
-      res = TALER_MHD_reply_with_ec (
-        rc->connection,
-        TALER_EC_GENERIC_DB_FETCH_FAILED,
-        "lookup_rules_by_access_token");
-      goto cleanup;
-    }
-    lrs = NULL;
-    if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
-         (NULL != jnew_rules) )
-    {
-      lrs = TALER_KYCLOGIC_rules_parse (jnew_rules);
-      GNUNET_break (NULL != lrs);
-      json_decref (jnew_rules);
-    }
-  }
-
-  /* Check if ruleset is expired and we need to run the successor measure */
-  if (NULL != lrs)
-  {
-    struct GNUNET_TIME_Timestamp ts;
-
-    ts = TALER_KYCLOGIC_rules_get_expiration (lrs);
-    if (GNUNET_TIME_absolute_is_past (ts.abs_time))
-    {
-      const struct TALER_KYCLOGIC_Measure *successor_measure;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Current KYC ruleset expired, running successor measure.\n");
-
-      successor_measure = TALER_KYCLOGIC_rules_get_successor (lrs);
-      if (NULL == successor_measure)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Successor measure unknown, falling back to default rules!\n");
-        TALER_KYCLOGIC_rules_free (lrs);
-        lrs = NULL;
-      }
-      else if (0 == strcmp (successor_measure->prog_name,
-                            "SKIP"))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Running successor measure %s.\n",
-                    successor_measure->measure_name);
-        /* FIXME(fdold, 2024-01-08): Consider limiting how
-           often we try this, in case we run into expired rulesets
-           repeatedly. */
-        kyp->kat = TEH_kyc_run_measure_directly (
-          &rc->async_scope_id,
-          successor_measure,
-          &kyp->h_payto,
-          &measure_run_cb,
-          kyp);
-        if (NULL == kyp->kat)
-        {
-          GNUNET_break (0);
-          res = TALER_MHD_reply_with_ec (
-            rc->connection,
-            TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
-            "successor measure");
-        }
-        kyp->suspended = true;
-        GNUNET_CONTAINER_DLL_insert (kyp_head,
-                                     kyp_tail,
-                                     kyp);
-        MHD_suspend_connection (rc->connection);
-        res = MHD_YES;
-        goto cleanup;
-      }
-      else
-      {
-        bool unknown_account;
-        struct GNUNET_TIME_Timestamp decision_time
-          = GNUNET_TIME_timestamp_get ();
-        struct GNUNET_TIME_Timestamp last_date;
-        json_t *succ_jmeasures = TALER_KYCLOGIC_get_jmeasures (
-          lrs,
-          successor_measure->measure_name);
-
-        GNUNET_assert (NULL != succ_jmeasures);
-        qs = TEH_plugin->insert_successor_measure (
-          TEH_plugin->cls,
-          &kyp->h_payto,
-          decision_time,
-          successor_measure->measure_name,
-          succ_jmeasures,
-          &unknown_account,
-          &last_date);
-        json_decref (succ_jmeasures);
-        if (qs <= 0)
-        {
-          GNUNET_break (0);
-          res = TALER_MHD_reply_with_ec (
-            rc->connection,
-            TALER_EC_GENERIC_DB_STORE_FAILED,
-            "insert_successor_measure");
-          goto cleanup;
-        }
-        if (unknown_account)
-        {
-          res = TALER_MHD_reply_with_ec (
-            rc->connection,
-            TALER_EC_EXCHANGE_GENERIC_BANK_ACCOUNT_UNKNOWN,
-            NULL);
-          goto cleanup;
-        }
-        /* We tolerate conflicting decision times for automatic decisions. */
-        GNUNET_break (
-          GNUNET_TIME_timestamp_cmp (last_date,
-                                     >=,
-                                     decision_time));
-        /* Back to default rules. */
-        TALER_KYCLOGIC_rules_free (lrs);
-        lrs = NULL;
-      }
-    }
-  }
-
-  jvoluntary
-    = TALER_KYCLOGIC_voluntary_measures (lrs);
-
-  qs = TEH_plugin->lookup_kyc_status_by_token (
-    TEH_plugin->cls,
-    &kyp->access_token,
-    &legitimization_measure_last_row,
-    &jmeasures);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    res = TALER_MHD_reply_with_ec (
-      rc->connection,
-      TALER_EC_GENERIC_DB_FETCH_FAILED,
-      "lookup_kyc_status_by_token");
-    goto cleanup;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    jmeasures
-      = TALER_KYCLOGIC_zero_measures (lrs);
-    if (NULL == jmeasures)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "No KYC requirement open\n");
-      res = TALER_MHD_REPLY_JSON_PACK (
-        rc->connection,
-        MHD_HTTP_OK,
-        GNUNET_JSON_pack_allow_null (
-          GNUNET_JSON_pack_array_steal ("voluntary_measures",
-                                        jvoluntary)));
-      goto cleanup;
-    }
-
-    qs = TEH_plugin->insert_active_legitimization_measure (
-      TEH_plugin->cls,
-      &kyp->access_token,
-      jmeasures,
-      &legitimization_measure_last_row);
-    if (qs < 0)
-    {
-      GNUNET_break (0);
-      res = TALER_MHD_reply_with_ec (
-        rc->connection,
-        TALER_EC_GENERIC_DB_STORE_FAILED,
-        "insert_active_legitimization_measure");
-      goto cleanup;
-    }
-  }
-  if ( (legitimization_measure_last_row == kyp->etag_measure_in) &&
-       (legitimization_outcome_last_row == kyp->etag_outcome_in) &&
-       GNUNET_TIME_absolute_is_future (kyp->timeout) )
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Suspending HTTP request on timeout (%s)\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_remaining (
-                    kyp->timeout),
-                  true));
-    GNUNET_assert (NULL != kyp->eh);
-    kyp->suspended = true;
-    GNUNET_CONTAINER_DLL_insert (kyp_head,
-                                 kyp_tail,
-                                 kyp);
-    MHD_suspend_connection (rc->connection);
-    res = MHD_YES;
-    goto cleanup;
-  }
-  /* FIXME: We should instead long-poll on the running KYC program. */
-  if (contains_instant_measure (jmeasures))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Still waiting for KYC program.\n");
-    res = TALER_MHD_reply_with_ec (
-      rc->connection,
-      TALER_EC_EXCHANGE_KYC_INFO_BUSY,
-      "waiting for KYC program");
-    goto cleanup;
-  }
-  if ( (legitimization_measure_last_row ==
-        kyp->etag_measure_in) &&
-       (legitimization_outcome_last_row ==
-        kyp->etag_outcome_in) )
-  {
-    char etags[128];
-
-    GNUNET_snprintf (etags,
-                     sizeof (etags),
-                     "\"%llu-%llu\"",
-                     (unsigned long long) legitimization_measure_last_row,
-                     (unsigned long long) legitimization_outcome_last_row);
-    res = TEH_RESPONSE_reply_not_modified (
-      rc->connection,
-      etags,
-      &add_response_headers,
-      NULL);
-    goto cleanup;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Generating success reply to kyc-info query\n");
-  res = generate_reply (kyp,
-                        legitimization_measure_last_row,
-                        legitimization_outcome_last_row,
-                        jmeasures,
-                        jvoluntary);
-cleanup:
-  TALER_KYCLOGIC_rules_free (lrs);
-  json_decref (jmeasures);
-  json_decref (jvoluntary);
-  return res;
 }
 
 
