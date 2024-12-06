@@ -492,8 +492,6 @@ update_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 static void
 check_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 {
-  const struct TALER_KYCLOGIC_Measure *m;
-
   ru->depth++;
   if (ru->depth > MAX_DEPTH)
   {
