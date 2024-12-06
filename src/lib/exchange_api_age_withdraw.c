@@ -1062,6 +1062,7 @@ TALER_EXCHANGE_age_withdraw_cancel (
       }
       TALER_blinded_planchet_free (&planchet->blinded_planchet);
       TALER_denom_ewv_free (&can->details.alg_values);
+      TALER_age_commitment_proof_free (&can->details.age_commitment_proof);
     }
     TALER_denom_pub_free (&cd->denom_pub.key);
   }
