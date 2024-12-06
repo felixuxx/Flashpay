@@ -1236,7 +1236,6 @@ amount_iterator_wrapper_cb (
  * Function called with the current rule set.
  *
  * @param cls a `struct TEH_LegitimizationCheckHandle *`
- * @param legitimization_outcome_last_row row the rule set is based on
  * @param rur includes legitimziation rule set that applies to the account
  *   (owned by callee, callee must free the lrs!)
  */

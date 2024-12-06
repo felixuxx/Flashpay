@@ -17,6 +17,7 @@
  * @file taler-exchange-kyc-tester.c
  * @brief tool to test KYC integrations
  * @author Christian Grothoff
+ * @defgroup request Request handling routines
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>

@@ -299,7 +299,6 @@ struct TALER_EXCHANGEDB_RuleUpdaterResult
  * Function called with the current rule set.
  *
  * @param cls closure
- * @param legitimization_outcome_last_row row the rule set is based on
  * @param rur includes legitimziation rule set that applies to the account
  *   (owned by callee, callee must free the lrs!)
  */

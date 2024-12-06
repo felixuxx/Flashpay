@@ -20,6 +20,7 @@
  * @file bank-lib/fakebank.c
  * @brief library that fakes being a Taler bank for testcases
  * @author Christian Grothoff <christian@grothoff.org>
+ * @defgroup request Request handling routines
  */
 #include "platform.h"
 #include <pthread.h>

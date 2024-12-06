@@ -16,6 +16,7 @@
 /**
  * @file taler-exchange-httpd.c
  * @brief Serve the HTTP interface of the exchange
+ * @defgroup request Request handling routines
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff

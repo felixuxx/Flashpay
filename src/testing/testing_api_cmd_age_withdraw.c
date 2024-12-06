@@ -565,7 +565,7 @@ struct AgeWithdrawRevealState
  * Callback for the reveal response
  *
  * @param cls Closure of type `struct AgeWithdrawRevealState`
- * @param awr The response
+ * @param response The response
  */
 static void
 age_withdraw_reveal_cb (

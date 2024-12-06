@@ -16,6 +16,7 @@
 /**
  * @file taler-exchange-httpd_keys.h
  * @brief management of our various keys
+ * @defgroup crypto Cryptographic routines
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -455,7 +456,7 @@ TEH_keys_exchange_sign2_ (
  * @return #TALER_EC_NONE on success
  */
 #define TEH_keys_exchange_sign(ps,pub,sig) \
-  ({                                                  \
+        ({                                                  \
     /* check size is set correctly */                 \
     GNUNET_assert (htonl ((ps)->purpose.size) ==      \
                    sizeof (*ps));                     \
@@ -488,7 +489,7 @@ TEH_keys_exchange_sign2_ (
  * @return #TALER_EC_NONE on success
  */
 #define TEH_keys_exchange_sign2(ksh,ps,pub,sig)       \
-  ({                                                  \
+        ({                                                  \
     /* check size is set correctly */                 \
     GNUNET_assert (htonl ((ps)->purpose.size) ==      \
                    sizeof (*ps));                     \
