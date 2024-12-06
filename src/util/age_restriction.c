@@ -508,15 +508,15 @@ TALER_age_commitment_proof_duplicate (
 
   nacp = GNUNET_new (struct TALER_AgeCommitmentProof);
 
-  TALER_age_commitment_proof_deep_copy (acp,nacp);
+  TALER_age_commitment_proof_deep_copy (nacp, acp);
   return nacp;
 }
 
 
 void
 TALER_age_commitment_proof_deep_copy (
-  const struct TALER_AgeCommitmentProof *acp,
-  struct TALER_AgeCommitmentProof *nacp)
+  struct TALER_AgeCommitmentProof *nacp,
+  const struct TALER_AgeCommitmentProof *acp)
 {
   GNUNET_assert (NULL != acp);
   GNUNET_assert (__builtin_popcount (acp->commitment.mask.bits) - 1 ==

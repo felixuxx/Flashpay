@@ -162,7 +162,7 @@ struct AgeWithdrawState
 };
 
 /**
- * Callback for the "age-withdraw" ooperation;  It checks that the response
+ * Callback for the "age-withdraw" operation;  It checks that the response
  * code is expected and store the exchange signature in the state.
  *
  * @param cls Closure of type `struct AgeWithdrawState *`
@@ -196,11 +196,9 @@ age_withdraw_cb (
     for (size_t n = 0; n < aws->num_coins; n++)
     {
       aws->coin_outputs[n].details = response->details.ok.coin_details[n];
-      /* FIXME: API flaw: arguments of this _copy are swapped with
-         the argument order for the other _copy() APIs... */
       TALER_age_commitment_proof_deep_copy (
-        &response->details.ok.coin_details[n].age_commitment_proof,
-        &aws->coin_outputs[n].details.age_commitment_proof);
+        &aws->coin_outputs[n].details.age_commitment_proof,
+        &response->details.ok.coin_details[n].age_commitment_proof);
       TALER_denom_ewv_copy (
         &aws->coin_outputs[n].details.alg_values,
         &response->details.ok.coin_details[n].alg_values);

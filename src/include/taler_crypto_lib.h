@@ -6255,15 +6255,13 @@ TALER_age_commitment_proof_duplicate (
 /**
  * @brief helper function to copy a struct TALER_AgeCommitmentProof
  *
- * @param[in] acp The original age commitment proof
  * @param[out] nacp The struct to copy the data into, with freshly allocated and copied keys.
+ * @param[in] acp The original age commitment proof
  */
-/* FIXME: API flaw: arguments of this _copy are swapped with
-   the argument order for the other _copy() APIs... */
 void
 TALER_age_commitment_proof_deep_copy (
-  const struct TALER_AgeCommitmentProof *acp,
-  struct TALER_AgeCommitmentProof *nacp);
+  struct TALER_AgeCommitmentProof *nacp,
+  const struct TALER_AgeCommitmentProof *acp);
 
 /**
  * @brief For age-withdraw, clients have to prove that the public keys for all
