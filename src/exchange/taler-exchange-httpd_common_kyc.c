@@ -1418,6 +1418,7 @@ current_rules_cb (
     goto cleanup;
   }
   /* return success! */
+  TEH_plugin->preflight (TEH_plugin->cls);
   lch->async_task
     = GNUNET_SCHEDULER_add_now (
         &async_return_legi_result,
@@ -1435,6 +1436,7 @@ legitimization_check_run (
   struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs = NULL;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_AsyncScopeSave old_scope;
+  enum GNUNET_GenericReturnValue res;
 
   if (! TEH_enable_kyc)
   {
@@ -1457,6 +1459,16 @@ legitimization_check_run (
   }
   GNUNET_async_scope_enter (&lch->scope,
                             &old_scope);
+  res = TEH_plugin->start (TEH_plugin->cls,
+                           "legi-check-run-start-precheck");
+  if (GNUNET_OK != res)
+  {
+    GNUNET_break (0);
+    legi_fail (lch,
+               TALER_EC_GENERIC_DB_START_FAILED,
+               "legi-check-run-start-precheck");
+    return;
+  }
   {
     json_t *jrules;
     bool no_account_pub;
@@ -1475,6 +1487,7 @@ legitimization_check_run (
     case GNUNET_DB_STATUS_HARD_ERROR:
     case GNUNET_DB_STATUS_SOFT_ERROR:
       GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
       legi_fail (lch,
                  TALER_EC_GENERIC_DB_FETCH_FAILED,
                  "get_kyc_rules");
@@ -1523,6 +1536,7 @@ legitimization_check_run (
            merchant_pub. Fail the KYC process! */
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "KYC: merchant_pub does not match target_pub of custom rules!\n");
+        TEH_plugin->rollback (TEH_plugin->cls);
         json_decref (jrules);
         fail_kyc_auth (lch);
         goto cleanup;
@@ -1548,6 +1562,7 @@ legitimization_check_run (
 
   if (NULL != lrs)
   {
+    TEH_plugin->rollback (TEH_plugin->cls);
     lch->ru = TALER_EXCHANGEDB_update_rules (TEH_plugin,
                                              &TEH_attribute_key,
                                              &lch->h_payto,
@@ -1561,10 +1576,6 @@ legitimization_check_run (
     current_rules_cb (lch,
                       &rur);
   }
-  /* FIXME(fdold, 2024-11-08): We are doing the same logic
-     here and in kyc-info, abstract it out? */
-  /* FIXME(cg-2024-12-02): Also some duplication with
-     code around run_measure in taler-exchange-aggregator! */
 cleanup:
   GNUNET_async_scope_restore (&old_scope);
 }

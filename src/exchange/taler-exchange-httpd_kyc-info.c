@@ -567,6 +567,16 @@ current_rules_cb (
     GNUNET_break (kyp->suspended);
     return;
   }
+  qs = TEH_plugin->commit (TEH_plugin->cls);
+  if (qs < 0)
+  {
+    TEH_plugin->rollback (TEH_plugin->cls);
+    fail_with_ec (
+      kyp,
+      TALER_EC_GENERIC_DB_COMMIT_FAILED,
+      "kyc-info");
+    return;
+  }
   if ( (legitimization_measure_last_row ==
         kyp->etag_measure_in) &&
        (kyp->legitimization_outcome_last_row ==

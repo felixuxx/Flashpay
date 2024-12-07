@@ -184,6 +184,7 @@ legi_result_cb (
 {
   struct KycRequestContext *krc = cls;
 
+  TEH_plugin->preflight (TEH_plugin->cls);
   krc->lch = NULL;
   krc->http_status = lcr->http_status;
   krc->response = lcr->response;

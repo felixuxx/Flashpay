@@ -52,6 +52,7 @@ TEH_PG_lookup_rules_by_access_token (
     GNUNET_PQ_result_spec_end
   };
 
+  *jnew_rules = NULL;
   PREPARE (pg,
            "lookup_rules_by_access_token",
            "SELECT"
