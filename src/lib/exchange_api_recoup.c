@@ -295,7 +295,7 @@ TALER_EXCHANGE_recoup (
       GNUNET_assert (
         0 ==
         json_object_set_new (recoup_obj,
-                             "cs_nonce",
+                             "nonce",
                              GNUNET_JSON_from_data_auto (
                                &nonce)));
     }

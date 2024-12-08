@@ -393,9 +393,8 @@ TEH_handler_recoup_refresh (struct MHD_Connection *connection,
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &coin.h_age_commitment),
       &coin.no_age_commitment),
-    // FIXME: rename to just 'nonce'
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_fixed_auto ("cs_nonce",
+      GNUNET_JSON_spec_fixed_auto ("nonce",
                                    &nonce),
       &no_nonce),
     GNUNET_JSON_spec_end ()
