@@ -24,6 +24,8 @@ COMMENT ON TABLE kyc_events
   IS 'Records of key events for statistics. Populated via triggers.';
 COMMENT ON COLUMN kyc_events.event_type
   IS 'Name of the event, such as account-open or sar-filed';
+COMMENT ON COLUMN kyc_events.event_timestamp
+  IS 'When did the event occur; timestamp in rounded absolute time';
 
 CREATE INDEX kyc_event_index
   ON kyc_events(event_type,event_timestamp);

@@ -234,7 +234,12 @@ proof_finish (
   if (TALER_EC_NONE != ec)
   {
     kpc->response_code = TALER_ErrorCode_get_http_status (ec);
+    GNUNET_break (5 != kpc->response_code / 100);
     GNUNET_assert (kpc->response_code != UINT_MAX);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Templating error response for %d and HTTP status %u\n",
+                (int) ec,
+                kpc->response_code);
     kpc->response = make_html_error (
       kpc->rc->connection,
       "kyc-proof-internal-error",
@@ -251,6 +256,10 @@ proof_finish (
     kpc->proof_response_code = 0;
   }
   GNUNET_assert (NULL != kpc->response);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Resuming with response %p and status %u\n",
+              kpc->response,
+              kpc->response_code);
   kpc_resume (kpc);
 }
 
@@ -319,6 +328,7 @@ proof_cb (
   struct KycProofContext *kpc = cls;
   struct TEH_RequestContext *rc = kpc->rc;
   struct GNUNET_AsyncScopeSave old_scope;
+  enum GNUNET_DB_QueryStatus qs;
 
   kpc->ph = NULL;
   kpc->proof_response = response;
@@ -331,19 +341,32 @@ proof_cb (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC process #%llu succeeded with KYC provider\n",
                 (unsigned long long) kpc->process_row);
-    kpc->kat = TEH_kyc_run_measure_for_attributes (
-      &rc->async_scope_id,
+    qs = TEH_kyc_store_attributes (
       kpc->process_row,
       &kpc->h_payto,
       provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,
-      attributes,
+      attributes);
+    if (0 >= qs)
+    {
+      GNUNET_break (0);
+      proof_finish (kpc,
+                    TALER_EC_GENERIC_DB_STORE_FAILED,
+                    "kyc_store_attributes");
+      return;
+    }
+
+    kpc->kat = TEH_kyc_run_measure_for_attributes (
+      &rc->async_scope_id,
+      kpc->process_row,
+      &kpc->h_payto,
       &proof_finish,
       kpc);
     if (NULL == kpc->kat)
     {
+      GNUNET_break (0);
       proof_finish (kpc,
                     TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                     "[exchange] AML_KYC_TRIGGER");
@@ -365,6 +388,7 @@ proof_cb (
       char *msg;
 
       /* OAuth2 server had a problem, do NOT log this as a KYC failure */
+      GNUNET_break (0);
       GNUNET_asprintf (&msg,
                        "Failure by KYC provider (HTTP status %u)\n",
                        http_status);
@@ -389,11 +413,11 @@ proof_cb (
         proof_finish (
           kpc,
           TALER_EC_GENERIC_DB_STORE_FAILED,
-          "insert_kyc_failure");
+          "TEH_kyc_failed");
       }
       else
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "KYC process #%llu failed with status %d\n",
                     (unsigned long long) kpc->process_row,
                     status);
@@ -527,6 +551,7 @@ TEH_handler_kyc_proof (
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
       case GNUNET_DB_STATUS_SOFT_ERROR:
+        GNUNET_break (0);
         return respond_html_ec (
           rc,
           MHD_HTTP_INTERNAL_SERVER_ERROR,

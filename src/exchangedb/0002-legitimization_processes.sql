@@ -55,8 +55,8 @@ BEGIN
     ,shard_suffix
   );
   PERFORM comment_partitioned_column(
-     'time when the KYC check was initiated, useful for garbage collection'
-    ,'expiration_time'
+     'time when the KYC check was initiated, useful for garbage collection (absolute time, not rounded)'
+    ,'start_time'
     ,'legitimization_processes'
     ,shard_suffix
   );
@@ -67,7 +67,7 @@ BEGIN
     ,shard_suffix
   );
   PERFORM comment_partitioned_column(
-     'in the future if the respective KYC check was passed successfully'
+     'in the future if the respective KYC check was passed successfully; an absolute time (not rounded)'
     ,'expiration_time'
     ,'legitimization_processes'
     ,shard_suffix

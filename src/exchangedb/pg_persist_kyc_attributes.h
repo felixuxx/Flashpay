@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022, 2023 Taler Systems SA
+   Copyright (C) 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_kyc_measure_result.h
- * @brief implementation of the insert_kyc_measure_result function for Postgres
+ * @file exchangedb/pg_persist_kyc_attributes.h
+ * @brief implementation of the persist_kyc_attributes function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_KYC_ATTRIBUTES_H
-#define PG_INSERT_KYC_ATTRIBUTES_H
+#ifndef PG_PERSIST_KYC_ATTRIBUTES_H
+#define PG_PERSIST_KYC_ATTRIBUTES_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
@@ -27,31 +27,32 @@
 
 
 /**
- * Update KYC process status and AML status for the given account based on AML
- * program result.
+ * Store KYC attribute data.
  *
  * @param cls closure
  * @param process_row KYC process row to update
  * @param h_payto account for which the attribute data is stored
- * @param expiration_time when do the @a new_rules expire
- * @param account_properties new account properties
- * @param new_rules new KYC rules to apply to the account
- * @param to_investigate true to flag account for investigation
- * @param num_events length of the @a events array
- * @param events array of KYC events to trigger
+ * @param provider_name name of the provider that provided the attributes
+ * @param provider_account_id provider account ID
+ * @param provider_legitimization_id provider legitimization ID
+ * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
+ * @param expiration_time when does the data expire
+ * @param enc_attributes_size number of bytes in @a enc_attributes
+ * @param enc_attributes encrypted attribute data
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_kyc_measure_result (
+TEH_PG_persist_kyc_attributes (
   void *cls,
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *h_payto,
-  struct GNUNET_TIME_Timestamp expiration_time,
-  const json_t *account_properties,
-  const json_t *new_rules,
-  bool to_investigate,
-  unsigned int num_events,
-  const char **events);
+  const char *provider_name,
+  const char *provider_account_id,
+  const char *provider_legitimization_id,
+  uint32_t birthday,
+  struct GNUNET_TIME_Absolute expiration_time,
+  size_t enc_attributes_size,
+  const void *enc_attributes);
 
 
 #endif

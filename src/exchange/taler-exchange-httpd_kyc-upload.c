@@ -580,7 +580,7 @@ TEH_handler_kyc_upload (
       &h_payto,
       uc->measure_index,
       uc->legitimization_measure_serial_id,
-      "FORM",
+      "FORM", /* FIXME: get specific form name in DB interaction above! */
       NULL,     /* provider account ID */
       NULL,     /* provider legi ID */
       &legi_process_row);
@@ -593,16 +593,28 @@ TEH_handler_kyc_upload (
         TALER_EC_GENERIC_DB_STORE_FAILED,
         "insert_kyc_requirement_process");
     }
-
-    uc->kat = TEH_kyc_run_measure_for_attributes (
-      &rc->async_scope_id,
+    qs = TEH_kyc_store_attributes (
       legi_process_row,
       &h_payto,
       "FORM", /* FIXME: get specific form name in DB interaction above! */
       NULL /* provider account */,
       NULL /* provider legi ID */,
       GNUNET_TIME_UNIT_FOREVER_ABS, /* expiration time */
-      uc->result,
+      uc->result);
+    if (0 >= qs)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (
+        rc->connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_DB_STORE_FAILED,
+        "kyc_store_attributes");
+    }
+
+    uc->kat = TEH_kyc_run_measure_for_attributes (
+      &rc->async_scope_id,
+      legi_process_row,
+      &h_payto,
       &aml_trigger_callback,
       uc);
     if (NULL == uc->kat)

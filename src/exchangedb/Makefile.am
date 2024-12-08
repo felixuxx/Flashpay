@@ -29,6 +29,7 @@ sqlinputs = \
   0004-*.sql \
   0005-*.sql \
   0006-*.sql \
+  0007-*.sql \
   exchange-0002.sql.in \
   exchange-0003.sql.in \
   exchange-0004.sql.in \
@@ -198,6 +199,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_insert_active_legitimization_measure.h pg_insert_active_legitimization_measure.c \
   pg_insert_aml_decision.h pg_insert_aml_decision.c \
   pg_insert_aml_officer.h pg_insert_aml_officer.c \
+  pg_insert_aml_program_failure.h pg_insert_aml_program_failure.c \
   pg_insert_auditor.h pg_insert_auditor.c \
   pg_insert_auditor_denom_sig.h pg_insert_auditor_denom_sig.c \
   pg_insert_close_request.c pg_insert_close_request.h \
@@ -252,6 +254,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_lookup_wire_fee_by_time.h pg_lookup_wire_fee_by_time.c \
   pg_lookup_wire_timestamp.h pg_lookup_wire_timestamp.c \
   pg_lookup_wire_transfer.h pg_lookup_wire_transfer.c \
+  pg_persist_kyc_attributes.h pg_persist_kyc_attributes.c \
   pg_persist_policy_details.h pg_persist_policy_details.c \
   pg_preflight.h pg_preflight.c \
   pg_profit_drains_get_pending.h pg_profit_drains_get_pending.c \

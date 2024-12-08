@@ -55,29 +55,9 @@ struct TEH_KycMeasureRunContext
   struct TALER_NormalizedPaytoHashP account_id;
 
   /**
-   * until when is the KYC data valid
-   */
-  struct GNUNET_TIME_Absolute expiration;
-
-  /**
    * legitimization process the KYC data is about
    */
   uint64_t process_row;
-
-  /**
-   * Name of the provider with the logic that was run
-   */
-  char *provider_name;
-
-  /**
-   * set to user ID at the provider, or NULL if not supported or unknown
-   */
-  char *provider_user_id;
-
-  /**
-   * provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
-   */
-  char *provider_legitimization_id;
 
   /**
    * function to call with the result
@@ -98,11 +78,6 @@ struct TEH_KycMeasureRunContext
    * Name of the fallback @e fb is running (or NULL).
    */
   char *fallback_name;
-
-  /**
-   * user attributes returned by the provider
-   */
-  json_t *attributes;
 
   /**
    * Measures this KYC process is responding to.
@@ -133,14 +108,14 @@ struct TEH_KycMeasureRunContext
  * fallback measure.
  *
  * @param cls a `struct TEH_KycMeasureRunContext *`
- * @param result true if the fallback was activated
+ * @param fallback_ok true if the fallback was activated
  *    successfully
  * @param requirement_row row of
  *    new KYC requirement that was created, 0 for none
  */
 static void
 fallback_result_cb (void *cls,
-                    bool result,
+                    bool fallback_ok,
                     uint64_t requirement_row)
 {
   struct TEH_KycMeasureRunContext *kat = cls;
@@ -150,14 +125,18 @@ fallback_result_cb (void *cls,
   (void) requirement_row;
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
-  if (result)
+  if (fallback_ok)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Fallback completed (row %llu)\n",
+                (unsigned long long) requirement_row);
     kat->cb (kat->cb_cls,
              TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
              NULL);
   }
   else
   {
+    GNUNET_break (0);
     kat->cb (kat->cb_cls,
              TALER_EC_EXCHANGE_GENERIC_KYC_FALLBACK_FAILED,
              kat->fallback_name);
@@ -180,46 +159,17 @@ kyc_aml_finished (
 {
   struct TEH_KycMeasureRunContext *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
-  unsigned int birthday = 0;
   struct GNUNET_AsyncScopeSave old_scope;
 
   kat->kyc_aml = NULL;
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
-  if (TEH_age_restriction_enabled)
-  {
-    const char *birthdate;
-
-    birthdate = json_string_value (
-      json_object_get (kat->attributes,
-                       TALER_ATTRIBUTE_BIRTHDATE));
-    if (NULL != birthdate)
-    {
-      enum GNUNET_GenericReturnValue ret;
-
-      ret = TALER_parse_coarse_date (birthdate,
-                                     &TEH_age_restriction_config.mask,
-                                     &birthday);
-
-      if (GNUNET_OK != ret)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failed to parse birthdate `%s' from KYC attributes\n",
-                    birthdate);
-      }
-    }
-  }
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "AML program finished with status %d\n",
+              (int) apr->status);
   qs = TALER_EXCHANGEDB_persist_aml_program_result (
     TEH_plugin,
     kat->process_row,
-    kat->provider_name,
-    kat->provider_user_id,
-    kat->provider_legitimization_id,
-    kat->attributes,
-    &TEH_attribute_key,
-    birthday,
-    kat->expiration,
     &kat->account_id,
     apr);
   switch (qs)
@@ -245,6 +195,7 @@ kyc_aml_finished (
     {
       /* Not sure this can happen (fallback required?),
          but report AML program failure to client */
+      GNUNET_break (0);
       kat->cb (kat->cb_cls,
                TALER_EC_EXCHANGE_KYC_AML_PROGRAM_FAILURE,
                NULL);
@@ -253,12 +204,14 @@ kyc_aml_finished (
     kat->fallback_name
       = GNUNET_strdup (
           apr->details.failure.fallback_measure);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "AML program failed, running fallback %s\n",
+                kat->fallback_name);
     kat->fb
       = TEH_kyc_fallback (
           &kat->scope,
           &kat->account_id,
           kat->process_row,
-          kat->attributes,
           kat->fallback_name,
           &fallback_result_cb,
           kat);
@@ -303,13 +256,89 @@ TEH_kyc_run_measure_cancel (struct TEH_KycMeasureRunContext *kat)
     GNUNET_SCHEDULER_cancel (kat->async_task);
     kat->async_task = NULL;
   }
-  GNUNET_free (kat->provider_name);
-  GNUNET_free (kat->provider_user_id);
-  GNUNET_free (kat->provider_legitimization_id);
   GNUNET_free (kat->fallback_name);
   json_decref (kat->jmeasures);
-  json_decref (kat->attributes);
   GNUNET_free (kat);
+}
+
+
+enum GNUNET_DB_QueryStatus
+TEH_kyc_store_attributes (
+  uint64_t process_row,
+  const struct TALER_NormalizedPaytoHashP *account_id,
+  const char *provider_name,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration,
+  const json_t *new_attributes)
+{
+  enum GNUNET_DB_QueryStatus qs;
+  unsigned int birthday = 0;
+  size_t eas = 0;
+  void *ea = NULL;
+
+  if (TEH_age_restriction_enabled)
+  {
+    const char *birthdate;
+
+    birthdate = json_string_value (
+      json_object_get (new_attributes,
+                       TALER_ATTRIBUTE_BIRTHDATE));
+    if (NULL != birthdate)
+    {
+      enum GNUNET_GenericReturnValue ret;
+
+      ret = TALER_parse_coarse_date (birthdate,
+                                     &TEH_age_restriction_config.mask,
+                                     &birthday);
+
+      if (GNUNET_OK != ret)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse birthdate `%s' from KYC attributes of %s\n",
+                    birthdate,
+                    provider_name);
+      }
+    }
+  }
+  if (NULL != new_attributes)
+  {
+    TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
+                                         new_attributes,
+                                         &ea,
+                                         &eas);
+  }
+  qs = TEH_plugin->persist_kyc_attributes (
+    TEH_plugin->cls,
+    process_row,
+    account_id,
+    provider_name,
+    provider_user_id,
+    provider_legitimization_id,
+    birthday,
+    expiration,
+    eas,
+    ea);
+  GNUNET_free (ea);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    break;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Stored encrypted KYC process #%llu attributes: %d\n",
+              (unsigned long long) process_row,
+              qs);
+  return qs;
 }
 
 
@@ -318,43 +347,22 @@ TEH_kyc_run_measure_for_attributes (
   const struct GNUNET_AsyncScopeId *scope,
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *account_id,
-  const char *provider_name,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  struct GNUNET_TIME_Absolute expiration,
-  const json_t *new_attributes,
   TEH_KycMeasureRunContextCallback cb,
   void *cb_cls)
 {
-  /* FIXME(fdold, 2024-11-07): - #9303
-     Consider storing the attributes *before* we run the AMP.
-     Also, we're only passing *new* attributes here, but the AMP
-     should receive *all* attributes. */
-
   struct TEH_KycMeasureRunContext *kat;
   enum GNUNET_DB_QueryStatus qs;
 
   kat = GNUNET_new (struct TEH_KycMeasureRunContext);
   kat->scope = *scope;
-  kat->provider_name = GNUNET_strdup (provider_name);
   kat->process_row = process_row;
   kat->account_id = *account_id;
-  if (NULL != provider_user_id)
-    kat->provider_user_id
-      = GNUNET_strdup (provider_user_id);
-  if (NULL != provider_legitimization_id)
-    kat->provider_legitimization_id
-      = GNUNET_strdup (provider_legitimization_id);
-  kat->expiration = expiration;
   kat->cb = cb;
   kat->cb_cls = cb_cls;
-  kat->attributes = json_incref ((json_t*) new_attributes);
-
   qs = TEH_plugin->lookup_active_legitimization (
     TEH_plugin->cls,
     process_row,
     &kat->measure_index,
-    &kat->provider_name,
     &kat->jmeasures);
   switch (qs)
   {
@@ -381,7 +389,8 @@ TEH_kyc_run_measure_for_attributes (
       = TALER_KYCLOGIC_run_aml_program (
           kat->jmeasures,
           kat->measure_index,
-          kat->attributes,
+          &TALER_EXCHANGEDB_current_attributes_builder,
+          &hbc,
           &TALER_EXCHANGEDB_current_rule_builder,
           &hbc,
           &TALER_EXCHANGEDB_aml_history_builder,
@@ -438,11 +447,9 @@ TEH_kyc_run_measure_directly (
 
   kat = GNUNET_new (struct TEH_KycMeasureRunContext);
   kat->jmeasures = TALER_KYCLOGIC_measure_to_jmeasures (instant_ms);
-  kat->provider_name = GNUNET_strdup ("SKIP");
   kat->measure_index = 0;
   kat->scope = *scope;
   kat->account_id = *account_id;
-  kat->expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
   kat->cb = cb;
   kat->cb_cls = cb_cls;
 
@@ -511,7 +518,8 @@ TEH_kyc_run_measure_directly (
     kat->kyc_aml
       = TALER_KYCLOGIC_run_aml_program3 (
           instant_ms,
-          NULL,                              /* no attributes */
+          &TALER_EXCHANGEDB_current_attributes_builder,
+          &hbc,
           &TALER_EXCHANGEDB_current_rule_builder,
           &hbc,
           &TALER_EXCHANGEDB_aml_history_builder,
@@ -634,19 +642,12 @@ handle_aml_fallback_result (
     TEH_plugin->cls,
     fb->orig_requirement_row,
     &fb->account_id,
-    0,
-    GNUNET_TIME_timestamp_get (),
-    "NONE",
-    NULL,
-    NULL,
-    GNUNET_TIME_UNIT_FOREVER_ABS,
+    apr->details.success.expiration_time,
     apr->details.success.account_properties,
     apr->details.success.new_rules,
     apr->details.success.to_investigate,
     apr->details.success.num_events,
-    apr->details.success.events,
-    0 /* enc attr size */,
-    NULL /* enc attr */);
+    apr->details.success.events);
   if (qs < 0)
   {
     GNUNET_break (0);
@@ -694,7 +695,6 @@ TEH_kyc_fallback (
   const struct GNUNET_AsyncScopeId *scope,
   const struct TALER_NormalizedPaytoHashP *account_id,
   uint64_t orig_requirement_row,
-  const json_t *attributes,
   const char *fallback_measure,
   TEH_KycAmlFallbackCallback cb,
   void *cb_cls)
@@ -729,8 +729,9 @@ TEH_kyc_fallback (
     fb->aprh
       = TALER_KYCLOGIC_run_aml_program2 (
           kcc.prog_name,
-          attributes,
           kcc.context,
+          &TALER_EXCHANGEDB_current_attributes_builder,
+          &hbc,
           &TALER_EXCHANGEDB_current_rule_builder,
           &hbc,
           &TALER_EXCHANGEDB_aml_history_builder,
@@ -976,6 +977,7 @@ legi_fail (struct TEH_LegitimizationCheckHandle *lch,
            enum TALER_ErrorCode ec,
            const char *details)
 {
+  GNUNET_break (0);
   lch->lcr.http_status
     = TALER_ErrorCode_get_http_status (ec);
   lch->lcr.response
@@ -1017,6 +1019,7 @@ legi_check_aml_trigger_cb (
   lch->kat = NULL;
   if (TALER_EC_NONE != ec)
   {
+    GNUNET_break (0);
     lch->lcr.http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     lch->lcr.response = TALER_MHD_make_error (
       ec,

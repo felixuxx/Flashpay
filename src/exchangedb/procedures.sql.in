@@ -56,5 +56,6 @@ SET search_path TO exchange;
 #include "exchange_do_lookup_kyc_requirement_by_row.sql"
 #include "exchange_do_insert_active_legitimization_measure.sql"
 #include "exchange_do_select_aggregations_above_serial.sql"
+#include "exchange_do_persist_kyc_attributes.sql"
 
 COMMIT;

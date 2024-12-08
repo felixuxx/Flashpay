@@ -103,6 +103,7 @@
 #include "pg_insert_active_legitimization_measure.h"
 #include "pg_insert_aml_decision.h"
 #include "pg_insert_aml_officer.h"
+#include "pg_insert_aml_program_failure.h"
 #include "pg_insert_auditor.h"
 #include "pg_insert_auditor_denom_sig.h"
 #include "pg_insert_close_request.h"
@@ -157,6 +158,7 @@
 #include "pg_lookup_wire_fee_by_time.h"
 #include "pg_lookup_wire_timestamp.h"
 #include "pg_lookup_wire_transfer.h"
+#include "pg_persist_kyc_attributes.h"
 #include "pg_persist_policy_details.h"
 #include "pg_preflight.h"
 #include "pg_profit_drains_get_pending.h"
@@ -765,6 +767,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_inject_auditor_triggers;
   plugin->insert_successor_measure
     = &TEH_PG_insert_successor_measure;
+  plugin->insert_aml_program_failure
+    = &TEH_PG_insert_aml_program_failure;
+  plugin->persist_kyc_attributes
+    = &TEH_PG_persist_kyc_attributes;
 
   return plugin;
 }

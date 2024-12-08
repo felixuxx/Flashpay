@@ -265,3 +265,87 @@ TALER_EXCHANGEDB_current_rule_builder (void *cls)
   }
   return jlrs;
 }
+
+
+/**
+ * Closure for decrypt_attributes().
+ */
+struct DecryptContext
+{
+  /**
+   * Overall context.
+   */
+  const struct TALER_EXCHANGEDB_HistoryBuilderContext *hbc;
+
+  /**
+   * Where to return the attributes.
+   */
+  json_t *attr;
+};
+
+
+/**
+ * Decrypt and return AML attribute information.
+ *
+ * @param cls a `struct DecryptContext *`
+ * @param row_id current row in kyc_attributes table
+ * @param collection_time when were the attributes collected
+ * @param enc_attributes_size size of @a enc_attributes
+ * @param enc_attributes the encrypted collected attributes
+ */
+static void
+decrypt_attributes (
+  void *cls,
+  uint64_t row_id,
+  struct GNUNET_TIME_Timestamp collection_time,
+  size_t enc_attributes_size,
+  const void *enc_attributes)
+{
+  struct DecryptContext *decon = cls;
+
+  (void) row_id;
+  (void) collection_time;
+  decon->attr
+    = TALER_CRYPTO_kyc_attributes_decrypt (decon->hbc->attribute_key,
+                                           enc_attributes,
+                                           enc_attributes_size);
+  GNUNET_break (NULL != decon->attr);
+}
+
+
+json_t *
+TALER_EXCHANGEDB_current_attributes_builder (void *cls)
+{
+  struct TALER_EXCHANGEDB_HistoryBuilderContext *hbc = cls;
+  const struct TALER_NormalizedPaytoHashP *acc = hbc->account;
+  enum GNUNET_DB_QueryStatus qs;
+  struct DecryptContext decon = {
+    .hbc = hbc
+  };
+
+  qs = hbc->db_plugin->select_aml_attributes (
+    hbc->db_plugin->cls,
+    acc,
+    INT64_MAX,
+    -1, /* we only fetch the latest ones */
+    &decrypt_attributes,
+    &decon);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "select_aml_attributes returned %d\n",
+              (int) qs);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    return NULL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    decon.attr = json_object ();
+    GNUNET_break (NULL != decon.attr);
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    GNUNET_break (NULL != decon.attr);
+    break;
+  }
+  return decon.attr;
+}

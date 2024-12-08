@@ -230,26 +230,36 @@ webhook_finished_cb (
   struct MHD_Response *response)
 {
   struct KycWebhookContext *kwh = cls;
+  enum GNUNET_DB_QueryStatus qs;
 
   kwh->wh = NULL;
   kwh->webhook_response = response;
   kwh->webhook_response_code = http_status;
-
   switch (status)
   {
   case TALER_KYCLOGIC_STATUS_SUCCESS:
-    kwh->kat = TEH_kyc_run_measure_for_attributes (
-      &kwh->rc->async_scope_id,
+    qs = TEH_kyc_store_attributes (
       process_row,
       account_id,
       provider_name,
       provider_user_id,
       provider_legitimization_id,
       expiration,
-      attributes,
+      attributes);
+    if (0 >= qs)
+    {
+      GNUNET_break (0);
+      kyc_aml_webhook_finished (kwh,
+                                TALER_EC_GENERIC_DB_STORE_FAILED,
+                                "kyc_store_attributes");
+      return;
+    }
+    kwh->kat = TEH_kyc_run_measure_for_attributes (
+      &kwh->rc->async_scope_id,
+      process_row,
+      account_id,
       &kyc_aml_webhook_finished,
-      kwh
-      );
+      kwh);
     if (NULL == kwh->kat)
     {
       kyc_aml_webhook_finished (kwh,
@@ -279,7 +289,7 @@ webhook_finished_cb (
       GNUNET_break (0);
       kyc_aml_webhook_finished (kwh,
                                 TALER_EC_GENERIC_DB_STORE_FAILED,
-                                "insert_kyc_failure");
+                                "TEH_kyc_failed");
     }
     break;
   default:

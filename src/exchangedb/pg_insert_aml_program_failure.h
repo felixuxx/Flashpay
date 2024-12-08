@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022, 2023 Taler Systems SA
+   Copyright (C) 2024 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_kyc_measure_result.h
- * @brief implementation of the insert_kyc_measure_result function for Postgres
+ * @file exchangedb/pg_insert_aml_program_failure.h
+ * @brief implementation of the insert_aml_program_failure function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_KYC_ATTRIBUTES_H
-#define PG_INSERT_KYC_ATTRIBUTES_H
+#ifndef PG_INSERT_AML_PROGRAM_FAILURE_H
+#define PG_INSERT_AML_PROGRAM_FAILURE_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
@@ -27,31 +27,22 @@
 
 
 /**
- * Update KYC process status and AML status for the given account based on AML
- * program result.
+ * Update AML program status to finished (and failed).
  *
  * @param cls closure
  * @param process_row KYC process row to update
  * @param h_payto account for which the attribute data is stored
- * @param expiration_time when do the @a new_rules expire
- * @param account_properties new account properties
- * @param new_rules new KYC rules to apply to the account
- * @param to_investigate true to flag account for investigation
- * @param num_events length of the @a events array
- * @param events array of KYC events to trigger
+ * @param error_message details about what went wrong
+ * @param ec error code about the failure
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_kyc_measure_result (
+TEH_PG_insert_aml_program_failure (
   void *cls,
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *h_payto,
-  struct GNUNET_TIME_Timestamp expiration_time,
-  const json_t *account_properties,
-  const json_t *new_rules,
-  bool to_investigate,
-  unsigned int num_events,
-  const char **events);
+  const char *error_message,
+  enum TALER_ErrorCode ec);
 
 
 #endif

@@ -260,6 +260,17 @@ TALER_EXCHANGEDB_current_rule_builder (void *cls);
 
 
 /**
+ * Function called to obtain the latest KYC attributes
+ * in JSON for an account on-demand if needed.
+ *
+ * @param cls must be a `struct TALER_EXCHANGEDB_HistoryBuilderContext *`
+ * @return KYC attributes in JSON format, NULL on error
+ */
+json_t *
+TALER_EXCHANGEDB_current_attributes_builder (void *cls);
+
+
+/**
  * Handle for helper logic that advances rules to the currently
  * valid rule set.
  */
@@ -355,13 +366,6 @@ TALER_EXCHANGEDB_update_rules_cancel (
  *
  * @param plugin database API handle
  * @param process_row row identifying the AML process that was run
- * @param provider_name name of the provider that provided the attributes
- * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
- * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
- * @param attributes set of KYC attributes, possibly NULL
- * @param attribute_key key to use to encrypt the KYC attributes
- * @param birthday birthday of the user, 0 for unknown
- * @param expiration until when is the KYC check valid
  * @param account_id hash of account the result is about
  * @param apr AML program result to persist
  */
@@ -369,13 +373,6 @@ enum GNUNET_DB_QueryStatus
 TALER_EXCHANGEDB_persist_aml_program_result (
   struct TALER_EXCHANGEDB_Plugin *plugin,
   uint64_t process_row,
-  const char *provider_name,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  const json_t *attributes,
-  const struct TALER_AttributeEncryptionKeyP *attribute_key,
-  unsigned int birthday,
-  struct GNUNET_TIME_Absolute expiration,
   const struct TALER_NormalizedPaytoHashP *account_id,
   const struct TALER_KYCLOGIC_AmlProgramResult *apr);
 

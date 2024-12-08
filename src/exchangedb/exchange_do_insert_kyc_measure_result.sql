@@ -18,17 +18,11 @@ DROP FUNCTION IF EXISTS exchange_do_insert_kyc_measure_result;
 CREATE FUNCTION exchange_do_insert_kyc_measure_result(
   IN in_process_row INT8,
   IN in_h_payto BYTEA,
-  IN in_birthday INT4,
-  IN in_provider_name TEXT,
-  IN in_provider_account_id TEXT,
-  IN in_provider_legitimization_id TEXT,
-  IN in_collection_time_ts INT8,
-  IN in_expiration_time INT8,
+  IN in_decision_time INT8,
   IN in_expiration_time_ts INT8,
   IN in_account_properties TEXT,
   IN in_new_rules TEXT,
   IN ina_events TEXT[],
-  IN in_enc_attributes BYTEA,
   IN in_to_investigate BOOLEAN,
   IN in_kyc_completed_notify_s TEXT,
   OUT out_ok BOOLEAN)
@@ -41,14 +35,15 @@ DECLARE
    ini_event TEXT;
 BEGIN
 
-
+-- Disactivate all previous outcomes.
 UPDATE legitimization_outcomes
    SET is_active=FALSE
  WHERE h_payto=in_h_payto
    -- this clause is a minor optimization to avoid
    -- updating outcomes that have long expired.
-   AND expiration_time >= in_collection_time_ts;
+   AND expiration_time >= in_decision_time;
 
+-- Insert new rules
 INSERT INTO legitimization_outcomes
   (h_payto
   ,decision_time
@@ -58,7 +53,7 @@ INSERT INTO legitimization_outcomes
   ,jnew_rules)
 VALUES
   (in_h_payto
-  ,in_collection_time_ts
+  ,in_decision_time
   ,in_expiration_time_ts
   ,in_account_properties
   ,in_to_investigate
@@ -68,61 +63,17 @@ RETURNING
 INTO
   my_trigger_outcome_serial;
 
-IF (in_process_row IS NOT NULL) AND
-   (in_enc_attributes IS NOT NULL)
-THEN
-  INSERT INTO kyc_attributes
-    (h_payto
-    ,collection_time
-    ,expiration_time
-    ,encrypted_attributes
-    ,legitimization_serial
-    ,trigger_outcome_serial
-   ) VALUES
-    (in_h_payto
-    ,in_collection_time_ts
-    ,in_expiration_time_ts
-    ,in_enc_attributes
-    ,in_process_row
-    ,my_trigger_outcome_serial);
-END IF;
+-- Mark measure as complete
+UPDATE legitimization_measures
+   SET is_finished=TRUE
+ WHERE legitimization_measure_serial_id=
+ (SELECT legitimization_measure_serial_id
+    FROM legitimization_processes
+   WHERE h_payto=in_h_payto
+     AND legitimization_process_serial_id=in_process_row);
+out_ok = FOUND;
 
-UPDATE legitimization_processes
-  SET provider_user_id=in_provider_account_id
-     ,provider_legitimization_id=in_provider_legitimization_id
-     ,expiration_time=GREATEST(expiration_time,in_expiration_time)
-     ,finished=TRUE
- WHERE h_payto=in_h_payto
-   AND legitimization_process_serial_id=in_process_row
-   AND provider_name=in_provider_name
- RETURNING legitimization_measure_serial_id
-  INTO my_lmsi;
-out_ok=FOUND;
-
-IF out_ok
-THEN
-  UPDATE legitimization_measures
-     SET is_finished=TRUE
-   WHERE legitimization_measure_serial_id=my_lmsi;
-END IF;
-
-UPDATE reserves
-   SET birthday=in_birthday
- WHERE (reserve_pub IN
-    (SELECT reserve_pub
-       FROM reserves_in
-      WHERE wire_source_h_payto IN
-        (SELECT wire_source_h_payto
-           FROM wire_targets
-          WHERE h_normalized_payto=in_h_payto) ) )
--- The next 3 clauses primarily serve to limit
--- unnecessary updates for reserves we do not
--- care about anymore.
-  AND ( ((current_balance).frac > 0) OR
-        ((current_balance).val > 0 ) )
-  AND (expiration_date > in_collection_time_ts);
-
-
+-- Trigger events
 FOR i IN 1..COALESCE(array_length(ina_events,1),0)
 LOOP
   ini_event = ina_events[i];
@@ -130,10 +81,11 @@ LOOP
     (event_timestamp
     ,event_type)
     VALUES
-    (in_collection_time_ts
+    (in_decision_time
     ,ini_event);
 END LOOP;
 
+-- Notify about KYC update
 EXECUTE FORMAT (
  'NOTIFY %s'
  ,in_kyc_completed_notify_s);
@@ -148,5 +100,5 @@ INSERT INTO kyc_alerts
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_kyc_measure_result(INT8, BYTEA, INT4, TEXT, TEXT, TEXT, INT8, INT8, INT8, TEXT, TEXT, TEXT[], BYTEA, BOOL, TEXT)
-  IS 'Inserts new KYC attributes and updates the status of the legitimization process and the AML status for the account';
+COMMENT ON FUNCTION exchange_do_insert_kyc_measure_result(INT8, BYTEA, INT8, INT8, TEXT, TEXT, TEXT[], BOOL, TEXT)
+  IS 'Inserts AML program outcome and updates the status of the legitimization process and the AML status for the account';

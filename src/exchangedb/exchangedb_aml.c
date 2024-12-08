@@ -36,65 +36,40 @@ enum GNUNET_DB_QueryStatus
 TALER_EXCHANGEDB_persist_aml_program_result (
   struct TALER_EXCHANGEDB_Plugin *plugin,
   uint64_t process_row,
-  const char *provider_name,
-  const char *provider_user_id,
-  const char *provider_legitimization_id,
-  const json_t *attributes,
-  const struct TALER_AttributeEncryptionKeyP *attribute_key,
-  unsigned int birthday,
-  struct GNUNET_TIME_Absolute expiration,
   const struct TALER_NormalizedPaytoHashP *account_id,
   const struct TALER_KYCLOGIC_AmlProgramResult *apr)
 {
   enum GNUNET_DB_QueryStatus qs;
-  size_t eas = 0;
-  void *ea = NULL;
 
+#if 0
   /* TODO: also clear lock on AML program (#9303) */
+  qs = plugin->clear_aml_lock (
+    plugin->cls,
+    account_id,
+    lock_id);
+#endif
   switch (apr->status)
   {
   case TALER_KYCLOGIC_AMLR_FAILURE:
-    qs = plugin->insert_kyc_failure (
+    qs = plugin->insert_aml_program_failure (
       plugin->cls,
       process_row,
       account_id,
-      provider_name,
-      provider_user_id,
-      provider_legitimization_id,
       apr->details.failure.error_message,
       apr->details.failure.ec);
     GNUNET_break (qs > 0);
     return qs;
   case TALER_KYCLOGIC_AMLR_SUCCESS:
-    if (NULL != attributes)
-    {
-      TALER_CRYPTO_kyc_attributes_encrypt (attribute_key,
-                                           attributes,
-                                           &ea,
-                                           &eas);
-    }
     qs = plugin->insert_kyc_measure_result (
       plugin->cls,
       process_row,
       account_id,
-      birthday,
-      GNUNET_TIME_timestamp_get (),
-      provider_name,
-      provider_user_id,
-      provider_legitimization_id,
-      expiration,
+      apr->details.success.expiration_time,
       apr->details.success.account_properties,
       apr->details.success.new_rules,
       apr->details.success.to_investigate,
       apr->details.success.num_events,
-      apr->details.success.events,
-      eas,
-      ea);
-    GNUNET_free (ea);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Stored encrypted KYC process #%llu attributes: %d\n",
-                (unsigned long long) process_row,
-                qs);
+      apr->details.success.events);
     GNUNET_break (qs > 0);
     return qs;
   }
@@ -279,14 +254,7 @@ aml_result_callback (
   /* Update database update based on result */
   qs = TALER_EXCHANGEDB_persist_aml_program_result (
     ru->plugin,
-    0,   // FIXME: process row - #9303 may give us something here!?
-    NULL /* no provider */,
-    NULL /* no user ID */,
-    NULL /* no legi ID */,
-    NULL /* no attributes */,
-    &ru->attribute_key,
-    0 /* no birthday */,
-    GNUNET_TIME_UNIT_FOREVER_ABS,
+    0,   // FIXME: process row NEEDED! - #9303 may give us something here!?
     &ru->account,
     apr);
   switch (qs)
@@ -398,7 +366,8 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
                 m->prog_name);
     ru->amlh = TALER_KYCLOGIC_run_aml_program3 (
       m,
-      NULL /* no attributes */,
+      &TALER_EXCHANGEDB_current_attributes_builder,
+      &hbc,
       &TALER_EXCHANGEDB_current_rule_builder,
       &hbc,
       &TALER_EXCHANGEDB_aml_history_builder,

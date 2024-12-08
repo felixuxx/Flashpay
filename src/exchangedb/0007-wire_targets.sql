@@ -23,12 +23,20 @@ BEGIN
     'ALTER TABLE wire_targets'
     ' ADD COLUMN h_normalized_payto BYTEA CHECK(LENGTH(h_normalized_payto)=32)'
     '   DEFAULT NULL'
+    ',ADD COLUMN aml_program_lock_timeout INT8'
+    '   DEFAULT NULL'
     ';'
   );
 
   PERFORM comment_partitioned_column(
      'hash over the normalized payto URI for this account; used for KYC operations; NULL if not available (due to DB migration not initializing this value)'
     ,'h_normalized_payto'
+    ,'wire_targets'
+    ,NULL
+  );
+  PERFORM comment_partitioned_column(
+     'If non-NULL, an AML program should be running and it holds a lock on this account, thus other AML programs should not be started concurrently. Given the possibility of crashes, the lock automatically expires at the time value given in this column. At that time, the lock can be considered stale.'
+    ,'aml_program_lock_timeout'
     ,'wire_targets'
     ,NULL
   );

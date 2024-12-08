@@ -908,6 +908,11 @@ struct TALER_KYCLOGIC_AmlProgramResult
       const json_t *new_rules;
 
       /**
+       * When do the new rules expire.
+       */
+      struct GNUNET_TIME_Timestamp expiration_time;
+
+      /**
        * Length of the @e events array.
        */
       unsigned int num_events;
@@ -978,7 +983,8 @@ typedef json_t *
  *           provide the context
  * @param measure_index which KYC measure yielded the
  *       @a attributes
- * @param attributes KYC attributes newly obtained
+ * @param current_attributes_cb function to get current KYC attributes
+ * @param current_attributes_cb_cls closure for @a current_attributes_cb
  * @param current_rules_cb callback to get current KYC rules that apply to the account
  * @param current_rules_cb_cls closure for @a current_rules_cb
  * @param aml_history_cb callback to get the AML history of the account
@@ -994,7 +1000,8 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program (
   const json_t *jmeasures,
   unsigned int measure_index,
-  const json_t *attributes,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_attributes_cb,
+  void *current_attributes_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
   void *current_rules_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
@@ -1009,8 +1016,9 @@ TALER_KYCLOGIC_run_aml_program (
  * Run AML program @a prog_name with the given @a context.
  *
  * @param prog_name name of AML program to run
- * @param attributes attributes to run with
  * @param context context to run with
+ * @param current_attributes_cb function to get current KYC attributes
+ * @param current_attributes_cb_cls closure for @a current_attributes_cb
  * @param current_rules_cb callback to get current KYC rules that apply to the account
  * @param current_rules_cb_cls closure for @a current_rules_cb
  * @param aml_history_cb callback to get the AML history of the account
@@ -1025,8 +1033,9 @@ TALER_KYCLOGIC_run_aml_program (
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program2 (
   const char *prog_name,
-  const json_t *attributes,
   const json_t *context,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_attributes_cb,
+  void *current_attributes_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
   void *current_rules_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
@@ -1043,7 +1052,8 @@ TALER_KYCLOGIC_run_aml_program2 (
  *
  * @param measure measure with program name and context
  *         to run
- * @param attributes attributes to run with
+ * @param current_attributes_cb function to get current KYC attributes
+ * @param current_attributes_cb_cls closure for @a current_attributes_cb
  * @param current_rules_cb callback to get current KYC rules that apply to the account
  * @param current_rules_cb_cls closure for @a current_rules_cb
  * @param aml_history_cb callback to get the AML history of the account
@@ -1058,7 +1068,8 @@ TALER_KYCLOGIC_run_aml_program2 (
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program3 (
   const struct TALER_KYCLOGIC_Measure *measure,
-  const json_t *attributes,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_attributes_cb,
+  void *current_attributes_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
   void *current_rules_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,

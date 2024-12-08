@@ -74,7 +74,7 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_legitimization_outcomes'
-    ' FOREIGN KEY (trigger_outcome_serial) '
+    ' FOREIGN KEY (trigger_outcome_serial)'
     ' REFERENCES legitimization_outcomes (outcome_serial_id) ON DELETE CASCADE'
   );
 END $$;

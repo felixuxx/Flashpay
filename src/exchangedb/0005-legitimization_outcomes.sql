@@ -55,7 +55,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'when was this outcome decided'
+     'when was this outcome decided, rounded timestamp'
     ,'decision_time'
     ,'legitimization_outcomes'
     ,partition_suffix

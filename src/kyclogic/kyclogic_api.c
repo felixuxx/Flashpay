@@ -3941,6 +3941,8 @@ handle_aml_output (
           = TALER_EC_EXCHANGE_KYC_AML_PROGRAM_MALFORMED_RESULT;
         goto ready;
       }
+      apr->details.success.expiration_time
+        = lrs->expiration_time;
       TALER_KYCLOGIC_rules_free (lrs);
     }
   }
@@ -3974,7 +3976,8 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program (
   const json_t *jmeasures,
   unsigned int measure_index,
-  const json_t *attributes,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_attributes_cb,
+  void *current_attributes_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
   void *current_rules_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
@@ -4003,8 +4006,9 @@ TALER_KYCLOGIC_run_aml_program (
     }
   }
   return TALER_KYCLOGIC_run_aml_program2 (prog_name,
-                                          attributes,
                                           context,
+                                          current_attributes_cb,
+                                          current_attributes_cb_cls,
                                           current_rules_cb,
                                           current_rules_cb_cls,
                                           aml_history_cb,
@@ -4019,8 +4023,9 @@ TALER_KYCLOGIC_run_aml_program (
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program2 (
   const char *prog_name,
-  const json_t *attributes,
   const json_t *context,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_attributes_cb,
+  void *current_attributes_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
   void *current_rules_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
@@ -4036,6 +4041,7 @@ TALER_KYCLOGIC_run_aml_program2 (
   json_t *current_rules;
   json_t *aml_history;
   json_t *kyc_history;
+  json_t *attributes;
 
   prog = find_program (prog_name);
   if (NULL == prog)
@@ -4049,6 +4055,15 @@ TALER_KYCLOGIC_run_aml_program2 (
   aprh->program = prog;
   if (0 != (API_ATTRIBUTES & prog->input_mask))
   {
+    attributes = current_attributes_cb (current_attributes_cb_cls);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC attributes for AML program %s are:\n",
+                prog_name);
+    json_dumpf (attributes,
+                stderr,
+                JSON_INDENT (2));
+    fprintf (stderr,
+             "\n");
     for (unsigned int i = 0; i<prog->num_required_attributes; i++)
     {
       const char *rattr = prog->required_attributes[i];
@@ -4186,7 +4201,8 @@ TALER_KYCLOGIC_run_aml_program2 (
 struct TALER_KYCLOGIC_AmlProgramRunnerHandle *
 TALER_KYCLOGIC_run_aml_program3 (
   const struct TALER_KYCLOGIC_Measure *measure,
-  const json_t *attributes,
+  TALER_KYCLOGIC_HistoryBuilderCallback current_attributes_cb,
+  void *current_attributes_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback current_rules_cb,
   void *current_rules_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback aml_history_cb,
@@ -4198,8 +4214,9 @@ TALER_KYCLOGIC_run_aml_program3 (
 {
   return TALER_KYCLOGIC_run_aml_program2 (
     measure->prog_name,
-    attributes,
     measure->context,
+    current_attributes_cb,
+    current_attributes_cb_cls,
     current_rules_cb,
     current_rules_cb_cls,
     aml_history_cb,

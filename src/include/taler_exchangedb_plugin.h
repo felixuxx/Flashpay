@@ -7297,25 +7297,19 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Store KYC attribute data, update KYC process status and
-   * AML status for the given account.
+   * Update KYC process status and
+   * AML status for the given account based on
+   * AML program outcome.
    *
    * @param cls closure
    * @param process_row KYC process row to update
    * @param h_payto account for which the attribute data is stored
-   * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
-   * @param collection_time when was the data collected
-   * @param provider_name name of the provider that collected the data
-   * @param provider_account_id provider account ID
-   * @param provider_legitimization_id provider legitimization ID
-   * @param expiration_time when does the data expire
+   * @param expiration_time when do the @a new_rules expire
    * @param account_properties new account properties
    * @param new_rules new KYC rules to apply to the account
    * @param to_investigate true to flag account for investigation
    * @param num_events length of the @a events array
    * @param events array of KYC events to trigger
-   * @param enc_attributes_size number of bytes in @a enc_attributes
-   * @param enc_attributes encrypted attribute data
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -7323,19 +7317,31 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t process_row,
     const struct TALER_NormalizedPaytoHashP *h_payto,
-    uint32_t birthday,
-    struct GNUNET_TIME_Timestamp collection_time,
-    const char *provider_name,
-    const char *provider_account_id,
-    const char *provider_legitimization_id,
-    struct GNUNET_TIME_Absolute expiration_time,
+    struct GNUNET_TIME_Timestamp expiration_time,
     const json_t *account_properties,
     const json_t *new_rules,
     bool to_investigate,
     unsigned int num_events,
-    const char **events,
-    size_t enc_attributes_size,
-    const void *enc_attributes);
+    const char **events);
+
+
+  /**
+   * Update AML program status to finished (and failed).
+   *
+   * @param cls closure
+   * @param process_row KYC process row to update
+   * @param h_payto account for which the attribute data is stored
+   * @param error_message details about what went wrong
+   * @param ec error code about the failure
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*insert_aml_program_failure) (
+    void *cls,
+    uint64_t process_row,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
+    const char *error_message,
+    enum TALER_ErrorCode ec);
 
 
   /**
@@ -7568,28 +7574,28 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
- * Lookup measure data for a legitimization process.
- *
- * @param cls closure
- * @param legitimization_measure_serial_id
- *    row in legitimization_measures table to access
- * @param measure_index index of the measure to return
- *    attribute data for
- * @param[out] access_token
- *    set to token for access control that must match
- * @param[out] h_payto set to the the hash of the
- *    payto URI of the account undergoing legitimization
- * @param[out] jmeasures set to the legitimization
- *    measures that were put on the account
- * @param[out] is_finished set to true if the legitimization was
- *    already finished
- * @param[out] encrypted_attributes_len set to length of
- *    @a encrypted_attributes
- * @param[out] encrypted_attributes set to the attributes
- *    obtained for the legitimization process, if it
- *    succeeded, otherwise set to NULL
- * @return database transaction status
- */
+   * Lookup measure data for a legitimization process.
+   *
+   * @param cls closure
+   * @param legitimization_measure_serial_id
+   *    row in legitimization_measures table to access
+   * @param measure_index index of the measure to return
+   *    attribute data for
+   * @param[out] access_token
+   *    set to token for access control that must match
+   * @param[out] h_payto set to the the hash of the
+   *    payto URI of the account undergoing legitimization
+   * @param[out] jmeasures set to the legitimization
+   *    measures that were put on the account
+   * @param[out] is_finished set to true if the legitimization was
+   *    already finished
+   * @param[out] encrypted_attributes_len set to length of
+   *    @a encrypted_attributes
+   * @param[out] encrypted_attributes set to the attributes
+   *    obtained for the legitimization process, if it
+   *    succeeded, otherwise set to NULL
+   * @return database transaction status
+   */
   enum GNUNET_DB_QueryStatus
     (*lookup_completed_legitimization)(
     void *cls,
@@ -7647,7 +7653,6 @@ struct TALER_EXCHANGEDB_Plugin
    *    row in legitimization_processes table to access
    * @param[out] measure_index set to the measure the
    *    process is trying to satisfy
-   * @param[out] provider_name name of the provider, must be freed by caller
    * @param[out] jmeasures set to the legitimization
    *    measures that were put on the account
    * @return database transaction status
@@ -7657,7 +7662,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t legitimization_process_serial_id,
     uint32_t *measure_index,
-    char **provider_name,
     json_t **jmeasures);
 
 
@@ -7727,6 +7731,35 @@ struct TALER_EXCHANGEDB_Plugin
     bool *unknown_account,
     struct GNUNET_TIME_Timestamp *last_date,
     uint64_t *legitimization_measure_serial_id);
+
+
+  /**
+   * Store KYC attribute data.
+   *
+   * @param cls closure
+   * @param process_row KYC process row to update
+   * @param h_payto account for which the attribute data is stored
+   * @param provider_name name of the provider that provided the attributes
+   * @param provider_account_id provider account ID
+   * @param provider_legitimization_id provider legitimization ID
+   * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
+   * @param expiration_time when does the data expire
+   * @param enc_attributes_size number of bytes in @a enc_attributes
+   * @param enc_attributes encrypted attribute data
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*persist_kyc_attributes) (
+    void *cls,
+    uint64_t process_row,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
+    const char *provider_name,
+    const char *provider_account_id,
+    const char *provider_legitimization_id,
+    uint32_t birthday,
+    struct GNUNET_TIME_Absolute expiration_time,
+    size_t enc_attributes_size,
+    const void *enc_attributes);
 
 
   /**

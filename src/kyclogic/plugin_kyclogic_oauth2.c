@@ -1047,7 +1047,13 @@ converted_proof_cb (void *cls,
                                          ph);
     return;
   }
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Attribute conversion output is:\n");
+  json_dumpf (attr,
+              stderr,
+              JSON_INDENT (2));
+  fprintf (stderr,
+           "\n");
   {
     const char *id;
     struct GNUNET_JSON_Specification ispec[] = {

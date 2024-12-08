@@ -52,14 +52,10 @@ struct TEH_KycMeasureRunContext;
 
 
 /**
- * Run measure after storing attributes from the given
- * provider.
- *
- * Only works when a process is active.
+ * Store attributes from the given KYC provider.
  *
  * FIXME: Isn't the account_id redundant via the process_row?
  *
- * @param scope the HTTP request logging scope
  * @param process_row legitimization process the data provided is about
  * @param account_id account the the data provided is about
  * @param provider_name name of the provider that provided the attributes
@@ -67,20 +63,38 @@ struct TEH_KycMeasureRunContext;
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
  * @param new_attributes user attributes returned by the provider
- * @param cb function to call with the result
- * @param cb_cls closure for @a cb
  * @return handle to cancel the operation
  */
-struct TEH_KycMeasureRunContext *
-TEH_kyc_run_measure_for_attributes (
-  const struct GNUNET_AsyncScopeId *scope,
+enum GNUNET_DB_QueryStatus
+TEH_kyc_store_attributes (
   uint64_t process_row,
   const struct TALER_NormalizedPaytoHashP *account_id,
   const char *provider_name,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
-  const json_t *new_attributes,
+  const json_t *new_attributes);
+
+
+/**
+ * Run measure after storing attributes from the given
+ * provider.
+ *
+ * Only works when a process is active.
+ *
+ * @param scope the HTTP request logging scope
+ * @param process_row legitimization process the data provided is about
+ * @param account_id account the the data provided is about
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return handle to cancel the operation
+ */
+// FIXME: function should probably be renamed...
+struct TEH_KycMeasureRunContext *
+TEH_kyc_run_measure_for_attributes (
+  const struct GNUNET_AsyncScopeId *scope,
+  uint64_t process_row,
+  const struct TALER_NormalizedPaytoHashP *account_id,
   TEH_KycMeasureRunContextCallback cb,
   void *cb_cls);
 
@@ -149,7 +163,6 @@ typedef void
  * @param account_id account to activate fallback for
  * @param orig_requirement_row original requirement
  *    row that now triggered the fallback
- * @param attributes attributes to run with
  * @param fallback_measure fallback to activate
  * @param cb callback to call with result
  * @param cb_cls closure for @a cb
@@ -161,7 +174,6 @@ TEH_kyc_fallback (
   const struct GNUNET_AsyncScopeId *scope,
   const struct TALER_NormalizedPaytoHashP *account_id,
   uint64_t orig_requirement_row,
-  const json_t *attributes,
   const char *fallback_measure,
   TEH_KycAmlFallbackCallback cb,
   void *cb_cls);

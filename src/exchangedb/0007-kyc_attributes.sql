@@ -14,15 +14,35 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-BEGIN;
+CREATE FUNCTION alter_table_kyc_attributes7(
+  IN partition_suffix TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name TEXT DEFAULT 'kyc_attributes';
+BEGIN
+  PERFORM create_partitioned_table(
+    'ALTER TABLE %I'
+    ' DROP COLUMN trigger_outcome_serial'
+    ';'
+    ,table_name
+    ,''
+    ,partition_suffix
+  );
+END $$;
 
-SELECT _v.register_patch('exchange-0007', NULL, NULL);
-SET search_path TO exchange;
 
-#include "0007-wire_targets.sql"
-#include "0007-legitimization_outcomes.sql"
-#include "0007-batch_deposits.sql"
-#include "0007-kyc_attributes.sql"
-
-
-COMMIT;
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('kyc_attributes7'
+    ,'exchange-0007'
+    ,'alter'
+    ,TRUE
+    ,FALSE);

@@ -45,7 +45,7 @@ SELECT decision_time
 
 IF FOUND
 THEN
-  IF out_last_date >= in_decision_time
+  IF out_last_date > in_decision_time
   THEN
     -- Refuse to insert older decision.
     RETURN;
