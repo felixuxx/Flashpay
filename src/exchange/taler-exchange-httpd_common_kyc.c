@@ -1324,8 +1324,6 @@ current_rules_cb (
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC requirement is %s\n",
               TALER_KYCLOGIC_rule2s (requirement));
-  // FIXME: this is again logic that should probably be
-  // shared!
   instant_ms
     = TALER_KYCLOGIC_rule_get_instant_measure (
         requirement);

@@ -402,7 +402,8 @@ TEH_handler_post_aml_decision (
 
     if (NULL != new_measures)
     {
-      instant_ms = TALER_KYCLOGIC_get_instant_measure (lrs, new_measures);
+      instant_ms = TALER_KYCLOGIC_get_instant_measure (lrs,
+                                                       new_measures);
     }
 
     if (NULL != instant_ms)
