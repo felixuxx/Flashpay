@@ -105,6 +105,7 @@ TALER_FAKEBANK_make_admin_transfer_ (
     GNUNET_free (t);
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->rpubs_lock));
+    return GNUNET_NO;
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->rpubs_lock));

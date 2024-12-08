@@ -1101,9 +1101,10 @@ get_wire_fee (struct AggregationContext *ac,
           &TALER_ARL_master_pub,
           &master_sig))
     {
-      report_row_inconsistency ("wire-fee",
-                                timestamp.abs_time.abs_value_us,
-                                "wire fee signature invalid at given time");
+      ac->qs = report_row_inconsistency ("wire-fee",
+                                         timestamp.abs_time.abs_value_us,
+                                         "wire fee signature invalid at given time");
+      return NULL;
     }
   }
 
@@ -1263,9 +1264,15 @@ check_wire_out_cb (void *cls,
     }
     if (NULL == wire_fee)
     {
-      report_row_inconsistency ("wire-fee",
-                                date.abs_time.abs_value_us,
-                                "wire fee unavailable for given time");
+      qs = report_row_inconsistency ("wire-fee",
+                                     date.abs_time.abs_value_us,
+                                     "wire fee unavailable for given time");
+      if (qs < 0)
+      {
+        ac->qs = qs;
+        GNUNET_free (method);
+        return GNUNET_SYSERR;
+      }
       /* If fee is unknown, we just assume the fee is zero */
       final_amount = wcc.total_deposits;
     }

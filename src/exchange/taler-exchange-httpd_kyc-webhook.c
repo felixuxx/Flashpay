@@ -335,7 +335,7 @@ clean_kwh (struct TEH_RequestContext *rc)
   }
   if (NULL != kwh->webhook_response)
   {
-    MHD_destroy_response (kwh->response);
+    MHD_destroy_response (kwh->webhook_response);
     kwh->webhook_response = NULL;
   }
   GNUNET_free (kwh);
