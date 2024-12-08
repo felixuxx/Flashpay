@@ -47,6 +47,10 @@ EXTRA_DIST = \
   locale/de/LC_MESSAGES/exchange-tos-tops-v0.po \
   locale/fr/LC_MESSAGES/exchange-tos-tops-v0.po \
   $(bin_SCRIPTS) \
+  aml-spa.lock \
+  auditor-spa.lock \
+  kyc-spa.lock \
+  check-prebuilt \
   gana-generate.sh \
   gana/gnu-taler-error-codes/registry.rec \
   gana/gnu-taler-error-codes/Makefile \
