@@ -163,7 +163,7 @@ struct TALER_EXCHANGEDB_RuleUpdater
  * up. Called with an open database transaction on success; on failure, the
  * transaction will have already been rolled back.
  *
- * @param[in,out] cls a `struct TALER_EXCHANGEDB_RuleUpdater *`
+ * @param[in,out] ru rule updater to return result for
  */
 static void
 return_result (struct TALER_EXCHANGEDB_RuleUpdater *ru)
