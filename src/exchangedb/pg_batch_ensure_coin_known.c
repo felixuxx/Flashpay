@@ -18,7 +18,7 @@
  * @brief Implementation of the batch_ensure_coin_known function for Postgres
  * @author Christian Grothoff
  *
- * FIXME: use the array support for postgres to simplify this code!
+ * FIXME-#9373: use the array support for postgres to simplify this code!
  *
  */
 #include "platform.h"

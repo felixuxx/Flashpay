@@ -55,7 +55,7 @@ TEH_PG_add_policy_fulfillment_proof (
   enum GNUNET_DB_QueryStatus qs;
   struct PostgresClosure *pg = cls;
   size_t count = fulfillment->details_count;
-  /* FIXME: this seems to be prone to VLA attacks */
+  /* FIXME[Oec]: this seems to be prone to VLA attacks */
   struct GNUNET_HashCode hcs[GNUNET_NZL (count)];
 
   /* Create the sorted policy_hash_codes */

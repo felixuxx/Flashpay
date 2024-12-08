@@ -318,7 +318,7 @@ batch_deposit_transaction (void *cls,
       bdc->policy_details.fulfillment_state != TALER_PolicyFulfillmentSuccess;
   }
 
-  /* FIXME: replace by batch insert! */
+  /* FIXME-#9373: replace by batch insert! */
   for (unsigned int i = 0; i<bdc->bd.num_cdis; i++)
   {
     const struct TALER_EXCHANGEDB_CoinDepositInformation *cdi
