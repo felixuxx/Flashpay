@@ -315,7 +315,7 @@ calculate_blinded_hash (
     union GNUNET_CRYPTO_BlindSessionNonce nonce;
     union GNUNET_CRYPTO_BlindSessionNonce *noncep = NULL;
 
-    // FIXME: add logic to denom.c to do this!
+    // FIXME[oec?]: add logic to denom.c to do this!
     if (GNUNET_CRYPTO_BSA_CS == bi.cipher)
     {
       struct TEH_CsDeriveData cdd = {
@@ -435,7 +435,8 @@ verify_commitment_and_max_age (
       {
         GNUNET_CRYPTO_hash_context_read (hash_context,
                                          &commitment->h_coin_evs[coin_idx],
-                                         sizeof(commitment->h_coin_evs[coin_idx]));
+                                         sizeof(commitment->h_coin_evs[coin_idx]
+                                                ));
       }
       else
       {

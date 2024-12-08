@@ -491,7 +491,7 @@ TEH_handler_kyc_upload (
       &is_finished,
       &enc_attributes_len,
       &enc_attributes);
-    /* FIXME: not exactly elegant, should eventually
+    /* FIXME: not exactly performant/elegant, should eventually
        modify lookup_completed_legitimization to
        return something if we are purely pending? */
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
