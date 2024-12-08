@@ -1963,6 +1963,14 @@ handle_mhd_request (void *cls,
                                 start,
                                 upload_data,
                                 upload_data_size);
+    if (GNUNET_OK !=
+        TEH_plugin->preflight (TEH_plugin->cls))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Handler %s left open database transaction behind!\n",
+                  url);
+      GNUNET_assert (0);
+    }
     GNUNET_async_scope_restore (&old_scope);
     return ret;
   }
@@ -2028,6 +2036,14 @@ handle_mhd_request (void *cls,
                                     url + tok_size + 1,
                                     upload_data,
                                     upload_data_size);
+        if (GNUNET_OK !=
+            TEH_plugin->preflight (TEH_plugin->cls))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Handler %s left open database transaction behind!\n",
+                      url);
+          GNUNET_assert (0);
+        }
         GNUNET_async_scope_restore (&old_scope);
         return ret;
       }
@@ -2089,6 +2105,7 @@ handle_mhd_request (void *cls,
                                 MHD_HTTP_METHOD_NOT_ALLOWED,
                                 reply);
       MHD_destroy_response (reply);
+      GNUNET_async_scope_restore (&old_scope);
       return ret;
     }
   }
@@ -2112,12 +2129,27 @@ handle_mhd_request (void *cls,
                                 MHD_HTTP_METHOD_NOT_ALLOWED,
                                 reply);
       MHD_destroy_response (reply);
+      GNUNET_async_scope_restore (&old_scope);
       return ret;
     }
-    return TEH_handler_kyc_upload (rc,
-                                   &url[strlen ("/kyc-upload/")],
-                                   upload_data_size,
-                                   upload_data);
+    {
+      MHD_RESULT ret;
+
+      ret = TEH_handler_kyc_upload (rc,
+                                    &url[strlen ("/kyc-upload/")],
+                                    upload_data_size,
+                                    upload_data);
+      if (GNUNET_OK !=
+          TEH_plugin->preflight (TEH_plugin->cls))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Handler %s left open database transaction behind!\n",
+                    url);
+        GNUNET_assert (0);
+      }
+      GNUNET_async_scope_restore (&old_scope);
+      return ret;
+    }
   }
 
 

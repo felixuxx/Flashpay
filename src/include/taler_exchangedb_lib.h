@@ -362,7 +362,8 @@ TALER_EXCHANGEDB_update_rules_cancel (
 
 /**
  * Persist the given @a apr for the given process and account
- * into the database via @a plugin.
+ * into the database via @a plugin.  Called within an open
+ * database transaction.
  *
  * @param plugin database API handle
  * @param process_row row identifying the legitimization process that was run,

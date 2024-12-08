@@ -160,10 +160,23 @@ kyc_aml_finished (
   struct TEH_KycMeasureRunContext *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_AsyncScopeSave old_scope;
+  enum GNUNET_GenericReturnValue res;
 
   kat->kyc_aml = NULL;
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
+  res = TEH_plugin->start (TEH_plugin->cls,
+                           "kyc-persist-aml-program-result");
+  if (GNUNET_OK != res)
+  {
+    GNUNET_break (0);
+    kat->cb (kat->cb_cls,
+             TALER_EC_GENERIC_DB_START_FAILED,
+             "kyc-persist-aml-program-result");
+    TEH_kyc_run_measure_cancel (kat);
+    GNUNET_async_scope_restore (&old_scope);
+    return;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "AML program finished with status %d\n",
               (int) apr->status);
@@ -177,8 +190,8 @@ kyc_aml_finished (
   case GNUNET_DB_STATUS_HARD_ERROR:
   case GNUNET_DB_STATUS_SOFT_ERROR:
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* double-bad: error during error handling */
     GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
     kat->cb (kat->cb_cls,
              TALER_EC_GENERIC_DB_STORE_FAILED,
              "persist_aml_program_result");
@@ -187,6 +200,17 @@ kyc_aml_finished (
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
+  }
+  qs = TEH_plugin->commit (TEH_plugin->cls);
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    kat->cb (kat->cb_cls,
+             GNUNET_DB_STATUS_SOFT_ERROR == qs
+             ? TALER_EC_GENERIC_DB_SOFT_FAILURE
+             : TALER_EC_GENERIC_DB_COMMIT_FAILED,
+             "kyc-persist-aml-program-result");
+    return;
   }
   switch (apr->status)
   {
@@ -1236,7 +1260,8 @@ amount_iterator_wrapper_cb (
 
 
 /**
- * Function called with the current rule set.
+ * Function called with the current rule set. Called with an open
+ * database transaction.
  *
  * @param cls a `struct TEH_LegitimizationCheckHandle *`
  * @param rur includes legitimziation rule set that applies to the account

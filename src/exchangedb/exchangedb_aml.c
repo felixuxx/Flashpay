@@ -143,22 +143,21 @@ struct TALER_EXCHANGEDB_RuleUpdater
 
 
 /**
- * Function that finally returns the result to the application and
- * cleans up.
+ * Function that finally returns the result to the application and cleans
+ * up. Called with an open database transaction on success; on failure, the
+ * transaction will have already been rolled back.
  *
  * @param[in,out] cls a `struct TALER_EXCHANGEDB_RuleUpdater *`
  */
 static void
-return_result (void *cls)
+return_result (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 {
-  struct TALER_EXCHANGEDB_RuleUpdater *ru = cls;
   struct TALER_EXCHANGEDB_RuleUpdaterResult rur = {
     .legitimization_outcome_last_row = ru->legitimization_outcome_last_row,
     .lrs = ru->lrs,
     .ec = ru->ec,
   };
 
-  ru->t = NULL;
   ru->cb (ru->cb_cls,
           &rur);
   ru->lrs = NULL;
@@ -167,21 +166,9 @@ return_result (void *cls)
 
 
 /**
- * Finish the update returning the current lrs in @a ru.
- *
- * @param[in,out] ru account we are processing
- */
-static void
-finish_update (struct TALER_EXCHANGEDB_RuleUpdater *ru)
-{
-  GNUNET_break (TALER_EC_NONE == ru->ec);
-  ru->t = GNUNET_SCHEDULER_add_now (&return_result,
-                                    ru);
-}
-
-
-/**
  * Fail the update with the given @a ec and @a hint.
+ * Called with an open database transaction, which will
+ * be rolled back (!).
  *
  * @param[in,out] ru account we are processing
  * @param ec error code to fail with
@@ -196,14 +183,14 @@ fail_update (struct TALER_EXCHANGEDB_RuleUpdater *ru,
   ru->plugin->rollback (ru->plugin->cls);
   ru->ec = ec;
   ru->hint = hint;
-  ru->t = GNUNET_SCHEDULER_add_now (&return_result,
-                                    ru);
+  return_result (ru);
 }
 
 
 /**
  * Check the rules in @a ru to see if they are current, and
- * if not begin the updating process.
+ * if not begin the updating process.  Called with an open
+ * database transaction.
  *
  * @param[in] ru rule updater context
  */
@@ -213,7 +200,7 @@ check_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru);
 
 /**
  * Run the measure @a m in the context of the legitimisation rules
- * of @a ru.
+ * of @a ru.  Called with an open database transaction.
  *
  * @param ru updating context we are using
  * @param m measure we need to run next
@@ -224,7 +211,8 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
 
 
 /**
- * Function called after AML program was run.
+ * Function called after AML program was run.  Called
+ * without an open database transaction, will start one!
  *
  * @param cls the `struct TALER_EXCHANGEDB_RuleUpdater *`
  * @param apr result of the AML program.
@@ -246,11 +234,9 @@ aml_result_callback (
     GNUNET_break (0);
     fail_update (ru,
                  TALER_EC_GENERIC_DB_START_FAILED,
-                 "aml_result_callback");
+                 "aml-persist-aml-program-result");
     return;
   }
-  // FIXME: #9303 logic here?
-
   /* Update database update based on result */
   qs = TALER_EXCHANGEDB_persist_aml_program_result (
     ru->plugin,
@@ -304,7 +290,7 @@ aml_result_callback (
                     fmn);
         TALER_KYCLOGIC_rules_free (ru->lrs);
         ru->lrs = NULL;
-        finish_update (ru);
+        return_result (ru);
         return;
       }
       run_measure (ru,
@@ -326,7 +312,7 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
     /* fall back to default rules */
     TALER_KYCLOGIC_rules_free (ru->lrs);
     ru->lrs = NULL;
-    finish_update (ru);
+    return_result (ru);
     return;
   }
   ru->depth++;
@@ -431,13 +417,13 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
     }
   }
   /* The rules remain these rules until the user passes the check */
-  finish_update (ru);
+  return_result (ru);
 }
 
 
 /**
- * Update the expired legitimization rules in @a ru, checking for
- * expiration first.
+ * Update the expired legitimization rules in @a ru, checking for expiration
+ * first.  Called with an open database transaction.
  *
  * @param[in,out] ru account we are processing
  */
@@ -474,14 +460,14 @@ check_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
     /* return NULL, aka default rules */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Default rules apply\n");
-    finish_update (ru);
+    return_result (ru);
     return;
   }
   if (! GNUNET_TIME_absolute_is_past
         (TALER_KYCLOGIC_rules_get_expiration (ru->lrs).abs_time) )
   {
     /* Rules did not expire, return them! */
-    finish_update (ru);
+    return_result (ru);
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -492,17 +478,20 @@ check_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 
 /**
  * Entrypoint that fetches the latest rules from the database
- * and starts processing them.
+ * and starts processing them. Called without an open database
+ * transaction, will start one.
  *
- * @param[in,out] ru account we are processing
+ * @param[in] cls the `struct TALER_EXCHANGEDB_RuleUpdater *` to run
  */
 static void
-fetch_latest_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
+fetch_latest_rules (void *cls)
 {
+  struct TALER_EXCHANGEDB_RuleUpdater *ru = cls;
   enum GNUNET_DB_QueryStatus qs;
   json_t *jnew_rules;
   enum GNUNET_GenericReturnValue res;
 
+  ru->t = NULL;
   GNUNET_break (NULL == ru->lrs);
   res = ru->plugin->start (ru->plugin->cls,
                            "aml-begin-lookup-rules-by-access-token");
@@ -511,7 +500,7 @@ fetch_latest_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
     GNUNET_break (0);
     fail_update (ru,
                  TALER_EC_GENERIC_DB_START_FAILED,
-                 "aml_result_callback");
+                 "aml-begin-lookup-rules-by-access-token");
     return;
   }
   qs = ru->plugin->lookup_rules_by_access_token (
@@ -554,7 +543,8 @@ TALER_EXCHANGEDB_update_rules (
   ru->account = *account;
   ru->cb = cb;
   ru->cb_cls = cb_cls;
-  fetch_latest_rules (ru);
+  ru->t = GNUNET_SCHEDULER_add_now (&fetch_latest_rules,
+                                    ru);
   return ru;
 }
 
