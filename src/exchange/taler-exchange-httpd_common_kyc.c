@@ -1279,9 +1279,6 @@ current_rules_cb (
                "kyc_test_required");
     goto cleanup;
   }
-  // FIXME: check that this change is a valid correction,
-  // used to be just lch->lcr.bad_key_auth, but that
-  // would be independent of there being an applicable KYC rule!
   if (lch->bad_kyc_auth)
   {
     qs = TEH_plugin->commit (TEH_plugin->cls);
