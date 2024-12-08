@@ -42,7 +42,7 @@ TALER_EXCHANGEDB_persist_aml_program_result (
   enum GNUNET_DB_QueryStatus qs;
 
 #if 0
-  /* TODO: also clear lock on AML program (#9303) */
+  /* FIXME: also clear lock on AML program (#9303) */
   qs = plugin->clear_aml_lock (
     plugin->cls,
     account_id,

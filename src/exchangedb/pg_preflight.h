@@ -36,8 +36,6 @@
  *         #GNUNET_NO if a transaction was rolled back
  *         #GNUNET_SYSERR on hard errors
  */
-
-
 enum GNUNET_GenericReturnValue
 TEH_PG_preflight (void *cls);
 
