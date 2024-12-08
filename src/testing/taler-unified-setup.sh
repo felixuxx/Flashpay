@@ -589,21 +589,22 @@ fi
 
 STAGE="merchant"
 
+if [ -n "${USE_MERCHANT_EXCHANGE+x}" ]
+then
+    MEPUB=$(taler-merchant-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY)
+    MXPUB=${MASTER_PUB:-$(taler-exchange-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
+    if [ "$MEPUB" != "$MXPUB" ]
+    then
+        echo -n " patching master_pub ($MXPUB)..."
+        taler-merchant-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY -V "$MXPUB"
+    else
+        echo -n " with exchange $MXPUB ..."
+    fi
+fi
+
 if [ "1" = "$START_MERCHANT" ]
 then
     echo -n "Starting merchant ..."
-    if [ -n "${USE_MERCHANT_EXCHANGE+x}" ]
-    then
-        MEPUB=$(taler-merchant-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY)
-        MXPUB=${MASTER_PUB:-$(taler-exchange-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
-        if [ "$MEPUB" != "$MXPUB" ]
-        then
-            echo -n " patching master_pub ($MXPUB)..."
-            taler-merchant-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY -V "$MXPUB"
-        else
-            echo -n " with exchange $MXPUB ..."
-        fi
-    fi
     MERCHANT_TYPE=$(taler-merchant-config -c "$CONF" -s MERCHANT -o SERVE)
     if [ "unix" = "$MERCHANT_TYPE" ]
     then
