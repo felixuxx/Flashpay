@@ -254,7 +254,7 @@ aml_result_callback (
   /* Update database update based on result */
   qs = TALER_EXCHANGEDB_persist_aml_program_result (
     ru->plugin,
-    0,   // FIXME: process row NEEDED! - #9303 may give us something here!?
+    0LLU, /* 0: no existing legitimization process, creates new row */
     &ru->account,
     apr);
   switch (qs)

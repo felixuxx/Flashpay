@@ -365,7 +365,10 @@ TALER_EXCHANGEDB_update_rules_cancel (
  * into the database via @a plugin.
  *
  * @param plugin database API handle
- * @param process_row row identifying the AML process that was run
+ * @param process_row row identifying the legitimization process that was run,
+ *        0 if there was no legi process (for example, due to rule
+ *        expiration triggering something) and we should simply
+ *        create a new row
  * @param account_id hash of account the result is about
  * @param apr AML program result to persist
  */
