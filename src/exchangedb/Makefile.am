@@ -131,6 +131,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_batch_ensure_coin_known.h pg_batch_ensure_coin_known.c \
   pg_begin_revolving_shard.h pg_begin_revolving_shard.c \
   pg_begin_shard.h pg_begin_shard.c \
+  pg_clear_aml_lock.h pg_clear_aml_lock.c \
   pg_commit.h pg_commit.c \
   pg_complete_shard.h pg_complete_shard.c \
   pg_compute_shard.h pg_compute_shard.c \
@@ -304,6 +305,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_wire_out_above_serial_id_by_account.h pg_select_wire_out_above_serial_id_by_account.c \
   pg_select_withdraw_amounts_for_kyc_check.h pg_select_withdraw_amounts_for_kyc_check.c \
   pg_select_withdrawals_above_serial_id.h pg_select_withdrawals_above_serial_id.c \
+  pg_set_aml_lock.h pg_set_aml_lock.c \
   pg_set_extension_manifest.h pg_set_extension_manifest.c \
   pg_set_purse_balance.h pg_set_purse_balance.c \
   pg_start.h pg_start.c \

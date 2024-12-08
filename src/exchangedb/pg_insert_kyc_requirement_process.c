@@ -26,6 +26,7 @@
 #include "pg_helper.h"
 #include <gnunet/gnunet_pq_lib.h>
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
   void *cls,

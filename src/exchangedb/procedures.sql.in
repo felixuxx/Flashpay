@@ -58,5 +58,6 @@ SET search_path TO exchange;
 #include "exchange_do_select_aggregations_above_serial.sql"
 #include "exchange_do_persist_kyc_attributes.sql"
 #include "exchange_do_insert_aml_program_failure.sql"
+#include "exchange_do_set_aml_lock.sql"
 
 COMMIT;

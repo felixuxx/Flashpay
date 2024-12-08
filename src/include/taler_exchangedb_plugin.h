@@ -7798,6 +7798,44 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_GenericReturnValue
     (*inject_auditor_triggers)(void *cls);
 
+
+  /**
+   * Set a lock for @a lock_duration on running AML programs for the @a h_payto
+   * account. If a lock already exists, returns the timeout of the
+   * @a existing_lock.  Returns 0 if @a h_payto is not known.
+   *
+   * @param cls closure
+   * @param h_payto account to lock
+   * @param lock_duration how long to lock the account
+   * @param[out] existing_lock set to timeout of existing lock, or
+   *         to zero if there is no existing lock
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*set_aml_lock) (
+    void *cls,
+    const struct TALER_NormalizedPaytoHashP *h_payto,
+    struct GNUNET_TIME_Relative lock_duration,
+    struct GNUNET_TIME_Absolute *existing_lock);
+
+
+  /**
+   * Clear a lock on running AML programs for the @a h_payto
+   * account. Returns 0 if @a h_payto is not known; does not
+   * actually care if there was a lock. Also does not by
+   * itself notify clients waiting for the lock, that
+   * notification the caller must do separately after finishing
+   * the database update.
+   *
+   * @param cls closure
+   * @param h_payto account to clear the lock for
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*clear_aml_lock) (
+    void *cls,
+    const struct TALER_NormalizedPaytoHashP *h_payto);
+
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

@@ -22,6 +22,7 @@
 #include "taler_exchangedb_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_json_lib.h"
+#include "taler_dbevents.h"
 #include <gnunet/gnunet_common.h>
 
 /**
@@ -30,6 +31,13 @@
  * we forcefully terminate the recursion and fail hard.
  */
 #define MAX_DEPTH 16
+
+/**
+ * How long do we allow an AML program to run for at most?
+ * If an AML program runs longer, we kill it and mark it as
+ * failed.
+ */
+#define MAX_AML_PROGRAM_RUNTIME GNUNET_TIME_UNIT_MINUTES
 
 
 enum GNUNET_DB_QueryStatus
@@ -41,13 +49,9 @@ TALER_EXCHANGEDB_persist_aml_program_result (
 {
   enum GNUNET_DB_QueryStatus qs;
 
-#if 0
-  /* FIXME: also clear lock on AML program (#9303) */
   qs = plugin->clear_aml_lock (
     plugin->cls,
-    account_id,
-    lock_id);
-#endif
+    account_id);
   switch (apr->status)
   {
   case TALER_KYCLOGIC_AMLR_FAILURE:
@@ -116,9 +120,21 @@ struct TALER_EXCHANGEDB_RuleUpdater
   struct GNUNET_SCHEDULER_Task *t;
 
   /**
+   * Handler waiting notification that (previous) AML program
+   * finished.
+   */
+  struct GNUNET_DB_EventHandler *eh;
+
+  /**
    * Handle to running AML program.
    */
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *amlh;
+
+  /**
+   * Name of the AML program we were running asynchronously,
+   * for diagnostics.
+   */
+  char *aml_program_name;
 
   /**
    * Error hint to return with @e ec.
@@ -227,6 +243,8 @@ aml_result_callback (
   enum GNUNET_GenericReturnValue res;
 
   ru->amlh = NULL;
+  GNUNET_SCHEDULER_cancel (ru->t);
+  ru->t = NULL;
   res = ru->plugin->start (ru->plugin->cls,
                            "aml-persist-aml-program-result");
   if (GNUNET_OK != res)
@@ -304,6 +322,121 @@ aml_result_callback (
 
 
 static void
+aml_program_timeout (void *cls)
+{
+  struct TALER_EXCHANGEDB_RuleUpdater *ru = cls;
+  struct TALER_KYCLOGIC_AmlProgramResult apr = {
+    .status = TALER_KYCLOGIC_AMLR_FAILURE,
+    .details.failure.fallback_measure
+      = TALER_KYCLOGIC_get_aml_program_fallback (ru->aml_program_name),
+    .details.failure.error_message = ru->aml_program_name,
+    .details.failure.ec = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT
+  };
+  enum GNUNET_GenericReturnValue res;
+  enum GNUNET_DB_QueryStatus qs;
+
+  ru->t = NULL;
+  TALER_KYCLOGIC_run_aml_program_cancel (ru->amlh);
+  ru->amlh = NULL;
+  GNUNET_assert (NULL != apr.details.failure.fallback_measure);
+  res = ru->plugin->start (ru->plugin->cls,
+                           "aml-persist-aml-program-timeout");
+  if (GNUNET_OK != res)
+  {
+    GNUNET_break (0);
+    fail_update (ru,
+                 TALER_EC_GENERIC_DB_START_FAILED,
+                 "aml-persist-aml-program-timeout");
+    return;
+  }
+  /* Update database update based on result */
+  qs = TALER_EXCHANGEDB_persist_aml_program_result (
+    ru->plugin,
+    0LLU, /* 0: no existing legitimization process, creates new row */
+    &ru->account,
+    &apr);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    fail_update (ru,
+                 TALER_EC_GENERIC_DB_STORE_FAILED,
+                 "persist_aml_program_timeout");
+    return;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    /* Bad, couldn't persist AML result. Try again... */
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization issue persisting timeout of AML program. Restarting.\n");
+    fail_update (ru,
+                 TALER_EC_GENERIC_DB_SOFT_FAILURE,
+                 "persist_aml_program_timeout");
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* Strange, but let's just continue */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    /* normal case */
+    break;
+  }
+  {
+    const char *fmn = apr.details.failure.fallback_measure;
+    const struct TALER_KYCLOGIC_Measure *m;
+
+    m = TALER_KYCLOGIC_get_measure (ru->lrs,
+                                    fmn);
+    if (NULL == m)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fallback measure `%s' does not exist (anymore?).\n",
+                  fmn);
+      TALER_KYCLOGIC_rules_free (ru->lrs);
+      ru->lrs = NULL;
+      return_result (ru);
+      return;
+    }
+    run_measure (ru,
+                 m);
+    return;
+  }
+}
+
+
+/**
+ * Entrypoint that fetches the latest rules from the database
+ * and starts processing them. Called without an open database
+ * transaction, will start one.
+ *
+ * @param[in] cls the `struct TALER_EXCHANGEDB_RuleUpdater *` to run
+ */
+static void
+fetch_latest_rules (void *cls);
+
+
+/**
+ * Notification called when we either timeout on the AML program lock
+ * or when the (previous) AML program finished and we can thus try again.
+ *
+ * @param cls  the `struct TALER_EXCHANGEDB_RuleUpdater *` to continue
+ * @param extra additional event data provided (unused)
+ * @param extra_size number of bytes in @a extra (unused)
+ */
+static void
+trigger_fetch_latest_rules (void *cls,
+                            const void *extra,
+                            size_t extra_size)
+{
+  struct TALER_EXCHANGEDB_RuleUpdater *ru = cls;
+
+  (void) extra;
+  (void) extra_size;
+  if (NULL != ru->t)
+    return; /* multiple events triggered us, ignore */
+  ru->t = GNUNET_SCHEDULER_add_now (&fetch_latest_rules,
+                                    ru);
+}
+
+
+static void
 run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
              const struct TALER_KYCLOGIC_Measure *m)
 {
@@ -334,8 +467,37 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
       .attribute_key = &ru->attribute_key
     };
     enum GNUNET_DB_QueryStatus qs;
+    struct GNUNET_TIME_Absolute xlock;
 
-    // FIXME: #9303 logic here?
+    /* Free previous one, in case we are iterating... */
+    GNUNET_free (ru->aml_program_name);
+    ru->aml_program_name = GNUNET_strdup (m->prog_name);
+    qs = ru->plugin->set_aml_lock (
+      ru->plugin->cls,
+      &ru->account,
+      GNUNET_TIME_relative_multiply (MAX_AML_PROGRAM_RUNTIME,
+                                     2),
+      &xlock);
+    if (GNUNET_TIME_absolute_is_future (xlock))
+    {
+      struct TALER_KycCompletedEventP eh = {
+        .header.size = htons (sizeof (eh)),
+        .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+        .h_payto = ru->account
+      };
+      /* Wait for either timeout or notification */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "AML program already running, waiting for it to finish\n");
+      ru->plugin->rollback (ru->plugin->cls);
+      ru->eh
+        = ru->plugin->event_listen (
+            ru->plugin->cls,
+            GNUNET_TIME_absolute_get_remaining (xlock),
+            &eh.header,
+            &trigger_fetch_latest_rules,
+            ru);
+      return;
+    }
     qs = ru->plugin->commit (ru->plugin->cls);
     if (qs < 0)
     {
@@ -350,6 +512,11 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Check is of type 'skip', running AML program %s.\n",
                 m->prog_name);
+    GNUNET_assert (NULL == ru->t);
+    ru->t = GNUNET_SCHEDULER_add_delayed (
+      MAX_AML_PROGRAM_RUNTIME,
+      &aml_program_timeout,
+      ru);
     ru->amlh = TALER_KYCLOGIC_run_aml_program3 (
       m,
       &TALER_EXCHANGEDB_current_attributes_builder,
@@ -476,13 +643,6 @@ check_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
 }
 
 
-/**
- * Entrypoint that fetches the latest rules from the database
- * and starts processing them. Called without an open database
- * transaction, will start one.
- *
- * @param[in] cls the `struct TALER_EXCHANGEDB_RuleUpdater *` to run
- */
 static void
 fetch_latest_rules (void *cls)
 {
@@ -492,6 +652,13 @@ fetch_latest_rules (void *cls)
   enum GNUNET_GenericReturnValue res;
 
   ru->t = NULL;
+  if (NULL != ru->eh)
+  {
+    /* cancel event listener, if we have one */
+    ru->plugin->event_listen_cancel (ru->plugin->cls,
+                                     ru->eh);
+    ru->eh = NULL;
+  }
   GNUNET_break (NULL == ru->lrs);
   res = ru->plugin->start (ru->plugin->cls,
                            "aml-begin-lookup-rules-by-access-token");
@@ -568,5 +735,12 @@ TALER_EXCHANGEDB_update_rules_cancel (
     TALER_KYCLOGIC_rules_free (ru->lrs);
     ru->lrs = NULL;
   }
+  if (NULL != ru->eh)
+  {
+    ru->plugin->event_listen_cancel (ru->plugin->cls,
+                                     ru->eh);
+    ru->eh = NULL;
+  }
+  GNUNET_free (ru->aml_program_name);
   GNUNET_free (ru);
 }

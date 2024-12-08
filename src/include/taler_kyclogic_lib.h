@@ -410,6 +410,16 @@ TALER_KYCLOGIC_get_zero_limits (void);
 
 
 /**
+ * Obtain the fallback measure to be run if @a prog_name fails
+ *
+ * @param prog_name name of an AML program
+ * @return NULL if @a prog_name is unknown
+ */
+const char *
+TALER_KYCLOGIC_get_aml_program_fallback (const char *prog_name);
+
+
+/**
  * Obtain set of all measures that
  * could be triggered at an amount of zero and that
  * thus might be requested before a client even

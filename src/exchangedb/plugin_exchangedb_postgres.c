@@ -35,6 +35,7 @@
 #include "pg_batch_ensure_coin_known.h"
 #include "pg_begin_revolving_shard.h"
 #include "pg_begin_shard.h"
+#include "pg_clear_aml_lock.h"
 #include "pg_commit.h"
 #include "pg_complete_shard.h"
 #include "pg_compute_shard.h"
@@ -208,6 +209,7 @@
 #include "pg_select_wire_out_above_serial_id_by_account.h"
 #include "pg_select_withdraw_amounts_for_kyc_check.h"
 #include "pg_select_withdrawals_above_serial_id.h"
+#include "pg_set_aml_lock.h"
 #include "pg_set_extension_manifest.h"
 #include "pg_set_purse_balance.h"
 #include "pg_start.h"
@@ -771,6 +773,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_aml_program_failure;
   plugin->persist_kyc_attributes
     = &TEH_PG_persist_kyc_attributes;
+  plugin->clear_aml_lock
+    = &TEH_PG_clear_aml_lock;
+  plugin->set_aml_lock
+    = &TEH_PG_set_aml_lock;
 
   return plugin;
 }

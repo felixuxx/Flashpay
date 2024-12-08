@@ -1291,7 +1291,8 @@ TALER_KYCLOGIC_get_measure (
   const struct TALER_KYCLOGIC_LegitimizationRuleSet *lrs,
   const char *measure_name)
 {
-  return find_measure (lrs, measure_name);
+  return find_measure (lrs,
+                       measure_name);
 }
 
 
@@ -3742,6 +3743,21 @@ TALER_KYCLOGIC_check_form (
     }
   }
   return TALER_EC_NONE;
+}
+
+
+const char *
+TALER_KYCLOGIC_get_aml_program_fallback (const char *prog_name)
+{
+  struct TALER_KYCLOGIC_AmlProgram *prog;
+
+  prog = find_program (prog_name);
+  if (NULL == prog)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  return prog->fallback;
 }
 
 
