@@ -605,7 +605,7 @@ update_rules (struct TALER_EXCHANGEDB_RuleUpdater *ru)
   m = TALER_KYCLOGIC_rules_get_successor (ru->lrs);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Successor measure is %s.\n",
-              m->measure_name);
+              (NULL != m) ? m->measure_name : "(null)");
   run_measure (ru,
                m);
 }
