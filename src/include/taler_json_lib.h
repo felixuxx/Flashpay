@@ -138,7 +138,7 @@ TALER_JSON_pack_blinded_planchet (
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_token_issue_sig (
   const char *name,
-  const struct TALER_TokenIssueSignatureP *sig);
+  const struct TALER_TokenIssueSignature *sig);
 
 
 /**
@@ -662,7 +662,7 @@ TALER_JSON_spec_i18n_str (
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_issue_sig (
   const char *field,
-  struct TALER_TokenIssueSignatureP *sig);
+  struct TALER_TokenIssueSignature *sig);
 
 
 /**
@@ -676,7 +676,7 @@ TALER_JSON_spec_token_issue_sig (
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_token_issue_sig (
   const char *field,
-  struct TALER_TokenIssueBlindSignatureP *sig);
+  struct TALER_BlindedTokenIssueSignature *sig);
 
 /**
  * Generate line in parser specification for a

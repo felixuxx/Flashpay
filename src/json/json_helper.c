@@ -534,7 +534,7 @@ TALER_JSON_spec_age_commitment (const char *name,
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_token_issue_sig (const char *field,
-                                 struct TALER_TokenIssueSignatureP *sig)
+                                 struct TALER_TokenIssueSignature *sig)
 {
   sig->signature = NULL;
   return GNUNET_JSON_spec_unblinded_signature (field,
@@ -545,7 +545,7 @@ TALER_JSON_spec_token_issue_sig (const char *field,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_token_issue_sig (
   const char *field,
-  struct TALER_TokenIssueBlindSignatureP *sig)
+  struct TALER_BlindedTokenIssueSignature *sig)
 {
   sig->signature = NULL;
   return GNUNET_JSON_spec_blinded_signature (field,

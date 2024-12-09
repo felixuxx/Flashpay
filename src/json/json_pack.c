@@ -199,7 +199,7 @@ TALER_JSON_pack_denom_sig (
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_token_issue_sig (
   const char *name,
-  const struct TALER_TokenIssueSignatureP *sig)
+  const struct TALER_TokenIssueSignature *sig)
 {
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,

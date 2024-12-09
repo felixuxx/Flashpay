@@ -23,7 +23,7 @@
 
 
 void
-TALER_token_issue_sig_free (struct TALER_TokenIssueSignatureP *issue_sig)
+TALER_token_issue_sig_free (struct TALER_TokenIssueSignature *issue_sig)
 {
   if (NULL != issue_sig->signature)
   {
@@ -35,7 +35,7 @@ TALER_token_issue_sig_free (struct TALER_TokenIssueSignatureP *issue_sig)
 
 void
 TALER_blinded_issue_sig_free (
-  struct TALER_TokenIssueBlindSignatureP *issue_sig)
+  struct TALER_BlindedTokenIssueSignature *issue_sig)
 {
   if (NULL != issue_sig->signature)
   {
@@ -175,9 +175,9 @@ TALER_token_blind_input_copy (struct TALER_TokenUseMerchantValues *bi_dst,
 
 
 enum GNUNET_GenericReturnValue
-TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKeyP *issue_priv,
+TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKey *issue_priv,
                         const struct TALER_TokenEnvelope *envelope,
-                        struct TALER_TokenIssueBlindSignatureP *issue_sig)
+                        struct TALER_BlindedTokenIssueSignature *issue_sig)
 {
   issue_sig->signature
     = GNUNET_CRYPTO_blind_sign (issue_priv->private_key,
@@ -191,8 +191,8 @@ TALER_token_issue_sign (const struct TALER_TokenIssuePrivateKeyP *issue_priv,
 
 enum GNUNET_GenericReturnValue
 TALER_token_issue_verify (const struct TALER_TokenUsePublicKeyP *use_pub,
-                          const struct TALER_TokenIssuePublicKeyP *issue_pub,
-                          const struct TALER_TokenIssueSignatureP *ub_sig)
+                          const struct TALER_TokenIssuePublicKey *issue_pub,
+                          const struct TALER_TokenIssueSignature *ub_sig)
 {
   struct GNUNET_HashCode h_use_pub;
 
@@ -215,12 +215,12 @@ TALER_token_issue_verify (const struct TALER_TokenUsePublicKeyP *use_pub,
 
 enum GNUNET_GenericReturnValue
 TALER_token_issue_sig_unblind (
-  struct TALER_TokenIssueSignatureP *issue_sig,
-  const struct TALER_TokenIssueBlindSignatureP *blinded_sig,
+  struct TALER_TokenIssueSignature *issue_sig,
+  const struct TALER_BlindedTokenIssueSignature *blinded_sig,
   const union GNUNET_CRYPTO_BlindingSecretP *secret,
   const struct TALER_TokenUsePublicKeyHashP *use_pub_hash,
   const struct TALER_TokenUseMerchantValues *alg_values,
-  const struct TALER_TokenIssuePublicKeyP *issue_pub)
+  const struct TALER_TokenIssuePublicKey *issue_pub)
 {
   issue_sig->signature
     = GNUNET_CRYPTO_blind_sig_unblind (blinded_sig->signature,
