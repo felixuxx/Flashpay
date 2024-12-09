@@ -31,7 +31,7 @@
 #include "taler_kyclogic_lib.h"
 #include "taler_templating_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_age-withdraw.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_age-withdraw_reveal.h"
 #include "taler-exchange-httpd_aml-attributes-get.h"
 #include "taler-exchange-httpd_aml-decision.h"
@@ -39,7 +39,6 @@
 #include "taler-exchange-httpd_aml-measures-get.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
-#include "taler-exchange-httpd_batch-withdraw.h"
 #include "taler-exchange-httpd_coins_get.h"
 #include "taler-exchange-httpd_config.h"
 #include "taler-exchange-httpd_contract.h"
@@ -2686,8 +2685,7 @@ do_shutdown (void *cls)
   my_mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
   TEH_batch_deposit_cleanup ();
-  TEH_age_withdraw_cleanup ();
-  TEH_batch_withdraw_cleanup ();
+  TEH_withdraw_cleanup ();
   TEH_reserves_close_cleanup ();
   TEH_reserves_purse_cleanup ();
   TEH_purses_merge_cleanup ();
