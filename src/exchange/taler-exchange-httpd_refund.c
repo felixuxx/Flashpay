@@ -229,7 +229,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                             &refund->coin.coin_pub,
                                             &rctx.known_coin_id,
                                             &refund->coin.denom_pub_hash);
-    if (0 >= qs)
+    if (0 > qs)
     {
       MHD_RESULT res;
       char *dhs;

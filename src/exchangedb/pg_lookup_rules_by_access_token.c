@@ -34,10 +34,8 @@ TEH_PG_lookup_rules_by_access_token (
   uint64_t *rowid)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -60,12 +58,10 @@ TEH_PG_lookup_rules_by_access_token (
            ",outcome_serial_id AS row_id"
            " FROM legitimization_outcomes"
            " WHERE h_payto=$1"
-           "   AND expiration_time>$2"
            "   AND is_active"
            " ORDER BY expiration_time DESC,"
            "          outcome_serial_id DESC"
            " LIMIT 1;");
-  now = GNUNET_TIME_absolute_get ();
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
     "lookup_rules_by_access_token",

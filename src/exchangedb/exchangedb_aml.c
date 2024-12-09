@@ -651,6 +651,9 @@ fetch_latest_rules (void *cls)
   json_t *jnew_rules;
   enum GNUNET_GenericReturnValue res;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Fetching latest rules.");
+
   ru->t = NULL;
   if (NULL != ru->eh)
   {
