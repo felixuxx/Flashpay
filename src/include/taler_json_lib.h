@@ -142,6 +142,19 @@ TALER_JSON_pack_token_issue_sig (
 
 
 /**
+ * Generate packer instruction for a JSON field of type
+ * token family public key.
+ *
+ * @param name name of the field to add to the object
+ * @param pk public key
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_token_pub (
+  const char *name,
+  const struct TALER_TokenIssuePublicKey *pk);
+
+/**
   * Generate packer instruction for a JSON field of type token envelope.
   *
   * @param name name of the field to add to the object
@@ -451,7 +464,8 @@ TALER_JSON_spec_denom_pub (const char *field,
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_token_pub (struct TALER_TokenIssuePublicKey *pk);
+TALER_JSON_spec_token_pub (const char *field,
+                           struct TALER_TokenIssuePublicKey *pk);
 
 
 /**

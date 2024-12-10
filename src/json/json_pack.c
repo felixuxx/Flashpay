@@ -161,7 +161,7 @@ TALER_JSON_pack_denom_pub (
                                    "RSA"),
           GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask.bits),
-          GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
+          GNUNET_JSON_pack_rsa_public_key ("rsa_pub",
                                            bsp->details.rsa_public_key));
     return ps;
   case GNUNET_CRYPTO_BSA_CS:
@@ -171,7 +171,47 @@ TALER_JSON_pack_denom_pub (
                                    "CS"),
           GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask.bits),
-          GNUNET_JSON_pack_data_varsize ("cs_public_key",
+          GNUNET_JSON_pack_data_varsize ("cs_pub",
+                                         &bsp->details.cs_public_key,
+                                         sizeof (bsp->details.cs_public_key)));
+    return ps;
+  }
+  GNUNET_assert (0);
+  return ps;
+}
+
+
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_token_pub (
+  const char *name,
+  const struct TALER_TokenIssuePublicKey *pk)
+{
+  const struct GNUNET_CRYPTO_BlindSignPublicKey *bsp;
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  if (NULL == pk)
+    return ps;
+  bsp = pk->public_key;
+  switch (bsp->cipher)
+  {
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    ps.object
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("cipher",
+                                   "RSA"),
+          GNUNET_JSON_pack_rsa_public_key ("rsa_pub",
+                                           bsp->details.rsa_public_key));
+    return ps;
+  case GNUNET_CRYPTO_BSA_CS:
+    ps.object
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("cipher",
+                                   "CS"),
+          GNUNET_JSON_pack_data_varsize ("cs_pub",
                                          &bsp->details.cs_public_key,
                                          sizeof (bsp->details.cs_public_key)));
     return ps;

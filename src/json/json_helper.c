@@ -616,7 +616,7 @@ parse_denom_pub (void *cls,
     {
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_rsa_public_key (
-          "rsa_public_key",
+          "rsa_pub",
           &bsign_pub->details.rsa_public_key),
         GNUNET_JSON_spec_end ()
       };
@@ -637,7 +637,7 @@ parse_denom_pub (void *cls,
   case GNUNET_CRYPTO_BSA_CS:
     {
       struct GNUNET_JSON_Specification ispec[] = {
-        GNUNET_JSON_spec_fixed ("cs_public_key",
+        GNUNET_JSON_spec_fixed ("cs_pub",
                                 &bsign_pub->details.cs_public_key,
                                 sizeof (bsign_pub->details.cs_public_key)),
         GNUNET_JSON_spec_end ()
@@ -807,9 +807,11 @@ clean_token_pub (void *cls,
 
 
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_token_pub (struct TALER_TokenIssuePublicKey *pk)
+TALER_JSON_spec_token_pub (const char *field,
+                           struct TALER_TokenIssuePublicKey *pk)
 {
   struct GNUNET_JSON_Specification ret = {
+    .field = field,
     .parser = &parse_token_pub,
     .cleaner = &clean_token_pub,
     .ptr = pk
