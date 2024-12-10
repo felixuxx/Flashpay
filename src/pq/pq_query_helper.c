@@ -535,9 +535,13 @@ qconv_json (void *cls,
   (void) data_len;
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
-  str = json_dumps (json, JSON_COMPACT);
+  str = json_dumps (json,
+                    JSON_COMPACT);
   if (NULL == str)
+  {
+    GNUNET_break (0);
     return -1;
+  }
   scratch[0] = str;
   param_values[0] = (void *) str;
   param_lengths[0] = strlen (str);
