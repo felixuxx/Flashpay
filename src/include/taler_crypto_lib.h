@@ -1467,7 +1467,7 @@ TALER_denom_ewv_rsa_singleton (void);
 
 
 /**
- * Make a (deep) copy of the given @a bi_src to
+ * Make a copy of the given @a bi_src to
  * @a bi_dst.
  *
  * @param[out] bi_dst target to copy to
@@ -2388,6 +2388,40 @@ struct TALER_TokenIssuePublicKey
    */
   struct GNUNET_CRYPTO_BlindSignPublicKey *public_key;
 };
+
+
+/**
+ * Free internals of @a token_pub, but not @a token_pub itself.
+ *
+ * @param[in] token_pub key to free
+ */
+void
+TALER_token_issue_pub_free (struct TALER_TokenIssuePublicKey *token_pub);
+
+
+/**
+ * Make a copy of the given @a tip_src to @a tip_dst.
+ *
+ * @param[out] tip_dst target to copy to
+ * @param tip_src public key to copy
+ */
+void
+TALER_token_issue_pub_copy (
+  struct TALER_TokenIssuePublicKey *tip_dst,
+  const struct TALER_TokenIssuePublicKey *tip_src);
+
+
+/**
+ * Compare two token issue public keys.
+ *
+ * @param tip1 first key to compare
+ * @param tip2 second key to compare
+ * @return 0 if the keys are equal, otherwise -1 or 1
+ */
+int
+TALER_token_issue_pub_cmp (
+  struct TALER_TokenIssuePublicKey *tip1,
+  const struct TALER_TokenIssuePublicKey *tip2);
 
 
 /**
@@ -6252,6 +6286,7 @@ struct TALER_AgeCommitmentProof *
 TALER_age_commitment_proof_duplicate (
   const struct TALER_AgeCommitmentProof *acp);
 
+
 /**
  * @brief helper function to copy a struct TALER_AgeCommitmentProof
  *
@@ -6262,6 +6297,7 @@ void
 TALER_age_commitment_proof_deep_copy (
   struct TALER_AgeCommitmentProof *nacp,
   const struct TALER_AgeCommitmentProof *acp);
+
 
 /**
  * @brief For age-withdraw, clients have to prove that the public keys for all

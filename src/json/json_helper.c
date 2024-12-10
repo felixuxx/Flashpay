@@ -697,6 +697,130 @@ TALER_JSON_spec_denom_pub (const char *field,
 
 
 /**
+ * Parse given JSON object to token issue public key.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_token_pub (void *cls,
+                 json_t *root,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_TokenIssuePublicKey *token_pub = spec->ptr;
+  struct GNUNET_CRYPTO_BlindSignPublicKey *bsign_pub;
+  const char *cipher;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_string ("cipher",
+                             &cipher),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  bsign_pub = GNUNET_new (struct GNUNET_CRYPTO_BlindSignPublicKey);
+  bsign_pub->rc = 1;
+  bsign_pub->cipher = string_to_cipher (cipher);
+  switch (bsign_pub->cipher)
+  {
+  case GNUNET_CRYPTO_BSA_INVALID:
+    break;
+  case GNUNET_CRYPTO_BSA_RSA:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_rsa_public_key (
+          "rsa_pub",
+          &bsign_pub->details.rsa_public_key),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        GNUNET_free (bsign_pub);
+        return GNUNET_SYSERR;
+      }
+      token_pub->public_key = bsign_pub;
+      return GNUNET_OK;
+    }
+  case GNUNET_CRYPTO_BSA_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_fixed ("cs_pub",
+                                &bsign_pub->details.cs_public_key,
+                                sizeof (bsign_pub->details.cs_public_key)),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        GNUNET_free (bsign_pub);
+        return GNUNET_SYSERR;
+      }
+      token_pub->public_key = bsign_pub;
+      return GNUNET_OK;
+    }
+  }
+  GNUNET_break_op (0);
+  GNUNET_free (bsign_pub);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Cleanup data left from parsing token issue public key.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_token_pub (void *cls,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_TokenIssuePublicKey *token_pub = spec->ptr;
+
+  (void) cls;
+  TALER_token_issue_pub_free (token_pub);
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_token_pub (struct TALER_TokenIssuePublicKey *pk)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_token_pub,
+    .cleaner = &clean_token_pub,
+    .ptr = pk
+  };
+
+  pk->public_key = NULL;
+  return ret;
+}
+
+
+/**
  * Parse given JSON object partially into a denomination public key.
  *
  * Depending on the cipher in cls, it parses the corresponding public key type.

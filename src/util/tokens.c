@@ -236,3 +236,38 @@ TALER_token_issue_sig_unblind (
   }
   return GNUNET_OK;
 }
+
+
+void
+TALER_token_issue_pub_free (struct TALER_TokenIssuePublicKey *token_pub)
+{
+  if (NULL != token_pub->public_key)
+  {
+    GNUNET_CRYPTO_blind_sign_pub_decref (token_pub->public_key);
+    token_pub->public_key = NULL;
+  }
+}
+
+
+int
+TALER_token_issue_pub_cmp (
+  struct TALER_TokenIssuePublicKey *tip1,
+  const struct TALER_TokenIssuePublicKey *tip2)
+{
+  if (tip1->public_key->cipher !=
+      tip2->public_key->cipher)
+    return (tip1->public_key->cipher >
+            tip2->public_key->cipher) ? 1 : -1;
+  return GNUNET_CRYPTO_bsign_pub_cmp (tip1->public_key,
+                                      tip2->public_key);
+}
+
+
+void
+TALER_token_issue_pub_copy (
+  struct TALER_TokenIssuePublicKey *tip_dst,
+  const struct TALER_TokenIssuePublicKey *tip_src)
+{
+  tip_dst->public_key
+    = GNUNET_CRYPTO_bsign_pub_incref (tip_src->public_key);
+}

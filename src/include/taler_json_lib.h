@@ -444,6 +444,15 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_denom_pub (const char *field,
                            struct TALER_DenominationPublicKey *pk);
 
+/**
+ * Generate line in parser specification for token issue public key.
+ *
+ * @param[out] pk key to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_token_pub (struct TALER_TokenIssuePublicKey *pk);
+
 
 /**
  * Generate line in parser specification for error codes.
