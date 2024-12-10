@@ -203,7 +203,7 @@ struct WithdrawContext
       unsigned int num_coins;
 
       /**
-       * #num_coins * #kappa hashes of blinded coin planchets.
+       * #num_coins * TALER_CNC_KAPPA hashes of blinded coin planchets.
        */
       struct TALER_BlindedPlanchet (*coin_evs) [ TALER_CNC_KAPPA];
 
@@ -343,7 +343,7 @@ age_withdraw_generate_reply_success (
 /**
  * Generates response for the batch- or age-withdraw request.
  *
- * @param[in, ou] wc withdraw operation context
+ * @param wc withdraw operation context
  */
 static void
 generate_reply_success (struct WithdrawContext *wc)
@@ -775,7 +775,7 @@ batch_withdraw_transaction (
  * The request was prepared successfully.
  * Run the main DB transaction.
  *
- * @param awc The context for the current withdraw request
+ * @param wc The context for the current withdraw request
  */
 static void
 run_transaction (
@@ -874,7 +874,7 @@ batch_withdraw_prepare_transaction (struct WithdrawContext *wc)
 
 
 /**
- * The request for age-withdraw was parsed succesfully.
+ * The request for age-withdraw was parsed successfully.
  * Sign and persist the chosen blinded coins for the reveal step.
  *
  * @param wc The context for the current withdraw request, with @e withdraw_type set to WITHDRAW_TYPE_AGE
@@ -943,8 +943,8 @@ age_withdraw_prepare_transaction (
 
 
 /**
- * The request for withdraw was parsed succesfully.
- * Chooose the appropriate preparation step depending on @e withdraw_type
+ * The request for withdraw was parsed successfully.
+ * Choose the appropriate preparation step depending on @e withdraw_type
  */
 static void
 prepare_transaction (
@@ -1311,7 +1311,7 @@ find_denomination (
  * @param wc context of the age withdrawal to check keys for
  * @param ksh key state handle
  * @return GNUNET_OK on success,
- *			GNUNET_NO on error (and response beeing sent)
+ *			GNUNET_NO on error (and response being sent)
  */
 static enum GNUNET_GenericReturnValue
 age_withdraw_check_keys (
@@ -1433,7 +1433,7 @@ age_withdraw_check_keys (
  * @param[in,out] wc context for the batch withdraw request processing
  * @param ksh key state handle
  * @return GNUNET_OK on success,
- *			GNUNET_NO on error (and response beeing sent)
+ *			GNUNET_NO on error (and response being sent)
  */
 static enum GNUNET_GenericReturnValue
 batch_withdraw_check_keys (
@@ -1608,7 +1608,7 @@ check_reserve_signature (
   switch (wc->withdraw_type)
   {
   case WITHDRAW_TYPE_BATCH:
-    /* signature checks has occured in batch_withdraw_check_keys */
+    /* signature checks has occurred in batch_withdraw_check_keys */
     break;
   case WITHDRAW_TYPE_AGE:
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
@@ -1822,10 +1822,9 @@ batch_withdraw_new_request (
 /**
  * Creates a new context for the incoming age-withdraw request
  *
- * @param[in,out] rc request context
+ * @param wc withdraw request context
  * @param reserve_pub public key of the reserve for the withdraw
  * @param root json body of the request
- * @param[out] pwc pointer to be set to the new WithdrawContext
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise (response sent)
  */
 static enum GNUNET_GenericReturnValue
