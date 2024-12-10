@@ -757,6 +757,8 @@ parse_token_pub (void *cls,
         GNUNET_free (bsign_pub);
         return GNUNET_SYSERR;
       }
+      GNUNET_CRYPTO_rsa_public_key_hash (bsign_pub->details.rsa_public_key,
+                                         &bsign_pub->pub_key_hash);
       token_pub->public_key = bsign_pub;
       return GNUNET_OK;
     }
@@ -779,6 +781,9 @@ parse_token_pub (void *cls,
         GNUNET_free (bsign_pub);
         return GNUNET_SYSERR;
       }
+      GNUNET_CRYPTO_hash (&bsign_pub->details.cs_public_key,
+                          sizeof(bsign_pub->details.cs_public_key),
+                          &bsign_pub->pub_key_hash);
       token_pub->public_key = bsign_pub;
       return GNUNET_OK;
     }
