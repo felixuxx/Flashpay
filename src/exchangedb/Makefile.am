@@ -373,7 +373,7 @@ noinst_PROGRAMS = \
   perf_reserves_in_insert-postgres \
   perf_deposits_get_ready-postgres
 
-AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+AM_TESTS_ENVIRONMENT=export TALER_EXCHANGE_PREFIX=$${TALER_EXCHANGE_PREFIX:-@libdir@};export PATH=$${TALER_EXCHANGE_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   $(check_SCRIPTS) \
   $(check_PROGRAMS)

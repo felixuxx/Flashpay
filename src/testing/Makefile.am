@@ -145,7 +145,7 @@ libtalertesting_la_LIBADD = \
 
 # Test cases
 
-AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+AM_TESTS_ENVIRONMENT=export TALER_EXCHANGE_PREFIX=$${TALER_EXCHANGE_PREFIX:-@libdir@};export PATH=$${TALER_EXCHANGE_PREFIX:-@prefix@}/bin:$$PATH;export TALER_AUDITOR_PREFIX=$${TALER_AUDITOR_PREFIX:-@libdir@};
 
 
 check_PROGRAMS = \

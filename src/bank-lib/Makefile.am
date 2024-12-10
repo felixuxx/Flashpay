@@ -106,6 +106,8 @@ libtalerfakebank_la_LIBADD = \
 check_SCRIPTS = \
   test_bank.sh
 
+AM_TESTS_ENVIRONMENT=export TALER_EXCHANGE_PREFIX=$${TALER_EXCHANGE_PREFIX:-@libdir@};export PATH=$${TALER_EXCHANGE_PREFIX:-@prefix@}/bin:$$PATH;export TALER_AUDITOR_PREFIX=$${TALER_AUDITOR_PREFIX:-@libdir@};export TALER_BANK_PREFIX=$${TALER_BANK_PREFIX:-@libdir@};
+
 TESTS = \
   $(check_SCRIPTS)
 
