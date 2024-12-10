@@ -427,6 +427,10 @@ load_template (void *cls,
   loaded[loaded_length - 1].lang = GNUNET_strndup (lang,
                                                    end - lang);
   loaded[loaded_length - 1].value = map;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loading template `%s' (%s)\n",
+              filename,
+              loaded[loaded_length - 1].name);
   return GNUNET_OK;
 }
 
@@ -493,6 +497,9 @@ TALER_TEMPLATING_init (const struct GNUNET_OS_ProjectData *pd)
                      path);
     GNUNET_free (path);
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loading templates from `%s'\n",
+              dn);
   ret = GNUNET_DISK_directory_scan (dn,
                                     &load_template,
                                     NULL);
