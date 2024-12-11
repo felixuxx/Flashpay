@@ -1043,7 +1043,11 @@ legi_check_aml_trigger_cb (
   lch->kat = NULL;
   if (TALER_EC_NONE != ec)
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "AML program failed: %s (%s, %d)\n",
+                TALER_ErrorCode_get_hint (ec),
+                detail,
+                (int) ec);
     lch->lcr.http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     lch->lcr.response = TALER_MHD_make_error (
       ec,

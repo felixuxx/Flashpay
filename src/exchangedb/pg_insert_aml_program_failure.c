@@ -49,8 +49,8 @@ TEH_PG_insert_aml_program_failure (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_uint32 (&ec32),
     GNUNET_PQ_query_param_timestamp (&now),
+    GNUNET_PQ_query_param_uint32 (&ec32),
     GNUNET_PQ_query_param_string (error_message),
     GNUNET_PQ_query_param_string (kyc_completed_notify_s),
     GNUNET_PQ_query_param_end
@@ -61,7 +61,7 @@ TEH_PG_insert_aml_program_failure (
            "insert_aml_program_failure",
            "SELECT out_update"
            " FROM exchange_do_insert_aml_program_failure"
-           " ($1, $2, $3, $4);");
+           " ($1, $2, $3, $4, $5, $6);");
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_aml_program_failure",
                                            params);
