@@ -154,6 +154,10 @@ TEH_PG_lookup_transfer_by_deposit (
         GNUNET_PQ_result_spec_uint64 ("legitimization_requirement_serial_id",
                                       &kyc->requirement_row),
         NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("target_pub",
+                                              account_pub),
+        NULL),
       GNUNET_PQ_result_spec_end
     };
 
@@ -166,6 +170,7 @@ TEH_PG_lookup_transfer_by_deposit (
              ",denom.fee_deposit"
              ",bdep.wire_deadline"
              ",agt.legitimization_requirement_serial_id"
+             ",wt.target_pub"
              " FROM coin_deposits cdep"
              " JOIN batch_deposits bdep"
              "   USING (batch_deposit_serial_id)"
