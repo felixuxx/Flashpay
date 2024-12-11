@@ -1091,6 +1091,18 @@ TALER_KYCLOGIC_run_aml_program3 (
 
 
 /**
+ * Get the name of the AML program run by @a aprh.
+ * Can of course only be called while @a aprh is running.
+ *
+ * @param aprh handle to the AML program
+ * @return name of the AML program
+ */
+const char *
+TALER_KYCLOGIC_run_aml_program_get_name (
+  const struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh);
+
+
+/**
  * Cancel running AML program.
  *
  * @param[in] aprh handle of program to cancel

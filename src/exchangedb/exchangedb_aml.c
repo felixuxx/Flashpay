@@ -313,6 +313,12 @@ aml_result_callback (
 }
 
 
+/**
+ * Task run when an AML program takes too long and runs into a
+ * timeout. Kills the AML program and reports an error.
+ *
+ * @param cls a `struct TEH_KycMeasureRunContext *`
+ */
 static void
 aml_program_timeout (void *cls)
 {
@@ -328,6 +334,8 @@ aml_program_timeout (void *cls)
   enum GNUNET_DB_QueryStatus qs;
 
   ru->t = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "AML program hit timeout!\n");
   TALER_KYCLOGIC_run_aml_program_cancel (ru->amlh);
   ru->amlh = NULL;
   GNUNET_assert (NULL != apr.details.failure.fallback_measure);

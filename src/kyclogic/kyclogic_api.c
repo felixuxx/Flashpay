@@ -4244,12 +4244,22 @@ TALER_KYCLOGIC_run_aml_program3 (
 }
 
 
+const char *
+TALER_KYCLOGIC_run_aml_program_get_name (
+  const struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh)
+{
+  return aprh->program->program_name;
+}
+
+
 void
 TALER_KYCLOGIC_run_aml_program_cancel (
   struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh)
 {
   if (NULL != aprh->proc)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Killing AML program\n");
     TALER_JSON_external_conversion_stop (aprh->proc);
     aprh->proc = NULL;
   }

@@ -42,6 +42,11 @@ extern struct GNUNET_TIME_Relative TEH_max_keys_caching;
 extern struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
 
 /**
+ * How long do we allow AML programs to run?
+ */
+extern struct GNUNET_TIME_Relative TEH_aml_program_timeout;
+
+/**
  * The exchange's configuration.
  */
 extern const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;

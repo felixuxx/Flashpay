@@ -160,23 +160,16 @@ kyc_aml_finished (
   struct TEH_KycMeasureRunContext *kat = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_AsyncScopeSave old_scope;
-  enum GNUNET_GenericReturnValue res;
 
   kat->kyc_aml = NULL;
+  if (NULL != kat->async_task)
+  {
+    GNUNET_SCHEDULER_cancel (kat->async_task);
+    kat->async_task = NULL;
+  }
   GNUNET_async_scope_enter (&kat->scope,
                             &old_scope);
-  res = TEH_plugin->start (TEH_plugin->cls,
-                           "kyc-persist-aml-program-result");
-  if (GNUNET_OK != res)
-  {
-    GNUNET_break (0);
-    kat->cb (kat->cb_cls,
-             TALER_EC_GENERIC_DB_START_FAILED,
-             "kyc-persist-aml-program-result");
-    TEH_kyc_run_measure_cancel (kat);
-    GNUNET_async_scope_restore (&old_scope);
-    return;
-  }
+  TEH_plugin->preflight (TEH_plugin->cls);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "AML program finished with status %d\n",
               (int) apr->status);
@@ -191,7 +184,6 @@ kyc_aml_finished (
   case GNUNET_DB_STATUS_SOFT_ERROR:
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0);
-    TEH_plugin->rollback (TEH_plugin->cls);
     kat->cb (kat->cb_cls,
              TALER_EC_GENERIC_DB_STORE_FAILED,
              "persist_aml_program_result");
@@ -200,17 +192,6 @@ kyc_aml_finished (
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
-  }
-  qs = TEH_plugin->commit (TEH_plugin->cls);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    kat->cb (kat->cb_cls,
-             GNUNET_DB_STATUS_SOFT_ERROR == qs
-             ? TALER_EC_GENERIC_DB_SOFT_FAILURE
-             : TALER_EC_GENERIC_DB_COMMIT_FAILED,
-             "kyc-persist-aml-program-result");
-    return;
   }
   switch (apr->status)
   {
@@ -366,6 +347,37 @@ TEH_kyc_store_attributes (
 }
 
 
+/**
+ * Task run when an AML program takes too long and runs into a
+ * timeout. Kills the AML program and reports an error.
+ *
+ * @param cls a `struct TEH_KycMeasureRunContext *`
+ */
+static void
+kyc_aml_timeout (void *cls)
+{
+  struct TEH_KycMeasureRunContext *kat = cls;
+  const char *prog_name
+    = TALER_KYCLOGIC_run_aml_program_get_name (kat->kyc_aml);
+  struct TALER_KYCLOGIC_AmlProgramResult apr = {
+    .status = TALER_KYCLOGIC_AMLR_FAILURE,
+    .details.failure.fallback_measure
+      = TALER_KYCLOGIC_get_aml_program_fallback (prog_name),
+    .details.failure.error_message = prog_name,
+    .details.failure.ec = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT
+  };
+
+  kat->async_task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "AML program `%s' exceeded maximum runtime. Aborting it.\n",
+              prog_name);
+  TALER_KYCLOGIC_run_aml_program_cancel (kat->kyc_aml);
+  kat->kyc_aml = NULL;
+  kyc_aml_finished (kat,
+                    &apr);
+}
+
+
 struct TEH_KycMeasureRunContext *
 TEH_kyc_run_measure_for_attributes (
   const struct GNUNET_AsyncScopeId *scope,
@@ -409,6 +421,11 @@ TEH_kyc_run_measure_for_attributes (
       .attribute_key = &TEH_attribute_key
     };
 
+    GNUNET_assert (NULL == kat->async_task);
+    kat->async_task
+      = GNUNET_SCHEDULER_add_delayed (TEH_aml_program_timeout,
+                                      &kyc_aml_timeout,
+                                      kat);
     kat->kyc_aml
       = TALER_KYCLOGIC_run_aml_program (
           kat->jmeasures,
@@ -539,6 +556,11 @@ TEH_kyc_run_measure_directly (
       .attribute_key = &TEH_attribute_key
     };
 
+    GNUNET_assert (NULL == kat->async_task);
+    kat->async_task
+      = GNUNET_SCHEDULER_add_delayed (TEH_aml_program_timeout,
+                                      &kyc_aml_timeout,
+                                      kat);
     kat->kyc_aml
       = TALER_KYCLOGIC_run_aml_program3 (
           instant_ms,

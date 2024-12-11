@@ -142,6 +142,11 @@ struct GNUNET_TIME_Relative TEH_max_keys_caching;
 struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
 
 /**
+ * How long do we allow AML programs to run?
+ */
+struct GNUNET_TIME_Relative TEH_aml_program_timeout;
+
+/**
  * Master public key (according to the
  * configuration in the exchange directory).  (global)
  */
@@ -2219,6 +2224,20 @@ exchange_serve_process_config (const char *cfg_fn)
     TEH_reserve_closing_delay
       = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_WEEKS,
                                        4);
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
+                                           "exchangedb",
+                                           "MAX_AML_PROGRAM_RUNTIME",
+                                           &TEH_aml_program_timeout))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "MAX_AML_PROGRAM_RUNTIME");
+    /* use default */
+    TEH_aml_program_timeout
+      = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES,
+                                       1);
   }
 
   if (GNUNET_OK !=
