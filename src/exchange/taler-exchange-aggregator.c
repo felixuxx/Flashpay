@@ -891,6 +891,38 @@ evaluate_rules (
               "Legitimization process %llu started\n",
               (unsigned long long) au->requirement_row);
   TALER_KYCLOGIC_rules_free (lrs);
+
+  qs = db_plugin->update_aggregation_transient (db_plugin->cls,
+                                                &au->h_full_payto,
+                                                &au->wtid,
+                                                au->requirement_row,
+                                                &au->total_amount);
+
+
+  if (qs < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to persist updated transient in in DB!\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      global_ret = EXIT_FAILURE;
+    cleanup_and_next (au);
+    return;
+  }
+
+  {
+    struct TALER_CoinDepositEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
+      .merchant_pub = au->merchant_pub
+    };
+
+    db_plugin->event_notify (db_plugin->cls,
+                             &rep.header,
+                             NULL,
+                             0);
+  }
+
   /* First commit, turns the rollback in cleanup into a NOP! */
   commit_or_warn ();
   cleanup_and_next (au);
