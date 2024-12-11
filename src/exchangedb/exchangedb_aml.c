@@ -32,14 +32,6 @@
  */
 #define MAX_DEPTH 16
 
-/**
- * How long do we allow an AML program to run for at most?
- * If an AML program runs longer, we kill it and mark it as
- * failed.
- */
-#define MAX_AML_PROGRAM_RUNTIME GNUNET_TIME_UNIT_MINUTES
-
-
 enum GNUNET_DB_QueryStatus
 TALER_EXCHANGEDB_persist_aml_program_result (
   struct TALER_EXCHANGEDB_Plugin *plugin,
@@ -475,7 +467,7 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
     qs = ru->plugin->set_aml_lock (
       ru->plugin->cls,
       &ru->account,
-      GNUNET_TIME_relative_multiply (MAX_AML_PROGRAM_RUNTIME,
+      GNUNET_TIME_relative_multiply (ru->plugin->max_aml_program_runtime,
                                      2),
       &xlock);
     if (GNUNET_TIME_absolute_is_future (xlock))
@@ -514,7 +506,7 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
                 m->prog_name);
     GNUNET_assert (NULL == ru->t);
     ru->t = GNUNET_SCHEDULER_add_delayed (
-      MAX_AML_PROGRAM_RUNTIME,
+      ru->plugin->max_aml_program_runtime,
       &aml_program_timeout,
       ru);
     ru->amlh = TALER_KYCLOGIC_run_aml_program3 (

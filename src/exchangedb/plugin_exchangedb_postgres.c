@@ -283,6 +283,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   unsigned long long dpl;
 
   pg = GNUNET_new (struct PostgresClosure);
+  plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   pg->cfg = cfg;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
@@ -293,8 +294,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb-postgres",
                                "SQL_DIR");
-    GNUNET_free (pg);
-    return NULL;
+    goto fail;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -305,9 +305,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    GNUNET_free (pg->sql_dir);
-    GNUNET_free (pg);
-    return NULL;
+    goto fail;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
@@ -318,10 +316,18 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
                                "IDLE_RESERVE_EXPIRATION_TIME");
-    GNUNET_free (pg->exchange_url);
-    GNUNET_free (pg->sql_dir);
-    GNUNET_free (pg);
-    return NULL;
+    goto fail;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchangedb",
+                                           "MAX_AML_PROGRAM_RUNTIME",
+                                           &plugin->max_aml_program_runtime))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "MAX_AML_PROGRAM_RUNTIME");
+    goto fail;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
@@ -332,10 +338,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
                                "LEGAL_RESERVE_EXPIRATION_TIME");
-    GNUNET_free (pg->exchange_url);
-    GNUNET_free (pg->sql_dir);
-    GNUNET_free (pg);
-    return NULL;
+    goto fail;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
@@ -368,12 +371,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
                                  "exchange",
                                  &pg->currency))
   {
-    GNUNET_free (pg->exchange_url);
-    GNUNET_free (pg->sql_dir);
-    GNUNET_free (pg);
-    return NULL;
+    goto fail;
   }
-  plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;
@@ -779,6 +778,13 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_set_aml_lock;
 
   return plugin;
+
+fail:
+  GNUNET_free (pg->exchange_url);
+  GNUNET_free (pg->sql_dir);
+  GNUNET_free (pg);
+  GNUNET_free (plugin);
+  return NULL;
 }
 
 

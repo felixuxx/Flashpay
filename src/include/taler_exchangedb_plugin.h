@@ -3688,6 +3688,10 @@ struct TALER_EXCHANGEDB_Plugin
    */
   char *library_name;
 
+  /**
+   * How long are AML programs allowed to run?
+   */
+  struct GNUNET_TIME_Relative max_aml_program_runtime;
 
   /**
    * Drop the Taler tables.  This should only be used in testcases.
