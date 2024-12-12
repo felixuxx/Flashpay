@@ -1091,21 +1091,21 @@ get_wire_fee (struct AggregationContext *ac,
   /* Check signature. (This is not terribly meaningful as the exchange can
      easily make this one up, but it means that we have proof that the master
      key was used for inconsistent wire fees if a merchant complains.) */
+  if (GNUNET_OK !=
+      TALER_exchange_offline_wire_fee_verify (
+        method,
+        wfi->start_date,
+        wfi->end_date,
+        &wfi->fees,
+        &TALER_ARL_master_pub,
+        &master_sig))
   {
-    if (GNUNET_OK !=
-        TALER_exchange_offline_wire_fee_verify (
-          method,
-          wfi->start_date,
-          wfi->end_date,
-          &wfi->fees,
-          &TALER_ARL_master_pub,
-          &master_sig))
-    {
-      ac->qs = report_row_inconsistency ("wire-fee",
-                                         timestamp.abs_time.abs_value_us,
-                                         "wire fee signature invalid at given time");
-      return NULL;
-    }
+    ac->qs = report_row_inconsistency ("wire-fee",
+                                       timestamp.abs_time.abs_value_us,
+                                       "wire fee signature invalid at given time");
+    /* Note: continue with the fee despite the signature
+       being invalid here; hopefully it is really only the
+       signature that is bad ... */
   }
 
   /* Established fee, keep in sorted list */
