@@ -271,7 +271,7 @@ function full_reload()
     echo -n "Doing full reload of the database... "
     dropdb "$DB" 2> /dev/null || true
     createdb -T template0 "$DB" \
-        || exit_skip "could not create database $DB (at $PGHOST)"
+        || exit_skip "could not create database $DB (at ${PGHOST:-})"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt "$DB" \
          -q \
@@ -638,6 +638,55 @@ function check_with_database()
     dropdb "$DB"
 }
 
+# If this script is not running as root, create
+# the temporary directory structure for storage for postgres
+# Will set PGHOST accordingly
+function perform_dbinit() {
+    # Available directly in path?
+    INITDB_BIN=$(command -v initdb) || true
+    if [[ -n "$INITDB_BIN" ]]; then
+      echo "FOUND (in path) at $INITDB_BIN"
+    else
+      HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
+      echo "FOUND at " "$(dirname "$HAVE_INITDB")"
+      INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
+    fi
+    echo -n "Setting up Postgres DB"
+    POSTGRES_PATH=$(dirname "$INITDB_BIN")
+    TMPDIR="${MY_TMP_DIR}/postgres/"
+    mkdir -p "$TMPDIR"
+    echo -n "Setting up Postgres DB at $TMPDIR ..."
+    "$INITDB_BIN" \
+        --no-sync \
+        --auth=trust \
+        -D "${TMPDIR}" \
+        > "${MY_TMP_DIR}/postgres-dbinit.log" \
+        2> "${MY_TMP_DIR}/postgres-dbinit.err"
+    echo " DONE"
+    mkdir "${TMPDIR}/sockets"
+    echo -n "Launching Postgres service at $POSTGRES_PATH"
+    cat - >> "$TMPDIR/postgresql.conf" <<EOF
+unix_socket_directories='${TMPDIR}/sockets'
+fsync=off
+max_wal_senders=0
+synchronous_commit=off
+wal_level=minimal
+listen_addresses=''
+EOF
+    grep -v host \
+         < "$TMPDIR/pg_hba.conf" \
+         > "$TMPDIR/pg_hba.conf.new"
+    mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
+    "${POSTGRES_PATH}/pg_ctl" \
+        -D "$TMPDIR" \
+        -l /dev/null \
+        start \
+        > "${MY_TMP_DIR}/postgres-start.log" \
+        2> "${MY_TMP_DIR}/postgres-start.err"
+    echo " DONE"
+    PGHOST="$TMPDIR/sockets"
+    export PGHOST
+}
 
 
 # *************** Main logic starts here **************
@@ -666,52 +715,11 @@ taler-wallet-cli -h \
                  2>/dev/null \
     || exit_skip "taler-wallet-cli required"
 
-echo -n "Testing for Postgres "
-# Available directly in path?
-INITDB_BIN=$(command -v initdb) || true
-if [[ -n "$INITDB_BIN" ]]; then
-  echo "FOUND (in path) at $INITDB_BIN"
-else
-  HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
-  echo "FOUND at " "$(dirname "$HAVE_INITDB")"
-  INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
-fi
-echo -n "Setting up Postgres DB"
-POSTGRES_PATH=$(dirname "$INITDB_BIN")
 MY_TMP_DIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
-TMPDIR="${MY_TMP_DIR}/postgres/"
-mkdir -p "$TMPDIR"
-echo -n "Setting up Postgres DB at $TMPDIR ..."
-"$INITDB_BIN" \
-    --no-sync \
-    --auth=trust \
-    -D "${TMPDIR}" \
-    > "${MY_TMP_DIR}/postgres-dbinit.log" \
-    2> "${MY_TMP_DIR}/postgres-dbinit.err"
-echo " DONE"
-mkdir "${TMPDIR}/sockets"
-echo -n "Launching Postgres service at $POSTGRES_PATH"
-cat - >> "$TMPDIR/postgresql.conf" <<EOF
-unix_socket_directories='${TMPDIR}/sockets'
-fsync=off
-max_wal_senders=0
-synchronous_commit=off
-wal_level=minimal
-listen_addresses=''
-EOF
-grep -v host \
-     < "$TMPDIR/pg_hba.conf" \
-     > "$TMPDIR/pg_hba.conf.new"
-mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
-"${POSTGRES_PATH}/pg_ctl" \
-    -D "$TMPDIR" \
-    -l /dev/null \
-    start \
-    > "${MY_TMP_DIR}/postgres-start.log" \
-    2> "${MY_TMP_DIR}/postgres-start.err"
-echo " DONE"
-PGHOST="$TMPDIR/sockets"
-export PGHOST
+
+echo -n "Testing for Postgres "
+[ $(id -u) == 0 ] || perform_dbinit
+
 
 echo "Generating fresh database at $MY_TMP_DIR"
 if faketime -f '-1 d' ./generate-revoke-basedb.sh "$MY_TMP_DIR/$DB"

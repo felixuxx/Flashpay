@@ -46,6 +46,52 @@ function cleanup() {
 # Install cleanup handler (except for kill -9)
 trap cleanup EXIT
 
+# If this script is not run as root,
+# create the temporary storage space for postgres.
+# Will set PGHOST accordingly
+function perform_initdb() {
+    # Available directly in path?
+    INITDB_BIN=$(command -v initdb) || true
+    if [[ -n "$INITDB_BIN" ]]; then
+      echo " FOUND (in path) at $INITDB_BIN"
+    else
+      HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
+      echo " FOUND at " "$(dirname "$HAVE_INITDB")"
+      INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
+    fi
+    echo -n "Setting up Postgres DB"
+    POSTGRES_PATH=$(dirname "$INITDB_BIN")
+    TMPDIR="$MYDIR/postgres/"
+    mkdir -p "$TMPDIR"
+    "$INITDB_BIN" --no-sync --auth=trust -D "${TMPDIR}" \
+                > "${MYDIR}/postgres-dbinit.log" \
+                2> "${MYDIR}/postgres-dbinit.err"
+    echo " DONE"
+    mkdir "${TMPDIR}/sockets"
+    echo -n "Launching Postgres service"
+    cat - >> "$TMPDIR/postgresql.conf" <<EOF
+unix_socket_directories='${TMPDIR}/sockets'
+fsync=off
+max_wal_senders=0
+synchronous_commit=off
+wal_level=minimal
+listen_addresses=''
+EOF
+    grep -v host \
+         < "$TMPDIR/pg_hba.conf" \
+         > "$TMPDIR/pg_hba.conf.new"
+    mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
+    "${POSTGRES_PATH}/pg_ctl" \
+        -D "$TMPDIR" \
+        -l /dev/null \
+        start \
+        > "${MYDIR}/postgres-start.log" \
+        2> "${MYDIR}/postgres-start.err"
+    echo " DONE"
+    PGHOST="$TMPDIR/sockets"
+    export PGHOST
+}
+
 function check_with_database()
 {
     echo -n "Testing synchronization logic ..."
@@ -104,48 +150,10 @@ libeufin-bank --help >/dev/null </dev/null 2> /dev/null || exit_skip "libeufin-b
 echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
 
-echo -n "Testing for Postgres"
-# Available directly in path?
-INITDB_BIN=$(command -v initdb) || true
-if [[ -n "$INITDB_BIN" ]]; then
-  echo " FOUND (in path) at $INITDB_BIN"
-else
-  HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
-  echo " FOUND at " "$(dirname "$HAVE_INITDB")"
-  INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
-fi
-echo -n "Setting up Postgres DB"
-POSTGRES_PATH=$(dirname "$INITDB_BIN")
 MYDIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
-TMPDIR="$MYDIR/postgres/"
-mkdir -p "$TMPDIR"
-"$INITDB_BIN" --no-sync --auth=trust -D "${TMPDIR}" \
-            > "${MYDIR}/postgres-dbinit.log" \
-            2> "${MYDIR}/postgres-dbinit.err"
-echo " DONE"
-mkdir "${TMPDIR}/sockets"
-echo -n "Launching Postgres service"
-cat - >> "$TMPDIR/postgresql.conf" <<EOF
-unix_socket_directories='${TMPDIR}/sockets'
-fsync=off
-max_wal_senders=0
-synchronous_commit=off
-wal_level=minimal
-listen_addresses=''
-EOF
-grep -v host \
-     < "$TMPDIR/pg_hba.conf" \
-     > "$TMPDIR/pg_hba.conf.new"
-mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
-"${POSTGRES_PATH}/pg_ctl" \
-    -D "$TMPDIR" \
-    -l /dev/null \
-    start \
-    > "${MYDIR}/postgres-start.log" \
-    2> "${MYDIR}/postgres-start.err"
-echo " DONE"
-PGHOST="$TMPDIR/sockets"
-export PGHOST
+
+echo -n "Testing for Postgres"
+[ $(id -u == 0) ] || perform_initdb
 
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/auditor-basedb"

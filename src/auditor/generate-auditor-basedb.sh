@@ -47,9 +47,9 @@ curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
 # reset database
-echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
+echo -n "Reset 'auditor-basedb' database at ${PGHOST:-} ..."
 dropdb --if-exists "auditor-basedb" > /dev/null 2> /dev/null || true
-createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at $PGHOST"
+createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at ${PGHOST:-}"
 echo " DONE"
 
 # Launch exchange, merchant and bank.

@@ -402,10 +402,10 @@ function stop_auditor_httpd() {
 # Do a full reload of the (original) database
 function full_reload()
 {
-    echo -n "Doing full reload of the database (loading ${BASEDB}.sql into $DB at $PGHOST)... "
+    echo -n "Doing full reload of the database (loading ${BASEDB}.sql into $DB at ${PGHOST:-})... "
     dropdb -f "$DB" &>> ${MY_TMP_DIR}/drop.log || true
     createdb -T template0 "$DB" \
-        || exit_skip "could not create database $DB (at $PGHOST)"
+        || exit_skip "could not create database $DB (at ${PGHOST:-})"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt "$DB" \
          -q \
@@ -2162,7 +2162,78 @@ function check_with_database()
     # dropdb $DB
 }
 
+# When the script is not run as root, setup a temporary directory for the
+# postgres database.
+# Sets PGHOST accordingly to the freshly created socket.
+function perform_initdb() {
+    # Available directly in path?
+    INITDB_BIN=$(command -v initdb) || true
+    if [[ -n "$INITDB_BIN" ]]; then
+      echo " FOUND (in path) at $INITDB_BIN"
+    else
+        HAVE_INITDB=$(find /usr -name "initdb" 2> /dev/null \
+                          | head -1 2> /dev/null \
+                          | grep postgres) \
+            || exit_skip " MISSING"
+      echo " FOUND at $(dirname "$HAVE_INITDB")"
+      INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
+    fi
+    POSTGRES_PATH=$(dirname "$INITDB_BIN")
 
+    TMPDIR="$MY_TMP_DIR/postgres"
+    mkdir -p "$TMPDIR"
+    echo -n "Setting up Postgres DB at $TMPDIR ..."
+    $INITDB_BIN \
+        --no-sync \
+        --auth=trust \
+        -D "${TMPDIR}" \
+        > "${MY_TMP_DIR}/postgres-dbinit.log" \
+        2> "${MY_TMP_DIR}/postgres-dbinit.err" \
+        || {
+        echo "FAILED!"
+        echo "Last entries in ${MY_TMP_DIR}/postgres-dbinit.err:"
+        tail "${MY_TMP_DIR}/postgres-dbinit.err"
+        exit 1
+    }
+    echo "DONE"
+
+    # Once we move to PG16, we can use:
+    #    --set listen_addresses='' \
+    #    --set fsync=off \
+    #    --set max_wal_senders=0 \
+    #    --set synchronous_commit=off \
+    #    --set wal_level=minimal \
+    #    --set unix_socket_directories="${TMPDIR}/sockets" \
+
+
+    SOCKETDIR="${TMPDIR}/sockets"
+    mkdir "${SOCKETDIR}"
+
+    echo -n "Launching Postgres service"
+
+    cat - >> "$TMPDIR/postgresql.conf" <<EOF
+unix_socket_directories='${TMPDIR}/sockets'
+fsync=off
+max_wal_senders=0
+synchronous_commit=off
+wal_level=minimal
+listen_addresses=''
+EOF
+
+    grep -v host \
+         < "$TMPDIR/pg_hba.conf" \
+         > "$TMPDIR/pg_hba.conf.new"
+    mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
+    "${POSTGRES_PATH}/pg_ctl" \
+        -D "$TMPDIR" \
+        -l "${MY_TMP_DIR}/postgres.log" \
+        start \
+        > "${MY_TMP_DIR}/postgres-start.log" \
+        2> "${MY_TMP_DIR}/postgres-start.err"
+    echo " DONE"
+    PGHOST="$TMPDIR/sockets"
+    export PGHOST
+}
 
 
 # *************** Main logic starts here **************
@@ -2184,69 +2255,14 @@ taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet
 
 
 echo -n "Testing for Postgres"
-# Available directly in path?
-INITDB_BIN=$(command -v initdb) || true
-if [[ -n "$INITDB_BIN" ]]; then
-  echo " FOUND (in path) at $INITDB_BIN"
-else
-    HAVE_INITDB=$(find /usr -name "initdb" 2> /dev/null \
-                      | head -1 2> /dev/null \
-                      | grep postgres) \
-        || exit_skip " MISSING"
-  echo " FOUND at $(dirname "$HAVE_INITDB")"
-  INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
-fi
-POSTGRES_PATH=$(dirname "$INITDB_BIN")
 
 MY_TMP_DIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
 echo "Using $MY_TMP_DIR for logging and temporary data"
-TMPDIR="$MY_TMP_DIR/postgres"
-mkdir -p "$TMPDIR"
-echo -n "Setting up Postgres DB at $TMPDIR ..."
-$INITDB_BIN \
-    --no-sync \
-    --auth=trust \
-    -D "${TMPDIR}" \
-    > "${MY_TMP_DIR}/postgres-dbinit.log" \
-    2> "${MY_TMP_DIR}/postgres-dbinit.err"
-echo "DONE"
 
-# Once we move to PG16, we can use:
-#    --set listen_addresses='' \
-#    --set fsync=off \
-#    --set max_wal_senders=0 \
-#    --set synchronous_commit=off \
-#    --set wal_level=minimal \
-#    --set unix_socket_directories="${TMPDIR}/sockets" \
+# If run as root, simply use the running postgres instance.
+# Otherwise create a temporary storage space for postgres.
+[ $(id -u) == 0 ] || perform_initdb
 
-
-SOCKETDIR="${TMPDIR}/sockets"
-mkdir "${SOCKETDIR}"
-
-echo -n "Launching Postgres service"
-
-cat - >> "$TMPDIR/postgresql.conf" <<EOF
-unix_socket_directories='${TMPDIR}/sockets'
-fsync=off
-max_wal_senders=0
-synchronous_commit=off
-wal_level=minimal
-listen_addresses=''
-EOF
-
-grep -v host \
-     < "$TMPDIR/pg_hba.conf" \
-     > "$TMPDIR/pg_hba.conf.new"
-mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
-"${POSTGRES_PATH}/pg_ctl" \
-    -D "$TMPDIR" \
-    -l "${MY_TMP_DIR}/postgres.log" \
-    start \
-    > "${MY_TMP_DIR}/postgres-start.log" \
-    2> "${MY_TMP_DIR}/postgres-start.err"
-echo " DONE"
-PGHOST="$TMPDIR/sockets"
-export PGHOST
 MYDIR="${MY_TMP_DIR}/basedb"
 mkdir -p "${MYDIR}"
 
@@ -2256,9 +2272,9 @@ then
 
     if faketime -f '-1 d' ./generate-auditor-basedb.sh -d "$MYDIR/$DB"
     then
-        echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
+        echo -n "Reset 'auditor-basedb' database at ${PGHOST:-} ..."
         dropdb --if-exists "auditor-basedb" > /dev/null 2> /dev/null || true
-        createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at $PGHOST"
+        createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at ${PGHOST:-}"
         echo " DONE"
     else
         echo "Generation failed"
