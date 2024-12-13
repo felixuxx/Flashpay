@@ -102,11 +102,6 @@ struct AggregationUnit
   const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
   /**
-   * Handle for asynchronously running AML program.
-   */
-  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *amlh;
-
-  /**
    * Shard this aggregation unit is part of.
    */
   struct Shard *shard;
@@ -268,13 +263,6 @@ static void
 cleanup_au (struct AggregationUnit *au)
 {
   GNUNET_assert (NULL != au);
-  if (NULL != au->amlh)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Aborting AML program during aggregation cleanup\n");
-    TALER_KYCLOGIC_run_aml_program_cancel (au->amlh);
-    au->amlh = NULL;
-  }
   if (NULL != au->ru)
   {
     GNUNET_break (0);

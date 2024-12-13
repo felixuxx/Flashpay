@@ -235,8 +235,6 @@ aml_result_callback (
   enum GNUNET_GenericReturnValue res;
 
   ru->amlh = NULL;
-  GNUNET_SCHEDULER_cancel (ru->t);
-  ru->t = NULL;
   res = ru->plugin->start (ru->plugin->cls,
                            "aml-persist-aml-program-result");
   if (GNUNET_OK != res)
@@ -314,94 +312,6 @@ aml_result_callback (
 
 
 /**
- * Task run when an AML program takes too long and runs into a
- * timeout. Kills the AML program and reports an error.
- *
- * @param cls a `struct TEH_KycMeasureRunContext *`
- */
-static void
-aml_program_timeout (void *cls)
-{
-  struct TALER_EXCHANGEDB_RuleUpdater *ru = cls;
-  struct TALER_KYCLOGIC_AmlProgramResult apr = {
-    .status = TALER_KYCLOGIC_AMLR_FAILURE,
-    .details.failure.fallback_measure
-      = TALER_KYCLOGIC_get_aml_program_fallback (ru->aml_program_name),
-    .details.failure.error_message = ru->aml_program_name,
-    .details.failure.ec = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT
-  };
-  enum GNUNET_GenericReturnValue res;
-  enum GNUNET_DB_QueryStatus qs;
-
-  ru->t = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-              "AML program hit timeout!\n");
-  TALER_KYCLOGIC_run_aml_program_cancel (ru->amlh);
-  ru->amlh = NULL;
-  GNUNET_assert (NULL != apr.details.failure.fallback_measure);
-  res = ru->plugin->start (ru->plugin->cls,
-                           "aml-persist-aml-program-timeout");
-  if (GNUNET_OK != res)
-  {
-    GNUNET_break (0);
-    fail_update (ru,
-                 TALER_EC_GENERIC_DB_START_FAILED,
-                 "aml-persist-aml-program-timeout");
-    return;
-  }
-  /* Update database update based on result */
-  qs = TALER_EXCHANGEDB_persist_aml_program_result (
-    ru->plugin,
-    0LLU, /* 0: no existing legitimization process, creates new row */
-    &ru->account,
-    &apr);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    fail_update (ru,
-                 TALER_EC_GENERIC_DB_STORE_FAILED,
-                 "persist_aml_program_timeout");
-    return;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    /* Bad, couldn't persist AML result. Try again... */
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Serialization issue persisting timeout of AML program. Restarting.\n");
-    fail_update (ru,
-                 TALER_EC_GENERIC_DB_SOFT_FAILURE,
-                 "persist_aml_program_timeout");
-    return;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* Strange, but let's just continue */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    /* normal case */
-    break;
-  }
-  {
-    const char *fmn = apr.details.failure.fallback_measure;
-    const struct TALER_KYCLOGIC_Measure *m;
-
-    m = TALER_KYCLOGIC_get_measure (ru->lrs,
-                                    fmn);
-    if (NULL == m)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Fallback measure `%s' does not exist (anymore?).\n",
-                  fmn);
-      TALER_KYCLOGIC_rules_free (ru->lrs);
-      ru->lrs = NULL;
-      return_result (ru);
-      return;
-    }
-    run_measure (ru,
-                 m);
-    return;
-  }
-}
-
-
-/**
  * Entrypoint that fetches the latest rules from the database
  * and starts processing them. Called without an open database
  * transaction, will start one.
@@ -458,7 +368,7 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
   }
   if ( (NULL == m->check_name) ||
        (0 ==
-        strcasecmp ("skip",
+        strcasecmp ("SKIP",
                     m->check_name)) )
   {
     struct TALER_EXCHANGEDB_HistoryBuilderContext hbc = {
@@ -513,10 +423,6 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
                 "Check is of type 'skip', running AML program %s.\n",
                 m->prog_name);
     GNUNET_assert (NULL == ru->t);
-    ru->t = GNUNET_SCHEDULER_add_delayed (
-      ru->plugin->max_aml_program_runtime,
-      &aml_program_timeout,
-      ru);
     ru->amlh = TALER_KYCLOGIC_run_aml_program3 (
       m,
       &TALER_EXCHANGEDB_current_attributes_builder,
@@ -527,6 +433,7 @@ run_measure (struct TALER_EXCHANGEDB_RuleUpdater *ru,
       &hbc,
       &TALER_EXCHANGEDB_kyc_history_builder,
       &hbc,
+      ru->plugin->max_aml_program_runtime,
       &aml_result_callback,
       ru);
     return;

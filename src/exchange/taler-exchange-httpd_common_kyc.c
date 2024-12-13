@@ -347,37 +347,6 @@ TEH_kyc_store_attributes (
 }
 
 
-/**
- * Task run when an AML program takes too long and runs into a
- * timeout. Kills the AML program and reports an error.
- *
- * @param cls a `struct TEH_KycMeasureRunContext *`
- */
-static void
-kyc_aml_timeout (void *cls)
-{
-  struct TEH_KycMeasureRunContext *kat = cls;
-  const char *prog_name
-    = TALER_KYCLOGIC_run_aml_program_get_name (kat->kyc_aml);
-  struct TALER_KYCLOGIC_AmlProgramResult apr = {
-    .status = TALER_KYCLOGIC_AMLR_FAILURE,
-    .details.failure.fallback_measure
-      = TALER_KYCLOGIC_get_aml_program_fallback (prog_name),
-    .details.failure.error_message = prog_name,
-    .details.failure.ec = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT
-  };
-
-  kat->async_task = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-              "AML program `%s' exceeded maximum runtime. Aborting it.\n",
-              prog_name);
-  TALER_KYCLOGIC_run_aml_program_cancel (kat->kyc_aml);
-  kat->kyc_aml = NULL;
-  kyc_aml_finished (kat,
-                    &apr);
-}
-
-
 struct TEH_KycMeasureRunContext *
 TEH_kyc_run_measure_for_attributes (
   const struct GNUNET_AsyncScopeId *scope,
@@ -421,11 +390,6 @@ TEH_kyc_run_measure_for_attributes (
       .attribute_key = &TEH_attribute_key
     };
 
-    GNUNET_assert (NULL == kat->async_task);
-    kat->async_task
-      = GNUNET_SCHEDULER_add_delayed (TEH_aml_program_timeout,
-                                      &kyc_aml_timeout,
-                                      kat);
     kat->kyc_aml
       = TALER_KYCLOGIC_run_aml_program (
           kat->jmeasures,
@@ -438,6 +402,7 @@ TEH_kyc_run_measure_for_attributes (
           &hbc,
           &TALER_EXCHANGEDB_kyc_history_builder,
           &hbc,
+          TEH_aml_program_timeout,
           &kyc_aml_finished,
           kat);
   }
@@ -556,11 +521,6 @@ TEH_kyc_run_measure_directly (
       .attribute_key = &TEH_attribute_key
     };
 
-    GNUNET_assert (NULL == kat->async_task);
-    kat->async_task
-      = GNUNET_SCHEDULER_add_delayed (TEH_aml_program_timeout,
-                                      &kyc_aml_timeout,
-                                      kat);
     kat->kyc_aml
       = TALER_KYCLOGIC_run_aml_program3 (
           instant_ms,
@@ -572,6 +532,7 @@ TEH_kyc_run_measure_directly (
           &hbc,
           &TALER_EXCHANGEDB_kyc_history_builder,
           &hbc,
+          TEH_aml_program_timeout,
           &kyc_aml_finished,
           kat);
   }
@@ -784,6 +745,7 @@ TEH_kyc_fallback (
           &hbc,
           &TALER_EXCHANGEDB_kyc_history_builder,
           &hbc,
+          TEH_aml_program_timeout,
           &handle_aml_fallback_result,
           fb);
     if (NULL == fb->aprh)

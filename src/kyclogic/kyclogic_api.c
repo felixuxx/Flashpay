@@ -406,7 +406,7 @@ find_program (const char *program_name)
                          program->program_name))
       return program;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "AML program `%s' unknown\n",
               program_name);
   return NULL;
@@ -451,18 +451,6 @@ check_measure (const struct TALER_KYCLOGIC_Measure *measure)
   const struct TALER_KYCLOGIC_KycCheck *check;
   const struct TALER_KYCLOGIC_AmlProgram *program;
 
-  if (0 == strcasecmp (measure->check_name,
-                       "SKIP"))
-    return true;
-  check = find_check (measure->check_name);
-  if (NULL == check)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unknown check `%s' used in measure `%s'\n",
-                measure->check_name,
-                measure->measure_name);
-    return false;
-  }
   program = find_program (measure->prog_name);
   if (NULL == program)
   {
@@ -471,22 +459,6 @@ check_measure (const struct TALER_KYCLOGIC_Measure *measure)
                 measure->prog_name,
                 measure->measure_name);
     return false;
-  }
-  for (unsigned int j = 0; j<check->num_requires; j++)
-  {
-    const char *required_input = check->requires[j];
-
-    if (NULL ==
-        json_object_get (measure->context,
-                         required_input))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Measure `%s' lacks required context `%s' for check `%s'\n",
-                  measure->measure_name,
-                  required_input,
-                  check->check_name);
-      return false;
-    }
   }
   for (unsigned int j = 0; j<program->num_required_contexts; j++)
   {
@@ -503,6 +475,28 @@ check_measure (const struct TALER_KYCLOGIC_Measure *measure)
                   program->program_name);
       return false;
     }
+  }
+  if (0 == strcasecmp (measure->check_name,
+                       "SKIP"))
+  {
+    if (0 != program->num_required_attributes)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "AML program `%s' of measure `%s' has required attributes, but check is of type `SKIP' and thus cannot provide any!\n",
+                  program->program_name,
+                  measure->measure_name);
+      return false;
+    }
+    return true;
+  }
+  check = find_check (measure->check_name);
+  if (NULL == check)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unknown check `%s' used in measure `%s'\n",
+                measure->check_name,
+                measure->measure_name);
+    return false;
   }
   for (unsigned int j = 0; j<program->num_required_attributes; j++)
   {
@@ -526,6 +520,22 @@ check_measure (const struct TALER_KYCLOGIC_Measure *measure)
                   measure->measure_name,
                   required_attribute,
                   program->program_name);
+      return false;
+    }
+  }
+  for (unsigned int j = 0; j<check->num_requires; j++)
+  {
+    const char *required_input = check->requires[j];
+
+    if (NULL ==
+        json_object_get (measure->context,
+                         required_input))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Measure `%s' lacks required context `%s' for check `%s'\n",
+                  measure->measure_name,
+                  required_input,
+                  check->check_name);
       return false;
     }
   }
@@ -1274,7 +1284,8 @@ TALER_KYCLOGIC_get_instant_measure (
     {
       continue;
     }
-    if (0 == strcasecmp ("SKIP", ms->check_name))
+    if (0 == strcasecmp ("SKIP",
+                         ms->check_name))
     {
       ret = ms;
       goto done;
@@ -2445,7 +2456,13 @@ add_program (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              "FALLBACK",
                                              &fallback))
   {
-    /* FIXME: Allow NULL to fall back to default rules? */
+    /* We do *not* allow NULL to fall back to default rules because fallbacks
+       are used when there is actually a serious error and thus some action
+       (usually an investigation) is always in order, and that's basically
+       never the default. And as fallbacks should be rare, we really insist on
+       them at least being explicitly configured. Otherwise these errors may
+       go undetected simply because someone forgot to configure a fallback and
+       then nothing happens. */
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "FALLBACK",
@@ -2846,14 +2863,26 @@ TALER_KYCLOGIC_kyc_init (
                                       jkyc_rules)
         );
 
+  for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
+  {
+    const struct TALER_KYCLOGIC_Measure *measure
+      = &default_rules.custom_measures[i];
+
+    if (! check_measure (measure))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Configuration of AML measures incorrect. Exiting.\n");
+      return GNUNET_SYSERR;
+    }
+  }
+
   for (unsigned int i=0; i<num_aml_programs; i++)
   {
     const struct TALER_KYCLOGIC_AmlProgram *program
       = aml_programs[i];
     const struct TALER_KYCLOGIC_Measure *m;
+    const struct TALER_KYCLOGIC_AmlProgram *fprogram;
 
-    if (NULL == program->fallback)
-      continue; /* default */
     m = find_measure (&default_rules,
                       program->fallback);
     if (NULL == m)
@@ -2864,41 +2893,69 @@ TALER_KYCLOGIC_kyc_init (
                   program->program_name);
       return GNUNET_SYSERR;
     }
+    if (0 != strcasecmp (m->check_name,
+                         "SKIP"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fallback measure `%s' used in AML program `%s' has a check `%s' but fallbacks must have a check of type 'SKIP'\n",
+                  program->fallback,
+                  program->program_name,
+                  m->check_name);
+      return GNUNET_SYSERR;
+    }
+    fprogram = find_program (m->prog_name);
+    GNUNET_assert (NULL != fprogram);
+    if (API_NONE != fprogram->input_mask)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fallback program %s of fallback measure `%s' used in AML program `%s' has required inputs, but fallback measures must not require any inputs\n",
+                  m->prog_name,
+                  program->program_name,
+                  m->check_name);
+      return GNUNET_SYSERR;
+    }
   }
 
   for (unsigned int i = 0; i<num_kyc_checks; i++)
   {
     struct TALER_KYCLOGIC_KycCheck *kyc_check
       = kyc_checks[i];
+    const struct TALER_KYCLOGIC_Measure *measure;
+    const struct TALER_KYCLOGIC_AmlProgram *fprogram;
 
-    if (NULL != kyc_check->fallback)
+    measure = find_measure (&default_rules,
+                            kyc_check->fallback);
+    if (NULL == measure)
     {
-      const struct TALER_KYCLOGIC_Measure *measure;
-
-      measure = find_measure (&default_rules,
-                              kyc_check->fallback);
-      if (NULL == measure)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Unknown fallback measure `%s' used in check `%s'\n",
-                    kyc_check->fallback,
-                    kyc_check->check_name);
-        return GNUNET_SYSERR;
-      }
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unknown fallback measure `%s' used in check `%s'\n",
+                  kyc_check->fallback,
+                  kyc_check->check_name);
+      return GNUNET_SYSERR;
     }
-  }
-
-  for (unsigned int i=0; i<default_rules.num_custom_measures; i++)
-  {
-    const struct TALER_KYCLOGIC_Measure *measure
-      = &default_rules.custom_measures[i];
-
-    if (! check_measure (measure))
+    if (0 != strcasecmp (measure->check_name,
+                         "SKIP"))
     {
-      GNUNET_break_op (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fallback measure `%s' used in KYC check `%s' has a check `%s' but fallbacks must have a check of type 'SKIP'\n",
+                  kyc_check->fallback,
+                  kyc_check->check_name,
+                  measure->check_name);
+      return GNUNET_SYSERR;
+    }
+    fprogram = find_program (measure->prog_name);
+    GNUNET_assert (NULL != fprogram);
+    if (API_NONE != fprogram->input_mask)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "AML program `%s' used fallback measure `%s' of KYC check `%s' has required inputs, but fallback measures must not require any inputs\n",
+                  measure->prog_name,
+                  kyc_check->fallback,
+                  kyc_check->check_name);
       return GNUNET_SYSERR;
     }
   }
+
   return GNUNET_OK;
 }
 
@@ -3816,7 +3873,13 @@ struct TALER_KYCLOGIC_AmlProgramRunnerHandle
    */
   struct TALER_KYCLOGIC_AmlProgramResult apr;
 
+  /**
+   * How long do we allow the AML program to run?
+   */
+  struct GNUNET_TIME_Relative timeout;
+
 };
+
 
 /**
  * Function that that receives a JSON @a result from
@@ -3841,6 +3904,11 @@ handle_aml_output (
   const char **evs = NULL;
 
   aprh->proc = NULL;
+  if (NULL != aprh->async_cb)
+  {
+    GNUNET_SCHEDULER_cancel (aprh->async_cb);
+    aprh->async_cb = NULL;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "AML program output is:\n");
   json_dumpf (result,
@@ -3971,8 +4039,7 @@ ready:
 
 
 /**
- * Helper function to asynchronously return
- * the result.
+ * Helper function to asynchronously return the result.
  *
  * @param[in] cls a `struct TALER_KYCLOGIC_AmlProgramRunnerHandle` to return results for
  */
@@ -3984,6 +4051,140 @@ async_return_task (void *cls)
   aprh->async_cb = NULL;
   aprh->aprc (aprh->aprc_cls,
               &aprh->apr);
+  TALER_KYCLOGIC_run_aml_program_cancel (aprh);
+}
+
+
+/**
+ * Helper function called on timeout on the fallback measure.
+ *
+ * @param[in] cls a `struct TALER_KYCLOGIC_AmlProgramRunnerHandle` to return results for
+ */
+static void
+handle_aml_timeout2 (void *cls)
+{
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh = cls;
+  struct TALER_KYCLOGIC_AmlProgramResult *apr = &aprh->apr;
+  const char *fallback_measure = aprh->program->fallback;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Fallback measure %s ran into timeout (!)\n",
+              aprh->program->program_name);
+  if (NULL != aprh->proc)
+  {
+    TALER_JSON_external_conversion_stop (aprh->proc);
+    aprh->proc = NULL;
+  }
+  apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+  apr->details.failure.fallback_measure
+    = fallback_measure;
+  apr->details.failure.error_message
+    = aprh->program->program_name;
+  apr->details.failure.ec
+    = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT;
+  async_return_task (aprh);
+}
+
+
+/**
+ * Helper function called on timeout of an AML program.
+ * Runs the fallback measure.
+ *
+ * @param[in] cls a `struct TALER_KYCLOGIC_AmlProgramRunnerHandle` to return results for
+ */
+static void
+handle_aml_timeout (void *cls)
+{
+  struct TALER_KYCLOGIC_AmlProgramRunnerHandle *aprh = cls;
+  struct TALER_KYCLOGIC_AmlProgramResult *apr = &aprh->apr;
+  const char *fallback_measure = aprh->program->fallback;
+  const struct TALER_KYCLOGIC_Measure *m;
+  const struct TALER_KYCLOGIC_AmlProgram *fprogram;
+
+  aprh->async_cb = NULL;
+  GNUNET_assert (NULL != fallback_measure);
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "AML program %s ran into timeout\n",
+              aprh->program->program_name);
+  if (NULL != aprh->proc)
+  {
+    TALER_JSON_external_conversion_stop (aprh->proc);
+    aprh->proc = NULL;
+  }
+
+  m = TALER_KYCLOGIC_get_measure (&default_rules,
+                                  fallback_measure);
+  /* Fallback program could have "disappeared" due to configuration change,
+     as we do not check all rule sets in the database when our configuration
+     is updated... */
+  if (NULL == m)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fallback measure `%s' does not exist (anymore?).\n",
+                fallback_measure);
+    apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+    apr->details.failure.fallback_measure
+      = fallback_measure;
+    apr->details.failure.error_message
+      = aprh->program->program_name;
+    apr->details.failure.ec
+      = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT;
+    async_return_task (aprh);
+    return;
+  }
+  /* We require fallback measures to have a 'SKIP' check */
+  GNUNET_break (0 ==
+                strcasecmp (m->check_name,
+                            "SKIP"));
+  fprogram = find_program (m->prog_name);
+  /* Program associated with an original measure must exist */
+  GNUNET_assert (NULL != fprogram);
+  if (API_NONE != fprogram->input_mask)
+  {
+    /* We might not have recognized the fallback measure as such
+       because it was not used as such in the plain configuration,
+       and legitimization rule sets might have referred to an older
+       configuration. So this should be super-rare but possible. */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Program `%s' used in fallback measure `%s' requires inputs and is thus unsuitable as a fallback measure!\n",
+                m->prog_name,
+                fallback_measure);
+    apr->status = TALER_KYCLOGIC_AMLR_FAILURE;
+    apr->details.failure.fallback_measure
+      = fallback_measure;
+    apr->details.failure.error_message
+      = aprh->program->program_name;
+    apr->details.failure.ec
+      = TALER_EC_EXCHANGE_KYC_GENERIC_AML_PROGRAM_TIMEOUT;
+    async_return_task (aprh);
+    return;
+  }
+  {
+    /* Run fallback AML program */
+    json_t *input = json_object ();
+    const char *extra_args[] = {
+      "-c",
+      cfg_filename,
+      NULL,
+    };
+    char **args;
+
+    args = split_words (fprogram->command,
+                        extra_args);
+    aprh->proc = TALER_JSON_external_conversion_start (
+      input,
+      &handle_aml_output,
+      aprh,
+      args[0],
+      (const char **) args);
+    destroy_words (args);
+    json_decref (input);
+  }
+  aprh->async_cb = GNUNET_SCHEDULER_add_delayed (aprh->timeout,
+                                                 &handle_aml_timeout2,
+                                                 aprh);
+  aprh->aprc (aprh->aprc_cls,
+              apr);
   TALER_KYCLOGIC_run_aml_program_cancel (aprh);
 }
 
@@ -4000,6 +4201,7 @@ TALER_KYCLOGIC_run_aml_program (
   void *aml_history_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
   void *kyc_history_cb_cls,
+  struct GNUNET_TIME_Relative timeout,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls)
 {
@@ -4031,6 +4233,7 @@ TALER_KYCLOGIC_run_aml_program (
                                           aml_history_cb_cls,
                                           kyc_history_cb,
                                           kyc_history_cb_cls,
+                                          timeout,
                                           aprc,
                                           aprc_cls);
 }
@@ -4048,6 +4251,7 @@ TALER_KYCLOGIC_run_aml_program2 (
   void *aml_history_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
   void *kyc_history_cb_cls,
+  struct GNUNET_TIME_Relative timeout,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls)
 {
@@ -4210,6 +4414,10 @@ TALER_KYCLOGIC_run_aml_program2 (
     destroy_words (args);
     json_decref (input);
   }
+  aprh->timeout = timeout;
+  aprh->async_cb = GNUNET_SCHEDULER_add_delayed (timeout,
+                                                 &handle_aml_timeout,
+                                                 aprh);
   return aprh;
 }
 
@@ -4225,6 +4433,7 @@ TALER_KYCLOGIC_run_aml_program3 (
   void *aml_history_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
   void *kyc_history_cb_cls,
+  struct GNUNET_TIME_Relative timeout,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls)
 {
@@ -4239,6 +4448,7 @@ TALER_KYCLOGIC_run_aml_program3 (
     aml_history_cb_cls,
     kyc_history_cb,
     kyc_history_cb_cls,
+    timeout,
     aprc,
     aprc_cls);
 }

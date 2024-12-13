@@ -2196,7 +2196,9 @@ exchange_serve_process_config (const char *cfg_fn)
       TALER_KYCLOGIC_kyc_init (TEH_cfg,
                                cfg_fn))
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to load configuration `%s'. Exiting.\n",
+                cfg_fn);
     return GNUNET_SYSERR;
   }
   TEH_hard_limits

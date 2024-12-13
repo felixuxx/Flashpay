@@ -1001,6 +1001,11 @@ typedef json_t *
  * @param aml_history_cb_cls closure for @a aml_history_cb
  * @param kyc_history_cb callback to get the KYC history of the account
  * @param kyc_history_cb_cls closure for @a aml_history_cb
+ * @param timeout timeout for running the AML program;
+ *  terminates the AML program and runs the fallback measure immediately
+ *  once the timeout is reached; in this case, the result from the
+ *  fallback measure is returned; the fallback measure is also granted
+ *  the same amount of time (so after 2x @a timeout we will call @a aprc)
  * @param aprc function to call with the result
  * @param aprc_cls closure for @a aprc
  * @return NULL if @a jmeasures is invalid for the
@@ -1018,6 +1023,7 @@ TALER_KYCLOGIC_run_aml_program (
   void *aml_history_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
   void *kyc_history_cb_cls,
+  struct GNUNET_TIME_Relative timeout,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 
@@ -1035,6 +1041,11 @@ TALER_KYCLOGIC_run_aml_program (
  * @param aml_history_cb_cls closure for @a aml_history_cb
  * @param kyc_history_cb callback to get the KYC history of the account
  * @param kyc_history_cb_cls closure for @a aml_history_cb
+ * @param timeout timeout for running the AML program;
+ *  terminates the AML program and runs the fallback measure immediately
+ *  once the timeout is reached; in this case, the result from the
+ *  fallback measure is returned; the fallback measure is also granted
+ *  the same amount of time (so after 2x @a timeout we will call @a aprc)
  * @param aprc function to call with the result
  * @param aprc_cls closure for @a aprc
  * @return NULL if @a jmeasures is invalid for the
@@ -1052,6 +1063,7 @@ TALER_KYCLOGIC_run_aml_program2 (
   void *aml_history_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
   void *kyc_history_cb_cls,
+  struct GNUNET_TIME_Relative timeout,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 
@@ -1070,6 +1082,11 @@ TALER_KYCLOGIC_run_aml_program2 (
  * @param aml_history_cb_cls closure for @a aml_history_cb
  * @param kyc_history_cb callback to get the KYC history of the account
  * @param kyc_history_cb_cls closure for @a aml_history_cb
+ * @param timeout timeout for running the AML program;
+ *  terminates the AML program and runs the fallback measure immediately
+ *  once the timeout is reached; in this case, the result from the
+ *  fallback measure is returned; the fallback measure is also granted
+ *  the same amount of time (so after 2x @a timeout we will call @a aprc)
  * @param aprc function to call with the result
  * @param aprc_cls closure for @a aprc
  * @return NULL if @a jmeasures is invalid for the
@@ -1086,6 +1103,7 @@ TALER_KYCLOGIC_run_aml_program3 (
   void *aml_history_cb_cls,
   TALER_KYCLOGIC_HistoryBuilderCallback kyc_history_cb,
   void *kyc_history_cb_cls,
+  struct GNUNET_TIME_Relative timeout,
   TALER_KYCLOGIC_AmlProgramResultCallback aprc,
   void *aprc_cls);
 
