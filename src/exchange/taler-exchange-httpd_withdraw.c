@@ -1585,11 +1585,10 @@ check_keys (struct WithdrawContext *wc)
                    MHD_HTTP_INTERNAL_SERVER_ERROR,
                    TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                    typ2str (wc)));
+    break;
   default:
     GNUNET_break (0);
   }
-
-  return;
 }
 
 
