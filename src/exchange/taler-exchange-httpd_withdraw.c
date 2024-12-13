@@ -827,7 +827,7 @@ run_transaction (
  * @param wc context for request processing, with @e withdraw_type set to WITHDRAW_TYPE_BATCH
  * @return GNUNET_OK on success
  */
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 batch_withdraw_prepare_transaction (struct WithdrawContext *wc)
 {
   const struct TEH_RequestContext *rc = wc->rc;
@@ -880,7 +880,7 @@ batch_withdraw_prepare_transaction (struct WithdrawContext *wc)
  * @param wc The context for the current withdraw request, with @e withdraw_type set to WITHDRAW_TYPE_AGE
  * @return GNUNET_OK on success
  */
-enum GNUNET_GenericReturnValue
+static enum GNUNET_GenericReturnValue
 age_withdraw_prepare_transaction (
   struct WithdrawContext *wc)
 {
@@ -2056,9 +2056,8 @@ age_withdraw_new_request (
  * @param root uploaded JSON data
  * @param reserve_pub public key of the reserve
  * @return MHD result code
-  */
-MHD_RESULT
-static
+ */
+static MHD_RESULT
 handler_withdraw (
   struct TEH_RequestContext *rc,
   enum WithdrawType typ,
