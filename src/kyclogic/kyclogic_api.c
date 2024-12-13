@@ -336,6 +336,11 @@ static unsigned int num_aml_programs;
  */
 static char *cfg_filename;
 
+/**
+ * Currency we expect to see in all rules.
+ */
+static char *my_currency;
+
 
 struct GNUNET_TIME_Timestamp
 TALER_KYCLOGIC_rules_get_expiration (
@@ -630,8 +635,9 @@ TALER_KYCLOGIC_rules_parse (const json_t *jlrs)
       struct GNUNET_JSON_Specification ispec[] = {
         TALER_JSON_spec_kycte ("operation_type",
                                &rule->trigger),
-        TALER_JSON_spec_amount_any ("threshold",
-                                    &rule->threshold),
+        TALER_JSON_spec_amount ("threshold",
+                                my_currency,
+                                &rule->threshold),
         GNUNET_JSON_spec_relative_time ("timeframe",
                                         &rule->timeframe),
         GNUNET_JSON_spec_array_const ("measures",
@@ -901,8 +907,9 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
                                &operation_type),
         GNUNET_JSON_spec_relative_time ("timeframe",
                                         &timeframe),
-        TALER_JSON_spec_amount_any ("threshold",
-                                    &threshold),
+        TALER_JSON_spec_amount ("threshold",
+                                my_currency,
+                                &threshold),
         GNUNET_JSON_spec_array_const ("measures",
                                       &jmeasures),
         GNUNET_JSON_spec_mark_optional (
@@ -2775,6 +2782,10 @@ TALER_KYCLOGIC_kyc_init (
   json_t *jkyc_rules;
 
   cfg_filename = GNUNET_strdup (cfg_fn);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_config_get_currency (cfg,
+                                            "exchange",
+                                            &my_currency));
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &handle_provider_section,
                                          &sc);
