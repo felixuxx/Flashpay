@@ -4182,6 +4182,10 @@ handle_aml_timeout (void *cls)
 
     args = split_words (fprogram->command,
                         extra_args);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running fallback measure `%s' (%s)\n",
+                fallback_measure,
+                fprogram->command);
     aprh->proc = TALER_JSON_external_conversion_start (
       input,
       &handle_aml_output,
@@ -4194,9 +4198,6 @@ handle_aml_timeout (void *cls)
   aprh->async_cb = GNUNET_SCHEDULER_add_delayed (aprh->timeout,
                                                  &handle_aml_timeout2,
                                                  aprh);
-  aprh->aprc (aprh->aprc_cls,
-              apr);
-  TALER_KYCLOGIC_run_aml_program_cancel (aprh);
 }
 
 
