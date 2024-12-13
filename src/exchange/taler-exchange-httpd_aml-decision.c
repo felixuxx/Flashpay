@@ -384,7 +384,7 @@ TEH_handler_post_aml_decision (
       goto done;
     }
     if (GNUNET_TIME_timestamp_cmp (last_date,
-                                   >=,
+                                   >,
                                    decision_time))
     {
       GNUNET_break_op (0);
