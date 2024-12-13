@@ -460,6 +460,7 @@ TALER_JSON_spec_denom_pub (const char *field,
 /**
  * Generate line in parser specification for token issue public key.
  *
+ * @param field name of the field
  * @param[out] pk key to initialize
  * @return corresponding field spec
  */
