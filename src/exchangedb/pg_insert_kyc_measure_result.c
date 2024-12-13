@@ -79,7 +79,6 @@ TEH_PG_insert_kyc_measure_result (
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Inserting KYC attributes, wake up on %s\n",
               kyc_completed_notify_s);
-  GNUNET_break (NULL != new_rules);
   GNUNET_break (NULL != h_payto);
   PREPARE (pg,
            "insert_kyc_measure_result",

@@ -985,7 +985,10 @@ legi_fail (struct TEH_LegitimizationCheckHandle *lch,
            enum TALER_ErrorCode ec,
            const char *details)
 {
-  GNUNET_break (0);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Legitimziation process failed: %s (%s)\n",
+              TALER_ErrorCode_get_hint (ec),
+              details);
   lch->lcr.http_status
     = TALER_ErrorCode_get_http_status (ec);
   lch->lcr.response
@@ -1046,7 +1049,9 @@ legi_check_aml_trigger_cb (
   if (lch->rerun > MAX_LEGI_LOOPS)
   {
     /* deep recursion not allowed, abort! */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Deep recursion (> %u) detected in AML programs, aborting\n",
+                (unsigned int) MAX_LEGI_LOOPS);
     legi_fail (lch,
                TALER_EC_EXCHANGE_KYC_RECURSIVE_RULE_DETECTED,
                NULL);
