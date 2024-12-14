@@ -92,7 +92,8 @@ src/exchange-tools/
   -- taler exchange helper programs
 
 src/lib/
-  -- libtalerexchange: C API to issue HTTP requests to exchange
+  -- libtalerexchange: C API to issue HTTP requests to exchange.
+     Note that this library is not thread safe.
 
 src/auditor/
   -- tools to generate reports about financial performance and
