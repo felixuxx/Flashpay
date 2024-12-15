@@ -130,6 +130,7 @@ fi
 # Proceed to FORM.
 echo "Selected VQF form ${FORM}." 1&>2
 # FIXME: force user to fill in $FORM
+# FIXME: instead of this insanity, match against rule_name!
 #    NEW_RULES=$(echo "$CURRENT_RULES" | jq 'walk(if (type == "object" and ( ( (.operation_type == "withdraw") and (.threshold == "${EXCHANGE_AML_PROGRAM_TOPS_SMS_WITHDRAW_THRESHOLD") ) or ( (.operation_type == "merge") and (.threshold == "${EXCHANGE_AML_PROGRAM_TOPS_SMS_MERGE_THRESHOLD" ) ) ) ) then del(.) else . end)')
 echo "Not implemented"
 exit 1 # not implemented

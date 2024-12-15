@@ -871,6 +871,9 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
       if (! rule->exposed)
         continue;
       limit = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string ("rule_name",
+                                   rule->rule_name)),
         GNUNET_JSON_pack_bool ("soft_limit",
                                ! rule->verboten),
         TALER_JSON_pack_kycte ("operation_type",
@@ -901,6 +904,7 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
       struct TALER_Amount threshold;
       bool exposed = false;
       const json_t *jmeasures;
+      const char *rule_name;
       enum TALER_KYCLOGIC_KycTriggerEvent operation_type;
       struct GNUNET_JSON_Specification spec[] = {
         TALER_JSON_spec_kycte ("operation_type",
@@ -915,6 +919,10 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_bool ("exposed",
                                  &exposed),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("rule_name",
+                                   &rule_name),
           NULL),
         GNUNET_JSON_spec_end ()
       };
@@ -950,6 +958,9 @@ TALER_KYCLOGIC_rules_to_limits (const json_t *jrules)
       }
 
       limit = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string ("rule_name",
+                                   rule_name)),
         TALER_JSON_pack_kycte (
           "operation_type",
           operation_type),
@@ -1146,6 +1157,9 @@ TALER_KYCLOGIC_zero_measures (
                            ms->check_name))
         continue; /* not a measure to be selected */
       mi = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string ("rule_name",
+                                   rule->rule_name)),
         TALER_JSON_pack_kycte ("operation_type",
                                rule->trigger),
         GNUNET_JSON_pack_string ("check_name",
@@ -2847,6 +2861,9 @@ TALER_KYCLOGIC_kyc_init (
                                             json_string (measure_name)));
     }
     jrule = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("rule_name",
+                                 rule->rule_name)),
       TALER_JSON_pack_kycte ("operation_type",
                              rule->trigger),
       TALER_JSON_pack_amount ("threshold",
@@ -4515,6 +4532,9 @@ TALER_KYCLOGIC_get_hard_limits ()
     if (! rule->exposed)
       continue;
     hard_limit = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("rule_name",
+                                 rule->rule_name)),
       TALER_JSON_pack_kycte ("operation_type",
                              rule->trigger),
       GNUNET_JSON_pack_time_rel ("timeframe",
@@ -4553,6 +4573,9 @@ TALER_KYCLOGIC_get_zero_limits ()
     if (! TALER_amount_is_zero (&rule->threshold))
       continue;
     zero_limit = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("rule_name",
+                                 rule->rule_name)),
       TALER_JSON_pack_kycte ("operation_type",
                              rule->trigger));
     GNUNET_assert (0 ==
