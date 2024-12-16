@@ -262,7 +262,6 @@ TESTS = \
 
 
 EXTRA_DIST = \
-  taler-auditor.in \
   taler-helper-auditor-render.py \
   auditor.conf \
   setup.sh \
