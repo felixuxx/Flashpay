@@ -22,5 +22,5 @@ TESTS = contrib/check-prebuilt
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = build-aux/config.rpath   \
   AUTHORS \
-  RELEASE.m4 \
-  INSTALL.m4
+  RELEASE.md \
+  INSTALL.md
