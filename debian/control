@@ -10,7 +10,7 @@ Build-Depends:
  gcc-12,
  debhelper-compat (= 12),
  gettext,
- libgnunet-dev (>=0.22.3),
+ libgnunet-dev (>=0.23.1),
  libcurl4-gnutls-dev (>=7.35.0) | libcurl4-openssl-dev (>= 7.35.0),
  libgcrypt20-dev (>=1.8),
  libgnutls28-dev (>=3.2.12),

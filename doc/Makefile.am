@@ -53,13 +53,9 @@ info_TEXINFOS = \
   prebuilt/texinfo/taler-exchange.texi
 
 install-info-local:
-	@echo " $(MKDIR_P) '$(DESTDIR)$(infodir)/taler-auditor-figures'"; \
 	$(MKDIR_P) "$(DESTDIR)$(infodir)/taler-auditor-figures" || exit 1; \
-	@echo " $(MKDIR_P) '$(DESTDIR)$(infodir)/taler-exchange-figures'"; \
 	$(MKDIR_P) "$(DESTDIR)$(infodir)/taler-exchange-figures" || exit 1; \
-	echo " $(INSTALL_DATA) auditor-db.png replication.png '$(DESTDIR)$(infodir)/taler-auditor-figures'"; \
 	$(INSTALL_DATA) '$(srcdir)/prebuilt/texinfo/taler-auditor-figures/auditor-db.png' '$(srcdir)/prebuilt/texinfo/taler-auditor-figures/replication.png' "$(DESTDIR)$(infodir)/taler-auditor-figures" || exit 1;
-	echo " $(INSTALL_DATA) kyc-process.png exchange-db.png '$(DESTDIR)$(infodir)/taler-exchange-figures'"; \
 	$(INSTALL_DATA) '$(srcdir)/prebuilt/texinfo/taler-exchange-figures/kyc-process.png' '$(srcdir)/prebuilt/texinfo/taler-exchange-figures/exchange-db.png' "$(DESTDIR)$(infodir)/taler-exchange-figures" || exit 1;
 
 EXTRA_DIST =         \
