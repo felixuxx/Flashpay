@@ -356,6 +356,8 @@ libtalerexchangedb_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetutil \
+  -ljansson \
+  -lcurl \
   $(XLIB)
 libtalerexchangedb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \

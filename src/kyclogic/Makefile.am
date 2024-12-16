@@ -47,8 +47,9 @@ libtalerkyclogic_la_SOURCES = \
 libtalerkyclogic_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -ljansson \
+  -lgnunetjson \
   -lgnunetutil \
+  -ljansson \
   $(XLIB)
 libtalerkyclogic_la_LDFLAGS = \
   -version-info 1:0:0 \

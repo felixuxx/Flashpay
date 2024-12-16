@@ -60,6 +60,8 @@ usr/share/man/man5/taler-exchange.conf.5
 
 # Info pages
 usr/share/info/taler-exchange.info
+usr/share/info/taler-exchange-figures/exchange-db.png
+usr/share/info/taler-exchange-figures/kyc-process.png
 
 # Dynamically loaded extensions / plugins
 usr/lib/*/taler-exchange/libtaler_plugin_kyclogic_*.so

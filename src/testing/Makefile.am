@@ -140,6 +140,7 @@ libtalertesting_la_LIBADD = \
   -lgnunetutil \
   -ljansson \
   -lmicrohttpd \
+  -lcurl \
   $(XLIB)
 
 

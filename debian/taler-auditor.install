@@ -10,7 +10,7 @@ usr/share/man/man*/taler-helper-auditor*
 
 usr/share/info/taler-auditor*
 
-usr/share/taler-auditor/config.d/auditor*
+usr/share/taler-auditor/config.d/*
 usr/share/taler-auditor/sql/*
 usr/share/taler-auditor/spa/*
 
