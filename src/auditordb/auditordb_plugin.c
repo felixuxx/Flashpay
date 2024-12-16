@@ -52,6 +52,7 @@ TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                (void *) cfg);
   if (NULL == plugin)
   {
+    abort ();
     GNUNET_free (lib_name);
     return NULL;
   }

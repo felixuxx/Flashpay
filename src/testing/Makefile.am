@@ -150,6 +150,8 @@ AM_TESTS_ENVIRONMENT=export TALER_EXCHANGE_PREFIX=$${TALER_EXCHANGE_PREFIX:-@lib
 
 check_PROGRAMS = \
   test_auditor_api_version \
+  test_auditor_api_cs \
+  test_auditor_api_rsa \
   test_bank_api_with_fakebank \
   test_bank_api_with_nexus \
   test_exchange_api_cs \
@@ -589,6 +591,8 @@ EXTRA_DIST = \
   valgrind.h \
   coins-cs.conf \
   coins-rsa.conf \
+  test_exchange_api_home/.local/share/taler-auditor/offline-keys/auditor.priv \
+  test_exchange_api_home/.local/share/taler-exchange/offline/master.priv \
   test_auditor_api-cs.conf \
   test_auditor_api-rsa.conf \
   test_auditor_api_expire_reserve_now-cs.conf \

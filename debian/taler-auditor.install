@@ -1,4 +1,3 @@
-usr/bin/taler-auditor
 usr/bin/taler-auditor-*
 usr/bin/taler-helper-auditor-*
 

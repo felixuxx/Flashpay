@@ -357,20 +357,20 @@ load_offline_key (int do_create)
     test_shutdown ();
     return GNUNET_SYSERR;
   }
-  if (GNUNET_YES !=
-      GNUNET_DISK_file_test (fn))
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Auditor private key `%s' does not exist yet, creating it!\n",
-                fn);
   ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
                                            do_create,
                                            &auditor_priv.eddsa_priv);
   if (GNUNET_SYSERR == ret)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize auditor key from file `%s': %s\n",
-                fn,
-                "could not create file");
+    if (do_create)
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to initialize auditor key at `%s': %s\n",
+                  fn,
+                  "could not create file");
+    else
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to load auditor key from file `%s': try running `taler-auditor-offline setup'?\n",
+                  fn);
     GNUNET_free (fn);
     test_shutdown ();
     return GNUNET_SYSERR;

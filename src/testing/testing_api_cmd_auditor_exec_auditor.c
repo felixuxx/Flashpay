@@ -62,6 +62,9 @@ auditor_run (void *cls,
   struct AuditorState *ks = cls;
 
   (void) cmd;
+  // FIXME: taler-auditor is no more, run the individual
+  // helpers here instead, or re-introduce the taler-auditor
+  // command to run all helpers!
   ks->auditor_proc
     = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                NULL, NULL, NULL,

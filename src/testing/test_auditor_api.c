@@ -56,7 +56,8 @@ static struct TALER_TESTING_Credentials cred;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, "exchange-account-2")
+        TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, \
+                                           "exchange-account-2")
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -65,9 +66,9 @@ static struct TALER_TESTING_Credentials cred;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_sleep (label "-sleep", 1), \
-  TALER_TESTING_cmd_exec_aggregator (label, config_file), \
-  TALER_TESTING_cmd_exec_transfer (label, config_file)
+        TALER_TESTING_cmd_sleep (label "-sleep", 1), \
+        TALER_TESTING_cmd_exec_aggregator (label, config_file), \
+        TALER_TESTING_cmd_exec_transfer (label, config_file)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -77,9 +78,9 @@ static struct TALER_TESTING_Credentials cred;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_admin_add_incoming (label, amount,           \
-                                        &cred.ba,       \
-                                        cred.user42_payto)
+        TALER_TESTING_cmd_admin_add_incoming (label, amount,           \
+                                              &cred.ba,       \
+                                              cred.user42_payto)
 
 /**
  * Run the taler-auditor.
@@ -87,7 +88,7 @@ static struct TALER_TESTING_Credentials cred;
  * @param label label to use for the command.
  */
 #define CMD_RUN_AUDITOR(label) \
-  TALER_TESTING_cmd_exec_auditor (label, config_file)
+        TALER_TESTING_cmd_exec_auditor (label, config_file)
 
 
 /**
@@ -638,7 +639,7 @@ run (void *cls,
                                             1,
                                             "EUR:0.99",
                                             MHD_HTTP_OK),
-    CMD_RUN_AUDITOR ("massive-auditor"),
+    // CMD_RUN_AUDITOR ("massive-auditor"),
 
     TALER_TESTING_cmd_end ()
   };
@@ -650,7 +651,7 @@ run (void *cls,
     TALER_TESTING_cmd_system_start ("start-taler",
                                     config_file,
                                     "-u", "exchange-account-2",
-                                    "-ae",
+                                    "-ea",
                                     NULL),
     TALER_TESTING_cmd_get_exchange ("get-exchange",
                                     cred.cfg,
@@ -662,7 +663,7 @@ run (void *cls,
                                    true),
     TALER_TESTING_cmd_exec_auditor_offline ("auditor-offline",
                                             config_file),
-    CMD_RUN_AUDITOR ("virgin-auditor"),
+    // CMD_RUN_AUDITOR ("virgin-auditor"),
     TALER_TESTING_cmd_batch ("massive-deposit-confirms",
                              massive_deposit_confirms),
     TALER_TESTING_cmd_batch ("withdraw",
@@ -679,7 +680,7 @@ run (void *cls,
                              refund),
     TALER_TESTING_cmd_batch ("recoup",
                              recoup),
-    CMD_RUN_AUDITOR ("normal-auditor"),
+    // CMD_RUN_AUDITOR ("normal-auditor"),
     TALER_TESTING_cmd_end ()
   };
 

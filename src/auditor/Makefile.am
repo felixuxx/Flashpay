@@ -12,7 +12,7 @@ pkgcfg_DATA = \
   auditor.conf
 
 clean-local:
-	rm -rf revocation-tmp-* taler-auditor
+	rm -rf revocation-tmp-*
 
 bin_PROGRAMS = \
   taler-auditor-dbinit \
@@ -28,16 +28,7 @@ bin_PROGRAMS = \
   taler-helper-auditor-wire-debit
 
 bin_SCRIPTS = \
-  taler-auditor \
   taler-helper-auditor-render.py
-
-edit_script = $(SED) -e 's,%datadir%,$(datadir),'g $(NULL)
-
-taler-auditor: taler-auditor.in
-	rm -f $@ $@.tmp && \
-	$(edit_script) $< >$@.tmp && \
-	chmod a-w+x $@.tmp && \
-	mv $@.tmp $@
 
 lib_LTLIBRARIES = \
   libauditorreport.la
