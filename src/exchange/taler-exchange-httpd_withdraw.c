@@ -199,7 +199,7 @@ struct WithdrawContext
   }  typ;
 
   /**
-   * Errors occuring during evaluation of the request are captured in this struct.
+   * Errors occurring during evaluation of the request are captured in this struct.
    * In phase PHASE_GENERATE_REPLY_ERROR an appropriate error message is prepared
    * and sent to the client.
    */
@@ -1721,7 +1721,7 @@ phase_generate_reply_success (struct WithdrawContext *wc)
 
 /**
  * Reports an error, potentially with details.
- * That is, it puts a error-type specific repsonse into the MHD queue.
+ * That is, it puts a error-type specific response into the MHD queue.
  * It will do a idempotency check first, if needed for the error type.
  *
  * @param wc withdraw context
