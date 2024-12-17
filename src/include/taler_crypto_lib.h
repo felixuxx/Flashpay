@@ -48,6 +48,7 @@
  * fixed and part of the protocol.
  */
 #define TALER_CNC_KAPPA 3
+#define TALER_CNC_KAPPA_STR "3"
 #define TALER_CNC_KAPPA_MINUS_ONE_STR "2"
 
 
