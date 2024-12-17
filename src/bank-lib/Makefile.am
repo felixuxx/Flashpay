@@ -34,7 +34,7 @@ lib_LTLIBRARIES = \
   libtalerfakebank.la
 
 libtalerbank_la_LDFLAGS = \
-  -version-info 2:0:0 \
+  -version-info 3:0:0 \
   -no-undefined
 libtalerbank_la_SOURCES = \
   bank_api_account_token.c \

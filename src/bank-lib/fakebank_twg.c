@@ -61,7 +61,7 @@ TALER_FAKEBANK_twg_main_ (
       connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_string ("version",
-                               "0:0:0"),
+                               "3:0:3"),
       GNUNET_JSON_pack_string ("currency",
                                h->currency),
       GNUNET_JSON_pack_string ("implementation",

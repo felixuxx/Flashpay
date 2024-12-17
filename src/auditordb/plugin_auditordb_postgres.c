@@ -95,6 +95,7 @@
 #include "pg_insert_reserve_balance_insufficient_inconsistency.h"
 
 #include "pg_get_reserve_in_inconsistency.h"
+#include "pg_lookup_reserve_in_inconsistency.h"
 #include "pg_insert_reserve_in_inconsistency.h"
 
 #include "pg_get_reserve_not_closed_inconsistency.h"
@@ -656,7 +657,10 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
 
   plugin->insert_reserve_in_inconsistency =
     &TAH_PG_insert_reserve_in_inconsistency;
-  plugin->get_reserve_in_inconsistency = &TAH_PG_get_reserve_in_inconsistency;
+  plugin->get_reserve_in_inconsistency
+    = &TAH_PG_get_reserve_in_inconsistency;
+  plugin->lookup_reserve_in_inconsistency
+    = &TAH_PG_lookup_reserve_in_inconsistency;
 
   plugin->insert_reserve_not_closed_inconsistency =
     &TAH_PG_insert_reserve_not_closed_inconsistency;

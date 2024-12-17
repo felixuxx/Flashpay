@@ -387,6 +387,7 @@ struct TALER_AUDITORDB_ReserveBalanceInsufficientInconsistency
  */
 struct TALER_AUDITORDB_ReserveInInconsistency
 {
+  uint64_t serial_id;
   uint64_t bank_row_id;
   struct TALER_Amount amount_exchange_expected;
   struct TALER_Amount amount_wired;
@@ -861,7 +862,6 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_AUDITORDB_ReserveInInconsistencyCallback)(
   void *cls,
-  uint64_t serial_id,
   const struct TALER_AUDITORDB_ReserveInInconsistency *dc);
 
 typedef enum GNUNET_GenericReturnValue
@@ -1521,6 +1521,21 @@ struct TALER_AUDITORDB_Plugin
     enum TALER_AUDITORDB_DeletableSuppressableTables table,
     uint64_t row_id);
 
+  /**
+   * Lookup information about reserve-in-inconsistency from the database.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param bank_row_id row of the transaction at the bank
+   * @param[out] dc set to the transaction details
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+    (*lookup_reserve_in_inconsistency) (
+    void *cls,
+    uint64_t bank_row_id,
+    struct TALER_AUDITORDB_ReserveInInconsistency *dc);
+
+
   enum GNUNET_DB_QueryStatus
     (*get_reserve_in_inconsistency)(
     void *cls,
@@ -1541,6 +1556,13 @@ struct TALER_AUDITORDB_Plugin
     (*insert_reserve_in_inconsistency)(
     void *cls,
     const struct TALER_AUDITORDB_ReserveInInconsistency *dc);
+
+
+  enum GNUNET_DB_QueryStatus
+    (*select_reserve_in_inconsistency)(
+    void *cls,
+    uint64_t bank_row_id,
+    struct TALER_AUDITORDB_ReserveInInconsistency *dc);
 
   enum GNUNET_DB_QueryStatus
     (*get_reserve_not_closed_inconsistency)(

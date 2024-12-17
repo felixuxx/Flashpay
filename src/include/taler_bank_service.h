@@ -658,6 +658,11 @@ struct TALER_BANK_CreditDetails
   struct TALER_Amount amount;
 
   /**
+   * Fee paid by the creditor.
+   */
+  struct TALER_Amount credit_fee;
+
+  /**
    * Time of the the transfer
    */
   struct GNUNET_TIME_Timestamp execution_date;

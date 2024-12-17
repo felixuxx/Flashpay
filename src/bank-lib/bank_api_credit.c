@@ -109,11 +109,16 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
     {
       struct TALER_BANK_CreditDetails *td = &cd[i];
       const char *type;
+      bool no_credit_fee;
       struct GNUNET_JSON_Specification hist_spec[] = {
         GNUNET_JSON_spec_string ("type",
                                  &type),
         TALER_JSON_spec_amount_any ("amount",
                                     &td->amount),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_amount_any ("credit_fee",
+                                      &td->credit_fee),
+          &no_credit_fee),
         GNUNET_JSON_spec_timestamp ("date",
                                     &td->execution_date),
         GNUNET_JSON_spec_uint64 ("row_id",
@@ -133,6 +138,22 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
+      }
+      if (no_credit_fee)
+      {
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_set_zero (td->amount.currency,
+                                              &td->credit_fee));
+      }
+      else
+      {
+        if (GNUNET_YES !=
+            TALER_amount_cmp_currency (&td->amount,
+                                       &td->credit_fee))
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
       }
       if (0 == strcasecmp ("RESERVE",
                            type))

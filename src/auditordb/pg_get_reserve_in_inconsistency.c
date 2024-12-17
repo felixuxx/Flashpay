@@ -65,11 +65,10 @@ reserve_in_inconsistency_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    uint64_t serial_id;
     struct TALER_AUDITORDB_ReserveInInconsistency dc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("row_id",
-                                    &serial_id),
+                                    &dc.serial_id),
       GNUNET_PQ_result_spec_uint64 ("bank_row_id",
                                     &dc.bank_row_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_exchange_expected",
@@ -101,9 +100,7 @@ reserve_in_inconsistency_cb (void *cls,
     }
 
     dcc->qs = i + 1;
-
     rval = dcc->cb (dcc->cb_cls,
-                    serial_id,
                     &dc);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != rval)

@@ -115,6 +115,7 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_insert_refreshes_hanging.c pg_insert_refreshes_hanging.h \
   pg_get_refreshes_hanging.c pg_get_refreshes_hanging.h \
   pg_get_reserve_in_inconsistency.c pg_get_reserve_in_inconsistency.h \
+  pg_lookup_reserve_in_inconsistency.c pg_lookup_reserve_in_inconsistency.h \
   pg_insert_reserve_in_inconsistency.c pg_insert_reserve_in_inconsistency.h \
   pg_get_reserve_not_closed_inconsistency.c pg_get_reserve_not_closed_inconsistency.h \
   pg_insert_reserve_not_closed_inconsistency.c pg_insert_reserve_not_closed_inconsistency.h \

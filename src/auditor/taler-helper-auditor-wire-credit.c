@@ -169,6 +169,11 @@ static TALER_ARL_DEF_AB (total_misattribution_in);
 static TALER_ARL_DEF_AB (total_wire_in);
 
 /**
+ * Total wire credit fees charged to the exchange account.
+ */
+static TALER_ARL_DEF_AB (total_wire_credit_fees);
+
+/**
  * Amount of zero in our currency.
  */
 static struct TALER_Amount zero;
@@ -338,6 +343,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   qs = TALER_ARL_adb->update_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_SET_AB (total_wire_in),
+    TALER_ARL_SET_AB (total_wire_credit_fees),
     TALER_ARL_SET_AB (total_bad_amount_in_plus),
     TALER_ARL_SET_AB (total_bad_amount_in_minus),
     TALER_ARL_SET_AB (total_misattribution_in),
@@ -347,6 +353,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   qs = TALER_ARL_adb->insert_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_SET_AB (total_wire_in),
+    TALER_ARL_SET_AB (total_wire_credit_fees),
     TALER_ARL_SET_AB (total_bad_amount_in_plus),
     TALER_ARL_SET_AB (total_bad_amount_in_minus),
     TALER_ARL_SET_AB (total_misattribution_in),
@@ -428,6 +435,59 @@ conclude_credit_history (void)
 
 
 /**
+ * Check if the given wire transfers are equivalent.
+ *
+ * @param credit amount that was received
+ * @param credit2 2nd amount that was received
+ * @param reserve_pub public key of the reserve (also the WTID)
+ * @param reserve_pub2 2nd public key of the reserve (also the WTID)
+ * @param sender_account_details payto://-URL of the sender's bank account
+ * @param sender_account_details2 2nd payto://-URL of the sender's bank account
+ * @param execution_date when did we receive the funds
+ * @param execution_date2 2nd when did we receive the funds
+ * @return #GNUNET_YES if so,
+ *         #GNUNET_NO if not
+ *         #GNUNET_SYSERR on internal error
+ */
+static enum GNUNET_GenericReturnValue
+check_equality (const struct TALER_Amount *credit,
+                const struct TALER_Amount *credit2,
+                const struct TALER_ReservePublicKeyP *reserve_pub,
+                const struct TALER_ReservePublicKeyP *reserve_pub2,
+                const struct TALER_FullPayto sender_account_details,
+                const struct TALER_FullPayto sender_account_details2,
+                struct GNUNET_TIME_Timestamp execution_date,
+                struct GNUNET_TIME_Timestamp execution_date2)
+{
+  if (0 != TALER_amount_cmp (credit,
+                             credit2))
+    return GNUNET_NO;
+  if (0 != GNUNET_memcmp (reserve_pub,
+                          reserve_pub2))
+    return GNUNET_NO;
+  {
+    struct TALER_NormalizedPayto np;
+    struct TALER_NormalizedPayto np2;
+    bool fail;
+
+    np = TALER_payto_normalize (sender_account_details);
+    np2 = TALER_payto_normalize (sender_account_details2);
+    fail = (0 != TALER_normalized_payto_cmp (np,
+                                             np2));
+    GNUNET_free (np.normalized_payto);
+    GNUNET_free (np2.normalized_payto);
+    if (fail)
+      return GNUNET_NO;
+  }
+  if (GNUNET_TIME_timestamp_cmp (execution_date,
+                                 !=,
+                                 execution_date2))
+    return GNUNET_NO;
+  return GNUNET_YES;
+}
+
+
+/**
  * Function called with details about incoming wire transfers
  * as claimed by the exchange DB.
  *
@@ -462,6 +522,56 @@ reserve_in_cb (void *cls,
   TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_in),
                         &TALER_ARL_USE_AB (total_wire_in),
                         credit);
+  {
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_AUDITORDB_ReserveInInconsistency dc;
+
+    qs = TALER_ARL_adb->select_reserve_in_inconsistency (
+      TALER_ARL_adb->cls,
+      wire_reference,
+      &dc);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      global_qs = qs;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return GNUNET_SYSERR;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      break;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      if (TALER_amount_is_zero (&dc.amount_exchange_expected))
+      {
+        /* database entry indicates unmatched transaction */
+        enum GNUNET_GenericReturnValue ret;
+
+        ret = check_equality (&dc.amount_wired,
+                              credit,
+                              &dc.reserve_pub,
+                              reserve_pub,
+                              dc.account,
+                              sender_account_details,
+                              GNUNET_TIME_absolute_to_timestamp (dc.timestamp),
+                              execution_date);
+        if (GNUNET_SYSERR == ret)
+          return GNUNET_SYSERR;
+        if (GNUNET_YES == ret)
+        {
+          qs = TALER_ARL_adb->delete_reserve_in_inconsistency (
+            TALER_ARL_adb->cls,
+            dc.serial_id);
+          if (qs < 0)
+          {
+            global_qs = qs;
+            GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+            return GNUNET_SYSERR;
+          }
+          return GNUNET_OK;
+        }
+      }
+      break;
+    }
+  }
   slen = strlen (sender_account_details.full_payto) + 1;
   rii = GNUNET_malloc (sizeof (struct ReserveInInfo) + slen);
   rii->rowid = rowid;
@@ -621,6 +731,9 @@ analyze_credit (
               GNUNET_TIME_timestamp2s (credit_details->execution_date),
               TALER_amount2s (&credit_details->amount),
               TALER_B2S (&credit_details->details.reserve.reserve_pub));
+  TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_wire_credit_fees),
+                        &TALER_ARL_USE_AB (total_wire_credit_fees),
+                        &credit_details->credit_fee);
   GNUNET_CRYPTO_hash (&credit_details->serial_id,
                       sizeof (credit_details->serial_id),
                       &key);
@@ -628,11 +741,31 @@ analyze_credit (
                                            &key);
   if (NULL == rii)
   {
-    // FIXME: add to auditor DB and report missing!
-    // (and modify balances!)
+    struct TALER_AUDITORDB_ReserveInInconsistency dc = {
+      .bank_row_id = credit_details->serial_id,
+      .amount_exchange_expected = zero,
+      .amount_wired = credit_details->amount,
+      .reserve_pub = credit_details->details.reserve.reserve_pub,
+      .timestamp = credit_details->execution_date.abs_time,
+      .account = credit_details->debit_account_uri,
+      .diagnostic = (char *) "unknown to exchange"
+    };
+    enum GNUNET_DB_QueryStatus qs;
+
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to find wire transfer at `%s' in exchange database.\n",
                 GNUNET_TIME_timestamp2s (credit_details->execution_date));
+    qs = TALER_ARL_adb->insert_reserve_in_inconsistency (TALER_ARL_adb->cls,
+                                                         &dc);
+    if (qs <= 0)
+    {
+      global_qs = qs;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
+    }
+    TALER_ARL_amount_add (&TALER_ARL_USE_AB (total_bad_amount_in_plus),
+                          &TALER_ARL_USE_AB (total_bad_amount_in_plus),
+                          &credit_details->amount);
     return true;
   }
 
@@ -783,7 +916,6 @@ analyze_credit (
 
     if (qs < 0)
     {
-      /* FIXME: this error handling sucks... */
       global_qs = qs;
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return false;
@@ -980,6 +1112,7 @@ begin_transaction (void)
   qs = TALER_ARL_adb->get_balance (
     TALER_ARL_adb->cls,
     TALER_ARL_GET_AB (total_wire_in),
+    TALER_ARL_GET_AB (total_wire_credit_fees),
     TALER_ARL_GET_AB (total_bad_amount_in_plus),
     TALER_ARL_GET_AB (total_bad_amount_in_minus),
     TALER_ARL_GET_AB (total_misattribution_in),
