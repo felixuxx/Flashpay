@@ -116,8 +116,8 @@ struct WithdrawContext
 
   /**
      * Number of coins, depending on the @e withdraw_type:
-     *  1) WITHDRAW_TYPE_BATCH: #elements in the @e typ.batch.planchets array.
-     *  2) WITHDRAW_TYPE_AGE: #elements in the @e typ.age.planchets array
+     *  1) WITHDRAW_TYPE_BATCH: length of @e typ.batch.planchets array.
+     *  2) WITHDRAW_TYPE_AGE: length of @e typ.age.planchets array
      */
   unsigned int num_coins;
 
