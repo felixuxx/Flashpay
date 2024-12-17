@@ -47,6 +47,7 @@ echo "Running wallet"
 export WALLET_DB="wallet.wdb"
 rm -f "$WALLET_DB"
 
+wlog="taler-wallet-cli-withdraw.log"
 taler-wallet-cli \
     --no-throttle \
     --wallet-db="$WALLET_DB" \
@@ -60,7 +61,11 @@ taler-wallet-cli \
     }' \
     --arg BANK_URL "$BANK_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL"
-  )" &> taler-wallet-cli-withdraw.log
+  )" &> $wlog || {
+    echo " FAILED(withdraw)!  Last entries in $wlog:"
+    tail $wlog
+    exit 2
+}
 
 taler-wallet-cli \
     --no-throttle \

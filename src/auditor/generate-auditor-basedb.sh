@@ -107,6 +107,7 @@ export WALLET_DB="wallet.wdb"
 rm -f "$WALLET_DB"
 
 echo -n "Running wallet ..."
+wlog="taler-wallet-cli-withdraw.log"
 taler-wallet-cli \
     --no-throttle \
     --wallet-db="$WALLET_DB" \
@@ -124,7 +125,11 @@ taler-wallet-cli \
     --arg MERCHANT_URL "$MERCHANT_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL" \
     --arg BANK_URL "$BANK_URL"
-  )" &> taler-wallet-cli.log
+  )" &> $wlog || {
+    echo " FAILED! Last lines from $wlog:"
+    tail $wlog
+    exit 2
+  }
 echo " DONE"
 
 taler-wallet-cli --wallet-db="$WALLET_DB" run-until-done
