@@ -624,7 +624,7 @@ perform_protocol (
   /* Initiate the POST-request */
   j_request_body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("denom_hs", j_denoms),
-    GNUNET_JSON_pack_array_steal ("blinded_coin_evs", j_array_candidates),
+    GNUNET_JSON_pack_array_steal ("blinded_planchets", j_array_candidates),
     GNUNET_JSON_pack_uint64 ("max_age", awbh->max_age),
     GNUNET_JSON_pack_data_auto ("reserve_sig", &awbh->reserve_sig));
   FAIL_IF (NULL == j_request_body);

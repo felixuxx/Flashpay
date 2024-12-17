@@ -38,38 +38,10 @@
 #include "taler-exchange-httpd_keys.h"
 #include "taler_util.h"
 
-
 /**
- * Information per planchet in a batch withdraw.
- */
-struct PlanchetContext
-{
-
-  /**
-   * Value of the coin being exchanged (matching the denomination key)
-   * plus the transaction fee.  We include this in what is being
-   * signed so that we can verify a reserve's remaining total balance
-   * without needing to access the respective denomination key
-   * information each time.
-   */
-  struct TALER_Amount amount_with_fee;
-
-  /**
-   * Blinded planchet.
-   */
-  struct TALER_BlindedPlanchet blinded_planchet;
-
-  /**
-   * Set to the resulting signed coin data to be returned to the client.
-   */
-  struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
-
-};
-
-/**
- * Context for both,
- *  1.) #batch_withdraw_transaction
- *  2.) #age_withdraw_transaction
+ * Context for both types of requests
+ *  1.) #batch-withdraw
+ *  2.) #age-withdraw
  */
 struct WithdrawContext
 {
@@ -97,17 +69,17 @@ struct WithdrawContext
      */
   enum
   {
-    WC_PHASE_CHECK_KEYS,
-    WC_PHASE_CHECK_RESERVE_SIGNATURE,
-    WC_PHASE_RUN_LEGI_CHECK,
-    WC_PHASE_SUSPENDED,
-    WC_PHASE_CHECK_KYC_RESULT,
-    WC_PHASE_PREPARE_TRANSACTION,
-    WC_PHASE_RUN_TRANSACTION,
-    WC_PHASE_GENERATE_REPLY_SUCCESS,
-    WC_PHASE_GENERATE_REPLY_FAILURE,
-    WC_PHASE_RETURN_NO,
-    WC_PHASE_RETURN_YES,
+    PHASE_CHECK_KEYS,
+    PHASE_CHECK_RESERVE_SIGNATURE,
+    PHASE_RUN_LEGI_CHECK,
+    PHASE_SUSPENDED,
+    PHASE_CHECK_KYC_RESULT,
+    PHASE_PREPARE_TRANSACTION,
+    PHASE_RUN_TRANSACTION,
+    PHASE_GENERATE_REPLY_SUCCESS,
+    PHASE_GENERATE_REPLY_ERROR,
+    PHASE_RETURN_NO,
+    PHASE_RETURN_YES,
   } phase;
 
 
@@ -120,11 +92,6 @@ struct WithdrawContext
    * Request context
    */
   const struct TEH_RequestContext *rc;
-
-  /**
-   * Response to return, if set.
-   */
-  struct MHD_Response *response;
 
   /**
    * Public key of the reserve.
@@ -148,10 +115,11 @@ struct WithdrawContext
   struct TALER_NormalizedPaytoHashP h_normalized_payto;
 
   /**
-   * HTTP status to return with @e response, or 0.
-   */
-  unsigned int http_status;
-
+     * Number of coins, depending on the @e withdraw_type:
+     *  1) WITHDRAW_TYPE_BATCH: #elements in the @e typ.batch.planchets array.
+     *  2) WITHDRAW_TYPE_AGE: #elements in the @e typ.age.planchets array
+     */
+  unsigned int num_coins;
 
   /**
    * Depending on @e withdraw_type, this union
@@ -167,19 +135,38 @@ struct WithdrawContext
     struct
     {
       /**
-       * Array of @e planchets_length planchets we are processing.
+       * Array of @e num_coins planchets we are processing,
+       * containing the information per planchet in a batch withdraw.
        */
-      struct PlanchetContext *planchets;
+      struct PlanchetContext
+      {
+
+        /**
+         * Value of the coin being exchanged (matching the denomination key)
+         * plus the transaction fee.  We include this in what is being
+         * signed so that we can verify a reserve's remaining total balance
+         * without needing to access the respective denomination key
+         * information each time.
+         */
+        struct TALER_Amount amount_with_fee;
+
+        /**
+         * Blinded planchet.
+         */
+        struct TALER_BlindedPlanchet blinded_planchet;
+
+        /**
+         * Set to the resulting signed coin data to be returned to the client.
+         */
+        struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
+
+      }  *planchets;
 
       /**
        * Total amount from all coins with fees.
        */
       struct TALER_Amount batch_total;
 
-      /**
-       * Length of the @e planchets array.
-       */
-      unsigned int planchets_length;
     } batch;
 
     /**
@@ -198,14 +185,9 @@ struct WithdrawContext
       struct TALER_EXCHANGEDB_AgeWithdraw commitment;
 
       /**
-       * Number of coins/denonations in the reveal
+       * # @e num_coins * TALER_CNC_KAPPA hashes of blinded coin planchets.
        */
-      unsigned int num_coins;
-
-      /**
-       * #num_coins * TALER_CNC_KAPPA hashes of blinded coin planchets.
-       */
-      struct TALER_BlindedPlanchet (*coin_evs) [ TALER_CNC_KAPPA];
+      struct TALER_BlindedPlanchet (*planchets) [ TALER_CNC_KAPPA];
 
       /**
        * #num_coins hashes of the denominations from which the coins are withdrawn.
@@ -216,7 +198,163 @@ struct WithdrawContext
 
   }  typ;
 
+  /**
+   * Errors occuring during evaluation of the request are captured in this struct.
+   * In phase PHASE_GENERATE_REPLY_ERROR an appropriate error message is prepared
+   * and sent to the client.
+   */
+  struct
+  {
+    /**
+     * The different type of errors that might occur, sorted by name.
+     * Some of them require idempotency checks, which are marked
+     * in array @a needs_idempotency_check_error below.
+     */
+    enum
+    {
+      ERROR_NONE,
+
+      ERROR_AGE_AMOUNT_OVERFLOW,
+      ERROR_AGE_INSUFFICIENT_FUNDS,
+      ERROR_AGE_MAXIMUM_AGE_TOO_LARGE,
+      ERROR_AGE_RESTRICTION_NOT_SUPPORTED_BY_DENOMINATION,
+      ERROR_AGE_RESTRICTION_REQUIRED,
+      ERROR_AGE_CONFIRMATION_SIGN,
+      ERROR_BATCH_AMOUNT_FEE_OVERFLOW,
+      ERROR_BATCH_IDEMPOTENT_PLANCHET,
+      ERROR_BATCH_INSUFFICIENT_FUNDS,
+      ERROR_BATCH_NONCE_RESUSE,
+      ERROR_CIPHER_MISMATCH,
+      ERROR_DB_FETCH_FAILED,
+      ERROR_DB_INVARIANT_FAILURE,
+      ERROR_DENOMINATION_BATCH_SIGN,
+      ERROR_DENOMINATION_EXPIRED,
+      ERROR_DENOMINATION_KEY_UNKNOWN,
+      ERROR_DENOMINATION_REVOKED,
+      ERROR_DENOMINATION_VALIDITY_IN_FUTURE,
+      ERROR_INTERNAL_INVARIANT_FAILURE,
+      ERROR_KEYS_MISSING,
+      ERROR_KYC_REQUIRED,
+      ERROR_LEGITIMIZATION_RESULT,
+      ERROR_RESERVE_SIGNATURE_INVALID,
+      ERROR_RESERVE_UNKNOWN,
+      ERROR_REQUEST_PARAMETER_MALFORMED,
+
+      ERROR_MAX
+    } code;
+
+    /**
+     * Some errors require details to be sent to the client.
+     * These are captured in this union.
+     * Each field is marked with a comment, referring to the error(s)
+     * that is/are using it.
+     */
+    union
+    {
+      /* ERROR_REQUEST_PARAMETER_MALFORMED */
+      const char *hint;
+
+      /* ERROR_AGE_AMOUNT_OVERFLOW */
+      const char *which;
+
+      /* ERROR_DENOMINATION_KEY_UNKNOWN */
+      const struct TALER_DenominationHashP *denom_h;
+
+      /* ERROR_DB_FETCH_FAILED */
+      const char *db_fetch_context;
+
+      /* ERROR_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE */
+      struct
+      {
+        uint16_t max;
+        uint32_t birthday;
+      } age;
+
+      /* ERROR_AGE_RESTRICTION_REQUIRED */
+      uint16_t lowest_age;
+
+      /* ERROR_AGE_INSUFFICIENT_FUNDS */
+      /* ERROR_BATCH_INSUFFICIENT_FUNDS */
+      struct TALER_Amount reserve_balance;
+
+      /* ERROR_AGE_CONFIRMATION_SIGN  */
+      /* ERROR_DENOMINATION_BATCH_SIGN */
+      enum TALER_ErrorCode ec;
+
+      /* ERROR_LEGITIMIZATION_RESULT */
+      struct
+      {
+        struct MHD_Response *response;
+        unsigned int http_status;
+      } legi;
+
+    } details;
+  } error;
 };
+
+/**
+ * This table marks which @a WithdrawContext.error.code
+ * needs a idempotency check prior to actually sending an error message.
+ */
+static const bool
+  needs_idempotency_check[] = {
+  [ERROR_NONE] = false,
+
+  [ERROR_AGE_AMOUNT_OVERFLOW] = false,
+  [ERROR_AGE_CONFIRMATION_SIGN] = false,
+  [ERROR_AGE_MAXIMUM_AGE_TOO_LARGE] = false,
+  [ERROR_AGE_RESTRICTION_NOT_SUPPORTED_BY_DENOMINATION] = false,
+  [ERROR_AGE_RESTRICTION_REQUIRED] = false,
+  [ERROR_BATCH_AMOUNT_FEE_OVERFLOW] = false,
+  [ERROR_BATCH_NONCE_RESUSE] = false,
+  [ERROR_CIPHER_MISMATCH] = false,
+  [ERROR_DB_FETCH_FAILED] = false,
+  [ERROR_DB_INVARIANT_FAILURE] = false,
+  [ERROR_DENOMINATION_BATCH_SIGN] = false,
+  [ERROR_DENOMINATION_VALIDITY_IN_FUTURE] = false,
+  [ERROR_INTERNAL_INVARIANT_FAILURE] = false,
+  [ERROR_LEGITIMIZATION_RESULT] = false,
+  [ERROR_REQUEST_PARAMETER_MALFORMED] = false,
+  [ERROR_RESERVE_SIGNATURE_INVALID] = false,
+  [ERROR_RESERVE_UNKNOWN] = false,
+
+  /* These require idempotency checks */
+  [ERROR_AGE_INSUFFICIENT_FUNDS] = true,
+  [ERROR_BATCH_IDEMPOTENT_PLANCHET] = true,
+  [ERROR_BATCH_INSUFFICIENT_FUNDS] = true,
+  [ERROR_DENOMINATION_EXPIRED] = true,
+  [ERROR_DENOMINATION_KEY_UNKNOWN] = true,
+  [ERROR_DENOMINATION_REVOKED] = true,
+  [ERROR_KEYS_MISSING] = true,
+  [ERROR_KYC_REQUIRED] = true,
+};
+
+_Static_assert (
+  (sizeof (needs_idempotency_check) ==
+   ERROR_MAX),
+  "needs_idempotency_check size mismatch with enum WithdrawErrorCode");
+
+/**
+ * The following macros set the given error code,
+ * set the phase to PHASE_GENERATE_REPLY_ERROR,
+ * and optionally set the given field (with an optionally given value).
+ */
+#define SET_ERROR(wc, ec) \
+        do \
+        { (wc)->error.code = (ec); \
+          (wc)->phase = PHASE_GENERATE_REPLY_ERROR; } while (0)
+
+#define SET_ERROR_WITH_FIELD(wc, ec, field) \
+        do \
+        { (wc)->error.code = (ec); \
+          (wc)->error.details.field = (field); \
+          (wc)->phase = PHASE_GENERATE_REPLY_ERROR; } while (0)
+
+#define SET_ERROR_WITH_DETAIL(wc, ec, field, value) \
+        do \
+        { (wc)->error.code = (ec); \
+          (wc)->error.details.field = (value); \
+          (wc)->phase = PHASE_GENERATE_REPLY_ERROR; } while (0)
 
 
 /**
@@ -252,8 +390,8 @@ finish_loop (struct WithdrawContext *wc,
              MHD_RESULT mres)
 {
   wc->phase = (MHD_YES == mres)
-    ? WC_PHASE_RETURN_YES
-    : WC_PHASE_RETURN_NO;
+    ? PHASE_RETURN_YES
+    : PHASE_RETURN_NO;
 }
 
 
@@ -263,14 +401,14 @@ finish_loop (struct WithdrawContext *wc,
  * @param wc operation context
  */
 static void
-batch_withdraw_generate_reply_success (struct WithdrawContext *wc)
+batch_withdraw_phase_generate_reply_success (struct WithdrawContext *wc)
 {
   const struct TEH_RequestContext *rc = wc->rc;
   json_t *sigs;
 
   sigs = json_array ();
   GNUNET_assert (NULL != sigs);
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
 
@@ -283,82 +421,13 @@ batch_withdraw_generate_reply_success (struct WithdrawContext *wc)
             "ev_sig",
             &pc->collectable.sig))));
   }
-  TEH_METRICS_batch_withdraw_num_coins += wc->typ.batch.planchets_length;
+  TEH_METRICS_batch_withdraw_num_coins += wc->num_coins;
   finish_loop (wc,
                TALER_MHD_REPLY_JSON_PACK (
                  rc->connection,
                  MHD_HTTP_OK,
                  GNUNET_JSON_pack_array_steal ("ev_sigs",
                                                sigs)));
-}
-
-
-/**
- * Send a response to a "age-withdraw" request.
- *
- * @param[in,out] wc context for the operation
- */
-static void
-age_withdraw_generate_reply_success (
-  struct WithdrawContext *wc)
-{
-  struct MHD_Connection *connection
-    = wc->rc->connection;
-  const struct TALER_AgeWithdrawCommitmentHashP *ach
-    = &wc->typ.age.commitment.h_commitment;
-  uint32_t noreveal_index
-    = wc->typ.age.commitment.noreveal_index;
-  struct TALER_ExchangePublicKeyP pub;
-  struct TALER_ExchangeSignatureP sig;
-  enum TALER_ErrorCode ec;
-
-  ec = TALER_exchange_online_age_withdraw_confirmation_sign (
-    &TEH_keys_exchange_sign_,
-    ach,
-    noreveal_index,
-    &pub,
-    &sig);
-  if (TALER_EC_NONE != ec)
-  {
-    finish_loop (wc,
-                 TALER_MHD_reply_with_ec (connection,
-                                          ec,
-                                          NULL));
-    return;
-  }
-
-  finish_loop (wc,
-               TALER_MHD_REPLY_JSON_PACK (
-                 connection,
-                 MHD_HTTP_OK,
-                 GNUNET_JSON_pack_uint64 ("noreveal_index",
-                                          noreveal_index),
-                 GNUNET_JSON_pack_data_auto ("exchange_sig",
-                                             &sig),
-                 GNUNET_JSON_pack_data_auto ("exchange_pub",
-                                             &pub)));
-}
-
-
-/**
- * Generates response for the batch- or age-withdraw request.
- *
- * @param wc withdraw operation context
- */
-static void
-generate_reply_success (struct WithdrawContext *wc)
-{
-  switch (wc->withdraw_type)
-  {
-  case WITHDRAW_TYPE_BATCH:
-    batch_withdraw_generate_reply_success (wc);
-    break;
-  case WITHDRAW_TYPE_AGE:
-    age_withdraw_generate_reply_success (wc);
-    break;
-  default:
-    GNUNET_break (0);
-  }
 }
 
 
@@ -375,10 +444,9 @@ static bool
 batch_withdraw_check_idempotency (
   struct WithdrawContext *wc)
 {
-  const struct TEH_RequestContext *rc = wc->rc;
   GNUNET_assert (wc->withdraw_type == WITHDRAW_TYPE_BATCH);
 
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
     enum GNUNET_DB_QueryStatus qs;
@@ -392,21 +460,20 @@ batch_withdraw_check_idempotency (
     {
       /* FIXME: soft error not handled correctly! */
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     rc->connection,
-                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                     "get_withdraw_info"));
-      return true;
+      SET_ERROR_WITH_DETAIL (wc,
+                             ERROR_DB_FETCH_FAILED,
+                             db_fetch_context,
+                             "get_withdraw_info");
+      return true; /* Well, kind-of. */
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
       return false;
     pc->collectable = collectable;
   }
+
   /* generate idempotent reply */
   TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW]++;
-  wc->phase = WC_PHASE_GENERATE_REPLY_SUCCESS;
+  wc->phase = PHASE_GENERATE_REPLY_SUCCESS;
   return true;
 }
 
@@ -438,11 +505,10 @@ age_withdraw_check_idempotency (
     /* FIXME: soft error not handled correctly! */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      finish_loop (wc,
-                   TALER_MHD_reply_with_ec (
-                     wc->rc->connection,
-                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                     "get_age_withdraw"));
+      SET_ERROR_WITH_DETAIL (wc,
+                             ERROR_DB_FETCH_FAILED,
+                             db_fetch_context,
+                             "get_age_withdraw");
     return true; /* Well, kind-of. */
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -450,7 +516,7 @@ age_withdraw_check_idempotency (
 
   /* Generate idempotent reply */
   TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_AGE_WITHDRAW]++;
-  wc->phase = WC_PHASE_GENERATE_REPLY_SUCCESS;
+  wc->phase = PHASE_GENERATE_REPLY_SUCCESS;
   return true;
 }
 
@@ -465,7 +531,7 @@ age_withdraw_check_idempotency (
  *    false if we did not find the request in the DB and did not set @a mret
  */
 static bool
-check_request_idempotent (
+check_idempotency (
   struct WithdrawContext *wc)
 {
   switch (wc->withdraw_type)
@@ -525,61 +591,53 @@ age_withdraw_transaction (
     &reserve_birthday,
     &conflict);
   if (0 > qs)
+
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      finish_loop (wc,
-                   TALER_MHD_reply_with_ec (
-                     wc->rc->connection,
-                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                     "do_age_withdraw"));
+      SET_ERROR_WITH_DETAIL (wc,
+                             ERROR_DB_FETCH_FAILED,
+                             db_fetch_context,
+                             "do_age_withdraw");
     return qs;
   }
+
   if (! found)
   {
-    finish_loop (wc,
-                 TALER_MHD_reply_with_ec (
-                   wc->rc->connection,
-                   TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                   NULL));
+    SET_ERROR (wc,
+               ERROR_RESERVE_UNKNOWN);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
   if (! age_ok)
   {
-    finish_loop (wc,
-                 TALER_MHD_REPLY_JSON_PACK (
-                   wc->rc->connection,
-                   MHD_HTTP_CONFLICT,
-                   TALER_MHD_PACK_EC (
-                     TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE),
-                   GNUNET_JSON_pack_uint64 (
-                     "allowed_maximum_age",
-                     allowed_maximum_age),
-                   GNUNET_JSON_pack_uint64 (
-                     "reserve_birthday",
-                     reserve_birthday)));
+    wc->error.details.age.max = allowed_maximum_age;
+    wc->error.details.age.birthday = reserve_birthday;
+    SET_ERROR (wc,
+               ERROR_AGE_MAXIMUM_AGE_TOO_LARGE);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
   if (! balance_ok)
   {
     TEH_plugin->rollback (TEH_plugin->cls);
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_reserve_insufficient_balance (
-                   wc->rc->connection,
-                   TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
-                   &reserve_balance,
-                   &wc->typ.age.commitment.amount_with_fee,
-                   &wc->typ.age.commitment.reserve_pub));
+
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_AGE_INSUFFICIENT_FUNDS,
+                          reserve_balance);
+
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
   if (conflict)
   {
     /* do_age_withdraw signaled a conflict, so there MUST be an entry
      * in the DB.  Put that into the response */
-    if (check_request_idempotent (wc))
+    if (check_idempotency (wc))
       return GNUNET_DB_STATUS_HARD_ERROR;
     GNUNET_break (0);
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
+
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     TEH_METRICS_num_success[TEH_MT_SUCCESS_AGE_WITHDRAW]++;
   return qs;
@@ -630,29 +688,25 @@ batch_withdraw_transaction (
     &age_ok,
     &allowed_maximum_age,
     &ruuid);
+
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     connection,
-                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                     "update_reserve_batch_withdraw"));
-      return qs;
+      SET_ERROR_WITH_DETAIL (wc,
+                             ERROR_DB_FETCH_FAILED,
+                             db_fetch_context,
+                             "update_reserve_batch_withdraw");
     }
     return qs;
   }
+
   if (! found)
   {
-    finish_loop (wc,
-                 TALER_MHD_reply_with_error (
-                   connection,
-                   MHD_HTTP_NOT_FOUND,
-                   TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                   NULL));
+    GNUNET_break_op (0);
+    SET_ERROR (wc,
+               ERROR_RESERVE_UNKNOWN);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -663,30 +717,23 @@ batch_withdraw_transaction (
     uint16_t lowest_age = TALER_get_lowest_age (
       &TEH_age_restriction_config.mask,
       allowed_maximum_age);
-
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_reserve_age_restriction_required (
-                   connection,
-                   lowest_age));
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_AGE_RESTRICTION_REQUIRED,
+                          lowest_age);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
   if (! balance_ok)
   {
-    if (check_request_idempotent (wc))
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_reserve_insufficient_balance (
-                   connection,
-                   TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
-                   &reserve_balance,
-                   &wc->typ.batch.batch_total,
-                   &wc->reserve_pub));
+    GNUNET_break_op (0);
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_BATCH_INSUFFICIENT_FUNDS,
+                          reserve_balance);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
   /* Add information about each planchet in the batch */
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
     const struct TALER_BlindedPlanchet *bp = &pc->blinded_planchet;
@@ -706,6 +753,7 @@ batch_withdraw_transaction (
               &bp->blinded_message->details.cs_blinded_message.nonce;
       break;
     }
+
     qs = TEH_plugin->do_batch_withdraw_insert (
       TEH_plugin->cls,
       nonce,
@@ -715,54 +763,39 @@ batch_withdraw_transaction (
       &denom_unknown,
       &conflict,
       &nonce_reuse);
+
     if (0 > qs)
     {
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        finish_loop (wc,
-                     TALER_MHD_reply_with_error (
-                       connection,
-                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                       TALER_EC_GENERIC_DB_FETCH_FAILED,
-                       "do_batch_withdraw_insert"));
+        SET_ERROR_WITH_DETAIL (wc,
+                               ERROR_DB_FETCH_FAILED,
+                               db_fetch_context,
+                               "do_batch_withdraw_insert");
       return qs;
     }
+
     if (denom_unknown)
     {
       GNUNET_break (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     connection,
-                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                     TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_DB_INVARIANT_FAILURE);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+
     if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
          (conflict) )
     {
-      if (check_request_idempotent (wc))
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      /* We do not support *some* of the coins of the request being
-           idempotent while others being fresh. */
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Idempotent coin in batch, not allowed. Aborting.\n");
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     connection,
-                     MHD_HTTP_CONFLICT,
-                     TALER_EC_EXCHANGE_WITHDRAW_BATCH_IDEMPOTENT_PLANCHET,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_BATCH_IDEMPOTENT_PLANCHET);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+
     if (nonce_reuse)
     {
       GNUNET_break_op (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     connection,
-                     MHD_HTTP_BAD_REQUEST,
-                     TALER_EC_EXCHANGE_WITHDRAW_NONCE_REUSE,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_BATCH_NONCE_RESUSE);
+
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -778,13 +811,13 @@ batch_withdraw_transaction (
  * @param wc The context for the current withdraw request
  */
 static void
-run_transaction (
+phase_run_transaction (
   struct WithdrawContext *wc)
 {
   MHD_RESULT mhd_ret;
   enum GNUNET_GenericReturnValue qs;
 
-  GNUNET_assert (WC_PHASE_RUN_TRANSACTION ==
+  GNUNET_assert (PHASE_RUN_TRANSACTION ==
                  wc->phase);
 
   switch (wc->withdraw_type)
@@ -809,9 +842,11 @@ run_transaction (
     GNUNET_break (0);
     qs = GNUNET_SYSERR;
   }
+
   if (GNUNET_OK != qs)
   {
-    if (WC_PHASE_RUN_TRANSACTION ==  wc->phase)
+    /* TODO[oec]: Logic still ok with new error handling? */
+    if (PHASE_RUN_TRANSACTION ==  wc->phase)
       finish_loop (wc,
                    mhd_ret);
     return;
@@ -828,13 +863,12 @@ run_transaction (
  * @return GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-batch_withdraw_prepare_transaction (struct WithdrawContext *wc)
+batch_withdraw_phase_prepare_transaction (struct WithdrawContext *wc)
 {
-  const struct TEH_RequestContext *rc = wc->rc;
-  struct TALER_BlindedDenominationSignature bss[wc->typ.batch.planchets_length];
-  struct TEH_CoinSignData csds[wc->typ.batch.planchets_length];
+  struct TALER_BlindedDenominationSignature bss[wc->num_coins];
+  struct TEH_CoinSignData csds[wc->num_coins];
 
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
     struct TEH_CoinSignData *csdsi = &csds[i];
@@ -846,23 +880,21 @@ batch_withdraw_prepare_transaction (struct WithdrawContext *wc)
     enum TALER_ErrorCode ec;
 
     ec = TEH_keys_denomination_batch_sign (
-      wc->typ.batch.planchets_length,
+      wc->num_coins,
       csds,
       false,
       bss);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_ec (
-                     rc->connection,
-                     ec,
-                     NULL));
+      SET_ERROR_WITH_FIELD (wc,
+                            ERROR_DENOMINATION_BATCH_SIGN,
+                            ec);
       return GNUNET_SYSERR;
     }
   }
 
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
 
@@ -881,18 +913,18 @@ batch_withdraw_prepare_transaction (struct WithdrawContext *wc)
  * @return GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-age_withdraw_prepare_transaction (
+age_withdraw_phase_prepare_transaction (
   struct WithdrawContext *wc)
 {
   uint8_t noreveal_index;
 
   wc->typ.age.commitment.denom_sigs
     = GNUNET_new_array (
-        wc->typ.age.num_coins,
+        wc->num_coins,
         struct TALER_BlindedDenominationSignature);
   wc->typ.age.commitment.h_coin_evs
     = GNUNET_new_array (
-        wc->typ.age.num_coins,
+        wc->num_coins,
         struct TALER_BlindedCoinHashP);
   /* Pick the challenge */
   noreveal_index =
@@ -902,39 +934,37 @@ age_withdraw_prepare_transaction (
 
   /* Choose and sign the coins */
   {
-    struct TEH_CoinSignData csds[wc->typ.age.num_coins];
+    struct TEH_CoinSignData csds[wc->num_coins];
     enum TALER_ErrorCode ec;
 
     /* Pick the chosen blinded coins */
-    for (uint32_t i = 0; i<wc->typ.age.num_coins; i++)
+    for (uint32_t i = 0; i<wc->num_coins; i++)
     {
       struct TEH_CoinSignData *csdsi = &csds[i];
 
-      csdsi->bp = &wc->typ.age.coin_evs[i][noreveal_index];
+      csdsi->bp = &wc->typ.age.planchets[i][noreveal_index];
       csdsi->h_denom_pub = &wc->typ.age.denom_hs[i];
     }
 
     ec = TEH_keys_denomination_batch_sign (
-      wc->typ.age.num_coins,
+      wc->num_coins,
       csds,
       false,
       wc->typ.age.commitment.denom_sigs);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_ec (
-                     wc->rc->connection,
-                     ec,
-                     NULL));
+      SET_ERROR_WITH_FIELD (wc,
+                            ERROR_DENOMINATION_BATCH_SIGN,
+                            ec);
       return GNUNET_SYSERR;
     }
   }
 
   /* Prepare the hashes of the coins for insertion */
-  for (uint32_t i = 0; i<wc->typ.age.num_coins; i++)
+  for (uint32_t i = 0; i<wc->num_coins; i++)
   {
-    TALER_coin_ev_hash (&wc->typ.age.coin_evs[i][noreveal_index],
+    TALER_coin_ev_hash (&wc->typ.age.planchets[i][noreveal_index],
                         &wc->typ.age.denom_hs[i],
                         &wc->typ.age.commitment.h_coin_evs[i]);
   }
@@ -947,17 +977,17 @@ age_withdraw_prepare_transaction (
  * Choose the appropriate preparation step depending on @e withdraw_type
  */
 static void
-prepare_transaction (
+phase_prepare_transaction (
   struct WithdrawContext *wc)
 {
   enum GNUNET_GenericReturnValue r;
   switch (wc->withdraw_type)
   {
   case WITHDRAW_TYPE_BATCH:
-    r = batch_withdraw_prepare_transaction (wc);
+    r = batch_withdraw_phase_prepare_transaction (wc);
     break;
   case WITHDRAW_TYPE_AGE:
-    r = age_withdraw_prepare_transaction (wc);
+    r = age_withdraw_phase_prepare_transaction (wc);
     break;
   default:
     GNUNET_break (0);
@@ -975,24 +1005,13 @@ prepare_transaction (
  * @param wc context for request processing
  */
 static void
-check_kyc_result (struct WithdrawContext *wc)
+phase_check_kyc_result (struct WithdrawContext *wc)
 {
   /* return final positive response */
   if (! wc->kyc.ok)
   {
-    if (check_request_idempotent (wc))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Request is idempotent!\n");
-      return;
-    }
-    /* KYC required */
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_kyc_required (
-                   wc->rc->connection,
-                   &wc->h_normalized_payto,
-                   &wc->kyc,
-                   false));
+    SET_ERROR (wc,
+               ERROR_KYC_REQUIRED);
     return;
   }
   wc->phase++;
@@ -1014,7 +1033,7 @@ withdraw_legi_cb (
   struct WithdrawContext *wc = cls;
 
   wc->lch = NULL;
-  GNUNET_assert (WC_PHASE_SUSPENDED ==
+  GNUNET_assert (PHASE_SUSPENDED ==
                  wc->phase);
   MHD_resume_connection (wc->rc->connection);
   GNUNET_CONTAINER_DLL_remove (wc_head,
@@ -1023,13 +1042,14 @@ withdraw_legi_cb (
   TALER_MHD_daemon_trigger ();
   if (NULL != lcr->response)
   {
-    wc->response = lcr->response;
-    wc->http_status = lcr->http_status;
-    wc->phase = WC_PHASE_GENERATE_REPLY_FAILURE;
+    wc->error.details.legi.response = lcr->response;
+    wc->error.details.legi.http_status = lcr->http_status;
+    SET_ERROR (wc,
+               ERROR_LEGITIMIZATION_RESULT);
     return;
   }
   wc->kyc = lcr->kyc;
-  wc->phase = WC_PHASE_CHECK_KYC_RESULT;
+  wc->phase = PHASE_CHECK_KYC_RESULT;
 }
 
 
@@ -1107,24 +1127,31 @@ withdraw_amount_cb (
               "Signaling amount %s for KYC check during %sal\n",
               TALER_amount2s (withdraw_amount_with_fee (wc)),
               typ2str (wc));
+
   ret = cb (cb_cls,
             withdraw_amount_with_fee (wc),
             wc->now.abs_time);
+
   GNUNET_break (GNUNET_SYSERR != ret);
+
   if (GNUNET_OK != ret)
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+
   qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
     TEH_plugin->cls,
     &wc->h_normalized_payto,
     limit,
     cb,
     cb_cls);
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Got %d additional transactions for this %sal and limit %llu\n",
               qs,
               typ2str (wc),
               (unsigned long long) limit.abs_value_us);
+
   GNUNET_break (qs >= 0);
+
   return qs;
 }
 
@@ -1135,7 +1162,7 @@ withdraw_amount_cb (
  * @param wc operation context
  */
 static void
-run_legi_check (struct WithdrawContext *wc)
+phase_run_legi_check (struct WithdrawContext *wc)
 {
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_FullPayto payto_uri;
@@ -1149,12 +1176,10 @@ run_legi_check (struct WithdrawContext *wc)
     &payto_uri);
   if (qs < 0)
   {
-    finish_loop (wc,
-                 TALER_MHD_reply_with_error (
-                   wc->rc->connection,
-                   MHD_HTTP_INTERNAL_SERVER_ERROR,
-                   TALER_EC_GENERIC_DB_FETCH_FAILED,
-                   "reserves_get_origin"));
+    SET_ERROR_WITH_DETAIL (wc,
+                           ERROR_DB_FETCH_FAILED,
+                           db_fetch_context,
+                           "reserves_get_origin");
     return;
   }
   /* If _no_ results, reserve was created by merge,
@@ -1162,7 +1187,7 @@ run_legi_check (struct WithdrawContext *wc)
      merge already did that. */
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    wc->phase = WC_PHASE_PREPARE_TRANSACTION;
+    wc->phase = PHASE_PREPARE_TRANSACTION;
     return;
   }
   TALER_full_payto_normalize_and_hash (payto_uri,
@@ -1183,7 +1208,7 @@ run_legi_check (struct WithdrawContext *wc)
                                wc_tail,
                                wc);
   MHD_suspend_connection (wc->rc->connection);
-  wc->phase = WC_PHASE_SUSPENDED;
+  wc->phase = PHASE_SUSPENDED;
 }
 
 
@@ -1206,7 +1231,6 @@ find_denomination (
   const struct TALER_DenominationHashP *denom_h,
   struct TEH_DenominationKey **pdk)
 {
-  struct MHD_Connection *connection = wc->rc->connection;
   struct TEH_DenominationKey *dk;
 
   *pdk = NULL;
@@ -1219,59 +1243,35 @@ find_denomination (
 
   if (NULL == dk)
   {
-    /* The denomination doesn't exist */
-    if (check_request_idempotent (wc))
-      return GNUNET_NO;
-    GNUNET_break_op (0);
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_unknown_denom_pub_hash (
-                   connection,
-                   denom_h));
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_DENOMINATION_KEY_UNKNOWN,
+                          denom_h);
     return GNUNET_NO;
   }
 
   if (GNUNET_TIME_absolute_is_past (
         dk->meta.expire_withdraw.abs_time))
   {
-    /* This denomination is past the expiration time for withdraw */
-    if (check_request_idempotent (wc))
-      return GNUNET_NO;
-    GNUNET_break_op (0);
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_expired_denom_pub_hash (
-                   connection,
-                   denom_h,
-                   TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-                   typ2str (wc)));
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_DENOMINATION_EXPIRED,
+                          denom_h);
     return GNUNET_SYSERR;
   }
 
   if (GNUNET_TIME_absolute_is_future (
         dk->meta.start.abs_time))
   {
-    /* This denomination is not yet valid, no need to check
-       for idempotency! */
     GNUNET_break_op (0);
-    finish_loop (wc,
-                 TEH_RESPONSE_reply_expired_denom_pub_hash (
-                   connection,
-                   denom_h,
-                   TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-                   typ2str (wc)));
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_DENOMINATION_VALIDITY_IN_FUTURE,
+                          denom_h);
     return GNUNET_SYSERR;
   }
 
   if (dk->recoup_possible)
   {
-    /* This denomination has been revoked */
-    if (check_request_idempotent (wc))
-      return GNUNET_NO;
-    GNUNET_break_op (0);
-    finish_loop (wc,
-                 TALER_MHD_reply_with_ec (
-                   connection,
-                   TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
-                   typ2str (wc)));
+    SET_ERROR (wc,
+               ERROR_DENOMINATION_REVOKED);
     return GNUNET_SYSERR;
   }
 
@@ -1280,19 +1280,10 @@ find_denomination (
   {
     if (0 == dk->denom_pub.age_mask.bits)
     {
-      /* This denomation does not support age restriction */
-      char msg[256];
-
-      GNUNET_snprintf (msg,
-                       sizeof(msg),
-                       "denomination %s does not support age restriction",
-                       GNUNET_h2s (&denom_h->hash));
-
-      finish_loop (wc,
-                   TALER_MHD_reply_with_ec (
-                     connection,
-                     TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-                     msg));
+      GNUNET_break_op (0);
+      SET_ERROR_WITH_FIELD (wc,
+                            ERROR_AGE_RESTRICTION_NOT_SUPPORTED_BY_DENOMINATION,
+                            denom_h);
       return GNUNET_SYSERR;
     }
   }
@@ -1314,14 +1305,11 @@ find_denomination (
  *			GNUNET_NO on error (and response being sent)
  */
 static enum GNUNET_GenericReturnValue
-age_withdraw_check_keys (
+age_withdraw_phase_check_keys (
   struct WithdrawContext *wc,
   struct TEH_KeyStateHandle *ksh)
 {
-  struct MHD_Connection *connection
-    = wc->rc->connection;
-  unsigned int len
-    = wc->typ.age.num_coins;
+  unsigned int len = wc->num_coins;
   struct TALER_Amount total_amount;
   struct TALER_Amount total_fee;
 
@@ -1352,14 +1340,11 @@ age_withdraw_check_keys (
     for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
     {
       if (dk->denom_pub.bsign_pub_key->cipher !=
-          wc->typ.age.coin_evs[i][k].blinded_message->cipher)
+          wc->typ.age.planchets[i][k].blinded_message->cipher)
       {
         GNUNET_break_op (0);
-        finish_loop (wc,
-                     TALER_MHD_reply_with_ec (
-                       connection,
-                       TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
-                       NULL));
+        SET_ERROR (wc,
+                   ERROR_CIPHER_MISMATCH);
         return GNUNET_NO;
       }
     }
@@ -1370,12 +1355,10 @@ age_withdraw_check_keys (
                               &dk->meta.value))
     {
       GNUNET_break_op (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     connection,
-                     MHD_HTTP_BAD_REQUEST,
-                     TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
-                     "amount"));
+      SET_ERROR_WITH_DETAIL (wc,
+                             ERROR_AGE_AMOUNT_OVERFLOW,
+                             which,
+                             "amount");
       return GNUNET_NO;
     }
 
@@ -1385,12 +1368,10 @@ age_withdraw_check_keys (
                               &dk->meta.fees.withdraw))
     {
       GNUNET_break_op (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     connection,
-                     MHD_HTTP_BAD_REQUEST,
-                     TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
-                     "fee"));
+      SET_ERROR_WITH_DETAIL (wc,
+                             ERROR_AGE_AMOUNT_OVERFLOW,
+                             which,
+                             "fee");
       return GNUNET_NO;
     }
     wc->typ.age.commitment.denom_serials[i] = dk->meta.serial;
@@ -1415,11 +1396,8 @@ age_withdraw_check_keys (
         &wc->typ.age.commitment.reserve_sig))
   {
     GNUNET_break_op (0);
-    finish_loop (wc,
-                 TALER_MHD_reply_with_ec (
-                   wc->rc->connection,
-                   TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
-                   NULL));
+    SET_ERROR (wc,
+               ERROR_RESERVE_SIGNATURE_INVALID);
     return GNUNET_NO;
   }
 
@@ -1436,13 +1414,11 @@ age_withdraw_check_keys (
  *			GNUNET_NO on error (and response being sent)
  */
 static enum GNUNET_GenericReturnValue
-batch_withdraw_check_keys (
+batch_withdraw_phase_check_keys (
   struct WithdrawContext *wc,
   struct TEH_KeyStateHandle *ksh)
 {
-  const struct TEH_RequestContext *rc = wc->rc;
-
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
     struct TEH_DenominationKey *dk;
@@ -1463,12 +1439,8 @@ batch_withdraw_check_keys (
     {
       /* denomination cipher and blinded planchet cipher not the same */
       GNUNET_break_op (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     rc->connection,
-                     MHD_HTTP_BAD_REQUEST,
-                     TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_CIPHER_MISMATCH);
       return GNUNET_NO;
     }
 
@@ -1478,25 +1450,19 @@ batch_withdraw_check_keys (
                           &dk->meta.fees.withdraw))
     {
       GNUNET_break (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (rc->connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-                                               NULL));
+      SET_ERROR (wc,
+                 ERROR_BATCH_AMOUNT_FEE_OVERFLOW);
       return GNUNET_NO;
     }
+
     if (0 >
         TALER_amount_add (&wc->typ.batch.batch_total,
                           &wc->typ.batch.batch_total,
                           &pc->collectable.amount_with_fee))
     {
       GNUNET_break (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     rc->connection,
-                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                     TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_BATCH_AMOUNT_FEE_OVERFLOW);
       return GNUNET_NO;
     }
 
@@ -1514,12 +1480,8 @@ batch_withdraw_check_keys (
           &pc->collectable.reserve_sig))
     {
       GNUNET_break_op (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_error (
-                     rc->connection,
-                     MHD_HTTP_FORBIDDEN,
-                     TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_RESERVE_SIGNATURE_INVALID);
       return GNUNET_NO;
     }
   }
@@ -1535,34 +1497,27 @@ batch_withdraw_check_keys (
  * @param[in,out] wc context for request processing
  */
 static void
-check_keys (struct WithdrawContext *wc)
+phase_check_keys (struct WithdrawContext *wc)
 {
-  const struct TEH_RequestContext *rc = wc->rc;
   struct TEH_KeyStateHandle *ksh;
   enum GNUNET_GenericReturnValue r;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
-    if (check_request_idempotent (wc))
-      return;
     GNUNET_break (0);
-    finish_loop (wc,
-                 TALER_MHD_reply_with_error (
-                   rc->connection,
-                   MHD_HTTP_INTERNAL_SERVER_ERROR,
-                   TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                   NULL));
+    SET_ERROR (wc,
+               ERROR_KEYS_MISSING);
     return;
   }
 
   switch (wc->withdraw_type)
   {
   case WITHDRAW_TYPE_BATCH:
-    r = batch_withdraw_check_keys (wc, ksh);
+    r = batch_withdraw_phase_check_keys (wc, ksh);
     break;
   case WITHDRAW_TYPE_AGE:
-    r = age_withdraw_check_keys (wc, ksh);
+    r = age_withdraw_phase_check_keys (wc, ksh);
     break;
   default:
     GNUNET_break (0);
@@ -1579,12 +1534,8 @@ check_keys (struct WithdrawContext *wc)
     break;
   case GNUNET_SYSERR:
     GNUNET_break (0);
-    finish_loop (wc,
-                 TALER_MHD_reply_with_error (
-                   rc->connection,
-                   MHD_HTTP_INTERNAL_SERVER_ERROR,
-                   TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                   typ2str (wc)));
+    SET_ERROR (wc,
+               ERROR_KEYS_MISSING);
     break;
   default:
     GNUNET_break (0);
@@ -1596,18 +1547,18 @@ check_keys (struct WithdrawContext *wc)
  * Check that the client signature authorizing the withdrawal is valid.
  * NOTE: this is only applicable to age-withdraw; the existing
  * batch-withdraw REST-API signs each planchet and they have to be
- * checked during the call to check_keys.
+ * checked during the call to phase_check_keys.
  *
  * @param[in,out] wc request context to check
  */
 static void
-check_reserve_signature (
+phase_check_reserve_signature (
   struct WithdrawContext *wc)
 {
   switch (wc->withdraw_type)
   {
   case WITHDRAW_TYPE_BATCH:
-    /* signature checks has occurred in batch_withdraw_check_keys */
+    /* signature checks has occurred in batch_withdraw_phase_check_keys */
     break;
   case WITHDRAW_TYPE_AGE:
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
@@ -1621,11 +1572,8 @@ check_reserve_signature (
           &wc->typ.age.commitment.reserve_sig))
     {
       GNUNET_break_op (0);
-      finish_loop (wc,
-                   TALER_MHD_reply_with_ec (
-                     wc->rc->connection,
-                     TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
-                     NULL));
+      SET_ERROR (wc,
+                 ERROR_RESERVE_SIGNATURE_INVALID);
       return;
     }
     break;
@@ -1659,7 +1607,7 @@ clean_withdraw_rc (struct TEH_RequestContext *rc)
   switch (wc->withdraw_type)
   {
   case WITHDRAW_TYPE_BATCH:
-    for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+    for (unsigned int i = 0; i<wc->num_coins; i++)
     {
       struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
 
@@ -1670,21 +1618,21 @@ clean_withdraw_rc (struct TEH_RequestContext *rc)
     break;
 
   case WITHDRAW_TYPE_AGE:
-    for (unsigned int i = 0; i<wc->typ.age.num_coins; i++)
+    for (unsigned int i = 0; i<wc->num_coins; i++)
     {
       for (unsigned int kappa = 0; kappa<TALER_CNC_KAPPA; kappa++)
       {
-        TALER_blinded_planchet_free (&wc->typ.age.coin_evs[i][kappa]);
+        TALER_blinded_planchet_free (&wc->typ.age.planchets[i][kappa]);
       }
     }
-    for (unsigned int i = 0; i<wc->typ.age.num_coins; i++)
+    for (unsigned int i = 0; i<wc->num_coins; i++)
     {
       TALER_blinded_denom_sig_free (&wc->typ.age.commitment.denom_sigs[i]);
     }
     GNUNET_free (wc->typ.age.commitment.h_coin_evs);
     GNUNET_free (wc->typ.age.commitment.denom_sigs);
     GNUNET_free (wc->typ.age.denom_hs);
-    GNUNET_free (wc->typ.age.coin_evs);
+    GNUNET_free (wc->typ.age.planchets);
     GNUNET_free (wc->typ.age.commitment.denom_serials);
     break;
 
@@ -1692,10 +1640,11 @@ clean_withdraw_rc (struct TEH_RequestContext *rc)
     GNUNET_break (0);
   }
 
-  if (NULL != wc->response)
+  if (ERROR_LEGITIMIZATION_RESULT == wc->error.code &&
+      NULL != wc->error.details.legi.response)
   {
-    MHD_destroy_response (wc->response);
-    wc->response = NULL;
+    MHD_destroy_response (wc->error.details.legi.response);
+    wc->error.details.legi.response = NULL;
   }
 
   GNUNET_free (wc);
@@ -1703,17 +1652,355 @@ clean_withdraw_rc (struct TEH_RequestContext *rc)
 
 
 /**
+ * Send a response to a "age-withdraw" request.
+ *
+ * @param[in,out] wc context for the operation
+ */
+static void
+age_withdraw_phase_generate_reply_success (
+  struct WithdrawContext *wc)
+{
+  struct MHD_Connection *connection
+    = wc->rc->connection;
+  const struct TALER_AgeWithdrawCommitmentHashP *ach
+    = &wc->typ.age.commitment.h_commitment;
+  uint32_t noreveal_index
+    = wc->typ.age.commitment.noreveal_index;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+  enum TALER_ErrorCode ec;
+
+  ec = TALER_exchange_online_age_withdraw_confirmation_sign (
+    &TEH_keys_exchange_sign_,
+    ach,
+    noreveal_index,
+    &pub,
+    &sig);
+  if (TALER_EC_NONE != ec)
+  {
+    SET_ERROR_WITH_FIELD (wc,
+                          ERROR_AGE_CONFIRMATION_SIGN,
+                          ec);
+    return;
+  }
+
+  finish_loop (wc,
+               TALER_MHD_REPLY_JSON_PACK (
+                 connection,
+                 MHD_HTTP_OK,
+                 GNUNET_JSON_pack_uint64 ("noreveal_index",
+                                          noreveal_index),
+                 GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                             &sig),
+                 GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                             &pub)));
+}
+
+
+/**
+ * Generates response for the batch- or age-withdraw request.
+ *
+ * @param wc withdraw operation context
+ */
+static void
+phase_generate_reply_success (struct WithdrawContext *wc)
+{
+  switch (wc->withdraw_type)
+  {
+  case WITHDRAW_TYPE_BATCH:
+    batch_withdraw_phase_generate_reply_success (wc);
+    break;
+  case WITHDRAW_TYPE_AGE:
+    age_withdraw_phase_generate_reply_success (wc);
+    break;
+  default:
+    GNUNET_break (0);
+  }
+}
+
+
+/**
+ * Reports an error, potentially with details.
+ * That is, it puts a error-type specific repsonse into the MHD queue.
+ * It will do a idempotency check first, if needed for the error type.
+ *
+ * @param wc withdraw context
+ */
+static void
+phase_generate_reply_error (
+  struct WithdrawContext *wc)
+{
+  GNUNET_assert (PHASE_GENERATE_REPLY_ERROR == wc->phase);
+  GNUNET_assert (ERROR_NONE != wc->error.code);
+  GNUNET_assert (ERROR_MAX != wc->error.code);
+
+  if (needs_idempotency_check[wc->error.code] &&
+      check_idempotency (wc))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "request is idempotent\n");
+    return;
+  }
+
+  switch (wc->error.code)
+  {
+  case ERROR_MAX:
+  case ERROR_NONE:
+    {
+      GNUNET_break (0);
+      wc->phase = PHASE_RETURN_YES;
+      return;
+    }
+
+  case ERROR_REQUEST_PARAMETER_MALFORMED:
+    TALER_MHD_reply_with_error (
+      wc->rc->connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      wc->error.details.hint);
+    break;
+
+  case ERROR_KEYS_MISSING:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_INTERNAL_SERVER_ERROR,
+                   TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                   NULL));
+    break;
+
+  case ERROR_DB_FETCH_FAILED:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_INTERNAL_SERVER_ERROR,
+                   TALER_EC_GENERIC_DB_FETCH_FAILED,
+                   wc->error.details.db_fetch_context));
+    break;
+
+  case ERROR_DB_INVARIANT_FAILURE:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_INTERNAL_SERVER_ERROR,
+                   TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                   NULL));
+    break;
+
+  case ERROR_INTERNAL_INVARIANT_FAILURE:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_INTERNAL_SERVER_ERROR,
+                   TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                   NULL));
+    break;
+
+  case ERROR_RESERVE_UNKNOWN:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_ec (
+                   wc->rc->connection,
+                   TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                   NULL));
+    break;
+
+  case ERROR_DENOMINATION_BATCH_SIGN:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_ec (
+                   wc->rc->connection,
+                   wc->error.details.ec,
+                   NULL));
+    break;
+
+  case ERROR_KYC_REQUIRED:
+    finish_loop (wc,
+                 TEH_RESPONSE_reply_kyc_required (
+                   wc->rc->connection,
+                   &wc->h_normalized_payto,
+                   &wc->kyc,
+                   false));
+    break;
+
+  case ERROR_DENOMINATION_KEY_UNKNOWN:
+    {
+      GNUNET_break_op (0);
+      finish_loop (wc,
+                   TEH_RESPONSE_reply_unknown_denom_pub_hash (
+                     wc->rc->connection,
+                     wc->error.details.denom_h));
+      break;
+    }
+
+  case ERROR_DENOMINATION_EXPIRED:
+    GNUNET_break_op (0);
+    finish_loop (wc,
+                 TEH_RESPONSE_reply_expired_denom_pub_hash (
+                   wc->rc->connection,
+                   wc->error.details.denom_h,
+                   TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+                   typ2str (wc)));
+    break;
+
+  case ERROR_DENOMINATION_VALIDITY_IN_FUTURE:
+    finish_loop (wc,
+                 TEH_RESPONSE_reply_expired_denom_pub_hash (
+                   wc->rc->connection,
+                   wc->error.details.denom_h,
+                   TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+                   typ2str (wc)));
+    break;
+
+  case ERROR_DENOMINATION_REVOKED:
+    GNUNET_break_op (0);
+    finish_loop (wc,
+                 TALER_MHD_reply_with_ec (
+                   wc->rc->connection,
+                   TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+                   typ2str (wc)));
+    break;
+
+  case ERROR_CIPHER_MISMATCH:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_ec (
+                   wc->rc->connection,
+                   TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
+                   NULL));
+    break;
+
+  case ERROR_AGE_RESTRICTION_NOT_SUPPORTED_BY_DENOMINATION:
+    {
+      char msg[256];
+      GNUNET_snprintf (msg,
+                       sizeof(msg),
+                       "denomination %s does not support age restriction",
+                       GNUNET_h2s (&wc->error.details.denom_h->hash));
+      finish_loop (wc,
+                   TALER_MHD_reply_with_ec (
+                     wc->rc->connection,
+                     TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+                     msg));
+      break;
+    }
+
+  case ERROR_AGE_MAXIMUM_AGE_TOO_LARGE:
+    finish_loop (wc,
+                 TALER_MHD_REPLY_JSON_PACK (
+                   wc->rc->connection,
+                   MHD_HTTP_CONFLICT,
+                   TALER_MHD_PACK_EC (
+                     TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE),
+                   GNUNET_JSON_pack_uint64 (
+                     "allowed_maximum_age",
+                     wc->error.details.age.max),
+                   GNUNET_JSON_pack_uint64 (
+                     "reserve_birthday",
+                     wc->error.details.age.birthday)));
+    break;
+
+  case ERROR_AGE_RESTRICTION_REQUIRED:
+    finish_loop (wc,
+                 TEH_RESPONSE_reply_reserve_age_restriction_required (
+                   wc->rc->connection,
+                   wc->error.details.lowest_age));
+    break;
+
+  case ERROR_AGE_INSUFFICIENT_FUNDS:
+    finish_loop (wc,
+                 TEH_RESPONSE_reply_reserve_insufficient_balance (
+                   wc->rc->connection,
+                   TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
+                   &wc->error.details.reserve_balance,
+                   &wc->typ.age.commitment.amount_with_fee,
+                   &wc->reserve_pub));
+    break;
+
+  case ERROR_AGE_AMOUNT_OVERFLOW:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_BAD_REQUEST,
+                   TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
+                   wc->error.details.which));
+    break;
+
+  case ERROR_AGE_CONFIRMATION_SIGN:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_ec (
+                   wc->rc->connection,
+                   wc->error.details.ec,
+                   NULL));
+    break;
+
+  case ERROR_BATCH_INSUFFICIENT_FUNDS:
+    finish_loop (wc,
+                 TEH_RESPONSE_reply_reserve_insufficient_balance (
+                   wc->rc->connection,
+                   TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
+                   &wc->error.details.reserve_balance,
+                   &wc->typ.batch.batch_total,
+                   &wc->reserve_pub));
+    break;
+
+  case ERROR_BATCH_IDEMPOTENT_PLANCHET:
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Idempotent coin in batch, not allowed. Aborting.\n");
+      finish_loop (wc,
+                   TALER_MHD_reply_with_error (
+                     wc->rc->connection,
+                     MHD_HTTP_CONFLICT,
+                     TALER_EC_EXCHANGE_WITHDRAW_BATCH_IDEMPOTENT_PLANCHET,
+                     NULL));
+      break;
+    }
+
+  case ERROR_BATCH_NONCE_RESUSE:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_BAD_REQUEST,
+                   TALER_EC_EXCHANGE_WITHDRAW_NONCE_REUSE,
+                   NULL));
+    break;
+
+  case ERROR_BATCH_AMOUNT_FEE_OVERFLOW:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_error (
+                   wc->rc->connection,
+                   MHD_HTTP_INTERNAL_SERVER_ERROR,
+                   TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
+                   NULL));
+    break;
+
+  case ERROR_RESERVE_SIGNATURE_INVALID:
+    finish_loop (wc,
+                 TALER_MHD_reply_with_ec (
+                   wc->rc->connection,
+                   TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
+                   NULL));
+    break;
+
+  case ERROR_LEGITIMIZATION_RESULT: {
+      finish_loop (wc,
+                   MHD_queue_response (wc->rc->connection,
+                                       wc->error.details.legi.http_status,
+                                       wc->error.details.legi.response));
+      break;
+    }
+  }
+}
+
+
+/**
  * Creates a new context for the incoming batch-withdraw request
  *
  * @param[in,out] wc context of the batch-witrhdraw, to be filled
- * @param reserve_pub public key of the reserve for the withdraw
  * @param root json body of the request
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise (response sent)
  */
 static enum GNUNET_GenericReturnValue
 batch_withdraw_new_request (
   struct WithdrawContext *wc,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
   const json_t *root)
 {
   const json_t *planchets;
@@ -1740,34 +2027,32 @@ batch_withdraw_new_request (
     }
   }
 
-  wc->typ.batch.planchets_length = json_array_size (planchets);
-  if (0 == wc->typ.batch.planchets_length)
+  wc->num_coins = json_array_size (planchets);
+  if (0 == wc->num_coins)
   {
     GNUNET_break_op (0);
-    TALER_MHD_reply_with_error (
-      wc->rc->connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "planchets");
+    SET_ERROR_WITH_DETAIL (wc,
+                           ERROR_REQUEST_PARAMETER_MALFORMED,
+                           hint,
+                           "planchets");
     return GNUNET_SYSERR;
   }
 
-  if (wc->typ.batch.planchets_length > TALER_MAX_FRESH_COINS)
+  if (wc->num_coins > TALER_MAX_FRESH_COINS)
   {
     GNUNET_break_op (0);
-    TALER_MHD_reply_with_error (
-      wc->rc->connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "too many planchets");
+    SET_ERROR_WITH_DETAIL (wc,
+                           ERROR_REQUEST_PARAMETER_MALFORMED,
+                           hint,
+                           "too many planchets");
     return GNUNET_SYSERR;
   }
 
   wc->typ.batch.planchets
-    = GNUNET_new_array (wc->typ.batch.planchets_length,
+    = GNUNET_new_array (wc->num_coins,
                         struct PlanchetContext);
 
-  for (unsigned int i = 0; i<wc->typ.batch.planchets_length; i++)
+  for (unsigned int i = 0; i<wc->num_coins; i++)
   {
     struct PlanchetContext *pc = &wc->typ.batch.planchets[i];
     struct GNUNET_JSON_Specification ispec[] = {
@@ -1805,11 +2090,10 @@ batch_withdraw_new_request (
             &pc->blinded_planchet))
       {
         GNUNET_break_op (0);
-        TALER_MHD_reply_with_error (
-          wc->rc->connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "duplicate planchet");
+        SET_ERROR_WITH_DETAIL (wc,
+                               ERROR_REQUEST_PARAMETER_MALFORMED,
+                               hint,
+                               "duplicate planchet");
         return GNUNET_SYSERR;
       }
     }
@@ -1822,28 +2106,26 @@ batch_withdraw_new_request (
  * Creates a new context for the incoming age-withdraw request
  *
  * @param wc withdraw request context
- * @param reserve_pub public key of the reserve for the withdraw
  * @param root json body of the request
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise (response sent)
  */
 static enum GNUNET_GenericReturnValue
 age_withdraw_new_request (
   struct WithdrawContext *wc,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
   const json_t *root)
 {
 
-  wc->typ.age.commitment.reserve_pub = *reserve_pub;
+  wc->typ.age.commitment.reserve_pub = wc->reserve_pub;
 
   /* parse the json body */
   {
     const json_t *j_denom_hs;
-    const json_t *j_blinded_coin_evs;
+    const json_t *j_blinded_planchets;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_array_const ("denom_hs",
                                     &j_denom_hs),
-      GNUNET_JSON_spec_array_const ("blinded_coin_evs",
-                                    &j_blinded_coin_evs),
+      GNUNET_JSON_spec_array_const ("blinded_planchets",
+                                    &j_blinded_planchets),
       GNUNET_JSON_spec_uint16 ("max_age",
                                &wc->typ.age.commitment.max_age),
       GNUNET_JSON_spec_fixed_auto ("reserve_sig",
@@ -1864,9 +2146,10 @@ age_withdraw_new_request (
                               wc->typ.age.commitment.max_age))
     {
       GNUNET_break_op (0);
-      TALER_MHD_reply_with_ec (
-        wc->rc->connection,
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      SET_ERROR_WITH_DETAIL (
+        wc,
+        ERROR_REQUEST_PARAMETER_MALFORMED,
+        hint,
         "max_age must be the lower edge of an age group");
       return GNUNET_SYSERR;
     }
@@ -1880,7 +2163,7 @@ age_withdraw_new_request (
                       "TALER_MAX_FRESH_COINS too large");
       if (0 == num_coins)
         error = "denoms_h must not be empty";
-      else if (num_coins != json_array_size (j_blinded_coin_evs))
+      else if (num_coins != json_array_size (j_blinded_planchets))
         error = "denoms_h and coins_evs must be arrays of the same size";
       else if (num_coins > TALER_MAX_FRESH_COINS)
         /**
@@ -1894,18 +2177,18 @@ age_withdraw_new_request (
       if (NULL != error)
       {
         GNUNET_break_op (0);
-        TALER_MHD_reply_with_ec (
-          wc->rc->connection,
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          error);
+        SET_ERROR_WITH_DETAIL (wc,
+                               ERROR_REQUEST_PARAMETER_MALFORMED,
+                               hint,
+                               error);
         return GNUNET_SYSERR;
       }
-      wc->typ.age.num_coins = (unsigned int) num_coins;
+      wc->num_coins = (unsigned int) num_coins;
       wc->typ.age.commitment.num_coins = (unsigned int) num_coins;
     }
 
     wc->typ.age.denom_hs
-      = GNUNET_new_array (wc->typ.age.num_coins,
+      = GNUNET_new_array (wc->num_coins,
                           struct TALER_DenominationHashP);
     {
       size_t idx;
@@ -1930,8 +2213,8 @@ age_withdraw_new_request (
       typedef struct TALER_BlindedPlanchet
         _array_of_kappa_planchets[TALER_CNC_KAPPA];
 
-      wc->typ.age.coin_evs = GNUNET_new_array (wc->typ.age.num_coins,
-                                               _array_of_kappa_planchets);
+      wc->typ.age.planchets = GNUNET_new_array (wc->num_coins,
+                                                _array_of_kappa_planchets);
     }
 
     /* calculate the hash over the data */
@@ -1943,40 +2226,27 @@ age_withdraw_new_request (
 
       /* Parse blinded envelopes. */
       {
-        json_t *j_kappa_coin_evs;
+        json_t *j_kappa_planchets;
         size_t idx;
 
-        json_array_foreach (j_blinded_coin_evs, idx, j_kappa_coin_evs) {
-          if (! json_is_array (j_kappa_coin_evs))
+        json_array_foreach (j_blinded_planchets, idx, j_kappa_planchets) {
+          if (! json_is_array (j_kappa_planchets))
           {
-            char buf[256];
-
-            GNUNET_snprintf (
-              buf,
-              sizeof(buf),
-              "entry %u in array blinded_coin_evs must be an array",
-              (unsigned int) (idx + 1));
             GNUNET_break_op (0);
-            TALER_MHD_reply_with_ec (
-              wc->rc->connection,
-              TALER_EC_GENERIC_PARAMETER_MALFORMED,
-              buf);
+            SET_ERROR_WITH_DETAIL (wc,
+                                   ERROR_REQUEST_PARAMETER_MALFORMED,
+                                   hint,
+                                   "all entries in array blinded_planchets must be arrays");
             return GNUNET_SYSERR;
           }
-          if (TALER_CNC_KAPPA != json_array_size (j_kappa_coin_evs))
+          if (TALER_CNC_KAPPA != json_array_size (j_kappa_planchets))
           {
-            char buf[256];
-
-            GNUNET_snprintf (buf,
-                             sizeof(buf),
-                             "array no. %u in coin_evs must have length %u",
-                             (unsigned int) (idx + 1),
-                             (unsigned int) TALER_CNC_KAPPA);
             GNUNET_break_op (0);
-            TALER_MHD_reply_with_ec (
-              wc->rc->connection,
-              TALER_EC_GENERIC_PARAMETER_MALFORMED,
-              buf);
+            SET_ERROR_WITH_DETAIL (wc,
+                                   ERROR_REQUEST_PARAMETER_MALFORMED,
+                                   hint,
+                                   "all entries in array blinded_planchets must be arrays of size "
+                                   TALER_CNC_KAPPA_STR);
             return GNUNET_SYSERR;
           }
 
@@ -1986,10 +2256,10 @@ age_withdraw_new_request (
             size_t kappa;
             json_t *kvalue;
 
-            json_array_foreach (j_kappa_coin_evs, kappa, kvalue) {
+            json_array_foreach (j_kappa_planchets, kappa, kvalue) {
               struct GNUNET_JSON_Specification kspec[] = {
                 TALER_JSON_spec_blinded_planchet (NULL,
-                                                  &wc->typ.age.coin_evs[idx][
+                                                  &wc->typ.age.planchets[idx][
                                                     kappa]),
                 GNUNET_JSON_spec_end ()
               };
@@ -2004,7 +2274,7 @@ age_withdraw_new_request (
               {
                 struct TALER_BlindedCoinHashP bch;
 
-                TALER_coin_ev_hash (&wc->typ.age.coin_evs[idx][kappa],
+                TALER_coin_ev_hash (&wc->typ.age.planchets[idx][kappa],
                                     &wc->typ.age.denom_hs[idx],
                                     &bch);
                 GNUNET_CRYPTO_hash_context_read (hash_context,
@@ -2019,21 +2289,21 @@ age_withdraw_new_request (
               {
                 if (0 ==
                     TALER_blinded_planchet_cmp (
-                      &wc->typ.age.coin_evs[idx][kappa],
-                      &wc->typ.age.coin_evs[i][kappa]))
+                      &wc->typ.age.planchets[idx][kappa],
+                      &wc->typ.age.planchets[i][kappa]))
                 {
                   GNUNET_break_op (0);
-                  TALER_MHD_reply_with_ec (
-                    wc->rc->connection,
-                    TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                    "duplicate planchet");
+                  SET_ERROR_WITH_DETAIL (wc,
+                                         ERROR_REQUEST_PARAMETER_MALFORMED,
+                                         hint,
+                                         "duplicate planchet");
                   return GNUNET_SYSERR;
                 }
               }   /* end duplicate check */
-            }   /* json_array_foreach over j_kappa_coin_evs */
+            }   /* json_array_foreach over j_kappa_planchets */
           }   /* scope of kappa/kvalue */
-        }   /* json_array_foreach over j_blinded_coin_evs */
-      }   /* scope of j_kappa_coin_evs, idx */
+        }   /* json_array_foreach over j_blinded_planchets */
+      }   /* scope of j_kappa_planchets, idx */
 
       /* Finally, calculate the h_commitment from all blinded envelopes */
       GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -2041,7 +2311,7 @@ age_withdraw_new_request (
                                          hash);
 
     }   /* scope of hash_context */
-  }   /* scope of j_denom_hs, j_blinded_coin_evs */
+  }   /* scope of j_denom_hs, j_blinded_planchets */
 
   return GNUNET_OK;
 }
@@ -2079,26 +2349,23 @@ handler_withdraw (
     switch (typ)
     {
     case WITHDRAW_TYPE_BATCH:
-      r = batch_withdraw_new_request (wc, reserve_pub, root);
+      r = batch_withdraw_new_request (wc, root);
       break;
     case WITHDRAW_TYPE_AGE:
-      r = age_withdraw_new_request (wc, reserve_pub, root);
+      r = age_withdraw_new_request (wc, root);
       break;
     default:
       GNUNET_break (0);
       r = GNUNET_SYSERR;
-      TALER_MHD_reply_with_error (
-        wc->rc->connection,
-        MHD_HTTP_INTERNAL_SERVER_ERROR,
-        /* TODO: find better error code here:? */
-        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-        NULL);
+      /* TODO: find better error code here:? */
+      SET_ERROR (wc,
+                 ERROR_INTERNAL_INVARIANT_FAILURE);
     }
 
     if (GNUNET_OK != r)
       return (GNUNET_SYSERR == r) ? MHD_NO : MHD_YES;
 
-    wc->phase = WC_PHASE_CHECK_KEYS;
+    wc->phase = PHASE_CHECK_KEYS;
   }
 
   while (true)
@@ -2110,36 +2377,35 @@ handler_withdraw (
 
     switch (wc->phase)
     {
-    case WC_PHASE_CHECK_KEYS:
-      check_keys (wc);
+    case PHASE_CHECK_KEYS:
+      phase_check_keys (wc);
       break;
-    case WC_PHASE_CHECK_RESERVE_SIGNATURE:
-      check_reserve_signature (wc);
+    case PHASE_CHECK_RESERVE_SIGNATURE:
+      phase_check_reserve_signature (wc);
       break;
-    case WC_PHASE_RUN_LEGI_CHECK:
-      run_legi_check (wc);
+    case PHASE_RUN_LEGI_CHECK:
+      phase_run_legi_check (wc);
       break;
-    case WC_PHASE_SUSPENDED:
+    case PHASE_SUSPENDED:
       return MHD_YES;
-    case WC_PHASE_CHECK_KYC_RESULT:
-      check_kyc_result (wc);
+    case PHASE_CHECK_KYC_RESULT:
+      phase_check_kyc_result (wc);
       break;
-    case WC_PHASE_PREPARE_TRANSACTION:
-      prepare_transaction (wc);
+    case PHASE_PREPARE_TRANSACTION:
+      phase_prepare_transaction (wc);
       break;
-    case WC_PHASE_RUN_TRANSACTION:
-      run_transaction (wc);
+    case PHASE_RUN_TRANSACTION:
+      phase_run_transaction (wc);
       break;
-    case WC_PHASE_GENERATE_REPLY_SUCCESS:
-      generate_reply_success (wc);
+    case PHASE_GENERATE_REPLY_SUCCESS:
+      phase_generate_reply_success (wc);
       break;
-    case WC_PHASE_GENERATE_REPLY_FAILURE:
-      return MHD_queue_response (rc->connection,
-                                 wc->http_status,
-                                 wc->response);
-    case WC_PHASE_RETURN_YES:
+    case PHASE_GENERATE_REPLY_ERROR:
+      phase_generate_reply_error (wc);
+      break;
+    case PHASE_RETURN_YES:
       return MHD_YES;
-    case WC_PHASE_RETURN_NO:
+    case PHASE_RETURN_NO:
       return MHD_NO;
     }
   }
