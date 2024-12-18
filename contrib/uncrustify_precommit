@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # use as .git/hooks/pre-commit
 exec 1>&2
@@ -6,6 +6,12 @@ exec 1>&2
 RET=0
 changed=$(git diff --cached --name-only | grep -v mustach | grep -v templating/test | grep -v valgrind.h)
 crustified=""
+
+# If nothing (important) has changed, return here
+[ -z "$changed" ] && exit 0
+
+( echo "$changed" | grep -q '\.[ch] *$*') && \
+  echo "Checking formatting with uncrustify..."
 
 for f in $changed;
 do
@@ -30,5 +36,34 @@ then
   echo "Run"
   echo "uncrustify --replace -c uncrustify.cfg ${crustified}"
   echo "before committing."
+  exit $RET
 fi
-exit $RET
+
+# Make sure we have no stupid spelling error
+if (which codespell > /dev/null)
+then
+    ( set -o pipefail;
+      echo "Checking for spelling errors with codespell..."
+      contrib/ci/jobs/000-codespell/job.sh src 2> /dev/null;
+    ) || { echo "Please fix the code spell errors first"; exit 2; }
+else
+    echo "No codespell installed, skipping spell check."
+    echo "** Please consider installing codespell! **"
+fi
+
+
+# Make sure doxygen is happy with our annotations
+if (which doxygen > /dev/null)
+then
+    [ -f doc/doxygen/Makefile ] && \
+    ( set -o pipefail;
+      echo "Checking that doxygen is happy..."
+      cd doc/doxygen;
+      make fast 2>&1 | (grep  error:; exit 0);
+    ) || { echo "Please fix the errors reported by doxygen first"; exit 3; }
+else
+    echo "No doxygen installed, skipping check."
+    echo "** Please consider installing doxygen! **"
+fi
+
+echo "Commit is all clear!"
